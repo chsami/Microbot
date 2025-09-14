@@ -3,6 +3,7 @@ package net.runelite.client.plugins.microbot.util.cache.serialization;
 
 import com.google.gson.*;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.client.plugins.microbot.util.poh.PohTransport;
 import net.runelite.client.plugins.microbot.util.poh.data.PohTeleport;
 
 import java.lang.reflect.Type;
@@ -24,10 +25,11 @@ public class PohTeleportDataAdapter implements JsonSerializer<Map<String, List<P
             obj.addProperty("pohTeleport", entry.getKey());
 
             JsonArray transports = new JsonArray();
-            for (PohTeleport transport : entry.getValue()) {
+            for (PohTeleport teleport : entry.getValue()) {
                 JsonObject tObj = new JsonObject();
-                tObj.addProperty("class", transport.getClass().getName());
-                tObj.addProperty("name", transport.name()); // assuming PohTransport is enum
+
+                tObj.addProperty("class", teleport.getClass().getName());
+                tObj.addProperty("name", teleport.name()); // assuming PohTeleport is enum
                 transports.add(tObj);
             }
 

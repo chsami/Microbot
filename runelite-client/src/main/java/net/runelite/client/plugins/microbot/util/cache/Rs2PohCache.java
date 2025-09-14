@@ -5,18 +5,22 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.DecorativeObject;
 import net.runelite.api.GameObject;
 import net.runelite.api.GameState;
+import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.*;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
-import net.runelite.client.plugins.microbot.shortestpath.TransportType;
 import net.runelite.client.plugins.microbot.util.cache.serialization.CacheSerializable;
 import net.runelite.client.plugins.microbot.util.cache.util.LogOutputMode;
 import net.runelite.client.plugins.microbot.util.cache.util.Rs2CacheLoggingUtils;
 import net.runelite.client.plugins.microbot.util.poh.PohTeleports;
+import net.runelite.client.plugins.microbot.util.poh.PohTransport;
 import net.runelite.client.plugins.microbot.util.poh.data.*;
 
 import java.lang.reflect.Type;
 import java.util.*;
+import java.util.stream.Collectors;
+
+import static net.runelite.client.plugins.microbot.shortestpath.TransportType.FAIRY_RING;
 
 @Slf4j
 public class Rs2PohCache extends Rs2Cache<String, List<PohTeleport>> implements CacheSerializable {
@@ -24,6 +28,7 @@ public class Rs2PohCache extends Rs2Cache<String, List<PohTeleport>> implements 
     public final static Type TYPE_TOKEN = new TypeToken<Map<String, List<PohTeleport>>>() {
     }.getType();
     public static final String POH_CACHE_KEY = "PohCache";
+    public static final String POH_FAIRY_RINGS = "fairyRings";
 
     private static Rs2PohCache instance;
 
@@ -59,6 +64,7 @@ public class Rs2PohCache extends Rs2Cache<String, List<PohTeleport>> implements 
     @Subscribe
     public void onDecorativeObjectSpawned(DecorativeObjectSpawned event) {
         DecorativeObject go = event.getDecorativeObject();
+        if (go == null) return;
         if (MountedMythical.isMountedMythsCape(go)) {
             setTeleports(MountedMythical.class, List.of(MountedMythical.values()));
         } else if (MountedXerics.isMountedXerics(go)) {
@@ -71,8 +77,25 @@ public class Rs2PohCache extends Rs2Cache<String, List<PohTeleport>> implements 
     }
 
     @Subscribe
+    public void onDecorativeObjectDespawned(DecorativeObjectDespawned event) {
+        DecorativeObject go = event.getDecorativeObject();
+        if (go == null) return;
+        if (MountedMythical.isMountedMythsCape(go)) {
+            remove(MountedMythical.class.getSimpleName());
+        } else if (MountedXerics.isMountedXerics(go)) {
+            remove(MountedXerics.class.getSimpleName());
+        } else if (MountedDigsite.isMountedDigsite(go)) {
+            remove(MountedDigsite.class.getSimpleName());
+        } else if (MountedGlory.isMountedGlory(go)) {
+            remove(MountedGlory.class.getSimpleName());
+        }
+    }
+
+    @Subscribe
     public void onGameObjectSpawned(GameObjectSpawned event) {
+        //TODO("Make sure we only add transport's when we're inside our own home.")
         GameObject go = event.getGameObject();
+        if (go == null) return;
         PohPortal portal = PohPortal.getPohPortal(go);
         if (portal != null) {
             addTeleport(PohPortal.class, portal);
@@ -81,71 +104,151 @@ public class Rs2PohCache extends Rs2Cache<String, List<PohTeleport>> implements 
         JewelleryBoxType jewelleryBoxType = JewelleryBoxType.getJewelleryBoxType(go);
         if (jewelleryBoxType != null) {
             setTeleports(JewelleryBox.class, jewelleryBoxType.getAvailableTeleports());
-        }else if (NexusPortal.isNexusPortal(go)) {
+        } else if (NexusPortal.isNexusPortal(go)) {
             setTeleports(NexusPortal.class, NexusPortal.getAvailableTeleports());
         } else if (PohTeleports.isFairyRing(go)) {
             log.info("Found fairy rings in POH");
-            put("fairyRings", Collections.emptyList());
+            put(POH_FAIRY_RINGS, Collections.emptyList());
         }
     }
 
-    private void addTeleport(Class<? extends Enum<? extends PohTeleport>> type, PohTeleport transport) {
-        String key = type.getSimpleName();
-        List<PohTeleport> transports = get(key, ArrayList::new);
-        if (transports.contains(transport)) {
-            return;
-        }
-        transports.add(transport);
-        put(key, transports);
-        log.info("Putting {} Teleport to {}", get(key).size(), key);
-    }
-
-    private void setTeleports(Class<? extends Enum<? extends PohTeleport>> type, List<? extends PohTeleport> transports) {
-        String key = type.getSimpleName();
-        put(key, Collections.unmodifiableList(transports));
-        log.info("Putting {} Teleports to {}", get(key).size(), key);
-    }
 
     @Subscribe
     public void onGameObjectDespawned(GameObjectDespawned event) {
-
-    }
-
-    @Override
-    public void update() {
-        //Unused
-    }
-
-    @Override
-    public String getConfigKey() {
-        return POH_CACHE_KEY;
-    }
-
-    @Override
-    public boolean shouldPersist() {
-        return true;
-    }
-
-    public static boolean isTransportUsable(Transport transport) {
-        if (transport.getType() == TransportType.FAIRY_RING) {
-            return getInstance().containsKey("fairyRings");
+        GameObject go = event.getGameObject();
+        if (go == null) return;
+        PohPortal portal = PohPortal.getPohPortal(go);
+        if (portal != null) {
+            removeTeleport(PohPortal.class, portal);
+            return;
         }
-        return getTeleport(transport) != null;
+        JewelleryBoxType jewelleryBoxType = JewelleryBoxType.getJewelleryBoxType(go);
+        if (jewelleryBoxType != null) {
+            remove(JewelleryBox.class.getSimpleName());
+        } else if (NexusPortal.isNexusPortal(go)) {
+            remove(NexusPortal.class.getSimpleName());
+        } else if (PohTeleports.isFairyRing(go)) {
+            log.info("Removing Fairy Rings from POH");
+            remove(POH_FAIRY_RINGS);
+        }
     }
 
-    public static PohTeleport getTeleport(Transport transport) {
-        String key = transport.getEnumClass();
-        String name = transport.getEnumValue();
-        List<PohTeleport> obj = getInstance().get(key);
-        if (obj == null) return null;
-
-        PohTeleport teleport = obj.stream()
-                .filter(pt -> pt.name().equals(name))
-                .findFirst().orElse(null);
-
-        return teleport;
+    /**
+     * Removes a teleport from cache using the given Class's simplename as key
+     * @param clazz Class to use as key
+     * @param teleport PohTeleports to remove from value
+     */
+    private void removeTeleport(Class<? extends Enum<? extends PohTeleport>> clazz, PohTeleport teleport) {
+        String key = clazz.getSimpleName();
+        List<PohTeleport> teleports = get(key, ArrayList::new);
+        if (!teleports.contains(teleport)) {
+            return;
+        }
+        teleports.remove(teleport);
+        put(key, teleports);
+        log.info("Removing {} Teleport from {}", teleport.name(), key);
     }
 
+    /**
+     * Adds a teleport to cache using the given Class's simplename as key
+     * @param clazz Class to use as key
+     * @param teleport PohTeleports to add to value
+     */
+    private void addTeleport(Class<? extends Enum<? extends PohTeleport>> clazz, PohTeleport teleport) {
+        String key = clazz.getSimpleName();
+        List<PohTeleport> teleports = get(key, ArrayList::new);
+        if (teleports.contains(teleport)) {
+            return;
+        }
+        teleports.add(teleport);
+        put(key, teleports);
+        log.info("Adding {} Teleport to {}", teleport.name(), key);
+    }
+
+    /**
+     * Sets the teleports in cache using the given Class's simplename as key
+     * @param clazz Class to use as key
+     * @param teleports List of PohTeleports to put as value
+     */
+    private void setTeleports(Class<? extends Enum<? extends PohTeleport>> clazz, List<? extends PohTeleport> teleports) {
+        String key = clazz.getSimpleName();
+        put(key, Collections.unmodifiableList(teleports));
+        log.info("Putting {} Teleports to {}", get(key).size(), key);
+    }
+
+
+    /**
+     *
+     * @return true if fairy ring is present in PoH
+     */
+    public static boolean hasFairyRings() {
+        return getInstance().containsKey(POH_FAIRY_RINGS);
+    }
+
+    /**
+     * Creates a Set with all available PoH transports directly extracted from cached data
+     * Excludes things like Fairy rings and spirit trees as they are based on existing data
+     * @return Set with all cached PoH transports present in Cache flattened down
+     */
+    public static Set<PohTransport> getAvailablePohTransports() {
+        HouseStyle style = HouseStyle.getStyle();
+        if (style == null) return Collections.emptySet();
+        return getInstance().values().stream()
+                .flatMap(Collection::stream).map(t -> new PohTransport(style.getPohExitWorldPoint(), t))
+                .collect(Collectors.toSet());
+    }
+
+    /**
+     * Creates a map with all available PoH transports based on cached data
+     * @param allTransports map with all persistent transports extracted from TSV's
+     * @return Map with all transports available from inside PoH and fairy ring transports towards PoH
+     */
+    public static Map<WorldPoint, Set<Transport>> getAvailableTransportsMap(Map<WorldPoint, Set<Transport>> allTransports) {
+        Set<PohTransport> pohTransports = getAvailablePohTransports();
+        Map<WorldPoint, Set<Transport>> transportsMap = new HashMap<>();
+        if (pohTransports.isEmpty()) return transportsMap;
+        WorldPoint exitPortal = pohTransports.stream().findFirst().get().getOrigin();
+        //All the PohTransports start from the same WorldPoint, which is the exit portal inside the PoH
+        if (hasFairyRings()) {
+            transportsMap.putAll(connectFairyRings(allTransports, exitPortal));
+        }
+        transportsMap.computeIfAbsent(exitPortal, p -> new HashSet<>()).addAll(pohTransports);
+        return transportsMap;
+    }
+
+    /**
+     * Connecting the PoH Fairy ring to all other fairy rings and vise versa
+     * @param transportsMap map from which currently present fairy rings are found
+     * @param pohFairyRing position of the PoH fairy ring
+     * @return map with PoH fairy rings transports added
+     */
+    private static Map<WorldPoint, Set<Transport>> connectFairyRings(
+            Map<WorldPoint, Set<Transport>> transportsMap,
+            WorldPoint pohFairyRing
+    ) {
+        Map<WorldPoint, Set<Transport>> fairyTransportsMap = new HashMap<>();
+        Transport pohFairyTransport = new Transport(pohFairyRing, pohFairyRing, "DIQ", FAIRY_RING, true, 5);
+
+        //Find a point where there is FAIRY_RINGS (because that point will have data for ALL fairy rings)
+        transportsMap.entrySet().stream()
+                .filter(e -> e.getValue().stream().anyMatch(t -> t.getType() == FAIRY_RING)).findFirst().ifPresent(e -> {
+                    WorldPoint existingRingPoint = e.getKey();
+                    for (Transport existingRingTransport : new HashSet<>(e.getValue())) {
+                        if (existingRingTransport.getType() != FAIRY_RING) continue;
+                        // add from poh
+                        fairyTransportsMap
+                                .computeIfAbsent(pohFairyRing, k -> new HashSet<>())
+                                .add(new Transport(pohFairyTransport, existingRingTransport));
+
+                        // add to poh
+                        fairyTransportsMap
+                                .computeIfAbsent(existingRingPoint, k -> new HashSet<>())
+                                .add(new Transport(existingRingTransport, pohFairyTransport));
+                    }
+                });
+
+        return fairyTransportsMap;
+    }
 
     public static void logState(LogOutputMode mode) {
         Rs2PohCache cache = getInstance();
@@ -179,6 +282,21 @@ public class Rs2PohCache extends Rs2Cache<String, List<PohTeleport>> implements 
                 logContent.toString(),
                 mode
         );
+    }
+
+    @Override
+    public void update() {
+        //Unused
+    }
+
+    @Override
+    public String getConfigKey() {
+        return POH_CACHE_KEY;
+    }
+
+    @Override
+    public boolean shouldPersist() {
+        return true;
     }
 
 }

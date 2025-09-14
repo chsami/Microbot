@@ -52,8 +52,9 @@ public class FishingTrawlerScript extends Script {
                         Microbot.status = "Looting Rewards";
                         Rs2GameObject.interact(OBJECT_TRAWLERNET, "inspect");
                         Rs2Player.waitForWalking();
-                        sleep(Rs2Random.randomGaussian(600, 300));
-                        Rs2Widget.clickWidget("Bank-all");
+                        //check for visible trawler widget
+                        sleepUntil(() -> Rs2Widget.isWidgetVisible(367, 19), 5000);
+                        Rs2Widget.clickWidget(367,19);
                         sleep(Rs2Random.randomGaussian(600, 300));
                         wasInsideBoat = false;
                         BreakHandlerScript.setLockState(false);
