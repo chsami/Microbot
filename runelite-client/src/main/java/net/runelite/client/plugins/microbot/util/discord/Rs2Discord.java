@@ -148,4 +148,126 @@ public class Rs2Discord {
         // Shift the red, green, and blue components to create the integer color representation
         return (red << 16) | (green << 8) | blue;
     }
+
+    /**
+     * sends a custom notification with configurable title, description, and color
+     *
+     * @param title the notification title
+     * @param description the notification description
+     * @param color the embed color (hex format)
+     * @param playerName the player name to include
+     * @param source the source of the notification
+     * @return true if notification was sent successfully
+     */
+    public static boolean sendCustomNotification(String title, String description, int color, String playerName, String source) {
+        String timestamp = java.time.LocalDateTime.now()
+                .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+
+        DiscordEmbed embed = new DiscordEmbed();
+        embed.setTitle(title);
+        embed.setDescription(description);
+        embed.setColor(color);
+        embed.addField(new DiscordEmbed.Field("Player", 
+                playerName.isEmpty() ? "Unknown" : playerName, true));
+        embed.addField(new DiscordEmbed.Field("Time", timestamp, true));
+        embed.addField(new DiscordEmbed.Field("Source", source, true));
+        embed.setFooter(new DiscordEmbed.Footer("Microbot", null));
+
+        return sendWebhookMessage("", Collections.singletonList(embed));
+    }
+
+    /**
+     * sends a notification with custom fields
+     *
+     * @param title the notification title
+     * @param description the notification description
+     * @param color the embed color
+     * @param fields list of custom fields to add
+     * @param footerText custom footer text
+     * @return true if notification was sent successfully
+     */
+    public static boolean sendNotificationWithFields(String title, String description, int color, 
+                                                   java.util.List<DiscordEmbed.Field> fields, String footerText) {
+        DiscordEmbed embed = new DiscordEmbed();
+        embed.setTitle(title);
+        embed.setDescription(description);
+        embed.setColor(color);
+        
+        // add custom fields
+        if (fields != null) {
+            for (DiscordEmbed.Field field : fields) {
+                embed.addField(field);
+            }
+        }
+        
+        embed.setFooter(new DiscordEmbed.Footer(footerText != null ? footerText : "Microbot", null));
+
+        return sendWebhookMessage("", Collections.singletonList(embed));
+    }
+
+    /**
+     * sends a simple text message notification
+     *
+     * @param message the message to send
+     * @param playerName the player name to include
+     * @param source the source of the notification
+     * @return true if notification was sent successfully
+     */
+    public static boolean sendSimpleNotification(String message, String playerName, String source) {
+        return sendCustomNotification("📢 Notification", message, 0x3498DB, playerName, source);
+    }
+
+    /**
+     * sends an alert notification with customizable icon and color
+     *
+     * @param alertType the type of alert (e.g., "ERROR", "WARNING", "SUCCESS")
+     * @param message the alert message
+     * @param color the embed color
+     * @param playerName the player name
+     * @param source the source of the alert
+     * @return true if notification was sent successfully
+     */
+    public static boolean sendAlert(String alertType, String message, int color, String playerName, String source) {
+        String icon = getIconForAlertType(alertType);
+        String title = icon + " " + alertType.toUpperCase();
+        return sendCustomNotification(title, message, color, playerName, source);
+    }
+
+    /**
+     * gets appropriate icon for alert type
+     */
+    private static String getIconForAlertType(String alertType) {
+        switch (alertType.toUpperCase()) {
+            case "ERROR": return "❌";
+            case "WARNING": return "⚠️";
+            case "SUCCESS": return "✅";
+            case "INFO": return "ℹ️";
+            case "BAN": return "🚫";
+            case "SHUTDOWN": return "🔴";
+            default: return "📢";
+        }
+    }
+
+    /**
+     * creates a field for discord embed
+     */
+    public static DiscordEmbed.Field createField(String name, String value, boolean inline) {
+        return new DiscordEmbed.Field(name, value, inline);
+    }
+
+    /**
+     * creates a timestamp field for current time
+     */
+    public static DiscordEmbed.Field createTimestampField() {
+        String timestamp = java.time.LocalDateTime.now()
+                .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        return createField("Time", timestamp, true);
+    }
+
+    /**
+     * creates a player field
+     */
+    public static DiscordEmbed.Field createPlayerField(String playerName) {
+        return createField("Player", playerName.isEmpty() ? "Unknown" : playerName, true);
+    }
 }

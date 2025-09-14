@@ -5,9 +5,11 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.pluginscheduler.util.SchedulerPluginUtil;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
+import net.runelite.client.plugins.microbot.util.discord.Rs2Discord;
 import net.runelite.client.plugins.microbot.util.events.PluginPauseEvent;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+import net.runelite.client.plugins.microbot.util.player.Rs2PlayerModel;
 import net.runelite.client.plugins.microbot.util.security.Login;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.world.Rs2WorldUtil;
@@ -18,6 +20,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import net.runelite.api.GameState;
+
 /**
  * Enhanced BreakHandlerScript with state-based break management for reliable automation.
  * 
@@ -45,6 +49,14 @@ import java.util.concurrent.atomic.AtomicReference;
 @Slf4j
 public class BreakHandlerScript extends Script {
     public static String version = "2.1.0";
+    
+    // ban detection constants  
+    private static final int BANNED_LOGIN_INDEX = 14;
+    
+    // ban detection state
+    public static boolean isBanned = false;
+    private static String lastKnownPlayerName = "";
+    private boolean wasLoggedIn = false;
     
     // Constants for configuration and timing
     private static final int SCHEDULER_INTERVAL_MS = 1000;
@@ -173,7 +185,15 @@ public class BreakHandlerScript extends Script {
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
                 super.run();
-                processBreakHandlerStateMachine();
+                
+                // check for ban detection first
+                checkForBan();
+                updatePlayerNameCache();
+                
+                // only continue with break handling if not banned
+                if (!isBanned) {
+                    processBreakHandlerStateMachine();
+                }
             } catch (Exception ex) {
                 log.error("Error in break handler main loop", ex);
             }
@@ -872,5 +892,65 @@ public class BreakHandlerScript extends Script {
      */
     public static boolean isLockState() {
         return lockState.get() || SchedulerPluginUtil.hasLockedSchedulablePlugins();
+    }
+    
+    /**
+     * checks for ban screen during login attempt or when logged out
+     */
+    private void checkForBan() {
+        GameState gameState = Microbot.getClient().getGameState();
+        
+        // detect ban screen on login screen
+        boolean banDetected = gameState == GameState.LOGIN_SCREEN
+                && Microbot.getClient().getLoginIndex() == BANNED_LOGIN_INDEX;
+        
+        if (banDetected && !isBanned) {
+            isBanned = true;
+            handleBanDetection();
+        }
+    }
+
+    /**
+     * updates cached player name when logged in
+     */
+    private void updatePlayerNameCache() {
+        boolean currentlyLoggedIn = Microbot.isLoggedIn();
+        
+        // detect fresh login - update player name cache
+        if (currentlyLoggedIn && !wasLoggedIn) {
+            Rs2PlayerModel localPlayer = Rs2Player.getLocalPlayer();
+            if (localPlayer != null && localPlayer.getName() != null) {
+                lastKnownPlayerName = localPlayer.getName();
+                log.info("Updated cached player name: {}", lastKnownPlayerName);
+            }
+        }
+        
+        wasLoggedIn = currentlyLoggedIn;
+    }
+
+    /**
+     * handles ban detection - sends notification and shuts down plugins
+     */
+    private void handleBanDetection() {
+        log.info("Ban screen detected for player: {}", lastKnownPlayerName);
+        
+        // send discord notification if webhook is configured
+        Rs2Discord.sendAlert("BAN", "Ban screen detected during login attempt.", 0xDC143C, lastKnownPlayerName, "BreakHandler");
+        
+        // shutdown break handler plugin
+        shutdownPlugin();
+    }
+
+    /**
+     * shuts down break handler plugin when ban is detected
+     */
+    private void shutdownPlugin() {
+        try {
+            log.info("Shutting down {} plugin due to ban detection", BreakHandlerPlugin.class.getSimpleName());
+            Microbot.stopPlugin(BreakHandlerPlugin.class);
+            
+        } catch (Exception ex) {
+            log.error("Error shutting down {} plugin", BreakHandlerPlugin.class.getSimpleName(), ex);
+        }
     }
 }
