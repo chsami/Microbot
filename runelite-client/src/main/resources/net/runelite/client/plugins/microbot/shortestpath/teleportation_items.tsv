@@ -110,20 +110,6 @@
 3239 6077 0		8013		2187=7		Y	T	19	4	Teleport to House tablet: Outside
 # 8 - Hosidius										
 1740 3517 0		8013		2187=8		Y	T	19	4	Teleport to House tablet: Outside
-# Teleport inside POH with tablet										
-1858 5707 0		8013		2188=1		Y	T	19	4	Teleport to House tablet: Inside
-1858 5707 1		8013		2188=2		Y	T	19	4	Teleport to House tablet: Inside
-1858 5707 2		8013		2188=3		Y	T	19	4	Teleport to House tablet: Inside
-1858 5707 3		8013		2188=4		Y	T	19	4	Teleport to House tablet: Inside
-1922 5707 0		8013		2188=5		Y	T	19	4	Teleport to House tablet: Inside
-1922 5707 1		8013		2188=6		Y	T	19	4	Teleport to House tablet: Inside
-1922 5707 2		8013		2188=7		Y	T	19	4	Teleport to House tablet: Inside
-1922 5707 3		8013		2188=8		Y	T	19	4	Teleport to House tablet: Inside
-1986 5707 0		8013		2188=10		Y	T	19	4	Teleport to House tablet: Inside
-1986 5707 0		8013		2188=11		Y	T	19	4	Teleport to House tablet: Inside
-1986 5707 1		8013		2188=12		Y	T	19	4	Teleport to House tablet: Inside
-1986 5707 2		8013		2188=13		Y	T	19	4	Teleport to House tablet: Inside
-1986 5707 3		8013		2188=14		Y	T	19	4	Teleport to House tablet: Inside
 #  Teleport tablets										
 3213 3424 0		8007		4585=0		Y	T	19	4	Varrock tablet
 3164 3478 0		8007		4480=1;4585=1		Y	T	19	4	Varrock tablet: Grand exchange
@@ -217,22 +203,7 @@
 										
 # capes										
 2931 3286 0		9780;9781				Y	F	19	4	Crafting cape: Teleport
-# The Construction cape's home teleports, determined by varbit 2188 (HouseStyle)										
-1858 5707 0		9789;9790		2188=1		Y	F	19	4	Construction cape: Tele to POH
-1858 5707 1		9789;9790		2188=2		Y	F	19	4	Construction cape: Tele to POH
-1858 5707 2		9789;9790		2188=3		Y	F	19	4	Construction cape: Tele to POH
-1858 5707 3		9789;9790		2188=4		Y	F	19	4	Construction cape: Tele to POH
-1922 5707 0		9789;9790		2188=5		Y	F	19	4	Construction cape: Tele to POH
-1922 5707 1		9789;9790		2188=6		Y	F	19	4	Construction cape: Tele to POH
-1922 5707 2		9789;9790		2188=7		Y	F	19	4	Construction cape: Tele to POH
-1922 5707 3		9789;9790		2188=8		Y	F	19	4	Construction cape: Tele to POH
-1986 5707 0		9789;9790		2188=10		Y	F	19	4	Construction cape: Tele to POH
-1986 5707 0		9789;9790		2188=11		Y	F	19	4	Construction cape: Tele to POH
-1986 5707 1		9789;9790		2188=12		Y	F	19	4	Construction cape: Tele to POH
-1986 5707 2		9789;9790		2188=13		Y	F	19	4	Construction cape: Tele to POH
-1986 5707 3		9789;9790		2188=14		Y	F	19	4	Construction cape: Tele to POH
 # 8 - Hosidius										
-#1740 3517 0		9789;9790		2187=8		Y	F	19	4	Construction cape: Home
 2952 3224 0		9789;9790				Y	F	19	4	2. Construction cape: Rimmington
 2892 3465 0		9789;9790				Y	F	19	4	3. Construction cape: Taverley
 3339 3004 0		9789;9790				Y	F	19	4	4. Construction cape: Pollnivneach

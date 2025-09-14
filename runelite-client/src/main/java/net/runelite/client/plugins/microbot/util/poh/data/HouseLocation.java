@@ -48,7 +48,7 @@ public enum HouseLocation {
             for (HouseStyle style : HouseStyle.values()) {
 
                 String origin = formatWorldPoint(location.getPortalLocation());
-                String destination = formatWorldPoint(style.getPohLocation());
+                String destination = formatWorldPoint(style.getPohExitWorldPoint());
 
                 String isMembers = "Y";
                 String menu = "Home;Portal;" + location.getPortalId();

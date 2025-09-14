@@ -27,7 +27,7 @@ public enum HouseStyle {
     ;
 
     private final int varbitValue;
-    private final WorldPoint pohLocation;
+    private final WorldPoint pohExitWorldPoint;
 
     public static HouseStyle getStyle() {
         int varbitValue = Microbot.getVarbitValue(VarbitID.POH_HOUSE_STYLE);
@@ -40,11 +40,16 @@ public enum HouseStyle {
     }
 
     public static WorldPoint[] getExitPortalLocations() {
-        return Arrays.stream(values()).map(HouseStyle::getPohLocation).distinct().toArray(WorldPoint[]::new);
+        return Arrays.stream(values()).map(HouseStyle::getPohExitWorldPoint).distinct().toArray(WorldPoint[]::new);
     }
 
     public static boolean isPohExitLocation(WorldPoint pohLocation) {
         return Arrays.asList(getExitPortalLocations()).contains(pohLocation);
+    }
+
+    public static WorldPoint getPohExitPoint() {
+        HouseStyle style = getStyle();
+        return style != null ? style.getPohExitWorldPoint() : null;
     }
 }
 

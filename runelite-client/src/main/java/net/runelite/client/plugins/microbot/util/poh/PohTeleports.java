@@ -1,23 +1,27 @@
 package net.runelite.client.plugins.microbot.util.poh;
 
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.GameObject;
+import net.runelite.api.Skill;
 import net.runelite.api.TileObject;
+import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.ObjectID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.shortestpath.Transport;
+import net.runelite.client.plugins.microbot.shortestpath.TransportType;
 import net.runelite.client.plugins.microbot.util.equipment.JewelleryLocationEnum;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.poh.data.HouseLocation;
+import net.runelite.client.plugins.microbot.util.poh.data.HouseStyle;
 import net.runelite.client.plugins.microbot.util.poh.data.JewelleryBoxType;
 import net.runelite.client.plugins.microbot.util.poh.data.NexusPortal;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
@@ -31,6 +35,7 @@ import static net.runelite.client.plugins.microbot.util.Global.sleepUntilTrue;
  * 2. add fortis colosseum location in jewelleryLocationEnum
  * 3. Add configuration to allow the user to choose between teleports in wilderness or not
  */
+@Slf4j
 public class PohTeleports {
 
     /**
@@ -60,6 +65,7 @@ public class PohTeleports {
 
     /**
      * Checks if the player has a house
+     *
      * @return true if a house location is found
      */
     public static boolean hasHouse() {
@@ -140,9 +146,13 @@ public class PohTeleports {
      */
     public static boolean usePortalNexus(NexusPortal nexusPortal) {
         //TODO: Add config here to inform the user if the teleport is a wilderness teleport
+        GameObject portal = Rs2GameObject.getGameObject(NexusPortal.PORTAL_IDS);
         if (getPortalNexusInterface() == null) {
-            TileObject tileObject = Rs2GameObject.getTileObject(NexusPortal.PORTAL_IDS);
-            Rs2GameObject.interact(tileObject, "Teleport Menu");
+            if (portal != null) {
+                Rs2GameObject.interact(portal, "Teleport Menu");
+            } else {
+                log.warn("Portal nexus not found");
+            }
         }
 
         sleepUntil(() -> getPortalNexusInterface() != null);
@@ -226,6 +236,25 @@ public class PohTeleports {
 
     public static boolean isSpiritTree(TileObject tileObject) {
         return SPIRIT_TREE_IDS.stream().anyMatch(id -> id == tileObject.getId());
+    }
+
+    public static Map<WorldPoint, Set<Transport>> getTransportsToPoh() {
+        HouseStyle style = HouseStyle.getStyle();
+        HouseLocation location = HouseLocation.getHouseLocation();
+        Map<WorldPoint, Set<Transport>> transportMap = new HashMap<>();
+        if (style == null || location == null) return transportMap;
+        WorldPoint insidePoint = style.getPohExitWorldPoint();
+        WorldPoint outsidePoint = location.getPortalLocation();
+
+        transportMap.put(null, Set.of(
+                new Transport(insidePoint, "Teleport to House", TransportType.TELEPORTATION_SPELL, true, 19, Map.of(Skill.MAGIC, 40)),
+                new Transport(insidePoint, "Construction cape: Tele to POH", TransportType.TELEPORTATION_ITEM, true, 19, Set.of(Set.of(9789), Set.of(9790))),
+                new Transport(insidePoint, "Teleport to House tablet: Outside", TransportType.TELEPORTATION_ITEM, true, 19, Set.of(Set.of(8013)))
+        ));
+        transportMap.put(outsidePoint, Set.of(
+                new Transport(outsidePoint, insidePoint, location.name() + " -> PoH", TransportType.TELEPORTATION_PORTAL, true, "Home", "Portal", location.getPortalId())
+        ));
+        return transportMap;
     }
 
 }

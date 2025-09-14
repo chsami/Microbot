@@ -200,6 +200,7 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
 		cacheConfigValues();
         SplitFlagMap map = SplitFlagMap.fromResources();
         Map<WorldPoint, Set<Transport>> transports = Transport.loadAllFromResources();
+
         List<Restriction> restrictions = Restriction.loadAllFromResources();
         pathfinderConfig = new PathfinderConfig(map, transports, restrictions, client, config);
 
