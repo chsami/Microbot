@@ -110,7 +110,7 @@ public interface AutoWorldHopperConfig extends Config {
         return 3;
     }
 
-    @Range(min = 5, max = 50)
+    @Range(min = 1, max = 50)
     @ConfigItem(
             keyName = "detectionRadius",
             name = "Detection Radius",
@@ -120,6 +120,17 @@ public interface AutoWorldHopperConfig extends Config {
     )
     default int detectionRadius() {
         return 10;
+    }
+
+    @ConfigItem(
+            keyName = "showPlayerRadius",
+            name = "Show Player Detection Radius",
+            description = "Visually display the player detection radius on the game canvas",
+            position = 3,
+            section = triggersSection
+    )
+    default boolean showPlayerRadius() {
+        return true;
     }
 
     @ConfigItem(

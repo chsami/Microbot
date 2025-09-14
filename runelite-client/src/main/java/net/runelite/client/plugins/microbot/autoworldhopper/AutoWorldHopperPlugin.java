@@ -44,6 +44,9 @@ public class AutoWorldHopperPlugin extends Plugin {
     private AutoWorldHopperInfoOverlay infoOverlay;
 
     @Inject
+    private AutoWorldHopperOverlay visualOverlay;
+
+    @Inject
     private WorldService worldService;
 
     @Inject
@@ -63,6 +66,7 @@ public class AutoWorldHopperPlugin extends Plugin {
         
         if (overlayManager != null) {
             overlayManager.add(infoOverlay);
+            overlayManager.add(visualOverlay);
         }
         
         if (config.enabled()) {
@@ -77,6 +81,7 @@ public class AutoWorldHopperPlugin extends Plugin {
         
         if (overlayManager != null) {
             overlayManager.remove(infoOverlay);
+            overlayManager.remove(visualOverlay);
         }
         
         log.info("Auto World Hopper stopped");
