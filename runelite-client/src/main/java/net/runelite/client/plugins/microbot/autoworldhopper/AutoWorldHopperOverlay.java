@@ -60,7 +60,7 @@ public class AutoWorldHopperOverlay extends OverlayPanel {
     }
 
     private void renderPlayerDetectionRadius(Graphics2D graphics, Player localPlayer) {
-        if (config.maxPlayers() <= 0) {
+        if (!config.enablePlayerDetection()) {
             return; // Don't show radius if player detection is disabled
         }
 
@@ -89,7 +89,7 @@ public class AutoWorldHopperOverlay extends OverlayPanel {
 
     private void renderDetectedPlayers(Graphics2D graphics) {
         // Only render if plugin is enabled and player detection is active
-        if (!config.enabled() || config.maxPlayers() <= 0) {
+        if (!config.enabled() || !config.enablePlayerDetection()) {
             return;
         }
 
@@ -112,7 +112,9 @@ public class AutoWorldHopperOverlay extends OverlayPanel {
 
             // Check if player is within detection radius
             double distance = localPlayer.getWorldLocation().distanceTo(player.getWorldLocation());
-            if (distance <= detectionRadius) {
+            boolean withinRadius = (detectionRadius == 0) ? (distance == 0) : (distance <= detectionRadius);
+            
+            if (withinRadius) {
                 renderDetectedPlayer(graphics, player);
             }
         }

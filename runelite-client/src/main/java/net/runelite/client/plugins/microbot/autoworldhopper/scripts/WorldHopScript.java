@@ -47,9 +47,35 @@ public class WorldHopScript extends Script {
     private int playersNearby = 0;
     @Getter
     private boolean paused = false;
+    @Getter
+    private long scriptStartTime = 0;
     
     private boolean chatTriggered = false;
     private long chatTriggerTime = 0;
+    
+    /**
+     * Check if the startup delay has elapsed
+     */
+    public boolean isStartupDelayComplete() {
+        if (config.startupDelay() == 0) {
+            return true; // No delay configured
+        }
+        
+        long elapsedSeconds = (System.currentTimeMillis() - scriptStartTime) / 1000;
+        return elapsedSeconds >= config.startupDelay();
+    }
+    
+    /**
+     * Get remaining startup delay in seconds
+     */
+    public int getRemainingStartupDelay() {
+        if (config.startupDelay() == 0) {
+            return 0;
+        }
+        
+        long elapsedSeconds = (System.currentTimeMillis() - scriptStartTime) / 1000;
+        return Math.max(0, config.startupDelay() - (int)elapsedSeconds);
+    }
     
     public boolean run(AutoWorldHopperConfig config, WorldService worldService, ChatMessageManager chatMessageManager) {
         this.config = config;
@@ -62,6 +88,7 @@ public class WorldHopScript extends Script {
         
         resetTimers();
         paused = false;
+        scriptStartTime = System.currentTimeMillis();
         
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
@@ -146,7 +173,10 @@ public class WorldHopScript extends Script {
                 continue; // Skip ourselves
             }
             
-            if (player.getWorldLocation().distanceTo(localPlayerLocation) <= radius) {
+            double distance = player.getWorldLocation().distanceTo(localPlayerLocation);
+            boolean withinRadius = (radius == 0) ? (distance == 0) : (distance <= radius);
+            
+            if (withinRadius) {
                 count++;
             }
         }
@@ -156,6 +186,11 @@ public class WorldHopScript extends Script {
     
     private String shouldHop() {
         long currentTime = System.currentTimeMillis();
+        
+        // Check startup delay first
+        if (!isStartupDelayComplete()) {
+            return null; // Still in startup delay period
+        }
         
         // Check cooldown
         if (currentTime - lastHopTime < (config.hopCooldown() * 1000)) {
@@ -168,9 +203,17 @@ public class WorldHopScript extends Script {
         }
         
         // Check player count
-        if (config.enablePlayerDetection() && config.maxPlayers() > 0) {
-            if (playersNearby >= config.maxPlayers()) {
-                return "Too many players (" + playersNearby + "/" + config.maxPlayers() + ")";
+        if (config.enablePlayerDetection()) {
+            if (config.maxPlayers() == 0) {
+                // Zero tolerance mode - hop if ANY players detected
+                if (playersNearby > 0) {
+                    return "Zero tolerance - " + playersNearby + " player(s) detected";
+                }
+            } else {
+                // Normal mode - hop if too many players
+                if (playersNearby >= config.maxPlayers()) {
+                    return "Too many players (" + playersNearby + "/" + config.maxPlayers() + ")";
+                }
             }
         }
         

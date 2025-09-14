@@ -55,6 +55,18 @@ public class AutoWorldHopperInfoOverlay extends OverlayPanel {
                     .rightColor(script.isRunning() ? (script.isPaused() ? Color.YELLOW : Color.GREEN) : Color.RED)
                     .build());
 
+            // Startup delay status
+            if (script.isRunning() && !script.isPaused()) {
+                int remainingDelay = script.getRemainingStartupDelay();
+                if (remainingDelay > 0) {
+                    panelComponent.getChildren().add(LineComponent.builder()
+                            .left("Startup Delay:")
+                            .right(remainingDelay + "s remaining")
+                            .rightColor(Color.ORANGE)
+                            .build());
+                }
+            }
+
             // Current world
             if (Microbot.getClient().getLocalPlayer() != null) {
                 panelComponent.getChildren().add(LineComponent.builder()

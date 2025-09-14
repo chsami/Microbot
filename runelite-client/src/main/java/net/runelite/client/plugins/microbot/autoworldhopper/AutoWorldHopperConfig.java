@@ -50,6 +50,18 @@ public interface AutoWorldHopperConfig extends Config {
         return false;
     }
 
+    @Range(min = 0, max = 300)
+    @ConfigItem(
+            keyName = "startupDelay",
+            name = "Startup Delay (seconds)",
+            description = "Delay in seconds before triggers become active (allows time for walking/setup)",
+            position = 1,
+            section = worldSection
+    )
+    default int startupDelay() {
+        return 30;
+    }
+
     @ConfigItem(
             keyName = "membershipFilter",
             name = "World Type",
@@ -102,7 +114,7 @@ public interface AutoWorldHopperConfig extends Config {
     @ConfigItem(
             keyName = "maxPlayers",
             name = "Max Players Nearby",
-            description = "Maximum number of players allowed nearby (0 = disabled)",
+            description = "Maximum number of players allowed nearby (0 = zero tolerance - hop if ANY players detected)",
             position = 1,
             section = triggersSection
     )
@@ -110,11 +122,11 @@ public interface AutoWorldHopperConfig extends Config {
         return 3;
     }
 
-    @Range(min = 1, max = 50)
+    @Range(min = 0, max = 50)
     @ConfigItem(
             keyName = "detectionRadius",
             name = "Detection Radius",
-            description = "Radius in tiles to check for other players",
+            description = "Radius in tiles to check for other players (0 = same tile only)",
             position = 2,
             section = triggersSection
     )
