@@ -114,7 +114,7 @@ public interface AutoWorldHopperConfig extends Config {
     @ConfigItem(
             keyName = "maxPlayers",
             name = "Max Players Nearby",
-            description = "Maximum number of players allowed nearby (1 = zero tolerance - hop if ANY players detected)",
+            description = "Maximum number of players allowed nearby (1 = only yourself - hop if ANY players detected)",
             position = 1,
             section = triggersSection
     )
