@@ -93,12 +93,13 @@ public class AutoWorldHopperInfoOverlay extends OverlayPanel {
             // Players nearby (if player detection is enabled)
             if (config.enablePlayerDetection()) {
                 int playersNearby = script.getPlayersNearby();
-                Color playerColor = playersNearby >= config.maxPlayers() && config.maxPlayers() > 0 
+                int max = config.maxPlayers();
+                Color playerColor = (max == 0 ? playersNearby > 0 : playersNearby >= max)
                         ? Color.RED : Color.WHITE;
                 
                 panelComponent.getChildren().add(LineComponent.builder()
                         .left("Players nearby:")
-                        .right(playersNearby + "/" + (config.maxPlayers() > 0 ? config.maxPlayers() : "∞"))
+                        .right(playersNearby + "/" + max)
                         .rightColor(playerColor)
                         .build());
             }

@@ -40,7 +40,7 @@ public class AutoWorldHopperOverlay extends OverlayPanel {
 
     @Override
     public Dimension render(Graphics2D graphics) {
-        if (!config.enabled() || !config.showPlayerRadius()) {
+        if (!config.enabled()) {
             return null;
         }
 
@@ -60,8 +60,8 @@ public class AutoWorldHopperOverlay extends OverlayPanel {
     }
 
     private void renderPlayerDetectionRadius(Graphics2D graphics, Player localPlayer) {
-        if (!config.enablePlayerDetection()) {
-            return; // Don't show radius if player detection is disabled
+        if (!config.enablePlayerDetection() || !config.showPlayerRadius()) {
+            return; // Don't show radius if player detection is disabled or radius display is off
         }
 
         LocalPoint playerLocation = localPlayer.getLocalLocation();
@@ -71,10 +71,11 @@ public class AutoWorldHopperOverlay extends OverlayPanel {
 
         // Render the detection radius circle
         int radiusTiles = config.detectionRadius();
+        int sizeTiles = Math.max(1, radiusTiles * 2 + 1); // 0 -> 1x1, R -> (2R+1)x(2R+1)
         Polygon radiusPolygon = Perspective.getCanvasTileAreaPoly(
-            Microbot.getClient(), 
-            playerLocation, 
-            radiusTiles * 2
+            Microbot.getClient(),
+            playerLocation,
+            sizeTiles
         );
 
         if (radiusPolygon != null) {
