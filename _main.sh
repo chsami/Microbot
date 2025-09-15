@@ -148,17 +148,12 @@ if [ -n "$PROFILE_NUM" ]; then
     
     # Check if profile file exists
     if [ -f "$PROFILE_FILE" ]; then
-        # Backup current credentials if they exist
-        if [ -f "$CREDENTIALS_FILE" ]; then
-            cp "$CREDENTIALS_FILE" "$CREDENTIALS_FILE.backup"
-        fi
-        
         # Switch to the requested profile
         cp "$PROFILE_FILE" "$CREDENTIALS_FILE"
         print_status "Switched to profile $PROFILE_NUM"
         
         # After 10 seconds, restore the backup (optional - remove if you want profile to persist)
-        (sleep 10 && if [ -f "$CREDENTIALS_FILE.backup" ]; then mv "$CREDENTIALS_FILE.backup" "$CREDENTIALS_FILE"; print_status "Restored default profile"; fi) &
+        (sleep 10 && rm "$CREDENTIALS_FILE") &
     else
         print_warning "Profile file $PROFILE_FILE does not exist"
     fi

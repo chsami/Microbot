@@ -31,6 +31,7 @@ An automated world hopping plugin for RuneLite that switches worlds based on con
 - **Random Delay**: Add randomization before hopping (0-30 seconds)
 - **Notifications**: Show chat messages when hopping worlds
 - **Debug Mode**: Display additional information in overlay
+- **Skip Worlds**: Comma-separated list of world IDs to never hop to (e.g. "301, 302, 303")
 
 ## Configuration
 
@@ -54,6 +55,7 @@ An automated world hopping plugin for RuneLite that switches worlds based on con
 - **Random Delay**: Maximum random delay before hopping
 - **Show Notifications**: Display hop messages in chat
 - **Debug Mode**: Show detailed overlay information
+- **Skip Worlds**: World IDs to never hop to (comma separated)
 
 ## Usage
 

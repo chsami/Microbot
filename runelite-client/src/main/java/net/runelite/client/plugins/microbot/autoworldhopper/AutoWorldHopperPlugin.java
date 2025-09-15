@@ -107,8 +107,9 @@ public class AutoWorldHopperPlugin extends Plugin {
     @Subscribe
     public void onGameStateChanged(GameStateChanged gameStateChanged) {
         if (gameStateChanged.getGameState() == GameState.LOGGED_IN) {
-            // Reset timers when logging in
+            // Reset timers and resume when logging in
             worldHopScript.resetTimers();
+            worldHopScript.resume();
         } else if (gameStateChanged.getGameState() == GameState.LOGIN_SCREEN) {
             // Stop script when logged out
             worldHopScript.pause();

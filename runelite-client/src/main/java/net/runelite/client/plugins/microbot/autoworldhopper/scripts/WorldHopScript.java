@@ -24,8 +24,11 @@ import net.runelite.http.api.worlds.WorldType;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -298,6 +301,11 @@ public class WorldHopScript extends Script {
     private boolean isWorldSuitable(World world) {
         EnumSet<WorldType> types = world.getTypes();
         
+        // Check skip worlds list
+        if (isWorldInSkipList(world.getId())) {
+            return false;
+        }
+        
         // Check membership filter
         switch (config.membershipFilter()) {
             case FREE:
@@ -341,6 +349,35 @@ public class WorldHopScript extends Script {
         }
         
         return true;
+    }
+    
+    /**
+     * Check if a world ID is in the skip list
+     */
+    private boolean isWorldInSkipList(int worldId) {
+        String skipWorldsString = config.skipWorlds();
+        if (skipWorldsString == null || skipWorldsString.trim().isEmpty()) {
+            return false;
+        }
+        
+        try {
+            // Parse comma-separated world IDs
+            Set<Integer> skipWorldIds = new HashSet<>();
+            String[] worldIds = skipWorldsString.split(",");
+            
+            for (String worldIdStr : worldIds) {
+                String trimmed = worldIdStr.trim();
+                if (!trimmed.isEmpty()) {
+                    skipWorldIds.add(Integer.parseInt(trimmed));
+                }
+            }
+            
+            return skipWorldIds.contains(worldId);
+            
+        } catch (NumberFormatException ex) {
+            log.warn("Invalid skip worlds format: '{}'. Expected comma-separated numbers like '301, 302, 303'", skipWorldsString);
+            return false;
+        }
     }
     
     private boolean hopToWorld(World world) {

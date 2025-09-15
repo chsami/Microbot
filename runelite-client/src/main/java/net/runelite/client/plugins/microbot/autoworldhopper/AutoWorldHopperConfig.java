@@ -239,4 +239,15 @@ public interface AutoWorldHopperConfig extends Config {
     default boolean debugMode() {
         return false;
     }
+
+    @ConfigItem(
+            keyName = "skipWorlds",
+            name = "Skip Worlds",
+            description = "World IDs to skip when hopping (comma separated, e.g. \"301, 302, 303\")",
+            position = 4,
+            section = advancedSection
+    )
+    default String skipWorlds() {
+        return "";
+    }
 }
