@@ -28,16 +28,18 @@ print_error() {
 show_usage() {
     echo "Usage: $0 [OPTIONS]"
     echo "Options:"
-    echo "  --build           Build the project before starting (default: false)"
-    echo "  --stop            Stop running RuneLite instances and exit"
-    echo "  --profile <num>   Switch to profile number before starting"
-    echo "  --help            Show this help message"
+    echo "  --build                   Build the project before starting (default: false)"
+    echo "  --stop                    Stop running RuneLite instances and exit"
+    echo "  --profile <num>           Switch to profile number before starting"
+    echo "  --local-plugins <path>    Use local plugins from specified folder"
+    echo "  --help                    Show this help message"
     echo ""
     echo "Examples:"
-    echo "  $0                    # Just start RuneLite (no build)"
-    echo "  $0 --build           # Build and start RuneLite"
-    echo "  $0 --stop            # Stop all RuneLite instances"
-    echo "  $0 --build --profile 1  # Build, switch to profile 1, and start"
+    echo "  $0                                    # Just start RuneLite (no build)"
+    echo "  $0 --build                           # Build and start RuneLite"
+    echo "  $0 --stop                            # Stop all RuneLite instances"
+    echo "  $0 --build --profile 1               # Build, switch to profile 1, and start"
+    echo "  $0 --local-plugins /path/to/plugins  # Load plugins from local folder"
 }
 
 # Function to stop RuneLite specifically
@@ -62,6 +64,7 @@ stop_runelite() {
 BUILD_PROJECT=false
 STOP_ONLY=false
 PROFILE_NUM=""
+LOCAL_PLUGINS_PATH=""
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -80,6 +83,15 @@ while [[ $# -gt 0 ]]; do
                 shift 2
             else
                 print_error "Profile number required. Usage: --profile <number>"
+                exit 1
+            fi
+            ;;
+        --local-plugins)
+            if [[ -n $2 ]]; then
+                LOCAL_PLUGINS_PATH=$2
+                shift 2
+            else
+                print_error "Local plugins path required. Usage: --local-plugins <path>"
                 exit 1
             fi
             ;;
@@ -161,4 +173,28 @@ fi
 
 # Start RuneLite
 print_status "Starting RuneLite..."
-exec java --add-opens java.desktop/com.apple.eawt=ALL-UNNAMED --add-exports java.desktop/com.apple.eawt=ALL-UNNAMED -jar "$JAR_PATH"
+
+# Build Java command with optional local plugins path
+JAVA_ARGS=(
+    "--add-opens" "java.desktop/com.apple.eawt=ALL-UNNAMED"
+    "--add-exports" "java.desktop/com.apple.eawt=ALL-UNNAMED"
+)
+
+# Add local plugins system property if specified
+if [ -n "$LOCAL_PLUGINS_PATH" ]; then
+    if [ ! -d "$LOCAL_PLUGINS_PATH" ]; then
+        print_error "Local plugins path does not exist: $LOCAL_PLUGINS_PATH"
+        exit 1
+    fi
+    
+    if [ ! -f "$LOCAL_PLUGINS_PATH/plugins.json" ]; then
+        print_warning "plugins.json not found in $LOCAL_PLUGINS_PATH - plugins may not load correctly"
+    fi
+    
+    print_status "Using local plugins from: $LOCAL_PLUGINS_PATH"
+    JAVA_ARGS+=("-Dmicrobot.local.plugins=$LOCAL_PLUGINS_PATH")
+fi
+
+JAVA_ARGS+=("-jar" "$JAR_PATH")
+
+exec java "${JAVA_ARGS[@]}"
