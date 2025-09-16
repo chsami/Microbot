@@ -54,7 +54,7 @@ public interface AutoWorldHopperConfig extends Config {
     @ConfigItem(
             keyName = "startupDelay",
             name = "Startup Delay (seconds)",
-            description = "Delay in seconds before triggers become active (allows time for walking/setup)",
+            description = "Delay in seconds before triggers become active (allows time for walking/setup). Timer resets if players enter detection area during startup",
             position = 1,
             section = worldSection
     )
@@ -188,6 +188,18 @@ public interface AutoWorldHopperConfig extends Config {
     )
     default boolean ignoreFriends() {
         return true;
+    }
+
+    @Range(min = 0, max = 30)
+    @ConfigItem(
+            keyName = "playerGracePeriod",
+            name = "Player Detection Grace Period (seconds)",
+            description = "Wait this many seconds after detecting players before hopping. Cancels hop if players leave during grace period (0 = hop immediately)",
+            position = 7,
+            section = triggersSection
+    )
+    default int playerGracePeriod() {
+        return 5;
     }
 
     // =========================================

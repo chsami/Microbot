@@ -101,6 +101,16 @@ public class AutoWorldHopperInfoOverlay extends OverlayPanel {
                         .right(playersNearby + "/" + (config.maxPlayers() > 0 ? config.maxPlayers() : "∞"))
                         .rightColor(playerColor)
                         .build());
+                
+                // Grace period status (if active)
+                if (script.isGracePeriodActive()) {
+                    int remainingGrace = script.getRemainingGracePeriod();
+                    panelComponent.getChildren().add(LineComponent.builder()
+                            .left("Grace Period:")
+                            .right(remainingGrace + "s remaining")
+                            .rightColor(Color.YELLOW)
+                            .build());
+                }
             }
 
             // Debug information

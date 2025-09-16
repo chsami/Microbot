@@ -49,12 +49,22 @@ public class WorldHopScript extends Script {
     @Getter
     private int playersNearby = 0;
     @Getter
+    private int previousPlayersNearby = 0;
+    @Getter
     private boolean paused = false;
     @Getter
     private long scriptStartTime = 0;
     
     private boolean chatTriggered = false;
     private long chatTriggerTime = 0;
+    
+    // Grace period tracking
+    @Getter
+    private boolean gracePeriodActive = false;
+    @Getter
+    private long gracePeriodStartTime = 0;
+    @Getter
+    private String gracePeriodReason = null;
     
     /**
      * Check if the startup delay has elapsed
@@ -92,6 +102,7 @@ public class WorldHopScript extends Script {
         resetTimers();
         paused = false;
         scriptStartTime = System.currentTimeMillis();
+        previousPlayersNearby = 0; // Reset player tracking
         
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
@@ -134,6 +145,11 @@ public class WorldHopScript extends Script {
         chatTriggered = false;
         chatTriggerTime = 0;
         lastHopReason = "None";
+        
+        // Reset grace period
+        gracePeriodActive = false;
+        gracePeriodStartTime = 0;
+        gracePeriodReason = null;
     }
     
     public void pause() {
@@ -143,6 +159,19 @@ public class WorldHopScript extends Script {
     public void resume() {
         paused = false;
         resetTimers();
+        previousPlayersNearby = 0; // Reset player tracking on resume
+    }
+    
+    /**
+     * Get remaining grace period in seconds
+     */
+    public int getRemainingGracePeriod() {
+        if (!gracePeriodActive || config.playerGracePeriod() == 0) {
+            return 0;
+        }
+        
+        long elapsedSeconds = (System.currentTimeMillis() - gracePeriodStartTime) / 1000;
+        return Math.max(0, config.playerGracePeriod() - (int)elapsedSeconds);
     }
     
     public void triggerChatHop(String playerName, String message) {
@@ -158,12 +187,14 @@ public class WorldHopScript extends Script {
     private void updatePlayersNearby() {
         if (!config.enablePlayerDetection()) {
             playersNearby = 0;
+            previousPlayersNearby = 0;
             return;
         }
         
         Player localPlayer = Microbot.getClient().getLocalPlayer();
         if (localPlayer == null) {
             playersNearby = 0;
+            previousPlayersNearby = 0;
             return;
         }
         
@@ -184,6 +215,20 @@ public class WorldHopScript extends Script {
             }
         }
         
+        // Check if we need to reset startup timer due to new players entering
+        if (!isStartupDelayComplete() && count > previousPlayersNearby) {
+            // New players detected during startup - reset the timer
+            scriptStartTime = System.currentTimeMillis();
+            
+            if (config.showNotifications()) {
+                sendChatMessage("Startup timer reset - " + count + " player(s) detected during setup period");
+            }
+            
+            log.info("Adaptive startup delay: Timer reset due to {} new players detected (was: {}, now: {})", 
+                    count - previousPlayersNearby, previousPlayersNearby, count);
+        }
+        
+        previousPlayersNearby = playersNearby;
         playersNearby = count;
     }
     
@@ -205,18 +250,11 @@ public class WorldHopScript extends Script {
             return "Chat detected";
         }
         
-        // Check player count
+        // Check player count with grace period logic
         if (config.enablePlayerDetection()) {
-            if (config.maxPlayers() == 0) {
-                // Zero tolerance mode - hop if ANY players detected
-                if (playersNearby > 0) {
-                    return "Zero tolerance - " + playersNearby + " player(s) detected";
-                }
-            } else {
-                // Normal mode - hop if too many players
-                if (playersNearby >= config.maxPlayers()) {
-                    return "Too many players (" + playersNearby + "/" + config.maxPlayers() + ")";
-                }
+            String playerReason = checkPlayerDetectionWithGracePeriod();
+            if (playerReason != null) {
+                return playerReason;
             }
         }
         
@@ -228,6 +266,79 @@ public class WorldHopScript extends Script {
         }
         
         return null; // No reason to hop
+    }
+    
+    private String checkPlayerDetectionWithGracePeriod() {
+        long currentTime = System.currentTimeMillis();
+        boolean shouldTriggerHop = false;
+        String hopReason = null;
+        
+        // Determine if we should trigger based on player count
+        if (config.maxPlayers() == 0) {
+            // Zero tolerance mode - hop if ANY players detected
+            if (playersNearby > 0) {
+                shouldTriggerHop = true;
+                hopReason = "Zero tolerance - " + playersNearby + " player(s) detected";
+            }
+        } else {
+            // Normal mode - hop if too many players
+            if (playersNearby >= config.maxPlayers()) {
+                shouldTriggerHop = true;
+                hopReason = "Too many players (" + playersNearby + "/" + config.maxPlayers() + ")";
+            }
+        }
+        
+        // Handle grace period logic
+        if (shouldTriggerHop) {
+            // Players detected that would trigger a hop
+            
+            if (config.playerGracePeriod() == 0) {
+                // No grace period - hop immediately
+                return hopReason;
+            }
+            
+            if (!gracePeriodActive) {
+                // Start grace period
+                gracePeriodActive = true;
+                gracePeriodStartTime = currentTime;
+                gracePeriodReason = hopReason;
+                
+                if (config.showNotifications()) {
+                    sendChatMessage("Grace period started (" + config.playerGracePeriod() + "s) - " + hopReason);
+                }
+                
+                log.info("Grace period started: {} - waiting {}s to confirm players stay", hopReason, config.playerGracePeriod());
+                return null; // Don't hop yet, wait for grace period
+            }
+            
+            // Grace period already active, check if it's complete
+            long elapsedSeconds = (currentTime - gracePeriodStartTime) / 1000;
+            if (elapsedSeconds >= config.playerGracePeriod()) {
+                // Grace period complete and players still there - hop now
+                gracePeriodActive = false;
+                return gracePeriodReason + " (confirmed after " + config.playerGracePeriod() + "s)";
+            }
+            
+            // Still in grace period, keep waiting
+            return null;
+            
+        } else {
+            // No players detected (or under threshold)
+            
+            if (gracePeriodActive) {
+                // Cancel active grace period - players left
+                gracePeriodActive = false;
+                
+                if (config.showNotifications()) {
+                    sendChatMessage("Grace period cancelled - players left the area");
+                }
+                
+                log.info("Grace period cancelled: players left before grace period completed");
+                gracePeriodReason = null;
+            }
+            
+            return null; // No hop needed
+        }
     }
     
     private void performWorldHop(String reason) {
