@@ -165,7 +165,7 @@ if [ -n "$PROFILE_NUM" ]; then
         print_status "Switched to profile $PROFILE_NUM"
         
         # After 10 seconds, restore the backup (optional - remove if you want profile to persist)
-        (sleep 10 && rm "$CREDENTIALS_FILE") &
+        (sleep 30 && rm "$CREDENTIALS_FILE") &
     else
         print_warning "Profile file $PROFILE_FILE does not exist"
     fi
