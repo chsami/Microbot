@@ -67,7 +67,9 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.net.Proxy;
 import java.net.ProxySelector;
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -884,12 +886,24 @@ public class MicrobotPluginManager
 					}
 				});
 
+			log.info("DEBUG: Starting download phase for {} plugins: {}", needsDownload.size(), needsDownload);
 			for (String pluginName : needsDownload) {
 				log.info("Downloading missing plugin: {}", pluginName);
-				if (!downloadPlugin(pluginName)) {
+				MicrobotPluginManifest pluginManifest = manifestMap.get(pluginName);
+				if (pluginManifest != null) {
+					log.info("DEBUG: Plugin {} manifest URL: {}", pluginName, pluginManifest.getUrl());
+				} else {
+					log.warn("DEBUG: No manifest found for plugin: {}", pluginName);
+				}
+				
+				boolean downloadSuccess = downloadPlugin(pluginName);
+				log.info("DEBUG: Download result for {}: {}", pluginName, downloadSuccess ? "SUCCESS" : "FAILED");
+				
+				if (!downloadSuccess) {
 					MicrobotPluginManifest failedManifest = manifestMap.get(pluginName);
 					if (failedManifest != null) {
 						validPluginManifests.remove(failedManifest);
+						log.info("DEBUG: Removed failed plugin {} from valid manifests", pluginName);
 					}
 				}
 			}
@@ -1002,45 +1016,119 @@ public class MicrobotPluginManager
 	 * @return true if the plugin was successfully downloaded, false otherwise
 	 */
 	private boolean downloadPlugin(String internalName) {
+		log.info("DEBUG: downloadPlugin() called for: {}", internalName);
 		MicrobotPluginManifest manifest = manifestMap.get(internalName);
 		if (manifest == null) {
 			log.error("Cannot download plugin {}: manifest not found", internalName);
 			return false;
 		}
 
+		log.info("DEBUG: Found manifest for {}: {}", internalName, manifest.getUrl());
+
 		try {
 			File pluginFile = getPluginJarFile(internalName);
+			log.info("DEBUG: Target plugin file: {}", pluginFile.getAbsolutePath());
 
 			HttpUrl jarUrl = microbotPluginClient.getJarURL(manifest);
-			if (jarUrl == null || !jarUrl.isHttps()) {
-				log.error("Invalid JAR URL for plugin {}", internalName);
+			log.info("DEBUG: Generated JAR URL for {}: {}", internalName, jarUrl);
+			log.info("DEBUG: URL scheme: {}", jarUrl != null ? jarUrl.scheme() : "null");
+			log.info("DEBUG: URL isHttps: {}", jarUrl != null ? jarUrl.isHttps() : "null");
+			
+			if (jarUrl == null) {
+				log.error("DEBUG: JAR URL is null for plugin {}", internalName);
+				return false;
+			}
+			
+			// Allow both HTTPS URLs, local file URLs, and our special marker URLs
+			boolean isHttps = jarUrl.isHttps();
+			boolean isFile = "file".equals(jarUrl.scheme());
+			boolean isLocalMarker = "http".equals(jarUrl.scheme()) && 
+				jarUrl.host().equals("localhost") && 
+				jarUrl.pathSegments().contains("__LOCAL_FILE__");
+			boolean isValidUrl = isHttps || isFile || isLocalMarker;
+			
+			log.info("DEBUG: URL validation - isHttps: {}, isFile: {}, isLocalMarker: {}, isValid: {}", 
+				isHttps, isFile, isLocalMarker, isValidUrl);
+			
+			if (!isValidUrl) {
+				log.error("DEBUG: Invalid JAR URL for plugin {} - URL: {}, Scheme: {}", 
+					internalName, jarUrl, jarUrl.scheme());
 				return false;
 			}
 
-			OkHttpClient clientWithoutProxy = noProxy(okHttpClient);
-			Request request = new Request.Builder()
-					.url(jarUrl)
-					.build();
-
-			try (Response response = clientWithoutProxy.newCall(request).execute()) {
-				if (!response.isSuccessful()) {
-					log.error("Failed to download plugin {}: HTTP {}", internalName, response.code());
+			// Handle local file URLs and special marker URLs differently than HTTP URLs
+			if ("file".equals(jarUrl.scheme()) || isLocalMarker) {
+				log.info("DEBUG: Processing local file URL: {}", jarUrl);
+				try {
+					File sourceFile;
+					if (isLocalMarker) {
+						// Extract the file path from our special marker URL
+						String encodedPath = jarUrl.queryParameter("path");
+						String decodedPath = java.net.URLDecoder.decode(encodedPath, "UTF-8");
+						sourceFile = new File(decodedPath);
+						log.info("DEBUG: Extracted file path from marker URL: {}", decodedPath);
+					} else {
+						// For regular file:// URLs
+						sourceFile = new File(jarUrl.uri());
+					}
+					log.info("DEBUG: Source file path: {}", sourceFile.getAbsolutePath());
+					log.info("DEBUG: Source file exists: {}", sourceFile.exists());
+					log.info("DEBUG: Source file size: {}", sourceFile.exists() ? sourceFile.length() : "N/A");
+					
+					if (!sourceFile.exists()) {
+						log.error("DEBUG: Source file does not exist: {}", sourceFile.getAbsolutePath());
+						return false;
+					}
+					
+					// Copy the file
+					java.nio.file.Files.copy(sourceFile.toPath(), pluginFile.toPath(), 
+						java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+					log.info("DEBUG: Successfully copied local file from {} to {}", 
+						sourceFile.getAbsolutePath(), pluginFile.getAbsolutePath());
+					log.info("Plugin {} copied from local source to {}", internalName, pluginFile.getAbsolutePath());
+					return true;
+				} catch (Exception e) {
+					log.error("DEBUG: Failed to copy local file for plugin {}", internalName, e);
 					return false;
 				}
+			} else {
+				// Handle HTTP/HTTPS URLs
+				log.info("DEBUG: Processing HTTP(S) URL: {}", jarUrl);
+				OkHttpClient clientWithoutProxy = noProxy(okHttpClient);
+				Request request = new Request.Builder()
+						.url(jarUrl)
+						.build();
+				
+				log.info("DEBUG: Making HTTP request to: {}", jarUrl);
 
-				byte[] jarData = response.body().bytes();
+				try (Response response = clientWithoutProxy.newCall(request).execute()) {
+					log.info("DEBUG: HTTP response code: {}", response.code());
+					if (!response.isSuccessful()) {
+						log.error("Failed to download plugin {}: HTTP {}", internalName, response.code());
+						return false;
+					}
 
-				Files.write(jarData, pluginFile);
-				log.info("Plugin {} downloaded to {}", internalName, pluginFile.getAbsolutePath());
-				return true;
+					byte[] jarData = response.body().bytes();
+					log.info("DEBUG: Downloaded {} bytes for plugin {}", jarData.length, internalName);
+
+					Files.write(jarData, pluginFile);
+					log.info("Plugin {} downloaded to {}", internalName, pluginFile.getAbsolutePath());
+					return true;
+				}
 			}
 
 		} catch (Exception e) {
+			log.error("DEBUG: Exception during plugin download for {}: {}", internalName, e.getClass().getSimpleName());
 			log.error("Failed to download plugin {}", internalName, e);
 
 			File pluginFile = getPluginJarFile(internalName);
-			if (pluginFile.exists() && !pluginFile.delete()) {
-				log.warn("Failed to delete corrupted plugin file: {}", pluginFile.getAbsolutePath());
+			if (pluginFile.exists()) {
+				log.info("DEBUG: Cleaning up failed plugin file: {}", pluginFile.getAbsolutePath());
+				if (!pluginFile.delete()) {
+					log.warn("Failed to delete corrupted plugin file: {}", pluginFile.getAbsolutePath());
+				} else {
+					log.info("DEBUG: Successfully deleted corrupted plugin file");
+				}
 			}
 			return false;
 		}

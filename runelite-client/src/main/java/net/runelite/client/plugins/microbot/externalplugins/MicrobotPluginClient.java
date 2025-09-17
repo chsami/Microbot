@@ -39,6 +39,7 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.net.URLEncoder;
 import java.nio.file.Files;
 import java.util.List;
 import java.util.Map;
@@ -65,9 +66,13 @@ public class MicrobotPluginClient
      */
     public List<MicrobotPluginManifest> downloadManifest() throws IOException
     {
+        log.info("DEBUG: downloadManifest() called");
+        log.info("DEBUG: LOCAL_PLUGIN_FOLDER = '{}'", LOCAL_PLUGIN_FOLDER);
+        
         // Check if we should load from local folder
         if (LOCAL_PLUGIN_FOLDER != null && !LOCAL_PLUGIN_FOLDER.isEmpty())
         {
+            log.info("DEBUG: Using local plugin folder: {}", LOCAL_PLUGIN_FOLDER);
             return loadLocalManifest();
         }
 
@@ -101,10 +106,17 @@ public class MicrobotPluginClient
      */
     private List<MicrobotPluginManifest> loadLocalManifest() throws IOException
     {
+        log.info("DEBUG: loadLocalManifest() called");
+        log.info("DEBUG: LOCAL_PLUGIN_FOLDER = '{}'", LOCAL_PLUGIN_FOLDER);
+        log.info("DEBUG: PLUGINS_JSON_PATH = '{}'", PLUGINS_JSON_PATH);
+        
         File manifestFile = new File(LOCAL_PLUGIN_FOLDER, PLUGINS_JSON_PATH);
+        log.info("DEBUG: Looking for manifest file at: {}", manifestFile.getAbsolutePath());
+        log.info("DEBUG: Manifest file exists: {}", manifestFile.exists());
         
         if (!manifestFile.exists())
         {
+            log.error("DEBUG: Local manifest file not found: {}", manifestFile.getAbsolutePath());
             throw new IOException("Local manifest file not found: " + manifestFile.getAbsolutePath());
         }
 
@@ -189,17 +201,67 @@ public class MicrobotPluginClient
      */
     public HttpUrl getJarURL(MicrobotPluginManifest manifest)
     {
+        log.info("DEBUG: getJarURL() called for plugin: {}", manifest.getInternalName());
+        log.info("DEBUG: LOCAL_PLUGIN_FOLDER = '{}'", LOCAL_PLUGIN_FOLDER);
+        log.info("DEBUG: Manifest URL = '{}'", manifest.getUrl());
+        
         // If using local plugins, construct file path
         if (LOCAL_PLUGIN_FOLDER != null && !LOCAL_PLUGIN_FOLDER.isEmpty())
         {
             File jarFile = new File(LOCAL_PLUGIN_FOLDER, manifest.getInternalName() + ".jar");
+            log.info("DEBUG: Looking for local JAR at: {}", jarFile.getAbsolutePath());
+            log.info("DEBUG: Local JAR exists: {}", jarFile.exists());
+            
             if (jarFile.exists())
             {
-                return HttpUrl.parse(jarFile.toURI().toString());
+                String fileUri = jarFile.toURI().toString();
+                log.info("DEBUG: Using local JAR URI: {}", fileUri);
+                HttpUrl parsedUrl = HttpUrl.parse(fileUri);
+                log.info("DEBUG: Parsed HttpUrl: {}", parsedUrl);
+                return parsedUrl;
+            } else {
+                log.warn("DEBUG: Local JAR not found, falling back to manifest URL");
             }
         }
         
-        return HttpUrl.parse(manifest.getUrl());
+        log.info("DEBUG: Using manifest URL: {}", manifest.getUrl());
+        
+        // Check if manifest URL is a local file path that needs to be converted to file:// URL
+        String manifestUrl = manifest.getUrl();
+        if (manifestUrl != null && !manifestUrl.startsWith("http") && !manifestUrl.startsWith("file://")) {
+            // Convert local file path to file:// URL
+            File localFile = new File(manifestUrl);
+            log.info("DEBUG: Checking local file: {} (exists: {})", localFile.getAbsolutePath(), localFile.exists());
+            if (localFile.exists()) {
+                try {
+                    // Use proper file:// URL format
+                    String fileUri = localFile.toURI().toString();
+                    log.info("DEBUG: Generated file URI: {}", fileUri);
+                    
+                    // Try to parse with HttpUrl - if it fails, we'll handle it in the download method
+                    HttpUrl parsedFileUrl = HttpUrl.parse(fileUri);
+                    log.info("DEBUG: HttpUrl.parse result: {}", parsedFileUrl);
+                    
+                    if (parsedFileUrl != null) {
+                        return parsedFileUrl;
+                    } else {
+                        // HttpUrl.parse failed, but we can still use the file URI string
+                        // Create a mock HttpUrl using a different approach
+                        log.warn("DEBUG: HttpUrl.parse failed for file URI, will handle in download method");
+                        // Return a special marker that we'll handle in downloadPlugin
+                        return HttpUrl.parse("http://localhost/__LOCAL_FILE__?path=" + java.net.URLEncoder.encode(localFile.getAbsolutePath(), "UTF-8"));
+                    }
+                } catch (Exception e) {
+                    log.error("DEBUG: Error creating file URI: {}", e.getMessage());
+                }
+            } else {
+                log.warn("DEBUG: Local file does not exist: {}", localFile.getAbsolutePath());
+            }
+        }
+        
+        HttpUrl parsedManifestUrl = HttpUrl.parse(manifestUrl);
+        log.info("DEBUG: Parsed manifest HttpUrl: {}", parsedManifestUrl);
+        return parsedManifestUrl;
     }
 
     /**
