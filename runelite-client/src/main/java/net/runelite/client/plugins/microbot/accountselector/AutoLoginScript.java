@@ -6,12 +6,18 @@ import net.runelite.client.config.ConfigProfile;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.breakhandler.BreakHandlerScript;
+import net.runelite.client.plugins.microbot.util.discord.Rs2Discord;
+import net.runelite.client.plugins.microbot.util.discord.models.DiscordEmbed;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+import net.runelite.client.plugins.microbot.util.player.Rs2PlayerModel;
 import net.runelite.client.plugins.microbot.util.security.Login;
 import net.runelite.client.plugins.microbot.util.world.Rs2WorldUtil;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -20,6 +26,14 @@ import java.util.concurrent.TimeUnit;
  */
 @Slf4j
 public class AutoLoginScript extends Script {
+    
+    // ban detection constants
+    private static final int BANNED_LOGIN_INDEX = 14;
+    
+    // ban detection state
+    public static boolean isBanned = false;
+    private static String lastKnownPlayerName = "";
+    private boolean wasLoggedIn = false;
     
     // Login state management
     private enum LoginState {
@@ -45,7 +59,14 @@ public class AutoLoginScript extends Script {
                 if (!super.run()) return;
                 if (BreakHandlerScript.isBreakActive() || BreakHandlerScript.isMicroBreakActive()) return;
 
-                processAutoLoginStateMachine(autoLoginConfig);
+                // check for ban detection first
+                checkForBan();
+                updatePlayerNameCache();
+                
+                // only continue with login if not banned
+                if (!isBanned) {
+                    processAutoLoginStateMachine(autoLoginConfig);
+                }
 
             } catch (Exception ex) {
                 log.error("Error in auto login script", ex);
@@ -70,8 +91,9 @@ public class AutoLoginScript extends Script {
                 handleLoginExtendedSleepState(config);
                 break;
             case ERROR:
-                log.error("Auto login script in error state, resetting disable auto login");
-                Microbot.stopPlugin(AutoLoginPlugin.class);
+                log.error("Auto login script in error state, shutting down plugin");
+                shutdownPlugin();
+                return;
         }
     }
     
@@ -159,16 +181,26 @@ public class AutoLoginScript extends Script {
                 //should be handled in Login class, on next login call
             }
             if (currentLoginIndex == 4 || currentLoginIndex == 3) { // we are in the auth screen and cannot login
-                // 3 mean wrong authtifaction
+                // 3 mean wrong authentication
                 log.error("Authentication failed, please check credentials");
+                handleGeneralFailure("Authentication failed - invalid credentials");
                 transitionToState(LoginState.ERROR);
                 return;                
             }
             if (currentLoginIndex == 34) { // we are not a member and cannot login
                 log.error("Account is not a member, cannot login to members world");
+                handleGeneralFailure("Account is not a member - cannot login to members world");
                 transitionToState(LoginState.ERROR);
                 return;
             }
+            // check for ban screen before proceeding with login
+            if (currentLoginIndex == BANNED_LOGIN_INDEX) {
+                log.error("Ban screen detected during login attempt");
+                handleBanDetection();
+                transitionToState(LoginState.ERROR);
+                return;
+            }
+            
             // we have to find out  other indexes that mean we cannot login
             initiateLogin(config);
         } else {
@@ -307,6 +339,7 @@ public class AutoLoginScript extends Script {
                 new Login();
             }
             
+            
         } catch (Exception ex) {
             log.error("Error during intelligent login", ex);
             retryCount++;
@@ -333,6 +366,128 @@ public class AutoLoginScript extends Script {
         extendedSleepStartTime = null;
         lastLoginAttemptTime = null;
         lastExtendedSleepLoggedMinute = -1;
+        loginState = LoginState.WAITING_FOR_LOGIN_SCREEN;
+    }
+    
+    /**
+     * checks for ban screen during login attempt or when logged out
+     */
+    private void checkForBan() {
+        GameState gameState = Microbot.getClient().getGameState();
+        
+        // detect ban screen on login screen
+        boolean banDetected = gameState == GameState.LOGIN_SCREEN
+                && Microbot.getClient().getLoginIndex() == BANNED_LOGIN_INDEX;
+        
+        if (banDetected && !isBanned) {
+            isBanned = true;
+            handleBanDetection();
+        }
+    }
+
+    /**
+     * updates cached player name when logged in
+     */
+    private void updatePlayerNameCache() {
+        boolean currentlyLoggedIn = Microbot.isLoggedIn();
+        
+        // detect fresh login - update player name cache
+        if (currentlyLoggedIn && !wasLoggedIn) {
+            Rs2PlayerModel localPlayer = Rs2Player.getLocalPlayer();
+            if (localPlayer != null && localPlayer.getName() != null) {
+                lastKnownPlayerName = localPlayer.getName();
+                log.info("Updated cached player name: {}", lastKnownPlayerName);
+            }
+        }
+        
+        wasLoggedIn = currentlyLoggedIn;
+    }
+
+    /**
+     * handles ban detection - sends notification and shuts down plugins
+     */
+    private void handleBanDetection() {
+        log.info("Ban screen detected for player: {}", lastKnownPlayerName);
+        
+        // send discord notification if webhook is configured
+        sendBanDiscordNotification();
+        
+        // shutdown auto login plugin
+        shutdownPlugin();
+    }
+
+    /**
+     * handles general login failures - sends notification and shuts down plugins
+     */
+    private void handleGeneralFailure(String failureReason) {
+        log.info("Login failure detected for player: {} - {}", lastKnownPlayerName, failureReason);
+        
+        // send discord notification if webhook is configured
+        sendFailureDiscordNotification(failureReason);
+        
+        // shutdown auto login plugin after failure
+        shutdownPlugin();
+    }
+
+    /**
+     * sends discord webhook notification about ban detection
+     */
+    private void sendBanDiscordNotification() {
+        try {
+            // create custom fields for detailed ban information
+            java.util.List<DiscordEmbed.Field> fields = new java.util.ArrayList<>();
+            fields.add(Rs2Discord.createPlayerField(lastKnownPlayerName));
+            fields.add(Rs2Discord.createTimestampField());
+            fields.add(Rs2Discord.createField("Login Index", String.valueOf(BANNED_LOGIN_INDEX), true));
+            fields.add(Rs2Discord.createField("Source", "AutoLogin", true));
+
+            boolean success = Rs2Discord.sendNotificationWithFields(
+                "🚫 Account Ban Detected",
+                "Ban screen detected during login attempt.",
+                0xDC143C, // crimson red
+                fields,
+                "AutoLogin Ban Detection"
+            );
+
+            if (success) {
+                log.info("Ban notification sent to discord webhook");
+            } else {
+                log.info("Failed to send discord notification - webhook may not be configured");
+            }
+        } catch (Exception ex) {
+            log.error("Error sending discord notification", ex);
+        }
+    }
+
+    /**
+     * sends discord webhook notification about general login failures
+     */
+    private void sendFailureDiscordNotification(String failureReason) {
+        try {
+            // send error notification using the flexible discord system
+            boolean success = Rs2Discord.sendAlert("ERROR", failureReason, 0xE74C3C, lastKnownPlayerName, "AutoLogin");
+
+            if (success) {
+                log.info("Login failure notification sent to discord webhook");
+            } else {
+                log.info("Failed to send discord notification - webhook may not be configured");
+            }
+        } catch (Exception ex) {
+            log.error("Error sending discord notification", ex);
+        }
+    }
+
+    /**
+     * shuts down auto login plugin when failure is detected
+     */
+    private void shutdownPlugin() {
+        try {
+            log.info("Shutting down {} plugin due to failure detection", AutoLoginPlugin.class.getSimpleName());
+            Microbot.stopPlugin(AutoLoginPlugin.class);
+            
+        } catch (Exception ex) {
+            log.error("Error shutting down {} plugin", AutoLoginPlugin.class.getSimpleName(), ex);
+        }
     }
     
     @Override

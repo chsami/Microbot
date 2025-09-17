@@ -49,6 +49,8 @@ import net.runelite.client.plugins.microbot.util.misc.Predicates;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+import net.runelite.client.plugins.microbot.util.player.Rs2PlayerModel;
+import net.runelite.client.plugins.microbot.util.cache.serialization.CacheSerializationManager;
 import net.runelite.client.plugins.microbot.util.security.Encryption;
 import net.runelite.client.plugins.microbot.util.security.Login;
 import net.runelite.client.plugins.microbot.util.settings.Rs2Settings;
@@ -92,6 +94,26 @@ public class Rs2Bank {
     private static final AtomicBoolean validLoadedCache = new AtomicBoolean(false);
     // Used to synchronize calls
     private static final Object lock = new Object();
+
+    /**
+     * Gets the current player name safely using Rs2Player utility.
+     *
+     * @return Player name or null if not available
+     */
+    private static String getCurrentPlayerName() {
+        try {
+            if (Microbot.isLoggedIn()) {
+                Rs2PlayerModel localPlayer =Rs2Player.getLocalPlayer();
+                if (localPlayer != null) {
+                    return localPlayer.getName();
+                }
+            }
+        } catch (Exception e) {
+            log.debug("Error getting current player name: {}", e.getMessage());
+        }
+        return null;
+    }
+
     /**
      * Container describes from what interface the action happens
      * eg: withdraw means the contailer will be the bank container
@@ -2272,37 +2294,48 @@ public class Rs2Bank {
 
     /**
      * Loads bank data from RuneLite config system.
-     * Similar to QuestBank.loadCacheFromConfig().
+     * Updated to use character-specific caching.
      */
     private static void loadCacheFromConfigInternal(String rsProfileKey) {
         if (rsProfileKey == null || Microbot.getConfigManager() == null) {
             log.warn("Cannot load bank data, rsProfileKey or config manager is null");
             return;
         }
+
+        // get current player name for character-specific loading
+        String playerName = getCurrentPlayerName();
+        if (playerName == null) {
+            log.warn("Cannot load bank data - no player name available");
+            return;
+        }
+
         Rs2Bank.rsProfileKey.set(rsProfileKey);
         worldType = RuneScapeProfileType.getCurrent(Microbot.getClient());
-        log.debug("Loading bank data for profile: {}, world type: {}", rsProfileKey, worldType);
-        String json =Microbot.getConfigManager().getConfiguration(CONFIG_GROUP, rsProfileKey, BANK_KEY);
-        //String json = Microbot.getConfigManager().getRSProfileConfiguration(CONFIG_GROUP, BANK_KEY);
+        log.debug("Loading bank data for profile: {}, player: {}, world type: {}", rsProfileKey, playerName, worldType);
+
+        // use character-specific key
+        String characterSpecificKey = CacheSerializationManager.createCharacterSpecificKey(BANK_KEY, playerName);
+        String json = Microbot.getConfigManager().getConfiguration(CONFIG_GROUP, rsProfileKey, characterSpecificKey);
+
         try {
             if (json != null && !json.isEmpty()) {
                 int[] data = gson.fromJson(json, int[].class);
-                log.debug("Loaded {} bank items from config", data.length);
+                log.debug("Loaded {} bank items from config for player {}", data.length, playerName);
                 rs2BankData.setIdQuantityAndSlot(data);
-                log.debug("finished loading bank data, size: {}", rs2BankData.size());
+                log.debug("finished loading bank data for player {}, size: {}", playerName, rs2BankData.size());
 
                 // Load cached items if no live bank data
                 if (rs2BankData.getBankItems().isEmpty()) {
                     // Cache is already loaded via setIdQuantityAndSlot
-                    log.debug("Loaded {} cached bank items from config", rs2BankData.size());
+                    log.debug("Loaded {} cached bank items from config for player {}", rs2BankData.size(), playerName);
                 }
-                log.debug("build data should now be valid, size: {}", rs2BankData.size());
+                log.debug("build data should now be valid for player {}, size: {}", playerName, rs2BankData.size());
             } else {
                 rs2BankData.setEmpty();
-                log.debug("No cached bank data found in config");
+                log.debug("No cached bank data found in config for player {}", playerName);
             }
         } catch (JsonSyntaxException err) {
-            log.warn("Failed to parse cached bank data from config, resetting cache", err);
+            log.warn("Failed to parse cached bank data from config for player {}, resetting cache", playerName, err);
             rs2BankData.setEmpty();
             saveCacheToConfig(Rs2Bank.rsProfileKey.get());
         }
@@ -2310,19 +2343,28 @@ public class Rs2Bank {
 
     /**
      * Saves the current bank state to RuneLite config system.
-     * Similar to QuestBank.saveCacheToConfig().
+     * Updated to use character-specific caching.
      */
     public static void saveCacheToConfig(String newRsProfileKey) {
         if (newRsProfileKey == null || Microbot.getConfigManager() == null) {
             return;
         }
 
+        // get current player name for character-specific saving
+        String playerName = getCurrentPlayerName();
+        if (playerName == null) {
+            log.warn("Cannot save bank data - no player name available");
+            return;
+        }
+
         try {
+            // use character-specific key
+            String characterSpecificKey = CacheSerializationManager.createCharacterSpecificKey(BANK_KEY, playerName);
             String json = gson.toJson(rs2BankData.getIdQuantityAndSlot());
-            Microbot.getConfigManager().setConfiguration(CONFIG_GROUP, newRsProfileKey, BANK_KEY, json);
-            log.debug("Saved {} bank items to config cache", rs2BankData.size());
+            Microbot.getConfigManager().setConfiguration(CONFIG_GROUP, newRsProfileKey, characterSpecificKey, json);
+            log.debug("Saved {} bank items to config cache for player {}", rs2BankData.size(), playerName);
         } catch (Exception e) {
-            log.error("Failed to save bank data to config", e);
+            log.error("Failed to save bank data to config for player {}", playerName, e);
         }
     }
 

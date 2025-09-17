@@ -1903,7 +1903,9 @@ public class WidgetIndices {
         public static final int HAWK_EYE = 25;
         public static final int MYSTIC_LORE = 26;
         public static final int EAGLE_EYE = 27;
+        public static final int DEAD_EYE = 27; // members version of Eagle Eye
         public static final int MYSTIC_MIGHT = 28;
+        public static final int MYSTIC_VIGOUR = 28; // members version of Mystic Might
         public static final int CHIVALRY = 29;
         public static final int PIETY = 30;
         public static final int RIGOUR = 31;

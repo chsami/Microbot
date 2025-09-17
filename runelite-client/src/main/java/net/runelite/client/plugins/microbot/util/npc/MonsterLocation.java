@@ -2,7 +2,6 @@ package net.runelite.client.plugins.microbot.util.npc;
 
 import lombok.Data;
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.client.plugins.microbot.aiofighter.model.PointClusterer;
 
 import java.util.ArrayList;
 import java.util.Comparator;

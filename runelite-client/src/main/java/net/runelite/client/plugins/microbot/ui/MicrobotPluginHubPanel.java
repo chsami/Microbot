@@ -225,11 +225,27 @@ public class MicrobotPluginHubPanel extends PluginPanel {
             JLabel pluginName = new JLabel(manifest.getDisplayName());
             pluginName.setFont(FontManager.getRunescapeBoldFont());
             pluginName.setToolTipText(manifest.getDisplayName());
+            pluginName.setHorizontalAlignment(JLabel.LEFT);
 
-            JLabel author = new JLabel(manifest.getAuthors().length > 1 ? "Multiple authors" : manifest.getAuthor());
+            String[] authorsArr = manifest.getAuthors();
+            String authorRaw = manifest.getAuthor();
+
+            String authorText;
+            String authorTooltip;
+            if (authorsArr != null && authorsArr.length > 1) {
+                authorText = "Multiple authors";
+                authorTooltip = String.join(", ", authorsArr);
+            } else {
+                String a = authorRaw != null ? authorRaw.trim() : "";
+                boolean isUnknown = a.isEmpty() || a.toLowerCase(Locale.ROOT).contains("unknown");
+                authorText = isUnknown ? "Unknown" : a;
+                authorTooltip = isUnknown ? "Unknown" : a;
+            }
+            JLabel author = new JLabel(authorText);
             author.setFont(FontManager.getRunescapeSmallFont());
-            author.setToolTipText(manifest.getAuthor());
-
+            author.setToolTipText(authorTooltip);
+            author.setHorizontalAlignment(JLabel.LEFT);
+            author.setBorder(new EmptyBorder(0, 0, 0, 5));
             JLabel version = new JLabel(currentVersion);
             version.setFont(FontManager.getRunescapeSmallFont());
             version.setToolTipText(currentVersion);
@@ -387,9 +403,9 @@ public class MicrobotPluginHubPanel extends PluginPanel {
                     .addGap(5)
                     .addGroup(layout.createParallelGroup()
                             .addGroup(layout.createSequentialGroup()
-                                    .addComponent(pluginName, 0, GroupLayout.PREFERRED_SIZE, Short.MAX_VALUE)
-                                    .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED, GroupLayout.PREFERRED_SIZE, Short.MAX_VALUE)
-                                    .addComponent(author, 0, GroupLayout.PREFERRED_SIZE, Short.MAX_VALUE))
+                                    .addComponent(pluginName, 0, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                    .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
+                                    .addComponent(author))
                             .addComponent(description, 0, GroupLayout.PREFERRED_SIZE, Short.MAX_VALUE)
                             .addGroup(layout.createSequentialGroup()
                                     .addComponent(version, 0, GroupLayout.PREFERRED_SIZE, Short.MAX_VALUE)

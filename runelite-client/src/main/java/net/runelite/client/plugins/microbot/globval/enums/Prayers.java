@@ -23,8 +23,13 @@ public enum Prayers {
     PROTECT_FROM_MAGIC(17, 37, WidgetIndices.PrayersTab.PROTECT_FROM_MAGIC, 12),
     PROTECT_FROM_MISSILES(18, 40, WidgetIndices.PrayersTab.PROTECT_FROM_MISSILES, 13),
     PROTECT_FROM_MELEE(19, 43, WidgetIndices.PrayersTab.PROTECT_FROM_MELEE, 14),
+
     EAGLE_EYE(20, 44, WidgetIndices.PrayersTab.EAGLE_EYE, 22),
+    DEAD_EYE(20, 44, WidgetIndices.PrayersTab.DEAD_EYE, 22),
+
     MYSTIC_MIGHT(21, 45, WidgetIndices.PrayersTab.MYSTIC_MIGHT, 23),
+    MYSTIC_VIGOUR(21, 45, WidgetIndices.PrayersTab.MYSTIC_VIGOUR, 23),
+
     RETRIBUTION(22, 46, WidgetIndices.PrayersTab.RETRIBUTION, 15),
     REDEMPTION(23, 49, WidgetIndices.PrayersTab.REDEMPTION, 16),
     SMITE(24, 52, WidgetIndices.PrayersTab.SMITE, 17),

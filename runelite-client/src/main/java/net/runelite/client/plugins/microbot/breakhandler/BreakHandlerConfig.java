@@ -229,7 +229,7 @@ public interface BreakHandlerConfig extends Config {
             position = 2,
             section = advancedOptions
     )
-    @Range(min = 1, max = 60)
+    @Range(min = 5, max = 60)
     default int loginRetryDelay() {
         return 5;
     }

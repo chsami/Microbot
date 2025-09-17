@@ -16,6 +16,7 @@ import net.runelite.client.plugins.microbot.util.cache.model.SpiritTreeData;
 import net.runelite.client.plugins.microbot.util.cache.model.VarbitData;
 import net.runelite.client.plugins.microbot.util.farming.SpiritTree;
 import net.runelite.client.plugins.microbot.util.poh.data.*;
+import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 
 import java.lang.reflect.Type;
 import java.time.Instant;
@@ -134,15 +135,7 @@ public class CacheSerializationManager {
         
         public boolean isStale() {
             return stale;
-        }
-        
-        /**
-         * @deprecated Use getAgeMs() instead
-         */
-        @Deprecated
-        public long getAge() {
-            return getAgeMs();
-        }
+        }        
     }
     
     // Initialize Gson with custom adapters
@@ -160,57 +153,105 @@ public class CacheSerializationManager {
     }
     
     /**
-     * Saves a cache to RuneLite profile configuration.
+     * Saves a cache to RuneLite profile configuration with character-specific keys.
      * Also stores metadata to track cache freshness and prevent loading stale data.
-     * 
+     *
      * @param cache The cache to save
-     * @param configKey The config key to save under
+     * @param configKey The base config key to save under
+     * @param rsProfileKey The RuneLite profile key
+     * @param playerName The player name for character-specific caching
      * @param <K> The key type
      * @param <V> The value type
      */
-    public static <K, V> void saveCache(Rs2Cache<K, V> cache, String configKey, String rsProfileKey) {
-        try {            
+    public static <K, V> void saveCache(Rs2Cache<K, V> cache, String configKey, String rsProfileKey, String playerName) {
+        try {
             if (rsProfileKey == null || Microbot.getConfigManager() == null) {
                 log.warn("Cannot save cache {}: profile key or config manager not available", configKey);
                 return;
             }
-            
+
+            if (playerName == null || playerName.trim().isEmpty()) {
+                log.warn("Cannot save cache {}: player name not available", configKey);
+                return;
+            }
+
+            // create character-specific config key
+            String characterConfigKey = createCharacterSpecificKey(configKey, playerName);
+
             // Serialize the cache data
             String json = serializeCacheData(cache, configKey);
-            
+
             if (json != null && !json.isEmpty()) {
-                log.debug(configKey + " JSON length: " + json.length());                
-                Microbot.getConfigManager().setConfiguration(CONFIG_GROUP, rsProfileKey, configKey, json);
-                
+                log.debug("{} JSON length: {} for player: {}", configKey, json.length(), playerName);
+                Microbot.getConfigManager().setConfiguration(CONFIG_GROUP, rsProfileKey, characterConfigKey, json);
+
                 // Store metadata to track cache freshness
                 // Mark as stale=false since we're actively saving cache data
                 CacheMetadata metadata = CacheMetadata.createWithCurrentUtcTime(VERSION, SESSION_ID, false);
                 String metadataJson = gson.toJson(metadata, CacheMetadata.class);
-                String metadataKey = configKey + METADATA_SUFFIX;
-                Microbot.getConfigManager().setConfiguration(CONFIG_GROUP, rsProfileKey, metadataKey, metadataJson);                
-                log.info("Saved cache \"{}\" with updated metadata for session {} at {}", configKey, SESSION_ID, metadata.getSaveTimeFormatted());
+                String metadataKey = characterConfigKey + METADATA_SUFFIX;
+                Microbot.getConfigManager().setConfiguration(CONFIG_GROUP, rsProfileKey, metadataKey, metadataJson);
+                log.info("Saved cache \"{}\" for player \"{}\" with updated metadata for session {} at {}", configKey, playerName, SESSION_ID, metadata.getSaveTimeFormatted());
             } else {
-                log.warn("No data to save for cache {}", configKey);
+                log.warn("No data to save for cache {} for player {}", configKey, playerName);
             }
-            
+
         } catch (Exception e) {
             log.error("Failed to save cache {} to config", configKey, e);
         }
     }
+
+
+
+    /**
+     * Gets the current player name using Rs2Player utility.
+     *
+     * @return Player name or null if not available
+     */
+    private static String getCurrentPlayerName() {
+        try {
+            if (!Microbot.isLoggedIn()) {
+                return null;
+            }
+            // use Rs2Player to get local player and extract name
+            var localPlayer = Rs2Player.getLocalPlayer();
+            return localPlayer != null ? localPlayer.getName() : null;
+        } catch (Exception e) {
+            log.debug("Error getting current player name: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Creates a character-specific config key by appending player name.
+     *
+     * @param baseKey The base config key
+     * @param playerName The player name
+     * @return Character-specific config key
+     */
+    public static String createCharacterSpecificKey(String baseKey, String playerName) {
+        // sanitize player name for config key usage
+        String sanitizedPlayerName = playerName.replaceAll("[^a-zA-Z0-9_-]", "_");
+        return baseKey + "_" + sanitizedPlayerName;
+    }
     
     /**
-     * Loads a cache from RuneLite profile configuration.
+     * Loads a cache from RuneLite profile configuration with character-specific keys.
      * Checks cache freshness metadata before loading to prevent loading stale data.
-     * 
+     *
      * @param cache The cache to load into
-     * @param configKey The config key to load from
+     * @param configKey The base config key to load from
+     * @param rsProfileKey The profile key to load from
+     * @param playerName The player name for character-specific caching
+     * @param forceInvalidate Whether to force cache invalidation
      * @param <K> The key type
      * @param <V> The value type
      */
-    public static <K, V> void loadCache(Rs2Cache<K, V> cache, String configKey, String rsProfileKey, boolean forceInvalidate) {
-        loadCache(cache, configKey, rsProfileKey, 0,forceInvalidate); // Default: ignore time, only check if saved after load
+    public static <K, V> void loadCache(Rs2Cache<K, V> cache, String configKey, String rsProfileKey, String playerName, boolean forceInvalidate) {
+        loadCache(cache, configKey, rsProfileKey, playerName, 0, forceInvalidate); // Default: ignore time, only check if saved after load
     }
-    
+
+
     /**
      * Loads a cache from RuneLite profile configuration with age limit.
      * Checks cache freshness metadata before loading to prevent loading stale data.
@@ -222,15 +263,23 @@ public class CacheSerializationManager {
      * @param <K> The key type
      * @param <V> The value type
      */
-    public static <K, V> void loadCache(Rs2Cache<K, V> cache, String configKey, String rsProfileKey, long maxAgeMs, boolean forceInvalidate) {
+    public static <K, V> void loadCache(Rs2Cache<K, V> cache, String configKey, String rsProfileKey, String playerName, long maxAgeMs, boolean forceInvalidate) {
         try {
             if (Microbot.getConfigManager() == null) {
                 log.warn("Cannot load cache {}: config manager not available", configKey);
                 return;
             }
-            
+
+            if (playerName == null || playerName.trim().isEmpty()) {
+                log.warn("Cannot load cache {}: player name not available", configKey);
+                return;
+            }
+
+            // create character-specific config key
+            String characterConfigKey = createCharacterSpecificKey(configKey, playerName);
+
             // Check cache freshness metadata first
-            String metadataKey = configKey + METADATA_SUFFIX;
+            String metadataKey = characterConfigKey + METADATA_SUFFIX;
             String metadataJson = Microbot.getConfigManager().getConfiguration(CONFIG_GROUP, rsProfileKey, metadataKey);
             
             CacheMetadata metadata = null;
@@ -240,46 +289,46 @@ public class CacheSerializationManager {
                 try {
                     metadata = gson.fromJson(metadataJson, CacheMetadata.class);
                     if (metadata != null){
-                        long age = metadata.getAge();
+                        long age = metadata.getAgeMs();
                         boolean stale = metadata.isStale();
                         boolean fromCurrentSession = metadata.isFromCurrentSession();
                         String oldVersion = metadata.version;
                         boolean useLoadCacheData = !stale && metadata.isFresh(maxAgeMs) && !metadata.isNewVersion(VERSION);
                         if (useLoadCacheData) {
                             shouldLoadFromConfig = true;
-                            log.info("\nCache \"{}\" the metadata indicated vailid cache data in config proceeding with load from config \n" + //
+                            log.info("\nCache \"{}\" for player \"{}\" has valid metadata, loading from config \n" + //
                                                                 "  -stale: {}\n" + //
                                                                 "  -age: {}ms -isfresh? {} -max Age {}ms\n" + //
                                                                 "  -from current session: {}\n" + //
                                                                 "  -current version {} \n-last version {}\n-is new version? {}",
-                                    configKey, stale, age,  metadata.isFresh(maxAgeMs), maxAgeMs, fromCurrentSession, VERSION, oldVersion, metadata.isNewVersion(VERSION));                                    
+                                    configKey, playerName, stale, age,  metadata.isFresh(maxAgeMs), maxAgeMs, fromCurrentSession, VERSION, oldVersion, metadata.isNewVersion(VERSION));                                    
                         } else {                        
-                            log.warn("\nCache \"{}\" metadata indicated using a fresh cache \n" + //
+                            log.warn("\nCache \"{}\" for player \"{}\" metadata indicated using fresh cache \n" + //
                                                                 "  -stale: {}\n" + //
                                                                 "  -age: {}ms -isfresh? {} -max {} ms\n" + //
                                                                 "  -from current session: {}\n" + //
                                                                 "  -current version {} - last version {}- is new version? {}",
-                                    configKey, stale, age,  metadata.isFresh(maxAgeMs), maxAgeMs, fromCurrentSession, VERSION, oldVersion, metadata.isNewVersion(VERSION));                                    
+                                    configKey, playerName, stale, age,  metadata.isFresh(maxAgeMs), maxAgeMs, fromCurrentSession, VERSION, oldVersion, metadata.isNewVersion(VERSION));                                    
                         }
                     }
                 } catch (JsonSyntaxException e) {
-                    log.warn("Failed to parse cache metadata for {}, treating as stale", configKey, e);
+                    log.warn("Failed to parse cache metadata for {} player {}, treating as stale", configKey, playerName, e);
                 }
             } else {
-                log.warn("No cache metadata found for {}, treating as stale data", configKey);
+                log.warn("No cache metadata found for {} player {}, treating as stale data", configKey, playerName);
             }
             
             if (!shouldLoadFromConfig) {
                 // Invalidate cache and start fresh instead of loading potentially stale data
                 if (forceInvalidate) cache.invalidateAll();                                
-            }else{            
+            }else{
                 // Proceed with loading since metadata indicates fresh data
-                String json = Microbot.getConfigManager().getConfiguration(CONFIG_GROUP, rsProfileKey, configKey);
+                String json = Microbot.getConfigManager().getConfiguration(CONFIG_GROUP, rsProfileKey, characterConfigKey);
                 if (json != null && !json.isEmpty()) {
                     deserializeCacheData(cache, configKey, json);
-                    log.debug("Loaded cache {} from profile config, entries loaded: {}", configKey, cache.size());
+                    log.debug("Loaded cache {} for player {} from profile config, entries loaded: {}", configKey, playerName, cache.size());
                 } else {
-                    log.warn("No cached data found for {} despite fresh metadata", configKey);
+                    log.warn("No cached data found for {} player {} despite fresh metadata", configKey, playerName);
                 }
             }
              // Mark metadata as loaded but not yet saved to distinguish from fresh saves
@@ -289,11 +338,11 @@ public class CacheSerializationManager {
             Microbot.getConfigManager().sendConfig(); // must be called to ensure config changes are saved immediately to the cloud and/or disk
 
         } catch (JsonSyntaxException e) {
-            log.warn("Failed to parse cached data for {}, clearing corrupted cache and starting fresh", configKey, e);
+            log.warn("Failed to parse cached data for {} player {}, clearing corrupted cache and starting fresh", configKey, playerName, e);
             // Clear the corrupted cache data
             clearCache(configKey, rsProfileKey);
         } catch (Exception e) {
-            log.error("Failed to load cache {} from config", configKey, e);
+            log.error("Failed to load cache {} for player {} from config", configKey, playerName, e);
         }
     }
     
@@ -321,12 +370,25 @@ public class CacheSerializationManager {
     public static void clearCache(String configKey, String rsProfileKey) {
         try {
             if (rsProfileKey != null && Microbot.getConfigManager() != null) {
-                // Clear the cache data
-                Microbot.getConfigManager().setConfiguration(CONFIG_GROUP, rsProfileKey, configKey, null);
-                // Clear the metadata
-                String metadataKey = configKey + METADATA_SUFFIX;
-                Microbot.getConfigManager().setConfiguration(CONFIG_GROUP, rsProfileKey, metadataKey, null);
-                log.debug("Cleared cache {} and metadata from profile config for profile: {}", configKey, rsProfileKey);
+                // get player name for character-specific caching
+                String playerName = getCurrentPlayerName();
+                if (playerName != null && !playerName.trim().isEmpty()) {
+                    // create character-specific config key
+                    String characterConfigKey = createCharacterSpecificKey(configKey, playerName);
+
+                    // Clear the character-specific cache data
+                    Microbot.getConfigManager().setConfiguration(CONFIG_GROUP, rsProfileKey, characterConfigKey, null);
+                    // Clear the character-specific metadata
+                    String metadataKey = characterConfigKey + METADATA_SUFFIX;
+                    Microbot.getConfigManager().setConfiguration(CONFIG_GROUP, rsProfileKey, metadataKey, null);
+                    log.debug("Cleared cache {} and metadata for player {} from profile config for profile: {}", configKey, playerName, rsProfileKey);
+                } else {
+                    // fallback to old method if player name not available
+                    Microbot.getConfigManager().setConfiguration(CONFIG_GROUP, rsProfileKey, configKey, null);
+                    String metadataKey = configKey + METADATA_SUFFIX;
+                    Microbot.getConfigManager().setConfiguration(CONFIG_GROUP, rsProfileKey, metadataKey, null);
+                    log.debug("Cleared cache {} and metadata from profile config for profile: {} (no player name)", configKey, rsProfileKey);
+                }
             }
         } catch (Exception e) {
             log.error("Failed to clear cache {} from config for profile: {}", configKey, rsProfileKey, e);

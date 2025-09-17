@@ -207,22 +207,27 @@ public class MahoganyHomesScript extends Script {
             if (tile != null)
                 door = tile.getWallObject();
 
-            if (door == null)
-                door = Rs2GameObject.getGameObject(wp);
-
             if (door == null) continue;
 
             var objectComp = Rs2GameObject.getObjectComposition(door.getId());
             if (objectComp == null) continue;
 
-            if (Arrays.asList(objectComp.getActions()).contains("Open")) {
+            String name = objectComp.getName();
+
+            if (Arrays.asList(objectComp.getActions()).contains("Open") && !name.equalsIgnoreCase("Chest")) {
                 doors.add(door);
             }
 
         }
 
-        logInfo("Found {} doors", doors.size());
-        log("Doors found: %s", doors.size());
+        List<String> doorNames = doors.stream()
+                .map(d -> Rs2GameObject.getObjectComposition(d.getId()).getName())
+                .collect(Collectors.toList());
+
+        System.out.println("Doors found: " + doorNames + " Size: " + doors.size());
+
+//        logInfo("Found {} doors", doors.size());
+//        log("Doors found: %s", doors.size());
 
         for (TileObject door : doors) {
             ObjectComposition doorComp = Rs2GameObject.getObjectComposition(door.getId());
@@ -372,7 +377,12 @@ public class MahoganyHomesScript extends Script {
             ShortestPathPlugin.getPathfinderConfig().setIgnoreTeleportAndItems(false);
             if (Rs2Bank.walkToBank(bankLocation)) {
                 if(Rs2Bank.openBank()) {
-                    sleep(600, 1200);
+                    sleepUntil(Rs2Bank::isOpen);
+                    if (Rs2Bank.count(plugin.getConfig().currentTier().getPlankSelection().getPlankId()) <= 28 || Rs2Bank.count(ItemID.STEEL_BAR) <= 4 ){
+                        System.out.println("Out of Plank or Steel Bar");
+                        Microbot.stopPlugin(plugin);
+                        return;
+                    }
                     if (plugin.getConfig().usePlankSack()) {
                         if (Rs2Inventory.isFull() && !Rs2Inventory.contains(ItemID.STEEL_BAR)) {
                             Rs2Bank.depositAll(plugin.getConfig().currentTier().getPlankSelection().getPlankId());
