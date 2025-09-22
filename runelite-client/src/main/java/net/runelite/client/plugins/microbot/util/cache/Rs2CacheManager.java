@@ -615,7 +615,7 @@ public class Rs2CacheManager implements AutoCloseable {
         if (Rs2VarPlayerCache.getCache().isPersistenceEnabled()) {
             String playerName = getLastKnownPlayerName();
             if (playerName != null) {
-                CacheSerializationManager.loadCache(Rs2VarPlayerCache.getCache(), Rs2VarPlayerCache.getCache().getConfigKey(), rsProfileKey.get(), playerName, false);
+                CacheSerializationManager.loadCacheWithDualStorage(Rs2VarPlayerCache.getCache(), Rs2VarPlayerCache.getCache().getConfigKey(), rsProfileKey.get(), playerName, false);
                 log.debug ("Loaded VarPlayer cache from configuration for player {}, new cache size: {}",
                           playerName, Rs2VarPlayerCache.getCache().size());
             } else {
@@ -649,14 +649,14 @@ public class Rs2CacheManager implements AutoCloseable {
             
             // Load Skills cache
             if (Rs2SkillCache.getCache().isPersistenceEnabled()) {
-                CacheSerializationManager.loadCache(Rs2SkillCache.getCache(), Rs2SkillCache.getCache().getConfigKey(), profileKey, playerName, false);
+                CacheSerializationManager.loadCacheWithDualStorage(Rs2SkillCache.getCache(), Rs2SkillCache.getCache().getConfigKey(), profileKey, playerName, false);
                 log.info("Loaded Skills cache from configuration for player {}, new cache size: {}",
                           playerName, Rs2SkillCache.getCache().size());
             }
             
             // Load Quest cache  
             if (Rs2QuestCache.getCache().isPersistenceEnabled()) {
-                CacheSerializationManager.loadCache(Rs2QuestCache.getCache(), Rs2QuestCache.getCache().getConfigKey(), profileKey, playerName, false);
+                CacheSerializationManager.loadCacheWithDualStorage(Rs2QuestCache.getCache(), Rs2QuestCache.getCache().getConfigKey(), profileKey, playerName, false);
                 // Schedule an async update to populate quest states from client without blocking initialization
                 //Rs2QuestCache.updateAllFromClientAsync();
                 log.debug ("Loaded Quest cache from configuration, new cache size: {}", 
@@ -665,19 +665,19 @@ public class Rs2CacheManager implements AutoCloseable {
             
             // Load Varbit cache
             if (Rs2VarbitCache.getCache().isPersistenceEnabled()) {
-                CacheSerializationManager.loadCache(Rs2VarbitCache.getCache(), Rs2VarbitCache.getCache().getConfigKey(), profileKey, playerName, false);
+                CacheSerializationManager.loadCacheWithDualStorage(Rs2VarbitCache.getCache(), Rs2VarbitCache.getCache().getConfigKey(), profileKey, playerName, false);
                 log.debug ("Loaded Varbit cache from configuration for player {}, new cache size: {}",
                           playerName, Rs2VarbitCache.getCache().size());
             }
             
             // Load VarPlayer cache
             if (Rs2VarPlayerCache.getCache().isPersistenceEnabled()) {
-                CacheSerializationManager.loadCache(Rs2VarPlayerCache.getCache(), Rs2VarPlayerCache.getCache().getConfigKey(), profileKey, playerName, false);
+                CacheSerializationManager.loadCacheWithDualStorage(Rs2VarPlayerCache.getCache(), Rs2VarPlayerCache.getCache().getConfigKey(), profileKey, playerName, false);
                 log.debug ("Loaded VarPlayer cache from configuration for player {}, new cache size: {}",
                           playerName, Rs2VarPlayerCache.getCache().size());
             }
             if (Rs2SpiritTreeCache.getCache().isPersistenceEnabled()) {
-                CacheSerializationManager.loadCache(Rs2SpiritTreeCache.getCache(), Rs2SpiritTreeCache.getCache().getConfigKey(), profileKey, playerName, false);
+                CacheSerializationManager.loadCacheWithDualStorage(Rs2SpiritTreeCache.getCache(), Rs2SpiritTreeCache.getCache().getConfigKey(), profileKey, playerName, false);
                  // Update spirit tree cache with current farming handler data after initial load
                 try {
                     Rs2SpiritTreeCache.getInstance().update();
@@ -691,7 +691,7 @@ public class Rs2CacheManager implements AutoCloseable {
             }
 
             if(Rs2PohCache.getInstance().isPersistenceEnabled()) {
-                CacheSerializationManager.loadCache(Rs2PohCache.getInstance(), Rs2PohCache.getInstance().getConfigKey(), profileKey, playerName, false);
+                CacheSerializationManager.loadCacheWithDualStorage(Rs2PohCache.getInstance(), Rs2PohCache.getInstance().getConfigKey(), profileKey, playerName, false);
                 log.debug ("Loaded PoH cache from configuration for player {}, new cache size: {}",
                           playerName, Rs2PohCache.getInstance().size());
                 if(Microbot.isDebug()) Rs2PohCache.logState(LogOutputMode.CONSOLE_ONLY);
@@ -809,9 +809,8 @@ public class Rs2CacheManager implements AutoCloseable {
                     retryLoadCacheWithValidation(newRsProfileKey, 0);
                 } catch (Exception e) {
                     log.error("Failed during async cache loading for profile: {}", newRsProfileKey, e);
+                    cacheLoadingInProgress.set(false); // reset flag on unexpected error
                     throw new RuntimeException("Async cache load failed", e);
-                } finally {
-                    cacheLoadingInProgress.set(false);
                 }
             }, getInstance().cacheManagerExecutor);
 
@@ -947,13 +946,20 @@ public class Rs2CacheManager implements AutoCloseable {
      * @return CompletableFuture that completes when all saves are done
      */
     public static CompletableFuture<Void> savePersistentCachesAsync(String profileKey) {
-        if (!isCacheDataValid()) {
-            log.warn("Cache data is not valid, cannot save persistent caches");
-            return CompletableFuture.completedFuture(null);
-        }
         if (profileKey == null) {
             log.warn("Cannot save persistent caches: profile key is null");
             return CompletableFuture.completedFuture(null);
+        }
+
+        // if we're saving a "previous" profile during a switch, proceed even if ConfigManager has
+        // already moved to the new profile. otherwise ensure current state is valid.
+        if (profileKey.equals(rsProfileKey.get())) {
+            if (!isCacheDataValid()) {
+                log.warn("Cache data is not valid for profile '{}', cannot save persistent caches", profileKey);
+                return CompletableFuture.completedFuture(null);
+            }
+        } else {
+            log.debug("Saving caches for previous profile '{}' (active='{}')", profileKey, rsProfileKey.get());
         }
 
         String playerName = getLastKnownPlayerName();
@@ -1058,7 +1064,7 @@ public class Rs2CacheManager implements AutoCloseable {
             if (Rs2SkillCache.getCache().isPersistenceEnabled()) {
                 log.info("Saving Skills cache to configuration for player {}, current size: {}",
                           playerName, Rs2SkillCache.getCache().size());
-                CacheSerializationManager.saveCache(Rs2SkillCache.getCache(), Rs2SkillCache.getCache().getConfigKey(), profileKey, playerName);
+                CacheSerializationManager.saveCacheWithDualStorage(Rs2SkillCache.getCache(), Rs2SkillCache.getCache().getConfigKey(), profileKey, playerName);
             }
             
             // Save Quest cache  
@@ -1066,12 +1072,12 @@ public class Rs2CacheManager implements AutoCloseable {
                 log.info("Saving Quest cache to configuration for player {}, current size: {}",
                           playerName, Rs2QuestCache.getCache().size());
 
-                CacheSerializationManager.saveCache(Rs2QuestCache.getCache(), Rs2QuestCache.getCache().getConfigKey(), profileKey, playerName);
+                CacheSerializationManager.saveCacheWithDualStorage(Rs2QuestCache.getCache(), Rs2QuestCache.getCache().getConfigKey(), profileKey, playerName);
             }
             
             // Save Varbit cache
             if (Rs2VarbitCache.getCache().isPersistenceEnabled()) {
-                CacheSerializationManager.saveCache(Rs2VarbitCache.getCache(), Rs2VarbitCache.getCache().getConfigKey(), profileKey, playerName);
+                CacheSerializationManager.saveCacheWithDualStorage(Rs2VarbitCache.getCache(), Rs2VarbitCache.getCache().getConfigKey(), profileKey, playerName);
                 Rs2VarbitCache.printDetailedVarbitInfo();
                 log.info("Saving Varbit cache to configuration for player {}, current size: {}",
                           playerName, Rs2VarbitCache.getCache().size());
@@ -1079,20 +1085,20 @@ public class Rs2CacheManager implements AutoCloseable {
             
             // Save VarPlayer cache
             if (Rs2VarPlayerCache.getCache().isPersistenceEnabled()) {
-                CacheSerializationManager.saveCache(Rs2VarPlayerCache.getCache(), Rs2VarPlayerCache.getCache().getConfigKey(), profileKey, playerName);
+                CacheSerializationManager.saveCacheWithDualStorage(Rs2VarPlayerCache.getCache(), Rs2VarPlayerCache.getCache().getConfigKey(), profileKey, playerName);
                 log.info("Saving VarPlayer cache to configuration for player {}, current size: {}",
                           playerName, Rs2VarPlayerCache.getCache().size());
             }
             // Save SpiritTree cache
             if (Rs2SpiritTreeCache.getCache().isPersistenceEnabled()) {
-                CacheSerializationManager.saveCache(Rs2SpiritTreeCache.getCache(), Rs2SpiritTreeCache.getCache().getConfigKey(), profileKey, playerName);
+                CacheSerializationManager.saveCacheWithDualStorage(Rs2SpiritTreeCache.getCache(), Rs2SpiritTreeCache.getCache().getConfigKey(), profileKey, playerName);
                 log.info("Saving SpiritTree cache to configuration for player {}, current size: {}",
                           playerName, Rs2SpiritTreeCache.getCache().size());
             }
 
             //Save PohCache
             if(Rs2PohCache.getInstance().isPersistenceEnabled()) {
-                CacheSerializationManager.saveCache(Rs2PohCache.getInstance(), Rs2PohCache.getInstance().getConfigKey(), profileKey, playerName);
+                CacheSerializationManager.saveCacheWithDualStorage(Rs2PohCache.getInstance(), Rs2PohCache.getInstance().getConfigKey(), profileKey, playerName);
                 log.info("Saving PoH cache to configuration for player {}, current size: {}",
                           playerName, Rs2PohCache.getInstance().size());
             }
