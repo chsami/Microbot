@@ -11,12 +11,14 @@ import net.runelite.api.Skill;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.cache.Rs2Cache;
 import net.runelite.client.plugins.microbot.util.cache.Rs2PohCache;
+import net.runelite.client.plugins.microbot.util.cache.compression.CompressionUtils;
 import net.runelite.client.plugins.microbot.util.cache.model.SkillData;
 import net.runelite.client.plugins.microbot.util.cache.model.SpiritTreeData;
 import net.runelite.client.plugins.microbot.util.cache.model.VarbitData;
 import net.runelite.client.plugins.microbot.util.farming.SpiritTree;
 import net.runelite.client.plugins.microbot.util.poh.data.*;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+import net.runelite.client.config.ConfigManager;
 
 import java.lang.reflect.Type;
 import java.time.Instant;
@@ -54,6 +56,11 @@ public class CacheSerializationManager {
     private static final String CACHE_SUBDIRECTORY = "caches";
     private static final String METADATA_SUFFIX = ".metadata";
     private static final String JSON_EXTENSION = ".json";
+
+    // Cloud sync constants
+    private static final String CONFIG_GROUP = "microbot";
+    private static final String COMPRESSED_SUFFIX = "_compressed";
+
     private static final Gson gson;
     
     // Session identifier to track cache freshness across client restarts
@@ -799,4 +806,183 @@ public class CacheSerializationManager {
                  String sanitizedPlayerName = playerName.replaceAll("[^a-zA-Z0-9_-]", "_");
                  return baseKey + "_" + sanitizedPlayerName;
              }
+
+    /**
+     * Saves cache data to RuneLite profile using compression for optional cloud sync.
+     * This is a secondary storage method used when cloud sync is enabled.
+     *
+     * @param cache The cache to save
+     * @param configKey The cache type identifier
+     * @param rsProfileKey The RuneLite profile key
+     * @param playerName The player name
+     * @param <K> The key type
+     * @param <V> The value type
+     */
+    public static <K, V> void saveCacheToProfile(Rs2Cache<K, V> cache, String configKey, String rsProfileKey, String playerName) {
+        try {
+            ConfigManager configManager = Microbot.getConfigManager();
+            if (configManager == null) {
+                log.warn("Cannot save cache to profile: ConfigManager not available");
+                return;
+            }
+
+            // check if cloud sync is enabled
+            boolean cloudSyncEnabled = configManager.getConfiguration(CONFIG_GROUP, "enableCacheCloudSync", Boolean.class);
+            if (!cloudSyncEnabled) {
+                log.debug("Cloud sync disabled, skipping profile save for cache {}", configKey);
+                return;
+            }
+
+            if (playerName == null || playerName.trim().isEmpty()) {
+                log.warn("Cannot save cache to profile: player name not available");
+                return;
+            }
+
+            // serialize cache data
+            String jsonData = serializeCacheData(cache, configKey);
+            if (jsonData == null || jsonData.trim().isEmpty()) {
+                log.debug("No data to save to profile for cache {} player {}", configKey, playerName);
+                return;
+            }
+
+            // compress data for profile storage
+            CompressionUtils.CompressedData compressedData = CompressionUtils.compressForProfile(jsonData);
+            if (!compressedData.isValid()) {
+                log.warn("Cache data too large for profile storage: {} (cache: {}, player: {})",
+                        compressedData.getCompressionSummary(), configKey, playerName);
+                return;
+            }
+
+            // save compressed data to profile
+            String profileKey = createCharacterSpecificKey(configKey + COMPRESSED_SUFFIX, playerName);
+            configManager.setConfiguration(CONFIG_GROUP, profileKey, compressedData.compressedData);
+
+            log.debug("Saved compressed cache {} to profile for player {} - {}",
+                    configKey, playerName, compressedData.getCompressionSummary());
+
+        } catch (Exception e) {
+            log.error("Failed to save cache {} to profile for player {}", configKey, playerName, e);
+        }
+    }
+
+    /**
+     * Loads cache data from RuneLite profile using decompression for cloud sync.
+     * This is a secondary storage method used when cloud sync is enabled and local files don't exist.
+     *
+     * @param cache The cache to load into
+     * @param configKey The cache type identifier
+     * @param rsProfileKey The profile key to load from
+     * @param playerName The player name
+     * @param forceInvalidate Whether to force cache invalidation
+     * @param <K> The key type
+     * @param <V> The value type
+     * @return true if data was loaded from profile, false otherwise
+     */
+    public static <K, V> boolean loadCacheFromProfile(Rs2Cache<K, V> cache, String configKey, String rsProfileKey, String playerName, boolean forceInvalidate) {
+        try {
+            ConfigManager configManager = Microbot.getConfigManager();
+            if (configManager == null) {
+                log.debug("Cannot load cache from profile: ConfigManager not available");
+                return false;
+            }
+
+            // check if cloud sync is enabled
+            boolean cloudSyncEnabled = configManager.getConfiguration(CONFIG_GROUP, "enableCacheCloudSync", Boolean.class);
+            if (!cloudSyncEnabled) {
+                log.debug("Cloud sync disabled, skipping profile load for cache {}", configKey);
+                return false;
+            }
+
+            if (playerName == null || playerName.trim().isEmpty()) {
+                log.debug("Cannot load cache from profile: player name not available");
+                return false;
+            }
+
+            // try to load compressed data from profile
+            String profileKey = createCharacterSpecificKey(configKey + COMPRESSED_SUFFIX, playerName);
+            String compressedData = configManager.getConfiguration(CONFIG_GROUP, profileKey);
+            if (compressedData == null || compressedData.trim().isEmpty()) {
+                log.debug("No compressed cache data found in profile for {} player {}", configKey, playerName);
+                return false;
+            }
+
+            // decompress data
+            String jsonData = CompressionUtils.decompressFromProfile(compressedData);
+            if (jsonData == null || jsonData.trim().isEmpty()) {
+                log.warn("Failed to decompress cache data from profile for {} player {}", configKey, playerName);
+                return false;
+            }
+
+            // deserialize cache data
+            if (forceInvalidate) cache.invalidateAll();
+            deserializeCacheData(cache, configKey, jsonData);
+
+            log.debug("Loaded cache {} for player {} from compressed profile data ({} chars decompressed)",
+                    configKey, playerName, jsonData.length());
+            return true;
+
+        } catch (Exception e) {
+            log.error("Failed to load cache {} from profile for player {}", configKey, playerName, e);
+            return false;
+        }
+    }
+
+    /**
+     * Enhanced cache saving that implements dual storage: files (primary) + compressed profiles (secondary).
+     * Files provide fast local access, while compressed profiles enable cross-device sync.
+     *
+     * @param cache The cache to save
+     * @param configKey The cache type identifier
+     * @param rsProfileKey The RuneLite profile key
+     * @param playerName The player name
+     * @param <K> The key type
+     * @param <V> The value type
+     */
+    public static <K, V> void saveCacheWithDualStorage(Rs2Cache<K, V> cache, String configKey, String rsProfileKey, String playerName) {
+        // primary storage: save to file for fast local access
+        saveCache(cache, configKey, rsProfileKey, playerName);
+
+        // secondary storage: save to compressed profile for cloud sync (if enabled)
+        saveCacheToProfile(cache, configKey, rsProfileKey, playerName);
+    }
+
+    /**
+     * Enhanced cache loading with file-first strategy and profile fallback.
+     * Prioritizes local files for performance, falls back to compressed profile data for cloud sync.
+     *
+     * @param cache The cache to load into
+     * @param configKey The cache type identifier
+     * @param rsProfileKey The profile key to load from
+     * @param playerName The player name
+     * @param forceInvalidate Whether to force cache invalidation
+     * @param <K> The key type
+     * @param <V> The value type
+     */
+    public static <K, V> void loadCacheWithDualStorage(Rs2Cache<K, V> cache, String configKey, String rsProfileKey, String playerName, boolean forceInvalidate) {
+        // try file-based loading first (faster)
+        try {
+            if (rsProfileKey != null && playerName != null && !playerName.trim().isEmpty()) {
+                Path cacheDir = getCacheDirectory(rsProfileKey, playerName);
+                Path metadataFile = cacheDir.resolve(configKey + METADATA_SUFFIX);
+                Path cacheFile = cacheDir.resolve(configKey + JSON_EXTENSION);
+
+                if (Files.exists(metadataFile) && Files.exists(cacheFile)) {
+                    // file exists, use normal file loading
+                    loadCache(cache, configKey, rsProfileKey, playerName, forceInvalidate);
+                    return;
+                }
+            }
+        } catch (Exception e) {
+            log.debug("File-based loading failed, will try profile fallback: {}", e.getMessage());
+        }
+
+        // fallback to compressed profile data (cloud sync)
+        boolean loadedFromProfile = loadCacheFromProfile(cache, configKey, rsProfileKey, playerName, forceInvalidate);
+        if (loadedFromProfile) {
+            log.debug("Loaded cache {} for player {} from profile data (cloud sync)", configKey, playerName);
+        } else {
+            log.debug("No cache data found for {} player {} in files or profile", configKey, playerName);
+            if (forceInvalidate) cache.invalidateAll();
+        }
+    }
 }
