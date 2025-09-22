@@ -33,6 +33,13 @@ public interface MicrobotConfig extends Config
 	)
 	String cacheSection = "cacheSection";
 
+	@ConfigSection(
+		name = "Cloud sync",
+		description = "Cache data synchronization settings",
+		position = 3
+	)
+	String cloudSyncSection = "cloudSyncSection";
+
 	String keyEnableGameChatLogging = "enableGameChatLogging";
 	@ConfigItem(
 		keyName = keyEnableGameChatLogging,
@@ -107,6 +114,18 @@ public interface MicrobotConfig extends Config
 			section = cacheSection
 	)
 	default boolean isRs2CacheEnabled() {
+		return false;
+	}
+
+	String keyEnableCacheCloudSync = "enableCacheCloudSync";
+	@ConfigItem(
+		keyName = keyEnableCacheCloudSync,
+		name = "Enable cache cloud sync",
+		description = "Sync cache data to RuneLite profile (compressed). This allows cache data to sync across devices but may increase profile size.",
+		position = 0,
+		section = cloudSyncSection
+	)
+	default boolean enableCacheCloudSync() {
 		return false;
 	}
 
