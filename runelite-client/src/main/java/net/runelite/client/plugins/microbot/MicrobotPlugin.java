@@ -221,7 +221,9 @@ public class MicrobotPlugin extends Plugin
 		{
 			log.info("\nReceived RuneScape profile change event from '{}' to '{}'", oldProfile, newProfile);
 			if (microbotConfig.isRs2CacheEnabled()) {
+				// Use async profile change to avoid blocking client thread
 				Rs2CacheManager.handleProfileChange(newProfile, oldProfile);
+				log.info("Initiated async profile change from '{}' to '{}'", oldProfile, newProfile);
 			}
 			return;
 		}
@@ -535,9 +537,17 @@ public class MicrobotPlugin extends Plugin
 	@Subscribe(priority = 100)
 	private void onClientShutdown(ClientShutdown e)
 	{
-		// Save all caches through Rs2CacheManager
+		// Save all caches through Rs2CacheManager using async operations
 		if (microbotConfig.isRs2CacheEnabled()) {
-			Rs2CacheManager.savePersistentCaches();
+			try {
+				// Use async save but wait for completion during shutdown
+				Rs2CacheManager.savePersistentCachesAsync().get(30, java.util.concurrent.TimeUnit.SECONDS);
+				log.info("Successfully saved all caches asynchronously during shutdown");
+			} catch (Exception ex) {
+				log.error("Failed to save caches during shutdown: {}", ex.getMessage(), ex);
+				// Fallback to synchronous save if async fails
+				Rs2CacheManager.savePersistentCaches();
+			}
 			Rs2CacheManager.getInstance().close();
 		}
 	}

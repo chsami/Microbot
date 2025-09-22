@@ -10,7 +10,9 @@ import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.cache.serialization.CacheSerializationManager;
 import net.runelite.client.plugins.microbot.util.cache.util.LogOutputMode;
 
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -28,6 +30,7 @@ public class Rs2CacheManager implements AutoCloseable {
     private static EventBus eventBus;
     
     private final ScheduledExecutorService cleanupExecutor;
+    private final ExecutorService cacheManagerExecutor;
     private final AtomicBoolean isShutdown;
     
     // Profile management - similar to Rs2Bank
@@ -41,6 +44,10 @@ public class Rs2CacheManager implements AutoCloseable {
     private static final int MAX_CACHE_LOAD_ATTEMPTS = 10; // Configurable max retry attempts
     private static final long CACHE_LOAD_RETRY_DELAY_MS = 1000; // 1 second between retries
     private static final AtomicBoolean cacheLoadingInProgress = new AtomicBoolean(false);
+
+    // Async operation tracking
+    private static final AtomicReference<CompletableFuture<Void>> currentSaveOperation = new AtomicReference<>();
+    private static final AtomicReference<CompletableFuture<Void>> currentLoadOperation = new AtomicReference<>();
     
     /**
      * Checks if cache data is VALID at the manager level (profile consistency).
@@ -120,9 +127,14 @@ public class Rs2CacheManager implements AutoCloseable {
             thread.setDaemon(true);
             return thread;
         });
+        this.cacheManagerExecutor = Executors.newFixedThreadPool(2, runnable -> {
+            Thread cacheThread = new Thread(runnable, "Rs2Cache-Persistence");
+            cacheThread.setDaemon(true);
+            return cacheThread;
+        });
         this.isShutdown = new AtomicBoolean(false);
-        
-        log.debug("Rs2CacheManager (Unified) initialized");
+
+        log.debug("Rs2CacheManager (Unified) initialized with async operations support");
     }
     
     /**
@@ -281,15 +293,14 @@ public class Rs2CacheManager implements AutoCloseable {
     }
 
     /**
-     * Gets the last known player name, falling back to current player if available.
-     * This ensures we can perform character-specific operations even during shutdown.
+     * Gets the current player name with improved tracking and caching.
+     * This method provides reliable player name access for cache operations.
      *
-     * @return Last known player name or null if never set
+     * @return Current player name or null if not available
      */
-    public static String getLastKnownPlayerName() {
-        // try to get current player name first
+    public static String getCurrentPlayerName() {
         try {
-            if (Microbot.isLoggedIn()) {
+            if (Microbot.isLoggedIn() && Microbot.getClient() != null) {
                 String currentPlayerName = Microbot.getClient().getLocalPlayer() != null ?
                     Microbot.getClient().getLocalPlayer().getName() : null;
                 if (currentPlayerName != null && !currentPlayerName.trim().isEmpty()) {
@@ -298,7 +309,23 @@ public class Rs2CacheManager implements AutoCloseable {
                 }
             }
         } catch (Exception e) {
-            log.debug("Error getting current player name, using last known: {}", e.getMessage());
+            log.debug("Error getting current player name: {}", e.getMessage());
+        }
+
+        return null;
+    }
+
+    /**
+     * Gets the last known player name, falling back to current player if available.
+     * This ensures we can perform character-specific operations even during shutdown.
+     *
+     * @return Last known player name or null if never set
+     */
+    public static String getLastKnownPlayerName() {
+        // try to get current player name first
+        String currentName = getCurrentPlayerName();
+        if (currentName != null) {
+            return currentName;
         }
 
         // fallback to last known player name
@@ -464,7 +491,36 @@ public class Rs2CacheManager implements AutoCloseable {
             
             
             
-            // Shutdown executor
+            // Wait for any ongoing cache operations before shutting down
+            try {
+                CompletableFuture<Void> ongoingSave = currentSaveOperation.get();
+                CompletableFuture<Void> ongoingLoad = currentLoadOperation.get();
+
+                if (ongoingSave != null || ongoingLoad != null) {
+                    log.info("Waiting for ongoing cache operations to complete during shutdown");
+                    if (ongoingSave != null) {
+                        ongoingSave.get(15, TimeUnit.SECONDS);
+                    }
+                    if (ongoingLoad != null) {
+                        ongoingLoad.get(15, TimeUnit.SECONDS);
+                    }
+                    log.info("Cache operations completed during shutdown");
+                }
+            } catch (Exception e) {
+                log.error("Error waiting for cache operations during shutdown: {}", e.getMessage(), e);
+            }
+
+            // Shutdown executors
+            cacheManagerExecutor.shutdown();
+            try {
+                if (!cacheManagerExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
+                    cacheManagerExecutor.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                cacheManagerExecutor.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
+
             cleanupExecutor.shutdown();
             try {
                 if (!cleanupExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
@@ -666,16 +722,14 @@ public class Rs2CacheManager implements AutoCloseable {
      */
     public static void loadCacheStateFromConfig(String newRsProfileKey) {
         if (!isCacheDataValid()) {
-            // Start retry task if not already in progress
-            if (cacheLoadingInProgress.compareAndSet(false, true)) {
-                // Schedule retry task in background thread
-                getInstance().cleanupExecutor.schedule(() -> {
-                    retryLoadCacheWithValidation(newRsProfileKey, 0);
-                }, 0, TimeUnit.MILLISECONDS);
-                log.info("Starting cache loading with player validation for profile: {}", newRsProfileKey);
-            } else {
-                log.debug("Cache loading already in progress, skipping duplicate request");
-            }
+            // Use async loading to avoid blocking client thread
+            loadCachesAsync(newRsProfileKey).whenComplete((result, ex) -> {
+                if (ex != null) {
+                    log.error("Failed to load cache state async for profile: {}", newRsProfileKey, ex);
+                } else {
+                    log.info("Successfully loaded cache state async for profile: {}", newRsProfileKey);
+                }
+            });
         }
     }
     
@@ -741,7 +795,47 @@ public class Rs2CacheManager implements AutoCloseable {
     }
     
     /**
-     * Loads cache state from config, handling profile changes.     
+     * Loads cache state asynchronously without blocking the client thread.
+     * Returns immediately and performs load operations in background threads.
+     *
+     * @param newRsProfileKey The profile key to load cache for
+     * @return CompletableFuture that completes when load is done
+     */
+    public static CompletableFuture<Void> loadCachesAsync(String newRsProfileKey) {
+        // Ensure only one load operation at a time
+        if (cacheLoadingInProgress.compareAndSet(false, true)) {
+            CompletableFuture<Void> loadOperation = CompletableFuture.runAsync(() -> {
+                try {
+                    retryLoadCacheWithValidation(newRsProfileKey, 0);
+                } catch (Exception e) {
+                    log.error("Failed during async cache loading for profile: {}", newRsProfileKey, e);
+                    throw new RuntimeException("Async cache load failed", e);
+                } finally {
+                    cacheLoadingInProgress.set(false);
+                }
+            }, getInstance().cacheManagerExecutor);
+
+            // Track the current operation
+            currentLoadOperation.set(loadOperation);
+
+            return loadOperation.whenComplete((result, ex) -> {
+                // Clear the operation reference when done
+                currentLoadOperation.compareAndSet(loadOperation, null);
+                if (ex != null) {
+                    log.error("Async cache loading failed for profile: {}", newRsProfileKey, ex);
+                } else {
+                    log.info("Async cache loading completed for profile: {}", newRsProfileKey);
+                }
+            });
+        } else {
+            log.debug("Cache loading already in progress, returning existing operation");
+            CompletableFuture<Void> existingOperation = currentLoadOperation.get();
+            return existingOperation != null ? existingOperation : CompletableFuture.completedFuture(null);
+        }
+    }
+
+    /**
+     * Loads cache state from config, handling profile changes.
      * This method handles both Rs2Bank and other cache systems.
      */
     private static void loadCaches(String newRsProfileKey) {
@@ -766,13 +860,24 @@ public class Rs2CacheManager implements AutoCloseable {
      * Similar to Rs2Bank.handleProfileChange().
      */
     public static void handleProfileChange(String newRsProfileKey, String prvProfile) {
-        // Save current cache state before loading new profile
-        savePersistentCaches(prvProfile);
-        setUnknownInitialCacheState();
-        // Load cache state for new profile
-        loadCacheStateFromConfig(newRsProfileKey);        
-        // Update spirit tree cache with current farming handler data after profile change
-       
+        log.info("Handling profile change from '{}' to '{}' with async operations", prvProfile, newRsProfileKey);
+
+        // Save current cache state before loading new profile (async)
+        CompletableFuture<Void> saveOperation = savePersistentCachesAsync(prvProfile);
+
+        // Chain the profile switch operations
+        saveOperation.thenRunAsync(() -> {
+            setUnknownInitialCacheState();
+            // Load cache state for new profile (this will use async internally)
+            loadCacheStateFromConfig(newRsProfileKey);
+        }, getInstance().cacheManagerExecutor)
+        .whenComplete((result, ex) -> {
+            if (ex != null) {
+                log.error("Failed to complete async profile change from '{}' to '{}'", prvProfile, newRsProfileKey, ex);
+            } else {
+                log.info("Successfully completed async profile change from '{}' to '{}'", prvProfile, newRsProfileKey);
+            }
+        });
     }
     
     /**
@@ -787,6 +892,7 @@ public class Rs2CacheManager implements AutoCloseable {
             long cacheTimestamp = Rs2VarPlayerCache.getInstance().getCacheTimestamp(VarPlayerID.ACCOUNT_CREDIT);
             if (cacheTimestamp <= 0) {
                 log.info("No valid cache timestamp found for membership validation");                
+                cacheTimestamp = 0L;
             }
             
             // calculate days since cache was saved
@@ -811,6 +917,78 @@ public class Rs2CacheManager implements AutoCloseable {
         log.info("Emptied all cache states");
     }
     
+    /**
+     * Saves all persistent caches asynchronously without blocking the client thread.
+     * Returns immediately and performs save operations in background threads.
+     *
+     * @return CompletableFuture that completes when all saves are done
+     */
+    public static CompletableFuture<Void> savePersistentCachesAsync() {
+        try {
+            if (rsProfileKey != null && !rsProfileKey.get().isEmpty()) {
+                String playerName = getLastKnownPlayerName();
+                if (playerName == null) {
+                    log.warn("Cannot save persistent caches - no player name available");
+                    return CompletableFuture.completedFuture(null);
+                }
+                return savePersistentCachesAsync(rsProfileKey.get());
+            }
+            return CompletableFuture.completedFuture(null);
+        } catch (Exception e) {
+            log.error("Failed to start async save of persistent caches", e);
+            return CompletableFuture.failedFuture(e);
+        }
+    }
+
+    /**
+     * Saves all persistent caches asynchronously for a specific profile.
+     *
+     * @param profileKey The RuneLite profile key to save caches for
+     * @return CompletableFuture that completes when all saves are done
+     */
+    public static CompletableFuture<Void> savePersistentCachesAsync(String profileKey) {
+        if (!isCacheDataValid()) {
+            log.warn("Cache data is not valid, cannot save persistent caches");
+            return CompletableFuture.completedFuture(null);
+        }
+        if (profileKey == null) {
+            log.warn("Cannot save persistent caches: profile key is null");
+            return CompletableFuture.completedFuture(null);
+        }
+
+        String playerName = getLastKnownPlayerName();
+        if (playerName == null) {
+            log.warn("Cannot save persistent caches - no player name available");
+            return CompletableFuture.completedFuture(null);
+        }
+
+        log.info("Starting async save of all persistent caches for profile: {}", profileKey);
+
+        // Ensure only one save operation at a time
+        CompletableFuture<Void> saveOperation = CompletableFuture.runAsync(() -> {
+            try {
+                // Save Rs2Bank cache first
+                Rs2Bank.saveCacheToConfig(profileKey);
+
+                // Save other persistent caches
+                savePersistentCachesInternal(profileKey);
+
+                log.info("Successfully completed async save of all persistent caches for profile: {}", profileKey);
+            } catch (Exception e) {
+                log.error("Failed during async save of persistent caches for profile: {}", profileKey, e);
+                throw new RuntimeException("Async cache save failed", e);
+            }
+        }, getInstance().cacheManagerExecutor);
+
+        // Track the current operation
+        currentSaveOperation.set(saveOperation);
+
+        return saveOperation.whenComplete((result, ex) -> {
+            // Clear the operation reference when done
+            currentSaveOperation.compareAndSet(saveOperation, null);
+        });
+    }
+
     /**
      * Saves all persistent caches to RuneLite profile configuration.
      * This method handles both Rs2Bank and other cache systems.
