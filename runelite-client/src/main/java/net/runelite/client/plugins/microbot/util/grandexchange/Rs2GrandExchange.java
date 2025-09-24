@@ -235,6 +235,8 @@ public class Rs2GrandExchange
 				}
 				Rs2Keyboard.typeString(request.getItemName());
 
+				sleep(500,800); //allow the widget to load
+
 				if (!Rs2Widget.sleepUntilHasWidgetText(searchName, 162, 43, false, 5000)) break;
 
 				sleepUntil(() -> getSearchResultWidget(request.getItemName(), request.isExact()) != null, 2200);
