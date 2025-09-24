@@ -274,6 +274,7 @@ public class Rs2GroundItem {
         final int quantFinal = quantity;
         return runWhilePaused(() -> {
             for (int i = 0; i < quantFinal; i++) {
+                if(Rs2Inventory.isFull()) break;
                 waitForGroundItemDespawn(() -> interact(groundItem), groundItem);
             }
             return true;
