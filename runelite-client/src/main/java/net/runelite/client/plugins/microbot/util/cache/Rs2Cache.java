@@ -577,10 +577,11 @@ public abstract class Rs2Cache<K, V> implements AutoCloseable, CacheOperations<K
      * Gets the cache timestamp for a specific key.
      * 
      * @param key The key to get the timestamp for
-     * @return The timestamp when the key was cached, or null if not found
+     * @return The timestamp when the key was cached, or -1 if not found
      */
-    public Long getCacheTimestamp(K key) {
-        return cacheTimestamps.get(key);
+    public long getCacheTimestamp(K key) {
+        Long timestamp = cacheTimestamps.get(key);
+        return timestamp != null ? timestamp : 0L;
     }
     
     // ============================================

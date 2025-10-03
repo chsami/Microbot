@@ -24,7 +24,7 @@ import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.poh.PohTeleports;
 import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
-
+import net.runelite.client.plugins.microbot.util.cache.Rs2SkillCache;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -543,8 +543,14 @@ public class PathfinderConfig {
         int[] requiredLevels = transport.getSkillLevels();
         Skill[] skills = Skill.values();
         return IntStream.range(0, requiredLevels.length)
-                .filter(i -> requiredLevels[i] > 0)
-                .allMatch(i -> Microbot.getClient().getBoostedSkillLevel(skills[i]) >= requiredLevels[i]);
+            .filter(i -> requiredLevels[i] > 0)
+            .allMatch(i -> {
+                if (Microbot.isRs2CacheEnabled()) {
+                    return Rs2SkillCache.getBoostedSkillLevel(skills[i]) >= requiredLevels[i];
+                } else {
+                    return Microbot.getClient().getBoostedSkillLevel(skills[i]) >= requiredLevels[i];
+                }
+            });
     }
 
     /**
@@ -554,8 +560,14 @@ public class PathfinderConfig {
         int[] requiredLevels = restriction.getSkillLevels();
         Skill[] skills = Skill.values();
         return IntStream.range(0, requiredLevels.length)
-                .filter(i -> requiredLevels[i] > 0)
-                .allMatch(i -> Microbot.getClient().getBoostedSkillLevel(skills[i]) >= requiredLevels[i]);
+            .filter(i -> requiredLevels[i] > 0)
+            .allMatch(i -> {
+                if (Microbot.isRs2CacheEnabled()) {
+                    return Rs2SkillCache.getBoostedSkillLevel(skills[i]) >= requiredLevels[i];
+                } else {
+                    return Microbot.getClient().getBoostedSkillLevel(skills[i]) >= requiredLevels[i];
+                }
+            });
     }
 
     private void updateActionBasedOnQuestState(Transport transport) {
