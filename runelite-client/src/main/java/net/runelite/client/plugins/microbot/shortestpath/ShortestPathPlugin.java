@@ -157,12 +157,13 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
 
     private Point lastMenuOpenedPoint;
     private ShortestPathPanel panel;
+    private PohPanel pohPanel;
     @Getter
     @Setter
     public static WorldMapPoint marker;
     @Setter
     public static volatile WorldPoint lastLocation = new WorldPoint(0, 0, 0);
-    private NavigationButton navButton;
+    private NavigationButton navButton, pohNavButton;
     private Shape minimapClipFixed;
     private Shape minimapClipResizeable;
     private BufferedImage minimapSpriteFixed;
@@ -205,6 +206,7 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
         pathfinderConfig = new PathfinderConfig(map, transports, restrictions, client, config);
 
         panel = injector.getInstance(ShortestPathPanel.class);
+        pohPanel = new PohPanel(config);
         final BufferedImage icon = ImageUtil.loadImageResource(ShortestPathPlugin.class, "panel_icon.png");
         navButton = NavigationButton.builder()
                 .tooltip("Web Walker")
@@ -213,6 +215,15 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
                 .panel(panel)
                 .build();
         clientToolbar.addNavigation(navButton);
+
+        final BufferedImage pohIcon = ImageUtil.loadImageResource(ShortestPathPlugin.class, "poh_icon.png");
+        pohNavButton = NavigationButton.builder()
+                .tooltip("Poh Web Config")
+                .icon(pohIcon)
+                .priority(9)
+                .panel(pohPanel)
+                .build();
+        clientToolbar.addNavigation(pohNavButton);
 
         Rs2Walker.setConfig(config);
         shortestPathScript = new ShortestPathScript();
@@ -240,11 +251,15 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
         overlayManager.remove(pathMapTooltipOverlay);
         overlayManager.remove(debugOverlayPanel);
         clientToolbar.removeNavigation(navButton);
+        clientToolbar.removeNavigation(pohNavButton);
         navButton = null;
+        pohNavButton = null;
         if (panel != null) {
             panel.disposeTimers();
         }
         panel = null;
+        PohPanel.instance = null;
+        pohPanel = null;
 
         shortestPathScript.shutdown();
 

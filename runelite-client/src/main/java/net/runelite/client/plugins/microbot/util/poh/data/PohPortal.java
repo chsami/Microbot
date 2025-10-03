@@ -129,6 +129,11 @@ public enum PohPortal implements PohTeleport {
     }
 
     @Override
+    public String toString() {
+        return displayName;
+    }
+
+    @Override
     public boolean execute() {
         GameObject portal = getPortal();
         return Rs2GameObject.interact(portal, "enter");

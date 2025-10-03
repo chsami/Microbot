@@ -13,7 +13,6 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
 import net.runelite.client.plugins.microbot.shortestpath.*;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
-import net.runelite.client.plugins.microbot.util.cache.Rs2PohCache;
 import net.runelite.client.plugins.microbot.util.cache.Rs2SpiritTreeCache;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
@@ -302,7 +301,7 @@ public class PathfinderConfig {
         }
 
         // Add transports from PoH to somewhere in the world
-        for (var entry : Rs2PohCache.getAvailableTransportsMap(allTransports).entrySet()) {
+        for (var entry : PohPanel.getAvailableTransports(allTransports).entrySet()) {
             mergedTransports
                     .computeIfAbsent(entry.getKey(), k -> new HashSet<>())
                     .addAll(entry.getValue());
