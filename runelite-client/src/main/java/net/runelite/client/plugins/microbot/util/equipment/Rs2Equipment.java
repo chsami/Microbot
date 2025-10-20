@@ -168,7 +168,7 @@ public class Rs2Equipment {
     }
 
     private static boolean unEquip(Rs2ItemModel item) {
-        return interact(item, "remove");
+        return interact(item, "Remove");
     }
 
     public static boolean unEquip(Predicate<Rs2ItemModel> predicate) {
@@ -376,7 +376,7 @@ public class Rs2Equipment {
             rectangle = getSafeBounds(InterfaceID.WORNITEMS,24);
         }
 
-        Microbot.doInvoke(new NewMenuEntry(param0, param1, menuAction.getId(), identifier, -1, rs2Item.getName()), rectangle);
+        Microbot.doInvoke(new NewMenuEntry(action, param0, param1, menuAction.getId(), identifier, -1,  target), rectangle);
         //Rs2Reflection.invokeMenu(param0, param1, menuAction.getId(), identifier, rs2Item.id, action, target, -1, -1);
     }
 
