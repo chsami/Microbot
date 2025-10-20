@@ -94,11 +94,13 @@ public class Rs2Cannon {
         while (Rs2GameObject.exists(cannon.getId()) && Rs2Inventory.emptySlotCount() >= 4 && attempts < 3){
             Rs2GameObject.interact(cannon, "Pick-up");
             sleepUntil(() -> !Rs2GameObject.exists(cannon.getId()),5000);
-            sleep(250);
+            if(!Rs2GameObject.exists(cannon.getId())){
+                return true;
+            }
             attempts++;
         }
         Microbot.pauseAllScripts.compareAndSet(true, false);
-        return true;
+        return false;
     }
 
     public static boolean start() {
