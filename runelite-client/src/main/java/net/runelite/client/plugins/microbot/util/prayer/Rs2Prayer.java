@@ -75,6 +75,39 @@ public class Rs2Prayer {
 	}
 
 	/**
+	 * Toggles a prayer to a specific state (on or off) with optional mouse control.
+	 * If using mouse, will automatically switch to the prayer tab if not already active.
+	 *
+	 * @param prayer the prayer to toggle
+	 * @param on true to enable the prayer, false to disable it
+	 * @param withMouse true to use mouse
+	 * @param returnTab true to return to the original Tab
+	 * @return true if the prayer is in the desired state after the operation, false otherwise
+	 */
+
+	public static boolean toggle(Rs2PrayerEnum prayer, boolean on, boolean withMouse, boolean returnTab) {
+		if (isOutOfPrayer()) return false;
+		if (isPrayerActive(prayer) == on) return true;
+
+		InterfaceTab tab = null;
+		tab = Rs2Tab.getCurrentTab();
+
+		if (withMouse && tab != InterfaceTab.PRAYER) {
+			Rs2Tab.switchTo(InterfaceTab.PRAYER);
+		}
+
+		invokePrayer(prayer, withMouse);
+
+		boolean toggleResult = sleepUntil(() -> isPrayerActive(prayer) == on, 10_000);
+
+		if (withMouse && returnTab && tab != null && Rs2Tab.getCurrentTab() != tab) {
+			Rs2Tab.switchTo(tab);
+		}
+
+		return toggleResult;
+	}
+
+	/**
 	 * Invokes a prayer action
 	 * Creates a menu entry and executes it with the appropriate bounds.
 	 *
