@@ -32,8 +32,6 @@ import net.runelite.client.input.MouseManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginInstantiationException;
 import net.runelite.client.plugins.PluginManager;
-import net.runelite.client.plugins.loottracker.LootTrackerItem;
-import net.runelite.client.plugins.loottracker.LootTrackerPlugin;
 import net.runelite.client.plugins.loottracker.LootTrackerRecord;
 import net.runelite.client.plugins.microbot.configs.SpecialAttackConfigs;
 import net.runelite.client.plugins.microbot.pouch.PouchScript;
@@ -55,6 +53,7 @@ import net.runelite.client.ui.overlay.worldmap.WorldMapOverlay;
 import net.runelite.client.ui.overlay.worldmap.WorldMapPointManager;
 import net.runelite.client.util.WorldUtil;
 import net.runelite.http.api.worlds.World;
+import net.runelite.http.api.worlds.WorldResult;
 import org.slf4j.event.Level;
 
 import javax.inject.Inject;
@@ -67,7 +66,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.List;
 import java.util.*;
 import java.util.concurrent.Executors;
@@ -157,7 +155,6 @@ public class Microbot {
     @Inject
     private static TooltipManager tooltipManager;
     private static ScheduledFuture<?> xpSchedulorFuture;
-    private static net.runelite.api.World quickHopTargetWorld;
     /**
      * PouchScript is injected in the main MicrobotPlugin as it's being used in multiple scripts
      */
@@ -179,7 +176,7 @@ public class Microbot {
     private static GameState lastGameState = null;
 
     public static boolean cantReachTarget = false;
-    public static boolean cantHopWorld = false;
+    public static volatile long cantHopWorld = System.currentTimeMillis();
 
     public static int cantReachTargetRetries = 0;
 
@@ -282,72 +279,95 @@ public class Microbot {
         return idx == GameState.HOPPING;
     }
 
+    private static net.runelite.api.World createWorld(int worldNumber) {
+        final WorldResult worldResult = Microbot.getWorldService().getWorlds();
+        if (worldResult == null) {
+            log.error("World Result is null");
+            return null;
+        }
+
+        final World newWorld = Microbot.getWorldService().getWorlds().findWorld(worldNumber);
+        if (newWorld == null) {
+            log.error("Invalid world {}", worldNumber);
+            return null;
+        }
+
+        final net.runelite.api.World world = Microbot.getClient().createWorld();
+        if (world == null) {
+            log.error("Failed to create world {}", worldNumber);
+            return null;
+        }
+
+        world.setActivity(newWorld.getActivity());
+        world.setAddress(newWorld.getAddress());
+        world.setId(newWorld.getId());
+        world.setPlayerCount(newWorld.getPlayers());
+        world.setLocation(newWorld.getLocation());
+        world.setTypes(WorldUtil.toWorldTypes(newWorld.getTypes()));
+        return world;
+    }
+
     public static boolean hopToWorld(int worldNumber) {
         if (!Microbot.isLoggedIn()) {
+            log.warn("Cannot hop user is not logged in");
             return false;
         }
+
         if (Microbot.isHopping()) {
-            log.error("Already hopping world");
+            log.warn("Already hopping world");
             return true;
         }
-        if (Microbot.cantHopWorld) {
-            log.error("Can't hop world, already trying to hop");
-            return false;
-        }
+
+        final long hopStart = System.currentTimeMillis();
+        if ((Microbot.cantHopWorld - hopStart) >= 0) Microbot.cantHopWorld = hopStart - 1;
         boolean isHopping = Microbot.getClientThread().runOnClientThreadOptional(() -> {
-            if (Microbot.getClient().getLocalPlayer() != null && Microbot.getClient().getLocalPlayer().isInteracting()) {
+            final Player myPlayer = Microbot.getClient().getLocalPlayer();
+            if (myPlayer != null && myPlayer.isInteracting()) {
                 log.error("Local player is interacting, cannot hop worlds");
                 return false;
             }
-            if (quickHopTargetWorld != null || Microbot.getClient().getGameState() != GameState.LOGGED_IN) {
-                log.error("Quick hop target world is not null or game state is not logged in");
-                return false;
-            }
-            if (Microbot.getClient().getWorld() == worldNumber) {
-                return false;
-            }
-            World newWorld = Microbot.getWorldService().getWorlds().findWorld(worldNumber);
-            if (newWorld == null) {
-                Microbot.getNotifier().notify("Invalid World");
-                System.out.println("Tried to hop to an invalid world");
-                return false;
-            }
-            final net.runelite.api.World rsWorld = Microbot.getClient().createWorld();
-            if (rsWorld == null) return false;
 
-            quickHopTargetWorld = rsWorld;
-            rsWorld.setActivity(newWorld.getActivity());
-            rsWorld.setAddress(newWorld.getAddress());
-            rsWorld.setId(newWorld.getId());
-            rsWorld.setPlayerCount(newWorld.getPlayers());
-            rsWorld.setLocation(newWorld.getLocation());
-            rsWorld.setTypes(WorldUtil.toWorldTypes(newWorld.getTypes()));
+            if (Microbot.getClient().getGameState() != GameState.LOGGED_IN) {
+                log.error("Game state is not logged in, cannot hop worlds");
+                return false;
+            }
+
+            if (Microbot.getClient().getWorld() == worldNumber) return false;
+
+            final net.runelite.api.World world = createWorld(worldNumber);
+            if (world == null) return false;
 
             Microbot.getClient().openWorldHopper();
-            Microbot.getClient().hopToWorld(rsWorld);
-            quickHopTargetWorld = null;
-            sleep(600);
-            sleepUntil(() -> Microbot.isHopping() || Rs2Widget.getWidget(193, 0) != null, 2000);
-            return Microbot.isHopping();
+            Microbot.getClient().hopToWorld(world);
+            return true;
         }).orElse(false);
+
         if (!isHopping) {
-            Widget confirmRoot = Rs2Widget.getWidget(193, 0);
+            log.error("Failed to invoke World Hop");
+            return false;
+        }
+
+        if (sleepUntil(() -> Microbot.isHopping() || Rs2Widget.getWidget(193, 0) != null, 2_000) || (Microbot.cantHopWorld - hopStart) >= 0) {
+            if (Microbot.isHopping()) return true;
+            if ((Microbot.cantHopWorld - hopStart) >= 0) {
+                log.error("Can't hop world, can't log into a non-members world");
+                return false;
+            }
+
+            final Widget confirmRoot = Rs2Widget.getWidget(193, 0);
             if (confirmRoot != null) {
                 List<Widget> children = Arrays.stream(confirmRoot.getDynamicChildren()).collect(Collectors.toList());
                 Widget switchWorldWidget =
-                        sleepUntilNotNull(() -> Rs2Widget.findWidget("Switch world", children, true), 2000);
+                        sleepUntilNotNull(() -> Rs2Widget.findWidget("Switch world", children, true), 2_000);
                 if (switchWorldWidget != null) {
-                    boolean clicked = Rs2Widget.clickWidget(switchWorldWidget);
-                    if (clicked) {
-                        sleepUntil(Microbot::isHopping, 4000);
-                        return Microbot.isHopping();
+                    if (Rs2Widget.clickWidget(switchWorldWidget)) {
+                        return sleepUntil(Microbot::isHopping, 4_000);
                     }
                 }
             }
-        }
-        if (!isHopping) {
             log.error("Failed to hop to world {}", worldNumber);
         }
+
         return false;
     }
 
