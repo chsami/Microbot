@@ -1,0 +1,367 @@
+================================================================================
+GAUNTLET PLUGIN - TICK-BASED EXECUTION ANALYSIS
+Comprehensive findings on action queue, eating delays, and attack timing
+================================================================================
+
+## QUICK FINDINGS
+
+HIGH SEVERITY ISSUES:
+  1. Dual execution layers cause race condition (600ms misalignment)
+  2. Karambwan delay wrong (3 ticks vs 2 ticks OSRS)
+  3. Actions lost when skipped due to tick loss (not re-queued)
+  4. Eating blocks entire game thread with sleepUntil()
+
+IMPACT: ~1% DPS loss, potential for missed attack windows, timing jitter
+
+================================================================================
+## 1. HOW THE ACTION QUEUE WORKS
+================================================================================
+
+Location: Rs2PvMCombat.java
+
+Architecture:
+  - Thread-safe action queue: Map<Integer, List<PvMAction>>
+  - Actions stored by game tick number (absolute)
+  - Executed by GameTick event subscriber in Rs2PvMEventManager
+
+Queue Methods:
+  queueAction(action, targetTick)           - Queue for specific tick
+  queueAction(action)                       - Queue for next tick
+  queueActionRelative(action, offset)       - Queue at currentTick + offset
+  queueActionSequence(actions, offsets)     - Multiple actions with timing
+
+Execution:
+  Called from Rs2PvMEventManager.onGameTick()
+  Fetches actions for current tick
+  Sorts by priority (1=highest, 5=lowest)
+  Executes in priority order
+
+================================================================================
+## 2. TWO EXECUTION LAYERS (CRITICAL ISSUE)
+================================================================================
+
+Layer 1: ScheduledExecutor (MicroGauntletScript.java:74-98)
+  - Runs every 600ms (fixed delay)
+  - On separate executor thread (NOT game thread)
+  - Calls executeCombatLoop() which queues actions
+  - NOT synchronized with GameTick events
+
+Layer 2: GameTick Event (Rs2PvMEventManager.java:298-340)
+  - Fires every 600ms (varies based on network)
+  - On game thread (synchronous)
+  - Calls executeQueuedActions() which executes queued actions
+  - Guaranteed at tick boundary
+
+PROBLEM: Two 600ms cycles that can be 100-200ms offset!
+
+Timeline Example:
+  t=100ms  Script queues attack for tick=101
+  t=150ms  GameTick fires, looks for tick=101 (NOT FOUND)
+  t=200ms  Script fires again, might queue duplicate
+  t=750ms  GameTick fires, finds tick=101 (600ms+ delay!)
+
+RESULT: Actions execute 1+ game tick later than queued
+
+================================================================================
+## 3. EATING DELAYS - OSRS vs IMPLEMENTATION
+================================================================================
+
+OSRS Game Mechanics (Correct):
+  Normal food        3 ticks (e.g., cooked paddlefish)
+  Karambwan          2 ticks (combo food)
+  Crystal food       2 ticks (Gauntlet only)
+  Potions            3 ticks
+
+Current Implementation (WRONG):
+  FOOD(3)            ✓ Correct
+  CRYSTAL_FOOD(2)    ✓ Correct
+  COMBO_FOOD(3)      ✗ WRONG! Should be 2 ticks
+  POTION(3)          ✓ Correct
+
+Bug: Karambwan has 3-tick delay in code, but 2 ticks in OSRS
+Impact: Next attack queued 1 tick too late
+Cost: ~1 tick DPS loss per karambwan eat × 5-10 eats per fight = 5-10 tick DPS loss
+
+Location: ConsumableAction.java:51, 74-75
+
+Eating Implementation Issues:
+  1. Emergency eat uses queueAction() - no delay timing
+  2. Normal eat uses queueActionRelative(..., 1) - assumes safe margin
+  3. sleepUntil() blocks game thread for up to 1200ms
+  4. No follow-up attack queued automatically
+  5. Priority 5 (lowest) - eats after attacks queued
+
+================================================================================
+## 4. ATTACK TIMING ISSUES
+================================================================================
+
+How Attacks Are Queued:
+  - Script loop runs every 600ms
+  - Calls handleAttacking() if !Rs2Combat.inCombat()
+  - Queues attack for currentTick + 1
+  - GameTick event executes it
+
+Problems:
+  1. If script and GameTick misaligned, attack executes 1 tick late
+  2. Script may queue duplicate attacks (runs multiple times per tick)
+  3. Weapon cooldown tracked in Rs2CombatHandler but not integrated
+  4. No tick-count validation (relies on absolute tick numbers)
+
+Example Scenario:
+  Script runs at t=100ms, queues attack for tick=101
+  But GameTick fires at t=750ms for tick=101
+  Attack executes 650ms late (1.08 full ticks)
+  Interrupts natural attack cycle timing
+
+================================================================================
+## 5. TICK LOSS DETECTION & ACTION SKIPPING
+================================================================================
+
+How It Works (Rs2CombatHandler.java:63-89):
+  1. Check if player ate/drank recently (< 3 ticks ago)
+  2. Check if weapon switching in progress
+  3. Check if player moving
+  4. Check if player animating (exclude combat anims)
+  5. Return LOSING / POTENTIAL / NONE
+
+How It's Used (Rs2PvMCombat.java:138-142):
+  if (action.requiresNoTickLoss() && tickLoss != NONE) {
+    recordActionExecution(action, false, "Tick loss");
+    return;  // ✗ ACTION LOST FOREVER!
+  }
+
+CRITICAL BUG: Skipped actions are not re-queued!
+  - Action skipped due to tick loss
+  - Logged as "Failed"
+  - Never executed, never retried
+  - Can lose critical attacks
+
+Example:
+  tick=50: Player eats (3-tick delay)
+  tick=51: Script queues attack
+           Check tick loss: LOSING (ate 1 tick ago)
+           Skip action: recordActionExecution(..., false)
+           return
+           
+  RESULT: Attack not executed at tick 51, 52, or 53
+          Lost from attack cycle entirely
+
+Solution: Re-queue with queueActionRelative(action, 1)
+
+================================================================================
+## 6. PRIORITY SYSTEM ANALYSIS
+================================================================================
+
+Priority Order (1=highest, 5=lowest):
+  1. PRAYER       - Prayer flicking (survival)
+  2. DODGE        - Hazard dodging (avoid damage)
+  3. WEAPON_SWITCH- Weapon switches (prepare attack)
+  4. ATTACK       - Attacking (deal damage)
+  5. CONSUME      - Eating/drinking (healing)
+
+How It's Used:
+  - All actions for current tick sorted by priority
+  - Executed in order sequentially
+  - No parallelization
+
+Gauntlet Script Execution Order:
+  1. pvmCombat.handleAutoPrayer()        - Immediate (no queue)
+  2. pvmCombat.handleAutoDodgeInRange()  - Immediate (no queue)
+  3. handleEating()                      - Queues as CONSUME (5)
+  4. handleWeaponSwitching()             - Queues as WEAPON_SWITCH (3)
+  5. handleAttacking()                   - Queues as ATTACK (4)
+
+ISSUE: Eating has LOWEST priority
+  - Emergency eat should have HIGH priority
+  - If queued with attack, attack executes first
+  - Player takes damage before healing applied
+  
+FIX: Use Priority.DODGE (2) for emergency eat
+     Use Priority.WEAPON_SWITCH (3) for normal eat
+
+================================================================================
+## 7. EATING WITH sleepUntil() - BLOCKING ISSUE
+================================================================================
+
+Current Code (MicroGauntletScript.java:220, 248):
+  @Override
+  public boolean execute() {
+    Rs2Inventory.interact("Cooked paddlefish", "Eat");
+    sleepUntil(() -> Rs2Player.getSkillCurrent(Skill.HITPOINTS) > currentHp, 1200);
+    return true;
+  }
+
+What Happens:
+  1. interact() called (sends click to client)
+  2. sleepUntil() starts polling HP every 50ms
+  3. Waits up to 1200ms for HP to increase
+  4. BLOCKS THE ENTIRE GAME THREAD!
+
+Problems:
+  - GameTick handler blocked during sleep
+  - Next GameTick can't fire until sleep ends
+  - Prayer flicking disabled during eating
+  - Hazard dodging delayed
+  - Unreliable (HP update depends on network lag)
+  - CPU waste (polling every 50ms)
+
+Timeline:
+  t=30600ms  tick=51 GameTick fires
+  t=30605ms  EAT.execute() called
+  t=30610ms  sleepUntil() starts polling
+  t=30650ms  HP increases, sleep returns
+  t=30700ms  GameTick handler continues
+             But we're now ~100ms into next tick cycle!
+
+================================================================================
+## 8. KEY FINDINGS TABLE
+================================================================================
+
+Aspect              Current           Issue                 Recommended
+────────────────────────────────────────────────────────────────────────
+Execution Model     Dual thread       Race condition        Single GameTick
+Loop Frequency      600ms fixed       Not tick-synced       Sync to GameTick
+Karambwan Delay     3 ticks           Wrong (OSRS = 2)      Change to 2 ticks
+Eating Method       sleepUntil()      Blocks game thread    Queue async
+Skipped Actions     Lost forever      No re-queue           queueActionRelative
+Eating Priority     CONSUME (5)       Too low               DODGE or WEAPON_SWITCH
+Tick Loss Check     Milliseconds      Unreliable            Use game tick count
+Action Queuing      Every 600ms       Can duplicate         Track last queue time
+
+================================================================================
+## 9. FIXES AT A GLANCE
+================================================================================
+
+FIX #1: Correct Karambwan Delay
+  File: ConsumableAction.java:51
+  Change: COMBO_FOOD(3) → COMBO_FOOD(2)
+  Impact: HIGH (simple fix, 1-tick DPS gain)
+
+FIX #2: Re-queue Skipped Actions
+  File: Rs2PvMCombat.java:138-142
+  Change: Add queueActionRelative(action, 1) before return
+  Impact: HIGH (prevents attack loss)
+
+FIX #3: Replace ScheduledExecutor with GameTick
+  File: MicroGauntletScript.java:74-98
+  Change: Replace with @Subscribe onGameTick(GameTick event)
+  Impact: CRITICAL (eliminates race condition)
+
+FIX #4: Remove sleepUntil() Blocking
+  File: MicroGauntletScript.java:220, 248
+  Change: Remove sleepUntil(), queue follow-up attack
+  Impact: HIGH (improves responsiveness)
+
+FIX #5: Increase Eating Priority
+  File: MicroGauntletScript.java:225-226, 253-254
+  Change: Use Priority.DODGE (2) instead of CONSUME (5)
+  Impact: MEDIUM (ensures eating executes early)
+
+================================================================================
+## 10. DETAILED DOCUMENTATION FILES
+================================================================================
+
+Three comprehensive analysis documents created:
+
+1. tick_execution_analysis.md (10 sections, 800+ lines)
+   - Complete architecture analysis
+   - Eating delays reference table
+   - Tick loss detection details
+   - 9 detailed recommendations with code
+
+2. execution_flow_diagrams.txt (8 ASCII diagrams)
+   - Dual-layer execution model visualization
+   - Action queue lifecycle timeline
+   - Karambwan bug impact diagram
+   - Tick loss state machine
+   - Priority execution order
+   - Script polling vs GameTick alignment
+   - sleepUntil() blocking timeline
+   - Recommended fix architecture
+
+3. code_issue_examples.md (5 issues, code-level fixes)
+   - Exact line numbers for each issue
+   - Before/after code comparisons
+   - Impact analysis for each issue
+   - Summary table of all fixes
+
+================================================================================
+## 11. OSRS FOOD DELAY REFERENCE
+================================================================================
+
+For future expansion, correct OSRS values:
+
+Item                        ID      Delay   Type
+─────────────────────────────────────────────────
+Cooked paddlefish        23,544     3      Food
+Crystal food (perfected) 23,981-24  2      Food
+Karambwan                3,144      2      Combo
+Super restore            3,025      3      Potion
+Prayer potion            139        3      Potion
+Antidote++               5,952      3      Potion
+
+All delays measured in game ticks (600ms each)
+
+================================================================================
+## 12. EXECUTION FLOW SUMMARY
+================================================================================
+
+CURRENT (PROBLEMATIC):
+
+  Script Thread (600ms)           Game Thread (GameTick)
+  ────────────────────            ──────────────────────
+  t=100ms  queueAction(attack)    
+           for tick=101
+  
+                                   t=150ms GameTick
+                                           Look for tick=150
+                                           (not found)
+  
+                                   t=750ms GameTick
+                                           Look for tick=101
+                                           Execute (650ms late!)
+
+RECOMMENDED (SYNCHRONIZED):
+
+  Game Thread (GameTick)
+  ──────────────────────
+  t=0ms    GameTick (tick=0)
+           executeCombatLoop()
+           queueAction() for tick=1
+           executeQueuedActions() for tick=0
+  
+  t=600ms  GameTick (tick=1)
+           executeCombatLoop()
+           queueAction() for tick=2
+           executeQueuedActions() for tick=1
+  
+  t=1200ms GameTick (tick=2)
+           [repeat]
+
+Perfect synchronization, no jitter!
+
+================================================================================
+## 13. RECOMMENDATIONS PRIORITY
+================================================================================
+
+DO FIRST (Critical, High Impact):
+  1. Replace ScheduledExecutor with GameTick subscription
+  2. Re-queue skipped actions
+  3. Remove sleepUntil() blocking
+
+DO NEXT (Medium Impact):
+  1. Correct Karambwan delay (3→2 ticks)
+  2. Increase eating priority
+
+NICE TO HAVE (Low Impact):
+  1. Add tick-count validation
+  2. Implement attack duplicate prevention
+  3. Add detailed timing telemetry
+
+================================================================================
+
+End of Analysis Summary
+For detailed code examples, see: code_issue_examples.md
+For diagrams, see: execution_flow_diagrams.txt
+For comprehensive analysis, see: tick_execution_analysis.md
+

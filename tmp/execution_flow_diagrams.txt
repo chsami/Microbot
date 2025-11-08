@@ -1,0 +1,494 @@
+# EXECUTION FLOW DIAGRAMS
+
+## 1. DUAL-LAYER EXECUTION MODEL (Race Condition Risk)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    PROBLEMATIC DUAL EXECUTION MODEL                          │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+TIME    SCHEDULEDEXECUTOR         GAME THREAD (RuneLite)        ACTION QUEUE
+────────────────────────────────────────────────────────────────────────────────
+
+t=0ms                             [GameTick event for tick=99]
+                                  └─ executeQueuedActions()
+                                     └─ Look for tick=99 actions
+                                     └─ Remove and execute
+
+t=100ms ScheduledExecutor fires
+        executeCombatLoop()
+        ├─ handleEating()
+        │  └─ queueActionRelative(eat, 1)
+        │     └─ Queue at tick=101   ← ACTION QUEUED
+        │
+        ├─ handleAttacking()
+        │  └─ queueAction(attack)
+        │     └─ Queue at tick=102   ← ANOTHER ACTION QUEUED
+        │
+        └─ Return
+
+
+t=200ms                           [GameTick event for tick=100]
+                                  └─ executeQueuedActions()
+                                     └─ Look for tick=100 actions
+                                     └─ NOT FOUND (queued at 101, 102)
+
+
+t=300ms ScheduledExecutor fires AGAIN!
+        executeCombatLoop()
+        ├─ handleEating()
+        │  └─ queueAction() AGAIN!   ← DUPLICATE QUEUE?
+        │
+        └─ Return
+
+
+t=400ms                           [GameTick event for tick=101]
+                                  └─ executeQueuedActions()
+                                     └─ Find: [eat, attack]
+                                     └─ Execute both
+
+                                     
+ISSUE: Script fires every 600ms, but not synced with GameTick!
+       If Script fires at t=100ms and GameTick at t=150ms:
+       - Action queued at tick 101 (when Script fires)
+       - Executed at tick 101 (when GameTick fires)
+       - But they're in different time windows!
+```
+
+---
+
+## 2. ACTION QUEUE LIFECYCLE
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      ACTION QUEUE LIFECYCLE (600ms)                          │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+SCENARIO: Attack Sequence with Food Consumption
+
+tick=50 (t=30000ms)
+│
+├─ Player at 50% HP
+├─ Script calls: handleEating()
+│  └─ queueActionRelative(eat, 1)
+│     └─ Queue for tick=51
+│
+└─ Queue: {51: [EAT]}
+
+
+tick=51 (t=30600ms)
+│
+├─ GameTick fires
+├─ executeQueuedActions()
+│  ├─ Get tick=51 actions: [EAT]
+│  ├─ Remove from queue
+│  ├─ Execute:
+│  │  └─ EAT.execute()
+│  │     ├─ Rs2Inventory.interact("Cooked paddlefish", "Eat")
+│  │     ├─ sleepUntil(..., 1200)  ← BLOCKS FOR UP TO 1200ms!
+│  │     └─ return true
+│  │
+│  └─ ConsumableHandler tracks: lastConsumableAction with delayTicks=3
+│
+├─ Queue: {} (empty)
+│
+└─ Attack should be at tick=54 (tick 51 + 3 tick delay)
+
+
+tick=52, 53, 54 (t=31200ms)
+│
+├─ Script calls: handleAttacking()
+│  └─ queueAction(attack)
+│     └─ Queue for tick=55  ← TOO LATE! Should be tick=54
+│
+└─ Queue: {55: [ATTACK]}
+
+
+tick=55 (t=33000ms)
+│
+├─ GameTick fires
+├─ executeQueuedActions()
+│  ├─ Check tick loss: isLosingTickFromConsumable()?
+│  │  └─ Last eat was at tick 51
+│  │  └─ Delay is 3 ticks
+│  │  └─ Current tick 55 > 51+3=54
+│  │  └─ No longer losing tick ✓
+│  │
+│  ├─ Execute: [ATTACK]
+│  ├─ But we wanted to attack at tick=54 (1 tick early)
+│  │
+│  └─ DPS LOSS: 1 tick gap in attack cycle
+│
+└─ Queue: {} (empty)
+
+
+TIME ISSUE: Food consumed at tick 51, attack queued at tick 55
+           (Ideal would be tick 54, but script polled at wrong time)
+```
+
+---
+
+## 3. KARAMBWAN BUG - 2-TICK vs 3-TICK DELAY
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│              KARAMBWAN TIMING BUG (Wrong Delay Affects DPS)                  │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+CORRECT (OSRS Reality):
+tick=50: Attack (4-tick weapon)
+tick=54: Can attack again (4 ticks after 50)
+tick=55: Eat karambwan (2-tick delay for combo)
+tick=57: Can attack again (2 ticks after 55)
+
+WRONG (Current Implementation):
+tick=50: Attack (4-tick weapon)
+tick=54: Can attack again (4 ticks after 50)
+tick=55: Eat karambwan (3-tick delay - WRONG!)
+tick=58: Can attack again (3 ticks after 55)
+
+IMPACT:
+tick=57: MISSED DPS window (should attack here, but code thinks delay=3)
+         └─ 1 tick DPS loss per karambwan eat
+
+
+In Gauntlet context:
+- Eating karambwan every 10 seconds (several times per fight)
+- Each eat loses 1 tick of DPS
+- Over 5-minute fight: lose 5+ ticks total
+- = 0.5-1.0% DPS loss from timing bug alone
+```
+
+---
+
+## 4. TICK LOSS STATE MACHINE
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                  TICK LOSS DETECTION & ACTION EXECUTION                      │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────┐
+│                  getTickLossState()                          │
+└─────────────────────────────────────────────────────────────┘
+
+                    ┌──────────────────────┐
+                    │ Check tick loss      │
+                    └──────────────────────┘
+                            │
+            ┌───────────────┼───────────────┐
+            │               │               │
+            ▼               ▼               ▼
+       ┌─────────┐    ┌─────────┐    ┌─────────┐
+       │ EATING? │    │WEAPON   │    │MOVING?  │
+       │ LOSING  │    │SWITCH?  │    │ANIMATIG │
+       │         │    │POTENTIAL│    │POTENTIAL
+       │Ate <3s? │    │         │    │         │
+       └────┬────┘    └────┬────┘    └────┬────┘
+            │              │              │
+            ▼              ▼              ▼
+       ┌──────────────────────────────────────┐
+       │  Return LOSING / POTENTIAL / NONE    │
+       └──────────────────────────────────────┘
+            │
+            ▼
+       ┌──────────────────────────────────────────────┐
+       │  executeAction(action)                       │
+       │                                              │
+       │  if (action.requiresNoTickLoss()             │
+       │      && tickLoss != NONE) {                  │
+       │                                              │
+       │    recordActionExecution(action, false,      │
+       │                          "Tick loss")         │
+       │    return;  ← ⚠️ ACTION LOST FOREVER!       │
+       │  }                                           │
+       └──────────────────────────────────────────────┘
+
+
+ISSUE: If action is skipped due to tick loss:
+       - Action is logged as "Failed: Tick loss"
+       - But it's NOT re-queued for next tick
+       - It's gone forever!
+
+EXAMPLE:
+tick=51: Player eats
+tick=52: Script tries to attack
+         ├─ Check tick loss: isLosingTickFromConsumable() = TRUE
+         ├─ Skip action: return false
+         └─ Log: "Attack failed: Tick loss"
+         
+         RESULT: Player doesn't attack at tick 52 OR 53
+                 Next attack must wait for tick 54+
+                 (Script may not even queue it then)
+```
+
+---
+
+## 5. PRIORITY SORTING & EXECUTION ORDER
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│              ACTION PRIORITY EXECUTION (In Queue Per Tick)                   │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+Suppose at tick=60 we have queued:
+  {60: [ATTACK, EAT, PRAYER, WEAPON_SWITCH, DODGE]}
+
+
+Step 1: Sort by priority (lower = higher priority)
+```java
+actions.sort(Comparator.comparingInt(PvMAction::getPriority));
+```
+
+        PRAYER (1)          ← Highest priority (survival)
+        DODGE (2)
+        WEAPON_SWITCH (3)
+        ATTACK (4)
+        EAT (5)             ← Lowest priority (healing)
+
+
+Step 2: Execute in order (all at same tick!)
+        
+        ┌─ PRAYER
+        │  └─ Switch to Protect Magic (Priority 1)
+        │     └─ FAST: <5ms
+        │
+        ├─ DODGE
+        │  └─ Move away from tornado (Priority 2)
+        │     └─ FAST: <10ms
+        │
+        ├─ WEAPON_SWITCH
+        │  └─ Switch weapon (Priority 3)
+        │     └─ FAST: <5ms
+        │
+        ├─ ATTACK
+        │  └─ Attack Hunllef (Priority 4)
+        │     └─ FAST: <5ms
+        │
+        └─ EAT
+           └─ Consume food (Priority 5)
+              └─ SLOW: sleepUntil(..., 1200ms) ← BLOCKS ENTIRE THREAD!
+
+
+ISSUE #1: All executed in same game tick (poor design)
+          Best practice: spread over multiple ticks
+
+ISSUE #2: EAT has lowest priority
+          If emergency eat gets queued, it executes LAST
+          By then, player might take damage before heal applies
+
+ISSUE #3: sleepUntil() blocks the entire action execution
+          While eating, no other actions can execute
+          Game thread may be blocked during GameTick handler
+```
+
+---
+
+## 6. SCRIPT POLLING vs GAME TICK ALIGNMENT
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│           SCRIPT POLLING (600ms) vs GAME TICK (600ms) DESYNC                 │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+IDEAL SCENARIO (Synchronized):
+────────────────────────────────────────────────────────────────────
+t=0ms       t=600ms         t=1200ms        t=1800ms
+│           │               │               │
+Script───── Script────────── Script────────── Script
+  ║           ║               ║               ║
+  GameTick    GameTick        GameTick        GameTick
+  ║           ║               ║               ║
+  Execute     Execute         Execute         Execute
+  ║           ║               ║               ║
+  (Perfect timing)
+
+  
+ACTUAL SCENARIO (Desynchronized):
+────────────────────────────────────────────────────────────────────
+t=0ms    t=100ms         t=600ms         t=700ms         t=1200ms
+│        │               │               │               │
+Script───────────────────────────────────────────────────────
+  ║                       ║
+  Queue tick=1            Queue tick=101
+  
+         GameTick ────────────────────────────────────────
+           ║                        ║
+           Execute tick=1          Execute tick=101
+           (tick boundary)          (tick boundary)
+
+
+ISSUE: Script and GameTick are 100ms offset!
+
+If script polls at t=100ms:
+  - Gets currentTick = 166 (100ms / 600ms = 0.167 ticks)
+  - Queues action for tick 167 or 168
+  
+If GameTick fires at t=150ms:
+  - Gets currentTick = 166 (same)
+  - Tries to execute tick 166
+  - Action not queued yet (will be at tick 167/168)
+
+If GameTick fires again at t=750ms:
+  - Gets currentTick = 167
+  - Executes tick 167
+  - NOW finds script's actions!
+
+RESULT: 600ms (1 full game tick) delay in execution!
+        Actions execute 1 tick later than intended
+```
+
+---
+
+## 7. EATING WITH sleepUntil() - BLOCKING ISSUE
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│              BLOCKING EATING - Why sleepUntil() Is Bad                       │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+EXECUTION TIMELINE:
+
+tick=51 (t=30600ms) [GameTick event]
+│
+├─ onGameTick() fires
+├─ executeQueuedActions()
+│  │
+│  ├─ Find tick=51 actions: [EAT]
+│  │
+│  ├─ executeAction(EAT)
+│  │  │
+│  │  ├─ Run: EAT.execute()
+│  │  │  │
+│  │  │  ├─ Rs2Inventory.interact("Cooked paddlefish", "Eat")
+│  │  │  │  └─ Sends click to RuneLite
+│  │  │  │
+│  │  │  ├─ sleepUntil(() -> Rs2Player.getSkillCurrent(Skill.HITPOINTS) > currentHp, 1200)
+│  │  │  │  │
+│  │  │  │  │ BLOCKING: While this runs, NO OTHER CODE EXECUTES!
+│  │  │  │  │
+│  │  │  │  └─ Loop for up to 1200ms:
+│  │  │  │     ├─ t=30605ms: Check HP (still same)
+│  │  │  │     ├─ t=30610ms: Check HP (still same)
+│  │  │  │     ├─ ...
+│  │  │  │     ├─ t=30650ms: Check HP (INCREASED!) ← detected
+│  │  │  │     └─ Return
+│  │  │  │
+│  │  │  └─ return true
+│  │  │
+│  │  └─ recordActionExecution(EAT, true, "Success")
+│  │     └─ Add to history
+│  │
+│  └─ Return from executeQueuedActions()
+│
+├─ onGameTick() cleanup
+│  ├─ projectileTracker.onGameTick()
+│  ├─ animationTracker.onGameTick()
+│  ├─ hazardTracker.onGameTick()
+│  │
+│  └─ Check execution time: ~50-100ms
+│     └─ Log: ok
+│
+└─ [GameTick event ends]
+
+
+PROBLEM 1: If HP doesn't increase by 1200ms:
+           sleepUntil() waits full 1200ms
+           Blocks GameTick handler for 1200ms!
+           Next GameTick can't fire for 1.2 seconds
+
+
+PROBLEM 2: While sleeping, no concurrent actions:
+           Prayer flicking disabled
+           Projectile dodging disabled  
+           Incoming damage processing delayed
+
+
+PROBLEM 3: Unreliable HP check:
+           Network lag
+           Animation delays
+           HP not updated until next tick
+
+
+BETTER APPROACH:
+           Queue eating + queue follow-up attack
+           Let game loop handle delays naturally
+           No blocking = no timing issues
+```
+
+---
+
+## 8. RECOMMENDED FIX - SINGLE EXECUTION LAYER
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│               RECOMMENDED: SINGLE GAME TICK EXECUTION LAYER                  │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+REMOVE ScheduledExecutor (MicroGauntletScript.java line 74):
+────────────────────────────────────────────────────────────────
+
+mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
+    if (!super.run()) return;
+    executeCombatLoop();
+}, 0, 600, TimeUnit.MILLISECONDS);
+
+
+ADD GameTick Subscription:
+───────────────────────────
+
+@Inject
+private Rs2PvMEventManager pvmEventManager;
+
+@Override
+protected void startUp() throws Exception {
+    pvmEventManager.start();
+    pvmEventManager.registerGameTickListener(this);
+}
+
+@Subscribe
+public void onGameTick(GameTick event) {
+    if (!super.run()) return;
+    if (!Rs2GauntletUtil.isBossFightActive()) {
+        if (fightActive) stopTracking();
+        return;
+    }
+    if (!fightActive) startTracking();
+    
+    executeCombatLoop();  // Runs every GameTick event (synced!)
+}
+
+
+BENEFITS:
+──────────
+✓ Perfectly synchronized with game ticks
+✓ No race conditions (single execution context)
+✓ Reliable action timing
+✓ Actions execute at tick boundary (not mid-tick)
+✓ Simpler code (no ScheduledExecutor management)
+✓ Reduced memory overhead
+
+TIMELINE AFTER FIX:
+
+t=0ms       t=600ms         t=1200ms        t=1800ms
+│           │               │               │
+GameTick    GameTick        GameTick        GameTick
+  ║           ║               ║               ║
+  executeCombatLoop() ────────────────────────────
+    │           │               │               │
+    Queue       Queue           Queue           Queue
+    for t=1     for t=101       for t=201       for t=301
+    │           │               │               │
+    ▼ (0ms)     ▼ (600ms)       ▼ (1200ms)      ▼ (1800ms)
+    Execute     Execute         Execute         Execute
+    
+Perfect synchronization!
+```
+
