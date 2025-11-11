@@ -1,18 +1,37 @@
 package net.runelite.client.plugins.microbot.util.cache.strategy.entity;
 
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.ScheduledExecutorService;
-
 import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.*;
+import net.runelite.api.Constants;
+import net.runelite.api.DecorativeObject;
+import net.runelite.api.GameObject;
+import net.runelite.api.GameState;
+import net.runelite.api.GroundObject;
+import net.runelite.api.Player;
+import net.runelite.api.Point;
+import net.runelite.api.Scene;
+import net.runelite.api.Tile;
+import net.runelite.api.TileObject;
+import net.runelite.api.WallObject;
+import net.runelite.api.WorldView;
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.events.*;
+import net.runelite.api.events.DecorativeObjectDespawned;
+import net.runelite.api.events.DecorativeObjectSpawned;
+import net.runelite.api.events.GameObjectDespawned;
+import net.runelite.api.events.GameObjectSpawned;
+import net.runelite.api.events.GameStateChanged;
+import net.runelite.api.events.GameTick;
+import net.runelite.api.events.GroundObjectDespawned;
+import net.runelite.api.events.GroundObjectSpawned;
+import net.runelite.api.events.WallObjectDespawned;
+import net.runelite.api.events.WallObjectSpawned;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.questhelper.steps.tools.QuestPerspective;
 import net.runelite.client.plugins.microbot.util.cache.Rs2Cache;
@@ -81,8 +100,10 @@ public class ObjectUpdateStrategy implements CacheUpdateStrategy<String, Rs2Obje
     @Override
     public void handleEvent(final Object event, final CacheOperations<String, Rs2ObjectModel> cache) {
   
-        if (executorService == null || executorService.isShutdown() || !Microbot.isLoggedIn() || Microbot.getClient() == null || Microbot.getClient().getLocalPlayer() == null) {
-            log.warn("ObjectUpdateStrategy is shut down, ignoring event: {}", event.getClass().getSimpleName());
+        if (executorService == null || executorService.isShutdown() || Microbot.getClient() == null) {
+            if(executorService == null || executorService.isShutdown()) log.info ( " executorService is null or shutdown");            
+            if(Microbot.getClient() == null) log.info ( " Microbot client is null");            
+            log.info("ObjectUpdateStrategy is shut down, ignoring event: {}", event.getClass().getSimpleName());
             return; // Don't process events if shut down
         }
         if(scanActive.get()){
@@ -224,33 +245,22 @@ public class ObjectUpdateStrategy implements CacheUpdateStrategy<String, Rs2Obje
             }
                                         
             Player player = Rs2Player.getLocalPlayer();
+            WorldView wv = null;
             if (player == null) {
-                log.warn("Cannot perform scene scan - no player");
-                scanActive.set(false);
-                return;
-            }
-            WorldPoint playerPoint = QuestPerspective.getRealWorldPointFromLocal( Microbot.getClient(), player.getWorldLocation());
-            if (playerPoint == null) {
-                log.warn("Cannot perform scene scan - player location is null");
-                scanActive.set(false);
-                return ;
-            }
-    
-            WorldView worldView = player.getWorldView();
-            if (worldView == null) {
-                log.warn("Cannot perform scene scan - no world view");
-                scanActive.set(false);
-                return;
-            }
-            WorldView topLevelWorldView = Microbot.getClient().getTopLevelWorldView();
-            if (topLevelWorldView == null) {
-                log.warn("Cannot perform scene scan - no top-level world view");
-                scanActive.set(false);
-                return;
-            }
-            Scene scene = worldView.getScene();
-            if (scene == null) {
-                log.warn("Cannot perform scene scan - no scene");
+                wv =  (Microbot.getClient().getTopLevelWorldView());
+                if (wv == null) {
+                    log.debug("Cannot perform scene scan - no world view available");
+                    scanActive.set(false);
+                    return;
+                }                                
+            } else {
+                wv = player.getWorldView();
+            }              
+            
+            Scene scene = wv.getScene();
+            
+            if (scene == null) {                                
+                log.debug("Cannot perform ground item scene scan - no scene");
                 scanActive.set(false);
                 return;
             }
@@ -261,13 +271,11 @@ public class ObjectUpdateStrategy implements CacheUpdateStrategy<String, Rs2Obje
                 log.warn("Cannot perform scene scan - no tiles");
                 scanActive.set(false);
                 return;
-            }
-            
+            }            
             // Build a set of all currently existing object keys from the scene
             java.util.Set<String> currentSceneKeys = new java.util.HashSet<>();
             java.util.Map<String, Rs2ObjectModel> objectsToAdd = new java.util.HashMap<>();
-            int z = worldView.getPlane();
-            
+            int z = wv.getPlane();            
             log.debug("Starting object scene synchronization (cache size: {})", cache.size());
             
             // Phase 1: Scan scene and collect all objects

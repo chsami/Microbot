@@ -57,7 +57,7 @@ public class GroundItemUpdateStrategy implements CacheUpdateStrategy<String, Rs2
     
     @Override
     public void handleEvent(Object event, CacheOperations<String, Rs2GroundItemModel> cache) {
-        if (executorService == null || executorService.isShutdown() || !Microbot.isLoggedIn() || Microbot.getClient() == null || Microbot.getClient().getLocalPlayer() == null) {
+        if (executorService == null || executorService.isShutdown() || Microbot.getClient() == null) {
             log.warn("GroundItemUpdateStrategy is shut down or not logged in, ignoring event: {}", event.getClass().getSimpleName());
             return; // Don't process events if shut down
         }
@@ -214,17 +214,24 @@ public class GroundItemUpdateStrategy implements CacheUpdateStrategy<String, Rs2
                 return;
             }
             Player player = Microbot.getClient().getLocalPlayer();
+            WorldView wv = null;
             if (player == null) {
-                log.debug("Cannot perform ground item scene scan - no player");
-                scanActive.set(false);
-                return;
-            }
+                wv =  (Microbot.getClient().getTopLevelWorldView());
+                if (wv == null) {
+                    log.debug("Cannot perform ground item scene scan - no world view available");
+                    scanActive.set(false);
+                    return;
+                }
+                
+            }else {
+                wv = player.getWorldView();
+            }   
             
-            Scene scene = player.getWorldView().getScene();
-            if (scene == null) {
+            Scene scene = wv.getScene();
+            if (scene == null) {                                                
                 log.debug("Cannot perform ground item scene scan - no scene");
                 scanActive.set(false);
-                return;
+                return;                
             }
             
             Tile[][][] tiles = scene.getTiles();
@@ -237,7 +244,7 @@ public class GroundItemUpdateStrategy implements CacheUpdateStrategy<String, Rs2
             // Build a set of all currently existing ground item keys from the scene
             java.util.Set<String> currentSceneKeys = new java.util.HashSet<>();
             int addedItems = 0;
-            int z = player.getWorldView().getPlane();
+            int z = wv.getPlane();
             
             log.debug("Starting ground item scene synchronization (cache size: {})", cache.size());
             

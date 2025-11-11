@@ -202,10 +202,16 @@ public class NpcUpdateStrategy implements CacheUpdateStrategy<Integer, Rs2NpcMod
             }
             
             Player player = Microbot.getClient().getLocalPlayer();
+            WorldView wv = null;
             if (player == null) {
-                log.debug("Cannot perform NPC scene scan - no player");
-                scanActive.set(false);
-                return;
+                wv =  (Microbot.getClient().getTopLevelWorldView());
+                if (wv == null) {
+                    log.debug("Cannot perform NPC scene scan - no world view available");
+                    scanActive.set(false);
+                    return;
+                }
+            }else {
+                wv = player.getWorldView();
             }
             
             // Build a set of all currently existing NPC indices from the scene
@@ -214,7 +220,7 @@ public class NpcUpdateStrategy implements CacheUpdateStrategy<Integer, Rs2NpcMod
             log.debug("Starting NPC scene synchronization (cache size: {})", cache.size());
             
             // Phase 1: Scan scene and add new NPCs
-            for (NPC npc : Microbot.getClient().getTopLevelWorldView().npcs()) {
+            for (NPC npc : wv.npcs()) {
                 if (npc != null && npc.getId() != -1) { // Use ID instead of getName() to avoid client thread requirement
                     currentSceneIndices.add(npc.getIndex()); // Track all scene NPCs
                     
