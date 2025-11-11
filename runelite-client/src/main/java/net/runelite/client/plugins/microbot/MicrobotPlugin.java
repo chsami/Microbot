@@ -306,10 +306,12 @@ public class MicrobotPlugin extends Plugin
 				boolean wasLoggedIn = LoginManager.isLoggedIn();
 				if (!wasLoggedIn) {
 					LoginManager.markLoggedIn();
-					Rs2RunePouch.fullUpdate();
-					if (microbotConfig.isRs2CacheEnabled()) {
-						Rs2CacheManager.registerEventHandlers();
-					}
+					Rs2RunePouch.fullUpdate();					
+				}
+				// Check if already initialized
+				if (microbotConfig.isRs2CacheEnabled() && !Rs2CacheManager.isEventHandlersRegistered()) {
+					Rs2CacheManager.registerEventHandlers();					
+					return;
 				}
 				if (currentRegions != null) {
 					Microbot.setLastKnownRegions(currentRegions.clone());
@@ -323,7 +325,7 @@ public class MicrobotPlugin extends Plugin
 		   //Rs2CacheManager.emptyCacheState(); // should not be nessary here, handled in ClientShutdown event, 
 		   // and we also handle correct cache loading in onRuneScapeProfileChanged event
 		   LoginManager.markLoggedOut();
-		   if (microbotConfig.isRs2CacheEnabled()) {
+		   if (microbotConfig.isRs2CacheEnabled() && Rs2CacheManager.isEventHandlersRegistered()) {
 			   Rs2CacheManager.unregisterEventHandlers();
 		   }
 		   Microbot.setLastKnownRegions(null);
@@ -559,7 +561,7 @@ public class MicrobotPlugin extends Plugin
 		try {
 			// Check if already initialized
 			if (Rs2CacheManager.isEventHandlersRegistered()) {
-				log.debug("Cache system already initialized, skipping");
+				log.debug("Cache system already initialized, skipping");				
 				return;
 			}
 			
@@ -575,10 +577,10 @@ public class MicrobotPlugin extends Plugin
 			// Keep deprecated EntityCache for backward compatibility (for now)
 			//Rs2EntityCache.getInstance();
 			
-			log.info("Cache system initialized successfully with specialized caches");
+			log.info("Cache system initialized successfully");
 			log.info("Cache persistence will be loaded when RS profile becomes available");
 			log.debug("Cache statistics: {}", cacheManager.getCacheStatistics());
-			
+
 		} catch (Exception e) {
 			log.error("Failed to initialize cache system: {}", e.getMessage(), e);
 		}
