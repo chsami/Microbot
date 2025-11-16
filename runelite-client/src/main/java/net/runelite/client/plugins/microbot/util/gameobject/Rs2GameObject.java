@@ -33,6 +33,7 @@ import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 /**
  * TODO: This class should be cleaned up, less methods by passing filters instead of multiple parameters
  */
+@Deprecated(since = "2.1.0 - Use Rs2TileObjectQueryable instead", forRemoval = true)
 public class Rs2GameObject {
 	/**
 	 * Extracts all {@link GameObject}s located on a given {@link Tile}.

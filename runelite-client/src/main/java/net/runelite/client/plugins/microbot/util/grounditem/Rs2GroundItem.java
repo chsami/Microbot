@@ -31,6 +31,7 @@ import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
  * Todo: rework this class to not be dependant on the grounditem plugin
  */
 @Slf4j
+@Deprecated(since = "2.1.0 - Use Rs2TileItemCache/Rs2TileItemQuery instead", forRemoval = true)
 public class Rs2GroundItem {
     private static final int DESPAWN_DELAY_THRESHOLD_TICKS = 150;
 

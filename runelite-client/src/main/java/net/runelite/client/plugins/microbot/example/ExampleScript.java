@@ -3,28 +3,37 @@ package net.runelite.client.plugins.microbot.example;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
-import net.runelite.client.plugins.microbot.util.tileobject.Rs2TileObjectApi;
-import net.runelite.client.plugins.microbot.util.tileobject.Rs2TileObjectModel;
+import net.runelite.client.plugins.microbot.api.npc.Rs2NpcCache;
+import net.runelite.client.plugins.microbot.api.tileitem.Rs2TileItemCache;
+import net.runelite.client.plugins.microbot.api.tileobject.Rs2TileObjectCache;
+import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+import net.runelite.client.plugins.microbot.api.player.Rs2PlayerCache;
 
-import java.util.List;
+import javax.inject.Inject;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Collectors;
 
 /**
  * Performance test script for measuring GameObject composition retrieval speed.
- *
+ * <p>
  * This script runs every 5 seconds and performs the following:
  * - Gets all GameObjects in the scene
  * - Retrieves the ObjectComposition for each GameObject
  * - Measures and logs the total time taken
  * - Reports average time per object
- *
+ * <p>
  * Useful for performance profiling and optimization testing.
  */
 @Slf4j
 public class ExampleScript extends Script {
 
+    @Inject
+    Rs2TileItemCache rs2TileItemCache;
+    @Inject
+    Rs2TileObjectCache rs2TileObjectCache;
+    @Inject
+    Rs2PlayerCache rs2PlayerCache;
+    @Inject
+    Rs2NpcCache rs2NpcCache;
     /**
      * Main entry point for the performance test script.
      */
@@ -33,46 +42,28 @@ public class ExampleScript extends Script {
             try {
                 if (!Microbot.isLoggedIn()) return;
 
-                // Performance test: Loop over game objects and get compositions
                 long startTime = System.currentTimeMillis();
-                AtomicLong endTime = new AtomicLong();
+                var groundItems = rs2TileItemCache.query().toList();
+                var objects = rs2TileObjectCache.query().toList();
+                var rs2Players = rs2PlayerCache.query().toList();
+                var rs2Npcs = rs2NpcCache.query().toList();
 
-                var tileObjects = Microbot.getClientThread().invoke(() -> {
-                  //  List<Rs2TileObjectModel> _tileObjects = Rs2TileObjectApi.getObjectsStream().filter(x -> x.getName() != null && !x.getName().isEmpty() && x.getName() != "null").collect(Collectors.toList());
-                    Rs2TileObjectModel test = Rs2TileObjectApi.getNearest(tile -> tile.getName() != null && tile.getName().toLowerCase().contains("tree"));
-                    endTime.set(System.currentTimeMillis());
-                    System.out.println("Retrieved " + test.getName() + " game objects in " + (endTime.get() - startTime) + " ms");
+                //groundItems.get(0).click("Take");
+                long endTime = System.currentTimeMillis();
+                long totalTime = endTime - startTime;
+                System.out.println("fetched " + rs2Players.size() + " players and " + rs2Npcs.size() + " npcs.");
+                System.out.println("fetched " + objects.size() + " objects.");
+                System.out.println("fetched " + groundItems.size() + " ground items.");
+                System.out.println("Player location: " + Rs2Player.getWorldLocation());
+                System.out.println("fetched " + groundItems.size() + " ground items.");
+                System.out.println("all in time: " + totalTime + " ms");
+                /*var tree = rs2TileObjectCache.query().within(Rs2Player.getWorldLocation(), 20).withName("Tree");
 
-                    /*for (Rs2TileObjectModel rs2TileObjectModel: _tileObjects) {
-                        var name = rs2TileObjectModel.getName(); // Access name to simulate some processing
-                        System.out.println("Object Name: " + name);
-                    }
-*/
-                    return Rs2TileObjectApi.getObjectsStream().collect(Collectors.toList());
-                });
+                tree.click();
 
-
-                int compositionCount = 0;
-
-                /*for (Rs2TileObjectModel tileObject : tileObjects) {
-                    var name = tileObject.getName(); // Access name to simulate some processing
-                    if (name != null) {
-                        compositionCount++;
-                        System.out.println("composition " + compositionCount + ": " + name);
-                    }
-                }*/
-
-                endTime.set(System.currentTimeMillis());
-                long durationMs = (endTime.get() - startTime);
-
-/*
-                log.info("Performance Test Results:");
-                log.info("  Total GameObjects: {}", tileObjects.size());
-                log.info("  Compositions retrieved: {}", compositionCount);
-                log.info("  Time taken: {} ms", durationMs);
-                log.info("  Average time per object: {} μs",
-                        tileObjects.size() > 0 ? (endTime.get() - startTime) / 1000 / tileObjects.size() : 0);
-*/
+                System.out.println(tree.getId());
+                System.out.println(tree.getName());
+                */
 
             } catch (Exception ex) {
                 log.error("Error in performance test loop", ex);

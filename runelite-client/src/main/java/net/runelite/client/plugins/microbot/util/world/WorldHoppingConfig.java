@@ -1,12 +1,7 @@
 package net.runelite.client.plugins.microbot.util.world;
 
-import java.util.Map;
-
 import lombok.Builder;
 import lombok.Getter;
-import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.shop.ShopItemRequirement;
-import net.runelite.client.plugins.microbot.util.shop.models.Rs2ShopItem;
 
 /**
  * Configuration for world hopping behavior in shop operations.
@@ -77,37 +72,6 @@ public class WorldHoppingConfig {
     }
     
 
-
-    public static int estimateWorldHopsNeeded(Map<Rs2ShopItem, ShopItemRequirement> shopItemRequirements) {
-        try {
-            int maxWorldHopsNeeded = 0;
-            
-            for (ShopItemRequirement itemReq : shopItemRequirements.values()) {
-                if (itemReq.isCompleted()) {
-                    continue; // Skip completed items
-                }
-                
-                if (itemReq.getShopItem().getBaseStock() <= 0) {
-                    return -1; // Cannot estimate for items with no base stock
-                }
-                
-                int remainingToBuy = itemReq.getRemainingAmount();
-                int availablePerWorld = Math.max(itemReq.getShopItem().getBaseStock() - itemReq.getMinimumStockForBuying(), 0);
-                
-                if (availablePerWorld <= 0) {
-                    return -1; // Insufficient stock per world for this item
-                }
-                
-                int worldHopsForThisItem = (int) Math.ceil((double) remainingToBuy /(availablePerWorld));
-                maxWorldHopsNeeded = Math.max(maxWorldHopsNeeded, worldHopsForThisItem);
-            }
-            
-            return maxWorldHopsNeeded;
-        } catch (Exception e) {
-            Microbot.logStackTrace("ShopRequirement.estimateWorldHopsNeeded", e);
-            return -1;
-        }
-    }
     /**
      * Creates default configuration for shop operations
      */
