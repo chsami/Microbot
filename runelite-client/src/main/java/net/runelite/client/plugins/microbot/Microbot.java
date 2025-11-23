@@ -32,13 +32,9 @@ import net.runelite.client.input.MouseManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginInstantiationException;
 import net.runelite.client.plugins.PluginManager;
-import net.runelite.client.plugins.loottracker.LootTrackerItem;
-import net.runelite.client.plugins.loottracker.LootTrackerPlugin;
 import net.runelite.client.plugins.loottracker.LootTrackerRecord;
 import net.runelite.client.plugins.microbot.configs.SpecialAttackConfigs;
 import net.runelite.client.plugins.microbot.pouch.PouchScript;
-import net.runelite.client.plugins.microbot.util.cache.Rs2VarPlayerCache;
-import net.runelite.client.plugins.microbot.util.cache.Rs2VarbitCache;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.item.Rs2ItemManager;
 import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
@@ -46,7 +42,7 @@ import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
 import net.runelite.client.plugins.microbot.util.mouse.Mouse;
 import net.runelite.client.plugins.microbot.util.mouse.VirtualMouse;
 import net.runelite.client.plugins.microbot.util.mouse.naturalmouse.NaturalMouse;
-import net.runelite.client.plugins.microbot.util.player.Rs2PlayerCache;
+import net.runelite.client.plugins.microbot.api.playerstate.Rs2PlayerStateCache;
 import net.runelite.client.plugins.microbot.util.security.LoginManager;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import net.runelite.client.ui.overlay.infobox.InfoBoxManager;
@@ -192,13 +188,9 @@ public class Microbot {
     @Getter
     private static Rs2ItemManager rs2ItemManager = new Rs2ItemManager();
 
-    @Setter
-    @Getter
-    public static boolean isRs2CacheEnabled = false;
-
     @Inject
     @Getter
-    private static Rs2PlayerCache rs2PlayerCache;
+    private static Rs2PlayerStateCache rs2PlayerStateCache;
 
     /**
      * Get the total runtime of the script
@@ -223,17 +215,11 @@ public class Microbot {
     }
 
     public static int getVarbitValue(@Varbit int varbit) {
-        if (isRs2CacheEnabled()) {
-            return Rs2VarbitCache.getVarbitValue(varbit);
-        }
-        return rs2PlayerCache.getVarbitValue(varbit);
+        return rs2PlayerStateCache.getVarbitValue(varbit);
     }
 
     public static int getVarbitPlayerValue(@Varp int varpId) {
-        if (isRs2CacheEnabled()) {
-            return Rs2VarPlayerCache.getVarPlayerValue(varpId);
-        }
-        return rs2PlayerCache.getVarpValue(varpId);
+        return rs2PlayerStateCache.getVarpValue(varpId);
     }
 
     public static EnumComposition getEnum(int id) {

@@ -3,7 +3,6 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
-import net.runelite.client.plugins.microbot.pluginscheduler.util.SchedulerPluginUtil;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.discord.Rs2Discord;
 import net.runelite.client.plugins.microbot.util.events.PluginPauseEvent;
@@ -900,7 +899,7 @@ public class BreakHandlerScript extends Script {
      * This includes both the manual lock state and any locked conditions from schedulable plugins.
      */
     public static boolean isLockState() {
-        return lockState.get() || SchedulerPluginUtil.hasLockedSchedulablePlugins();
+        return lockState.get();
     }
     
     /**

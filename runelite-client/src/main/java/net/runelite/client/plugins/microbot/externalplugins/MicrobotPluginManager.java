@@ -24,6 +24,7 @@
  */
 package net.runelite.client.plugins.microbot.externalplugins;
 
+import com.fasterxml.jackson.databind.annotation.NoClass;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.graph.Graph;
 import com.google.common.graph.GraphBuilder;
@@ -348,7 +349,11 @@ public class MicrobotPluginManager {
             if (loadedInternalNames.contains(internalName)) {
                 continue;
             }
-            loadSideLoadPlugin(internalName);
+            try {
+                loadSideLoadPlugin(internalName);
+            } catch (Exception exception) {
+                System.out.println("Error loading side-loaded plugin: " + internalName);
+            }
         }
         eventBus.post(new ExternalPluginsChanged());
     }
@@ -514,9 +519,23 @@ public class MicrobotPluginManager {
                 binder.install(plugin);
             };
             Injector pluginInjector = parent.createChildInjector(pluginModule);
+            System.out.println(pluginInjector.getClass().getSimpleName());
             plugin.setInjector(pluginInjector);
-        } catch (CreationException ex) {
-            log.error(ex.getMessage());
+        } catch (com.google.common.util.concurrent.ExecutionError e) {
+            // Guice/Guava wraps NoClassDefFoundError here
+            Throwable cause = e.getCause();
+            if (cause instanceof NoClassDefFoundError) {
+                log.error("Missing class while loading plugin {}: {}", clazz.getSimpleName(), cause.toString());
+            } else {
+                log.error("Error while loading plugin {}: {}", clazz.getSimpleName(), e.toString(), e);
+            }
+
+            File jar = getPluginJarFile(plugin.getClass().getSimpleName());
+            if (jar != null) {
+                jar.delete();
+            }
+        } catch (Exception ex) {
+            log.error("Incompatible plugin found: " + clazz.getSimpleName());
             File jar = getPluginJarFile(plugin.getClass().getSimpleName());
             jar.delete();
         }
@@ -553,9 +572,7 @@ public class MicrobotPluginManager {
                     || pkg.contains(".ui")
                     || pkg.contains(".util")
                     || pkg.contains(".shortestpath")
-                    || pkg.contains(".rs2cachedebugger")
                     || pkg.contains(".questhelper")
-                    || pkg.contains("pluginscheduler")
                     || pkg.contains("inventorysetups")
                     || pkg.contains("breakhandler");
         }

@@ -14,7 +14,6 @@ import net.runelite.api.widgets.Widget;
 import net.runelite.api.widgets.WidgetInfo;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
-import net.runelite.client.plugins.microbot.util.cache.Rs2QuestCache;
 import net.runelite.client.plugins.microbot.util.coords.Rs2WorldPoint;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
@@ -50,6 +49,7 @@ import java.util.stream.Stream;
 import static net.runelite.api.MenuAction.CC_OP;
 import static net.runelite.client.plugins.microbot.util.Global.*;
 
+@Deprecated(since = "2.1.0 - Use Rs2PlayerCache/Rs2PlayerQueryable", forRemoval = true)
 public class Rs2Player {
     static int VENOM_VALUE_CUTOFF = -38;
     private static int antiFireTime = -1;
@@ -1423,11 +1423,7 @@ public class Rs2Player {
      * @return The {@link QuestState} representing the player's progress in the quest.
      */
     public static QuestState getQuestState(Quest quest) {
-        if (Microbot.isRs2CacheEnabled) {
-            return Rs2QuestCache.getQuestState(quest);
-        } else {
-            return Microbot.getRs2PlayerCache().getQuestState(quest);
-        }
+        return Microbot.getRs2PlayerStateCache().getQuestState(quest);
     }
 
     /**

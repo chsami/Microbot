@@ -13,7 +13,6 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
 import net.runelite.client.plugins.microbot.shortestpath.*;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
-import net.runelite.client.plugins.microbot.util.cache.Rs2SpiritTreeCache;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
@@ -23,7 +22,6 @@ import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.poh.PohTeleports;
 import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
-import net.runelite.client.plugins.microbot.util.cache.Rs2SkillCache;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -260,9 +258,6 @@ public class PathfinderConfig {
         usableTeleports.clear();
 
         // Check spirit tree farming states for farmable spirit trees
-        Rs2SpiritTreeCache.getInstance().update();
-        //Rs2SpiritTreeCache.logAllTreeStates();
-
         for (Map.Entry<WorldPoint, Set<Transport>> entry : createMergedList().entrySet()) {
             WorldPoint point = entry.getKey();
             Set<Transport> usableTransports = new HashSet<>(entry.getValue().size());
@@ -477,8 +472,6 @@ public class PathfinderConfig {
             log.debug("Transport ( O: {} D: {} ) requires quests {}", transport.getOrigin(), transport.getDestination(), transport.getQuests());
             return false;
         }
-        // Check Spirit Tree specific requirements (farming state for farmable trees)
-        if (transport.getType() == TransportType.SPIRIT_TREE) return isSpiritTreeUsable(transport);
 
         // If the transport has varbit requirements & the varbits do not match
         if (!varbitChecks(transport)) {
@@ -543,13 +536,7 @@ public class PathfinderConfig {
         Skill[] skills = Skill.values();
         return IntStream.range(0, requiredLevels.length)
             .filter(i -> requiredLevels[i] > 0)
-            .allMatch(i -> {
-                if (Microbot.isRs2CacheEnabled()) {
-                    return Rs2SkillCache.getBoostedSkillLevel(skills[i]) >= requiredLevels[i];
-                } else {
-                    return Microbot.getClient().getBoostedSkillLevel(skills[i]) >= requiredLevels[i];
-                }
-            });
+            .allMatch(i -> Microbot.getClient().getBoostedSkillLevel(skills[i]) >= requiredLevels[i]);
     }
 
     /**
@@ -560,13 +547,7 @@ public class PathfinderConfig {
         Skill[] skills = Skill.values();
         return IntStream.range(0, requiredLevels.length)
             .filter(i -> requiredLevels[i] > 0)
-            .allMatch(i -> {
-                if (Microbot.isRs2CacheEnabled()) {
-                    return Rs2SkillCache.getBoostedSkillLevel(skills[i]) >= requiredLevels[i];
-                } else {
-                    return Microbot.getClient().getBoostedSkillLevel(skills[i]) >= requiredLevels[i];
-                }
-            });
+            .allMatch(i -> Microbot.getClient().getBoostedSkillLevel(skills[i]) >= requiredLevels[i]);
     }
 
     private void updateActionBasedOnQuestState(Transport transport) {
@@ -730,19 +711,6 @@ public class PathfinderConfig {
 
         // Validate charges
         return charges != null && Integer.parseInt(charges) > 0;
-    }
-
-    /**
-     * Check if a spirit tree transport is usable
-     * This method integrates with the farming system to determine if farmable spirit trees
-     * are planted and healthy enough for transportation
-     *
-     * @param transport The spirit tree transport to check
-     * @return true if the spirit tree is available for travel
-     */
-    private boolean isSpiritTreeUsable(Transport transport) {
-        // Use the Rs2SpiritTreeCache directly for better performance and consistency
-        return Rs2SpiritTreeCache.isSpiritTreeTransportAvailable(transport);
     }
 
     @Deprecated(since = "1.6.2 - Add Restrictions to restrictions.tsv", forRemoval = true)
