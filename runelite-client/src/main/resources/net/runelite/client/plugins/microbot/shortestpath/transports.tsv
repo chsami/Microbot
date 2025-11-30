@@ -600,9 +600,7 @@
 2650 3282 0	2650 3282 1	Climb-up;Ladder;16683								2	
 2650 3282 1	2650 3282 0	Climb-down;Ladder;16679								2	
 2649 3282 1	2649 3282 2	Climb-up;Ladder;17026								2	
-2649 3282 2	2649 3282 1	Climb-down;Ladder;16685								2	
-2683 3271 0	2683 3268 1	Cross;Gangplank;2085								3	
-2683 3268 1	2683 3271 0	Cross;Gangplank;2086								3	
+2649 3282 2	2649 3282 1	Climb-down;Ladder;16685								2
 2622 3291 0	2622 3291 1	Climb-up;Ladder;17026								2	
 2622 3291 1	2622 3291 0	Climb-down;Ladder;16685								2	
 2592 3339 0	2592 3338 0	Open;Door;2054								1	
@@ -653,7 +651,9 @@
 2674 3305 0	2674 3306 0	Pick-lock;Door;11719								2	
 2674 3303 0	2674 3304 0	Open;Door;11720								1	
 2674 3306 0	2674 3305 0	Open;Door;11719								1	
-											
+2683 3263 1	2683 3266 0	Cross;Gangplank;2086								1
+2683 3266 0	2683 3263 1	Cross;Gangplank;2085								1
+
 # Witchaven Dungeon											
 2697 3283 0	2696 9683 0	Climb-down;Old ruin entrance;18270
 2696 9683 0	2697 3283 0	Climb-up;Exit;18354
