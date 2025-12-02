@@ -5191,3 +5191,6 @@
 2167 9308 0	2310 2919 0	Exit;Opening;40737
 2763 2951 0	2763 2951 1	Climb-up;Ladder;16683
 2763 2952 1	2763 2951 0	Climb-down;Ladder;16679
+# woodcutting guild
+1574 3483 1	1575 3483 0	Climb-down;Rope ladder;28858
+1575 3483 0	1574 3483 1	Climb-up;Rope ladder;28857

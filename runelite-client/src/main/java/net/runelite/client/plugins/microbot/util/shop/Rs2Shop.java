@@ -415,7 +415,15 @@ public class Rs2Shop {
 
         }
 
-        Microbot.doInvoke(new NewMenuEntry(param0, param1, menuAction.getId(), identifier, rs2Item.getId(), rs2Item.getName()), (itemBounds(rs2Item) == null) ? new Rectangle(1, 1) : itemBounds(rs2Item));
+        Microbot.doInvoke(new NewMenuEntry()
+                .param0(param0)
+                .param1(param1)
+                .opcode(menuAction.getId())
+                .identifier(identifier)
+                .itemId(rs2Item.getId())
+                .target(rs2Item.getName())
+                ,
+                (itemBounds(rs2Item) == null) ? new Rectangle(1, 1) : itemBounds(rs2Item));
         //Rs2Reflection.invokeMenu(param0, param1, menuAction.getId(), identifier, rs2Item.id, action, target, -1, -1);
     }
 

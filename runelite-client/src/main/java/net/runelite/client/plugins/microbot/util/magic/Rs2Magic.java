@@ -170,7 +170,16 @@ public class Rs2Magic {
         if (magicSpell.getWidgetId() == -1)
             throw new NotImplementedException("This spell has not been configured yet in the MagicAction.java class");
 
-        Microbot.doInvoke(new NewMenuEntry(option, -1, magicSpell.getWidgetId(), menuAction.getId(), identifier, -1, magicSpell.getName()), new Rectangle(Rs2Widget.getWidget(magicSpell.getWidgetId()).getBounds()));
+        Microbot.doInvoke(new NewMenuEntry()
+                .option(option)
+                .param0(-1)
+                .param1(magicSpell.getWidgetId())
+                .opcode(menuAction.getId())
+                .identifier(identifier)
+                .itemId(-1)
+                .target(magicSpell.getName())
+                ,
+                new Rectangle(Rs2Widget.getWidget(magicSpell.getWidgetId()).getBounds()));
         //Rs2Reflection.invokeMenu(-1, magicSpell.getWidgetId(), menuAction.getId(), 1, -1, "Cast", "<col=00ff00>" + magicSpell.getName() + "</col>", -1, -1);
         return true;
     }

@@ -360,7 +360,15 @@ public class Rs2DepositBox {
         
         Rectangle itemBoundingBox = itemBounds(item);
         
-        Microbot.doInvoke(new NewMenuEntry(item.getSlot(), DEPOSITBOX_INVENTORY_ITEM_CONTAINER_COMPONENT_ID, action.getId(), identifier, item.getId(), option),  (itemBoundingBox == null) ? new Rectangle(1, 1) : itemBoundingBox);
+        Microbot.doInvoke(new NewMenuEntry()
+                .param0(item.getSlot())
+                .param1(DEPOSITBOX_INVENTORY_ITEM_CONTAINER_COMPONENT_ID)
+                .opcode(action.getId())
+                .identifier(identifier)
+                .itemId(item.getId())
+                .option(option)
+                ,
+                (itemBoundingBox == null) ? new Rectangle(1, 1) : itemBoundingBox);
     }
 
     /**

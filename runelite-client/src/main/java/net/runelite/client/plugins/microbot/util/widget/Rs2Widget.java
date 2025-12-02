@@ -359,7 +359,15 @@ public class Rs2Widget {
         int param1 = widget.getId();
         String target = "";
         MenuAction menuAction = MenuAction.CC_OP;
-        Microbot.doInvoke(new NewMenuEntry(param0 != -1 ? param0 : widget.getType(), param1, menuAction.getId(), identifier, widget.getItemId(), target), widget.getBounds());
+        Microbot.doInvoke(new NewMenuEntry()
+                .param0(param0 != -1 ? param0 : widget.getType())
+                .param1(param1)
+                .opcode(menuAction.getId())
+                .identifier(identifier)
+                .itemId(widget.getItemId())
+                .target(target)
+                ,
+                widget.getBounds());
     }
 
     public static void clickWidgetFast(Widget widget, int param0) {

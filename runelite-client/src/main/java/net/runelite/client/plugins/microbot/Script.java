@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.shortestpath.ShortestPathPlugin;
 import net.runelite.client.plugins.microbot.util.Global;
-import net.runelite.client.plugins.microbot.util.cache.Rs2CacheManager;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
@@ -69,11 +68,6 @@ public abstract class Script extends Global implements IScript {
             return false;
         if (Thread.currentThread().isInterrupted())
             return false;
-        //when we log in, we must wait for the cache to be loaded before doing anything
-        if (Microbot.isLoggedIn() && Microbot.isRs2CacheEnabled() && !Rs2CacheManager.isCacheDataValid()) {
-            log.debug("Cache data is not valid, waiting...");
-            return false;
-        }
 
         if (Microbot.isLoggedIn()) {
             boolean hasRunEnergy = Microbot.getClient().getEnergy() > Microbot.runEnergyThreshold;

@@ -311,7 +311,15 @@ public class QuestScript extends Script {
                     if (emoteWidget.getSpriteId() == emoteStep.getEmote().getSpriteId()) {
                         var id = emoteWidget.getOriginalX() / 42 + ((emoteWidget.getOriginalY() - 6) / 49) * 4;
 
-                        Microbot.doInvoke(new NewMenuEntry("Perform", emoteWidget.getText(), 1, MenuAction.CC_OP, id, ComponentID.EMOTES_EMOTE_CONTAINER, false), new Rectangle(0, 0, 1, 1));
+                        Microbot.doInvoke(new NewMenuEntry()
+                                        .option("Perform")
+                                        .target(emoteWidget.getText())
+                                        .identifier(1)
+                                        .type(MenuAction.CC_OP)
+                                        .param0(id)
+                                        .param1(ComponentID.EMOTES_EMOTE_CONTAINER)
+                                , new Rectangle(0, 0, 1, 1));
+
                         Rs2Player.waitForAnimation();
 
                         if (Rs2Dialogue.isInDialogue())

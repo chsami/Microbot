@@ -55,6 +55,9 @@ public class ConfigProfile
     public boolean isMember;
 	@Getter
 	@Setter
+	private Integer selectedWorld; // null = not set, -1 = Random Members, -2 = Random F2P, positive = specific world ID
+	@Getter
+	@Setter
 	private String discordWebhookUrl;
 	@Getter
 	@Setter

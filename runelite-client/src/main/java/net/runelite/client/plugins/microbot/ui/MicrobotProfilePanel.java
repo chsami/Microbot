@@ -616,7 +616,7 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
             gbc.gridy = 2;
             detailsPanel.add(createLabeledField("Webhook:", discordWebhookUrl), gbc);
 
-            // Member checkbox
+            // Member checkbox (kept for backward compatibility)
             member = new JCheckBox("Is Member");
             member.setSelected(profile.isMember());
             member.setOpaque(false);
@@ -626,6 +626,22 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
             });
             gbc.gridy = 3;
             detailsPanel.add(member, gbc);
+
+            // World selector button
+            JPanel worldPanel = new JPanel(new BorderLayout(4, 0));
+            worldPanel.setOpaque(false);
+
+            JLabel worldLabel = new JLabel("World:");
+            worldLabel.setForeground(new Color(180, 180, 180));
+            worldLabel.setFont(new Font("Roboto", Font.PLAIN, 11));
+            worldLabel.setPreferredSize(new Dimension(80, 20));
+
+            JButton worldSelector = createWorldSelectorButton(profile);
+            worldPanel.add(worldLabel, BorderLayout.WEST);
+            worldPanel.add(worldSelector, BorderLayout.CENTER);
+
+            gbc.gridy = 4;
+            detailsPanel.add(worldPanel, gbc);
 
             add(detailsPanel, BorderLayout.CENTER);
 
@@ -834,6 +850,65 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
             ));
             field.setFont(new Font("Monospaced", Font.PLAIN, 11));
             return field;
+        }
+
+        private JButton createWorldSelectorButton(net.runelite.client.config.ConfigProfile profile) {
+            JButton button = new JButton(getWorldDisplayText(profile.getSelectedWorld()));
+            button.setBackground(new Color(60, 60, 60));
+            button.setForeground(TEXT_COLOR);
+            button.setFocusPainted(false);
+            button.setBorder(new CompoundBorder(
+                    new LineBorder(new Color(60, 60, 60), 1),
+                    new EmptyBorder(4, 8, 4, 8)
+            ));
+            button.setFont(new Font("Roboto", Font.PLAIN, 11));
+            button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+            button.setHorizontalAlignment(SwingConstants.LEFT);
+
+            button.addActionListener(e -> {
+                WorldSelectorDialog dialog = new WorldSelectorDialog((JFrame) SwingUtilities.getWindowAncestor(this));
+                dialog.setVisible(true);
+
+                Integer selectedWorld = dialog.getSelectedWorld();
+                if (selectedWorld != null) {
+                    configManager.setSelectedWorld(profile, selectedWorld);
+                    button.setText(getWorldDisplayText(selectedWorld));
+                    // Update member status based on world selection if needed
+                    if (selectedWorld == -1) {
+                        configManager.setMember(profile, true);
+                        member.setSelected(true);
+                    } else if (selectedWorld == -2) {
+                        configManager.setMember(profile, false);
+                        member.setSelected(false);
+                    }
+                }
+            });
+
+            button.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseEntered(MouseEvent e) {
+                    button.setBackground(new Color(80, 80, 80));
+                }
+
+                @Override
+                public void mouseExited(MouseEvent e) {
+                    button.setBackground(new Color(60, 60, 60));
+                }
+            });
+
+            return button;
+        }
+
+        private String getWorldDisplayText(Integer worldId) {
+            if (worldId == null) {
+                return "Click to select world...";
+            } else if (worldId == -1) {
+                return "[Random] Members World";
+            } else if (worldId == -2) {
+                return "[Random] F2P World";
+            } else {
+                return "World " + worldId;
+            }
         }
 
         void setActive(boolean active) {

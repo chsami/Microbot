@@ -360,6 +360,25 @@ public class ConfigManager
 		}
 	}
 
+	public void setSelectedWorld(ConfigProfile profile, Integer selectedWorld) {
+		// Flush pending config changes first in case the profile being
+		// synced is the active profile.
+		sendConfig();
+
+		try (ProfileManager.Lock lock = profileManager.lock()) {
+			profile = lock.findProfile(profile.getId());
+			if (profile == null) {
+				return;
+			}
+
+			// Update the selectedWorld only if it's changed
+			if (!Objects.equals(profile.getSelectedWorld(), selectedWorld)) {
+				profile.setSelectedWorld(selectedWorld);
+				lock.dirty();
+			}
+		}
+	}
+
 
 	public void setMemberExpireDays(ConfigProfile profile, long memberExpireDays) {
 

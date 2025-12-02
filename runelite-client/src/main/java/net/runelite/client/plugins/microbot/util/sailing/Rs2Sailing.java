@@ -432,7 +432,14 @@ public class Rs2Sailing {
             return;
         }
         currentHeading = heading;
-        var menuEntry = new NewMenuEntry("Set-Heading", "", heading.getValue(), MenuAction.SET_HEADING, 0, 0, false);
+        var menuEntry = new NewMenuEntry()
+                .option("Set-Heading")
+                .target("")
+                .identifier(heading.getValue())
+                .type(MenuAction.SET_HEADING)
+                .param0(0)
+                .param1(0)
+                .forceLeftClick(false);
         var worldview = Microbot.getClientThread().invoke(() -> Microbot.getClient().getLocalPlayer().getWorldView());
 
         if (worldview == null)  {

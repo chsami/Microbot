@@ -124,18 +124,6 @@ public interface MicrobotConfig extends Config
 		return false;
 	}
 
-	String keyEnableCache = "enableRs2Cache";
-	@ConfigItem(
-			keyName = keyEnableCache,
-			name = "Enable Microbot Cache",
-			description = "This will cache ingame entities (npcs, objects,...) to improve performance",
-			position = 0,
-			section = cacheSection
-	)
-	default boolean isRs2CacheEnabled() {
-		return false;
-	}
-
 	@AllArgsConstructor
 	enum GameChatLogLevel {
 		ERROR("Error", Level.ERROR),

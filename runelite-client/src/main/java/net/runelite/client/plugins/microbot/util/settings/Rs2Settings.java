@@ -82,7 +82,15 @@ public class Rs2Settings
 		}
 
 		// MenuEntryImpl(getOption=Toggle, getTarget=, getIdentifier=1, getType=CC_OP, getParam0=8, getParam1=8781844, getItemId=-1, isForceLeftClick=false, getWorldViewId=-1, isDeprioritized=false)
-		NewMenuEntry menuEntry = new NewMenuEntry("Toggle", "", 1, MenuAction.CC_OP, 8, widget.getId(), false);
+		NewMenuEntry menuEntry = new NewMenuEntry()
+				.option("Toggle")
+				.target("")
+				.identifier(1)
+				.type(MenuAction.CC_OP)
+				.param0(8)
+				.param1(widget.getId())
+				.forceLeftClick(false)
+				;
 		Microbot.doInvoke(menuEntry, Rs2UiHelper.getDefaultRectangle());
 		boolean success = sleepUntil(Rs2Settings::isDropShiftSettingEnabled);
 
@@ -127,7 +135,15 @@ public class Rs2Settings
 		}
 
 		// MenuEntryImpl(getOption=Toggle, getTarget=, getIdentifier=1, getType=CC_OP, getParam0=4, getParam1=8781843, getItemId=-1, isForceLeftClick=false, getWorldViewId=-1, isDeprioritized=false)
-		NewMenuEntry menuEntry = new NewMenuEntry("Toggle", "", 1, MenuAction.CC_OP, 4, widget.getId(), false);
+		NewMenuEntry menuEntry = new NewMenuEntry()
+				.option("Toggle")
+				.target("")
+				.identifier(1)
+				.type(MenuAction.CC_OP)
+				.param0(4)
+				.param1(widget.getId())
+				.forceLeftClick(false)
+				;
 		Microbot.doInvoke(menuEntry, Rs2UiHelper.getDefaultRectangle());
 		boolean success = sleepUntil(Rs2Settings::isHideRoofsEnabled);
 
@@ -171,7 +187,15 @@ public class Rs2Settings
 		}
 
 		// MenuEntryImpl(getOption=Toggle, getTarget=, getIdentifier=1, getType=CC_OP, getParam0=14, getParam1=8781843, getItemId=-1, isForceLeftClick=false, getWorldViewId=-1, isDeprioritized=false)
-		NewMenuEntry menuEntry = new NewMenuEntry("Toggle", "", 1, MenuAction.CC_OP, 14, widget.getId(), false);
+		NewMenuEntry menuEntry = new NewMenuEntry()
+				.option("Toggle")
+				.target("")
+				.identifier(1)
+				.type(MenuAction.CC_OP)
+				.param0(14)
+				.param1(widget.getId())
+				.forceLeftClick(false)
+				;
 		Microbot.doInvoke(menuEntry, Rs2UiHelper.getDefaultRectangle());
 		boolean success = sleepUntil(() -> !isLevelUpNotificationsEnabled());
 
@@ -245,7 +269,15 @@ public class Rs2Settings
 		if (widget == null) return false;
 
 		// MenuEntryImpl(getOption=Toggle, getTarget=, getIdentifier=1, getType=CC_OP, getParam0=35, getParam1=8781844, getItemId=-1, isForceLeftClick=false, getWorldViewId=-1, isDeprioritized=false)
-		NewMenuEntry menuEntry = new NewMenuEntry("Toggle", "", 1, MenuAction.CC_OP, 35, widget.getId(), false);
+		NewMenuEntry menuEntry = new NewMenuEntry()
+				.option("Toggle")
+				.target("")
+				.identifier(1)
+				.type(MenuAction.CC_OP)
+				.param0(35)
+				.param1(widget.getId())
+				.forceLeftClick(false)
+				;
 		Microbot.doInvoke(menuEntry, Rs2UiHelper.getDefaultRectangle());
 		boolean success = sleepUntil(() -> !isWorldSwitcherConfirmationEnabled());
 
@@ -301,7 +333,15 @@ public class Rs2Settings
 		}
 
 		Rectangle spellbookBounds = spellbookInterfaceWidget.getBounds();
-		NewMenuEntry spellFilterEntry = new NewMenuEntry("Enable spell filtering", "", 2, MenuAction.CC_OP, -1, spellbookInterfaceWidget.getId(), false);
+		NewMenuEntry spellFilterEntry = new NewMenuEntry()
+				.option("Enable spell filtering")
+				.target("")
+				.identifier(2)
+				.type(MenuAction.CC_OP)
+				.param0(-1)
+				.param1(spellbookInterfaceWidget.getId())
+				.forceLeftClick(false)
+				;
 		Microbot.doInvoke(spellFilterEntry, spellbookBounds != null && Rs2UiHelper.isRectangleWithinCanvas(spellbookBounds) ? spellbookBounds : Rs2UiHelper.getDefaultRectangle());
 		sleepUntil(Rs2Settings::isSpellFilteringEnabled, 2000);
 	}
@@ -345,7 +385,15 @@ public class Rs2Settings
 			return false;
 		}
 
-		NewMenuEntry menuEntry = new NewMenuEntry("Select <col=ff981f> " + tabName, "", 1, MenuAction.CC_OP, index, widget.getId(), false);
+		NewMenuEntry menuEntry = new NewMenuEntry()
+				.option("Select <col=ff981f> " + tabName)
+				.target("")
+				.identifier(1)
+				.type(MenuAction.CC_OP)
+				.param0(index)
+				.param1(widget.getId())
+				.forceLeftClick(false)
+				;
 
 		Microbot.doInvoke(menuEntry, Rs2UiHelper.getDefaultRectangle());
 		return true;

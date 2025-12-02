@@ -20,8 +20,6 @@ import net.runelite.client.plugins.microbot.pouch.PouchOverlay;
 import net.runelite.client.plugins.microbot.ui.MicrobotPluginConfigurationDescriptor;
 import net.runelite.client.plugins.microbot.ui.MicrobotPluginListPanel;
 import net.runelite.client.plugins.microbot.ui.MicrobotTopLevelConfigPanel;
-import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
-import net.runelite.client.plugins.microbot.util.cache.*;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Gembag;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
@@ -50,11 +48,8 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.*;
 import java.util.List;
-import java.util.Objects;
 
 @PluginDescriptor(
 	name = PluginDescriptor.Default + "Microbot",
@@ -148,8 +143,6 @@ public class MicrobotPlugin extends Plugin
 			microbotConfig.onlyMicrobotLogging()
 		);
 
-		Microbot.setRs2CacheEnabled(microbotConfig.isRs2CacheEnabled());
-
 		Microbot.pauseAllScripts.set(false);
 
 		MicrobotPluginListPanel pluginListPanel = pluginListPanelProvider.get();
@@ -177,17 +170,11 @@ public class MicrobotPlugin extends Plugin
 
 		Microbot.getPouchScript().startUp();
 
-		// Initialize the cache system
-		if (microbotConfig.isRs2CacheEnabled()) {
-			initializeCacheSystem();
-		}
-
 		if (overlayManager != null)
 		{
 			overlayManager.add(microbotOverlay);
 			overlayManager.add(gembagOverlay);
 			overlayManager.add(pouchOverlay);
-			microbotOverlay.cacheButton.hookMouseListener();
 		}
 	}
 
@@ -196,13 +183,9 @@ public class MicrobotPlugin extends Plugin
 		overlayManager.remove(microbotOverlay);
 		overlayManager.remove(gembagOverlay);
 		overlayManager.remove(pouchOverlay);
-		microbotOverlay.cacheButton.unhookMouseListener();
 		clientToolbar.removeNavigation(navButton);
 		if (gameChatAppender.isStarted()) gameChatAppender.stop();
 		microbotVersionChecker.shutdown();
-		
-		// Shutdown the cache system
-		shutdownCacheSystem();
 	}
 
 
@@ -222,12 +205,6 @@ public class MicrobotPlugin extends Plugin
 		)
 		{
 			log.info("\nReceived RuneScape profile change event from '{}' to '{}'", oldProfile, newProfile);
-			if (microbotConfig.isRs2CacheEnabled()) {
-				// Use async profile change to avoid blocking client thread
-				Rs2CacheManager.handleProfileChange(newProfile, oldProfile);
-				log.info("Initiated async profile change from '{}' to '{}'", oldProfile, newProfile);
-			}
-			return;
 		}
 		
 	}
@@ -236,11 +213,7 @@ public class MicrobotPlugin extends Plugin
 	public void onItemContainerChanged(ItemContainerChanged event)
 	{
 		Microbot.getPouchScript().onItemContainerChanged(event);
-		if (event.getContainerId() == InventoryID.BANK)
-		{
-			Rs2Bank.updateLocalBank(event);
-		}
-		else if (event.getContainerId() == InventoryID.INV)
+        if (event.getContainerId() == InventoryID.INV)
 		{
 			Rs2Inventory.storeInventoryItemsInMemory(event);
 		}
@@ -308,9 +281,6 @@ public class MicrobotPlugin extends Plugin
 				if (!wasLoggedIn) {
 					LoginManager.markLoggedIn();
 					Rs2RunePouch.fullUpdate();
-					if (microbotConfig.isRs2CacheEnabled()) {
-						Rs2CacheManager.registerEventHandlers();
-					}
 				}
 				if (currentRegions != null) {
 					Microbot.setLastKnownRegions(currentRegions.clone());
@@ -320,15 +290,69 @@ public class MicrobotPlugin extends Plugin
 	   }
 	   if (gameStateChanged.getGameState() == GameState.HOPPING || gameStateChanged.getGameState() == GameState.LOGIN_SCREEN || gameStateChanged.getGameState() == GameState.CONNECTION_LOST)
 	   {
-		   // Clear all cache states when logging out through Rs2CacheManager		   		   
-		   //Rs2CacheManager.emptyCacheState(); // should not be nessary here, handled in ClientShutdown event, 
+		   // Clear all cache states when logging out through Rs2CacheManager
+		   //Rs2CacheManager.emptyCacheState(); // should not be nessary here, handled in ClientShutdown event,
 		   // and we also handle correct cache loading in onRuneScapeProfileChanged event
 		   LoginManager.markLoggedOut();
-		   if (microbotConfig.isRs2CacheEnabled()) {
-			   Rs2CacheManager.unregisterEventHandlers();
-		   }
 		   Microbot.setLastKnownRegions(null);
+
+		   // Auto-fill credentials from active profile on login screen
+		   if (gameStateChanged.getGameState() == GameState.LOGIN_SCREEN)
+		   {
+			   prefillCredentialsFromActiveProfile();
+		   }
 	   }
+	}
+
+	/**
+	 * Pre-fills username and password from the active profile when reaching the login screen.
+	 * This automatically populates the login fields, saving the user from manually entering credentials.
+	 */
+	private void prefillCredentialsFromActiveProfile()
+	{
+		try
+		{
+			final Client client = Microbot.getClient();
+			if (client == null)
+			{
+				return;
+			}
+
+			net.runelite.client.config.ConfigProfile activeProfile = LoginManager.getActiveProfile();
+			if (activeProfile == null)
+			{
+				log.debug("No active profile available for credential auto-fill");
+				return;
+			}
+
+			// Set username
+			String username = activeProfile.getName();
+			if (username != null && !username.isBlank())
+			{
+				client.setUsername(username);
+				log.debug("Auto-filled username from active profile: {}", username);
+			}
+
+			// Set password (decrypt first)
+			String encryptedPassword = activeProfile.getPassword();
+			if (encryptedPassword != null && !encryptedPassword.isBlank())
+			{
+				try
+				{
+					String decryptedPassword = net.runelite.client.plugins.microbot.util.security.Encryption.decrypt(encryptedPassword);
+					client.setPassword(decryptedPassword);
+					log.debug("Auto-filled password from active profile");
+				}
+				catch (Exception e)
+				{
+					log.warn("Unable to decrypt stored password for auto-fill", e);
+				}
+			}
+		}
+		catch (Exception e)
+		{
+			log.error("Error during credential auto-fill", e);
+		}
 	}
 
 	@Subscribe
@@ -438,10 +462,6 @@ public class MicrobotPlugin extends Plugin
 						gameChatAppender.stop();
 					}
 					break;
-				case MicrobotConfig.keyEnableCache:
-					// Handle dynamic cache system initialization/shutdown
-					handleCacheConfigChange(ev.getNewValue());
-					break;
 				default:
 					break;
 			}
@@ -540,115 +560,9 @@ public class MicrobotPlugin extends Plugin
 	@Subscribe(priority = 100)
 	private void onClientShutdown(ClientShutdown e)
 	{
-		// Save all caches through Rs2CacheManager using async operations
-		if (microbotConfig.isRs2CacheEnabled()) {
-			try {
-				// Use async save but wait for completion during shutdown
-				Rs2CacheManager.savePersistentCachesAsync().get(30, java.util.concurrent.TimeUnit.SECONDS);
-				log.info("Successfully saved all caches asynchronously during shutdown");
-			} catch (Exception ex) {
-				log.error("Failed to save caches during shutdown: {}", ex.getMessage(), ex);
-				// Fallback to synchronous save if async fails
-				Rs2CacheManager.savePersistentCaches();
-			}
-			Rs2CacheManager.getInstance().close();
-		}
+
 	}
-	
-	/**
-	 * Initializes the cache system and registers all caches with the EventBus.
-	 * Cache loading from configuration will happen later during game events when the RS profile is available.
-	 */
-	private void initializeCacheSystem() {
-		try {
-			// Check if already initialized
-			if (Rs2CacheManager.isEventHandlersRegistered()) {
-				log.debug("Cache system already initialized, skipping");
-				return;
-			}
-			
-			// Get the cache manager instance
-			Rs2CacheManager cacheManager = Rs2CacheManager.getInstance();
-			
-			// Set the EventBus for cache event handling (without loading caches yet)
-			Rs2CacheManager.setEventBus(eventBus);
-			
-			// Register event handlers
-			Rs2CacheManager.registerEventHandlers();
-		
-			// Keep deprecated EntityCache for backward compatibility (for now)
-			//Rs2EntityCache.getInstance();
-			
-			log.info("Cache system initialized successfully with specialized caches");
-			log.info("Cache persistence will be loaded when RS profile becomes available");
-			log.debug("Cache statistics: {}", cacheManager.getCacheStatistics());
-			
-		} catch (Exception e) {
-			log.error("Failed to initialize cache system: {}", e.getMessage(), e);
-		}
-	}
-	
-	/**
-	 * Shuts down the cache system and cleans up resources.
-	 */
-	private void shutdownCacheSystem() {
-		try {
-			// Check if already shutdown
-			if (!Rs2CacheManager.isEventHandlersRegistered()) {
-				log.debug("Cache system already shutdown, skipping");
-				return;
-			}
-			
-			Rs2CacheManager cacheManager = Rs2CacheManager.getInstance();
-			
-			log.debug("Final cache statistics before shutdown: {}", cacheManager.getCacheStatistics());
-			
-			// Unregister event handlers first
-			Rs2CacheManager.unregisterEventHandlers();
-			
-			// Close the cache manager and all caches
-			cacheManager.close();
-			
-			// Reset singleton instances for clean shutdown
-			Rs2CacheManager.resetInstance();
-			Rs2VarbitCache.resetInstance();
-			Rs2SkillCache.resetInstance();
-			Rs2QuestCache.resetInstance();
-			
-			// Reset specialized entity cache instances
-			Rs2NpcCache.resetInstance();
-			Rs2GroundItemCache.resetInstance();
-			Rs2ObjectCache.resetInstance();
-			
-			// Reset deprecated EntityCache
-			//Rs2EntityCache.resetInstance();
-			
-			log.info("Cache system shutdown completed");
-			
-		} catch (Exception e) {
-			log.error("Error during cache system shutdown: {}", e.getMessage(), e);
-		}
-	}
-	
-	/**
-	 * Handles cache configuration changes dynamically without requiring client restart.
-	 * This method is called when the user changes the "Enable Microbot Cache" config option.
-	 * 
-	 * @param newValue The new value of the cache enable config ("true" or "false")
-	 */
-	private void handleCacheConfigChange(String newValue) {
-		boolean enableCache = Objects.equals(newValue, "true");
-		
-		if (enableCache) {
-			log.info("Cache system enabled via config change - initializing...");
-			initializeCacheSystem();
-			Microbot.showMessage("Cache system enabled successfully");
-		} else {
-			log.info("Cache system disabled via config change - shutting down...");
-			shutdownCacheSystem();
-			Microbot.showMessage("Cache system disabled successfully");
-		}
-	}
+
 	/**
 	 * Dynamically checks if any visible widget overlaps with the specified bounds
 	 * @param overlayBoundsCanvas The bounds to check for widget overlap
@@ -683,4 +597,16 @@ public class MicrobotPlugin extends Plugin
 
 		return result;
 	}
+
+    @Subscribe
+    public void onWorldViewLoaded(WorldViewLoaded event)
+    {
+        Microbot.getWorldViewIds().add(event.getWorldView().getId());
+    }
+
+    @Subscribe
+    public void onWorldViewUnloaded(WorldViewUnloaded event)
+    {
+        Microbot.getWorldViewIds().remove(event.getWorldView().getId());
+    }
 }

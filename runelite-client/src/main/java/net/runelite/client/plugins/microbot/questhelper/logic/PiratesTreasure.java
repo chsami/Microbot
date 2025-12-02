@@ -201,16 +201,15 @@ public class PiratesTreasure extends BaseQuest {
 
             Microbot.log("Clicking search icon at " + clickPoint.getX() + ", " + clickPoint.getY());
 
-            // Create a direct menu entry for clicking the search
-            NewMenuEntry entry = new NewMenuEntry(
-                    "Open",
-                    "Search",
-                    2,
-                    MenuAction.CC_OP,
-                    0,
-                    26148864,
-                    false
-            );
+            // Create a direct menu entry for clicking the search using the builder-style API
+            NewMenuEntry entry = new NewMenuEntry()
+                    .option("Open")
+                    .target("Search")
+                    .identifier(2)
+                    .type(MenuAction.CC_OP)
+                    .param0(0)
+                    .param1(26148864)
+                    .forceLeftClick(false);
 
             // Use mouse to click at the exact point
             Microbot.getMouse().click(clickPoint, entry);

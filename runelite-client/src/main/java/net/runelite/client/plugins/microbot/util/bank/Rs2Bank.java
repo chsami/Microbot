@@ -1,12 +1,10 @@
 package net.runelite.client.plugins.microbot.util.bank;
 
 import com.google.gson.Gson;
-import com.google.gson.JsonSyntaxException;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.coords.WorldArea;
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.api.gameval.VarbitID;
@@ -21,7 +19,6 @@ import net.runelite.client.plugins.microbot.shortestpath.ShortestPathPlugin;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.Pathfinder;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
-import net.runelite.client.plugins.microbot.util.cache.serialization.CacheSerializationManager;
 import net.runelite.client.plugins.microbot.util.coords.Rs2WorldPoint;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
@@ -58,7 +55,6 @@ import java.util.stream.Stream;
 
 import static net.runelite.api.widgets.ComponentID.BANK_INVENTORY_ITEM_CONTAINER;
 import static net.runelite.api.widgets.ComponentID.BANK_ITEM_CONTAINER;
-import static net.runelite.client.plugins.microbot.Microbot.updateItemContainer;
 import static net.runelite.client.plugins.microbot.util.Global.*;
 import static net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject.hoverOverObject;
 import static net.runelite.client.plugins.microbot.util.npc.Rs2Npc.hoverOverActor;
@@ -131,7 +127,13 @@ public class Rs2Bank {
             itemBoundingBox = itemBounds(rs2Item);
         }
 
-        Microbot.doInvoke(new NewMenuEntry(rs2Item.getSlot(), container, MenuAction.CC_OP.getId(), identifier, rs2Item.getId(), rs2Item.getName()), (itemBoundingBox == null) ? new Rectangle(1, 1) : itemBoundingBox);
+        Microbot.doInvoke(new NewMenuEntry()
+                .param0(rs2Item.getSlot())
+                .param1(container)
+                .opcode(MenuAction.CC_OP.getId())
+                .identifier(identifier)
+                .itemId(rs2Item.getId())
+                .target(rs2Item.getName()), (itemBoundingBox == null) ? new Rectangle(1, 1) : itemBoundingBox);
         // MenuEntryImpl(getOption=Wear, getTarget=<col=ff9040>Amulet of glory(4)</col>, getIdentifier=9, getType=CC_OP_LOW_PRIORITY, getParam0=1, getParam1=983043, getItemId=1712, isForceLeftClick=false, isDeprioritized=false)
         // Rs2Reflection.invokeMenu(rs2Item.slot, container, MenuAction.CC_OP.getId(), identifier, rs2Item.id, "Withdraw-1", rs2Item.name, -1, -1);
     }
@@ -2141,358 +2143,6 @@ public class Rs2Bank {
             Rs2Walker.walkTo(bankLocation.getWorldPoint());
         }
         return Rs2Bank.openBank();
-    }
-
-    /**
-     * Updates the bank items in memory based on the provided event.
-     * Thread-safe method called from the client thread via event handler.
-     *
-     * @param e The event containing the latest bank items.
-     */
-    public static void updateLocalBank(ItemContainerChanged e) {
-        synchronized (lock) {
-            List<Rs2ItemModel> list = updateItemContainer(InventoryID.BANK.getId(), e);
-            if (list != null) {
-                // Update the centralized bank data (Rs2BankData.set() is already synchronized)                
-                updateCache(list);
-            } else {
-                log.debug("Bank data update skipped - no items received");
-            }
-        }
-    }
-
-
-    /**
-     * Updates the cached bank data with the latest bank items and saves to config.
-     *
-     * @param items The current bank items
-     */
-    private static void updateCache(List<Rs2ItemModel> items) {
-        if (items != null) {
-            // save the current bank items before updating
-            if ( !rsProfileKey.get().isEmpty() && !rsProfileKey.get().equals(Microbot.getConfigManager().getRSProfileKey())){
-                saveCacheToConfig(rsProfileKey.get());
-            }
-            rs2BankData.set(items);            
-            if (rsProfileKey.get().isEmpty() || !rsProfileKey.get().equals(Microbot.getConfigManager().getRSProfileKey())) {
-                rsProfileKey.set(Microbot.getConfigManager().getRSProfileKey());
-            }
-            saveCacheToConfig(rsProfileKey.get());
-            validLoadedCache.set(true);
-        }
-    }
-    public static void loadInitialCacheFromCurrentConfig() {
-        rsProfileKey.set(Microbot.getConfigManager().getRSProfileKey());
-        loadCacheFromConfig(rsProfileKey.get());
-    }
-    /**
-     * Loads the initial bank state from config. Should be called when a player logs in.
-     * Thread-safe method that synchronizes config loading.
-     */
-    public static void loadCacheFromConfig(String newRsProfileKey) {
-        synchronized (lock) {
-            if (!validLoadedCache.get()) {
-                Player localPlayer = Microbot.getClient().getLocalPlayer();
-                if (localPlayer != null && localPlayer.getName() != null) {
-                    loadCache(newRsProfileKey);
-                    log.debug("-load bank cache, bank items size: {}", rs2BankData.size());
-                    validLoadedCache.set(LoginManager.isLoggedIn());
-                }
-            }
-        }
-    }
-
-    /**
-     * Sets the initial state as unknown. Called when logging out or changing profiles.
-     * Thread-safe method that synchronizes state clearing.
-     */
-    public static void setUnknownInitialCacheState() {
-        synchronized (lock) {
-            if (validLoadedCache.get() && !rsProfileKey.get().isEmpty() && Microbot.getConfigManager() != null && rsProfileKey.get().equals(Microbot.getConfigManager().getRSProfileKey())) {
-                saveCacheToConfig(rsProfileKey.get());
-            }
-            markCacheStale();
-            rsProfileKey.set("");
-        }
-    }
-
-    /**
-     * Handles profile changes by saving current cache and invalidating for the new profile.
-     * This ensures cache state is properly maintained across profile switches.
-     * 
-     * @param newProfileKey the new profile key
-     * @param oldProfileKey the previous profile key (can be null)
-     */
-    public static void handleProfileChange(String newProfileKey, String oldProfileKey) {
-        synchronized (lock) {
-            log.debug("Handling bank cache profile change from '{}' to '{}'", oldProfileKey, newProfileKey);
-            
-            // Save current cache state if valid
-            if (oldProfileKey != null && !oldProfileKey.isEmpty() && isCacheDataValid()) {
-                log.debug("Saving bank cache for previous profile: {}", oldProfileKey);
-                saveCacheToConfig(oldProfileKey);
-            }
-            
-            // Mark cache as stale for profile change
-            markCacheStale();
-            
-            // Update profile key
-            rsProfileKey.set(newProfileKey != null ? newProfileKey : "");
-            
-            // Load cache for new profile if available
-            if (newProfileKey != null && !newProfileKey.isEmpty()) {
-                loadCacheFromConfig(newProfileKey);
-            }
-        }
-    }
-
-    /**
-     * Loads bank state from config, handling profile changes.
-     * Similar to QuestBank.loadState().
-     */
-    private static void loadCache(String newRsProfileKey ) {
-        // Only re-load from config if loading from a new profile
-        if (newRsProfileKey != null && !newRsProfileKey.equals(rsProfileKey.get())) {
-            // If we've hopped between profiles, save current state first
-            if (!rsProfileKey.get().isEmpty() && validLoadedCache.get()) {
-                saveCacheToConfig(rsProfileKey.get());
-            }
-
-            loadCacheFromConfigInternal(newRsProfileKey);
-        }
-    }
-
-    /**
-     * Loads bank data from RuneLite config system.
-     * Updated to use character-specific caching.
-     */
-    private static void loadCacheFromConfigInternal(String rsProfileKey) {
-        if (rsProfileKey == null || Microbot.getConfigManager() == null) {
-            log.warn("Cannot load bank data, rsProfileKey or config manager is null");
-            return;
-        }
-
-        // get current player name for character-specific loading
-        String playerName = getCurrentPlayerName();
-        if (playerName == null) {
-            log.warn("Cannot load bank data - no player name available");
-            return;
-        }
-
-        Rs2Bank.rsProfileKey.set(rsProfileKey);
-        worldType = RuneScapeProfileType.getCurrent(Microbot.getClient());
-        log.debug("Loading bank data for profile: {}, player: {}, world type: {}", rsProfileKey, playerName, worldType);
-
-        // use character-specific key
-        String characterSpecificKey = CacheSerializationManager.createCharacterSpecificKey(BANK_KEY, playerName);
-        String json = Microbot.getConfigManager().getConfiguration(CONFIG_GROUP, rsProfileKey, characterSpecificKey);
-
-        try {
-            if (json != null && !json.isEmpty()) {
-                int[] data = gson.fromJson(json, int[].class);
-                log.debug("Loaded {} bank items from config for player {}", data.length, playerName);
-                rs2BankData.setIdQuantityAndSlot(data);
-                log.debug("finished loading bank data for player {}, size: {}", playerName, rs2BankData.size());
-
-                // Load cached items if no live bank data
-                if (rs2BankData.getBankItems().isEmpty()) {
-                    // Cache is already loaded via setIdQuantityAndSlot
-                    log.debug("Loaded {} cached bank items from config for player {}", rs2BankData.size(), playerName);
-                }
-                log.debug("build data should now be valid for player {}, size: {}", playerName, rs2BankData.size());
-            } else {
-                rs2BankData.setEmpty();
-                log.debug("No cached bank data found in config for player {}", playerName);
-            }
-        } catch (JsonSyntaxException err) {
-            log.warn("Failed to parse cached bank data from config for player {}, resetting cache", playerName, err);
-            rs2BankData.setEmpty();
-            saveCacheToConfig(Rs2Bank.rsProfileKey.get());
-        }
-    }
-
-    /**
-     * Saves the current bank state to RuneLite config system.
-     * Updated to use character-specific caching.
-     */
-    public static void saveCacheToConfig(String newRsProfileKey) {
-        if (newRsProfileKey == null || Microbot.getConfigManager() == null) {
-            return;
-        }
-
-        // get current player name for character-specific saving
-        String playerName = getCurrentPlayerName();
-        if (playerName == null) {
-            log.warn("Cannot save bank data - no player name available");
-            return;
-        }
-
-        try {
-            // use character-specific key
-            String characterSpecificKey = CacheSerializationManager.createCharacterSpecificKey(BANK_KEY, playerName);
-            String json = gson.toJson(rs2BankData.getIdQuantityAndSlot());
-            Microbot.getConfigManager().setConfiguration(CONFIG_GROUP, newRsProfileKey, characterSpecificKey, json);
-            log.debug("Saved {} bank items to config cache for player {}", rs2BankData.size(), playerName);
-        } catch (Exception e) {
-            log.error("Failed to save bank data to config for player {}", playerName, e);
-        }
-    }
-
-    /**
-     * Clears the bank cache state. Called when logging out.
-     * Thread-safe method that synchronizes cache clearing.
-     */
-    public static void emptyCacheState() {
-        synchronized (lock) {
-            rsProfileKey.set("");
-            worldType = null;
-            rs2BankData.setEmpty();
-            validLoadedCache.set(false);
-            // Rs2BankData handles its own cache states when emptied
-            log.debug("Emptied bank state and cache");
-        }
-    }
-
-
-    /**
-     * Checks if we have cached bank data available.
-     *
-     * @return true if cached bank data is available, false otherwise
-     */
-    public static boolean hasCachedBankData() {
-        return !rs2BankData.isEmpty();
-    }
-
-    /**
-     * Checks if the bank cache data is VALID (Profile-level validation).
-     * 
-     * VALID = Rs2Bank profile state is consistent and trustworthy
-     * - validLoadedCache flag is true (Rs2Bank has processed cache data)
-     * - rsProfileKey matches current RuneLite profile (no profile switches)
-     * - ConfigManager is available for reading/writing cache
-     * - No stale cache from previous sessions or different characters
-     * - This is Rs2Bank's validation layer ON TOP OF Rs2BankData states
-     * 
-     * NOTE: This does NOT check if cache is loaded or built - only profile consistency
-     * Use isCacheLoaded() to check complete cache readiness
-     * 
-     * @return true if cache data is valid and current, false if stale or needs rebuild
-     */
-    public static boolean isCacheDataValid() {
-        return validLoadedCache.get() 
-                && !rsProfileKey.get().isEmpty() 
-                && Microbot.getConfigManager() != null 
-                && rsProfileKey.get().equals(Microbot.getConfigManager().getRSProfileKey());
-    }
-
-    /**
-     * Checks if the bank cache is COMPLETE AND READY for script usage.
-     * 
-     * This is the MASTER CHECK that combines all validation layers:
-     * 
-     * 1. VALID (Profile-level): Rs2Bank profile state is consistent
-     *    - No profile switches, config manager available, flags consistent
-     * 
-     * 2. LOADED (Data-level): Raw cache data exists from config
-     *    - idQuantityAndSlot array populated with [id, quantity, slot] triplets
-     * 
-     * 3. BUILT (Object-level): Rs2ItemModel objects are ready for use
-     *    - rebuildBankItemsList() executed successfully on client thread
-     *    - Items have proper names, properties, and are script-accessible
-     * 
-     * Scripts should ONLY use bank data when this returns true.
-     * This prevents NPE, stale data, and incomplete cache issues.
-     * 
-     * @return true if ALL cache layers are ready (valid + loaded + built), false otherwise
-     */
-    public static boolean isCacheLoaded() {
-        return isCacheDataValid() && rs2BankData.isCacheReady();
-    }
-
-    /**
-     * Marks the cache as "stale" requiring rebuild on invalid cache data.
-     * This is called when cache data becomes inconsistent or profile changes.
-     */
-    public static void markCacheStale() {
-        synchronized (lock) {
-            log.debug("Marking bank cache as stale - needs rebuild");
-            rs2BankData.markForRebuild();
-            validLoadedCache.set(false);
-        }
-    }
-
-    /**
-     * Invalidates the bank cache, optionally saving current state first.
-     * Similar to Rs2CacheManager invalidation pattern.
-     * 
-     * @param saveBeforeInvalidating if true, saves current cache state before invalidating
-     */
-    public static void invalidateCache(boolean saveBeforeInvalidating) {
-        synchronized (lock) {
-            if (saveBeforeInvalidating && isCacheDataValid()) {
-                log.debug("Saving bank cache before invalidation");
-                saveCacheToConfig(rsProfileKey.get());
-            }
-            log.debug("Invalidating bank cache");
-            rs2BankData.setEmpty();
-            markCacheStale();
-        }
-    }
-
-    /**
-     * Forces a cache rebuild by marking it as stale and clearing data.
-     * This should be called when profile switches or data becomes inconsistent.
-     */
-    public static void forceCacheRebuild() {
-        synchronized (lock) {
-            log.debug("Forcing bank cache rebuild due to inconsistent state");
-            invalidateCache(true);
-        }
-    }
-
-    /**
-     * Gets comprehensive cache state information for debugging.
-     * Includes both Rs2Bank and Rs2BankData states.
-     * 
-     * @return formatted string with complete cache state details
-     */
-    public static String getDetailedCacheState() {
-        return String.format("Rs2Bank[profileValid=%s, profileKey='%s'] + %s", 
-                           isCacheDataValid(), 
-                           rsProfileKey.get(), 
-                           rs2BankData.getCacheStateInfo());
-    }
-
-    /**
-     * Checks if the bank cache data is LOADED (Stage 1: Raw data from config).
-     * 
-     * STAGE 1 LOADED = Raw integers available but NOT usable yet
-     * - idQuantityAndSlot array contains [id, quantity, slot] triplets
-     * - Data restored from RuneLite config on login/profile switch
-     * - Items are still just numbers - NO Rs2ItemModel objects yet
-     * - Client thread processing NOT required for this stage
-     * - Does NOT mean scripts can use the data yet
-     * 
-     * @return true if raw cache data is loaded from config, false otherwise
-     */
-    public static boolean isCacheDataLoaded() {
-        return rs2BankData.isCacheLoaded();
-    }
-
-    /**
-     * Checks if the bank cache is BUILT (Stage 2: Usable objects ready).
-     * 
-     * STAGE 2 BUILT = Rs2ItemModel objects ready for script usage
-     * - rebuildBankItemsList() has completed successfully
-     * - Raw data converted to full Rs2ItemModel objects with names/properties
-     * - ItemManager validation completed on client thread
-     * - Scripts can immediately use hasItem(), count(), findBankItem(), etc.
-     * - No rebuild delays or client thread waiting required
-     * 
-     * @return true if bankItems list is fully built and ready, false otherwise
-     */
-    public static boolean isCacheDataBuilt() {
-        return rs2BankData.isCacheBuilt();
     }
 
     /**

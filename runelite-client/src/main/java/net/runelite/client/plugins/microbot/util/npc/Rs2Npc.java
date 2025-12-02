@@ -28,6 +28,7 @@ import java.util.stream.Stream;
 import static net.runelite.api.Perspective.LOCAL_TILE_SIZE;
 
 @Slf4j
+@Deprecated(since = "2.1.0 - Use Rs2NpcCache/Rs2NpcQuery instead", forRemoval = true)
 public class Rs2Npc {
     /**
      * Retrieves an NPC by its index, returning an {@link Rs2NpcModel}.
@@ -713,8 +714,17 @@ public class Rs2Npc {
                 Rs2Camera.turnTo(npc);
             }
 
-            Microbot.doInvoke(new NewMenuEntry(0, 0, menuAction.getId(), npc.getIndex(), -1, npc.getName(), npc, action),
-                    Rs2UiHelper.getActorClickbox(npc));
+            Microbot.doInvoke(new NewMenuEntry()
+                    .param0(0)
+                    .param1(0)
+                    .opcode(menuAction.getId())
+                    .identifier(npc.getIndex())
+                    .itemId(-1)
+                    .target(npc.getName())
+                    .actor(npc)
+                    .option(action)
+                    ,
+                Rs2UiHelper.getActorClickbox(npc));
             return true;
 
         } catch (Exception ex) {

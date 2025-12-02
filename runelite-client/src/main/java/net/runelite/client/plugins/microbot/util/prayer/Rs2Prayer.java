@@ -82,14 +82,13 @@ public class Rs2Prayer {
 	 * @param withMouse true to use mouse clicks with prayer bounds
 	 */
 	private static void invokePrayer(Rs2PrayerEnum prayer, boolean withMouse) {
-		NewMenuEntry menuEntry = new NewMenuEntry(
-			-1,
-			prayer.getIndex(),
-			MenuAction.CC_OP.getId(),
-			1,
-			-1,
-			"Activate"
-		);
+		NewMenuEntry menuEntry = new NewMenuEntry()
+				.param0(-1)
+				.param1(prayer.getIndex())
+				.opcode(MenuAction.CC_OP.getId())
+				.identifier(1)
+				.itemId(-1)
+				.option("Activate");
 
 		Rectangle prayerBounds = withMouse ? getPrayerBounds(prayer) : Rs2UiHelper.getDefaultRectangle();
 
@@ -165,16 +164,37 @@ public class Rs2Prayer {
         if (Rs2Widget.isHidden(QUICK_PRAYER_ORB_COMPONENT_ID)) return false;
 
         // Open the menu
-        Microbot.doInvoke(new NewMenuEntry("Setup",-1, QUICK_PRAYER_ORB_COMPONENT_ID, MenuAction.CC_OP.getId(), 2, -1, "Quick-prayers"), new Rectangle(1, 1, Microbot.getClient().getCanvasWidth(), Microbot.getClient().getCanvasHeight()));
+        Microbot.doInvoke(new NewMenuEntry()
+                .option("Setup")
+                .param0(-1)
+                .param1(QUICK_PRAYER_ORB_COMPONENT_ID)
+                .opcode(MenuAction.CC_OP.getId())
+                .identifier(2)
+                .itemId(-1)
+                .target("Quick-prayers"), new Rectangle(1, 1, Microbot.getClient().getCanvasWidth(), Microbot.getClient().getCanvasHeight()));
 
         sleepUntil(() -> !Rs2Widget.isHidden(QUICK_PRAYER_SELECT_COMPONENT_ID));
 
         for (Rs2PrayerEnum prayer : prayers) {
             if(isQuickPrayerSet(prayer)) continue;
-            Microbot.doInvoke(new NewMenuEntry(prayer.getName(),prayer.getQuickPrayerIndex(), QUICK_PRAYER_SELECT_COMPONENT_ID, MenuAction.CC_OP.getId(), 1, -1, "Toggle"), new Rectangle(1, 1, Microbot.getClient().getCanvasWidth(), Microbot.getClient().getCanvasHeight()));
+            Microbot.doInvoke(new NewMenuEntry()
+                    .option(prayer.getName())
+                    .param0(prayer.getQuickPrayerIndex())
+                    .param1(QUICK_PRAYER_SELECT_COMPONENT_ID)
+                    .opcode(MenuAction.CC_OP.getId())
+                    .identifier(1)
+                    .itemId(-1)
+                    .target("Toggle"), new Rectangle(1, 1, Microbot.getClient().getCanvasWidth(), Microbot.getClient().getCanvasHeight()));
         }
 
-        Microbot.doInvoke(new NewMenuEntry("Done",-1, QUICK_PRAYER_DONE_BUTTON_COMPONENT_ID, MenuAction.CC_OP.getId(), 1, -1, ""), new Rectangle(1, 1, Microbot.getClient().getCanvasWidth(), Microbot.getClient().getCanvasHeight()));
+        Microbot.doInvoke(new NewMenuEntry()
+                .option("Done")
+                .param0(-1)
+                .param1(QUICK_PRAYER_DONE_BUTTON_COMPONENT_ID)
+                .opcode(MenuAction.CC_OP.getId())
+                .identifier(1)
+                .itemId(-1)
+                .target(""), new Rectangle(1, 1, Microbot.getClient().getCanvasWidth(), Microbot.getClient().getCanvasHeight()));
         return true;
     }
 
@@ -224,14 +244,13 @@ public class Rs2Prayer {
 	 * @param withMouse true to use mouse with orb bounds
 	 */
 	private static void invokeQuickPrayer(boolean withMouse) {
-		NewMenuEntry entry = new NewMenuEntry(
-			-1,
-			QUICK_PRAYER_ORB_COMPONENT_ID,
-			MenuAction.CC_OP.getId(),
-			1,
-			-1,
-			"Quick-prayers"
-		);
+		NewMenuEntry entry = new NewMenuEntry()
+				.param0(-1)
+				.param1(QUICK_PRAYER_ORB_COMPONENT_ID)
+				.opcode(MenuAction.CC_OP.getId())
+				.identifier(1)
+				.itemId(-1)
+				.option("Quick-prayers");
 
 		Microbot.doInvoke(entry, withMouse ? getQuickPrayerOrbBounds() : Rs2UiHelper.getDefaultRectangle());
 	}

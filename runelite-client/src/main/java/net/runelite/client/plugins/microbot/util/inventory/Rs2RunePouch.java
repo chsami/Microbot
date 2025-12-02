@@ -457,7 +457,14 @@ public class Rs2RunePouch
 					break;
 				}
 				Rectangle loadBounds = loadWidget.getBounds();
-				NewMenuEntry menuEntry = new NewMenuEntry("Load", "", 1, MenuAction.CC_OP, -1, loadWidget.getId(), false);
+				NewMenuEntry menuEntry = new NewMenuEntry()
+						.option("Load")
+						.target("")
+						.identifier(1)
+						.type(MenuAction.CC_OP)
+						.itemId(-1)
+						.param1(loadWidget.getId())
+						.forceLeftClick(false);
 				Microbot.doInvoke(menuEntry, loadBounds != null && Rs2UiHelper.isRectangleWithinCanvas(loadBounds) ? loadBounds : Rs2UiHelper.getDefaultRectangle());
 				Global.sleepUntil(() -> getRunes().entrySet().stream().allMatch(e -> requiredRunes.getOrDefault(e.getKey(), 0) <= e.getValue()));
 				return closeRunePouch();

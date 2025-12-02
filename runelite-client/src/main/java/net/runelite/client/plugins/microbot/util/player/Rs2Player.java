@@ -14,7 +14,6 @@ import net.runelite.api.widgets.Widget;
 import net.runelite.api.widgets.WidgetInfo;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
-import net.runelite.client.plugins.microbot.util.cache.Rs2QuestCache;
 import net.runelite.client.plugins.microbot.util.coords.Rs2WorldPoint;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
@@ -451,10 +450,22 @@ public class Rs2Player {
         Widget currentWorldWidget = Rs2Widget.getWidget(69, 3);
         if (currentWorldWidget != null) {
             // From World Switcher
-            Microbot.doInvoke(new NewMenuEntry(-1, 4522009, CC_OP.getId(), 1, -1, "Logout"), new Rectangle(1, 1, Microbot.getClient().getCanvasWidth(), Microbot.getClient().getCanvasHeight()));
+            Microbot.doInvoke(new NewMenuEntry()
+                    .param0(-1)
+                    .param1(4522009)
+                    .opcode(CC_OP.getId())
+                    .identifier(1)
+                    .itemId(-1)
+                    .option("Logout"), new Rectangle(1, 1, Microbot.getClient().getCanvasWidth(), Microbot.getClient().getCanvasHeight()));
         } else {
             // From red logout button
-            Microbot.doInvoke(new NewMenuEntry(-1, 11927560, CC_OP.getId(), 1, -1, "Logout"), new Rectangle(1, 1, Microbot.getClient().getCanvasWidth(), Microbot.getClient().getCanvasHeight()));
+            Microbot.doInvoke(new NewMenuEntry()
+                    .param0(-1)
+                    .param1(11927560)
+                    .opcode(CC_OP.getId())
+                    .identifier(1)
+                    .itemId(-1)
+                    .option("Logout"), new Rectangle(1, 1, Microbot.getClient().getCanvasWidth(), Microbot.getClient().getCanvasHeight()));
         }
     }
 
@@ -672,6 +683,7 @@ public class Rs2Player {
      * @param predicate A condition to filter players (optional).
      * @return A stream of Rs2PlayerModel objects representing nearby players.
      */
+    @Deprecated(since = "2.1.0 - Use Rs2PlayerCache/Rs2PlayerQueryable", forRemoval = true)
     public static Stream<Rs2PlayerModel> getPlayers(Predicate<Rs2PlayerModel> predicate) {
         return getPlayers(predicate, false);
     }
@@ -683,6 +695,7 @@ public class Rs2Player {
      * @param includeLocalPlayer a flag on whether to include the local player within the stream
      * @return A stream of Rs2PlayerModel objects representing nearby players.
      */
+    @Deprecated(since = "2.1.0 - Use Rs2PlayerCache/Rs2PlayerQueryable", forRemoval = true)
     public static Stream<Rs2PlayerModel> getPlayers(Predicate<Rs2PlayerModel> predicate, boolean includeLocalPlayer) {
         List<Rs2PlayerModel> players = Optional.of(Microbot.getClient().getTopLevelWorldView().players()
                         .stream()
@@ -704,6 +717,7 @@ public class Rs2Player {
      *                   If {@code false}, checks if the player name contains the given string.
      * @return The first matching {@code Rs2PlayerModel}, or {@code null} if no player is found.
      */
+    @Deprecated(since = "2.1.0 - Use Rs2PlayerCache/Rs2PlayerQueryable", forRemoval = true)
     public static Rs2PlayerModel getPlayer(String playerName, boolean exact) {
         return getPlayers(player -> {
             String name = player.getName();
@@ -719,6 +733,7 @@ public class Rs2Player {
      * @return The first matching {@code Rs2PlayerModel}, or {@code null} if no player is found.
      *         Uses {@code getPlayer(playerName, false)} to perform a case-insensitive partial match.
      */
+    @Deprecated(since = "2.1.0 - Use Rs2PlayerCache/Rs2PlayerQueryable", forRemoval = true)
     public static Rs2PlayerModel getPlayer(String playerName) {
         return getPlayer(playerName, false);
     }
@@ -728,6 +743,7 @@ public class Rs2Player {
      *
      * @return a list of players that are in combat
      */
+    @Deprecated(since = "2.1.0 - Use Rs2PlayerCache/Rs2PlayerQueryable", forRemoval = true)
     public static List<Rs2PlayerModel> getPlayersInCombat() {
         return getPlayers(player -> player.getHealthRatio() != -1).collect(Collectors.toList());
     }
@@ -1421,11 +1437,7 @@ public class Rs2Player {
      * @return The {@link QuestState} representing the player's progress in the quest.
      */
     public static QuestState getQuestState(Quest quest) {
-        if (Microbot.isRs2CacheEnabled) {
-            return Rs2QuestCache.getQuestState(quest);
-        } else {
-            return Microbot.getRs2PlayerCache().getQuestState(quest);
-        }
+        return Microbot.getRs2PlayerStateCache().getQuestState(quest);
     }
 
     /**
@@ -1754,7 +1766,14 @@ public class Rs2Player {
 
         // Invoke the menu entry using the selected action
         Microbot.doInvoke(
-                new NewMenuEntry(0, 0, menuAction.getId(), rs2Player.getId(), -1, rs2Player.getName(), rs2Player),
+                new NewMenuEntry()
+                        .param0(0)
+                        .param1(0)
+                        .opcode(menuAction.getId())
+                        .identifier(rs2Player.getId())
+                        .itemId(-1)
+                        .target(rs2Player.getName())
+                        .actor(rs2Player),
                 Rs2UiHelper.getActorClickbox(rs2Player)
         );
 

@@ -376,7 +376,15 @@ public class Rs2Equipment {
             rectangle = getSafeBounds(InterfaceID.WORNITEMS,24);
         }
 
-        Microbot.doInvoke(new NewMenuEntry(param0, param1, menuAction.getId(), identifier, -1, rs2Item.getName()), rectangle);
+        Microbot.doInvoke(new NewMenuEntry()
+                .param0(param0)
+                .param1(param1)
+                .opcode(menuAction.getId())
+                .identifier(identifier)
+                .itemId(-1)
+                .target(rs2Item.getName())
+                ,
+                rectangle);
         //Rs2Reflection.invokeMenu(param0, param1, menuAction.getId(), identifier, rs2Item.id, action, target, -1, -1);
     }
 
