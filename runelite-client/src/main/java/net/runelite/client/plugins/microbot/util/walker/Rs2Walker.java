@@ -1925,6 +1925,18 @@ public class Rs2Walker {
 
             if (itemAction.equalsIgnoreCase("open") && itemId == ItemID.BOOKOFSCROLLS_CHARGED) {
                 return handleMasterScrollBook(destination);
+            } else if (isDialogueBasedTeleportItem(transport.getDisplayInfo())) {
+                // Multi-destination teleport items: wait for destination selection dialogue
+                Rs2Dialogue.sleepUntilSelectAnOption();
+                Rs2Dialogue.clickOption(destination);
+                log.info("Traveling to {} - ({})", transport.getDisplayInfo(), transport.getDestination());
+                return true;
+            } else if (transport.getDisplayInfo().toLowerCase().contains("burning amulet")) {
+                // Burning amulet in inventory: confirm wilderness teleport
+                Rs2Dialogue.sleepUntilInDialogue();
+                Rs2Dialogue.clickOption("Okay, teleport to level");
+                log.info("Traveling to {} - ({})", transport.getDisplayInfo(), transport.getDestination());
+                return true;
             } else if (wildernessTransport) {
                 Rs2Dialogue.sleepUntilInDialogue();
                 return Rs2Dialogue.clickOption("Yes", "Okay");
@@ -1958,6 +1970,28 @@ public class Rs2Walker {
             return true;
         }
         return false;
+    }
+
+    /**
+     * Checks if the teleport item requires dialogue-based destination selection.
+     * These are items that, when rubbed/activated, show a dialogue menu to choose destination.
+     *
+     * @param displayInfo the displayInfo from the transport
+     * @return true if the item requires dialogue handling
+     */
+    private static boolean isDialogueBasedTeleportItem(String displayInfo) {
+        if (displayInfo == null) return false;
+        String lowerDisplayInfo = displayInfo.toLowerCase();
+        return lowerDisplayInfo.contains("slayer ring")
+                || lowerDisplayInfo.contains("games necklace")
+                || lowerDisplayInfo.contains("skills necklace")
+                || lowerDisplayInfo.contains("ring of dueling")
+                || lowerDisplayInfo.contains("ring of wealth")
+                || lowerDisplayInfo.contains("amulet of glory")
+                || lowerDisplayInfo.contains("combat bracelet")
+                || lowerDisplayInfo.contains("digsite pendant")
+                || lowerDisplayInfo.contains("necklace of passage")
+                || lowerDisplayInfo.contains("giantsoul amulet");
     }
 
     /**
