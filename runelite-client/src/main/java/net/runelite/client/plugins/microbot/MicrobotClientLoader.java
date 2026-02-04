@@ -41,13 +41,12 @@ import okhttp3.OkHttpClient;
 
 import javax.annotation.Nonnull;
 import javax.swing.*;
-import java.applet.Applet;
 import java.io.*;
 import java.util.Map;
 import java.util.function.Supplier;
 
 @Slf4j
-@SuppressWarnings({"deprecation", "removal"})
+@SuppressWarnings({"deprecation"})
 public class MicrobotClientLoader implements Supplier<Client>
 {
 	private static final int NUM_ATTEMPTS = 6;
@@ -195,7 +194,7 @@ public class MicrobotClientLoader implements Supplier<Client>
 				.loadClass(initialClass);
 
 		Client rs = (Client) clientClass.newInstance();
-		((Applet) rs).setStub(new MicrobotRSAppletStub(config, runtimeConfigLoader));
+		rs.setConfiguration(new MicrobotRSAppletStub(config, runtimeConfigLoader));
 
 		log.info("injected-client {}", rs.getBuildID());
 

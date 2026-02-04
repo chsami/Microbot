@@ -35,7 +35,6 @@ import joptsimple.*;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
-import net.runelite.api.Constants;
 import net.runelite.client.account.SessionManager;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.discord.DiscordService;
@@ -71,7 +70,6 @@ import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
 import javax.net.ssl.X509TrustManager;
 import javax.swing.*;
-import java.applet.Applet;
 import java.io.File;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
@@ -331,17 +329,18 @@ public class RuneLiteDebug {
         }
 
         setupSystemProps();
-        
-        // Start the applet
+
+        // Start the client
         copyJagexCache();
-        var applet = (Applet) client;
-        applet.setSize(Constants.GAME_FIXED_SIZE);
 
         System.setProperty("jagex.disableBouncyCastle", "true");
         System.setProperty("jagex.userhome", RUNELITE_DIR.getAbsolutePath());
 
-        applet.init();
-        applet.start();
+        if (isOutdated) {
+            throw new IllegalStateException("Client failed to load");
+        }
+
+        client.initialize();
         
         SplashScreen.stage(.57, null, "Loading configuration");
 
@@ -399,6 +398,8 @@ public class RuneLiteDebug {
         microbotPluginManager.loadCorePlugins(pluginsToDebug);
 
         pluginManager.startPlugins();
+
+        client.unblockStartup();
 
         if (telemetryClient != null) {
             telemetryClient.submitTelemetry();
