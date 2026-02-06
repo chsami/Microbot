@@ -75,6 +75,11 @@ public class Rs2Walker {
     static volatile WorldPoint currentTarget;
     static int nextWalkingDistance = 10;
 
+    // Track the minimum path index we should consider to prevent backtracking
+    static int minPathIndex = 0;
+    // Track the last path we were following to detect path changes
+    static List<WorldPoint> lastPath = null;
+
     static final int OFFSET = 10; // max offset of the exact area we teleport to
 
     // Set this to true, if you want to calculate the path but do not want to walk to it
@@ -350,13 +355,20 @@ public class Rs2Walker {
                     if (Microbot.getClient().getTopLevelWorldView().isInstance()) {
                         if (Rs2Walker.walkMiniMap(currentWorldPoint)) {
                             final WorldPoint b = currentWorldPoint;
+                            final int currentIndex = i;
                             sleepUntil(() -> b.distanceTo2D(Rs2Player.getWorldLocation()) < nextWalkingDistance, 2000);
+                            // Update progress tracking - we've committed to walking to this tile
+                            minPathIndex = Math.max(minPathIndex, currentIndex);
                         }
                     } else {
                         if (currentWorldPoint.distanceTo2D(Rs2Player.getWorldLocation()) > nextWalkingDistance) {
-                            if (Rs2Walker.walkMiniMap(getPointWithWallDistance(currentWorldPoint))) {
+                            // Use path-aware version to avoid clicking off to the side
+                            if (Rs2Walker.walkMiniMap(getPointWithWallDistance(currentWorldPoint, path, i))) {
                                 final WorldPoint b = currentWorldPoint;
+                                final int currentIndex = i;
                                 sleepUntil(() -> b.distanceTo2D(Rs2Player.getWorldLocation()) < nextWalkingDistance, 2000);
+                                // Update progress tracking - we've committed to walking to this tile
+                                minPathIndex = Math.max(minPathIndex, currentIndex);
                             }
                         }
                     }
@@ -439,46 +451,100 @@ public class Rs2Walker {
     }
 
     public static WorldPoint getPointWithWallDistance(WorldPoint target) {
+        return getPointWithWallDistance(target, null, -1);
+    }
+
+    /**
+     * Gets a walkable point near the target, preferring points on the path.
+     * This prevents the walker from clicking off to the side of the intended path.
+     *
+     * @param target The target world point to walk to
+     * @param path The current path being followed (can be null)
+     * @param currentIndex The current index in the path (ignored if path is null)
+     * @return A walkable world point, preferring path tiles over arbitrary adjacent tiles
+     */
+    public static WorldPoint getPointWithWallDistance(WorldPoint target, List<WorldPoint> path, int currentIndex) {
+        var localPoint = LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), target);
+        if (Microbot.getClient().getTopLevelWorldView().getCollisionMaps() == null || localPoint == null) {
+            return target;
+        }
+
+        int[][] flags = Microbot.getClient().getTopLevelWorldView().getCollisionMaps()[Microbot.getClient().getTopLevelWorldView().getPlane()].getFlags();
+
+        // Check if target has problematic movement flags
+        boolean hasProblematicFlags = hasMinimapRelevantMovementFlag(localPoint, flags);
+        if (!hasProblematicFlags) {
+            int data = flags[localPoint.getSceneX()][localPoint.getSceneY()];
+            Set<MovementFlag> movementFlags = MovementFlag.getSetFlags(data);
+            hasProblematicFlags = movementFlags.contains(MovementFlag.BLOCK_MOVEMENT_EAST)
+                    || movementFlags.contains(MovementFlag.BLOCK_MOVEMENT_WEST)
+                    || movementFlags.contains(MovementFlag.BLOCK_MOVEMENT_NORTH)
+                    || movementFlags.contains(MovementFlag.BLOCK_MOVEMENT_SOUTH);
+        }
+
+        // If no problematic flags, return the target directly
+        if (!hasProblematicFlags) {
+            return target;
+        }
+
+        // Get adjacent tiles
         var tiles = Rs2Tile.getReachableTilesFromTile(target, 1);
 
-        var localPoint = LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), target);
-        if (Microbot.getClient().getTopLevelWorldView().getCollisionMaps() != null && localPoint != null) {
-            int[][] flags = Microbot.getClient().getTopLevelWorldView().getCollisionMaps()[Microbot.getClient().getTopLevelWorldView().getPlane()].getFlags();
-
-            if (hasMinimapRelevantMovementFlag(localPoint, flags)) {
-                for (var tile : tiles.keySet()) {
-                    var localTilePoint = LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), tile);
-                    if (localTilePoint == null)
-                        continue;
-
-                    if (!hasMinimapRelevantMovementFlag(localTilePoint, flags))
-                        return tile;
+        // If we have path context, prefer tiles that are on the path
+        if (path != null && currentIndex >= 0 && currentIndex < path.size()) {
+            // First, try to find a tile on the path (prefer tiles ahead of current position)
+            for (int offset = 1; offset <= 3 && currentIndex + offset < path.size(); offset++) {
+                WorldPoint pathTile = path.get(currentIndex + offset);
+                if (tiles.containsKey(pathTile)) {
+                    var localTilePoint = LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), pathTile);
+                    if (localTilePoint != null && !hasMinimapRelevantMovementFlag(localTilePoint, flags)) {
+                        return pathTile;
+                    }
                 }
             }
 
-            int data = flags[localPoint.getSceneX()][localPoint.getSceneY()];
-
-            Set<MovementFlag> movementFlags = MovementFlag.getSetFlags(data);
-
-            if (movementFlags.contains(MovementFlag.BLOCK_MOVEMENT_EAST)
-                    || movementFlags.contains(MovementFlag.BLOCK_MOVEMENT_WEST)
-                    || movementFlags.contains(MovementFlag.BLOCK_MOVEMENT_NORTH)
-                    || movementFlags.contains(MovementFlag.BLOCK_MOVEMENT_SOUTH)) {
-                for (var tile : tiles.keySet()) {
-                    var localTilePoint = LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), tile);
-                    if (localTilePoint == null)
-                        continue;
-
-                    int tileData = flags[localTilePoint.getSceneX()][localTilePoint.getSceneY()];
-                    Set<MovementFlag> tileFlags = MovementFlag.getSetFlags(tileData);
-
-                    if (tileFlags.isEmpty())
-                        return tile;
+            // If no forward path tile works, check adjacent path tiles
+            for (int offset = -1; offset <= 1; offset++) {
+                int checkIndex = currentIndex + offset;
+                if (checkIndex >= 0 && checkIndex < path.size()) {
+                    WorldPoint pathTile = path.get(checkIndex);
+                    if (tiles.containsKey(pathTile) && !pathTile.equals(target)) {
+                        var localTilePoint = LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), pathTile);
+                        if (localTilePoint != null && !hasMinimapRelevantMovementFlag(localTilePoint, flags)) {
+                            return pathTile;
+                        }
+                    }
                 }
             }
         }
 
-        return target;
+        // Fallback: find any adjacent tile without problematic flags
+        // But prefer tiles in the general direction of travel (toward destination)
+        WorldPoint destination = (path != null && !path.isEmpty()) ? path.get(path.size() - 1) : null;
+        WorldPoint bestTile = null;
+        int bestScore = Integer.MAX_VALUE;
+
+        for (var tile : tiles.keySet()) {
+            var localTilePoint = LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), tile);
+            if (localTilePoint == null)
+                continue;
+
+            if (!hasMinimapRelevantMovementFlag(localTilePoint, flags)) {
+                int tileData = flags[localTilePoint.getSceneX()][localTilePoint.getSceneY()];
+                Set<MovementFlag> tileFlags = MovementFlag.getSetFlags(tileData);
+
+                if (tileFlags.isEmpty() || !tileFlags.contains(MovementFlag.BLOCK_MOVEMENT_FULL)) {
+                    // Score based on distance to destination (prefer tiles closer to destination)
+                    int score = (destination != null) ? tile.distanceTo(destination) : 0;
+                    if (score < bestScore) {
+                        bestScore = score;
+                        bestTile = tile;
+                    }
+                }
+            }
+        }
+
+        return bestTile != null ? bestTile : target;
     }
 
     static boolean hasMinimapRelevantMovementFlag(LocalPoint point, int[][] flagMap) {
@@ -1062,6 +1128,19 @@ public class Rs2Walker {
             return false;
         }
 
+        // Check if we're already on the destination side of this path segment
+        // This prevents oscillation through doors we've already passed
+        WorldPoint playerLoc = Rs2Player.getWorldLocation();
+        int distToFrom = playerLoc.distanceTo(fromWp);
+        int distToTo = playerLoc.distanceTo(toWp);
+
+        // If we're already closer to the destination tile (toWp) or at it, skip door handling
+        // The player has already passed through this door segment
+        if (distToTo < distToFrom && distToTo <= 2) {
+            log.debug("Already on destination side of door segment, skipping. distToFrom={}, distToTo={}", distToFrom, distToTo);
+            return false;
+        }
+
         boolean diagonal = Math.abs(fromWp.getX() - toWp.getX()) > 0
                 && Math.abs(fromWp.getY() - toWp.getY()) > 0;
 
@@ -1123,10 +1202,38 @@ public class Rs2Walker {
                 }
 
                 if (found) {
+                    final WorldPoint startPos = fromWp;
+                    final WorldPoint destPos = toWp;
+
                     if (!handleDoorException(object, action)) {
                         Rs2GameObject.interact(object, action);
-                        Rs2Player.waitForWalking();
+
+                        // Wait until player has actually passed through to the destination side
+                        // This handles any door/gate regardless of animation length - no arbitrary timing
+                        boolean passedThrough = sleepUntil(() -> {
+                            WorldPoint currentPos = Rs2Player.getWorldLocation();
+                            int distToDest = currentPos.distanceTo(destPos);
+                            int distToStart = currentPos.distanceTo(startPos);
+
+                            // Success conditions:
+                            // 1. Player is at or adjacent to destination tile
+                            if (distToDest <= 1) return true;
+
+                            // 2. Player is closer to destination than start, and has stopped moving
+                            if (distToDest < distToStart && !Rs2Player.isMoving()) return true;
+
+                            return false;
+                        }, 5000);
+
+                        if (!passedThrough) {
+                            log.warn("Timed out waiting to pass through door/gate from {} to {}", startPos, destPos);
+                        }
                     }
+
+                    // Update minPathIndex to prevent going back through this door/gate
+                    minPathIndex = Math.max(minPathIndex, index + 1);
+                    log.debug("Door/gate handled, updated minPathIndex to {}", minPathIndex);
+
                     return true;
                 }
             }
@@ -1240,6 +1347,11 @@ public class Rs2Walker {
      * @return closest tile index
      */
     public static int getClosestTileIndex(List<WorldPoint> path) {
+        // Check if path has changed - if so, reset progress tracking
+        if (lastPath == null || !pathsMatch(lastPath, path)) {
+            minPathIndex = 0;
+            lastPath = new ArrayList<>(path);
+        }
 
         var tiles = Rs2Tile.getReachableTilesFromTile(Rs2Player.getWorldLocation(), 20);
 
@@ -1253,30 +1365,68 @@ public class Rs2Walker {
         }
         final HashMap<WorldPoint, Integer> _tiles = tiles;
 
-        WorldPoint startPoint = path.stream()
-                .min(Comparator.comparingInt(a -> _tiles.getOrDefault(a, Integer.MAX_VALUE)))
-                .orElse(null);
+        // Only consider tiles from minPathIndex onwards to prevent backtracking
+        // But also check a small window behind in case we need to recover from being slightly off path
+        int searchStartIndex = Math.max(0, minPathIndex - 3);
 
-        boolean noMatchingTileFound = path.stream()
-                .allMatch(a -> _tiles.getOrDefault(a, Integer.MAX_VALUE) == Integer.MAX_VALUE);
+        // Find the closest reachable tile on the path, preferring forward progress
+        int bestIndex = -1;
+        int bestDistance = Integer.MAX_VALUE;
 
-        /**
-         * Check if the startPoint is null or no matching tile is found
-         * If either condition is true, proceed to find the closest index in the path list.
-         */
-        if (startPoint == null || noMatchingTileFound) {
-            Optional<Integer> closestIndexOptional = IntStream.range(0, path.size())
-                    .boxed()
-                    .min(Comparator.comparingInt(i -> Rs2Player.getWorldLocation().distanceTo(path.get(i))));
-            if (closestIndexOptional.isPresent()) {
-                return closestIndexOptional.get();
+        for (int i = searchStartIndex; i < path.size(); i++) {
+            WorldPoint pathPoint = path.get(i);
+            int reachDist = _tiles.getOrDefault(pathPoint, Integer.MAX_VALUE);
+
+            if (reachDist < Integer.MAX_VALUE) {
+                // Prefer tiles ahead of our current progress (add penalty for going backward)
+                int effectiveDistance = reachDist;
+                if (i < minPathIndex) {
+                    // Add a penalty for going backward - only go back if significantly closer
+                    effectiveDistance += 10;
+                }
+
+                if (effectiveDistance < bestDistance) {
+                    bestDistance = effectiveDistance;
+                    bestIndex = i;
+                }
             }
         }
 
-        return IntStream.range(0, path.size())
-                .filter(i -> path.get(i).equals(startPoint))
-                .findFirst()
-                .orElse(-1);
+        // If no reachable tile found via collision check, fall back to distance-based search
+        if (bestIndex == -1) {
+            WorldPoint playerLoc = Rs2Player.getWorldLocation();
+            for (int i = searchStartIndex; i < path.size(); i++) {
+                int dist = playerLoc.distanceTo(path.get(i));
+                int effectiveDistance = dist;
+                if (i < minPathIndex) {
+                    effectiveDistance += 10;
+                }
+                if (effectiveDistance < bestDistance) {
+                    bestDistance = effectiveDistance;
+                    bestIndex = i;
+                }
+            }
+        }
+
+        // Update progress tracking - only move forward, never backward
+        if (bestIndex != -1 && bestIndex > minPathIndex) {
+            minPathIndex = bestIndex;
+        }
+
+        return bestIndex;
+    }
+
+    /**
+     * Check if two paths are effectively the same
+     */
+    private static boolean pathsMatch(List<WorldPoint> path1, List<WorldPoint> path2) {
+        if (path1 == null || path2 == null) return false;
+        if (path1.size() != path2.size()) return false;
+        // Just check first, last, and middle points for efficiency
+        if (!path1.get(0).equals(path2.get(0))) return false;
+        if (!path1.get(path1.size() - 1).equals(path2.get(path2.size() - 1))) return false;
+        int mid = path1.size() / 2;
+        return path1.get(mid).equals(path2.get(mid));
     }
 
     /**
@@ -1303,6 +1453,10 @@ public class Rs2Walker {
         }
 
         currentTarget = target;
+
+        // Reset path progress tracking when target changes
+        minPathIndex = 0;
+        lastPath = null;
 
         if (target == null) {
             synchronized (ShortestPathPlugin.getPathfinderMutex()) {
