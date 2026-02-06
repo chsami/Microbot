@@ -1227,6 +1227,7 @@ public class Rs2Walker {
 
                         if (!passedThrough) {
                             log.warn("Timed out waiting to pass through door/gate from {} to {}", startPos, destPos);
+                            return false;
                         }
                     }
 
