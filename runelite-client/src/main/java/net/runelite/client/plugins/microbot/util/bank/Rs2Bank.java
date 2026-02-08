@@ -1092,6 +1092,25 @@ public class Rs2Bank {
     }
 
     /**
+     * Empty containers using the "Empty containers" button
+     * This button empties all containers like log baskets, herb sacks, etc. directly to the bank
+     *
+     * @return true if containers were emptied successfully, false otherwise
+     */
+    public static boolean emptyContainers() {
+        Microbot.status = "Empty containers";
+        if (!Rs2Bank.isOpen()) return false;
+
+        Widget widget = Rs2Widget.getWidget(786471); // Empty containers button ID
+        if (widget == null) return false;
+
+        Rs2Widget.clickWidget(widget);
+        sleep(1000, 2000); // Wait for containers to be emptied
+        
+        return true;
+    }
+
+    /**
      * deposit all items
      */
     public static boolean depositAll() {
