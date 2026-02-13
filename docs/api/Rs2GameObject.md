@@ -1,5 +1,23 @@
 # Rs2GameObject Class Documentation
 ## [Back](development.md)
+
+> **Deprecated:** `Rs2GameObject` is deprecated and marked for removal. Use the **Queryable API** via `Microbot.getRs2TileObjectCache().query()` instead. It provides a fluent, type-safe interface with better performance through tick-based caching.
+>
+> See the [Queryable API Documentation & Migration Guide](../../runelite-client/src/main/java/net/runelite/client/plugins/microbot/api/QUERYABLE_API.md#migration-guide) for migration steps and side-by-side examples.
+>
+> **Quick comparison:**
+> ```java
+> // Legacy (deprecated)
+> TileObject tree = Rs2GameObject.findObject("Tree");
+> Rs2GameObject.interact(tree, "Chop down");
+>
+> // Queryable API (recommended)
+> Rs2TileObjectModel tree = Microbot.getRs2TileObjectCache().query()
+>     .withName("Tree")
+>     .nearest();
+> tree.click("Chop down");
+> ```
+
 ## Overview
 The `Rs2GameObject` class provides methods to interact with game objects within the game environment. It offers functionalities to locate, interact, and manipulate game objects based on various criteria like ID, name, or location.
 

@@ -1,5 +1,24 @@
 # Rs2Npc Class Documentation
 ## [Back](development.md)
+
+> **Deprecated:** `Rs2Npc` is deprecated and marked for removal. Use the **Queryable API** via `Microbot.getRs2NpcCache().query()` instead. It provides a fluent, type-safe interface with better performance through tick-based caching.
+>
+> See the [Queryable API Documentation & Migration Guide](../../runelite-client/src/main/java/net/runelite/client/plugins/microbot/api/QUERYABLE_API.md#migration-guide) for migration steps and side-by-side examples.
+>
+> **Quick comparison:**
+> ```java
+> // Legacy (deprecated)
+> NPC banker = Rs2Npc.getNpc("Banker");
+> Rs2Npc.interact(banker, "Bank");
+>
+> // Queryable API (recommended)
+> Rs2NpcModel banker = Microbot.getRs2NpcCache().query()
+>     .withName("Banker")
+>     .where(npc -> !npc.isInteracting())
+>     .nearest();
+> banker.click("Bank");
+> ```
+
 ## Overview
 The `Rs2Npc` class provides a comprehensive suite of methods for interacting with NPCs within the game. These methods include retrieving NPCs by various attributes, validating NPC interactability, performing actions like attacking or pickpocketing, and handling NPC visibility and targeting through the game's camera and walking systems.
 

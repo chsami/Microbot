@@ -1,5 +1,22 @@
 # Rs2GroundItem Class Documentation
 ## [Back](development.md)
+
+> **Deprecated:** `Rs2GroundItem` is deprecated and marked for removal. Use the **Queryable API** via `Microbot.getRs2TileItemCache().query()` instead. It provides a fluent, type-safe interface with better performance through tick-based caching.
+>
+> See the [Queryable API Documentation & Migration Guide](../../runelite-client/src/main/java/net/runelite/client/plugins/microbot/api/QUERYABLE_API.md#migration-guide) for migration steps and side-by-side examples.
+>
+> **Quick comparison:**
+> ```java
+> // Legacy (deprecated)
+> Rs2GroundItem.loot("Dragon bones", 1, 10);
+>
+> // Queryable API (recommended)
+> Rs2TileItemModel bones = Microbot.getRs2TileItemCache().query()
+>     .withName("Dragon bones")
+>     .nearest();
+> bones.click("Take");
+> ```
+
 ## Overview
 The `Rs2GroundItem` class provides methods to interact with ground items within the game, facilitating operations like picking up, checking existence, and interacting with items based on various criteria such as item ID, name, or location.
 
