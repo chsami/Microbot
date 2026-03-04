@@ -44,7 +44,13 @@ public class AIOSuperHeatScript extends Script {
                 if (item == null)
                     return;
 
-                if (!item.hasRequiredLevel()) {
+                int magicLevel = Rs2Player.getRealSkillLevel(Skill.MAGIC);
+                int smithingLevel = Rs2Player.getRealSkillLevel(Skill.SMITHING);
+                if (magicLevel == 0 || smithingLevel == 0) {
+                    return; // Wait for skill data to load
+                }
+
+                if (magicLevel < 43 || smithingLevel < item.getRequiredLevel()) {
                     Microbot.showMessage("You do not have the required level for this item");
                     shutdown();
                     return;
@@ -103,9 +109,10 @@ public class AIOSuperHeatScript extends Script {
                     .orElse(null);
 
             if (staffItem != null) {
-                Rs2Bank.withdrawAndEquip(staffItem.getId());
-                Rs2Inventory.waitForInventoryChanges(2000);
-                Rs2Antiban.actionCooldown();
+                if (Rs2Bank.withdrawAndEquip(staffItem.getId())) {
+                    sleepUntil(() -> Rs2Equipment.isWearing(staffItem.getId()), 2000);
+                    Rs2Antiban.actionCooldown();
+                }
             }
         }
 
@@ -163,9 +170,10 @@ public class AIOSuperHeatScript extends Script {
     private void handleCasting(SuperHeatItem item) {
         if (Rs2Inventory.hasItem(ItemID.NATURERUNE)) {
             Rs2Magic.superHeat(item.getItemID());
-            Rs2Antiban.actionCooldown();
-            Rs2Antiban.takeMicroBreakByChance();
-            Rs2Player.waitForXpDrop(Skill.MAGIC, 10000, false);
+            if (Rs2Player.waitForXpDrop(Skill.MAGIC, 10000, false)) {
+                Rs2Antiban.actionCooldown();
+                Rs2Antiban.takeMicroBreakByChance();
+            }
         }
     }
 
