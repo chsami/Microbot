@@ -73,7 +73,8 @@ public class AIOSuperHeatScript extends Script {
     private boolean needsBanking(SuperHeatItem item) {
         if (!Rs2Inventory.hasItem(item.getItemID()))
             return true;
-        if (item.getCoalAmount() > 0 && !Rs2Inventory.hasItemAmount(ItemID.COAL, item.getCoalAmount()))
+        if (item.getSecondaryItemID() != -1
+                && !Rs2Inventory.hasItemAmount(item.getSecondaryItemID(), item.getSecondaryAmount()))
             return true;
         if (!Rs2Inventory.hasItem(ItemID.NATURERUNE))
             return true;
@@ -129,11 +130,11 @@ public class AIOSuperHeatScript extends Script {
             }
         }
 
-        // Calculate and withdraw Ore and Coal
+        // Calculate and withdraw Ore and Secondary Ingredient
         int emptySlots = Rs2Inventory.emptySlotCount();
         if (emptySlots > 0) {
-            int coalNeededPerOre = item.getCoalAmount();
-            int sets = (coalNeededPerOre == 0) ? emptySlots : emptySlots / (coalNeededPerOre + 1);
+            int secondaryAmount = item.getSecondaryAmount();
+            int sets = (secondaryAmount == 0) ? emptySlots : emptySlots / (secondaryAmount + 1);
 
             if (sets > 0) {
                 // Withdraw Ore
@@ -147,15 +148,15 @@ public class AIOSuperHeatScript extends Script {
                     return;
                 }
 
-                // Withdraw Coal if needed
-                if (coalNeededPerOre > 0) {
-                    int coalToWithdraw = sets * coalNeededPerOre;
-                    if (Rs2Bank.hasBankItem(ItemID.COAL, coalToWithdraw)) {
-                        Rs2Bank.withdrawX(ItemID.COAL, coalToWithdraw);
+                // Withdraw Secondary Ingredient if needed
+                if (item.getSecondaryItemID() != -1) {
+                    int secondaryToWithdraw = sets * item.getSecondaryAmount();
+                    if (Rs2Bank.hasBankItem(item.getSecondaryItemID(), secondaryToWithdraw)) {
+                        Rs2Bank.withdrawX(item.getSecondaryItemID(), secondaryToWithdraw);
                         Rs2Inventory.waitForInventoryChanges(2000);
                         Rs2Antiban.actionCooldown();
                     } else {
-                        Microbot.showMessage("Out of Coal!");
+                        Microbot.showMessage("Out of secondary ingredients!");
                         shutdown();
                         return;
                     }

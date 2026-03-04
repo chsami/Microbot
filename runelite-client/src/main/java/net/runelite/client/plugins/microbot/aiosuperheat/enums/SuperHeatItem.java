@@ -3,23 +3,25 @@ package net.runelite.client.plugins.microbot.aiosuperheat.enums;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import net.runelite.api.Skill;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 
 @Getter
 @RequiredArgsConstructor
 public enum SuperHeatItem {
-    BRONZE("Bronze bar", 436, 1, 14), // Copper ore
-    IRON("Iron bar", 440, 0, 15), // Iron ore
-    SILVER("Silver bar", 442, 0, 20), // Silver ore
-    STEEL("Steel bar", 440, 2, 30), // Iron ore + 2 coal
-    GOLD("Gold bar", 444, 0, 40), // Gold ore
-    MITHRIL("Mithril bar", 447, 4, 50), // Mithril ore + 4 coal
-    ADAMANTITE("Adamantite bar", 449, 6, 70), // Adamantite ore + 6 coal
-    RUNITE("Runite bar", 451, 8, 85); // Runite ore + 8 coal
+    BRONZE("Bronze bar", ItemID.COPPER_ORE, ItemID.TIN_ORE, 1, 1),
+    IRON("Iron bar", ItemID.IRON_ORE, -1, 0, 15),
+    SILVER("Silver bar", ItemID.SILVER_ORE, -1, 0, 20),
+    STEEL("Steel bar", ItemID.IRON_ORE, ItemID.COAL, 2, 30),
+    GOLD("Gold bar", ItemID.GOLD_ORE, -1, 0, 40),
+    MITHRIL("Mithril bar", ItemID.MITHRIL_ORE, ItemID.COAL, 4, 50),
+    ADAMANTITE("Adamantite bar", ItemID.ADAMANTITE_ORE, ItemID.COAL, 6, 70),
+    RUNITE("Runite bar", ItemID.RUNITE_ORE, ItemID.COAL, 8, 85);
 
     private final String name;
     private final int itemID;
-    private final int coalAmount;
+    private final int secondaryItemID;
+    private final int secondaryAmount;
     private final int requiredLevel;
 
     public boolean hasRequiredLevel() {
