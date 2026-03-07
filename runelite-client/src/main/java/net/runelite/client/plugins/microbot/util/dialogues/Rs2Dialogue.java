@@ -26,7 +26,7 @@ public class Rs2Dialogue {
      * @return true if any dialogue-related widget is visible and the scroll bar is not visible, false otherwise.
      */
     public static boolean isInDialogue() {
-        return !Rs2Widget.isWidgetVisible(162, 558) && (hasContinue() || hasSelectAnOption());
+        return !Rs2Widget.isWidgetVisible(162, 559) && (hasContinue() || hasSelectAnOption());
     }
 
     /**
@@ -128,7 +128,7 @@ public class Rs2Dialogue {
      * @return true if the spell filter continue option is visible, false otherwise.
      */
     private static boolean hasSpellFilterContinue() {
-        return Rs2Widget.isWidgetVisible(162, 43);
+        return Rs2Widget.isWidgetVisible(162, 44);
     }
 
     /**

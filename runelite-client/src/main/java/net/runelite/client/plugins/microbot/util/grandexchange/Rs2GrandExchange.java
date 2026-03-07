@@ -208,7 +208,7 @@ public class Rs2GrandExchange {
                 sleepUntil(GrandExchangeWidget::isOfferTextVisible);
 
 
-                Rs2Widget.sleepUntilHasWidgetText("Start typing the name of an item to search for it", 162, 51, false, 5000);
+                Rs2Widget.sleepUntilHasWidgetText("Start typing the name of an item to search for it", 162, 52, false, 5000);
 
                 String searchName = request.getItemName();
                 boolean itemMatchedWithPreviousSearch = isPreviousSearchMatch(request.getItemName());
@@ -279,7 +279,7 @@ public class Rs2GrandExchange {
         }
         Rs2Keyboard.typeString(request.getItemName());
 
-        if (!Rs2Widget.sleepUntilHasWidgetText(searchName, 162, 43, false, 5000)) return true;
+        if (!Rs2Widget.sleepUntilHasWidgetText(searchName, 162, 44, false, 5000)) return true;
 
         sleepUntil(() -> getSearchResultWidget(request.getItemName(), request.isExact()) != null, 2200);
 
