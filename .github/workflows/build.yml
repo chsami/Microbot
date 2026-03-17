@@ -21,7 +21,7 @@ jobs:
           java-version: '17'
 
       - name: Build shaded JAR
-        run: ./gradlew :runelite-client:build -x test
+        run: ./gradlew :client:shadowJar
 
       - name: Find shaded JAR
         id: find_jar

@@ -347,7 +347,6 @@ public class MicrobotPlugin extends Plugin
 	@Subscribe
 	private void onMenuOptionClicked(MenuOptionClicked event)
 	{
-		Microbot.getPouchScript().onMenuOptionClicked(event);
 		Rs2Gembag.onMenuOptionClicked(event);
 		Microbot.targetMenu = null;
 		if (microbotConfig.enableMenuEntryLogging()) log.info(event.getMenuEntry().toString());
@@ -364,7 +363,6 @@ public class MicrobotPlugin extends Plugin
 		{
 			Microbot.cantHopWorld = true;
 		}
-		Microbot.getPouchScript().onChatMessage(event);
 		Rs2Gembag.onChatMessage(event);
 	}
 
@@ -401,17 +399,6 @@ public class MicrobotPlugin extends Plugin
 					break;
 				default:
 					break;
-			}
-		}
-		if (ev.getKey().equals("displayPouchCounter"))
-		{
-			if (Objects.equals(ev.getNewValue(), "true"))
-			{
-				Microbot.getPouchScript().startUp();
-			}
-			else
-			{
-				Microbot.getPouchScript().shutdown();
 			}
 		}
 	}
