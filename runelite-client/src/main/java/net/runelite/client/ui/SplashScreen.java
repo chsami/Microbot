@@ -26,7 +26,6 @@
 package net.runelite.client.ui;
 
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.client.plugins.microbot.RandomFactClient;
 import net.runelite.client.ui.laf.RuneLiteLAF;
 import net.runelite.client.util.ImageUtil;
 
@@ -45,10 +44,6 @@ import java.awt.image.BufferedImage;
 import java.beans.PropertyChangeSupport;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
 
 @Slf4j
 public class SplashScreen extends JFrame implements ActionListener {
@@ -85,17 +80,6 @@ public class SplashScreen extends JFrame implements ActionListener {
     public static String getFact() {
         return factValue;
     }
-
-    public static void setFact(String newFact) {
-        if (INSTANCE != null && newFact != null && !String.valueOf(factValue).equals(newFact)) {
-            String oldValue = factValue;
-            factValue = newFact;
-            INSTANCE.pcs.firePropertyChange("fact", oldValue, newFact);
-        }
-    }
-
-    private static ScheduledExecutorService scheduledRandomFactExecutorService;
-    private static ScheduledFuture<?> scheduledRandomFactFuture;
 
     static String escape(String s) {
         return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
@@ -350,13 +334,6 @@ public class SplashScreen extends JFrame implements ActionListener {
         timer.start();
 
         setVisible(true);
-
-        scheduledRandomFactExecutorService = Executors.newSingleThreadScheduledExecutor();
-        scheduledRandomFactFuture = scheduledRandomFactExecutorService.scheduleAtFixedRate(
-                () -> {
-                    RandomFactClient.getRandomFactAsync(SplashScreen::setFact);
-                },
-                0, 20, TimeUnit.SECONDS);
     }
 
     @Override
@@ -404,13 +381,6 @@ public class SplashScreen extends JFrame implements ActionListener {
             if (INSTANCE == null) return;
 
             INSTANCE.timer.stop();
-            if (scheduledRandomFactFuture != null) {
-                scheduledRandomFactFuture.cancel(true);
-            }
-            if (scheduledRandomFactExecutorService != null) {
-                scheduledRandomFactExecutorService.shutdownNow();
-                scheduledRandomFactExecutorService = null;
-            }
             INSTANCE.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
             INSTANCE.dispose();
             INSTANCE = null;

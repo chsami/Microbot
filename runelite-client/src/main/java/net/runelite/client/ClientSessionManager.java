@@ -29,7 +29,6 @@ import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ClientShutdown;
-import net.runelite.client.plugins.microbot.MicrobotApi;
 import net.runelite.client.util.RunnableExceptionLogger;
 
 import javax.inject.Inject;
@@ -51,22 +50,18 @@ public class ClientSessionManager
 	private final boolean disableTelemetry;
 
 	private ScheduledFuture<?> scheduledFuture;
-	private ScheduledFuture<?> scheduledFutureMicroBot;
 
 	private UUID sessionId = UUID.randomUUID();
-	private UUID microbotSessionId;
-	private MicrobotApi microbotApi;
 
 	@Inject
 	ClientSessionManager(ScheduledExecutorService executorService,
 		Client client,
-		SessionClient sessionClient, MicrobotApi microbotApi,
+		SessionClient sessionClient,
         @Named("disableTelemetry") boolean disableTelemetry)
 	{
 		this.executorService = executorService;
 		this.client = client;
 		this.sessionClient = sessionClient;
-		this.microbotApi = microbotApi;
 		this.disableTelemetry = disableTelemetry;
 	}
 
@@ -81,7 +76,6 @@ public class ClientSessionManager
 			try
 			{
 				sessionId = sessionClient.open();
-				microbotSessionId = microbotApi.microbotOpen();
 				log.debug("Opened session {}", sessionId);
 			}
 			catch (IOException ex)
@@ -90,8 +84,6 @@ public class ClientSessionManager
 			}
 		});
         scheduledFuture = executorService.scheduleWithFixedDelay(RunnableExceptionLogger.wrap(this::ping), (int) (5 * 60 * Math.random()), 10 * 60, TimeUnit.SECONDS);
-		scheduledFutureMicroBot = executorService.scheduleWithFixedDelay(
-				RunnableExceptionLogger.wrap(this::microbotPing), 1, 10, TimeUnit.MINUTES);
 	}
 
 	@Subscribe
@@ -99,7 +91,6 @@ public class ClientSessionManager
 	{
 		if (disableTelemetry) return;
 		scheduledFuture.cancel(true);
-		scheduledFutureMicroBot.cancel(true);
 		e.waitFor(executorService.submit(() ->
 		{
 			try
@@ -108,11 +99,6 @@ public class ClientSessionManager
 				if (localUuid != null)
 				{
 					sessionClient.delete(localUuid);
-				}
-				UUID localMicrobotUuid = microbotSessionId;
-				if (localMicrobotUuid != null)
-				{
-					microbotApi.microbotDelete(localMicrobotUuid);
 				}
 			}
 			catch (IOException ex)
@@ -141,40 +127,6 @@ public class ClientSessionManager
 		{
 			log.warn("Unable to ping session service", ex);
 		}
-	}
-
-	private void microbotPing()
-	{
-		try
-		{
-			if (microbotSessionId == null) {
-				microbotSessionId = microbotApi.microbotOpen();
-				return;
-			}
-		}
-		catch (IOException ex)
-		{
-			log.warn("unable to open session", ex);
-			return;
-		}
-
-		boolean loggedIn = false;
-		if (client != null)
-		{
-			GameState gameState = client.getGameState();
-			loggedIn = gameState.getState() >= GameState.LOADING.getState();
-		}
-
-		try
-		{
-			microbotApi.microbotPing(microbotSessionId, loggedIn);
-		}
-		catch (IOException ex)
-		{
-			log.warn("Resetting session", ex);
-			sessionId = null;
-		}
-
 	}
 
 	private boolean isWorldHostValid()
