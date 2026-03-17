@@ -38,3 +38,10 @@ bin/
 ### Mac OS ###
 .DS_Store
 /cache/target/*
+
+# Command Center bot profiles (contain credentials)
+bot-*/
+microbot_profiles/
+**/credentials.properties
+**/commandcenter.properties
+**/status.port
