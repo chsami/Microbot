@@ -4,6 +4,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
+import net.runelite.client.plugins.microbot.commandcenter.CredentialRedactor;
 import net.runelite.api.GameState;
 import net.runelite.client.config.ConfigProfile;
 import net.runelite.client.config.ProfileManager;
@@ -125,7 +126,7 @@ public final class LoginManager {
             log.warn("No active profile available for login");
             return false;
         }
-        System.out.println(getActiveProfile());
+        log.debug("Active profile: {}", CredentialRedactor.redact(getActiveProfile().getName()));
         Client client = Microbot.getClient();
         if (client == null) {
             log.warn("Cannot login - client is not initialised");
