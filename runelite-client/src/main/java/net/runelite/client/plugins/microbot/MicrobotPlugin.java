@@ -16,7 +16,7 @@ import net.runelite.client.events.OverlayMenuClicked;
 import net.runelite.client.events.RuneScapeProfileChanged;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
-import net.runelite.client.plugins.microbot.pouch.PouchOverlay;
+
 import net.runelite.client.plugins.microbot.ui.MicrobotPluginConfigurationDescriptor;
 import net.runelite.client.plugins.microbot.ui.MicrobotPluginListPanel;
 import net.runelite.client.plugins.microbot.ui.MicrobotTopLevelConfigPanel;
@@ -99,14 +99,9 @@ public class MicrobotPlugin extends Plugin
 	@Inject
 	private GembagOverlay gembagOverlay;
 	@Inject
-	private PouchOverlay pouchOverlay;
-	@Inject
 	private EventBus eventBus;
 	private GameChatAppender gameChatAppender;
 
-	@Inject
-	private MicrobotVersionChecker microbotVersionChecker;
-	
 	// Widget change tracking for overlay cache invalidation
 	private volatile boolean widgetLayoutChanged = false;
 	private Rectangle lastCheckedBounds = null;
@@ -120,8 +115,6 @@ public class MicrobotPlugin extends Plugin
 	{
 		log.info("Microbot: {} - {}", RuneLiteProperties.getMicrobotVersion(), RuneLiteProperties.getMicrobotCommit());
 		log.info("JVM: {} {}", System.getProperty("java.vendor"), System.getProperty("java.runtime.version"));
-
-		microbotVersionChecker.checkForUpdate();
 
 		gameChatAppender = new GameChatAppender();
 		gameChatAppender.setName("GAME_CHAT");
@@ -171,13 +164,10 @@ public class MicrobotPlugin extends Plugin
 
 		new InputSelector(clientToolbar);
 
-		Microbot.getPouchScript().startUp();
-
 		if (overlayManager != null)
 		{
 			overlayManager.add(microbotOverlay);
 			overlayManager.add(gembagOverlay);
-			overlayManager.add(pouchOverlay);
 		}
 	}
 
@@ -185,10 +175,8 @@ public class MicrobotPlugin extends Plugin
 	{
 		overlayManager.remove(microbotOverlay);
 		overlayManager.remove(gembagOverlay);
-		overlayManager.remove(pouchOverlay);
 		clientToolbar.removeNavigation(navButton);
 		if (gameChatAppender.isStarted()) gameChatAppender.stop();
-		microbotVersionChecker.shutdown();
 	}
 
 
@@ -215,7 +203,6 @@ public class MicrobotPlugin extends Plugin
 	@Subscribe
 	public void onItemContainerChanged(ItemContainerChanged event)
 	{
-		Microbot.getPouchScript().onItemContainerChanged(event);
 		if (event.getContainerId() == InventoryID.INV)
 		{
 			Rs2Inventory.storeInventoryItemsInMemory(event);

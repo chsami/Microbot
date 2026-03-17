@@ -42,9 +42,7 @@ import net.runelite.client.plugins.microbot.MicrobotConfigManager;
 import net.runelite.client.plugins.microbot.breakhandler.breakhandlerv2.BreakHandlerV2Config;
 import net.runelite.client.plugins.microbot.breakhandler.breakhandlerv2.PluginStopHelper;
 import net.runelite.client.plugins.microbot.breakhandler.breakhandlerv2.PluginStopOption;
-import net.runelite.client.plugins.microbot.inventorysetups.InventorySetup;
-import net.runelite.client.plugins.microbot.inventorysetups.MInventorySetupsPlugin;
-import net.runelite.client.plugins.microbot.mouserecorder.MouseMacroRecorderPlugin;
+
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.DynamicGridLayout;
 import net.runelite.client.ui.FontManager;
@@ -383,8 +381,6 @@ class MicrobotConfigPanel extends MicrobotPluginPanel {
                 item.add(createColorPicker(cd, cid), BorderLayout.EAST);
             } else if (cid.getType() == Dimension.class) {
                 item.add(createDimension(cd, cid), BorderLayout.EAST);
-            } else if (cid.getType() == InventorySetup.class) {
-                item.add(createInventorySetupsComboBox(cd, cid), BorderLayout.EAST);
             } else if (cid.getType() instanceof Class && ((Class<?>) cid.getType()).isEnum()) {
                 item.add(createComboBox(cd, cid), BorderLayout.EAST);
             } else if (cid.getType() == Keybind.class || cid.getType() == ModifierlessKeybind.class) {
@@ -657,63 +653,6 @@ class MicrobotConfigPanel extends MicrobotPluginPanel {
         return dimensionPanel;
     }
 
-    // ---------------------------------------------------------------------------
-// If the type is InventorySetup.class, create a combo box that uses
-// MInventorySetupsPlugin.getInventorySetups(), but stores the *entire* object
-// in config as a JSON string.
-// ---------------------------------------------------------------------------
-    private JComboBox<InventorySetup> createInventorySetupsComboBox(ConfigDescriptor cd, ConfigItemDescriptor cid) {
-        // Suppose MInventorySetupsPlugin.getInventorySetups() returns a List<InventorySetup>
-        List<InventorySetup> setups = MInventorySetupsPlugin.getInventorySetups();
-        if (setups.isEmpty()) {
-            // If there are no setups, return an empty combo box
-            configManager.setConfiguration(cd.getGroup().value(), cid.getItem().keyName(), "");
-            configManager.sendConfig();
-            return new JComboBox<>();
-        }
-        JComboBox<InventorySetup> box = new JComboBox<>(new DefaultComboBoxModel<>(setups.toArray(new InventorySetup[0])));
-
-        // Set the renderer to display the setup name
-        box.setRenderer(new DefaultListCellRenderer() {
-            @Override
-            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
-                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-                if (value instanceof InventorySetup) {
-                    InventorySetup setup = (InventorySetup) value;
-                    setText(setup.getName());
-                }
-                return this;
-            }
-        });
-
-        // 1) Retrieve dezerialized InventorySetup from config
-        InventorySetup dezerialized = configManager.getConfiguration(cd.getGroup().value(), cid.getItem().keyName(), InventorySetup.class);
-        if (dezerialized == null) {
-            dezerialized = setups.get(0);
-            configManager.setConfiguration(cd.getGroup().value(), cid.getItem().keyName(), dezerialized);
-            configManager.sendConfig();
-        }
-        for (InventorySetup setup : setups) {
-            if (setup.getName().equals(dezerialized.getName())) {
-                box.setSelectedItem(setup);
-                break;
-            }
-        }
-
-        // 3) Listen for changes
-        box.addItemListener(e ->
-        {
-            if (e.getStateChange() == ItemEvent.SELECTED) {
-                InventorySetup chosen = (InventorySetup) box.getSelectedItem();
-                if (chosen != null) {
-                    configManager.setConfiguration(cd.getGroup().value(), cid.getItem().keyName(), chosen);
-                }
-            }
-        });
-
-        return box;
-    }
-
     private JComboBox<Enum<?>> createComboBox(ConfigDescriptor cd, ConfigItemDescriptor cid) {
         Class<? extends Enum> type = (Class<? extends Enum>) cid.getType();
 
@@ -829,10 +768,6 @@ class MicrobotConfigPanel extends MicrobotPluginPanel {
         button.addActionListener(e -> {
             ConfigButton next = new ConfigButton(UUID.randomUUID().toString());
             configManager.setConfiguration(cd.getGroup().value(), cid.getItem().keyName(), next);
-            if (MouseMacroRecorderPlugin.CONFIG_GROUP.equals(cd.getGroup().value())
-                    && "openRecordingsFolder".equals(cid.getItem().keyName())) {
-                MouseMacroRecorderPlugin.openRecordingsFolderStatic();
-            }
         });
         return button;
     }

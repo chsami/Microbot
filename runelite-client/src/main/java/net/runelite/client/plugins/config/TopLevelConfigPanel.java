@@ -35,7 +35,7 @@ import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.plugins.Plugin;
-import net.runelite.client.plugins.microbot.ui.MicrobotPluginHubPanel;
+
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.components.materialtabs.MaterialTab;
 import net.runelite.client.ui.components.materialtabs.MaterialTabGroup;
@@ -61,8 +61,7 @@ public class TopLevelConfigPanel extends PluginPanel
 		EventBus eventBus,
 		PluginListPanel pluginListPanel,
 		ProfilePanel profilePanel,
-		Provider<PluginHubPanel> pluginHubPanelProvider,
-		Provider<MicrobotPluginHubPanel> microbotPluginHubPanelProvider
+		Provider<PluginHubPanel> pluginHubPanelProvider
 	)
 	{
 		super(false);

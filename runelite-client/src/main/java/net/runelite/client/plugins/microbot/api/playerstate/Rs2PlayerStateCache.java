@@ -16,9 +16,7 @@ import net.runelite.client.callback.ClientThread;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.questhelper.questinfo.QuestHelperQuest;
 
-import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -80,20 +78,12 @@ public final class Rs2PlayerStateCache {
 
 	/**
 	 * Update the quest state for a specific quest based on a varbit change event.
+	 * QuestHelperQuest integration has been removed; no-op.
 	 *
 	 * @param event
 	 */
 	private void updateQuest(VarbitChanged event) {
-		QuestHelperQuest quest = Arrays.stream(QuestHelperQuest.values())
-				.filter(x -> x.getVarbit() != null)
-				.filter(x -> x.getVarbit().getId() == event.getVarbitId())
-				.findFirst()
-				.orElse(null);
-
-		if (quest != null) {
-			QuestState questState = quest.getState(client);
-			quests.put(quest.getId(), questState);
-		}
+		// QuestHelperQuest removed — nothing to update
 	}
 
 	/**

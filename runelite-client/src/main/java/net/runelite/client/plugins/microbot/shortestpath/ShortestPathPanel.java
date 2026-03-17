@@ -48,11 +48,7 @@ import net.runelite.client.plugins.microbot.util.walker.enums.SpecialHuntingArea
 import net.runelite.client.plugins.microbot.util.walker.enums.Trees;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.util.ImageUtil;
-import net.runelite.client.plugins.microbot.questhelper.QuestHelperPlugin;
-import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
-import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
-import net.runelite.client.plugins.microbot.questhelper.steps.DetailedQuestStep;
-import net.runelite.client.plugins.microbot.questhelper.steps.ConditionalStep;
+
 import net.runelite.client.plugins.cluescrolls.ClueScrollPlugin;
 import net.runelite.client.plugins.cluescrolls.clues.ClueScroll;
 import net.runelite.client.plugins.cluescrolls.clues.LocationClueScroll;
@@ -359,69 +355,14 @@ public class ShortestPathPanel extends PluginPanel
 
 	private JPanel createQuestLocationPanel()
 	{
+		// QuestHelper plugin removed — return empty panel
 		JPanel panel = new JPanel();
 		panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-		panel.setBorder(createCenteredTitledBorder("Travel to Quest Location", "/net/runelite/client/plugins/microbot/questhelper/quest_icon.png"));
-
-		// Quest info label
-		JLabel questInfoLabel = new JLabel("Loading quest info...");
-		questInfoLabel.setHorizontalAlignment(SwingConstants.CENTER);
-		questInfoLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-		questInfoLabel.setMaximumSize(new Dimension(Integer.MAX_VALUE, questInfoLabel.getPreferredSize().height * 2));
-		
-		// Update quest info dynamically
-		questInfoTimer = new javax.swing.Timer(1000, e -> {
-			String questInfo = getCurrentQuestInfo();
-			questInfoLabel.setText("<html><center>" + questInfo + "</center></html>");
-		});
-		questInfoTimer.start();
-
-		JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
-		JButton startButton = new JButton("Start");
-		JButton stopButton = new JButton("Stop");
-
-		startButton.addActionListener(e -> {
-			WorldPoint questLocation = getCurrentQuestLocation();
-			if (questLocation != null)
-			{
-				Microbot.log("Walking to quest objective location");
-				startWalking(questLocation);
-			}
-			else
-			{
-				QuestHelperPlugin qhp = getQuestHelperPlugin();
-				if (qhp == null)
-				{
-					Microbot.log("Cannot walk to quest location: QuestHelper plugin not enabled");
-				}
-				else if (qhp.getSelectedQuest() == null)
-				{
-					Microbot.log("Cannot walk to quest location: No quest selected in QuestHelper");
-				}
-				else
-				{
-					Microbot.log("Cannot walk to quest location: Current quest step has no location");
-				}
-			}
-		});
-		
-		stopButton.addActionListener(e -> stopWalking());
-
-		buttonPanel.add(startButton);
-		buttonPanel.add(stopButton);
-
-		JPanel helpPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
-		JLabel helpLabel = new JLabel("<html><center><small>Requires QuestHelper plugin<br>with an active quest</small></center></html>");
-		helpLabel.setHorizontalAlignment(SwingConstants.CENTER);
-		helpPanel.add(helpLabel);
-
-		panel.add(Box.createRigidArea(new Dimension(0, 5)));
-		panel.add(questInfoLabel);
-		panel.add(Box.createRigidArea(new Dimension(0, 10)));
-		panel.add(buttonPanel);
-		panel.add(Box.createRigidArea(new Dimension(0, 2)));
-		panel.add(helpPanel);
-
+		panel.setBorder(BorderFactory.createTitledBorder("Travel to Quest Location (unavailable)"));
+		JLabel label = new JLabel("<html><center><small>QuestHelper plugin not available</small></center></html>");
+		label.setHorizontalAlignment(SwingConstants.CENTER);
+		label.setAlignmentX(Component.CENTER_ALIGNMENT);
+		panel.add(label);
 		return panel;
 	}
 
@@ -655,116 +596,6 @@ public class ShortestPathPanel extends PluginPanel
 		Microbot.log("Web walking stopping..");
 		plugin.getShortestPathScript().setTriggerWalker(null);
 		Rs2Walker.setTarget(null);
-	}
-
-	private QuestHelperPlugin getQuestHelperPlugin()
-	{
-		return (QuestHelperPlugin) Microbot.getPluginManager().getPlugins().stream()
-			.filter(x -> x instanceof QuestHelperPlugin)
-			.findFirst()
-			.orElse(null);
-	}
-
-	private WorldPoint getCurrentQuestLocation()
-	{
-		QuestHelperPlugin questHelper = getQuestHelperPlugin();
-		if (questHelper == null || questHelper.getSelectedQuest() == null)
-		{
-			return null;
-		}
-
-		try
-		{
-			QuestStep currentStep = questHelper.getSelectedQuest().getCurrentStep();
-			if (currentStep == null)
-			{
-				return null;
-			}
-
-			// Get the active step (handles ConditionalStep)
-			QuestStep activeStep = currentStep;
-			if (currentStep instanceof ConditionalStep)
-			{
-				activeStep = ((ConditionalStep) currentStep).getActiveStep();
-			}
-
-			// Extract WorldPoint from DetailedQuestStep
-			if (activeStep instanceof DetailedQuestStep)
-			{
-				return ((DetailedQuestStep) activeStep).getDefinedPoint().getWorldPoint();
-			}
-		}
-		catch (Exception e)
-		{
-			Microbot.log("Error getting quest location: " + e.getMessage());
-		}
-
-		return null;
-	}
-
-	private String getCurrentQuestInfo()
-	{
-		QuestHelperPlugin questHelper = getQuestHelperPlugin();
-		if (questHelper == null)
-		{
-			return "QuestHelper plugin not enabled";
-		}
-
-		if (questHelper.getSelectedQuest() == null)
-		{
-			return "No quest selected";
-		}
-
-		try
-		{
-			QuestHelper quest = questHelper.getSelectedQuest();
-			String questName = quest.getQuest() != null ? quest.getQuest().getName() : "Unknown Quest";
-			
-			QuestStep currentStep = quest.getCurrentStep();
-			if (currentStep != null)
-			{
-				// Try to get step description
-				String stepText = "Current objective";
-				if (currentStep instanceof ConditionalStep)
-				{
-					QuestStep activeStep = ((ConditionalStep) currentStep).getActiveStep();
-					if (activeStep instanceof DetailedQuestStep)
-					{
-						DetailedQuestStep detailedStep = (DetailedQuestStep) activeStep;
-						if (detailedStep.getText() != null && !detailedStep.getText().isEmpty())
-						{
-							stepText = detailedStep.getText().get(0);
-							// Truncate if too long for display
-							if (stepText.length() > 40)
-							{
-								stepText = stepText.substring(0, 37) + "...";
-							}
-						}
-					}
-				}
-				else if (currentStep instanceof DetailedQuestStep)
-				{
-					DetailedQuestStep detailedStep = (DetailedQuestStep) currentStep;
-					if (detailedStep.getText() != null && !detailedStep.getText().isEmpty())
-					{
-						stepText = detailedStep.getText().get(0);
-						// Truncate if too long for display
-						if (stepText.length() > 40)
-						{
-							stepText = stepText.substring(0, 37) + "...";
-						}
-					}
-				}
-				
-				return questName + " - " + stepText;
-			}
-			
-			return questName + " - No active step";
-		}
-		catch (Exception e)
-		{
-			return "Error reading quest info";
-		}
 	}
 
 	private JPanel createClueLocationPanel()

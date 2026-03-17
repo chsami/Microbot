@@ -16,12 +16,14 @@ public class ProxyChecker {
 
     /**
      * Detects the external IP address by querying a list of endpoints.
+     * Uses public, neutral IP-echo services — no upstream Microbot cloud calls.
      * @param okHttpClient
      * @return
      */
     public static String getDetectedIp(OkHttpClient okHttpClient) {
         List<String> endpoints = List.of(
-                "https://microbot.cloud/api/network/ip"
+                "https://api4.my-ip.io/v2/ip.txt",
+                "https://ipv4.icanhazip.com"
         );
 
         for (String url : endpoints) {
