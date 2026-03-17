@@ -9,7 +9,6 @@ import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
-import net.runelite.client.plugins.microbot.pouch.Pouch;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
@@ -2140,59 +2139,50 @@ public class Rs2Inventory {
     }
 
     public static boolean fillPouches() {
-        log("Fill pouches...");
-        Arrays.stream(Pouch.values()).filter(Pouch::hasRequiredRunecraftingLevel).forEachOrdered(Pouch::fill);
-        return true;
+        // Pouch removed
+        return false;
     }
 
     public static boolean emptyPouches() {
-        if (isFull()) return false;
-        log("Empty pouches...");
-        Arrays.stream(Pouch.values()).filter(Pouch::hasRequiredRunecraftingLevel).forEachOrdered(Pouch::empty);
-        return true;
+        // Pouch removed
+        return false;
     }
 
     public static boolean checkPouches() {
-        if (isFull()) return false;
-        log("Checking pouches...");
-        Arrays.stream(Pouch.values()).filter(Pouch::hasRequiredRunecraftingLevel).forEachOrdered(Pouch::check);
-        return true;
+        // Pouch removed
+        return false;
     }
 
     public static boolean anyPouchUnknown() {
-        return Arrays.stream(Pouch.values()).filter(Pouch::hasPouchInInventory).anyMatch(x -> x.hasRequiredRunecraftingLevel() && x.isUnknown());
+        return false; // Pouch removed
     }
 
     public static boolean anyPouchEmpty() {
-        return Arrays.stream(Pouch.values()).filter(Pouch::hasPouchInInventory).anyMatch(x -> x.hasRequiredRunecraftingLevel() && x.getRemaining() > 0);
+        return false; // Pouch removed
     }
 
     public static boolean anyPouchFull() {
-        return Arrays.stream(Pouch.values()).filter(Pouch::hasPouchInInventory).anyMatch(x -> x.hasRequiredRunecraftingLevel() && x.getHolding() > 0);
+        return false; // Pouch removed
     }
 
     public static boolean allPouchesFull() {
-        return Arrays.stream(Pouch.values()).filter(Pouch::hasPouchInInventory).allMatch(x -> (x.hasRequiredRunecraftingLevel() && x.getRemaining() <= 0) || !x.hasRequiredRunecraftingLevel());
+        return false; // Pouch removed
     }
 
     public static boolean allPouchesEmpty() {
-        return Arrays.stream(Pouch.values()).filter(Pouch::hasPouchInInventory).allMatch(x -> (x.hasRequiredRunecraftingLevel() && x.getHolding() <= 0) || !x.hasRequiredRunecraftingLevel());
+        return false; // Pouch removed
     }
 
     public static boolean hasDegradedPouch() {
-        return Arrays.stream(Pouch.values()).anyMatch(Pouch::isDegraded);
+        return false; // Pouch removed
     }
 
     public static boolean hasAnyPouch() {
-        return Arrays.stream(Pouch.values()).anyMatch(Pouch::hasPouchInInventory);
+        return false; // Pouch removed
     }
 
     public static int getRemainingCapacityInPouches() {
-        return Arrays.stream(Pouch.values())
-                .filter(Pouch::hasRequiredRunecraftingLevel)
-                .filter(Pouch::hasPouchInInventory)
-                .mapToInt(Pouch::getRemaining)
-                .sum();
+        return 0; // Pouch removed
     }
 
     /**

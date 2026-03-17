@@ -3,7 +3,6 @@ package net.runelite.client.plugins.microbot.util.inventory;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.inventorysetups.InventorySetupsVariationMapping;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 
@@ -71,7 +70,7 @@ public class Rs2FuzzyItem {
         int count = 0;
         
         // Count ID-based variations
-        Collection<Integer> variations = InventorySetupsVariationMapping.getVariations(itemId);
+        Collection<Integer> variations = java.util.Collections.emptyList(); // InventorySetupsVariationMapping removed
         for (int variationId : variations) {
             count += Rs2Inventory.count(variationId);
         }
@@ -85,7 +84,7 @@ public class Rs2FuzzyItem {
         int count = 0;
         
         // Count ID-based variations
-        Collection<Integer> variations = InventorySetupsVariationMapping.getVariations(itemId);
+        Collection<Integer> variations = java.util.Collections.emptyList(); // InventorySetupsVariationMapping removed
         for (int variationId : variations) {
             count += Rs2Inventory.itemQuantity(variationId);
         }
@@ -107,7 +106,7 @@ public class Rs2FuzzyItem {
         int count = 0;
         
         // Count ID-based variations
-        Collection<Integer> variations = InventorySetupsVariationMapping.getVariations(itemId);
+        Collection<Integer> variations = java.util.Collections.emptyList(); // InventorySetupsVariationMapping removed
         for (int variationId : variations) {
             count += Rs2Bank.count(variationId);
         }
@@ -127,7 +126,7 @@ public class Rs2FuzzyItem {
      */
     public static int getFuzzyEquippedCount(int itemId, boolean includeUncharged) {
         // Check ID-based variations
-        Collection<Integer> variations = InventorySetupsVariationMapping.getVariations(itemId);
+        Collection<Integer> variations = java.util.Collections.emptyList(); // InventorySetupsVariationMapping removed
         for (int variationId : variations) {
             if (Rs2Equipment.isWearing(variationId)) {
                 return 1;
@@ -312,7 +311,7 @@ public class Rs2FuzzyItem {
         List<FuzzyItemInfo> fuzzyItems = new ArrayList<>();
         
         // Add ID-based variations
-        Collection<Integer> variations = InventorySetupsVariationMapping.getVariations(itemId);
+        Collection<Integer> variations = java.util.Collections.emptyList(); // InventorySetupsVariationMapping removed
         for (int variationId : variations) {
             int count = Rs2Inventory.count(variationId);
             if (count > 0) {
@@ -356,7 +355,7 @@ public class Rs2FuzzyItem {
         List<FuzzyItemInfo> fuzzyItems = new ArrayList<>();
         
         // Add ID-based variations
-        Collection<Integer> variations = InventorySetupsVariationMapping.getVariations(itemId);
+        Collection<Integer> variations = java.util.Collections.emptyList(); // InventorySetupsVariationMapping removed
         for (int variationId : variations) {
             int count = Rs2Bank.count(variationId);
             if (count > 0) {
@@ -425,7 +424,7 @@ public class Rs2FuzzyItem {
      */
     public static FuzzyItemInfo getFuzzyItemEquipped(int itemId, boolean includeUncharged) {
         // Check ID-based variations first
-        Collection<Integer> variations = InventorySetupsVariationMapping.getVariations(itemId);
+        Collection<Integer> variations = java.util.Collections.emptyList(); // InventorySetupsVariationMapping removed
         for (int variationId : variations) {
             if (Rs2Equipment.isWearing(variationId)) {
                 String name = getItemName(variationId);
@@ -493,7 +492,7 @@ public class Rs2FuzzyItem {
         Set<String> names = new HashSet<>();
         
         // Add ID-based variation names
-        Collection<Integer> variations = InventorySetupsVariationMapping.getVariations(itemId);
+        Collection<Integer> variations = java.util.Collections.emptyList(); // InventorySetupsVariationMapping removed
         for (int variationId : variations) {
             String name = getItemName(variationId);
             if (name != null && !name.isEmpty()) {

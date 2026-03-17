@@ -43,7 +43,7 @@ import net.runelite.client.externalplugins.ExternalPluginManager;
 import net.runelite.client.plugins.PluginManager;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.MicrobotClientLoader;
-import net.runelite.client.plugins.microbot.externalplugins.MicrobotPluginManager;
+
 import net.runelite.client.proxy.ProxyChecker;
 import net.runelite.client.ui.ClientUI;
 import net.runelite.client.ui.FatalErrorDialog;
@@ -147,9 +147,6 @@ public class RuneLiteDebug {
     @Inject
     @Nullable
     private TelemetryClient telemetryClient;
-
-    @Inject
-    private MicrobotPluginManager microbotPluginManager;
 
     public static List<Class<?>> pluginsToDebug = new ArrayList<>();
 
@@ -350,9 +347,6 @@ public class RuneLiteDebug {
         // Load user configuration
         configManager.load();
 
-		// Initialize MicrobotPluginManager after configManager is loaded
-		microbotPluginManager.init();
-
         // Update check requires ConfigManager to be ready before it runs
         Updater updater = injector.getInstance(Updater.class);
         updater.update(); // will exit if an update is in progress
@@ -379,7 +373,6 @@ public class RuneLiteDebug {
         eventBus.register(clientUI);
         eventBus.register(pluginManager);
         eventBus.register(externalPluginManager);
-		eventBus.register(microbotPluginManager);
         eventBus.register(overlayManager);
         eventBus.register(configManager);
         eventBus.register(discordService);
@@ -394,8 +387,6 @@ public class RuneLiteDebug {
         clientUI.show();
 
         pluginManager.loadCoreRunelitePlugins();
-
-        microbotPluginManager.loadCorePlugins(pluginsToDebug);
 
         pluginManager.startPlugins();
 

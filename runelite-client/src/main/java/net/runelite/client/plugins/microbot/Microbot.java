@@ -35,7 +35,7 @@ import net.runelite.client.plugins.PluginInstantiationException;
 import net.runelite.client.plugins.PluginManager;
 import net.runelite.client.plugins.loottracker.LootTrackerRecord;
 import net.runelite.client.plugins.microbot.configs.SpecialAttackConfigs;
-import net.runelite.client.plugins.microbot.pouch.PouchScript;
+
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.item.Rs2ItemManager;
 import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
@@ -157,12 +157,6 @@ public class Microbot {
     private static TooltipManager tooltipManager;
     private static ScheduledFuture<?> xpSchedulorFuture;
     private static net.runelite.api.World quickHopTargetWorld;
-    /**
-     * PouchScript is injected in the main MicrobotPlugin as it's being used in multiple scripts
-     */
-    @Getter
-    @Inject
-    private static PouchScript pouchScript;
     /**
      * Tracks the last known map regions for login/region change detection.
      */

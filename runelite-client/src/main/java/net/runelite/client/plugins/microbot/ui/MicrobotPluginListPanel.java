@@ -25,7 +25,7 @@
 package net.runelite.client.plugins.microbot.ui;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.html.HtmlEscapers;
+
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.config.Config;
@@ -43,7 +43,7 @@ import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.PluginInstantiationException;
 import net.runelite.client.plugins.PluginManager;
 import net.runelite.client.plugins.microbot.MicrobotConfig;
-import net.runelite.client.plugins.microbot.externalplugins.MicrobotPluginManager;
+
 import net.runelite.client.plugins.microbot.ui.search.MicrobotPluginSearch;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.PluginPanel;
@@ -84,7 +84,6 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
 
     private final ConfigManager configManager;
     private final PluginManager pluginManager;
-    private final MicrobotPluginManager microbotPluginManager;
     private final Provider<MicrobotConfigPanel> configPanelProvider;
     private final List<MicrobotPluginConfigurationDescriptor> fakePlugins = new ArrayList<>();
 
@@ -103,7 +102,6 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
     public MicrobotPluginListPanel(
             ConfigManager configManager,
             PluginManager pluginManager,
-            MicrobotPluginManager microbotPluginManager,
             ExternalPluginManager externalPluginManager,
             EventBus eventBus,
             Provider<MicrobotConfigPanel> configPanelProvider) {
@@ -113,7 +111,6 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
         this.pluginManager = pluginManager;
         this.externalPluginManager = externalPluginManager;
         this.configPanelProvider = configPanelProvider;
-        this.microbotPluginManager = microbotPluginManager;
 
         muxer = new MicrobotMultiplexingPluginPanel(this) {
             @Override
@@ -283,9 +280,6 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
     }
 
     void startPlugin(Plugin plugin) {
-        microbotPluginManager.getOutdatedPluginUpdate(plugin)
-                .ifPresent(this::showOutdatedPluginNotification);
-
         pluginManager.setPluginEnabled(plugin, true);
 
         try {
@@ -313,25 +307,6 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
         }
 
         return Text.fromCSV(config);
-    }
-
-    private void showOutdatedPluginNotification(MicrobotPluginManager.OutdatedPluginUpdate outdatedPluginUpdate) {
-        String message = "<html>\""
-                + HtmlEscapers.htmlEscaper().escape(outdatedPluginUpdate.getDisplayName())
-                + "\" is out of date.<br><br>Installed version: "
-                + HtmlEscapers.htmlEscaper().escape(outdatedPluginUpdate.getInstalledVersion())
-                + "<br>Latest version: "
-                + HtmlEscapers.htmlEscaper().escape(outdatedPluginUpdate.getLatestVersion())
-                + "<br><br>Update it from the <strong>Microbot Plugin Hub</strong> to get the latest fixes.</html>";
-
-        JOptionPane.showMessageDialog(
-                this,
-                message,
-                "Microbot Plugin Update Available",
-                JOptionPane.INFORMATION_MESSAGE
-        );
-
-        microbotPluginManager.rememberOutdatedPluginUpdateNotification(outdatedPluginUpdate);
     }
 
     void savePinnedPlugins() {

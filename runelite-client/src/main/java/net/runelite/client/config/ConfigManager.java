@@ -45,8 +45,7 @@ import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.*;
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.inventorysetups.ConfigInventorySetupDataManager;
-import net.runelite.client.plugins.microbot.inventorysetups.InventorySetup;
+
 import net.runelite.client.plugins.microbot.util.security.LoginManager;
 import net.runelite.client.util.ColorUtil;
 import net.runelite.client.util.RunnableExceptionLogger;
@@ -115,9 +114,6 @@ public class ConfigManager
 	private String rsProfileKey;
 
 	private final Map<Type, Serializer<?>> serializers = Collections.synchronizedMap(new WeakHashMap<>());
-
-	@Inject
-	ConfigInventorySetupDataManager configInventorySetupDataManager;
 
 	@Inject
 	private ConfigManager(
@@ -1259,27 +1255,9 @@ public class ConfigManager
 			// null and the empty string are treated identically in sendConfig and treated as an unset
 			// If a config value defaults to "" and the current value is null, it will cause an extra
 			// unset to be sent, so treat them as equal
-			boolean isInventorySetup = item.keyName().toLowerCase().contains("inventorysetup");
 			if (Objects.equals(current, valueString) || (Strings.isNullOrEmpty(current) && Strings.isNullOrEmpty(valueString)))
 			{
-				if (isInventorySetup) {
-					var setups = configInventorySetupDataManager.loadV3Setups(this);
-					if (!setups.isEmpty()) {
-						setConfiguration(group.value(), item.keyName(), gson.toJson(setups.get(0), InventorySetup.class));
-					}
-				}
 				continue; // already set to the default value
-			}
-
-			if (current != null && !current.isBlank()) {
-				if (isInventorySetup) {
-					var setups = configInventorySetupDataManager.loadV3Setups(this);
-					InventorySetup currentObj = gson.fromJson(current, InventorySetup.class);
-					if (!setups.isEmpty() && setups.stream()
-							.noneMatch(x -> x.getName().equalsIgnoreCase(currentObj.getName()))) {
-						setConfiguration(group.value(), item.keyName(), "");
-					}
-				}
 			}
 
 			log.debug("Setting default configuration value for {}.{} to {}", group.value(), item.keyName(), defaultValue);
@@ -1383,10 +1361,6 @@ public class ConfigManager
 				return gson.fromJson(str, parameterizedType);
 			}
 		}
-		if(type == InventorySetup.class)
-		{
-			return gson.fromJson(str, type);
-		}
 		if (type instanceof Class)
 		{
 			Class<?> clazz = (Class<?>) type;
@@ -1462,10 +1436,6 @@ public class ConfigManager
 		if (object instanceof Set)
 		{
 			return gson.toJson(object, Set.class);
-		}
-		if (object instanceof InventorySetup)
-		{
-			return gson.toJson(object, InventorySetup.class);
 		}
 		if (object != null)
 		{

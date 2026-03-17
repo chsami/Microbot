@@ -2,13 +2,9 @@ package net.runelite.client.plugins.microbot.breakhandler.breakhandlerv2;
 
 import lombok.Getter;
 import net.runelite.client.plugins.Plugin;
-import net.runelite.client.plugins.microbot.accountselector.AutoLoginPlugin;
 import net.runelite.client.plugins.microbot.breakhandler.BreakHandlerPlugin;
 import net.runelite.client.plugins.microbot.breakhandler.breakhandlerv2.BreakHandlerV2Plugin;
 import net.runelite.client.plugins.microbot.example.ExamplePlugin;
-import net.runelite.client.plugins.microbot.inventorysetups.MInventorySetupsPlugin;
-import net.runelite.client.plugins.microbot.mouserecorder.MouseMacroRecorderPlugin;
-import net.runelite.client.plugins.microbot.questhelper.QuestHelperPlugin;
 import net.runelite.client.plugins.microbot.shortestpath.ShortestPathPlugin;
 import net.runelite.client.plugins.microbot.util.antiban.AntibanPlugin;
 
@@ -16,11 +12,7 @@ import net.runelite.client.plugins.microbot.util.antiban.AntibanPlugin;
 public enum MicrobotPluginChoice {
     NONE("None", null),
     ANTIBAN("Antiban", AntibanPlugin.class),
-    AUTO_LOGIN("Auto Login", AutoLoginPlugin.class),
-    QUEST_HELPER("Quest Helper", QuestHelperPlugin.class),
     SHORTEST_PATH("Shortest Path", ShortestPathPlugin.class),
-    MOUSE_MACRO_RECORDER("Mouse Macro Recorder", MouseMacroRecorderPlugin.class),
-    INVENTORY_SETUPS("Inventory Setups", MInventorySetupsPlugin.class),
     BREAK_HANDLER("BreakHandler (v1)", BreakHandlerPlugin.class),
     BREAK_HANDLER_V2("BreakHandler V2", BreakHandlerV2Plugin.class),
     EXAMPLE("Example Plugin", ExamplePlugin.class);

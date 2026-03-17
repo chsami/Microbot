@@ -31,133 +31,6 @@ public class MicrobotTopLevelConfigPanel extends PluginPanel {
     private MicrobotPluginPanel current;
     private boolean removeOnTabChange;
 
-    // -- BEGIN: NEW badge ( to be removed once we migrate all plugins to Hub) --
-    private final MaterialTab hubTab;
-    private JPanel glassPane;
-    private JLabel newBadgeOverlay;
-    private Timer newBadgeTimer;
-    private Component previousGlassPane;
-
-    private void createNewBadgeOverlay() {
-        if (hubTab == null) return;
-
-        glassPane = new JPanel() {
-            @Override
-            public boolean contains(int x, int y) {
-                return false;
-            }
-            @Override
-            protected void paintChildren(Graphics g) {
-                super.paintChildren(g);
-            }
-        };
-        glassPane.setOpaque(false);
-        glassPane.setLayout(null);
-
-        newBadgeOverlay = new JLabel() {
-            private final BufferedImage newBadge = ImageUtil.loadImageResource(MicrobotTopLevelConfigPanel.class, "NEW.png");
-            private final long startTime = System.currentTimeMillis();
-
-            @Override
-            protected void paintComponent(Graphics g) {
-                if (newBadge == null) {
-                    System.out.println("DEBUG: newBadge image is null, cannot paint");
-                    SwingUtilities.invokeLater(MicrobotTopLevelConfigPanel.this::cleanupNewBadge);
-                    return;
-                }
-
-                Graphics2D g2d = (Graphics2D) g.create();
-                try {
-                    g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                    g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-
-                    double time = (System.currentTimeMillis() - startTime) % 3000;
-                    double scale;
-
-                    if (time < 300) {
-                        double pulsePhase = (time / 300.0) * Math.PI;
-                        double pulseAmount = Math.sin(pulsePhase) * 0.06;
-                        scale = 0.7 + pulseAmount;
-                    } else {
-                        scale = 0.7;
-                    }
-
-                    double scaledWidth = newBadge.getWidth() * scale;
-                    double scaledHeight = newBadge.getHeight() * scale;
-
-                    double x = (getWidth() - scaledWidth) / 2.0;
-                    double y = (getHeight() - scaledHeight) / 2.0;
-
-                    g2d.rotate(Math.toRadians(20), getWidth() / 2.0, getHeight() / 2.0);
-                    g2d.drawImage(newBadge, (int)x, (int)y, (int)(x + scaledWidth), (int)(y + scaledHeight),
-                                  0, 0, newBadge.getWidth(), newBadge.getHeight(), null);
-
-                } finally {
-                    g2d.dispose();
-                }
-            }
-        };
-
-        newBadgeOverlay.setOpaque(false);
-        newBadgeOverlay.setSize(32, 32);
-        newBadgeOverlay.setVisible(false);
-        glassPane.add(newBadgeOverlay);
-
-        SwingUtilities.invokeLater(() -> {
-            JRootPane rootPane = SwingUtilities.getRootPane(this);
-            if (rootPane != null) {
-                if (previousGlassPane == null) {
-                    previousGlassPane = rootPane.getGlassPane();
-                }
-                rootPane.setGlassPane(glassPane);
-                glassPane.setVisible(true);
-                updateBadgePosition();
-            }
-        });
-
-        newBadgeTimer = new Timer(50, e -> {
-            if (hubTab != null && hubTab.isShowing() && glassPane.isVisible()) {
-                updateBadgePosition();
-                newBadgeOverlay.setVisible(true);
-                newBadgeOverlay.repaint();
-            } else {
-                newBadgeOverlay.setVisible(false);
-            }
-        });
-        newBadgeTimer.start();
-    }
-
-    private void updateBadgePosition() {
-        if (newBadgeOverlay == null || hubTab == null || glassPane == null) return;
-
-        try {
-            Point topRight = SwingUtilities.convertPoint(hubTab, hubTab.getWidth(), 0, glassPane);
-            int x = topRight.x - 25;
-            int y = topRight.y - 12;
-            newBadgeOverlay.setLocation(x, y);
-        } catch (Exception ex) {
-            System.out.println("DEBUG: Exception in updateBadgePosition: " + ex);
-        }
-    }
-
-    private void cleanupNewBadge() {
-        if (newBadgeTimer != null) {
-            newBadgeTimer.stop();
-            newBadgeTimer = null;
-        }
-        if (glassPane != null) {
-            glassPane.setVisible(false);
-            JRootPane rootPane = SwingUtilities.getRootPane(this);
-            if (rootPane != null && previousGlassPane != null) {
-                rootPane.setGlassPane(previousGlassPane);
-                previousGlassPane = null;
-            }
-            glassPane = null;
-        }
-        newBadgeOverlay = null;
-    }
-    // -- END: NEW badge ( to be removed once we migrate all plugins to Hub) --
-
     /**
      * Creates a simple text-based icon for tabs.
      * @param text {@link String} Text to display
@@ -203,8 +76,7 @@ public class MicrobotTopLevelConfigPanel extends PluginPanel {
     MicrobotTopLevelConfigPanel(
             EventBus eventBus,
             MicrobotPluginListPanel pluginListPanel,
-            MicrobotProfilePanel profilePanel,
-            Provider<MicrobotPluginHubPanel> microbotPluginHubPanelProvider
+            MicrobotProfilePanel profilePanel
     ) {
         super(false);
 
@@ -226,17 +98,11 @@ public class MicrobotTopLevelConfigPanel extends PluginPanel {
 
         // Create text-based icons instead of using image files for better clarity
         ImageIcon installedIcon = createTextIcon("Installed", Color.YELLOW, null, 80, 32);
-        ImageIcon hubIcon = createTextIcon("Plugin Hub", Color.YELLOW, null, 80, 32);
 
         pluginListPanelTab = addTab(pluginListPanel.getMuxer(), installedIcon, "Installed Microbot Plugins");
         profilePanelTab = addTab(profilePanel, "profile_icon.png", "Profiles");
-        hubTab = addTab(microbotPluginHubPanelProvider, hubIcon, "Microbot Hub");
-
 
         tabGroup.select(pluginListPanelTab);
-
-        // Create NEW badge overlay after UI is initialized (remove after migrating all plugins to hub)
-        SwingUtilities.invokeLater(this::createNewBadgeOverlay);
     }
 
     private MaterialTab addTab(MicrobotPluginPanel panel, ImageIcon icon, String tooltip) {
@@ -315,20 +181,12 @@ public class MicrobotTopLevelConfigPanel extends PluginPanel {
     public void onActivate() {
         active = true;
         current.onActivate();
-        // BEGIN: NEW badge readd code (remove once we migrate all plugins to hub)
-        if (newBadgeTimer == null || glassPane == null) {
-            SwingUtilities.invokeLater(this::createNewBadgeOverlay);
-        }
-        // END: NEW badge readd code (remove once we migrate all plugins to hub)
     }
 
     @Override
     public void onDeactivate() {
         active = false;
         current.onDeactivate();
-        // BEGIN: NEW badge clean up code (remove once we migrate all plugins to hub)
-        cleanupNewBadge();
-        // END: NEW badge clean up code (remove once we migrate all plugins to hub)
     }
 
     public void openConfigurationPanel(String name) {

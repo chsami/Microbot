@@ -10,7 +10,7 @@ import net.runelite.api.events.WidgetLoaded;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.inventorysetups.InventorySetupsItem;
+
 import net.runelite.client.plugins.microbot.util.Global;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.magic.Runes;
@@ -377,37 +377,14 @@ public class Rs2RunePouch
 	}
 
 	/**
-	 * Attempts to load the specified runes into the rune pouch using fuzzy logic where applicable.
-	 * <p>
-	 * Each rune is evaluated individually: if the corresponding {@link InventorySetupsItem#isFuzzy()} flag is set,
-	 * combination runes will be accepted. If all required runes are already satisfied, this method returns early.
-	 * Otherwise, it falls back to loading from saved pouch loadouts or withdrawing runes from the bank.
-	 *
-	 * @param inventorySetupRunes A map of {@link Runes} to their corresponding {@link InventorySetupsItem} containing quantity and fuzzy status.
-	 * @return {@code true} if the pouch already satisfies the requirements or is successfully loaded, {@code false} otherwise.
+	 * InventorySetupsItem removed — this method is no longer supported.
+	 * @deprecated InventorySetups plugin removed
 	 */
-	public static boolean loadFromInventorySetup(Map<Runes, InventorySetupsItem> inventorySetupRunes)
+	@Deprecated
+	public static boolean loadFromInventorySetup(Map<Runes, ?> inventorySetupRunes)
 	{
-		boolean allPresent = inventorySetupRunes.entrySet().stream()
-			.allMatch(entry -> {
-				Runes rune = entry.getKey();
-				InventorySetupsItem item = entry.getValue();
-				int qty = item.getQuantity();
-				boolean fuzzy = item.isFuzzy();
-
-				return contains(rune, qty, fuzzy);
-			});
-
-		if (allPresent)
-		{
-			return true;
-		}
-
-		return coreLoad(inventorySetupRunes.entrySet().stream()
-			.collect(Collectors.toMap(
-				Map.Entry::getKey,
-				e -> e.getValue().getQuantity()
-			)));
+		// InventorySetupsItem removed — no-op stub
+		return false;
 	}
 
 	/**

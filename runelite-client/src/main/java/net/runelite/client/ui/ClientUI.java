@@ -57,7 +57,7 @@ import net.runelite.client.input.MouseAdapter;
 import net.runelite.client.input.MouseListener;
 import net.runelite.client.input.MouseManager;
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.questhelper.QuestHelperConfig;
+
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.ui.laf.RuneLiteLAF;
 import net.runelite.client.ui.laf.RuneLiteRootPaneUI;
@@ -139,9 +139,6 @@ public class ClientUI
 	private Dimension lastClientSize;
 	private Cursor defaultCursor;
 
-	private JButton questHelperNavBtn;
-	private BufferedImage questIconOn;
-	private BufferedImage questIconOff;
 	private String lastNormalBounds;
 	private final Timer normalBoundsTimer;
 
@@ -603,23 +600,6 @@ public class ClientUI
 					FlatClientProperties.TABBED_PANE_TRAILING_COMPONENT,
 					toolbarPanel.createSidebarPanel());
 			}
-
-			questIconOn = net.runelite.client.plugins.microbot.questhelper.tools.Icon.QUEST_ICON_ON.getImage();
-			questIconOff = net.runelite.client.plugins.microbot.questhelper.tools.Icon.QUEST_ICON_OFF.getImage();
-			questHelperNavBtn = toolbarPanel.add(
-				NavigationButton.builder()
-					.icon(configManager.getConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "TurnOn", Boolean.class) ? questIconOn : questIconOff)
-					.tooltip(configManager.getConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "TurnOn", Boolean.class) ? "Disable 'Semi-Auto' Questing" : "Enable 'Semi-Auto' Questing")
-					.onClick(() ->
-					{
-						boolean isEnabled = configManager.getConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "TurnOn", Boolean.class);
-						configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "TurnOn", !isEnabled);
-						questHelperNavBtn.setIcon(new ImageIcon(!isEnabled ? questIconOn : questIconOff ));
-						questHelperNavBtn.setToolTipText(!isEnabled ? "Disable 'Semi-Auto' Questing" : "Enable 'Semi-Auto' Questing");
-						if (isEnabled) Rs2Walker.setTarget(null);
-					})
-					.build(), false
-			);
 
 			// Update config
 			updateFrameConfig(false);

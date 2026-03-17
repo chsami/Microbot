@@ -82,7 +82,7 @@ import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.externalplugins.ExternalPluginManager;
 import net.runelite.client.plugins.PluginManager;
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.externalplugins.MicrobotPluginManager;
+
 import net.runelite.client.proxy.ProxyChecker;
 import net.runelite.client.proxy.ProxyConfiguration;
 import net.runelite.client.rs.ClientLoader;
@@ -200,9 +200,6 @@ public class RuneLite
 	@Inject
 	@Nullable
 	private TelemetryClient telemetryClient;
-
-    @Inject
-    private MicrobotPluginManager microbotPluginManager;
 
 	@Inject
 	private ScheduledExecutorService scheduledExecutorService;
@@ -486,9 +483,6 @@ public class RuneLite
 		// Load user configuration
 		configManager.load();
 
-		// Initialize MicrobotPluginManager after configManager is loaded
-		microbotPluginManager.init();
-
 		// Update check requires ConfigManager to be ready before it runs
 		Updater updater = injector.getInstance(Updater.class);
 		updater.update(); // will exit if an update is in progress
@@ -498,8 +492,6 @@ public class RuneLite
 		pluginManager.loadCorePlugins();
 		pluginManager.loadSideLoadPlugins();
 		externalPluginManager.loadExternalPlugins();
-
-        microbotPluginManager.loadSideLoadPlugins();
 
         SplashScreen.stage(.70, null, "Finalizing configuration");
 
@@ -523,7 +515,6 @@ public class RuneLite
 		eventBus.register(clientUI);
 		eventBus.register(pluginManager);
 		eventBus.register(externalPluginManager);
-		eventBus.register(microbotPluginManager);
 		eventBus.register(overlayManager);
 		eventBus.register(configManager);
 		eventBus.register(discordService);
