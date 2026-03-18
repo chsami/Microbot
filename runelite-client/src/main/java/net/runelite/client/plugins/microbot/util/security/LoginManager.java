@@ -1,7 +1,5 @@
 package net.runelite.client.plugins.microbot.util.security;
 
-import lombok.Getter;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.client.plugins.microbot.commandcenter.CredentialRedactor;
@@ -43,9 +41,6 @@ public final class LoginManager {
 	private static final AtomicReference<GameState> LAST_KNOWN_GAME_STATE = new AtomicReference<>(GameState.UNKNOWN);
 
 	private static final AtomicReference<Instant> lastLoginTimestamp = new AtomicReference<>(null);
-
-    @Setter
-    public static ConfigProfile activeProfile = null;
 
     public static ConfigProfile getActiveProfile() {
         return Microbot.getConfigManager().getProfile();
