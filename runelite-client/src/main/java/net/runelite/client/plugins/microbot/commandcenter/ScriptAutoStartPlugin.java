@@ -35,10 +35,10 @@ public class ScriptAutoStartPlugin extends Plugin {
             return;
         }
 
-        try {
+        try (var fis = new FileInputStream(
+                Paths.get(profileDir).resolve("commandcenter.properties").toFile())) {
             Properties config = new Properties();
-            config.load(new FileInputStream(
-                Paths.get(profileDir).resolve("commandcenter.properties").toFile()));
+            config.load(fis);
             targetScriptName = config.getProperty("script");
         } catch (Exception e) {
             log.warn("Failed to read commandcenter.properties: {}", e.getMessage());
