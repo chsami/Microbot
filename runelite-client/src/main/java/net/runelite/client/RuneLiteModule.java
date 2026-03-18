@@ -225,6 +225,8 @@ public class RuneLiteModule extends AbstractModule
 			Gson gson,
 			@Named("runelite.api.base") HttpUrl apiBase)
 	{
-		return disableTelemetry ? null : new TelemetryClient(okHttpClient, gson, apiBase);
+		// Telemetry is always disabled for this fork — bots must not submit
+		// usage data to api.runelite.net regardless of the --disable-telemetry flag.
+		return null;
 	}
 }

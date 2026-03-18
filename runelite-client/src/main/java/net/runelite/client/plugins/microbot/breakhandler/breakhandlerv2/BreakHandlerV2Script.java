@@ -158,9 +158,6 @@ public class BreakHandlerV2Script extends Script {
         if (config.useActiveProfile()) {
             try {
                 activeProfile = Microbot.getConfigManager().getProfile();
-                if (activeProfile != null) {
-                    LoginManager.setActiveProfile(activeProfile);
-                }
             } catch (Exception ex) {
                 log.error("[BreakHandlerV2] Failed to load active profile", ex);
             }

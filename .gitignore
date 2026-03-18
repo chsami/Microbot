@@ -45,3 +45,4 @@ microbot_profiles/
 **/credentials.properties
 **/commandcenter.properties
 **/status.port
+debug_temp_version.txt
