@@ -7,6 +7,8 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Lightweight HTTP server bound to localhost only.
@@ -15,6 +17,7 @@ import java.nio.file.Path;
 @Slf4j
 public class StatusApiServer {
     private HttpServer server;
+    private ExecutorService executor;
     private int port;
     private final Path portFilePath;
     private final StatusApiHandler handler;
@@ -30,7 +33,12 @@ public class StatusApiServer {
 
         server.createContext("/status", handler::handleStatus);
         server.createContext("/health", handler::handleHealth);
-        server.setExecutor(null); // default single-thread executor
+        executor = Executors.newSingleThreadExecutor(r -> {
+            Thread t = new Thread(r, "cc-status-api");
+            t.setDaemon(true);
+            return t;
+        });
+        server.setExecutor(executor);
         server.start();
 
         // Write port to file for Command Center discovery
@@ -40,8 +48,11 @@ public class StatusApiServer {
 
     public void stop() {
         if (server != null) {
-            server.stop(0);
+            server.stop(1); // allow 1s for in-flight requests
             log.info("Status API stopped");
+        }
+        if (executor != null) {
+            executor.shutdownNow();
         }
         // Clean up port file
         try {
