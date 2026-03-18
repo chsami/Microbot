@@ -41,9 +41,9 @@ public class AutoLoginPlugin extends Plugin {
         Path profilePath = Paths.get(profileDir);
 
         // Read credentials
-        try {
+        try (var fis = new FileInputStream(profilePath.resolve("credentials.properties").toFile())) {
             Properties creds = new Properties();
-            creds.load(new FileInputStream(profilePath.resolve("credentials.properties").toFile()));
+            creds.load(fis);
             email = creds.getProperty("email");
             password = creds.getProperty("password");
         } catch (Exception e) {
@@ -51,9 +51,9 @@ public class AutoLoginPlugin extends Plugin {
         }
 
         // Read world from commandcenter.properties
-        try {
+        try (var fis = new FileInputStream(profilePath.resolve("commandcenter.properties").toFile())) {
             Properties config = new Properties();
-            config.load(new FileInputStream(profilePath.resolve("commandcenter.properties").toFile()));
+            config.load(fis);
             world = config.getProperty("world");
         } catch (Exception e) {
             log.debug("No commandcenter.properties or no world set");
@@ -72,7 +72,9 @@ public class AutoLoginPlugin extends Plugin {
         if (world != null && !world.isEmpty() && !"auto".equals(world)) {
             try {
                 int worldNum = Integer.parseInt(world);
-                client.changeWorld(client.createWorld().withId(worldNum));
+                net.runelite.api.World rsWorld = client.createWorld();
+                rsWorld.setId(worldNum);
+                client.changeWorld(rsWorld);
             } catch (NumberFormatException e) {
                 log.warn("Invalid world number: {}", world);
             }
