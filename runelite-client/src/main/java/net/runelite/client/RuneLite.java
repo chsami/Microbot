@@ -223,6 +223,11 @@ public class RuneLite
 		parser.accepts("noupdate", "Skips the launcher update");
 		parser.accepts("clean-randomdat", "Clean random dat file");
 
+		final ArgumentAcceptingOptionSpec<String> ccProfileDir = parser.accepts("cc-profile-dir", "Command Center profile directory")
+			.withRequiredArg().ofType(String.class);
+		final ArgumentAcceptingOptionSpec<String> statusPortFile = parser.accepts("status-port-file", "Path to write Status API port")
+			.withRequiredArg().ofType(String.class);
+
         final ArgumentAcceptingOptionSpec<String> proxyInfo = parser.accepts("proxy", "Use a specified proxy. Format: scheme://user:pass@host:port")
                 .withRequiredArg().ofType(String.class);
         final ArgumentAcceptingOptionSpec<File> sessionfile = parser.accepts("sessionfile", "Use a specified session file")
@@ -286,6 +291,14 @@ public class RuneLite
 		}
 
 		ProxyConfiguration.setupProxy(options, proxyInfo);
+
+		// Set Command Center system properties for plugin access
+		if (options.has(ccProfileDir)) {
+			System.setProperty("cc-profile-dir", options.valueOf(ccProfileDir));
+		}
+		if (options.has(statusPortFile)) {
+			System.setProperty("status-port-file", options.valueOf(statusPortFile));
+		}
 
         Thread.setDefaultUncaughtExceptionHandler((thread, throwable) ->
         {
