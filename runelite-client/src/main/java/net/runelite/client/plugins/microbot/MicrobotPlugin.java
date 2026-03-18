@@ -41,6 +41,10 @@ import net.runelite.client.util.ImageUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import net.runelite.client.plugins.microbot.commandcenter.status.StatusApiServer;
+import net.runelite.client.plugins.microbot.commandcenter.status.StatusApiHandler;
+import net.runelite.client.plugins.microbot.commandcenter.status.BotStatusModel;
+
 import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.inject.Singleton;
@@ -49,6 +53,8 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.*;
@@ -101,6 +107,9 @@ public class MicrobotPlugin extends Plugin
 	@Inject
 	private EventBus eventBus;
 	private GameChatAppender gameChatAppender;
+
+	private StatusApiServer statusApiServer;
+	private BotStatusModel botStatusModel;
 
 	// Widget change tracking for overlay cache invalidation
 	private volatile boolean widgetLayoutChanged = false;
@@ -169,10 +178,35 @@ public class MicrobotPlugin extends Plugin
 			overlayManager.add(microbotOverlay);
 			overlayManager.add(gembagOverlay);
 		}
+
+		// Start Status API if port file path is configured
+		String portFilePath = System.getProperty("status-port-file");
+		if (portFilePath != null && !portFilePath.isEmpty()) {
+			try {
+				String profileDir = System.getProperty("cc-profile-dir");
+				int charId = 0;
+				String charName = "";
+				if (profileDir != null) {
+					String dirName = Paths.get(profileDir).getFileName().toString();
+					if (dirName.startsWith("bot-")) {
+						charId = Integer.parseInt(dirName.substring(4));
+					}
+				}
+				botStatusModel = new BotStatusModel(charId, charName);
+				StatusApiHandler handler = new StatusApiHandler(botStatusModel);
+				statusApiServer = new StatusApiServer(Path.of(portFilePath), handler);
+				statusApiServer.start();
+			} catch (Exception e) {
+				log.error("Failed to start Status API: {}", e.getMessage());
+			}
+		}
 	}
 
 	protected void shutDown()
 	{
+		if (statusApiServer != null) {
+			statusApiServer.stop();
+		}
 		overlayManager.remove(microbotOverlay);
 		overlayManager.remove(gembagOverlay);
 		clientToolbar.removeNavigation(navButton);
