@@ -13,7 +13,8 @@ import java.util.Map;
 
 /**
  * Builds the JSON status response by reading game state from the RuneLite Client API.
- * Thread-safe: reads are done on the calling thread (HttpServer executor).
+ * Client reads are wrapped in try-catch to handle cross-thread access safely.
+ * Microbot scripts already read client state from non-EDT threads throughout the codebase.
  * All fields are additive-only — new fields may appear, existing fields are never removed.
  */
 @Slf4j
@@ -51,14 +52,38 @@ public class BotStatusModel {
         root.put("characterId", characterId);
         root.put("characterName", characterName);
 
-        Client client = Microbot.getClient();
-        boolean loggedIn = client != null &&
-            client.getGameState() == GameState.LOGGED_IN;
+        // Read client state — wrapped in try-catch for cross-thread safety.
+        // Microbot's threading model permits this (scripts already do it),
+        // but we guard against transient exceptions during state transitions.
+        boolean loggedIn = false;
+        Map<String, Object> player = new HashMap<>();
+        try {
+            Client client = Microbot.getClient();
+            loggedIn = client != null &&
+                client.getGameState() == GameState.LOGGED_IN;
+
+            if (loggedIn && client != null) {
+                player.put("world", client.getWorld());
+                var localPlayer = client.getLocalPlayer();
+                if (localPlayer != null) {
+                    var pos = localPlayer.getWorldLocation();
+                    Map<String, Integer> location = new HashMap<>();
+                    location.put("x", pos.getX());
+                    location.put("y", pos.getY());
+                    player.put("location", location);
+                }
+                player.put("hitpoints", client.getBoostedSkillLevel(Skill.HITPOINTS));
+                player.put("prayer", client.getBoostedSkillLevel(Skill.PRAYER));
+                player.put("runEnergy", client.getEnergy() / 100);
+            }
+        } catch (Exception e) {
+            log.debug("Transient error reading client state: {}", e.getMessage());
+        }
 
         root.put("loggedIn", loggedIn);
         root.put("status", loggedIn ? (scriptRunning ? "running" : "idle") : "login_screen");
 
-        // Script info
+        // Script info — volatile reads, safe from any thread
         Map<String, Object> script = new HashMap<>();
         script.put("name", activeScriptName);
         script.put("running", scriptRunning);
@@ -67,28 +92,10 @@ public class BotStatusModel {
             : 0);
         root.put("script", script);
 
-        // Player info (safe even when not logged in — returns defaults)
-        Map<String, Object> player = new HashMap<>();
-        if (loggedIn && client != null) {
-            player.put("world", client.getWorld());
-            // Location
-            var localPlayer = client.getLocalPlayer();
-            if (localPlayer != null) {
-                var pos = localPlayer.getWorldLocation();
-                Map<String, Integer> location = new HashMap<>();
-                location.put("x", pos.getX());
-                location.put("y", pos.getY());
-                player.put("location", location);
-            }
-            player.put("hitpoints", client.getBoostedSkillLevel(Skill.HITPOINTS));
-            player.put("prayer", client.getBoostedSkillLevel(Skill.PRAYER));
-            player.put("runEnergy", client.getEnergy() / 100); // RuneLite returns 0-10000
-        }
         root.put("player", player);
 
-        // XP info
+        // XP info — placeholder until baseline tracking is implemented
         Map<String, Object> xp = new HashMap<>();
-        // XP tracking requires baseline storage — simplified for now
         xp.put("totalGained", 0);
         xp.put("perHour", 0);
         xp.put("skills", new HashMap<>());

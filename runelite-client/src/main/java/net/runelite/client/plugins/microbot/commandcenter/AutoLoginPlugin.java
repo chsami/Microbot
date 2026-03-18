@@ -7,6 +7,7 @@ import net.runelite.api.events.GameStateChanged;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.plugins.microbot.util.security.LoginManager;
 
 import javax.inject.Inject;
 import java.io.FileInputStream;
@@ -68,13 +69,11 @@ public class AutoLoginPlugin extends Plugin {
 
         loginAttempted = true;
 
-        // Set world if configured
+        // Set world if configured — use Login.setWorld which fully initializes the World object
         if (world != null && !world.isEmpty() && !"auto".equals(world)) {
             try {
                 int worldNum = Integer.parseInt(world);
-                net.runelite.api.World rsWorld = client.createWorld();
-                rsWorld.setId(worldNum);
-                client.changeWorld(rsWorld);
+                LoginManager.setWorld(worldNum);
             } catch (NumberFormatException e) {
                 log.warn("Invalid world number: {}", world);
             }
@@ -85,8 +84,8 @@ public class AutoLoginPlugin extends Plugin {
         client.setPassword(password);
 
         // RuneLite fires LOGIN_SCREEN when ready — we can set credentials directly
-        // The actual login is triggered by the client's login field being populated
-        log.info("AutoLogin: credentials injected for {}", email.substring(0, 3) + "***");
+        String prefix = email.length() >= 3 ? email.substring(0, 3) : email;
+        log.info("AutoLogin: credentials injected for {}***", prefix);
     }
 
     @Override
