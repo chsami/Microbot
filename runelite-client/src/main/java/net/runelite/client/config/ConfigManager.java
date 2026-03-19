@@ -141,8 +141,6 @@ public class ConfigManager
 
 	public void switchProfile(ConfigProfile newProfile)
 	{
-		LoginManager.setActiveProfile(newProfile);
-
 		if (newProfile.getId() == profile.getId())
 		{
 			log.warn("switching to already-active profile!");

@@ -46,3 +46,4 @@ microbot_profiles/
 **/commandcenter.properties
 **/status.port
 .worktrees/
+debug_temp_version.txt

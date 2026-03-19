@@ -508,19 +508,6 @@ public class MicrobotPlugin extends Plugin
 		}
 	}
 
-	@Subscribe
-	public void onGameTick(GameTick event)
-	{		
-		// Cache loading is now handled properly during login/profile changes
-		// No need to call loadInitialCacheFromCurrentConfig on every tick
-	}
-
-	@Subscribe(priority = 100)
-	private void onClientShutdown(ClientShutdown e)
-	{
-
-	}
-
 	/**
 	 * Dynamically checks if any visible widget overlaps with the specified bounds
 	 * @param overlayBoundsCanvas The bounds to check for widget overlap
