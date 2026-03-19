@@ -4,7 +4,6 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.plugins.microbot.commandcenter.scripts.core.CCScript;
 import net.runelite.client.plugins.microbot.commandcenter.scripts.core.behaviors.*;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
-import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 
@@ -83,7 +82,7 @@ public class CCCombatScript extends CCScript<CCCombatScript.State> {
     }
 
     protected void checkProgression() {
-        int combatLevel = Rs2Combat.getCombatLevel();
+        int combatLevel = Rs2Player.getCombatLevel();
         if (combatLevel >= 40) {
             log.info("[Progression] Combat level {} — consider upgrading to Flesh Crawlers or Hill Giants", combatLevel);
         } else if (combatLevel >= 20) {
