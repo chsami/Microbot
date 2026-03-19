@@ -1,22 +1,34 @@
 package net.runelite.client.plugins.microbot.commandcenter.scripts.core.behaviors;
 
+import net.runelite.client.plugins.microbot.commandcenter.scripts.core.CCBehaviorTestBase;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
-public class EatingBehaviorTest {
+public class EatingBehaviorTest extends CCBehaviorTestBase<EatingBehavior> {
+
+    @Override
+    protected EatingBehavior createDefaultBehavior() {
+        return new EatingBehavior(50) {
+            @Override protected int getHpPercent() { return 100; }
+            @Override protected boolean hasFood() { return false; }
+            @Override public void execute() {}
+        };
+    }
+
+    @Override protected int expectedPriority() { return 10; }
+    @Override protected String expectedName() { return "Eating"; }
 
     private EatingBehavior behaviorWith(int threshold, int hpPercent, boolean hasFood) {
         return new EatingBehavior(threshold) {
             @Override protected int getHpPercent() { return hpPercent; }
             @Override protected boolean hasFood() { return hasFood; }
-            @Override public void execute() { /* no-op in test */ }
+            @Override public void execute() {}
         };
     }
 
     @Test
     public void shouldActivate_whenHpBelowThreshold_andHasFood() {
-        EatingBehavior b = behaviorWith(50, 40, true);
-        assertTrue(b.shouldActivate());
+        assertTrue(behaviorWith(50, 40, true).shouldActivate());
     }
 
     @Test
@@ -32,10 +44,5 @@ public class EatingBehaviorTest {
     @Test
     public void shouldNotActivate_whenHpExactlyAtThreshold() {
         assertFalse(behaviorWith(50, 50, true).shouldActivate());
-    }
-
-    @Test
-    public void priority_is10() {
-        assertEquals(10, behaviorWith(50, 100, true).priority());
     }
 }

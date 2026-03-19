@@ -1,24 +1,41 @@
 package net.runelite.client.plugins.microbot.commandcenter.scripts.core.behaviors;
 
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.client.plugins.microbot.commandcenter.scripts.core.CCBehaviorTestBase;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
-public class BankingBehaviorTest {
+public class BankingBehaviorTest extends CCBehaviorTestBase<BankingBehavior> {
+
+    @Override
+    protected BankingBehavior createDefaultBehavior() {
+        BankingConfig config = new BankingConfig(null, null, null);
+        return new BankingBehavior(config, () -> null) {
+            @Override protected boolean isInventoryFull() { return false; }
+            @Override protected boolean walkToAndOpenBank() { return false; }
+            @Override protected boolean isBankOpen() { return false; }
+            @Override protected void depositMatchingItems() {}
+            @Override protected void withdrawConfiguredItems() {}
+            @Override protected void closeBank() {}
+            @Override protected void walkToActivityLocation() {}
+        };
+    }
+
+    @Override protected int expectedPriority() { return 50; }
+    @Override protected String expectedName() { return "Banking"; }
 
     private BankingBehavior behaviorWith(boolean inventoryFull, boolean bankOpen) {
         BankingConfig config = new BankingConfig(
-            item -> item.getName().contains("Logs"),
-            null, null
+            item -> item.getName().contains("Logs"), null, null
         );
         return new BankingBehavior(config, () -> new WorldPoint(3200, 3200, 0)) {
             @Override protected boolean isInventoryFull() { return inventoryFull; }
             @Override protected boolean walkToAndOpenBank() { return bankOpen; }
             @Override protected boolean isBankOpen() { return bankOpen; }
-            @Override protected void depositMatchingItems() { }
-            @Override protected void withdrawConfiguredItems() { }
-            @Override protected void closeBank() { }
-            @Override protected void walkToActivityLocation() { }
+            @Override protected void depositMatchingItems() {}
+            @Override protected void withdrawConfiguredItems() {}
+            @Override protected void closeBank() {}
+            @Override protected void walkToActivityLocation() {}
         };
     }
 
@@ -30,16 +47,6 @@ public class BankingBehaviorTest {
     @Test
     public void shouldNotActivate_whenInventoryHasSpace() {
         assertFalse(behaviorWith(false, false).shouldActivate());
-    }
-
-    @Test
-    public void priority_is50() {
-        assertEquals(50, behaviorWith(false, false).priority());
-    }
-
-    @Test
-    public void name_isBanking() {
-        assertEquals("Banking", behaviorWith(false, false).name());
     }
 
     @Test
@@ -58,10 +65,10 @@ public class BankingBehaviorTest {
             @Override protected void walkToActivityLocation() { called[3] = true; }
         };
         b.execute();
-        assertTrue("deposit should be called", called[0]);
-        assertTrue("withdraw should be called", called[1]);
-        assertTrue("closeBank should be called", called[2]);
-        assertTrue("walkBack should be called", called[3]);
+        assertTrue("deposit called", called[0]);
+        assertTrue("withdraw called", called[1]);
+        assertTrue("closeBank called", called[2]);
+        assertTrue("walkBack called", called[3]);
     }
 
     @Test
@@ -73,11 +80,11 @@ public class BankingBehaviorTest {
             @Override protected boolean walkToAndOpenBank() { return false; }
             @Override protected boolean isBankOpen() { return false; }
             @Override protected void depositMatchingItems() { called[0] = true; }
-            @Override protected void withdrawConfiguredItems() { }
-            @Override protected void closeBank() { }
-            @Override protected void walkToActivityLocation() { }
+            @Override protected void withdrawConfiguredItems() {}
+            @Override protected void closeBank() {}
+            @Override protected void walkToActivityLocation() {}
         };
         b.execute();
-        assertFalse("deposit should NOT be called when bank fails to open", called[0]);
+        assertFalse("deposit should NOT be called", called[0]);
     }
 }
