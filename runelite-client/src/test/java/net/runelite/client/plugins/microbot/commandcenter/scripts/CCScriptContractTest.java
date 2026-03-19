@@ -75,4 +75,10 @@ public class CCScriptContractTest {
         assertTrue("Tags should include 'microbot'",
             Arrays.asList(getDescriptor().tags()).contains("microbot"));
     }
+
+    @Test
+    public void pluginClass_extendsMicrobotPlugin() {
+        assertTrue(pluginClass.getSimpleName() + " should extend MicrobotPlugin",
+            net.runelite.client.plugins.microbot.MicrobotPlugin.class.isAssignableFrom(pluginClass));
+    }
 }
