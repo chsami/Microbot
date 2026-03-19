@@ -36,4 +36,10 @@ public class CCMiningScriptTest {
         assertEquals(CCMiningScript.State.MINING,
             scriptWith(false, true).onTick(CCMiningScript.State.IDLE));
     }
+
+    @Test
+    public void idle_whenNoRock_staysIdle() {
+        assertEquals(CCMiningScript.State.IDLE,
+            scriptWith(false, false).onTick(CCMiningScript.State.IDLE));
+    }
 }

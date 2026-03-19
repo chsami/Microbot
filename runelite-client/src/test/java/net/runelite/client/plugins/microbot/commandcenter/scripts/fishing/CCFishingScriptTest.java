@@ -43,4 +43,10 @@ public class CCFishingScriptTest {
         assertEquals(CCFishingScript.State.IDLE,
             scriptWith(false, false, false).onTick(CCFishingScript.State.FISHING));
     }
+
+    @Test
+    public void idle_whenNoSpot_staysIdle() {
+        assertEquals(CCFishingScript.State.IDLE,
+            scriptWith(false, false, true).onTick(CCFishingScript.State.IDLE));
+    }
 }

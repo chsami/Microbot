@@ -1,7 +1,9 @@
 package net.runelite.client.plugins.microbot.commandcenter.scripts.woodcutting;
 
+import net.runelite.client.plugins.microbot.commandcenter.scripts.core.CCScriptTestUtils;
 import org.junit.Test;
 import static org.junit.Assert.*;
+import static org.mockito.Mockito.*;
 
 public class CCWoodcuttingScriptTest {
 
@@ -39,5 +41,31 @@ public class CCWoodcuttingScriptTest {
         CCWoodcuttingScript s = scriptWith(false, true);
         assertEquals(CCWoodcuttingScript.State.CHOPPING,
             s.onTick(CCWoodcuttingScript.State.IDLE));
+    }
+
+    @Test
+    public void idle_whenNoTree_staysIdle() {
+        CCWoodcuttingScript s = scriptWith(false, false);
+        assertEquals(CCWoodcuttingScript.State.IDLE,
+            s.onTick(CCWoodcuttingScript.State.IDLE));
+    }
+
+    @Test
+    public void chopping_whenInventoryFull_andConfigDrop_dropsLogs() {
+        boolean[] dropCalled = new boolean[1];
+        CCWoodcuttingConfig config = mock(CCWoodcuttingConfig.class, CALLS_REAL_METHODS);
+        when(config.bankLogs()).thenReturn(false);
+
+        CCWoodcuttingScript s = new CCWoodcuttingScript() {
+            @Override protected boolean isPlayerBusy() { return false; }
+            @Override protected boolean findAndChopTree() { return false; }
+            @Override protected boolean isInventoryFull() { return true; }
+            @Override protected void dropAllLogs() { dropCalled[0] = true; }
+        };
+        CCScriptTestUtils.injectConfig(s, config);
+
+        assertEquals(CCWoodcuttingScript.State.CHOPPING,
+            s.onTick(CCWoodcuttingScript.State.CHOPPING));
+        assertTrue("dropAllLogs should be called", dropCalled[0]);
     }
 }

@@ -36,4 +36,10 @@ public class CCCookingScriptTest {
         assertEquals(CCCookingScript.State.COOKING,
             scriptWith(false, true, false).onTick(CCCookingScript.State.IDLE));
     }
+
+    @Test
+    public void idle_whenNoRawFood_staysIdle() {
+        assertEquals(CCCookingScript.State.IDLE,
+            scriptWith(false, false, false).onTick(CCCookingScript.State.IDLE));
+    }
 }
