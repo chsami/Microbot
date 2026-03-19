@@ -1,7 +1,7 @@
 package net.runelite.client.plugins.microbot.commandcenter.scripts.woodcutting;
 
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.client.plugins.Plugin;
+import net.runelite.client.plugins.microbot.MicrobotPlugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.overlay.OverlayManager;
 
@@ -14,7 +14,7 @@ import javax.inject.Inject;
     enabledByDefault = false
 )
 @Slf4j
-public class CCWoodcuttingPlugin extends Plugin {
+public class CCWoodcuttingPlugin extends MicrobotPlugin {
     @Inject private CCWoodcuttingScript script;
     @Inject private CCWoodcuttingConfig config;
     @Inject private OverlayManager overlayManager;

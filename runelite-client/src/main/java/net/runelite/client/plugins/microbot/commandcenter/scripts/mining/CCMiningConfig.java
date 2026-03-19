@@ -5,7 +5,7 @@ import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
 
-@ConfigGroup("ccmining")
+@ConfigGroup("cc-mining")
 public interface CCMiningConfig extends Config {
     @ConfigSection(name = "General", position = 0)
     String generalSection = "general";
