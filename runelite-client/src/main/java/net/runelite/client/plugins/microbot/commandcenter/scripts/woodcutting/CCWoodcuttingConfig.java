@@ -7,7 +7,7 @@ import net.runelite.client.config.ConfigSection;
 
 @ConfigGroup("cc-woodcutting")
 public interface CCWoodcuttingConfig extends Config {
-    @ConfigSection(name = "General", position = 0)
+    @ConfigSection(name = "General", description = "General settings", position = 0)
     String generalSection = "general";
 
     @ConfigItem(keyName = "tree", name = "Tree Type", description = "Which tree to chop",

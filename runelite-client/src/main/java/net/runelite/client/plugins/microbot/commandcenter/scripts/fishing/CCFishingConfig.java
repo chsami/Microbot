@@ -7,7 +7,7 @@ import net.runelite.client.config.ConfigSection;
 
 @ConfigGroup("cc-fishing")
 public interface CCFishingConfig extends Config {
-    @ConfigSection(name = "General", position = 0)
+    @ConfigSection(name = "General", description = "General settings", position = 0)
     String generalSection = "general";
 
     @ConfigItem(keyName = "fishType", name = "Fish Type", description = "Which fish to catch",

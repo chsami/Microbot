@@ -7,7 +7,7 @@ import net.runelite.client.config.ConfigSection;
 
 @ConfigGroup("cc-combat")
 public interface CCCombatConfig extends Config {
-    @ConfigSection(name = "General", position = 0)
+    @ConfigSection(name = "General", description = "General settings", position = 0)
     String generalSection = "general";
 
     @ConfigItem(keyName = "monsterName", name = "Monster", description = "Name of monster to attack",

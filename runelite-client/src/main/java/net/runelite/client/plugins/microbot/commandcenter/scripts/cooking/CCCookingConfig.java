@@ -7,7 +7,7 @@ import net.runelite.client.config.ConfigSection;
 
 @ConfigGroup("cc-cooking")
 public interface CCCookingConfig extends Config {
-    @ConfigSection(name = "General", position = 0)
+    @ConfigSection(name = "General", description = "General settings", position = 0)
     String generalSection = "general";
 
     @ConfigItem(keyName = "food", name = "Food Type", description = "Which food to cook",
