@@ -28,7 +28,7 @@ public class NewMenuEntry implements MenuEntry {
     private Actor actor;
     private TileObject gameObject;
     private Widget widget;
-    private int worldViewId = -1;
+    private int worldViewId = WorldView.TOPLEVEL;
 
     private NewMenuEntry(int param0, int param1, MenuAction type, int identifier) {
         this.param0 = param0;

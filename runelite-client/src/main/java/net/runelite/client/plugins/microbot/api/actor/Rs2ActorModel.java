@@ -71,7 +71,8 @@ public class Rs2ActorModel implements Actor
     @Override
     public WorldPoint getWorldLocation()
     {
-        if (getWorldView() != null && getWorldView().getId() != -1) {
+        final WorldView worldView = getWorldView();
+        if (worldView != null && worldView.getId() != WorldView.TOPLEVEL) {
             return Microbot.getClientThread().invoke(this::projectActorLocationToMainWorld);
         }
 

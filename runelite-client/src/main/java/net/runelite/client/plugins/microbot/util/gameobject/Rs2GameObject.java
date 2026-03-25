@@ -1842,17 +1842,15 @@ public class Rs2GameObject {
                 param1 = 4;
             }*/
 
-            int worldViewId = -1;
+            int worldViewId = WorldView.TOPLEVEL;
 
-            if (object.getWorldView().getId() != -1) {
-                var worldView =Microbot.getClientThread().invoke(() ->  Microbot.getClient().getLocalPlayer().getWorldView());
-                if (worldView == null) {
-                    worldViewId = Microbot.getClient().getTopLevelWorldView().getId();
-                } else {
-                    worldViewId = worldView
-                            .getId();
+            final WorldView objectWorldView = object.getWorldView();
+            if (objectWorldView != null && objectWorldView.getId() != WorldView.TOPLEVEL) {
+                var worldView = Microbot.getClientThread().invoke(() ->  Microbot.getClient().getLocalPlayer().getWorldView());
+                if (worldView != null)
+                {
+                    worldViewId = worldView.getId();
                 }
-
             }
 
 
