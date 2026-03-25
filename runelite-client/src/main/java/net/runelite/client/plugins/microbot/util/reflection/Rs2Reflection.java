@@ -32,7 +32,8 @@ public class Rs2Reflection {
     {
         if (menuAction == null)
         {
-            final String MENU_ACTION_DESCRIPTOR_VANILLA = "(IIIIIILjava/lang/String;Ljava/lang/String;III)V";
+            final String MENU_ACTION_DESCRIPTOR_VANILLA_BYTE_GARBAGE_VALUE = "(IIIIIILjava/lang/String;Ljava/lang/String;IIB)V";
+            final String MENU_ACTION_DESCRIPTOR_VANILLA_INT_GARBAGE_VALUE = "(IIIIIILjava/lang/String;Ljava/lang/String;III)V";
             final String MENU_ACTION_DESCRIPTOR_RUNELITE = "(IILnet/runelite/api/MenuAction;IILjava/lang/String;Ljava/lang/String;)V";
 
             final Class<?> clientClazz = Microbot.getClient().getClass();
@@ -72,9 +73,9 @@ public class Rs2Reflection {
                         }
 
                         final MethodInsnNode menuActionVanillaInsn = (MethodInsnNode) insnNode.getNext();
-                        if (!menuActionVanillaInsn.desc.equals(MENU_ACTION_DESCRIPTOR_VANILLA))
+                        if (!menuActionVanillaInsn.desc.equals(MENU_ACTION_DESCRIPTOR_VANILLA_BYTE_GARBAGE_VALUE) && !menuActionVanillaInsn.desc.equals(MENU_ACTION_DESCRIPTOR_VANILLA_INT_GARBAGE_VALUE))
                         {
-                            throw new RuntimeException("Menu action descriptor vanilla has changed from: " + MENU_ACTION_DESCRIPTOR_VANILLA + " to: " + menuActionVanillaInsn.desc);
+                            throw new RuntimeException("Menu action descriptor vanilla has changed to: " + menuActionVanillaInsn.desc);
                         }
                         menuAction = Arrays.stream(Class.forName(menuActionVanillaInsn.owner).getDeclaredMethods())
                                 .filter(m -> m.getName().equals(menuActionVanillaInsn.name))
