@@ -76,7 +76,7 @@ public class Rs2ActorModel implements Actor
             return Microbot.getClientThread().invoke(this::projectActorLocationToMainWorld);
         }
 
-        return actor.getWorldLocation();
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> actor.getWorldLocation()).orElse(null);
     }
 
     @Override
@@ -450,7 +450,12 @@ public class Rs2ActorModel implements Actor
     }
 
     public WorldPoint projectActorLocationToMainWorld() {
-        WorldPoint actorLocation = actor.getWorldLocation();
+        WorldPoint actorLocation = Microbot.getClientThread().runOnClientThreadOptional(() -> actor.getWorldLocation()).orElse(null);
+        if (actorLocation == null)
+        {
+            return getWorldLocation();
+        }
+
         LocalPoint localPoint = LocalPoint.fromWorld(
                 getWorldView(),
                 actorLocation
