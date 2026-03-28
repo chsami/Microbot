@@ -309,7 +309,7 @@ public class Microbot {
             log.error("Can't hop world, already trying to hop");
             return false;
         }
-        boolean isHopping = Microbot.getClientThread().runOnClientThreadOptional(() -> {
+        boolean hopInitiated = Microbot.getClientThread().runOnClientThreadOptional(() -> {
             if (Microbot.getClient().getLocalPlayer() != null && Microbot.getClient().getLocalPlayer().isInteracting()) {
                 log.error("Local player is interacting, cannot hop worlds");
                 return false;
@@ -341,10 +341,14 @@ public class Microbot {
             Microbot.getClient().openWorldHopper();
             Microbot.getClient().hopToWorld(rsWorld);
             quickHopTargetWorld = null;
-            sleep(600);
-            sleepUntil(() -> Microbot.isHopping() || Rs2Widget.getWidget(193, 0) != null, 2000);
-            return Microbot.isHopping();
+            return true;
         }).orElse(false);
+        if (!hopInitiated) {
+            return false;
+        }
+        sleep(600);
+        sleepUntil(() -> Microbot.isHopping() || Rs2Widget.getWidget(193, 0) != null, 2000);
+        boolean isHopping = Microbot.isHopping();
         if (!isHopping) {
             Widget confirmRoot = Rs2Widget.getWidget(193, 0);
             if (confirmRoot != null) {
