@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Adam <Adam@sigterm.info>
+ * Copyright (c) 2021, Jordan Atwood <nightfirecat@nightfirec.at>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -22,30 +22,30 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package net.runelite.cache.script;
+package net.runelite.client.plugins.itemstats.special;
 
-public class Instruction
+import net.runelite.api.Client;
+import net.runelite.api.Skill;
+import static net.runelite.client.plugins.itemstats.Builders.heal;
+import net.runelite.client.plugins.itemstats.Effect;
+import net.runelite.client.plugins.itemstats.StatChange;
+import net.runelite.client.plugins.itemstats.StatsChanges;
+import static net.runelite.client.plugins.itemstats.stats.Stats.HITPOINTS;
+
+public class DwarvenRockCake implements Effect
 {
-	private final int opcode;
-	private String name;
-
-	public Instruction(int opcode)
+	@Override
+	public StatsChanges calculate(Client client)
 	{
-		this.opcode = opcode;
-	}
+		final int current = client.getBoostedSkillLevel(Skill.HITPOINTS);
+		final int eat = current <= 1 ? 0 : -1;
+		// -10% of current health, rounded down, plus one
+		final int guzzle = current <= 1 ? 0 : -1 * (current / 10 + 1);
+		final StatChange eatChange = heal(HITPOINTS, eat).effect(client);
+		final StatChange guzzleChange = heal(HITPOINTS, guzzle).effect(client);
 
-	public int getOpcode()
-	{
-		return opcode;
-	}
-
-	public String getName()
-	{
-		return name;
-	}
-
-	public void setName(String name)
-	{
-		this.name = name;
+		final StatsChanges changes = new StatsChanges(2);
+		changes.setStatChanges(new StatChange[]{ eatChange, guzzleChange });
+		return changes;
 	}
 }

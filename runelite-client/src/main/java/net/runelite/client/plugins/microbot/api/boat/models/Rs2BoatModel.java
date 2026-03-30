@@ -15,6 +15,7 @@ import net.runelite.client.plugins.microbot.api.boat.data.PortTaskData;
 import net.runelite.client.plugins.microbot.api.boat.data.PortTaskVarbits;
 import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
 import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
+import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
@@ -255,7 +256,7 @@ public class Rs2BoatModel implements WorldEntity, IEntity {
                 return null;
             }
 
-            WorldPoint playerLocation = player.getWorldLocation();
+            WorldPoint playerLocation = Rs2Player.getWorldLocation();
             LocalPoint localPoint = LocalPoint.fromWorld(
                     player.getWorldView(),
                     playerLocation

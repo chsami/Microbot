@@ -71,7 +71,7 @@ public class TileItemApiExample {
         Rs2TileItemModel target = cache.query()
                 .where(Rs2TileItemModel::isLootAble)
                 .where(item -> item.getTotalGeValue() >= 5000)
-                .where(item -> item.isDespawned())
+                .where(item -> !item.isDespawned())
                 .nearest(15);
 
         // Example 17: Find items by quantity

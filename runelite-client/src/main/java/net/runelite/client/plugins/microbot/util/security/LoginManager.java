@@ -204,8 +204,8 @@ public final class LoginManager {
 
         try {
             handleDisconnectDialogs(client);
-            triggerLoginScreen();
             trySetWorld(worldId);
+            triggerLoginScreen();
             setCredentials(client, username, encryptedPassword);
             submitLogin();
             handleBlockingDialogs(client);
@@ -243,6 +243,7 @@ public final class LoginManager {
         }
         try {
             setWorld(worldId);
+            sleep(600);
         } catch (Exception e) {
             log.warn("Changing world failed for {}", worldId, e);
         }
@@ -265,6 +266,12 @@ public final class LoginManager {
         Rs2Keyboard.keyPress(KeyEvent.VK_ENTER);
         sleep(300);
         Rs2Keyboard.keyPress(KeyEvent.VK_ENTER);
+    }
+
+    @com.google.common.annotations.VisibleForTesting
+    public static void submitLoginForTest() {
+        triggerLoginScreen();
+        submitLogin();
     }
 
     private static void handleBlockingDialogs(Client client) {

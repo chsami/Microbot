@@ -220,7 +220,7 @@ public class GpuPlugin extends Plugin implements DrawCallbacks
 	SceneContext context(Scene scene)
 	{
 		int wvid = scene.getWorldViewId();
-		if (wvid == -1)
+		if (wvid == WorldView.TOPLEVEL)
 		{
 			return root;
 		}
@@ -230,7 +230,7 @@ public class GpuPlugin extends Plugin implements DrawCallbacks
 	SceneContext context(WorldView wv)
 	{
 		int wvid = wv.getId();
-		if (wvid == -1)
+		if (wvid == WorldView.TOPLEVEL)
 		{
 			return root;
 		}
@@ -262,6 +262,8 @@ public class GpuPlugin extends Plugin implements DrawCallbacks
 	private int uniBlockMain;
 	private int uniTextureLightMode;
 	private int uniTick;
+	private int uniColorblindIntensity;
+	private int uniUiColorblindIntensity;
 	static int uniBase;
 
 	private static Projection lastProjection;
@@ -596,11 +598,13 @@ public class GpuPlugin extends Plugin implements DrawCallbacks
 		uniTextures = glGetUniformLocation(glProgram, "textures");
 		uniTextureAnimations = glGetUniformLocation(glProgram, "textureAnimations");
 		uniBase = glGetUniformLocation(glProgram, "base");
+		uniColorblindIntensity = glGetUniformLocation(glProgram, "colorblindIntensity");
 
 		uniTex = glGetUniformLocation(glUiProgram, "tex");
 		uniTexTargetDimensions = glGetUniformLocation(glUiProgram, "targetDimensions");
 		uniTexSourceDimensions = glGetUniformLocation(glUiProgram, "sourceDimensions");
 		uniUiAlphaOverlay = glGetUniformLocation(glUiProgram, "alphaOverlay");
+		uniUiColorblindIntensity = glGetUniformLocation(glUiProgram, "colorblindIntensity");
 	}
 
 	private void shutdownProgram()
@@ -945,6 +949,7 @@ public class GpuPlugin extends Plugin implements DrawCallbacks
 		glUniform1i(uniFogDepth, fogDepth);
 		glUniform1i(uniDrawDistance, drawDistance * Perspective.LOCAL_TILE_SIZE);
 		glUniform1i(uniExpandedMapLoadingChunks, client.getExpandedMapLoading());
+		glUniform1f(uniColorblindIntensity, config.colorBlindIntensity());
 
 		// Brightness happens to also be stored in the texture provider, so we use that
 		TextureProvider textureProvider = client.getTextureProvider();
@@ -1051,7 +1056,7 @@ public class GpuPlugin extends Plugin implements DrawCallbacks
 			return;
 		}
 
-		int offset = scene.getWorldViewId() == -1 ? (SCENE_OFFSET >> 3) : 0;
+		int offset = scene.getWorldViewId() == WorldView.TOPLEVEL ? (SCENE_OFFSET >> 3) : 0;
 		z.renderOpaque(zx - offset, zz - offset, ctx.minLevel, ctx.level, ctx.maxLevel, ctx.hideRoofIds);
 
 		checkGLErrors();
@@ -1080,7 +1085,7 @@ public class GpuPlugin extends Plugin implements DrawCallbacks
 		updateEntityProjection(entityProjection);
 		glUniform4i(uniEntityTint, scene.getOverrideHue(), scene.getOverrideSaturation(), scene.getOverrideLuminance(), scene.getOverrideAmount());
 
-		int offset = scene.getWorldViewId() == -1 ? (SCENE_OFFSET >> 3) : 0;
+		int offset = scene.getWorldViewId() == WorldView.TOPLEVEL ? (SCENE_OFFSET >> 3) : 0;
 		int dx = ctx.cameraX - ((zx - offset) << 10);
 		int dz = ctx.cameraZ - ((zz - offset) << 10);
 		boolean close = dx * dx + dz * dz < ALPHA_ZSORT_CLOSE * ALPHA_ZSORT_CLOSE;
@@ -1112,7 +1117,7 @@ public class GpuPlugin extends Plugin implements DrawCallbacks
 			vaoO.addRange(projection, scene);
 			vaoPO.addRange(projection, scene);
 
-			if (scene.getWorldViewId() == -1)
+			if (scene.getWorldViewId() == WorldView.TOPLEVEL)
 			{
 				glUniform3i(uniBase, 0, 0, 0);
 
@@ -1198,7 +1203,7 @@ public class GpuPlugin extends Plugin implements DrawCallbacks
 
 			if (end > start)
 			{
-				int offset = scene.getWorldViewId() == -1 ? SCENE_OFFSET : 0;
+				int offset = scene.getWorldViewId() == WorldView.TOPLEVEL ? SCENE_OFFSET : 0;
 				int zx = (x >> 10) + (offset >> 3);
 				int zz = (z >> 10) + (offset >> 3);
 				Zone zone = ctx.zones[zx][zz];
@@ -1251,7 +1256,7 @@ public class GpuPlugin extends Plugin implements DrawCallbacks
 
 			if (end > start)
 			{
-				int offset = scene.getWorldViewId() == -1 ? (SCENE_OFFSET >> 3) : 0;
+				int offset = scene.getWorldViewId() == WorldView.TOPLEVEL ? (SCENE_OFFSET >> 3) : 0;
 				int zx = (gameObject.getX() >> 10) + offset;
 				int zz = (gameObject.getY() >> 10) + offset;
 				Zone zone = ctx.zones[zx][zz];
@@ -1489,6 +1494,7 @@ public class GpuPlugin extends Plugin implements DrawCallbacks
 			(overlayColor & 0xFF) / 255f,
 			(overlayColor >>> 24) / 255f
 		);
+		glUniform1f(uniUiColorblindIntensity, config.colorBlindIntensity());
 
 		if (client.isStretchedEnabled())
 		{
@@ -1595,13 +1601,12 @@ public class GpuPlugin extends Plugin implements DrawCallbacks
 	@Override
 	public void loadScene(WorldView worldView, Scene scene)
 	{
-		if (scene.getWorldViewId() > -1)
+		if (scene.getWorldViewId() != WorldView.TOPLEVEL)
 		{
 			loadSubScene(worldView, scene);
 			return;
 		}
 
-		assert scene.getWorldViewId() == -1;
 		if (nextZones != null)
 		{
 			log.debug("Double zone load!");
@@ -1981,7 +1986,7 @@ public class GpuPlugin extends Plugin implements DrawCallbacks
 	public void despawnWorldView(WorldView worldView)
 	{
 		int worldViewId = worldView.getId();
-		if (worldViewId > -1)
+		if (worldViewId != WorldView.TOPLEVEL)
 		{
 			log.debug("WorldView despawn: {}", worldViewId);
 			var sub = subs[worldViewId];
@@ -1998,7 +2003,7 @@ public class GpuPlugin extends Plugin implements DrawCallbacks
 	@Override
 	public void swapScene(Scene scene)
 	{
-		if (scene.getWorldViewId() > -1)
+		if (scene.getWorldViewId() != WorldView.TOPLEVEL)
 		{
 			swapSub(scene);
 			return;

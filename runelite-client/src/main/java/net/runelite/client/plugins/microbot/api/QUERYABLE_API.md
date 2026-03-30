@@ -343,16 +343,16 @@ List<Rs2PlayerModel> friends = playerCache.query()
 
 **Rs2PlayerModel Methods:**
 ```java
-player.getName()           // Player name
-player.getCombatLevel()    // Combat level
-player.getHealthRatio()    // Health (-1 if not visible)
-player.isFriend()          // Is friend?
-player.isClanMember()      // In your clan?
-player.isFriendsChatMember() // In friends chat?
-player.getSkullIcon()      // Skull icon (-1 if none)
-player.getOverheadIcon()   // Prayer icon
-player.getAnimation()      // Current animation
-player.isInteracting()     // Is interacting?
+player.getName()              // Player name
+player.getCombatLevel()       // Combat level
+player.getHealthRatio()       // Health (-1 if not visible)
+player.isFriend()             // Is friend?
+player.isClanMember()         // In your clan?
+player.isFriendsChatMember()  // In friends chat?
+player.getSkullIcon()         // Skull icon (-1 if none)
+player.getOverheadIcon()      // Prayer icon (HeadIcon or null)
+player.getAnimation()         // Current animation
+player.isInteracting()        // Is interacting?
 ```
 
 ### 4. Rs2TileObjectQueryable - Tile Object Queries
@@ -389,7 +389,7 @@ obj.getName()              // "Tree"
 obj.getId()                // Object ID
 obj.getWorldLocation()     // WorldPoint
 obj.click("Chop down")     // Interact with object
-obj.interact("Mine")       // Alternative interact
+obj.click("Mine")          // Interact with a specific action
 ```
 
 ---
@@ -476,6 +476,16 @@ Returns all matching entities as a list.
 List<Rs2NpcModel> guards = npcCache.query()
     .withName("Guard")
     .toList();
+```
+
+#### `count()`
+Returns the number of matching entities.
+
+```java
+int guardCount = npcCache.query()
+    .withName("Guard")
+    .within(10)
+    .count();
 ```
 
 ### Filter Operations

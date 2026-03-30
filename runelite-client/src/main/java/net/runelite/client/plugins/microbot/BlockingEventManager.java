@@ -175,7 +175,8 @@ public class BlockingEventManager
 
         if (!isRunning.compareAndSet(false, true))
         {
-            // if somebody else started in the meantime, we consider it “busy”
+            // Another thread started processing; re-queue so the event is not lost
+            eventQueue.offer(event);
             return true;
         }
 

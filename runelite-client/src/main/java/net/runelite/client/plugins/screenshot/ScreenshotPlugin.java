@@ -791,6 +791,18 @@ public class ScreenshotPlugin extends Plugin
 	}
 
 	@Subscribe
+	public void onScriptPostFired(ScriptPostFired e)
+	{
+		if (e.getScriptId() == ScriptID.DOM_LOOT_CLAIM)
+		{
+			if (config.screenshotRewards())
+			{
+				takeScreenshot("Doom of Mokhaiotl", SD_CHEST_LOOT);
+			}
+		}
+	}
+
+	@Subscribe
 	private void onPostClientTick(PostClientTick e)
 	{
 		if (!consumers.isEmpty())

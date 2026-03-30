@@ -187,7 +187,7 @@ public class Rs2GroundItem {
     }
 
     public static RS2Item[] getAll(int range) {
-        return getAllFromWorldPoint(range, Microbot.getClient().getLocalPlayer().getWorldLocation());
+        return getAllFromWorldPoint(range, Rs2Player.getWorldLocation());
     }
 
     /**
@@ -311,7 +311,8 @@ public class Rs2GroundItem {
 
 
     private static Predicate<GroundItem> baseRangeAndOwnershipFilter(LootingParameters params) {
-        final WorldPoint me = Microbot.getClient().getLocalPlayer().getWorldLocation();
+        final WorldPoint me = Rs2Player.getWorldLocation();
+        if (me == null) return gi -> false;
         final boolean anti = params.isAntiLureProtection();
         return gi ->
                 gi.getLocation().distanceTo(me) < params.getRange() &&
@@ -543,7 +544,7 @@ public class Rs2GroundItem {
     public static boolean hasLineOfSight(Tile tile) {
         if (tile == null) return false;
         return tile.getWorldLocation().toWorldArea()
-                .hasLineOfSightTo(Microbot.getClient().getTopLevelWorldView(), Microbot.getClient().getLocalPlayer().getWorldLocation().toWorldArea());
+                .hasLineOfSightTo(Microbot.getClient().getTopLevelWorldView(), Rs2Player.getWorldLocation().toWorldArea());
     }
 
     /**

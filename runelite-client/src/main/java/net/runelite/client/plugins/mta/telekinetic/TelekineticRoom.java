@@ -48,6 +48,7 @@ import net.runelite.api.gameval.NpcID;
 import net.runelite.api.gameval.ObjectID;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.mta.MTAConfig;
 import net.runelite.client.plugins.mta.MTARoom;
 
@@ -274,7 +275,7 @@ public class TelekineticRoom extends MTARoom
 
     public static WorldPoint optimal()
     {
-        WorldPoint current = Microbot.getClient().getLocalPlayer().getWorldLocation();
+        WorldPoint current = Rs2Player.getWorldLocation();
 
         Direction next = moves.pop();
         WorldArea areaNext = getIndicatorLine(next);
@@ -297,7 +298,7 @@ public class TelekineticRoom extends MTARoom
 
     public static WorldPoint optimal(int index)
     {
-        WorldPoint current = Microbot.getClient().getLocalPlayer().getWorldLocation();
+        WorldPoint current = Rs2Player.getWorldLocation();
 
         Direction next = moves.get(moves.size() - 1 - index);
         WorldArea areaNext = getIndicatorLine(next);

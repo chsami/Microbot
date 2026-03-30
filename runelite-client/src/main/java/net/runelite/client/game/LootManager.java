@@ -66,6 +66,7 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ServerNpcLoot;
 import net.runelite.client.events.NpcLootReceived;
 import net.runelite.client.events.PlayerLootReceived;
+import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.util.Text;
 
 @Singleton
@@ -161,7 +162,7 @@ public class LootManager
 			return;
 		}
 
-		final WorldPoint worldPoint = player.getWorldLocation();
+		final WorldPoint worldPoint = Rs2Player.getWorldLocation();
 		final LocalPoint location = LocalPoint.fromWorld(client, worldPoint);
 		if (location == null || killPoints.contains(worldPoint))
 		{

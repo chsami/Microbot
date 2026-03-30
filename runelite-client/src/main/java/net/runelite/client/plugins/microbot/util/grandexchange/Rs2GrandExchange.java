@@ -103,7 +103,7 @@ public class Rs2GrandExchange {
      * @return
      */
     public static boolean isOfferScreenOpen() {
-        return Rs2Widget.isWidgetVisible(InterfaceID.GE_OFFERS, 23);
+        return Rs2Widget.isWidgetVisible(InterfaceID.GE_OFFERS, 15);
     }
 
     /**

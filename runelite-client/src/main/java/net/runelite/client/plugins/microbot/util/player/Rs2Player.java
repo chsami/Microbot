@@ -963,11 +963,13 @@ public class Rs2Player {
      * @return The {@link WorldPoint} representing the player's current location.
      */
     public static WorldPoint getWorldLocation() {
-        if (Microbot.getClient().getTopLevelWorldView().getScene().isInstance()) {
-            LocalPoint l = LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), Microbot.getClient().getLocalPlayer().getWorldLocation());
-            return WorldPoint.fromLocalInstance(Microbot.getClient(), l);
-        }
-        return Microbot.getClient().getLocalPlayer().getWorldLocation();
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            if (Microbot.getClient().getTopLevelWorldView().getScene().isInstance()) {
+                LocalPoint l = LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), Microbot.getClient().getLocalPlayer().getWorldLocation());
+                return WorldPoint.fromLocalInstance(Microbot.getClient(), l);
+            }
+            return Microbot.getClient().getLocalPlayer().getWorldLocation();
+        }).orElse(null);
     }
 
     /**
@@ -1434,8 +1436,10 @@ public class Rs2Player {
      * @return The animation ID of the player's current action, or {@code -1} if the player is null.
      */
     public static int getAnimation() {
-        if (Microbot.getClient() == null || Microbot.getClient().getLocalPlayer() == null) return -1;
-        return Microbot.getClient().getLocalPlayer().getAnimation();
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            if (Microbot.getClient() == null || Microbot.getClient().getLocalPlayer() == null) return -1;
+            return Microbot.getClient().getLocalPlayer().getAnimation();
+        }).orElse(-1);
     }
 
     /**
@@ -1444,7 +1448,9 @@ public class Rs2Player {
      * @return The pose animation ID of the player.
      */
     public static int getPoseAnimation() {
-        return Microbot.getClient().getLocalPlayer().getPoseAnimation();
+        return Microbot.getClientThread().runOnClientThreadOptional(() ->
+                Microbot.getClient().getLocalPlayer().getPoseAnimation()
+        ).orElse(-1);
     }
 
     /**
@@ -1464,7 +1470,9 @@ public class Rs2Player {
      * @return The player's real level for the specified skill.
      */
     public static int getRealSkillLevel(Skill skill) {
-        return Microbot.getClient().getRealSkillLevel(skill);
+        return Microbot.getClientThread().runOnClientThreadOptional(() ->
+                Microbot.getClient().getRealSkillLevel(skill)
+        ).orElse(0);
     }
 
     /**
@@ -1473,8 +1481,10 @@ public class Rs2Player {
      * @param skill The {@link Skill} to check.
      * @return The player's boosted level for the specified skill.
      */
-    public static int getBoostedSkillLevel(Skill skill) {        
-        return Microbot.getClient().getBoostedSkillLevel(skill);
+    public static int getBoostedSkillLevel(Skill skill) {
+        return Microbot.getClientThread().runOnClientThreadOptional(() ->
+                Microbot.getClient().getBoostedSkillLevel(skill)
+        ).orElse(0);
     }
 
     /**

@@ -6,6 +6,7 @@ import lombok.Getter;
 import net.runelite.api.*;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 
 /**
  * Enhanced model for game objects with caching and tick tracking.
@@ -228,7 +229,7 @@ public class Rs2ObjectModel {
      */
     public int getDistanceFromPlayer() {
         return Microbot.getClientThread().runOnClientThreadOptional(() -> {
-            WorldPoint playerLocation = Microbot.getClient().getLocalPlayer().getWorldLocation();
+            WorldPoint playerLocation = Rs2Player.getWorldLocation();
             return playerLocation.distanceTo(getLocation());
         }).orElse(Integer.MAX_VALUE);
     }

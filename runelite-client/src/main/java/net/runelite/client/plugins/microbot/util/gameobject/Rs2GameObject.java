@@ -528,7 +528,7 @@ public class Rs2GameObject {
     }
 
 	public static <T extends TileObject> List<TileObject> getAll(Predicate<? super T> predicate, int distance) {
-        WorldPoint worldPoint = Microbot.getClient().getLocalPlayer().getWorldLocation();
+        WorldPoint worldPoint = Rs2Player.getWorldLocation();
 		return getAll(predicate, worldPoint, distance);
 	}
 
@@ -552,7 +552,7 @@ public class Rs2GameObject {
         if (player == null) {
             return null;
         }
-        return getTileObject(id, player.getWorldLocation(), distance);
+        return getTileObject(id, Rs2Player.getWorldLocation(), distance);
     }
 
     public static TileObject getTileObject(int id, WorldPoint anchor) {
@@ -626,7 +626,7 @@ public class Rs2GameObject {
         if (player == null) {
             return null;
         }
-        return getTileObject(predicate, player.getWorldLocation());
+        return getTileObject(predicate, Rs2Player.getWorldLocation());
     }
 
     public static TileObject getTileObject(WorldPoint anchor) {
@@ -650,7 +650,7 @@ public class Rs2GameObject {
         if (player == null) {
             return null;
         }
-        return getTileObject(predicate, player.getWorldLocation(), distance);
+        return getTileObject(predicate, Rs2Player.getWorldLocation(), distance);
     }
 
     public static TileObject getTileObject(Predicate<TileObject> predicate, WorldPoint anchor) {
@@ -662,11 +662,7 @@ public class Rs2GameObject {
     }
 
     public static TileObject getTileObject(Predicate<TileObject> predicate, WorldPoint anchor, int distance) {
-        Player player = Microbot.getClient().getLocalPlayer();
-        if (player == null) {
-            return null;
-        }
-        LocalPoint anchorLocal = LocalPoint.fromWorld(player.getWorldView(), anchor);
+        LocalPoint anchorLocal = localPointFromWorldSafe(anchor);
         if (anchorLocal == null) {
             return null;
         }
@@ -690,7 +686,7 @@ public class Rs2GameObject {
         if (player == null) {
             return Collections.emptyList();
         }
-        return getTileObjects(predicate, player.getWorldLocation(), distance);
+        return getTileObjects(predicate, Rs2Player.getWorldLocation(), distance);
     }
 
     public static List<TileObject> getTileObjects(WorldPoint anchor) {
@@ -706,7 +702,7 @@ public class Rs2GameObject {
         if (player == null) {
             return Collections.emptyList();
         }
-        return getTileObjects(predicate, player.getWorldLocation());
+        return getTileObjects(predicate, Rs2Player.getWorldLocation());
     }
 
     public static List<TileObject> getTileObjects(Predicate<TileObject> predicate, WorldPoint anchor) {
@@ -738,7 +734,7 @@ public class Rs2GameObject {
         if (player == null) {
             return null;
         }
-        return getGameObject(id, player.getWorldLocation(), distance);
+        return getGameObject(id, Rs2Player.getWorldLocation(), distance);
     }
 
     public static GameObject getGameObject(int id, WorldPoint anchor) {
@@ -818,7 +814,7 @@ public class Rs2GameObject {
         if (player == null) {
             return null;
         }
-        return getGameObject(predicate, player.getWorldLocation());
+        return getGameObject(predicate, Rs2Player.getWorldLocation());
     }
 
     public static GameObject getGameObject(WorldPoint anchor) {
@@ -838,11 +834,7 @@ public class Rs2GameObject {
     }
 
     public static GameObject getGameObject(Predicate<GameObject> predicate, int distance) {
-        Player player = Microbot.getClient().getLocalPlayer();
-        if (player == null) {
-            return null;
-        }
-        return getGameObject(predicate, player.getWorldLocation(), distance);
+        return getGameObject(predicate, Rs2Player.getWorldLocation(), distance);
     }
 
     public static GameObject getGameObject(Predicate<GameObject> predicate, WorldPoint anchor) {
@@ -854,11 +846,7 @@ public class Rs2GameObject {
     }
 
     public static GameObject getGameObject(Predicate<GameObject> predicate, WorldPoint anchor, int distance) {
-        Player player = Microbot.getClient().getLocalPlayer();
-        if (player == null) {
-            return null;
-        }
-        LocalPoint anchorLocal = LocalPoint.fromWorld(player.getWorldView(), anchor);
+        LocalPoint anchorLocal = localPointFromWorldSafe(anchor);
         if (anchorLocal == null) {
             return null;
         }
@@ -882,7 +870,7 @@ public class Rs2GameObject {
         if (player == null) {
             return Collections.emptyList();
         }
-        return getGameObjects(predicate, player.getWorldLocation(), distance);
+        return getGameObjects(predicate, Rs2Player.getWorldLocation(), distance);
     }
 
     public static List<GameObject> getGameObjects(WorldPoint anchor) {
@@ -898,7 +886,7 @@ public class Rs2GameObject {
         if (player == null) {
             return Collections.emptyList();
         }
-        return getGameObjects(predicate, player.getWorldLocation());
+        return getGameObjects(predicate, Rs2Player.getWorldLocation());
     }
 
     public static List<GameObject> getGameObjects(Predicate<GameObject> predicate, WorldPoint anchor) {
@@ -926,11 +914,7 @@ public class Rs2GameObject {
     }
 
     public static GroundObject getGroundObject(int id, int distance) {
-        Player player = Microbot.getClient().getLocalPlayer();
-        if (player == null) {
-            return null;
-        }
-        return getGroundObject(id, player.getWorldLocation(), distance);
+        return getGroundObject(id, Rs2Player.getWorldLocation(), distance);
     }
 
     public static GroundObject getGroundObject(int id, WorldPoint anchor) {
@@ -1000,11 +984,7 @@ public class Rs2GameObject {
     }
 
     public static GroundObject getGroundObject(Predicate<GroundObject> predicate) {
-        Player player = Microbot.getClient().getLocalPlayer();
-        if (player == null) {
-            return null;
-        }
-        return getGroundObject(predicate, player.getWorldLocation());
+        return getGroundObject(predicate, Rs2Player.getWorldLocation());
     }
 
     public static GroundObject getGroundObject(WorldPoint anchor) {
@@ -1028,7 +1008,7 @@ public class Rs2GameObject {
         if (player == null) {
             return null;
         }
-        return getGroundObject(predicate, player.getWorldLocation(), distance);
+        return getGroundObject(predicate, Rs2Player.getWorldLocation(), distance);
     }
 
     public static GroundObject getGroundObject(Predicate<GroundObject> predicate, WorldPoint anchor) {
@@ -1040,11 +1020,7 @@ public class Rs2GameObject {
     }
 
     public static GroundObject getGroundObject(Predicate<GroundObject> predicate, WorldPoint anchor, int distance) {
-        Player player = Microbot.getClient().getLocalPlayer();
-        if (player == null) {
-            return null;
-        }
-        LocalPoint anchorLocal = LocalPoint.fromWorld(player.getWorldView(), anchor);
+        LocalPoint anchorLocal = localPointFromWorldSafe(anchor);
         if (anchorLocal == null) {
             return null;
         }
@@ -1068,7 +1044,7 @@ public class Rs2GameObject {
         if (player == null) {
             return Collections.emptyList();
         }
-        return getGroundObjects(predicate, player.getWorldLocation(), distance);
+        return getGroundObjects(predicate, Rs2Player.getWorldLocation(), distance);
     }
 
     public static List<GroundObject> getGroundObjects(WorldPoint anchor) {
@@ -1084,7 +1060,7 @@ public class Rs2GameObject {
         if (player == null) {
             return Collections.emptyList();
         }
-        return getGroundObjects(predicate, player.getWorldLocation());
+        return getGroundObjects(predicate, Rs2Player.getWorldLocation());
     }
 
     public static List<GroundObject> getGroundObjects(Predicate<GroundObject> predicate, WorldPoint anchor) {
@@ -1116,7 +1092,7 @@ public class Rs2GameObject {
         if (player == null) {
             return null;
         }
-        return getWallObject(id, player.getWorldLocation(), distance);
+        return getWallObject(id, Rs2Player.getWorldLocation(), distance);
     }
 
     public static WallObject getWallObject(int id, WorldPoint anchor) {
@@ -1190,7 +1166,7 @@ public class Rs2GameObject {
         if (player == null) {
             return null;
         }
-        return getWallObject(predicate, player.getWorldLocation());
+        return getWallObject(predicate, Rs2Player.getWorldLocation());
     }
 
     public static WallObject getWallObject(WorldPoint anchor) {
@@ -1214,7 +1190,7 @@ public class Rs2GameObject {
         if (player == null) {
             return null;
         }
-        return getWallObject(predicate, player.getWorldLocation(), distance);
+        return getWallObject(predicate, Rs2Player.getWorldLocation(), distance);
     }
 
     public static WallObject getWallObject(Predicate<WallObject> predicate, WorldPoint anchor) {
@@ -1226,11 +1202,7 @@ public class Rs2GameObject {
     }
 
     public static WallObject getWallObject(Predicate<WallObject> predicate, WorldPoint anchor, int distance) {
-        Player player = Microbot.getClient().getLocalPlayer();
-        if (player == null) {
-            return null;
-        }
-        LocalPoint anchorLocal = LocalPoint.fromWorld(player.getWorldView(), anchor);
+        LocalPoint anchorLocal = localPointFromWorldSafe(anchor);
         if (anchorLocal == null) {
             return null;
         }
@@ -1254,7 +1226,7 @@ public class Rs2GameObject {
         if (player == null) {
             return Collections.emptyList();
         }
-        return getWallObjects(predicate, player.getWorldLocation(), distance);
+        return getWallObjects(predicate, Rs2Player.getWorldLocation(), distance);
     }
 
     public static List<WallObject> getWallObjects(WorldPoint anchor) {
@@ -1270,7 +1242,7 @@ public class Rs2GameObject {
         if (player == null) {
             return Collections.emptyList();
         }
-        return getWallObjects(predicate, player.getWorldLocation());
+        return getWallObjects(predicate, Rs2Player.getWorldLocation());
     }
 
     public static List<WallObject> getWallObjects(Predicate<WallObject> predicate, WorldPoint anchor) {
@@ -1282,11 +1254,7 @@ public class Rs2GameObject {
     }
 
     public static List<WallObject> getWallObjects(Predicate<WallObject> predicate, WorldPoint anchor, int distance) {
-        Player player = Microbot.getClient().getLocalPlayer();
-        if (player == null) {
-            return Collections.emptyList();
-        }
-        LocalPoint anchorLocal = LocalPoint.fromWorld(player.getWorldView(), anchor);
+        LocalPoint anchorLocal = localPointFromWorldSafe(anchor);
         if (anchorLocal == null) {
             return Collections.emptyList();
         }
@@ -1306,7 +1274,7 @@ public class Rs2GameObject {
         if (player == null) {
             return null;
         }
-        return getDecorativeObject(id, player.getWorldLocation(), distance);
+        return getDecorativeObject(id, Rs2Player.getWorldLocation(), distance);
     }
 
     public static DecorativeObject getDecorativeObject(int id, WorldPoint anchor) {
@@ -1380,7 +1348,7 @@ public class Rs2GameObject {
         if (player == null) {
             return null;
         }
-        return getDecorativeObject(predicate, player.getWorldLocation());
+        return getDecorativeObject(predicate, Rs2Player.getWorldLocation());
     }
 
     public static DecorativeObject getDecorativeObject(WorldPoint anchor) {
@@ -1404,7 +1372,7 @@ public class Rs2GameObject {
         if (player == null) {
             return null;
         }
-        return getDecorativeObject(predicate, player.getWorldLocation(), distance);
+        return getDecorativeObject(predicate, Rs2Player.getWorldLocation(), distance);
     }
 
     public static DecorativeObject getDecorativeObject(Predicate<DecorativeObject> predicate, WorldPoint anchor) {
@@ -1416,11 +1384,7 @@ public class Rs2GameObject {
     }
 
     public static DecorativeObject getDecorativeObject(Predicate<DecorativeObject> predicate, WorldPoint anchor, int distance) {
-        Player player = Microbot.getClient().getLocalPlayer();
-        if (player == null) {
-            return null;
-        }
-        LocalPoint anchorLocal = LocalPoint.fromWorld(player.getWorldView(), anchor);
+        LocalPoint anchorLocal = localPointFromWorldSafe(anchor);
         if (anchorLocal == null) {
             return null;
         }
@@ -1444,7 +1408,7 @@ public class Rs2GameObject {
         if (player == null) {
             return Collections.emptyList();
         }
-        return getDecorativeObjects(predicate, player.getWorldLocation(), distance);
+        return getDecorativeObjects(predicate, Rs2Player.getWorldLocation(), distance);
     }
 
     public static List<DecorativeObject> getDecorativeObjects(WorldPoint anchor) {
@@ -1460,7 +1424,7 @@ public class Rs2GameObject {
         if (player == null) {
             return Collections.emptyList();
         }
-        return getDecorativeObjects(predicate, player.getWorldLocation());
+        return getDecorativeObjects(predicate, Rs2Player.getWorldLocation());
     }
 
     public static List<DecorativeObject> getDecorativeObjects(Predicate<DecorativeObject> predicate, WorldPoint anchor) {
@@ -1472,11 +1436,7 @@ public class Rs2GameObject {
     }
 
     public static List<DecorativeObject> getDecorativeObjects(Predicate<DecorativeObject> predicate, WorldPoint anchor, int distance) {
-        Player player = Microbot.getClient().getLocalPlayer();
-        if (player == null) {
-            return Collections.emptyList();
-        }
-        LocalPoint anchorLocal = LocalPoint.fromWorld(player.getWorldView(), anchor);
+        LocalPoint anchorLocal = localPointFromWorldSafe(anchor);
         if (anchorLocal == null) {
             return Collections.emptyList();
         }
@@ -1601,6 +1561,14 @@ public class Rs2GameObject {
         return to -> isWithinTiles(anchor, to.getLocalLocation(), distance);
     }
 
+    private static LocalPoint localPointFromWorldSafe(WorldPoint anchor) {
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            Player player = Microbot.getClient().getLocalPlayer();
+            if (player == null) return null;
+            return LocalPoint.fromWorld(player.getWorldView(), anchor);
+        }).orElse(null);
+    }
+
     public static Optional<String> getCompositionName(TileObject obj) {
         ObjectComposition comp = convertToObjectComposition(obj);
         if (comp == null) {
@@ -1713,7 +1681,7 @@ public class Rs2GameObject {
 		if (player == null) {
 			return Collections.emptyList();
 		}
-        return fetchTileObjects(predicate, player.getWorldLocation(), distance);
+        return fetchTileObjects(predicate, Rs2Player.getWorldLocation(), distance);
     }
 
     @SuppressWarnings("unchecked")
@@ -1722,7 +1690,7 @@ public class Rs2GameObject {
 		if (player == null) {
 			return Collections.emptyList();
 		}
-        return fetchGameObjects(predicate, player.getWorldLocation(), distance);
+        return fetchGameObjects(predicate, Rs2Player.getWorldLocation(), distance);
     }
 
     @SuppressWarnings("unchecked")
@@ -1750,7 +1718,7 @@ public class Rs2GameObject {
 
     public static boolean clickObject(TileObject object, String action) {
         if (object == null) return false;
-        if (Microbot.getClient().getLocalPlayer().getWorldLocation().distanceTo(object.getWorldLocation()) > 51) {
+        if (Rs2Player.getWorldLocation().distanceTo(object.getWorldLocation()) > 51) {
             Microbot.log("Object with id " + object.getId() + " is not close enough to interact with. Walking to the object....");
             Rs2Walker.walkTo(object.getWorldLocation());
             return false;
@@ -1842,9 +1810,9 @@ public class Rs2GameObject {
                 param1 = 4;
             }*/
 
-            int worldViewId = -1;
+            int worldViewId = WorldView.TOPLEVEL;
 
-            if (object.getWorldView().getId() != -1) {
+            if (!object.getWorldView().isTopLevel()) {
                 var worldView =Microbot.getClientThread().invoke(() ->  Microbot.getClient().getLocalPlayer().getWorldView());
                 if (worldView == null) {
                     worldViewId = Microbot.getClient().getTopLevelWorldView().getId();

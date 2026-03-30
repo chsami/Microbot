@@ -122,7 +122,7 @@ public class Perspective
 	@Nullable
 	public static Point localToCanvas(@Nonnull Client client, @Nonnull LocalPoint point, int plane, int heightOffset)
 	{
-		if (point.getWorldView() > -1)
+		if (point.getWorldView() != WorldView.TOPLEVEL)
 		{
 			WorldView wv = client.getTopLevelWorldView();
 			WorldEntity we = wv.worldEntities().byIndex(point.getWorldView());
@@ -176,7 +176,7 @@ public class Perspective
 
 	public static Point localToCanvas(@Nonnull Client client, int worldId, int x, int y, int z)
 	{
-		if (worldId > -1)
+		if (worldId != WorldView.TOPLEVEL)
 		{
 			WorldView wv = client.getTopLevelWorldView();
 			WorldEntity we = wv.worldEntities().byIndex(worldId);
@@ -533,7 +533,7 @@ public class Perspective
 	@Nullable
 	public static Point localToMinimap(@Nonnull Client client, @Nonnull LocalPoint point, int distance)
 	{
-		if (point.getWorldView() > -1)
+		if (point.getWorldView() != WorldView.TOPLEVEL)
 		{
 			WorldView toplevel = client.getTopLevelWorldView();
 			WorldEntity we = toplevel.worldEntities().byIndex(point.getWorldView());
@@ -547,7 +547,7 @@ public class Perspective
 
 		CameraFocusableEntity cameraFocus = client.getCameraFocusEntity();
 		LocalPoint cameraFocusPoint = cameraFocus.getCameraFocus();
-		if (cameraFocusPoint.getWorldView() > -1)
+		if (cameraFocusPoint.getWorldView() != WorldView.TOPLEVEL)
 		{
 			WorldView toplevel = client.getTopLevelWorldView();
 			WorldView wv = cameraFocus.getWorldView();

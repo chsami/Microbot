@@ -49,7 +49,7 @@ public class Rs2Inventory {
     private static final int CAPACITY = COLUMNS * ROWS;
     private static final String[] EMPTY_ARRAY = new String[0];
 
-    private static List<Rs2ItemModel> inventoryItems = Collections.emptyList();
+    private static volatile List<Rs2ItemModel> inventoryItems = Collections.emptyList();
 
     public static ItemContainer inventory() {
         return Microbot.getClient().getItemContainer(InventoryID.INV);
@@ -73,6 +73,21 @@ public class Rs2Inventory {
     }
 
     public static Stream<Rs2ItemModel> items() {
+        if (inventoryItems.isEmpty() && Microbot.isLoggedIn()) {
+            Microbot.getClientThread().runOnClientThreadOptional(() -> {
+                final ItemContainer itemContainer = Microbot.getClient().getItemContainer(InventoryID.INV);
+                if (itemContainer == null) return null;
+                List<Rs2ItemModel> _inventoryItems = new ArrayList<>();
+                for (int i = 0; i < itemContainer.getItems().length; i++) {
+                    final Item item = itemContainer.getItems()[i];
+                    if (item.getId() == -1) continue;
+                    final ItemComposition itemComposition = Microbot.getClient().getItemDefinition(item.getId());
+                    _inventoryItems.add(new Rs2ItemModel(item, itemComposition, i));
+                }
+                inventoryItems = Collections.unmodifiableList(_inventoryItems);
+                return null;
+            });
+        }
         return inventoryItems.stream();
     }
 
@@ -1938,6 +1953,10 @@ public class Rs2Inventory {
             }
         }
 
+
+  /*      if (identifier > 5) {
+            menuAction = MenuAction.CC_OP_LOW_PRIORITY;
+        }*/
 
         if (isItemSelected()) {
             menuAction = MenuAction.WIDGET_TARGET_ON_WIDGET;
