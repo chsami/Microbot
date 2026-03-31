@@ -13,8 +13,8 @@ import net.runelite.api.kit.KitType;
 import net.runelite.api.widgets.Widget;
 import net.runelite.api.widgets.WidgetInfo;
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.api.boat.Rs2BoatCache;
 import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
+import net.runelite.client.plugins.microbot.util.Rs2Cache;
 import net.runelite.client.plugins.microbot.util.coords.Rs2WorldPoint;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
@@ -139,7 +139,7 @@ public class Rs2Player {
     public static boolean hasStaminaBuffActive() {
         return staminaBuffTime > 0;
     }
-    
+
     public static boolean isTeleBlocked() {
         return teleBlockTime > 0;
     }
@@ -189,7 +189,7 @@ public class Rs2Player {
             }
         }
     }
-    
+
     /**
      * Handles updates to the teleblock timer based on changes to the {@link Varbits#TELEBLOCK} varbit.
      *
@@ -198,7 +198,7 @@ public class Rs2Player {
     public static void handleTeleblockTimer(VarbitChanged event){
         if (event.getVarbitId() == Varbits.TELEBLOCK) {
             int time = event.getValue();
-            
+
             if (time < 101) {
                 teleBlockTime = -1;
             } else {
@@ -528,7 +528,7 @@ public class Rs2Player {
     }
 
     /**
-     * Logs out the player if a specified number of players are detected, 
+     * Logs out the player if a specified number of players are detected,
      * triggering an immediate logout upon detection.
      *
      * @param amountOfPlayers The number of players to detect before triggering a logout.
@@ -627,11 +627,11 @@ public class Rs2Player {
         List<Rs2ItemModel> foods = Rs2Inventory.getInventoryFastFood();
         if (foods.isEmpty()) return false;
 
-		Optional<Rs2ItemModel> fastFood = foods.stream().findFirst();
+        Optional<Rs2ItemModel> fastFood = foods.stream().findFirst();
 
-		fastFood.ifPresent(rs2ItemModel -> Rs2Inventory.interact(rs2ItemModel, "eat"));
-		return true;
-	}
+        fastFood.ifPresent(rs2ItemModel -> Rs2Inventory.interact(rs2ItemModel, "eat"));
+        return true;
+    }
 
     /**
      * Finds and consumes the best available food item from the player's inventory.
@@ -698,12 +698,12 @@ public class Rs2Player {
     @Deprecated(since = "2.1.0 - Use Rs2PlayerCache/Rs2PlayerQueryable", forRemoval = true)
     public static Stream<Rs2PlayerModel> getPlayers(Predicate<Rs2PlayerModel> predicate, boolean includeLocalPlayer) {
         List<Rs2PlayerModel> players = Optional.of(Microbot.getClient().getTopLevelWorldView().players()
-                        .stream()
-                        .filter(Objects::nonNull)
-                        .map(Rs2PlayerModel::new)
-                        .filter(x -> includeLocalPlayer || x.getPlayer() != Microbot.getClient().getLocalPlayer())
-                        .filter(predicate)
-                        .collect(Collectors.toList())
+                .stream()
+                .filter(Objects::nonNull)
+                .map(Rs2PlayerModel::new)
+                .filter(x -> includeLocalPlayer || x.getPlayer() != Microbot.getClient().getLocalPlayer())
+                .filter(predicate)
+                .collect(Collectors.toList())
         ).orElse(new ArrayList<>());
 
         return players.stream();
@@ -751,7 +751,7 @@ public class Rs2Player {
     /**
      * Calculates the player's health as a percentage.
      *
-     * <p>The method retrieves the player's health ratio and scale, then calculates 
+     * <p>The method retrieves the player's health ratio and scale, then calculates
      * the percentage based on these values.</p>
      *
      * <p><b>Note:</b> If health information is unavailable (i.e., missing or invalid values),
@@ -826,7 +826,7 @@ public class Rs2Player {
         return equipment.values().stream()
                 .anyMatch(equippedItemId -> equippedItemId == itemId);
     }
-    
+
     /**
      * Checks if a player has any of the specified items equipped by their item IDs.
      *
@@ -914,7 +914,7 @@ public class Rs2Player {
     }
 
     /**
-     * Gets a list of Rs2PlayerModel objects representing players around the local player 
+     * Gets a list of Rs2PlayerModel objects representing players around the local player
      * within the combat level range and wilderness level where they can attack and be attacked.
      *
      * @return A list of Rs2PlayerModel objects within the combat range and attackable wilderness levels.
@@ -953,16 +953,7 @@ public class Rs2Player {
         });
     }
 
-    /**
-     * Retrieves the player's current world location as a {@link WorldPoint}.
-     *
-     * <p>If the player is in an instanced world, the method converts the local position 
-     * to an instanced {@link WorldPoint}. Otherwise, it returns the player's standard 
-     * world location.</p>
-     *
-     * @return The {@link WorldPoint} representing the player's current location.
-     */
-    public static WorldPoint getWorldLocation() {
+    public static WorldPoint getWorldLocation_Internal(){
         return Microbot.getClientThread().runOnClientThreadOptional(() -> {
             if (Microbot.getClient().getTopLevelWorldView().getScene().isInstance()) {
                 LocalPoint l = LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), Microbot.getClient().getLocalPlayer().getWorldLocation());
@@ -970,6 +961,31 @@ public class Rs2Player {
             }
             return Microbot.getClient().getLocalPlayer().getWorldLocation();
         }).orElse(null);
+    }
+
+    public static WorldView getWorldView_Internal() {
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            Player player = Microbot.getClient().getLocalPlayer();
+            if (player == null) return null;
+            return player.getWorldView();
+        }).orElse(null);
+    }
+
+    /**
+     * Retrieves the player's current world location as a {@link WorldPoint}.
+     *
+     * <p>If the player is in an instanced world, the method converts the local position
+     * to an instanced {@link WorldPoint}. Otherwise, it returns the player's standard
+     * world location.</p>
+     *
+     * @return The {@link WorldPoint} representing the player's current location.
+     */
+    public static WorldPoint getWorldLocation() {
+        return Rs2Cache.LOCAL_PLAYER_POSITION.getValue();
+    }
+
+    public static WorldView getWorldView() {
+        return Microbot.getClient().getTopLevelWorldView();
     }
 
     /**
@@ -1007,28 +1023,28 @@ public class Rs2Player {
         if (worldPoint == null) {
             return false;
         }
-        
+
         // Validate radius parameters (should be non-negative)
         if (xRadius < 0 || yRadius < 0) {
             return false;
         }
-        
+
         WorldPoint playerLocation = getWorldLocation();
-        
+
         // Null check for player location
         if (playerLocation == null) {
             return false;
         }
-        
+
         // Ensure both points are on the same plane
         if (worldPoint.getPlane() != playerLocation.getPlane()) {
             return false;
         }
-        
+
         // Simple distance check - check if player is within the rectangular radius
         int deltaX = Math.abs(playerLocation.getX() - worldPoint.getX());
         int deltaY = Math.abs(playerLocation.getY() - worldPoint.getY());
-        
+
         return deltaX <= xRadius && deltaY <= yRadius;
     }
 
@@ -1042,46 +1058,46 @@ public class Rs2Player {
      * @param playerYSpan    The total height (in tiles) of the area around the player's position.
      * @return {@code true} if the player's area intersects with the target area, {@code false} otherwise.
      */
-    public static boolean isPlayerAreaIntersecting(WorldPoint targetPoint, int targetXSpan, int targetYSpan, 
-                                             int playerXSpan, int playerYSpan) {
+    public static boolean isPlayerAreaIntersecting(WorldPoint targetPoint, int targetXSpan, int targetYSpan,
+                                                   int playerXSpan, int playerYSpan) {
         // Null check for target point
         if (targetPoint == null) {
             return false;
         }
-        
+
         // Validate span parameters (should be non-negative)
         if (targetXSpan < 0 || targetYSpan < 0 || playerXSpan < 0 || playerYSpan < 0) {
             return false;
         }
-        
+
         WorldPoint playerLocation = getWorldLocation();
-        
+
         // Null check for player location
         if (playerLocation == null) {
             return false;
         }
-        
+
         // Ensure both points are on the same plane
         if (targetPoint.getPlane() != playerLocation.getPlane()) {
             return false;
         }
-        
+
         // Create target area centered on targetPoint
         WorldPoint targetSouthWest = new WorldPoint(
-            targetPoint.getX() - (targetXSpan /2), 
-            targetPoint.getY() - (targetYSpan / 2), 
-            targetPoint.getPlane()
+                targetPoint.getX() - (targetXSpan /2),
+                targetPoint.getY() - (targetYSpan / 2),
+                targetPoint.getPlane()
         );
         WorldArea targetArea = new WorldArea(targetSouthWest, targetXSpan, targetYSpan);
-        
+
         // Create player area centered on player location
         WorldPoint playerSouthWest = new WorldPoint(
-            playerLocation.getX() - (playerXSpan / 2), 
-            playerLocation.getY() - (playerYSpan / 2), 
-            playerLocation.getPlane()
+                playerLocation.getX() - (playerXSpan / 2),
+                playerLocation.getY() - (playerYSpan / 2),
+                playerLocation.getPlane()
         );
         WorldArea playerArea = new WorldArea(playerSouthWest, playerXSpan, playerYSpan);
-        
+
         return targetArea.intersectsWith2D(playerArea);
     }
 
@@ -1308,7 +1324,7 @@ public class Rs2Player {
         }
         return usePotion(Rs2Potion.getGoadingPotion());
     }
-    
+
     /**
      * Helper method to check for the presence of any item in the provided IDs and interact with it.
      *
@@ -1319,9 +1335,9 @@ public class Rs2Player {
         Rs2ItemModel potion = Rs2Inventory.get(item ->
                 !item.isNoted() && Arrays.stream(itemIds).anyMatch(id -> id == item.getId())
         );
-        
+
         if (potion == null) return false;
-        
+
         return Rs2Inventory.interact(potion, "drink");
     }
 
@@ -1335,7 +1351,7 @@ public class Rs2Player {
         Rs2ItemModel potion = Rs2Inventory.get(item ->
                 !item.isNoted() && Arrays.stream(itemIds).anyMatch(id -> id == item.getId())
         );
-        
+
         return potion != null;
     }
 
@@ -1364,7 +1380,7 @@ public class Rs2Player {
 
         return Rs2Inventory.interact(potion, "drink");
     }
-    
+
     /**
      * Checks for the presence of any item in the provided names within the inventory.
      *
@@ -1385,7 +1401,7 @@ public class Rs2Player {
 
             return false;
         });
-        
+
         return potion != null;
     }
 
@@ -1604,7 +1620,7 @@ public class Rs2Player {
         return Rs2Player.getWorldLocation().getY() >= 6400
                 && !Microbot.getClient().getTopLevelWorldView().isInstance();
     }
-    
+
     /**
      * Checks whether the player is currently in an instanced world.
      *
@@ -1745,7 +1761,7 @@ public class Rs2Player {
     public static boolean use(Rs2PlayerModel rs2Player) {
         return invokeMenu(rs2Player, "use");
     }
-    
+
     /**
      * Selects the "CHALLENGE" option on a player for Soul Wars.
      *
