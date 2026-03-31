@@ -13,6 +13,7 @@ import net.runelite.api.kit.KitType;
 import net.runelite.api.widgets.Widget;
 import net.runelite.api.widgets.WidgetInfo;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.api.boat.Rs2BoatCache;
 import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
 import net.runelite.client.plugins.microbot.util.Rs2Cache;
 import net.runelite.client.plugins.microbot.util.coords.Rs2WorldPoint;
@@ -953,6 +954,15 @@ public class Rs2Player {
 		});
 	}
 
+	/**
+	 * Retrieves the player's current world location as a {@link WorldPoint}.
+	 *
+	 * <p>If the player is in an instanced world, the method converts the local position
+	 * to an instanced {@link WorldPoint}. Otherwise, it returns the player's standard
+	 * world location.</p>
+	 *
+	 * @return The {@link WorldPoint} representing the player's current location, or {@code null} if it cannot be determined.
+	 */
 	public static WorldPoint getWorldLocation_Internal(){
 		return Microbot.getClientThread().runOnClientThreadOptional(() -> {
 			if (Microbot.getClient().getTopLevelWorldView().getScene().isInstance()) {
@@ -963,6 +973,11 @@ public class Rs2Player {
 		}).orElse(null);
 	}
 
+	/**
+	 * Retrieves the player's current {@link WorldView}.
+	 *
+	 * @return The {@link WorldView} representing the player's current world view, or {@code null} if it cannot be determined.
+	 */
 	public static WorldView getWorldView_Internal() {
 		return Microbot.getClientThread().runOnClientThreadOptional(() -> {
 			Player player = Microbot.getClient().getLocalPlayer();
@@ -984,6 +999,11 @@ public class Rs2Player {
 		return Rs2Cache.LOCAL_PLAYER_POSITION.getValue();
 	}
 
+	/**
+	 * Retrieves the player's current {@link WorldView}.
+	 *
+	 * @return The {@link WorldView} representing the player's current world view.
+	 */
 	public static WorldView getWorldView() {
 		return Microbot.getClient().getTopLevelWorldView();
 	}

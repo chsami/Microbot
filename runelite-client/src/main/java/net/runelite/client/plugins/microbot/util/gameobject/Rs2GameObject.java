@@ -1562,6 +1562,7 @@ public class Rs2GameObject {
 		return to -> isWithinTiles(anchor, to.getLocalLocation(), distance);
 	}
 
+
 	private static LocalPoint localPointFromWorldSafe(WorldPoint anchor) {
 		if(Rs2Cache.LOCAL_PLAYER_WORLD_VIEW.getValue() == null){
 			return null;
