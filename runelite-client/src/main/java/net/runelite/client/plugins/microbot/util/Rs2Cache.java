@@ -22,74 +22,74 @@ import java.util.function.Supplier;
  */
 public enum Rs2Cache {
 
-    LOCAL_PLAYER_POSITION(Rs2Player::getWorldLocation_Internal),
-    LOCAL_PLAYER_WORLD_VIEW(Rs2Player::getWorldView_Internal),
-    ;
+	LOCAL_PLAYER_POSITION(Rs2Player::getWorldLocation_Internal),
+	LOCAL_PLAYER_WORLD_VIEW(Rs2Player::getWorldView_Internal),
+	;
 
-    // ---------------------------------------------------------------------------
-    // Internal state
-    // ---------------------------------------------------------------------------
+	// ---------------------------------------------------------------------------
+	// Internal state
+	// ---------------------------------------------------------------------------
 
-    private static final Map<Rs2Cache, Entry> CACHE = new EnumMap<>(Rs2Cache.class);
+	private static final Map<Rs2Cache, Entry> CACHE = new EnumMap<>(Rs2Cache.class);
 
-    private final Supplier<Object> populator;
+	private final Supplier<Object> populator;
 
-    Rs2Cache(Supplier<Object> populator) {
-        this.populator = populator;
-    }
+	Rs2Cache(Supplier<Object> populator) {
+		this.populator = populator;
+	}
 
-    // ---------------------------------------------------------------------------
-    // Public API
-    // ---------------------------------------------------------------------------
+	// ---------------------------------------------------------------------------
+	// Public API
+	// ---------------------------------------------------------------------------
 
-    /**
-     * Returns the cached value for this entry.
-     *
-     * <p>If the value was already computed on the current game tick it is returned
-     * directly. Otherwise the populator is called, the result is cached alongside
-     * the current tick, and then returned.
-     *
-     * @param <T> expected return type
-     * @return the (possibly freshly populated) cached value
-     */
-    @SuppressWarnings("unchecked")
-    public <T> T getValue() {
-        int currentTick = Microbot.getClient().getTickCount();
-        Entry entry = CACHE.get(this);
-        if (entry != null && entry.tick == currentTick) {
-            return (T) entry.value;
-        }
-        Object value = populator.get();
-        CACHE.put(this, new Entry(value, currentTick));
-        return (T) value;
-    }
+	/**
+	 * Returns the cached value for this entry.
+	 *
+	 * <p>If the value was already computed on the current game tick it is returned
+	 * directly. Otherwise the populator is called, the result is cached alongside
+	 * the current tick, and then returned.
+	 *
+	 * @param <T> expected return type
+	 * @return the (possibly freshly populated) cached value
+	 */
+	@SuppressWarnings("unchecked")
+	public <T> T getValue() {
+		int currentTick = Microbot.getClient().getTickCount();
+		Entry entry = CACHE.get(this);
+		if (entry != null && entry.tick == currentTick) {
+			return (T) entry.value;
+		}
+		Object value = populator.get();
+		CACHE.put(this, new Entry(value, currentTick));
+		return (T) value;
+	}
 
-    /**
-     * Invalidates the cached value for this entry, forcing a fresh call to the
-     * populator on the next {@link #getValue()} invocation.
-     */
-    public void invalidate() {
-        CACHE.remove(this);
-    }
+	/**
+	 * Invalidates the cached value for this entry, forcing a fresh call to the
+	 * populator on the next {@link #getValue()} invocation.
+	 */
+	public void invalidate() {
+		CACHE.remove(this);
+	}
 
-    /**
-     * Invalidates all cached entries.
-     */
-    public static void invalidateAll() {
-        CACHE.clear();
-    }
+	/**
+	 * Invalidates all cached entries.
+	 */
+	public static void invalidateAll() {
+		CACHE.clear();
+	}
 
-    // ---------------------------------------------------------------------------
-    // Internal helpers
-    // ---------------------------------------------------------------------------
+	// ---------------------------------------------------------------------------
+	// Internal helpers
+	// ---------------------------------------------------------------------------
 
-    private static final class Entry {
-        final Object value;
-        final int tick;
+	private static final class Entry {
+		final Object value;
+		final int tick;
 
-        Entry(Object value, int tick) {
-            this.value = value;
-            this.tick = tick;
-        }
-    }
+		Entry(Object value, int tick) {
+			this.value = value;
+			this.tick = tick;
+		}
+	}
 }
