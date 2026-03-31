@@ -175,7 +175,8 @@ public class BlockingEventManager
 
         if (!isRunning.compareAndSet(false, true))
         {
-            // if somebody else started in the meantime, we consider it “busy”
+            // if somebody else started in the meantime, re-queue the event and report busy
+            eventQueue.offer(event);
             return true;
         }
 
