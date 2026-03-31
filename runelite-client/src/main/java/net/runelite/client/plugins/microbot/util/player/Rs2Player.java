@@ -15,6 +15,7 @@ import net.runelite.api.widgets.WidgetInfo;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.api.boat.Rs2BoatCache;
 import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
+import net.runelite.client.plugins.microbot.api.playerstate.Rs2PlayerStateCache;
 import net.runelite.client.plugins.microbot.util.coords.Rs2WorldPoint;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
@@ -953,24 +954,59 @@ public class Rs2Player {
         });
     }
 
-    /**
-     * Retrieves the player's current world location as a {@link WorldPoint}.
-     *
-     * <p>If the player is in an instanced world, the method converts the local position 
-     * to an instanced {@link WorldPoint}. Otherwise, it returns the player's standard 
-     * world location.</p>
-     *
-     * @return The {@link WorldPoint} representing the player's current location.
-     */
-    public static WorldPoint getWorldLocation() {
-        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
-            if (Microbot.getClient().getTopLevelWorldView().getScene().isInstance()) {
-                LocalPoint l = LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), Microbot.getClient().getLocalPlayer().getWorldLocation());
-                return WorldPoint.fromLocalInstance(Microbot.getClient(), l);
-            }
-            return Microbot.getClient().getLocalPlayer().getWorldLocation();
-        }).orElse(null);
-    }
+	/**
+	 * Retrieves the player's current world location as a {@link WorldPoint} from the client thread.
+	 *
+	 * <p>If the player is in an instanced world, the method converts the local position
+	 * to an instanced {@link WorldPoint}. Otherwise, it returns the player's standard
+	 * world location.</p>
+	 *
+	 * @return The {@link WorldPoint} representing the player's current location, or {@code null} if unavailable.
+	 */
+	public static WorldPoint getWorldLocation_Internal(){
+		return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+			if (Microbot.getClient().getTopLevelWorldView().getScene().isInstance()) {
+				LocalPoint l = LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), Microbot.getClient().getLocalPlayer().getWorldLocation());
+				return WorldPoint.fromLocalInstance(Microbot.getClient(), l);
+			}
+			return Microbot.getClient().getLocalPlayer().getWorldLocation();
+		}).orElse(null);
+	}
+
+	/**
+	 * Retrieves the player's current {@link WorldView} from the client thread.
+	 *
+	 * @return The {@link WorldView} representing the player's current world view, or {@code null} if unavailable.
+	 */
+	public static WorldView getWorldView_Internal() {
+		return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+			Player player = Microbot.getClient().getLocalPlayer();
+			if (player == null) return null;
+			return player.getWorldView();
+		}).orElse(null);
+	}
+
+	/**
+	 * Retrieves the player's current world location as a {@link WorldPoint}.
+	 *
+	 * <p>If the player is in an instanced world, the method converts the local position
+	 * to an instanced {@link WorldPoint}. Otherwise, it returns the player's standard
+	 * world location.</p>
+	 *
+	 * @return The {@link WorldPoint} representing the player's current location.
+	 */
+	public static WorldPoint getWorldLocation() {
+		return Microbot.getRs2PlayerStateCache().getLocalPlayerPosition();
+	}
+
+	/**
+	 * Retrieves the player's current {@link WorldView}.
+	 *
+	 * @return The {@link WorldView} representing the player's current world view, or {@code null} if unavailable.
+	 */
+	public static WorldView getWorldView() {
+		return Microbot.getRs2PlayerStateCache().getLocalPlayerWorldView();
+	}
 
     /**
      * Retrieves the player's current location as an {@link Rs2WorldPoint}.

@@ -7,6 +7,7 @@ import net.runelite.api.coords.WorldArea;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.api.playerstate.Rs2PlayerStateCache;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
@@ -1561,13 +1562,13 @@ public class Rs2GameObject {
         return to -> isWithinTiles(anchor, to.getLocalLocation(), distance);
     }
 
-    private static LocalPoint localPointFromWorldSafe(WorldPoint anchor) {
-        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
-            Player player = Microbot.getClient().getLocalPlayer();
-            if (player == null) return null;
-            return LocalPoint.fromWorld(player.getWorldView(), anchor);
-        }).orElse(null);
-    }
+	private static LocalPoint localPointFromWorldSafe(WorldPoint anchor) {
+		WorldView worldView = Microbot.getRs2PlayerStateCache().getLocalPlayerWorldView();
+		if (worldView == null) {
+			return null;
+		}
+		return LocalPoint.fromWorld(worldView, anchor);
+	}
 
     public static Optional<String> getCompositionName(TileObject obj) {
         ObjectComposition comp = convertToObjectComposition(obj);

@@ -8,6 +8,7 @@ import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.Quest;
 import net.runelite.api.QuestState;
+import net.runelite.api.WorldView;
 import net.runelite.api.annotations.Varbit;
 import net.runelite.api.annotations.Varp;
 import net.runelite.api.events.GameStateChanged;
@@ -17,6 +18,10 @@ import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.microbot.Microbot;
 
+import net.runelite.api.coords.WorldPoint;
+import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+
+import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -37,6 +42,10 @@ public final class Rs2PlayerStateCache {
 	private final ConcurrentHashMap<Integer, QuestState> quests = new ConcurrentHashMap<>();
 	private final ConcurrentHashMap<Integer, Integer> varbits = new ConcurrentHashMap<>();
 	private final ConcurrentHashMap<Integer, Integer> varps = new ConcurrentHashMap<>();
+
+	private volatile int lastLocalPlayerTick = -1;
+	private volatile WorldPoint localPlayerPosition;
+	private volatile WorldView localPlayerWorldView;
 
 	volatile boolean questsPopulated = false;
 
@@ -60,6 +69,9 @@ public final class Rs2PlayerStateCache {
 			quests.clear();
 			varbits.clear();
 			varps.clear();
+			lastLocalPlayerTick = -1;
+			localPlayerPosition = null;
+			localPlayerWorldView = null;
 		}
 	}
 
@@ -163,5 +175,31 @@ public final class Rs2PlayerStateCache {
 			varps.put(varpId, value);
 		}
 		return value;
+	}
+
+	private void refreshLocalPlayer() {
+		int currentTick = client.getTickCount();
+		if (lastLocalPlayerTick >= currentTick) {
+			return;
+		}
+		localPlayerPosition = Rs2Player.getWorldLocation_Internal();
+		localPlayerWorldView = Rs2Player.getWorldView_Internal();
+		lastLocalPlayerTick = currentTick;
+	}
+
+	public WorldPoint getLocalPlayerPosition() {
+		refreshLocalPlayer();
+		return localPlayerPosition;
+	}
+
+	public WorldView getLocalPlayerWorldView() {
+		refreshLocalPlayer();
+		return localPlayerWorldView;
+	}
+
+	public void invalidateLocalPlayer() {
+		lastLocalPlayerTick = -1;
+		localPlayerPosition = null;
+		localPlayerWorldView = null;
 	}
 }
