@@ -2071,7 +2071,9 @@ public class Rs2Walker {
         final WorldPoint loc = Rs2Player.getWorldLocation();
         if (loc == null) return true;
 
-        if (config.recalculateDistance() < 0 || lastPosition.equals(lastPosition = loc)) {
+        boolean positionUnchanged = lastPosition != null && lastPosition.equals(loc);
+        lastPosition = loc;
+        if (config.recalculateDistance() < 0 || positionUnchanged) {
             return true;
         }
 
