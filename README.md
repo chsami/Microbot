@@ -1,40 +1,106 @@
-![image](https://github.com/user-attachments/assets/7c08e053-c84f-41f8-bc97-f55130100419)
+# Microbot Frieren
 
-<a href="https://www.paypal.com/paypalme/MicrobotBE?country.x=BE" target="_blank">
-  <img src="https://img.shields.io/badge/Donate-%E2%9D%A4-ff69b4?style=for-the-badge">
-</a>
-<a href="https://www.youtube.com/@themicrobot" target="_blank">
-  <img src="https://img.shields.io/badge/YouTube-Subscribe-FF0000?style=for-the-badge&logo=youtube&logoColor=white">
-</a>
-<a href="https://themicrobot.com" target="_blank">
-  <img src="https://img.shields.io/badge/Microbot-Website-0A66C2?style=for-the-badge&logo=google-chrome&logoColor=white">
-</a>
+Private fork of [chsami/Microbot](https://github.com/chsami/Microbot) — an OSRS automation client built on RuneLite.
 
-# Microbot
-Microbot is a fun Old School RuneScape side project built on RuneLite. It focuses on learning and sharing automation scripts, not enterprise software.
+**Fork changes vs upstream:**
+- Telemetry removed (`MicrobotVersionChecker`, `RandomFactClient`, `MicrobotApi` → `microbot.cloud` deleted)
+- Security hardened (credential redaction, localhost-only Status API)
+- Command Center integration (`commandcenter/` package)
+- 5 CC bot scripts (woodcutting, mining, fishing, cooking, combat) with a shared behavior framework
 
-- Core plugin: `runelite-client/src/main/java/net/runelite/client/plugins/microbot`
-- Queryable API docs: `runelite-client/src/main/java/net/runelite/client/plugins/microbot/api/QUERYABLE_API.md` (quick read: `api/README.md`)
-- Helpers/utilities: `microbot/util` inside the plugin tree
+See `docs/security-audit.md` for the full telemetry/security audit.
+
+---
 
 ## Installing & Running
-- Download shaded releases from the GitHub releases page (see `docs/installation.md` for step‑by‑step and launcher notes).
-- Linux/macOS/Windows: run the shaded JAR with Java 17+ (`java -jar client-<version>-SNAPSHOT-shaded.jar`), or swap it into RuneLite/Bolt as described in `docs/installation.md`.
-- Stuck? Join the Discord below.
+
+Download shaded releases from this repo's GitHub Releases page.
+
+```
+java -jar client-<version>-SNAPSHOT-shaded.jar [flags]
+```
+
+**Command Center CLI flags:**
+- `--status-port-file <path>` — where the bot writes its ephemeral HTTP port for CC polling
+- `--cc-profile-dir <path>` — directory containing `credentials.properties` and `commandcenter.properties`
+
+Linux/macOS users: swap the shaded JAR into Bolt or replace `RuneLite.jar` as described in `docs/installation.md`.
+
+---
 
 ## Building from Source
-- Quick compile: `./gradlew :runelite-client:compileJava`
-- Full build: `./gradlew build`
-- Main sources are included builds defined in `settings.gradle.kts` (cache, runelite-api, runelite-client, runelite-jshell).
-- Development setup guide: `docs/development.md`
+
+```bash
+./gradlew :runelite-client:compileJava   # quick compile
+./gradlew build                          # full build
+./gradlew :runelite-client:test          # run tests
+```
+
+- **Java:** 17+ (JDK required)
+- **Build system:** Gradle Kotlin DSL (composite: cache, runelite-api, runelite-client, runelite-jshell)
+- **Version:** `gradle.properties` → `microbot.version`
+- **CI:** `.github/workflows/build.yml` — semantic versioning (v1.0.N auto-increment), shaded JAR, GitHub Release
+
+Full setup: `docs/development.md`
+
+---
+
+## Command Center Integration
+
+The `commandcenter/` package wires this client into Command Center:
+
+| Component | Purpose |
+|-----------|---------|
+| `StatusApiServer` | Localhost-only HTTP server; binds ephemeral port, writes it to `--status-port-file` |
+| `StatusApiHandler` | `GET /status` (JSON schema v1) and `GET /health` |
+| `BotStatusModel` | Thread-safe: character, login state, script info, player stats, XP, uptime |
+| `AutoLoginPlugin` | Reads `credentials.properties` from `--cc-profile-dir`; injects email/password |
+| `ScriptAutoStartPlugin` | Reads `commandcenter.properties`; activates plugin by `@PluginDescriptor` name |
+
+---
+
+## CC Bot Scripts
+
+Five ready-to-run scripts under `commandcenter/scripts/`:
+
+| Script | States | Key Config |
+|--------|--------|-----------|
+| CCWoodcutting | CHOPPING, IDLE | tree type, bank logs |
+| CCMining | MINING, IDLE | ore type, bank mode (deposit/drop/manual) |
+| CCFishing | FISHING, IDLE | fish type |
+| CCCooking | COOKING, IDLE | food type, range location |
+| CCCombat | FIGHTING, IDLE | monster name, eat%, loot items, bury bones |
+
+All share 6 priority-ordered behaviors: `DeathRecovery` → `Eating` → `StuckDetection` → `Looting` → `BuryBones` → `Banking`.
+
+To add a new script: create 4 files (`Config`, `Script`, `Plugin`, `Overlay`), add it to `CCScriptContractTest.SCRIPTS` and `CCScriptConfigureContractTest.SCRIPTS` — gets 11 contract tests for free.
+
+---
 
 ## Developing Scripts
-- New scripts belong in the microbot plugin folder: `runelite-client/src/main/java/net/runelite/client/plugins/microbot`.
-- Share reusable helpers under `microbot/util`.
-- Use the Queryable API caches via `Microbot.getRs2XxxCache().query()`; do not instantiate caches/queryables directly. See `api/QUERYABLE_API.md` and examples under `api/*/*ApiExample.java`.
-- Example scripts live in `runelite-client/src/main/java/net/runelite/client/plugins/microbot/example/`.
 
-## Discord
-[![Discord Banner 1](https://discord.com/api/guilds/1087718903985221642/widget.png?style=banner1)](https://discord.gg/zaGrfqFEWE)
+- New scripts belong in `runelite-client/src/main/java/net/runelite/client/plugins/microbot/`
+- Prefer the Queryable API over legacy `Rs2*` util calls:
 
-If you have any questions, please join our [Discord](https://discord.gg/zaGrfqFEWE) server. 
+```java
+var banker = Microbot.getRs2NpcCache().query()
+    .withName("Banker").nearestOnClientThread();
+```
+
+Full API guide: `runelite-client/src/main/java/net/runelite/client/plugins/microbot/api/QUERYABLE_API.md`
+
+Examples: `runelite-client/src/main/java/net/runelite/client/plugins/microbot/example/`
+
+---
+
+## Documentation
+
+| Doc | Contents |
+|-----|---------|
+| `docs/development.md` | IDE setup, build commands, script patterns |
+| `docs/installation.md` | Launcher / JAR setup, Linux notes |
+| `docs/ARCHITECTURE.md` | Component map, data flows, runtime boundaries |
+| `docs/security-audit.md` | Telemetry removal audit |
+| `docs/upstream-sync.md` | How to sync with chsami/Microbot |
+| `docs/decisions/` | 4 architecture decision records |
+| `docs/api/` | 30+ utility API reference docs |
