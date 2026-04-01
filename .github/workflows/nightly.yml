@@ -63,7 +63,7 @@ jobs:
             runelite-client/build/libs/microbot-*.jar
 
       - name: Upload Jar to Hetzner
-        if: ${{ secrets.PROD_SSH_KEY != '' }}
+        continue-on-error: true
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.PROD_HOST }}
