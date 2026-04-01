@@ -30,6 +30,7 @@ import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.geometry.Cuboid;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.util.QuantityFormatter;
 import org.apache.commons.lang3.ArrayUtils;
 
@@ -133,7 +134,7 @@ public class Rs2Pvp {
             wildernessLevel += 15;
         }
         if (Microbot.getVarbitValue(Varbits.IN_WILDERNESS) == 1) {
-            wildernessLevel += getWildernessLevelFrom(Microbot.getClient().getLocalPlayer().getWorldLocation());
+            wildernessLevel += getWildernessLevelFrom(Rs2Player.getWorldLocation());
         }
         return wildernessLevel != 0 && Math.abs(Microbot.getClient().getLocalPlayer().getCombatLevel() - rs2Player.getCombatLevel()) <= wildernessLevel;
     }
@@ -162,7 +163,7 @@ public class Rs2Pvp {
         boolean isDeadManWorld = WorldType.isDeadmanWorld(Microbot.getClient().getWorldType());
         boolean isPVPWorld = WorldType.isPvpWorld(Microbot.getClient().getWorldType());
         if (Microbot.getVarbitValue(Varbits.IN_WILDERNESS) == 1) {
-            wildernessLevel += getWildernessLevelFrom(Microbot.getClient().getLocalPlayer().getWorldLocation());
+            wildernessLevel += getWildernessLevelFrom(Rs2Player.getWorldLocation());
         }
         for (Rs2PlayerModel player: players) {
             if (!isAttackable(player, isDeadManWorld, isPVPWorld, wildernessLevel)) continue;

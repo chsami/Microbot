@@ -200,6 +200,7 @@ public class MicrobotPlugin extends Plugin
 				log.error("Failed to start Status API: {}", e.getMessage());
 			}
 		}
+
 	}
 
 	protected void shutDown()
@@ -507,6 +508,20 @@ public class MicrobotPlugin extends Plugin
 			});
 		}
 	}
+
+	@Subscribe
+	public void onGameTick(GameTick event)
+	{
+		// Cache loading is now handled properly during login/profile changes
+		// No need to call loadInitialCacheFromClientConfig on every tick
+	}
+
+	@Subscribe(priority = 100)
+	private void onClientShutdown(ClientShutdown e)
+	{
+
+	}
+
 
 	/**
 	 * Dynamically checks if any visible widget overlaps with the specified bounds

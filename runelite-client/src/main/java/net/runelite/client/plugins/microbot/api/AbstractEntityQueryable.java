@@ -154,14 +154,29 @@ public abstract class AbstractEntityQueryable<
 
     @Override
     public E nearestReachable() {
-        source = source.filter(IEntity::isReachable);
-        return nearest(Integer.MAX_VALUE);
+        return nearestReachable(Integer.MAX_VALUE);
     }
 
     @Override
     public E nearestReachable(int maxDistance) {
-        source = source.filter(IEntity::isReachable);
-        return nearest(maxDistance);
+        var player = new Rs2PlayerModel();
+        WorldPoint playerLoc = player.getWorldLocation();
+        WorldView worldView = player.getWorldView();
+        if (playerLoc == null || worldView == null) {
+            return null;
+        }
+
+        return source
+                .filter(IEntity::isReachable)
+                .map(entity -> {
+                    WorldPoint loc = entity.getWorldLocation();
+                    int distance = (loc != null) ? loc.distanceTo(playerLoc) : Integer.MAX_VALUE;
+                    return new EntityDistance<>(entity, distance);
+                })
+                .filter(pair -> pair.distance <= maxDistance)
+                .min(Comparator.comparingInt(pair -> pair.distance))
+                .map(pair -> pair.entity)
+                .orElse(null);
     }
 
     @Override
@@ -197,6 +212,11 @@ public abstract class AbstractEntityQueryable<
     @Override
     public List<E> toList() {
         return source.collect(Collectors.toList());
+    }
+
+    @Override
+    public int count() {
+        return (int) source.count();
     }
 
     public E firstOnClientThread() {

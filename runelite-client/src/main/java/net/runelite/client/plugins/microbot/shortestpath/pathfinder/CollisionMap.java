@@ -99,6 +99,25 @@ public class CollisionMap {
             new WorldPoint(3672, 3862, 0)
     );
 
+    private volatile int cachedRegionId = -1;
+    private volatile long cachedRegionIdTime = 0;
+    private static final long REGION_CACHE_MS = 5000;
+    private static final int TOA_PUZZLE_REGION = 14162;
+
+    private int getCachedRegionId() {
+        long now = System.currentTimeMillis();
+        if (now - cachedRegionIdTime > REGION_CACHE_MS) {
+            try {
+                WorldPoint loc = Rs2Player.getWorldLocation();
+                cachedRegionId = loc != null ? loc.getRegionID() : -1;
+            } catch (Exception e) {
+                cachedRegionId = -1;
+            }
+            cachedRegionIdTime = now;
+        }
+        return cachedRegionId;
+    }
+
     public List<Node> getNeighbors(Node node, VisitedTiles visited, PathfinderConfig config, Set<Integer> targets) {
         final int x = WorldPointUtil.unpackWorldX(node.packedPosition);
         final int y = WorldPointUtil.unpackWorldY(node.packedPosition);
@@ -167,7 +186,7 @@ public class CollisionMap {
              * This piece of code is designed to allow web walker to be used in toa puzzle room
              * it will dodge specific tiles in the sequence room
              */
-            if (Rs2Player.getWorldLocation().getRegionID() == 14162) { //toa puzzle room
+            if (getCachedRegionId() == TOA_PUZZLE_REGION) {
                 if (!targets.contains(neighborPacked)) {
                     WorldPoint globalWorldPoint = Rs2WorldPoint.convertInstancedWorldPoint(WorldPointUtil.unpackWorldPoint(neighborPacked));
                     if (globalWorldPoint != null) {

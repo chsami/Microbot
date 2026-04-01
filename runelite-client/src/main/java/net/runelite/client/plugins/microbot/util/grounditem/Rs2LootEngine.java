@@ -141,7 +141,7 @@ public final class Rs2LootEngine {
 
         /** Final combined looting pass. */
         public boolean loot() {
-            final WorldPoint me = Microbot.getClient().getLocalPlayer().getWorldLocation();
+            final WorldPoint me = Rs2Player.getWorldLocation();
 
             final Map<String, GroundItem> unique = new LinkedHashMap<>();
             for (List<GroundItem> list : candidateBuckets.values()) {
@@ -206,7 +206,7 @@ public final class Rs2LootEngine {
     // ------------------ shared helpers (same logic as before) ------------------
 
     private static Predicate<GroundItem> baseRangeAndOwnershipFilter(LootingParameters params) {
-        final WorldPoint me = Microbot.getClient().getLocalPlayer().getWorldLocation();
+        final WorldPoint me = Rs2Player.getWorldLocation();
         final boolean anti = params.isAntiLureProtection();
         return gi ->
                 gi.getLocation().distanceTo(me) < params.getRange()

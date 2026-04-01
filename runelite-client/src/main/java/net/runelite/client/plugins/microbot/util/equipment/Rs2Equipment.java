@@ -23,7 +23,7 @@ import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 public class Rs2Equipment {
-    private static List<Rs2ItemModel> equipmentItems = Collections.emptyList();
+    private static volatile List<Rs2ItemModel> equipmentItems = Collections.emptyList();
 
     public static ItemContainer equipment() {
         return Microbot.getClient().getItemContainer(InventoryID.WORN);

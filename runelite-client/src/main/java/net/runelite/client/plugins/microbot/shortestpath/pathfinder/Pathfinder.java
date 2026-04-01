@@ -123,91 +123,93 @@ public class Pathfinder implements Runnable {
 
     @Override
     public void run() {
-        stats.start();
-        boundary.addFirst(new Node(start, null));
+        log.info("[Pathfinder] run() started: src={}, dst={}, cutoff={}ms",
+                WorldPointUtil.toString(start), WorldPointUtil.toString(targets), config.getCalculationCutoffMillis());
+        try {
+            stats.start();
+            boundary.addFirst(new Node(start, null));
 
-        int bestDistance = Integer.MAX_VALUE;
-        long bestHeuristic = Integer.MAX_VALUE;
-        long cutoffDurationMillis = config.getCalculationCutoffMillis();
-        long cutoffTimeMillis = System.currentTimeMillis() + cutoffDurationMillis;
+            int bestDistance = Integer.MAX_VALUE;
+            long bestHeuristic = Integer.MAX_VALUE;
+            long cutoffDurationMillis = config.getCalculationCutoffMillis();
+            long cutoffTimeMillis = System.currentTimeMillis() + cutoffDurationMillis;
 
-        config.refreshTeleports(start, 31);
-        while (!cancelled && (!boundary.isEmpty() || !pending.isEmpty())) {
-            Node node = boundary.peekFirst();
-            Node p = pending.peek();
-            
-            if (p != null && (node == null || p.cost < node.cost)) {
-                node = pending.poll();
-            } else {
-                node = boundary.removeFirst();
-            }
+            config.refreshTeleports(start, 31);
+            while (!cancelled && (!boundary.isEmpty() || !pending.isEmpty())) {
+                Node node = boundary.peekFirst();
+                Node p = pending.peek();
 
-            if (wildernessLevel > 0) {
-                // We don't need to remove teleports when going from 20 to 21 or higher,
-                // because the teleport is either used at the very start of the
-                // path or when going from 31 or higher to 30, or from 21 or higher to 20.
-
-                boolean update = false;
-
-                // These are overlapping boundaries, so if the node isn't in level 30, it's in 0-29
-                // likewise, if the node isn't in level 20, it's in 0-19
-                if (wildernessLevel > 29 && !config.isInLevel29Wilderness(node.packedPosition)) {
-                    wildernessLevel = 29;
-                    update = true;
+                if (p != null && (node == null || p.cost < node.cost)) {
+                    node = pending.poll();
+                } else {
+                    node = boundary.removeFirst();
                 }
-                if (wildernessLevel > 19 && !config.isInLevel19Wilderness(node.packedPosition)) {
-                    wildernessLevel = 19;
-                    update = true;
+
+                if (wildernessLevel > 0) {
+                    boolean update = false;
+
+                    if (wildernessLevel > 29 && !config.isInLevel29Wilderness(node.packedPosition)) {
+                        wildernessLevel = 29;
+                        update = true;
+                    }
+                    if (wildernessLevel > 19 && !config.isInLevel19Wilderness(node.packedPosition)) {
+                        wildernessLevel = 19;
+                        update = true;
+                    }
+                    if (wildernessLevel > 0 && !PathfinderConfig.isInWilderness(node.packedPosition)) {
+                        wildernessLevel = 0;
+                        update = true;
+                    }
+                    if (update) {
+                        config.refreshTeleports(node.packedPosition, wildernessLevel);
+                    }
                 }
-                if (wildernessLevel > 0 && !PathfinderConfig.isInWilderness(node.packedPosition)) {
-                    wildernessLevel = 0;
-                    update = true;
-                }
-                if (update) {
-                    config.refreshTeleports(node.packedPosition, wildernessLevel);
-                }
-            }
 
-            if (targets.contains(node.packedPosition)) {
-                bestLastNode = node;
-                pathNeedsUpdate = true;
-                break;
-            }
-
-            for (int target : targets) {
-                int distance = WorldPointUtil.distanceBetween(node.packedPosition, target);
-                long heuristic = distance + (long) WorldPointUtil.distanceBetween(node.packedPosition, target, 2);
-
-                if (heuristic < bestHeuristic || (heuristic <= bestHeuristic && distance < bestDistance)) {
-
+                if (targets.contains(node.packedPosition)) {
                     bestLastNode = node;
                     pathNeedsUpdate = true;
-                    bestDistance = distance;
-                    bestHeuristic = heuristic;
-                    cutoffTimeMillis = System.currentTimeMillis() + cutoffDurationMillis;
+                    break;
                 }
+
+                for (int target : targets) {
+                    int distance = WorldPointUtil.distanceBetween(node.packedPosition, target);
+                    long heuristic = distance + (long) WorldPointUtil.distanceBetween(node.packedPosition, target, 2);
+
+                    if (heuristic < bestHeuristic || (heuristic <= bestHeuristic && distance < bestDistance)) {
+
+                        bestLastNode = node;
+                        pathNeedsUpdate = true;
+                        bestDistance = distance;
+                        bestHeuristic = heuristic;
+                        cutoffTimeMillis = System.currentTimeMillis() + cutoffDurationMillis;
+                    }
+                }
+
+                if (System.currentTimeMillis() > cutoffTimeMillis) {
+                    log.info("[Pathfinder] Cutoff reached. bestDistance={}, nodesChecked={}", bestDistance, stats.getNodesChecked());
+                    break;
+                }
+
+                addNeighbors(node);
             }
 
-            if (System.currentTimeMillis() > cutoffTimeMillis) {
-                break;
-            }
-            
-            addNeighbors(node);
+            log.info("[Pathfinder] Loop exited. cancelled={}, boundaryEmpty={}, pendingEmpty={}, bestLastNode={}",
+                    cancelled, boundary.isEmpty(), pending.isEmpty(),
+                    bestLastNode == null ? "null" : WorldPointUtil.toString(bestLastNode.packedPosition));
+        } catch (Exception e) {
+            log.error("[Pathfinder] Exception in run(): ", e);
+        } finally {
+            done = !cancelled;
+
+            boundary.clear();
+            visited.clear();
+            pending.clear();
+
+            stats.end();
+
+            log.info("[Pathfinder] run() completed. done={}, cancelled={}, stats={}",
+                    done, cancelled, getStats() != null ? getStats().toString() : "null");
         }
-
-        done = !cancelled;
-
-        boundary.clear();
-        visited.clear();
-        pending.clear();
-
-        stats.end(); // Include cleanup in stats to get the total cost of pathfinding
-
-        log.debug("Pathfinding completed DstNode={} src={} dst={} Stats={}",
-                bestLastNode == null ? "null" : WorldPointUtil.toString(bestLastNode.packedPosition),
-                WorldPointUtil.toString(start),
-                WorldPointUtil.toString(targets),
-                getStats().toString());
     }
 
     public static class PathfinderStats {

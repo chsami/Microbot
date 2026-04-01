@@ -154,7 +154,7 @@ public enum BankLocation {
             case FARMING_GUILD:
                 return Rs2Player.getSkillRequirement(Skill.FARMING, 45, true);
             case MINING_GUILD:
-                boolean inRegion = Microbot.getClient().getLocalPlayer().getWorldLocation().getRegionID() == 12183 || Microbot.getClient().getLocalPlayer().getWorldLocation().getRegionID() == 12184;
+                boolean inRegion = Rs2Player.getWorldLocation().getRegionID() == 12183 || Rs2Player.getWorldLocation().getRegionID() == 12184;
                 return inRegion && Rs2Player.getSkillRequirement(Skill.MINING, 60, true);
             case FISHING_GUILD:
                 return Rs2Player.getSkillRequirement(Skill.FISHING, 68, true);

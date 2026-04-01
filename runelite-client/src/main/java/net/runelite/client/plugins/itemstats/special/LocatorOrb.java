@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Adam <Adam@sigterm.info>
+ * Copyright (c) 2021, Jordan Atwood <nightfirecat@nightfirec.at>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -22,19 +22,24 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package net.runelite.api.events;
+package net.runelite.client.plugins.itemstats.special;
 
-import lombok.Data;
+import net.runelite.api.Client;
+import net.runelite.client.plugins.itemstats.StatBoost;
+import static net.runelite.client.plugins.itemstats.stats.Stats.HITPOINTS;
 
-/**
- * Called every game cycle the client is dragging a widget on
- * the cursor.
- */
-@Data
-public class DraggingWidgetChanged
+public class LocatorOrb extends StatBoost
 {
-	/**
-	 * Whether a widget is currently being dragged.
-	 */
-	private boolean draggingWidget;
+	public LocatorOrb()
+	{
+		super(HITPOINTS, false);
+	}
+
+	@Override
+	public int heals(final Client client)
+	{
+		final int current = getStat().getValue(client);
+
+		return -1 * Math.max(0, Math.min(current - 1, 10));
+	}
 }

@@ -26,8 +26,6 @@
 package net.runelite.client.plugins.grounditems;
 
 import com.google.common.base.MoreObjects;
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.LoadingCache;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableTable;
@@ -36,8 +34,6 @@ import com.google.common.collect.Tables;
 import com.google.inject.Provides;
 import java.awt.Color;
 import java.awt.Rectangle;
-import static java.lang.Boolean.FALSE;
-import static java.lang.Boolean.TRUE;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -47,9 +43,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.inject.Inject;
@@ -146,8 +140,8 @@ public class GroundItemsPlugin extends Plugin
 	@Setter(AccessLevel.PACKAGE)
 	private boolean hideAll;
 
-	private List<String> hiddenItemList = new CopyOnWriteArrayList<>();
-	private List<String> highlightedItemsList = new CopyOnWriteArrayList<>();
+	private ItemList highlightedItems = new ItemList(Collections.emptyList());
+	private ItemList hiddenItems = new ItemList(Collections.emptyList());
 
 	@Inject
 	private GroundItemHotkeyListener hotkeyListener;
@@ -193,8 +187,6 @@ public class GroundItemsPlugin extends Plugin
 
 	private static final Table<WorldPoint, Integer, GroundItem> collectedGroundItems = Tables.synchronizedTable(HashBasedTable.create());
 	private List<PriceHighlight> priceChecks = ImmutableList.of();
-	private LoadingCache<NamedQuantity, Boolean> highlightedItems;
-	private LoadingCache<NamedQuantity, Boolean> hiddenItems;
 	private final Map<WorldPoint, Lootbeam> lootbeams = new HashMap<>();
 
 	public static Table<WorldPoint, Integer, GroundItem> getCollectedGroundItems() {
@@ -223,12 +215,6 @@ public class GroundItemsPlugin extends Plugin
 		overlayManager.remove(overlay);
 		mouseManager.unregisterMouseListener(mouseAdapter);
 		keyManager.unregisterKeyListener(hotkeyListener);
-		highlightedItems.invalidateAll();
-		highlightedItems = null;
-		hiddenItems.invalidateAll();
-		hiddenItems = null;
-		hiddenItemList = null;
-		highlightedItemsList = null;
 		collectedGroundItems.clear();
 		clientThread.invokeLater(this::removeAllLootbeams);
 	}
@@ -310,10 +296,10 @@ public class GroundItemsPlugin extends Plugin
 		}
 
 		final Color highlighted = getHighlighted(item);
-		final Color hidden = getHidden(item);
+		final boolean hidden = isHidden(item);
 
 		item.highlighted = highlighted != null;
-		item.hidden = hidden != null;
+		item.hidden = hidden;
 		item.color = getItemColor(highlighted, hidden);
 	}
 
@@ -456,21 +442,8 @@ public class GroundItemsPlugin extends Plugin
 
 	private void reset()
 	{
-		// gets the hidden items from the text box in the config
-		hiddenItemList = Text.fromCSV(config.getHiddenItems());
-
-		// gets the highlighted items from the text box in the config
-		highlightedItemsList = Text.fromCSV(config.getHighlightItems());
-
-		highlightedItems = CacheBuilder.newBuilder()
-			.maximumSize(512L)
-			.expireAfterAccess(10, TimeUnit.MINUTES)
-			.build(new WildcardMatchLoader(highlightedItemsList));
-
-		hiddenItems = CacheBuilder.newBuilder()
-			.maximumSize(512L)
-			.expireAfterAccess(10, TimeUnit.MINUTES)
-			.build(new WildcardMatchLoader(hiddenItemList));
+		highlightedItems = new ItemList(Text.fromCSV(config.getHighlightItems()));
+		hiddenItems = new ItemList(Text.fromCSV(config.getHiddenItems()));
 
 		// Cache colors
 		ImmutableList.Builder<PriceHighlight> priceCheckBuilder = ImmutableList.builder();
@@ -610,8 +583,8 @@ public class GroundItemsPlugin extends Plugin
 
 	void updateList(String item, boolean hiddenList)
 	{
-		final List<String> hiddenItemSet = new ArrayList<>(hiddenItemList);
-		final List<String> highlightedItemSet = new ArrayList<>(highlightedItemsList);
+		final List<String> hiddenItemSet = new ArrayList<>(Text.fromCSV(config.getHiddenItems()));
+		final List<String> highlightedItemSet = new ArrayList<>(Text.fromCSV(config.getHighlightItems()));
 
 		if (hiddenList)
 		{
@@ -636,14 +609,15 @@ public class GroundItemsPlugin extends Plugin
 	private Color getHighlighted(GroundItem groundItem)
 	{
 		Color itemColor = getItemColor(groundItem.getItemId());
-		var item = new NamedQuantity(groundItem);
-		if (TRUE.equals(highlightedItems.getUnchecked(item)))
+
+		final int hiddenOrHighlighted = isHiddenOrHighlighted(groundItem);
+		if (hiddenOrHighlighted == HIGHLIGHTED)
 		{
 			return itemColor != null ? itemColor : config.highlightedColor();
 		}
 
 		// Explicit hide takes priority over implicit highlight
-		if (TRUE.equals(hiddenItems.getUnchecked(item)))
+		if (hiddenOrHighlighted == HIDDEN)
 		{
 			return null;
 		}
@@ -666,31 +640,57 @@ public class GroundItemsPlugin extends Plugin
 		return null;
 	}
 
-	private Color getHidden(GroundItem groundItem)
+	private boolean isHidden(GroundItem groundItem)
 	{
-		var item = new NamedQuantity(groundItem);
-		final boolean isExplicitHidden = TRUE.equals(hiddenItems.getUnchecked(item));
-		final boolean isExplicitHighlight = TRUE.equals(highlightedItems.getUnchecked(item));
+		final int hiddenOrHighlighted = isHiddenOrHighlighted(groundItem);
 		final boolean canBeHidden = groundItem.getGePrice() > 0 || groundItem.isTradeable() || !config.dontHideUntradeables();
 		final boolean underGe = groundItem.getGePrice() < config.getHideUnderValue();
 		final boolean underHa = groundItem.getHaPrice() < config.getHideUnderValue();
 
 		// Explicit highlight takes priority over implicit hide
-		return isExplicitHidden || (!isExplicitHighlight && canBeHidden && underGe && underHa)
-			? config.hiddenColor()
-			: null;
+		return hiddenOrHighlighted == HIDDEN || (hiddenOrHighlighted != HIGHLIGHTED && canBeHidden && underGe && underHa);
 	}
 
-	private Color getItemColor(Color highlighted, Color hidden)
+	private static final int NONE = 0;
+	private static final int HIGHLIGHTED = 1;
+	private static final int HIDDEN = 2;
+
+	private int isHiddenOrHighlighted(GroundItem item)
+	{
+		int hl = highlightedItems.matches(item);
+		if (hl == ItemList.EXACT)
+		{
+			return HIGHLIGHTED;
+		}
+
+		int hi = hiddenItems.matches(item);
+		if (hi == ItemList.EXACT)
+		{
+			return HIDDEN;
+		}
+
+		if (hl == ItemList.WILDCARD)
+		{
+			return HIGHLIGHTED;
+		}
+		if (hi == ItemList.WILDCARD)
+		{
+			return HIDDEN;
+		}
+
+		return NONE;
+	}
+
+	private Color getItemColor(Color highlighted, boolean hidden)
 	{
 		if (highlighted != null)
 		{
 			return highlighted;
 		}
 
-		if (hidden != null)
+		if (hidden)
 		{
-			return hidden;
+			return config.hiddenColor();
 		}
 
 		return config.defaultColor();
@@ -707,12 +707,14 @@ public class GroundItemsPlugin extends Plugin
 
 	private void notifyHighlightedItem(GroundItem item)
 	{
+		final int hiddenOrHighlighted = isHiddenOrHighlighted(item);
+
 		final boolean shouldNotifyHighlighted = config.notifyHighlightedDrops() &&
-			TRUE.equals(highlightedItems.getUnchecked(new NamedQuantity(item)));
+			hiddenOrHighlighted == HIGHLIGHTED;
 
 		final boolean shouldNotifyTier = config.notifyTier() != HighlightTier.OFF &&
 			getValueByMode(item.getGePrice(), item.getHaPrice()) > config.notifyTier().getValueFromTier(config) &&
-			FALSE.equals(hiddenItems.getUnchecked(new NamedQuantity(item)));
+			hiddenOrHighlighted != HIDDEN;
 
 		final String dropType;
 		if (shouldNotifyHighlighted)
@@ -785,9 +787,9 @@ public class GroundItemsPlugin extends Plugin
 			 * highlighted items have the highest priority so if an item is highlighted at this location
 			 * we can early return
 			 */
-			NamedQuantity item = new NamedQuantity(groundItem);
+			int hiddenOrHighlight = isHiddenOrHighlighted(groundItem);
 			if (config.showLootbeamForHighlighted()
-				&& TRUE.equals(highlightedItems.getUnchecked(item)))
+				&& hiddenOrHighlight == HIGHLIGHTED)
 			{
 				addLootbeam(worldPoint,
 					MoreObjects.firstNonNull(getItemColor(groundItem.getItemId()), config.highlightedColor()));
@@ -795,7 +797,7 @@ public class GroundItemsPlugin extends Plugin
 			}
 
 			// Explicit hide takes priority over implicit highlight
-			if (TRUE.equals(hiddenItems.getUnchecked(item)))
+			if (hiddenOrHighlight == HIDDEN)
 			{
 				continue;
 			}

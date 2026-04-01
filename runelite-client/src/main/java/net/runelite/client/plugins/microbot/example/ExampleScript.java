@@ -18,6 +18,7 @@ import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.api.player.Rs2PlayerCache;
 import net.runelite.client.plugins.microbot.util.player.Rs2PlayerModel;
 import net.runelite.client.plugins.microbot.util.reachable.Rs2Reachable;
+import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
@@ -56,59 +57,26 @@ public class ExampleScript extends Script {
             try {
                 if (!Microbot.isLoggedIn()) return;
 
-/*
-                if (Microbot.getClient().getTopLevelWorldView().getScene().isInstance()) {
-                    LocalPoint l = LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), Microbot.getClient().getLocalPlayer().getWorldLocation());
-                    System.out.println("was here");
-                     WorldPoint.fromLocalInstance(Microbot.getClient(), l);
-                } else {
-                    System.out.println("was here lol");
-                    // this needs to ran on client threaad if we are on the sea
-                   var a =  Microbot.getClient().getLocalPlayer().getWorldLocation();
-                    System.out.println(a);
-                }*/
+                if (Rs2Inventory.isFull()) {
+                    Rs2Inventory.dropAll("Logs");
+                    return;
+                }
 
-                var shipwreck = rs2TileObjectCache.query()
-                        .where(x -> x.getName() != null && x.getName().toLowerCase().contains("shipwreck"))
-                        .within(5)
-                        .nearestOnClientThread();
-                var player = new Rs2PlayerModel();
+                if (Rs2Player.isAnimating()) return;
 
-                var isInvFull = Rs2Inventory.count() >= Rs2Random.between(24, 28);
-                if (isInvFull && Rs2Inventory.count("salvage") > 0 && player.getAnimation() == -1) {
-                    // Rs2Inventory.dropAll("large salvage");
-                    rs2TileObjectCache.query()
-                            .fromWorldView()
-                            .where(x -> x.getName() != null && x.getName().equalsIgnoreCase("salvaging station"))
-                            .where(x -> x.getWorldView().getId() == new Rs2PlayerModel().getWorldView().getId())
-                            .nearestOnClientThread()
-                            .click();
-                    sleepUntil(() -> Rs2Inventory.count("salvage") == 0, 60000);
-                } else if (isInvFull) {
-                    dropJunk();
-                } else {
-                    if (player.getAnimation() != -1) {
-                        log.info("Currently salvaging, waiting...");
-                        sleep(5000, 10000);
-                        return;
-                    }
+                var tree = Microbot.getRs2TileObjectCache().query()
+                        .withName("Tree")
+                        .nearest();
 
-                    if (shipwreck == null) {
-                        log.info("No shipwreck found nearby");
-                        sleep(5000);
-                        dropJunk();
-                        return;
-                    }
-
-                    rs2TileObjectCache.query().fromWorldView().where(x -> x.getName() != null &&  x.getName().toLowerCase().contains("salvaging hook")).nearestOnClientThread().click("Deploy");
-                    sleepUntil(() -> player.getAnimation() != -1, 5000);
-
+                if (tree != null) {
+                    tree.click("Chop down");
+                    sleepUntil(Rs2Player::isAnimating, 3000);
                 }
 
             } catch (Exception ex) {
-                log.error("Error in performance test loop", ex);
+                log.error("Error in example script", ex);
             }
-        }, 0, 1000, TimeUnit.MILLISECONDS);
+        }, 0, 600, TimeUnit.MILLISECONDS);
 
         return true;
     }

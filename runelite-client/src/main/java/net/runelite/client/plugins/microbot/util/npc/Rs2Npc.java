@@ -404,7 +404,7 @@ public class Rs2Npc {
      * @return A sorted {@link Stream} of {@link Rs2NpcModel} objects that the player can attack.
      */
     public static Stream<Rs2NpcModel> getAttackableNpcs(boolean reachable) {
-        Rs2WorldPoint playerLocation = new Rs2WorldPoint(Microbot.getClient().getLocalPlayer().getWorldLocation());
+        Rs2WorldPoint playerLocation = new Rs2WorldPoint(Rs2Player.getWorldLocation());
 
         return getNpcs(npc -> npc.getCombatLevel() > 0
                 && !npc.isDead()
@@ -1115,7 +1115,7 @@ public class Rs2Npc {
      */
     @Deprecated(since = "1.7.2", forRemoval = true)
     public static List<Rs2NpcModel> getNpcsAttackingPlayer(Player player) {
-        return getNpcs(x -> x.getInteracting() != null && Objects.equals(x.getInteracting(), player) && x.isDead())
+        return getNpcs(x -> x.getInteracting() != null && Objects.equals(x.getInteracting(), player) && !x.isDead())
                 .collect(Collectors.toList());
     }
 
@@ -1218,7 +1218,7 @@ public class Rs2Npc {
      * @return The nearest {@link Rs2NpcModel} that has the specified action, or {@code null} if none are found.
      */
     public static Rs2NpcModel getNearestNpcWithAction(String action) {
-        Rs2WorldPoint playerLocation = new Rs2WorldPoint(Microbot.getClient().getLocalPlayer().getWorldLocation());
+        Rs2WorldPoint playerLocation = new Rs2WorldPoint(Rs2Player.getWorldLocation());
         boolean isInstance = Microbot.getClient().getTopLevelWorldView().getScene().isInstance();
         return getNpcs()
                 .filter(value -> value.getComposition() != null

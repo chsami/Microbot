@@ -35,6 +35,8 @@ public interface IEntityQueryable<Q extends IEntityQueryable<Q, E>, E extends IE
 
     List<E> toList();
 
+    int count();
+
     E firstOnClientThread();
 
     E nearestOnClientThread();

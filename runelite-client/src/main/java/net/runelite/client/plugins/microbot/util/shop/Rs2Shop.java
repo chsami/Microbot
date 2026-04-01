@@ -389,6 +389,7 @@ public class Rs2Shop {
                 // Logic to check Value of item
                 identifier = 1;
                 param1 = 19660816;
+                break;
             case "Buy 1":
                 // Logic to sell one item
                 identifier = 2;

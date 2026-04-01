@@ -17,6 +17,7 @@ import net.runelite.client.plugins.bank.BankPlugin;
 import net.runelite.client.plugins.loottracker.LootTrackerItem;
 import net.runelite.client.plugins.loottracker.LootTrackerRecord;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.api.player.models.Rs2PlayerModel;
 import net.runelite.client.plugins.microbot.shortestpath.ShortestPathPlugin;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.Pathfinder;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
@@ -35,7 +36,6 @@ import net.runelite.client.plugins.microbot.util.misc.Predicates;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
-import net.runelite.client.plugins.microbot.util.player.Rs2PlayerModel;
 import net.runelite.client.plugins.microbot.util.security.Encryption;
 import net.runelite.client.plugins.microbot.util.security.LoginManager;
 import net.runelite.client.config.ConfigProfile;
@@ -84,25 +84,6 @@ public class Rs2Bank {
     private static final AtomicBoolean validLoadedCache = new AtomicBoolean(false);
     // Used to synchronize calls
     private static final Object lock = new Object();
-
-    /**
-     * Gets the current player name safely using Rs2Player utility.
-     *
-     * @return Player name or null if not available
-     */
-    private static String getCurrentPlayerName() {
-        try {
-            if (Microbot.isLoggedIn()) {
-                Rs2PlayerModel localPlayer =Rs2Player.getLocalPlayer();
-                if (localPlayer != null) {
-                    return localPlayer.getName();
-                }
-            }
-        } catch (Exception e) {
-            log.debug("Error getting current player name: {}", e.getMessage());
-        }
-        return null;
-    }
 
     /**
      * Container describes from what interface the action happens
@@ -238,7 +219,7 @@ public class Rs2Bank {
     }
 
     /**
-     * check if the player has a bank item identified by id
+     * check if the Rs2Player has a bank item identified by id
      *
      * @param id the item id
      *
@@ -249,7 +230,7 @@ public class Rs2Bank {
     }
 
     /**
-     * check if the player has a bank item identified by contains name
+     * check if the Rs2Player has a bank item identified by contains name
      *
      * @param name the item name
      *
@@ -381,7 +362,7 @@ public class Rs2Bank {
     }
 
     /**
-     * check if the player has a bank item identified by exact name.
+     * check if the Rs2Player has a bank item identified by exact name.
      *
      * @param name the item name
      *
@@ -392,7 +373,7 @@ public class Rs2Bank {
     }
 
     /**
-     * check if the player has a bank item identified by exact name.
+     * check if the Rs2Player has a bank item identified by exact name.
      *
      * @param name the item name
      *
@@ -403,7 +384,7 @@ public class Rs2Bank {
     }
 
     /**
-     * check if the player has a bank item identified by exact name.
+     * check if the Rs2Player has a bank item identified by exact name.
      *
      * @param name the item name
      *
@@ -414,7 +395,7 @@ public class Rs2Bank {
     }
 
     /**
-     * check if the player has a bank item identified by exact name.
+     * check if the Rs2Player has a bank item identified by exact name.
      *
      * @param name  the item name
      * @param exact exact search based on equalsIgnoreCase
@@ -894,7 +875,7 @@ public class Rs2Bank {
     /**
      * Deposits a specified amount of an item into the inventory.
      * This method checks if the bank window is open, if the provided ItemWidget is valid and
-     * if the player has the item in their inventory. If all conditions are met, it calls the
+     * if the Rs2Player has the item in their inventory. If all conditions are met, it calls the
      * 'handleAmount' method to deposit the specified amount of the item into the inventory.
      *
      * @param rs2Item item to handle
@@ -1130,7 +1111,7 @@ public class Rs2Bank {
     }
 
     /**
-     * Deposits all items in the player's inventory into the bank, except for the items with the specified IDs.
+     * Deposits all items in the Rs2Player's inventory into the bank, except for the items with the specified IDs.
      * This method uses a lambda function to filter out the items with the specified IDs from the deposit operation.
      *
      * @param ids The IDs of the items to be excluded from the deposit.
@@ -1142,7 +1123,7 @@ public class Rs2Bank {
     }
 
     /**
-     * Deposits all items in the player's inventory into the bank, except for the items with the specified names.
+     * Deposits all items in the Rs2Player's inventory into the bank, except for the items with the specified names.
      * This method uses a lambda function to filter out the items with the specified names from the deposit operation.
      *
      * @param names The names of the items to be excluded from the deposit.
@@ -1154,7 +1135,7 @@ public class Rs2Bank {
     }
 
     /**
-     * Deposits all items in the player's inventory into the bank, except for the items with the specified names.
+     * Deposits all items in the Rs2Player's inventory into the bank, except for the items with the specified names.
      * This method uses a lambda function to filter out the items with the specified names from the deposit operation.
      *
      * @param names The names of the items to be excluded from the deposit.
@@ -1166,7 +1147,7 @@ public class Rs2Bank {
     }
 
     /**
-     * Deposits all items in the player's inventory into the bank,
+     * Deposits all items in the Rs2Player's inventory into the bank,
      * except for the items in the given map.
      * Each key is the item name, and the value indicates whether to fuzzy match it.
      *
@@ -1184,7 +1165,7 @@ public class Rs2Bank {
     }
 
     /**
-     * Deposits all items in the player's inventory into the bank, except for the items with the specified names.
+     * Deposits all items in the Rs2Player's inventory into the bank, except for the items with the specified names.
      * This method uses a lambda function to filter out the items with the specified names from the deposit operation.
      * It also allows for a delay between deposit operations.
      *
@@ -1644,9 +1625,7 @@ public class Rs2Bank {
 
             if (isOpen()) return true;
 
-            final Player player = Microbot.getClient().getLocalPlayer();
-            if (player == null) return false;
-            WorldPoint anchor = player.getWorldLocation();
+            WorldPoint anchor = Rs2Player.getWorldLocation();
 
             List<TileObject> candidates = Stream.of(
                             Rs2GameObject.findBank(),
@@ -1691,9 +1670,7 @@ public class Rs2Bank {
 
             if (collectionBoxIsOpen()) return true;
 
-            Player player = Microbot.getClient().getLocalPlayer();
-            if (player == null) return false;
-            WorldPoint anchor = player.getWorldLocation();
+            WorldPoint anchor = Rs2Player.getWorldLocation();
 
             List<TileObject> candidates = Stream.of(
                             Rs2GameObject.findBank(),
@@ -1931,12 +1908,12 @@ public class Rs2Bank {
     }
 
     /**
-     * Returns the nearest accessible bank to the local player’s current location.
+     * Returns the nearest accessible bank to the local Rs2Player’s current location.
      *
      * @return the nearest {@link BankLocation}, or {@code null} if none was reachable
      */
     public static BankLocation getNearestBank() {
-        return getNearestBank(Microbot.getClient().getLocalPlayer().getWorldLocation());
+        return getNearestBank(Rs2Player.getWorldLocation());
     }
 
     /**
@@ -1954,7 +1931,7 @@ public class Rs2Bank {
      * Finds the nearest accessible bank location from the given world point.
      * <p>
      * First, searches for bank booth {@link TileObject}s within
-     * {@code maxObjectSearchRadius} tiles of the player and picks the closest
+     * {@code maxObjectSearchRadius} tiles of the Rs2Player and picks the closest
      * one whose underlying {@link BankLocation#hasRequirements()} passes. If no booth
      * is found or none are within range, falls back to running a full pathfinding
      * search (including configured transports) to all accessible bank coordinates,
@@ -1982,7 +1959,7 @@ public class Rs2Bank {
 
         Set<BankLocation> allBanks = Arrays.stream(BankLocation.values())
                 .collect(Collectors.toSet());
-        if (Objects.equals(Microbot.getClient().getLocalPlayer().getWorldLocation(), worldPoint)) {
+        if (Objects.equals(Rs2Player.getWorldLocation(), worldPoint)) {
             List<TileObject> bankObjs = Stream.concat(
                             Stream.of(Rs2GameObject.findBank(maxObjectSearchRadius)),
                             Stream.of(Rs2GameObject.findGrandExchangeBooth(maxObjectSearchRadius))
@@ -2074,7 +2051,7 @@ public class Rs2Bank {
     }
 
     /**
-     * Finds the path to the nearest accessible bank location from the player's current location.
+     * Finds the path to the nearest accessible bank location from the Rs2Player's current location.
      * Uses a default search radius of 50 tiles for bank object scanning.
      *
      * @return the complete path to the nearest bank as List<WorldPoint>, or empty list if no accessible bank could be reached
@@ -2088,7 +2065,7 @@ public class Rs2Bank {
      * <p>
      * Uses the same logic as getNearestBank but returns the complete path instead of the BankLocation.
      * First, searches for bank booth {@link TileObject}s within
-     * {@code maxObjectSearchRadius} tiles of the player and picks the closest
+     * {@code maxObjectSearchRadius} tiles of the Rs2Player and picks the closest
      * one whose underlying {@link BankLocation#hasRequirements()} passes. If no booth
      * is found or none are within range, falls back to running a full pathfinding
      * search (including configured transports) to all accessible bank coordinates,
@@ -2106,9 +2083,9 @@ public class Rs2Bank {
 
     /**
      * Walks to the closest bank using the nearest bank location.
-     * Toggles run energy if the player is not already running.
+     * Toggles run energy if the Rs2Player is not already running.
      *
-     * @return true if the player's location is within 4 tiles of the bank location.
+     * @return true if the Rs2Player's location is within 4 tiles of the bank location.
      */
     public static boolean walkToBank() {
         return walkToBank(getNearestBank());
@@ -2116,10 +2093,10 @@ public class Rs2Bank {
 
     /**
      * Walks to a specified bank location.
-     * Toggles run energy if the player is not already running.
+     * Toggles run energy if the Rs2Player is not already running.
      *
      * @param bankLocation the target bank location to walk to.
-     * @return true if the player's location is within 4 tiles of the specified bank location.
+     * @return true if the Rs2Player's location is within 4 tiles of the specified bank location.
      */
     public static boolean walkToBank(BankLocation bankLocation) {
         return walkToBank(bankLocation, true);
@@ -2131,21 +2108,21 @@ public class Rs2Bank {
      *
      * @param bankLocation the target bank location to walk to.
      * @param toggleRun    whether to toggle run energy during the walk.
-     * @return true if the player's location is within 4 tiles of the specified bank location.
+     * @return true if the Rs2Player's location is within 4 tiles of the specified bank location.
      */
     public static boolean walkToBank(BankLocation bankLocation, boolean toggleRun) {
         if (Rs2Bank.isOpen()) return true;
         Rs2Player.toggleRunEnergy(toggleRun);
         Microbot.status = "Walking to nearest bank " + bankLocation.toString();
         Rs2Walker.walkTo(bankLocation.getWorldPoint(), 4);
-        return bankLocation.getWorldPoint().distanceTo2D(Microbot.getClient().getLocalPlayer().getWorldLocation()) <= 4;
+        return bankLocation.getWorldPoint().distanceTo2D(Rs2Player.getWorldLocation()) <= 4;
     }
 
     /**
      * Distance from the nearest bank location
      *
      * @param distance upper bound distance to be considered 'near'
-     * @return true if player location is less than distance away from the bank location
+     * @return true if Rs2Player location is less than distance away from the bank location
      */
     public static boolean isNearBank(int distance) {
         return isNearBank(getNearestBank(), distance);
@@ -2156,16 +2133,16 @@ public class Rs2Bank {
      *
      * @param bankLocation the bank location to check distance too
      * @param distance upper bound distance to be considered 'near'
-     * @return true if player location is less than distance away from the bank location
+     * @return true if Rs2Player location is less than distance away from the bank location
      */
     public static boolean isNearBank(BankLocation bankLocation, int distance) {
-        int distanceToBank = Rs2Walker.getDistanceBetween(Microbot.getClient().getLocalPlayer().getWorldLocation(), bankLocation.getWorldPoint());
+        int distanceToBank = Rs2Walker.getDistanceBetween(Rs2Player.getWorldLocation(), bankLocation.getWorldPoint());
         return distanceToBank <= distance;
     }
 
     /**
      * Walks to the closest bank and attempts to use the bank interface.
-     * Toggles run energy if the player is not already running.
+     * Toggles run energy if the Rs2Player is not already running.
      *
      * @return true if the bank interface is successfully opened.
      */
@@ -2175,7 +2152,7 @@ public class Rs2Bank {
 
     /**
      * Walks to a specified bank location and attempts to use the bank interface.
-     * Toggles run energy if the player is not already running.
+     * Toggles run energy if the Rs2Player is not already running.
      *
      * @param bankLocation the target bank location to walk to and use.
      * @return true if the bank interface is successfully opened.
@@ -2200,7 +2177,7 @@ public class Rs2Bank {
         if (Rs2Bank.isOpen()) return true;
         Rs2Player.toggleRunEnergy(toggleRun);
         Microbot.status = "Walking to nearest bank " + bankLocation.toString();
-        boolean result = Rs2Walker.getDistanceBetween(Microbot.getClient().getLocalPlayer().getWorldLocation(), bankLocation.getWorldPoint()) <= 8;
+        boolean result = Rs2Walker.getDistanceBetween(Rs2Player.getWorldLocation(), bankLocation.getWorldPoint()) <= 8;
         if (!result) {
             Rs2Walker.walkTo(bankLocation.getWorldPoint());
         }
@@ -2267,40 +2244,40 @@ public class Rs2Bank {
     }
 
     /**
-     * Banks items if your inventory does not have enough empty slots (0 empty slots being full). Will walk back to the initialPlayerLocation passed as param
+     * Banks items if your inventory does not have enough empty slots (0 empty slots being full). Will walk back to the initialRs2PlayerLocation passed as param
      *
      * @param itemNames
-     * @param initialPlayerLocation
+     * @param initialRs2PlayerLocation
      * @param emptySlotCount
      * @return
      */
-    public static boolean bankItemsAndWalkBackToOriginalPosition(Collection<String> itemNames, WorldPoint initialPlayerLocation, int emptySlotCount) {
-        return bankItemsAndWalkBackToOriginalPosition(itemNames,false, getNearestBank(), initialPlayerLocation, emptySlotCount, 4);
+    public static boolean bankItemsAndWalkBackToOriginalPosition(Collection<String> itemNames, WorldPoint initialRs2PlayerLocation, int emptySlotCount) {
+        return bankItemsAndWalkBackToOriginalPosition(itemNames,false, getNearestBank(), initialRs2PlayerLocation, emptySlotCount, 4);
     }
 
     /**
-     * Banks items if your inventory is full. Will walk back to the initialplayerlocation passed as param
+     * Banks items if your inventory is full. Will walk back to the initialRs2Playerlocation passed as param
      *
      * @param itemNames
-     * @param initialPlayerLocation
+     * @param initialRs2PlayerLocation
      * @return
      */
-    public static boolean bankItemsAndWalkBackToOriginalPosition(Collection<String> itemNames, WorldPoint initialPlayerLocation) {
-        return bankItemsAndWalkBackToOriginalPosition(itemNames,false, getNearestBank(), initialPlayerLocation, 0, 4);
+    public static boolean bankItemsAndWalkBackToOriginalPosition(Collection<String> itemNames, WorldPoint initialRs2PlayerLocation) {
+        return bankItemsAndWalkBackToOriginalPosition(itemNames,false, getNearestBank(), initialRs2PlayerLocation, 0, 4);
     }
 
     /**
-     * Banks at specific bank location if your inventory does not have enough emptyslots (0 emptyslots being full). Will walk back to the initialplayerlocation passed as param
+     * Banks at specific bank location if your inventory does not have enough emptyslots (0 emptyslots being full). Will walk back to the initialRs2Playerlocation passed as param
      *
      * @param itemNames The item names, which can be either item names or item IDs as strings.
      * @param exactItemNames
-     * @param initialPlayerLocation
+     * @param initialRs2PlayerLocation
      * @param bankLocation
      * @param emptySlotCount
      * @param distance
      * @return
      */
-    public static boolean bankItemsAndWalkBackToOriginalPosition(Collection<String> itemNames, boolean exactItemNames, BankLocation bankLocation, WorldPoint initialPlayerLocation, int emptySlotCount, int distance) {
+    public static boolean bankItemsAndWalkBackToOriginalPosition(Collection<String> itemNames, boolean exactItemNames, BankLocation bankLocation, WorldPoint initialRs2PlayerLocation, int emptySlotCount, int distance) {
         if (Rs2Inventory.emptySlotCount() <= emptySlotCount) {
             boolean isBankOpen = Rs2Bank.walkToBankAndUseBank(bankLocation);
             if (isBankOpen) {
@@ -2319,27 +2296,27 @@ public class Rs2Bank {
         if (distance > 10)
             distance = 10;
 
-        if (initialPlayerLocation.distanceTo(Rs2Player.getWorldLocation()) > distance || !Rs2Tile.isTileReachable(initialPlayerLocation)) {
-            Rs2Walker.walkTo(initialPlayerLocation, distance);
+        if (initialRs2PlayerLocation.distanceTo(Rs2Player.getWorldLocation()) > distance || !Rs2Tile.isTileReachable(initialRs2PlayerLocation)) {
+            Rs2Walker.walkTo(initialRs2PlayerLocation, distance);
         } else {
-            Rs2Walker.walkFastCanvas(initialPlayerLocation);
+            Rs2Walker.walkFastCanvas(initialRs2PlayerLocation);
         }
 
-        return !(Rs2Inventory.emptySlotCount() <= emptySlotCount) && initialPlayerLocation.distanceTo(Rs2Player.getWorldLocation()) <= distance;
+        return !(Rs2Inventory.emptySlotCount() <= emptySlotCount) && initialRs2PlayerLocation.distanceTo(Rs2Player.getWorldLocation()) <= distance;
     }
 
     /**
-     * Banks items if your inventory does not have enough emptyslots (0 emptyslots being full). Will walk back to the initialplayerlocation passed as param
+     * Banks items if your inventory does not have enough emptyslots (0 emptyslots being full). Will walk back to the initialRs2Playerlocation passed as param
      *
      * @param itemNames
-     * @param initialPlayerLocation
+     * @param initialRs2PlayerLocation
      * @param emptySlotCount
      * @param distance
      *
      * @return
      */
-    public static boolean bankItemsAndWalkBackToOriginalPosition(Collection<String> itemNames, WorldPoint initialPlayerLocation, int emptySlotCount, int distance) {
-        return bankItemsAndWalkBackToOriginalPosition(itemNames,false, getNearestBank(), initialPlayerLocation, emptySlotCount, distance);
+    public static boolean bankItemsAndWalkBackToOriginalPosition(Collection<String> itemNames, WorldPoint initialRs2PlayerLocation, int emptySlotCount, int distance) {
+        return bankItemsAndWalkBackToOriginalPosition(itemNames,false, getNearestBank(), initialRs2PlayerLocation, emptySlotCount, distance);
     }
 
     public static boolean isWithdrawAs(boolean noted) {
@@ -2398,7 +2375,7 @@ public class Rs2Bank {
     }
 
     /**
-     * Withdraws the player's rune pouch if it's available in the bank.
+     * Withdraws the Rs2Player's rune pouch if it's available in the bank.
      *
      * @return true if the rune pouch was withdrawn, false otherwise.
      */
@@ -2408,7 +2385,7 @@ public class Rs2Bank {
     }
 
     /**
-     * Deposits the player's rune pouch if it's in the inventory.
+     * Deposits the Rs2Player's rune pouch if it's in the inventory.
      *
      * @return true if the rune pouch was deposited, false otherwise.
      */
@@ -2418,7 +2395,7 @@ public class Rs2Bank {
     }
 
     /**
-     * Checks if the player has any type of rune pouch in the bank.
+     * Checks if the Rs2Player has any type of rune pouch in the bank.
      *
      * @return true if a rune pouch is found in the bank, false otherwise.
      */

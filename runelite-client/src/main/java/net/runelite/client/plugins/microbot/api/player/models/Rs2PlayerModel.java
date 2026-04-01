@@ -72,13 +72,58 @@ public class Rs2PlayerModel extends Rs2ActorModel implements IEntity {
     }
 
     // Sailing stuff
-    public  boolean isSalvaging() {
-        int anim = new Rs2PlayerModel().getAnimation();
+    public boolean isSalvaging() {
+        int anim = getAnimation();
         for (int id : SalvagingAnimations.SALVAGING_ANIMATIONS) {
             if (anim == id) {
                 return true;
             }
         }
         return false;
+    }
+
+    /**
+     * Checks if this player is in your friends list.
+     *
+     * @return true if the player is a friend
+     */
+    public boolean isFriend() {
+        return Microbot.getClientThread().runOnClientThreadOptional(player::isFriend).orElse(false);
+    }
+
+    /**
+     * Checks if this player is a member of your clan.
+     *
+     * @return true if the player is a clan member
+     */
+    public boolean isClanMember() {
+        return Microbot.getClientThread().runOnClientThreadOptional(player::isClanMember).orElse(false);
+    }
+
+    /**
+     * Checks if this player is in your friends chat.
+     *
+     * @return true if the player is in the friends chat channel
+     */
+    public boolean isFriendsChatMember() {
+        return Microbot.getClientThread().runOnClientThreadOptional(player::isFriendsChatMember).orElse(false);
+    }
+
+    /**
+     * Gets the skull icon shown above this player's head, or -1 if none.
+     *
+     * @return the skull icon id, or -1
+     */
+    public int getSkullIcon() {
+        return Microbot.getClientThread().runOnClientThreadOptional(player::getSkullIcon).orElse(-1);
+    }
+
+    /**
+     * Gets the overhead prayer icon shown above this player's head.
+     *
+     * @return the overhead HeadIcon, or null if none
+     */
+    public HeadIcon getOverheadIcon() {
+        return Microbot.getClientThread().runOnClientThreadOptional(player::getOverheadIcon).orElse(null);
     }
 }

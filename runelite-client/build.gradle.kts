@@ -108,6 +108,32 @@ tasks.register<Test>("runTests") {
     }
 }
 
+tasks.register<Test>("runIntegrationTest") {
+    group = "verification"
+    description = "Run Rs2ActorModel integration test with live client"
+    enabled = true
+
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+
+    jvmArgs(
+        "-Dfile.encoding=UTF-8",
+        "-Duser.timezone=Europe/Brussels",
+        "-ea"
+    )
+
+    include("**/Rs2ActorModelIntegrationTest.class")
+    include("**/Rs2WalkerIntegrationTest.class")
+
+    useJUnit()
+
+    testLogging {
+        events("passed", "skipped", "failed")
+        showStandardStreams = true
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+    }
+}
+
 lombok.version = libs.versions.lombok.get()
 
 java {
@@ -227,6 +253,7 @@ val assemble = tasks.withType<net.runelite.gradle.assemble.AssembleTask> {
     scriptDirectory = file("src/main/scripts")
     outputDirectory = sourceSets.main.map { File(it.output.resourcesDir, "runelite") }
     componentsFile = file("../runelite-api/src/main/interfaces/interfaces.toml")
+    longSupport = true
 }
 
 tasks.withType<net.runelite.gradle.index.IndexTask> {
@@ -302,7 +329,9 @@ tasks.checkstyleMain {
 }
 
 tasks.withType<Test> {
-    enabled = false
+    if (name != "runIntegrationTest" && name != "runTests" && name != "runDebugTests") {
+        enabled = false
+    }
     systemProperty("glslang.path", providers.gradleProperty("glslangPath").getOrElse(""))
 }
 

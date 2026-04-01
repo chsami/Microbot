@@ -103,6 +103,7 @@ api/
 ├── tileobject/                   # Tile object queries
 │   ├── Rs2TileObjectQueryable.java
 │   ├── Rs2TileObjectCache.java
+│   ├── TileObjectApiExample.java
 │   └── models/
 │       └── Rs2TileObjectModel.java
 │
@@ -145,6 +146,7 @@ Check the `*ApiExample.java` files in each subdirectory for complete examples:
 - `npc/NpcApiExample.java` - NPC query examples
 - `tileitem/TileItemApiExample.java` - Ground item examples
 - `player/PlayerApiExample.java` - Player query examples
+- `tileobject/TileObjectApiExample.java` - Tile object examples
 
 ## 🔗 Additional Resources
 

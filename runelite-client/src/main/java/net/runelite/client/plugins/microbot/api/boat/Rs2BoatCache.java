@@ -29,7 +29,7 @@ public final class Rs2BoatCache {
     }
 
     public Rs2BoatModel getLocalBoat() {
-        if (lastCheckedOnBoat * 2 >= client.getTickCount()) {
+        if (lastCheckedOnBoat + 2 >= client.getTickCount()) {
             return boat;
         }
 
@@ -64,7 +64,7 @@ public final class Rs2BoatCache {
             return getLocalBoat();
         }
 
-        if (lastCheckedOnBoat * 2 >= client.getTickCount()) {
+        if (lastCheckedOnBoat + 2 >= client.getTickCount()) {
             return boat;
         }
 

@@ -448,6 +448,7 @@ public final class DBTableID
 			public static final int EASTER_2025 = 5107;
 			public static final int HALLOWEEN_2025 = 6989;
 			public static final int BIRTHDAY_2026 = 7033;
+			public static final int EASTER_2026 = 13319;
 		}
 	}
 
@@ -4110,6 +4111,13 @@ public final class DBTableID
 			public static final int GREENMAN_MASK_MAPLE_TRANSMOG = 5394;
 			public static final int GREENMAN_MASK_YEW_TRANSMOG = 5395;
 			public static final int GREENMAN_MASK_MAGIC_TRANSMOG = 5396;
+			public static final int EASTER26_EGG_COMPANION_ARCHIBALD = 13312;
+			public static final int EASTER26_EGG_COMPANION_GRID = 13313;
+			public static final int EASTER26_EGG_COMPANION_BUNNY = 13314;
+			public static final int EASTER26_EGG_COMPANION_DIAMONDS = 13315;
+			public static final int EASTER26_EGG_COMPANION_CHICK = 13316;
+			public static final int EASTER26_EGG_COMPANION_MELTED = 13317;
+			public static final int EASTER26_EGG_COMPANION_DRAGON = 13318;
 		}
 	}
 
@@ -4151,6 +4159,7 @@ public final class DBTableID
 			public static final int COMBINATION_LOCK_DATASET_ALPHABETIC_REVERSED = 3511;
 			public static final int VMQ3_TOWER_LOCK_DATASET_ALPHABETIC = 3783;
 			public static final int COMBINATION_LOCK_DATASET_VMQ4_JANUS_LOCK = 5195;
+			public static final int COMBINATION_LOCK_DATASET_ALPHABETIC_EASTER26 = 13320;
 		}
 	}
 
@@ -13040,6 +13049,11 @@ public final class DBTableID
 		 */
 		public static final int COL_BOAT_ADDITIONAL_RECOVERY_COST_PERCENTAGE = 34;
 
+		/**
+		 * integer
+		 */
+		public static final int COL_BOAT_AMMO_SAVE_PERCENTAGE = 35;
+
 		public static final class Row
 		{
 			public static final int SAILING_BOAT_STATS_MERMAID_BLESSING = 8091;
@@ -13158,6 +13172,7 @@ public final class DBTableID
 			public static final int SAILING_BOAT_ETERNAL_BRAZIER_STATS = 8261;
 			public static final int SAILING_BOAT_WIND_CATCHER_STATS = 8262;
 			public static final int SAILING_BOAT_GALE_CATCHER_STATS = 8263;
+			public static final int SAILING_BOAT_BALLISTIC_ATTRACTOR_STATS = 13305;
 		}
 	}
 
@@ -13415,6 +13430,21 @@ public final class DBTableID
 		 */
 		public static final int COL_LONG_BUTTON = 7;
 
+		/**
+		 * (boolean, string)
+		 */
+		public static final int COL_OP2 = 8;
+
+		/**
+		 * (boolean, string)
+		 */
+		public static final int COL_OP3 = 9;
+
+		/**
+		 * (boolean, string)
+		 */
+		public static final int COL_OP4 = 10;
+
 		public static final class Row
 		{
 			public static final int SAILING_SIDEPANEL_FACILITY_SAILS_BUTTON_MAIN = 8121;
@@ -13581,6 +13611,8 @@ public final class DBTableID
 			public static final int SAILING_BOAT_LARGE_HOTSPOT_8 = 8542;
 			public static final int SAILING_BOAT_LARGE_HOTSPOT_9 = 8543;
 			public static final int SAILING_BOAT_LARGE_HOTSPOT_10 = 8544;
+			public static final int SAILING_BOAT_LARGE_HOTSPOT_11 = 13308;
+			public static final int SAILING_BOAT_LARGE_HOTSPOT_12 = 13309;
 		}
 	}
 
@@ -13821,6 +13853,7 @@ public final class DBTableID
 			public static final int SAILING_BOAT_FACILITY_INOCULATION_STATION_3X8 = 8520;
 			public static final int SAILING_BOAT_FACILITY_TELEPORT_FOCUS = 8521;
 			public static final int SAILING_BOAT_FACILITY_TELEPORT_FOCUS_GREATER = 8522;
+			public static final int SAILING_BOAT_FACILITY_BALLISTIC_ATTRACTOR = 13307;
 		}
 	}
 
@@ -14635,6 +14668,7 @@ public final class DBTableID
 			public static final int SAILING_CUSTOMISATION_TRAWLING_NET_LOC_ANGLES = 8409;
 			public static final int SAILING_CUSTOMISATION_ANCHOR_LOC_ANGLES = 8410;
 			public static final int SAILING_CUSTOMISATION_KEG_LOC_ANGLES = 8411;
+			public static final int SAILING_CUSTOMISATION_BALLISTIC_ATTRACTOR_LOC_ANGLES = 13306;
 		}
 	}
 
@@ -15639,6 +15673,8 @@ public final class DBTableID
 			public static final int PORT_TASK_PRYING_TIMES = 9263;
 			public static final int PORT_TASK_BLANK = 9264;
 			public static final int PORT_TASK_LOCKED = 9265;
+			public static final int PORT_TASK_DEEPFIN_POINT_BOUNTY_7 = 13310;
+			public static final int PORT_TASK_PORT_TYRAS_BOUNTY_7 = 13311;
 		}
 	}
 
@@ -19938,6 +19974,7 @@ public final class DBTableID
 			public static final int SKILL_FEATURE_MAGIC_ANCIENT_MINIGAME_TELEPORT = 13294;
 			public static final int SKILL_FEATURE_MAGIC_LUNAR_MINIGAME_TELEPORT = 13295;
 			public static final int SKILL_FEATURE_MAGIC_ARCEUUS_MINIGAME_TELEPORT = 13296;
+			public static final int SKILL_FEATURE_SAILING_FACILITY_BALLISTIC_ATTRACTOR = 13297;
 		}
 	}
 
@@ -19988,6 +20025,22 @@ public final class DBTableID
 			public static final int MINIGAME_TITHE_FARM = 13290;
 			public static final int MINIGAME_TROUBLE_BREWING = 13291;
 			public static final int MINIGAME_TZHAAR_FIGHT_PIT = 13292;
+		}
+	}
+
+	public static final class SailingGunPorts
+	{
+		public static final int ID = 215;
+
+		public static final class Row
+		{
+			public static final int SAILING_GUN_PORT_WOODEN = 13298;
+			public static final int SAILING_GUN_PORT_OAK = 13299;
+			public static final int SAILING_GUN_PORT_TEAK = 13300;
+			public static final int SAILING_GUN_PORT_MAHOGANY = 13301;
+			public static final int SAILING_GUN_PORT_CAMPHOR = 13302;
+			public static final int SAILING_GUN_PORT_IRONWOOD = 13303;
+			public static final int SAILING_GUN_PORT_ROSEWOOD = 13304;
 		}
 	}
 /* This file is automatically generated. Do not edit. */

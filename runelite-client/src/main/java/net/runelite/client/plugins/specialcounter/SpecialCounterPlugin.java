@@ -78,6 +78,8 @@ import net.runelite.client.party.WSClient;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import static net.runelite.client.plugins.specialcounter.SpecialWeapon.TONALZTICS_OF_RALOS;
+
+import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.ui.overlay.infobox.InfoBoxManager;
 import net.runelite.client.util.ImageUtil;
@@ -617,7 +619,7 @@ public class SpecialCounterPlugin extends Plugin
 		if (player == null)
 			return 1;
 
-		WorldPoint playerWp = player.getWorldLocation();
+		WorldPoint playerWp = Rs2Player.getWorldLocation();
 		if (playerWp == null)
 			return 1;
 

@@ -7,6 +7,7 @@ import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
+import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
 import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
@@ -168,7 +169,7 @@ public class Rs2TileObjectModel implements TileObject {
      * @return true if the interaction was successful, false otherwise
      */
     public boolean click(String action) {
-        if (Microbot.getClient().getLocalPlayer().getWorldLocation().distanceTo(getWorldLocation()) > 51) {
+        if (Rs2Player.getWorldLocation().distanceTo(getWorldLocation()) > 51) {
             Microbot.log("Object with id " + getId() + " is not close enough to interact with. Walking to the object....");
             Rs2Walker.walkTo(getWorldLocation());
             return false;

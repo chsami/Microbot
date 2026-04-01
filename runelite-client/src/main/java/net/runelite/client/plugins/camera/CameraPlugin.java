@@ -140,8 +140,9 @@ public class CameraPlugin extends Plugin implements KeyListener, MouseListener
 			Widget settingsInit = client.getWidget(InterfaceID.Settings.UNIVERSE);
 			if (settingsInit != null)
 			{
-				client.createScriptEvent(settingsInit.getOnLoadListener())
+				client.createScriptEventBuilder(settingsInit.getOnLoadListener())
 					.setSource(settingsInit)
+					.build()
 					.run();
 			}
 
@@ -176,8 +177,9 @@ public class CameraPlugin extends Plugin implements KeyListener, MouseListener
 			Widget settingsInit = client.getWidget(InterfaceID.Settings.UNIVERSE);
 			if (settingsInit != null)
 			{
-				client.createScriptEvent(settingsInit.getOnLoadListener())
+				client.createScriptEventBuilder(settingsInit.getOnLoadListener())
 					.setSource(settingsInit)
+					.build()
 					.run();
 			}
 
