@@ -32,6 +32,13 @@ git push origin upstream-tracking dev
 
 ---
 
+## Sync Policy Reference
+
+Before resolving any conflict, read **`docs/sync-policy.md`** — it lists every file we own,
+every file we modified for security, and the exact lines to protect in each.
+
+---
+
 ## Before You Start
 
 ```bash
@@ -356,6 +363,6 @@ After accepting upstream's `gradle.properties`, our CI version (`microbot.versio
 
 | Date | Upstream version | Commits merged | Notable changes |
 |------|-----------------|----------------|-----------------|
-| 2026-03-31 | 2.1.34 | 5 | Rs2PlayerStateCache per-tick player position/world-view caching, Rs2Player internal helpers, Rs2GameObject refactor |
+| 2026-03-31 | 2.1.34 | 12 | LootManager dead-player location fix, Rs2Npc isDead inversion fix, Rs2Shop break fix, Rs2GameObject dedup filter, Rs2Walker slf4j logging |
 | 2026-03-30 | 2.1.33 | 76 | RuneLite rev 237, queryable API fixes, LoginManager refactor, Brazil world hopper, new integration tests |
 | (initial fork) | 2.1.24 | — | Fork baseline |
