@@ -16,6 +16,7 @@ import net.runelite.client.events.OverlayMenuClicked;
 import net.runelite.client.events.RuneScapeProfileChanged;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.plugins.PluginManager;
 
 import net.runelite.client.plugins.microbot.ui.MicrobotPluginConfigurationDescriptor;
 import net.runelite.client.plugins.microbot.ui.MicrobotPluginListPanel;
@@ -83,6 +84,9 @@ public class MicrobotPlugin extends Plugin
 
 	@Inject
 	private ConfigManager configManager;
+
+	@Inject
+	private PluginManager pluginManager;
 
 	@Inject
 	private MicrobotConfig microbotConfig;
@@ -201,6 +205,13 @@ public class MicrobotPlugin extends Plugin
 			}
 		}
 
+		// Auto-enable Command Center plugins when launched from Command Center
+		String ccProfileDir = System.getProperty("cc-profile-dir");
+		if (ccProfileDir != null && !ccProfileDir.isEmpty()) {
+			enableCCPlugin("CC Auto Login");
+			enableCCPlugin("CC Script Auto-Start");
+		}
+
 	}
 
 	protected void shutDown()
@@ -212,6 +223,25 @@ public class MicrobotPlugin extends Plugin
 		overlayManager.remove(gembagOverlay);
 		clientToolbar.removeNavigation(navButton);
 		if (gameChatAppender.isStarted()) gameChatAppender.stop();
+	}
+
+	private void enableCCPlugin(String pluginName) {
+		for (Plugin plugin : pluginManager.getPlugins()) {
+			PluginDescriptor descriptor = plugin.getClass().getAnnotation(PluginDescriptor.class);
+			if (descriptor != null && descriptor.name().equals(pluginName)) {
+				if (!pluginManager.isPluginEnabled(plugin)) {
+					try {
+						pluginManager.setPluginEnabled(plugin, true);
+						pluginManager.startPlugin(plugin);
+						log.info("Command Center: enabled plugin '{}'", pluginName);
+					} catch (Exception e) {
+						log.error("Failed to enable CC plugin '{}': {}", pluginName, e.getMessage());
+					}
+				}
+				return;
+			}
+		}
+		log.warn("Command Center: plugin '{}' not found", pluginName);
 	}
 
 
