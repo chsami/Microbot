@@ -231,7 +231,7 @@ public class Rs2GameObject {
 	@Deprecated
     public static TileObject findObjectById(int id) {
         var list = getAll(o -> o.getId() == id);
-        return list.stream().filter(x -> x.getId() == id).findFirst().orElse(null);
+        return list.stream().findFirst().orElse(null);
     }
 
     @Deprecated

@@ -1115,7 +1115,7 @@ public class Rs2Npc {
      */
     @Deprecated(since = "1.7.2", forRemoval = true)
     public static List<Rs2NpcModel> getNpcsAttackingPlayer(Player player) {
-        return getNpcs(x -> x.getInteracting() != null && Objects.equals(x.getInteracting(), player) && x.isDead())
+        return getNpcs(x -> x.getInteracting() != null && Objects.equals(x.getInteracting(), player) && !x.isDead())
                 .collect(Collectors.toList());
     }
 

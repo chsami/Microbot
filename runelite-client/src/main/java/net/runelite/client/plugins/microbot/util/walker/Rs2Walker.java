@@ -290,20 +290,20 @@ public class Rs2Walker {
                 WorldPoint currentWorldPoint = path.get(i);
                 WorldPoint nextWorldPoint = i + 1 < path.size() ? path.get(i + 1) : null;
                 if (config.drawDebugPanel()) {
-                    System.out.printf("start loop %s, from=%s, to=%s\n", i, currentWorldPoint, nextWorldPoint);
+                    log.debug("start loop {}, from={}, to={}", i, currentWorldPoint, nextWorldPoint);
                 }
 
 				// add breakpoint here
 
                 if (ShortestPathPlugin.getMarker() == null) {
-                    System.out.println("marker is null");
+                    log.debug("Marker is null, breaking path iteration");
                     break;
                 }
 
                 if (!isNearPath()) {
-                    System.out.println("No longer near path");
+                    log.info("No longer near path");
                     if (config.cancelInstead()) {
-                        System.out.println("cancel instead of recalculate");
+                        log.info("Cancel instead of recalculate");
                         setTarget(null);
                     } else {
                         recalculatePath();
@@ -313,13 +313,13 @@ public class Rs2Walker {
 
                 doorOrTransportResult = handleDoors(path, i);
                 if (doorOrTransportResult) {
-                    System.out.println("break out of door");
+                    log.debug("Break out of path loop: door handled");
                     break;
                 }
 
                 doorOrTransportResult = handleRockfall(path, i);
                 if (doorOrTransportResult) {
-                    System.out.println("break out of rockfall");
+                    log.debug("Break out of path loop: rockfall handled");
                     break;
                 }
 
@@ -330,7 +330,7 @@ public class Rs2Walker {
                 }
 
                 if (doorOrTransportResult) {
-                    System.out.println("break out of transport");
+                    log.debug("Break out of path loop: transport handled");
                     break;
                 }
 
@@ -1052,7 +1052,7 @@ public class Rs2Walker {
                 : rawTo;
 
         if (isInstance && (toWp == null || fromWp == null)) {
-            System.out.println("HandleDoor: isInstance=true fromWp=" + fromWp + ", toWp=" + toWp);
+            log.debug("HandleDoor: isInstance=true fromWp={}, toWp={}", fromWp, toWp);
             //This happens when we're inside the PoH and the next tile is the teleport destination
             //Rs2WorldPoint.convertInstancedWorldPoint(rawTo) -> LocalPoint l = Rs2LocalPoint.fromWorldInstance(worldPoint) returns null
             return false;
@@ -3260,8 +3260,7 @@ public class Rs2Walker {
             double totalTimeMs = (totalEndTime - totalStartTime) / 1_000_000.0;
             performanceLog.append("ERROR after ").append(String.format("%.2f ms", totalTimeMs)).append(": ").append(e.getMessage()).append("\n");
             log.warn(performanceLog.toString());
-            log.warn("Error comparing routes to " + target + ": " + e.getMessage());
-            e.printStackTrace();
+            log.warn("Error comparing routes to {}: {}", target, e.getMessage());
             return new TransportRouteAnalysis(new ArrayList<>(), null, null,new ArrayList<>(),new ArrayList<>(), "Error calculating routes: " + e.getMessage());
         }
     }
