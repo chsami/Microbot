@@ -13,16 +13,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: development
-
-      - name: Force sync with latest development
-        run: |
-          git fetch origin development
-          git checkout development
-          git reset --hard origin/development
+          ref: dev
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
