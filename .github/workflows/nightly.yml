@@ -22,11 +22,11 @@ jobs:
           git checkout development
           git reset --hard origin/development
 
-      - name: Set up JDK 11
+      - name: Set up JDK 17
         uses: actions/setup-java@v3
         with:
           distribution: temurin
-          java-version: 11
+          java-version: 17
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -60,9 +60,10 @@ jobs:
           prerelease: false
           title: "Nightly Build"
           files: |
-            /home/runner/work/Microbot/Microbot/runelite-client/build/libs/microbot-*.jar
+            runelite-client/build/libs/microbot-*.jar
 
       - name: Upload Jar to Hetzner
+        if: ${{ secrets.PROD_SSH_KEY != '' }}
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.PROD_HOST }}
