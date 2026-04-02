@@ -44,75 +44,147 @@ These files do not exist upstream. Accept all incoming upstream changes as non-c
 
 ## Zone 2 — Files We Modified for Security (protect carefully)
 
-These files exist upstream and are actively developed there. We have **removed telemetry** from them.
-During a merge, upstream will re-introduce the removed code as additions. **Always keep our version's removals.**
+These files exist upstream and are actively developed there. Each entry has a **resolution command** (run first), **forbidden patterns** (remove if found), and **required patterns** (inject if missing).
+
+> Rule: per-file resolution commands override the zone default in the algorithm.
+
+---
 
 ### `runelite-client/src/main/java/net/runelite/client/plugins/microbot/MicrobotVersionChecker.java`
 
-**What we did:** Gutted the class body. Upstream's version pings `microbot.cloud` with the client version and shows an update-available dialog.
+**Resolution:** `git checkout HEAD -- <file>` *(keep our stub — do NOT take upstream)*
 
-**What to maintain:** The file must remain as a stub (empty `checkForUpdate()` / `shutdown()` methods) so compilation doesn't break — `MicrobotPlugin.java` still references it for now. Never restore the HTTP call or the Swing dialog.
+**What we did:** Gutted the class body. Upstream's version pings `microbot.cloud`.
 
-**Conflict trigger:** If upstream renames or removes the class, update our stub to match the new signature.
+**Forbidden patterns** (must not appear):
+- Any URL containing `microbot.cloud` or `themicrobot.com`
+- Any `HttpClient` or `HttpRequest` call
+- Any `JOptionPane` or Swing dialog code
+
+**Required patterns** (must appear — inject if missing):
+- Class compiles with at minimum empty `checkForUpdate()` and `shutdown()` methods
+
+**Conflict trigger:** If upstream removes the class, remove our stub and any references in `MicrobotPlugin.java`.
 
 ---
 
 ### `runelite-client/src/main/java/net/runelite/client/plugins/microbot/RandomFactClient.java`
 
-**What we did:** Gutted the class body. Upstream's version fetches a "random fact" from an external server and shows it in a dialog on startup.
+**Resolution:** `git checkout HEAD -- <file>` *(keep our stub — do NOT take upstream)*
 
-**What to maintain:** Keep as a stub or delete entirely. Never restore the external HTTP call.
+**What we did:** Gutted the class body. Upstream's version fetches a "random fact" from an external server.
 
-**Conflict trigger:** If upstream removes the class, remove our stub and any references.
+**Forbidden patterns** (must not appear):
+- Any URL containing `microbot.cloud`, `themicrobot.com`, or any non-localhost external host
+- Any `HttpClient` or `HttpRequest` call
+
+**Conflict trigger:** If upstream removes the class, remove our stub.
 
 ---
 
 ### `runelite-client/src/main/java/net/runelite/client/ClientSessionManager.java`
 
-**What we did:** Removed the `MicrobotApi` session tracking — the 10-minute ping to `microbot.cloud` that reports an active session UUID.
+**Resolution:** `git checkout upstream-tracking -- <file>`
 
-**Lines to protect:**
-- Constructor no longer takes `MicrobotApi microbotApi`
-- `microbotSessionId`, `scheduledFutureMicroBot`, `microbotApi` fields are removed
-- `microbotOpen()` / `microbotDelete()` calls are removed
-- `microbotPing()` method is removed
+**What we did:** Removed the `MicrobotApi` session tracking — a 10-minute ping to `microbot.cloud`.
 
-**Conflict trigger:** If upstream modifies `ClientSessionManager` for unrelated reasons, accept their change but re-remove the `MicrobotApi` lines. Do not restore any call to `microbotApi.*`.
+**Forbidden patterns** (must not appear):
+- `MicrobotApi`
+- `microbotSessionId`
+- `scheduledFutureMicroBot`
+- `microbotOpen()`
+- `microbotDelete()`
+- `microbotPing()`
+
+**Required patterns** (must appear):
+- Constructor exists and does NOT take a `MicrobotApi` parameter
+
+**Conflict trigger:** If upstream modifies `ClientSessionManager` for unrelated reasons, accept their change but re-remove the `MicrobotApi` lines.
 
 ---
 
 ### `runelite-client/src/main/java/net/runelite/client/plugins/microbot/Microbot.java`
 
+**Resolution:** `git checkout upstream-tracking -- <file>`
+
 **What we did:** Removed `PouchScript` injection and removed `QuestHelperPlugin` / `MInventorySetupsPlugin` from the plugin exclusion filter.
 
-**What to maintain:**
-- No `@Inject PouchScript pouchScript` field
-- The `getPluginsWithoutExcluded()` filter only excludes `MicrobotPlugin`, `ShortestPathPlugin`, `AntibanPlugin`, `ExamplePlugin` — not Quest Helper or MInventorySetups (we don't ship those)
+**Forbidden patterns** (must not appear):
+- `@Inject PouchScript pouchScript`
+- `QuestHelperPlugin` inside the exclusion filter
+- `MInventorySetupsPlugin` inside the exclusion filter
 
-**Conflict trigger:** Upstream frequently updates `Microbot.java`. Accept all their changes but re-apply the two removals above after merging.
+**Required patterns** (must appear — exact form):
+```java
+.filter(x -> !x.getClass().getSimpleName().equalsIgnoreCase("MicrobotPlugin")
+        && !x.getClass().getSimpleName().equalsIgnoreCase("ShortestPathPlugin")
+        && !x.getClass().getSimpleName().equalsIgnoreCase("AntibanPlugin")
+        && !x.getClass().getSimpleName().equalsIgnoreCase("ExamplePlugin"))
+```
+This filter must contain exactly these four exclusions and no others. Verify the surrounding method is `getActiveMicrobotPlugins()`.
+
+**Conflict trigger:** Upstream frequently updates `Microbot.java`. Accept all their changes but re-apply the two removals above.
 
 ---
 
 ### `runelite-client/src/main/java/net/runelite/client/plugins/microbot/MicrobotPlugin.java`
 
-**What we did:** Two changes with different reasons:
-1. **Removed** `MicrobotVersionChecker.checkForUpdate()` call on startup (telemetry removal)
-2. **Removed** `PouchOverlay` / `PouchScript` references (we don't ship the pouch plugin)
-3. **Added** Status API initialization on startup (our integration)
+**Resolution:** `git checkout upstream-tracking -- <file>`
 
-**What to maintain:**
+**What we did:**
+1. Removed telemetry startup calls
+2. Removed `PouchOverlay` / `PouchScript` references
+3. Added Status API initialization on startup
+
+**Forbidden patterns** (must not appear):
+- `microbotVersionChecker.checkForUpdate()`
+- `Microbot.getPouchScript().startUp()`
+- `overlayManager.add(pouchOverlay)`
+- `@Inject PouchOverlay pouchOverlay`
+- `@Inject PouchScript pouchScript`
+
+**Required field** (must appear):
 ```java
-// KEEP — our Status API startup block in startUp()
+private StatusApiServer statusApiServer;
+```
+
+**Required block in `startUp()`** — inject in full if missing:
+```java
+// Start Status API if port file path is configured
 String portFilePath = System.getProperty("status-port-file");
-if (portFilePath != null && !portFilePath.isEmpty()) { ... }
+if (portFilePath != null && !portFilePath.isEmpty()) {
+    try {
+        String profileDir = System.getProperty("cc-profile-dir");
+        int charId = 0;
+        String charName = "";
+        if (profileDir != null) {
+            String dirName = Paths.get(profileDir).getFileName().toString();
+            if (dirName.startsWith("bot-")) {
+                charId = Integer.parseInt(dirName.substring(4));
+            }
+        }
+        botStatusModel = new BotStatusModel(charId, charName);
+        StatusApiHandler handler = new StatusApiHandler(botStatusModel);
+        statusApiServer = new StatusApiServer(Path.of(portFilePath), handler);
+        statusApiServer.start();
+    } catch (Exception e) {
+        log.error("Failed to start Status API: {}", e.getMessage());
+    }
+}
 
-// KEEP — our Status API shutdown in shutDown()
-if (statusApiServer != null) { statusApiServer.stop(); }
+// Auto-enable Command Center plugins when launched from Command Center
+String ccProfileDir = System.getProperty("cc-profile-dir");
+if (ccProfileDir != null && !ccProfileDir.isEmpty()) {
+    enableCCPlugin("CC Auto Login");
+    enableCCPlugin("CC Script Auto-Start");
+}
+```
 
-// NEVER RESTORE
-microbotVersionChecker.checkForUpdate();     // telemetry
-Microbot.getPouchScript().startUp();         // pouch plugin
-overlayManager.add(pouchOverlay);            // pouch overlay
+**Required block in `shutDown()`** — inject if missing:
+```java
+if (statusApiServer != null) {
+    statusApiServer.stop();
+}
 ```
 
 **Conflict trigger:** High probability — upstream actively modifies this file. Always the most careful merge.
