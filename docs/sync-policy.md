@@ -216,7 +216,6 @@ if (statusApiServer != null) {
 
 **Forbidden patterns** (must not appear):
 - `System.out.println(getActiveProfile())`
-- `@Setter` (the lombok annotation — removed because the setter for `activeProfile` is gone)
 - `public static ConfigProfile activeProfile = null;`
 - `LoginManager.setActiveProfile`
 
@@ -270,7 +269,6 @@ These were never modified by us. Always take upstream's version without review:
 
 - All `util/` classes (`Rs2Walker`, `Rs2Npc`, `Rs2Shop`, `Rs2GameObject`, etc.)
 - All upstream scripts and plugins we don't ship customized versions of
-- `gradle.properties` — accept upstream's `microbot.version` bump, but verify `project.build.version` doesn't break our CI
 - `LootManager.java` and other RuneLite core classes
 
 ---
@@ -282,8 +280,8 @@ These were never modified by us. Always take upstream's version without review:
 | `MicrobotPlugin.java` | **High** | Upstream adds features here constantly |
 | `Microbot.java` | **High** | Central singleton, frequently modified |
 | `ClientSessionManager.java` | **Low** | Rarely touched upstream |
-| `MicrobotVersionChecker.java` | **Low** | We gutted it — upstream changes don't matter |
-| `RandomFactClient.java` | **Low** | We gutted it — upstream changes don't matter |
+| `MicrobotVersionChecker.java` | **Low** | Permanently deleted — upstream produces modify/delete conflict; always `git rm` |
+| `RandomFactClient.java` | **Low** | Permanently deleted — upstream produces modify/delete conflict; always `git rm` |
 | `gradle.properties` | **Every sync** | Version always bumps — auto-resolvable |
 | `commandcenter/` | **Never** | Upstream doesn't know this directory exists |
 
