@@ -190,6 +190,80 @@ if (statusApiServer != null) {
 
 ---
 
+### `runelite-client/src/main/java/net/runelite/client/RuneLite.java`
+
+**Resolution:** `git checkout upstream-tracking -- <file>`
+
+**What we did:** Added `--cc-profile-dir` and `--status-port-file` CLI flags.
+
+**Forbidden patterns:** none (our additions are purely additive)
+
+**Required patterns** (must appear — exact strings):
+- `final ArgumentAcceptingOptionSpec<String> ccProfileDir = parser.accepts("cc-profile-dir", "Command Center profile directory")`
+- `final ArgumentAcceptingOptionSpec<String> statusPortFile = parser.accepts("status-port-file", "Path to write Status API port")`
+- `System.setProperty("cc-profile-dir", options.valueOf(ccProfileDir));`
+- `System.setProperty("status-port-file", options.valueOf(statusPortFile));`
+
+**Conflict trigger:** If upstream adds new CLI flags, merge all flags together. Our flags must survive the merge.
+
+---
+
+### `runelite-client/src/main/java/net/runelite/client/plugins/microbot/util/security/LoginManager.java`
+
+**Resolution:** `git checkout upstream-tracking -- <file>`
+
+**What we did:** Replaced a raw `System.out.println` of the profile name with a redacted log line using `CredentialRedactor`, and removed the unused `@Setter public static ConfigProfile activeProfile` static field (login now uses `Microbot.getConfigManager().getProfile()` directly).
+
+**Forbidden patterns** (must not appear):
+- `System.out.println(getActiveProfile())`
+- `@Setter` (the lombok annotation — removed because the setter for `activeProfile` is gone)
+- `public static ConfigProfile activeProfile = null;`
+- `LoginManager.setActiveProfile`
+
+**Required patterns** (must appear):
+- `import net.runelite.client.plugins.microbot.commandcenter.CredentialRedactor;`
+- `CredentialRedactor.redact(getActiveProfile().getName())`
+
+**Conflict trigger:** If upstream refactors the login flow, accept their change and re-apply the `CredentialRedactor` substitution at the point where the profile name is logged or printed. The raw `System.out.println` of credentials must never be restored.
+
+---
+
+### `runelite-client/src/main/java/net/runelite/client/config/ConfigManager.java`
+
+**Resolution:** `git checkout upstream-tracking -- <file>`
+
+**What we did:** Removed references to the deleted `InventorySetups` plugin (`ConfigInventorySetupDataManager`, `InventorySetup` imports, `@Inject ConfigInventorySetupDataManager` field, `isInventorySetup` check) and removed a `LoginManager.setActiveProfile(newProfile)` call from `switchProfile()` (the static field it set no longer exists).
+
+**Forbidden patterns** (must not appear):
+- `ConfigInventorySetupDataManager`
+- `import net.runelite.client.plugins.microbot.inventorysetups.InventorySetup`
+- `LoginManager.setActiveProfile`
+- `isInventorySetup`
+
+**Required patterns:** none (our changes are purely removals)
+
+**Conflict trigger:** If upstream re-adds InventorySetups references, remove them again. If upstream adds a new `LoginManager.setActiveProfile` call, remove it.
+
+---
+
+### `gradle.properties`
+
+**Resolution:** `git checkout upstream-tracking -- <file>`
+
+**What we did:** Nothing structural — our CI auto-increments `project.build.version`, which upstream does not touch. We accept upstream's `microbot.version` bump each sync.
+
+**Forbidden patterns:** none
+
+**Required patterns:** `project.build.version` key must be present. If upstream overwrites it (unlikely), restore the value from HEAD:
+```bash
+git show HEAD:gradle.properties | grep "^project.build.version"
+# then set that value in the resolved file
+```
+
+**Post-sync note:** After resolving `gradle.properties`, read `microbot.version` — that value is the upstream version label for the sync history entry in `docs/upstream-sync.md`.
+
+---
+
 ## Zone 3 — Files We Accept Fully From Upstream
 
 These were never modified by us. Always take upstream's version without review:
