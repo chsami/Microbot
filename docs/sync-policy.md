@@ -52,33 +52,32 @@ These files exist upstream and are actively developed there. Each entry has a **
 
 ### `runelite-client/src/main/java/net/runelite/client/plugins/microbot/MicrobotVersionChecker.java`
 
-**Resolution:** `git checkout HEAD -- <file>` *(keep our stub — do NOT take upstream)*
+**Resolution:** `git rm <file>` *(permanently deleted — keep it gone)*
 
-**What we did:** Gutted the class body. Upstream's version pings `microbot.cloud`.
+**What we did:** Deleted entirely. Upstream's version pings `microbot.cloud` with the client version and shows an update dialog.
+
+**Why deleted, not stubbed:** `MicrobotPlugin.java` no longer references this class (import and call were removed). Deleting the file entirely is safe.
 
 **Forbidden patterns** (must not appear):
 - Any URL containing `microbot.cloud` or `themicrobot.com`
 - Any `HttpClient` or `HttpRequest` call
 - Any `JOptionPane` or Swing dialog code
 
-**Required patterns** (must appear — inject if missing):
-- Class compiles with at minimum empty `checkForUpdate()` and `shutdown()` methods
-
-**Conflict trigger:** If upstream removes the class, remove our stub and any references in `MicrobotPlugin.java`.
+**Conflict trigger:** Upstream will produce a `modify/delete` conflict. Always keep deleted (`git rm`). If upstream adds a new file with similar telemetry behaviour, delete that too and document it here.
 
 ---
 
 ### `runelite-client/src/main/java/net/runelite/client/plugins/microbot/RandomFactClient.java`
 
-**Resolution:** `git checkout HEAD -- <file>` *(keep our stub — do NOT take upstream)*
+**Resolution:** `git rm <file>` *(permanently deleted — keep it gone)*
 
-**What we did:** Gutted the class body. Upstream's version fetches a "random fact" from an external server.
+**What we did:** Deleted entirely. Upstream's version fetches a "random fact" from an external server on startup.
 
 **Forbidden patterns** (must not appear):
 - Any URL containing `microbot.cloud`, `themicrobot.com`, or any non-localhost external host
 - Any `HttpClient` or `HttpRequest` call
 
-**Conflict trigger:** If upstream removes the class, remove our stub.
+**Conflict trigger:** Upstream will produce a `modify/delete` conflict. Always keep deleted (`git rm`). If upstream adds a new file with similar external-call behaviour, delete that too and document it here.
 
 ---
 
