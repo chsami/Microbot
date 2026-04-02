@@ -104,7 +104,7 @@ For each Zone 2 file that has "Required patterns" in `sync-policy.md`:
 
 ```bash
 cd C:\Users\Juanfra\projects\Microbot_Frieren
-./gradlew :runelite-client:compileJava
+./gradlew :client:compileJava
 ```
 
 If errors exist:

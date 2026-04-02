@@ -325,7 +325,7 @@ For each Zone 2 file that has "Required patterns":
 
 Then compile:
 ```bash
-./gradlew :runelite-client:compileJava
+./gradlew :client:compileJava
 ```
 Warnings are acceptable. Errors block the commit — fix the root cause; never comment out code to silence errors.
 
@@ -354,5 +354,5 @@ After `git merge upstream-tracking` into `dev`:
 - [ ] **`ClientSessionManager.java`** — verify no `MicrobotApi` import or usage
 - [ ] **`gradle.properties`** — accept upstream `microbot.version`; bump `project.build.version` if CI requires it
 - [ ] **`commandcenter/`** — confirm none of our files were accidentally modified (should never happen)
-- [ ] Build: `./gradlew :runelite-client:compileJava` — warnings OK, errors not OK
+- [ ] Build: `./gradlew :client:compileJava` — warnings OK, errors not OK
 - [ ] Run code review agent against the changed upstream files to check impact on CC scripts
