@@ -273,6 +273,64 @@ These were never modified by us. Always take upstream's version without review:
 
 ---
 
+## Resolution Algorithm
+
+The `/syncrepo` skill follows this algorithm exactly. Zones are defined in the sections above.
+
+### Pre-flight (run before any git operation)
+
+```bash
+# Must be on dev branch
+git symbolic-ref --short HEAD   # must output: dev
+
+# Must have clean working tree
+git status --porcelain           # must output: (empty)
+```
+If either check fails, abort and report. Do not stash silently.
+
+### Per-file conflict resolution
+
+```
+For each file listed in `git diff --name-only --diff-filter=U`:
+
+  1. Identify zone using this priority order:
+       a. File has a Zone 2 per-file entry in sync-policy.md  →  Zone 2
+       b. File is in Zone 1 table                             →  Zone 1
+       c. File is in intentional-delete table (upstream-sync.md)  →  Intentional delete
+       d. Everything else                                     →  Zone 3
+
+  2. Run resolution command:
+       Zone 1:             git checkout HEAD -- <file>
+       Zone 2:             use the per-file "Resolution" command from this doc
+       Zone 3:             git checkout upstream-tracking -- <file>
+       Intentional delete: git rm <file>
+
+  3. Zone 2 only — after the resolution command:
+       a. Search for each forbidden pattern — remove the containing statement/block
+       b. Search for each required pattern — if missing, inject the canonical block
+
+  4. git add <file>
+  5. Log: "<file>: <zone> — <what changed>"
+```
+
+### Post-merge verification (always, even after a clean merge)
+
+A clean merge can silently drop our code if upstream rewrote a method. Always verify:
+
+```
+For each Zone 2 file that has "Required patterns":
+  - Check every required pattern is present in the current working file
+  - If any are missing, inject the canonical block and git add the file
+```
+
+Then compile:
+```bash
+./gradlew :runelite-client:compileJava
+```
+Warnings are acceptable. Errors block the commit — fix the root cause; never comment out code to silence errors.
+
+---
+
 ## Conflict Probability by File
 
 | File | Conflict frequency | Notes |
@@ -296,5 +354,5 @@ After `git merge upstream-tracking` into `dev`:
 - [ ] **`ClientSessionManager.java`** — verify no `MicrobotApi` import or usage
 - [ ] **`gradle.properties`** — accept upstream `microbot.version`; bump `project.build.version` if CI requires it
 - [ ] **`commandcenter/`** — confirm none of our files were accidentally modified (should never happen)
-- [ ] Build: `./gradlew :client:compileJava` — warnings OK, errors not OK
+- [ ] Build: `./gradlew :runelite-client:compileJava` — warnings OK, errors not OK
 - [ ] Run code review agent against the changed upstream files to check impact on CC scripts
