@@ -197,7 +197,7 @@ Files intentionally deleted in this fork (as of 2026-03):
 | `questhelper/statemanagement/PlayerStateManager.java` | `1460f4e9` | Same |
 | `MicrobotApi.java` | Security hardening | Called `microbot.cloud` telemetry |
 
-> Note: `MicrobotVersionChecker.java` and `RandomFactClient.java` are NOT in this table. They are permanently deleted (not stubbed) and handled as Zone 2 entries in `docs/sync-policy.md`. When upstream modifies them, the resolution is always `git rm <file>`.
+> Note: `MicrobotVersionChecker.java` and `RandomFactClient.java` are NOT in this table. They are permanently deleted (not stubbed) and have explicit per-file entries in Zone 2 of `docs/sync-policy.md` (Zone 2 covers all files with documented resolution rules, including permanent deletions). When upstream modifies them, the resolution is always `git rm <file>`.
 
 ---
 
