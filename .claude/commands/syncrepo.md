@@ -58,7 +58,7 @@ If `merge --ff-only` fails (not a fast-forward), stop immediately and report:
 ```bash
 git log upstream/main..upstream-tracking --oneline
 ```
-Tell the user what commits are on `upstream-tracking` that aren't on `upstream/main`. Do NOT force-push without explicit user confirmation.
+Tell the user what commits are on `upstream-tracking` that aren't on `upstream/main`. Do NOT force-push without explicit user confirmation. Then run `git checkout dev` to return to the working branch before stopping.
 
 ## Step 3 — Merge into dev
 
@@ -103,6 +103,7 @@ For each Zone 2 file that has "Required patterns" in `sync-policy.md`:
 ## Step 6 — Compile check
 
 ```bash
+cd C:\Users\Juanfra\projects\Microbot_Frieren
 ./gradlew :runelite-client:compileJava
 ```
 
@@ -125,9 +126,13 @@ This value (e.g., `2.1.35`) is the upstream version label for the sync history e
 
 Edit `docs/upstream-sync.md`. In the `## Sync History` table, prepend a new row:
 
+Use the commit count from Step 1 (`git rev-list --count` output) as N.
+
 ```
 | <today's date YYYY-MM-DD> | <microbot.version from Step 7> | <N commits merged> | <brief summary of notable upstream changes> |
 ```
+
+After editing, read back the first 5 rows of the Sync History table to confirm the new row appears at the top with the correct date and version before continuing.
 
 ## Step 9 — Commit
 
