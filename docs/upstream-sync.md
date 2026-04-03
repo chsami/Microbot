@@ -195,6 +195,7 @@ Files intentionally deleted in this fork (as of 2026-03):
 | `questhelper/runeliteobjects/Cheerer.java` | `1460f4e9` | Same |
 | `questhelper/runeliteobjects/extendedruneliteobjects/RuneliteObjectManager.java` | `1460f4e9` | Same |
 | `questhelper/statemanagement/PlayerStateManager.java` | `1460f4e9` | Same |
+| `questhelper/helpers/achievementdiaries/kourend/KourendMedium.java` | `1460f4e9` | Same — entire questhelper dependency tree deleted; file cannot compile standalone |
 | `MicrobotApi.java` | Security hardening | Called `microbot.cloud` telemetry |
 
 > Note: `MicrobotVersionChecker.java` and `RandomFactClient.java` are NOT in this table. They are permanently deleted (not stubbed) and have explicit per-file entries in Zone 2 of `docs/sync-policy.md` (Zone 2 covers all files with documented resolution rules, including permanent deletions). When upstream modifies them, the resolution is always `git rm <file>`.
@@ -363,6 +364,7 @@ After accepting upstream's `gradle.properties`, our CI version (`microbot.versio
 
 | Date | Upstream version | Commits merged | Notable changes |
 |------|-----------------|----------------|-----------------|
+| 2026-04-03 | 2.1.35 | 18 | Game revision update 2026-4-1 (GameVals, Legacy IDs, Item variations, Widget IDs), RuneLite 1.12.23 release + 1.12.24-SNAPSHOT bump, EntityOps API export, cannon Chasm of Fire spot fix, gradle incremental build fix, xp updater fix, login screen improvements |
 | 2026-03-31 | 2.1.34 | 12 | LootManager dead-player location fix, Rs2Npc isDead inversion fix, Rs2Shop break fix, Rs2GameObject dedup filter, Rs2Walker slf4j logging |
 | 2026-03-30 | 2.1.33 | 76 | RuneLite rev 237, queryable API fixes, LoginManager refactor, Brazil world hopper, new integration tests |
 | (initial fork) | 2.1.24 | — | Fork baseline |
