@@ -7,13 +7,18 @@ import net.runelite.api.events.GameStateChanged;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.security.LoginManager;
 
 import javax.inject.Inject;
+import javax.swing.SwingUtilities;
 import java.io.FileInputStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Properties;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 @PluginDescriptor(
     name = "CC Auto Login",
@@ -28,11 +33,14 @@ public class AutoLoginPlugin extends Plugin {
     private String email;
     private String password;
     private String world;
-    private boolean loginAttempted;
+    private volatile boolean loginAttempted;
+    private ScheduledExecutorService executor;
 
     @Override
     protected void startUp() {
         loginAttempted = false;
+        executor = Executors.newSingleThreadScheduledExecutor();
+
         String profileDir = System.getProperty("cc-profile-dir");
         if (profileDir == null || profileDir.isEmpty()) {
             log.warn("No --cc-profile-dir set, AutoLogin disabled");
@@ -41,7 +49,6 @@ public class AutoLoginPlugin extends Plugin {
 
         Path profilePath = Paths.get(profileDir);
 
-        // Read credentials
         try (var fis = new FileInputStream(profilePath.resolve("credentials.properties").toFile())) {
             Properties creds = new Properties();
             creds.load(fis);
@@ -51,7 +58,6 @@ public class AutoLoginPlugin extends Plugin {
             log.error("Failed to read credentials.properties: {}", e.getMessage());
         }
 
-        // Read world from commandcenter.properties
         try (var fis = new FileInputStream(profilePath.resolve("commandcenter.properties").toFile())) {
             Properties config = new Properties();
             config.load(fis);
@@ -69,7 +75,6 @@ public class AutoLoginPlugin extends Plugin {
 
         loginAttempted = true;
 
-        // Set world if configured — use Login.setWorld which fully initializes the World object
         if (world != null && !world.isEmpty() && !"auto".equals(world)) {
             try {
                 int worldNum = Integer.parseInt(world);
@@ -79,17 +84,26 @@ public class AutoLoginPlugin extends Plugin {
             }
         }
 
-        // Inject credentials
         client.setUsername(email);
         client.setPassword(password);
 
-        // RuneLite fires LOGIN_SCREEN when ready — we can set credentials directly
         String prefix = email.length() >= 3 ? email.substring(0, 3) : email;
-        log.info("AutoLogin: credentials injected for {}***", prefix);
+        log.info("AutoLogin: credentials injected for {}***, submitting in 600ms", prefix);
+
+        executor.schedule(() -> {
+            SwingUtilities.invokeLater(() -> {
+                Rs2Keyboard.enter();
+                log.info("AutoLogin: Enter pressed");
+            });
+        }, 600, TimeUnit.MILLISECONDS);
     }
 
     @Override
     protected void shutDown() {
+        if (executor != null) {
+            executor.shutdownNow();
+            executor = null;
+        }
         email = null;
         password = null;
         world = null;
