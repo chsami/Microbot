@@ -30,11 +30,12 @@ public class AutoLoginPlugin extends Plugin {
     @Inject
     private Client client;
 
-    private String email;
-    private String password;
-    private String world;
+    private volatile String email;
+    private volatile String password;
+    private volatile String world;
     private volatile boolean loginAttempted;
     private ScheduledExecutorService executor;
+    private java.util.concurrent.ScheduledFuture<?> loginFuture;
 
     @Override
     protected void startUp() {
@@ -75,6 +76,18 @@ public class AutoLoginPlugin extends Plugin {
 
         loginAttempted = true;
 
+        // Jagex accounts use OAuth tokens — the game client reads them from
+        // jagex/credentials.properties via -Djagex.userhome. Do not interfere
+        // with the OAuth login flow by injecting legacy credentials.
+        String profileDir = System.getProperty("cc-profile-dir");
+        if (profileDir != null) {
+            java.io.File jagexCreds = Paths.get(profileDir, "jagex", "credentials.properties").toFile();
+            if (jagexCreds.exists()) {
+                log.info("AutoLogin: Jagex account detected, skipping legacy credential injection");
+                return;
+            }
+        }
+
         if (world != null && !world.isEmpty() && !"auto".equals(world)) {
             try {
                 int worldNum = Integer.parseInt(world);
@@ -90,7 +103,7 @@ public class AutoLoginPlugin extends Plugin {
         String prefix = email.length() >= 3 ? email.substring(0, 3) : email;
         log.info("AutoLogin: credentials injected for {}***, submitting in 600ms", prefix);
 
-        executor.schedule(() -> {
+        loginFuture = executor.schedule(() -> {
             SwingUtilities.invokeLater(() -> {
                 Rs2Keyboard.enter();
                 log.info("AutoLogin: Enter pressed");
@@ -100,6 +113,10 @@ public class AutoLoginPlugin extends Plugin {
 
     @Override
     protected void shutDown() {
+        if (loginFuture != null) {
+            loginFuture.cancel(false);
+            loginFuture = null;
+        }
         if (executor != null) {
             executor.shutdownNow();
             executor = null;

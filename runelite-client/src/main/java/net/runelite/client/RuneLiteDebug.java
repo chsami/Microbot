@@ -331,7 +331,9 @@ public class RuneLiteDebug {
         copyJagexCache();
 
         System.setProperty("jagex.disableBouncyCastle", "true");
-        System.setProperty("jagex.userhome", RUNELITE_DIR.getAbsolutePath());
+        if (System.getProperty("jagex.userhome") == null) {
+            System.setProperty("jagex.userhome", RUNELITE_DIR.getAbsolutePath());
+        }
 
         if (isOutdated) {
             throw new IllegalStateException("Client failed to load");
