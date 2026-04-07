@@ -484,7 +484,9 @@ public class RuneLite
 		copyJagexCache();
 
 		System.setProperty("jagex.disableBouncyCastle", "true");
-		System.setProperty("jagex.userhome", RUNELITE_DIR.getAbsolutePath());
+		if (System.getProperty("jagex.userhome") == null) {
+			System.setProperty("jagex.userhome", RUNELITE_DIR.getAbsolutePath());
+		}
 
 		client.initialize();
 
