@@ -2841,6 +2841,12 @@ public class Rs2Walker {
         if (hotkey != null) {
             Rs2Keyboard.keyPress(hotkey);
             log.debug("[MoA] pressed hotkey '{}' for '{}'", hotkey, shortName);
+            // Wait for the MoA widget to close before returning. Without this, the caller's
+            // !isAnimating check in the walker loop passes instantly (animation hasn't
+            // started yet), and the walker races into the next transport step — e.g.
+            // clicking Royal seed pod mid-teleport, which then teleports the player
+            // back to Grand Tree and kicks off a MoA↔seed-pod loop.
+            sleepUntil(() -> !Rs2Widget.isWidgetVisible(MAP_OF_ALACRITY_WIDGET_GROUP, MAP_OF_ALACRITY_LIST_CHILD), 2000);
             return true;
         }
 
