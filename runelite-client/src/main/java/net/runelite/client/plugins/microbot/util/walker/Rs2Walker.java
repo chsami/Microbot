@@ -2709,7 +2709,7 @@ public class Rs2Walker {
 
     private static boolean handleSeasonalTransport(Transport transport) {
         String displayInfo = transport.getDisplayInfo();
-        log.info("[MoA] entry: displayInfo='{}'", displayInfo);
+        log.debug("[MoA] entry: displayInfo='{}'", displayInfo);
         if (displayInfo == null) return false;
 
         if (!displayInfo.toLowerCase().contains("map of alacrity")) {
@@ -2826,7 +2826,7 @@ public class Rs2Walker {
 
         // Select via the row's in-game hotkey (1-9 then A-Z). Keybinds work even when the row
         // is scrolled off-screen, which clickWidget cannot handle.
-        log.info("[MoA] selecting destination '{}' (text='{}')", shortName, destText);
+        log.debug("[MoA] selecting destination '{}' (text='{}')", shortName, destText);
         Character hotkey = extractMoaHotkey(destText);
         if (hotkey == null) {
             Widget destRoot = Rs2Widget.getWidget(MAP_OF_ALACRITY_WIDGET_GROUP, MAP_OF_ALACRITY_LIST_CHILD);
