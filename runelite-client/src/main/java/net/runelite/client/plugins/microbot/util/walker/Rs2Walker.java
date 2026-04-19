@@ -2808,11 +2808,17 @@ public class Rs2Walker {
         }, 3000);
 
         if (destMatch == null) {
-            log.warn("[MoA] destination '{}' never appeared after clicking region '{}' — name mismatch or locked; blacklisting",
+            // Don't blacklist here: a missing destination widget is ambiguous. Combat,
+            // lag, or the widget being closed by another handler can all manifest as
+            // "never appeared". Blacklisting on ambiguity permanently poisons legitimate
+            // destinations mid-session (e.g. player gets attacked during teleport, widget
+            // closes, we'd blacklist Nemus forever). Just return false and let the
+            // pathfinder/walker retry. Positive-evidence blacklisting (<str> markup on
+            // region or destination) below still applies.
+            log.warn("[MoA] destination '{}' never appeared after clicking region '{}' — retrying later",
                     shortName, region);
             Widget root = Rs2Widget.getWidget(MAP_OF_ALACRITY_WIDGET_GROUP, MAP_OF_ALACRITY_LIST_CHILD);
             if (root != null) dumpMapOfAlacrityWidget(root);
-            blacklistedMoaDestinations.add(packedDest);
             return false;
         }
 
