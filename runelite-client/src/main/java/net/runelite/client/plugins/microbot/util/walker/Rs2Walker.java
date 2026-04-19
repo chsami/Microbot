@@ -2858,30 +2858,25 @@ public class Rs2Walker {
         if (normalised.isEmpty()) return null;
         String[] tokens = normalised.split(" ");
         return Microbot.getClientThread().runOnClientThreadOptional(() -> {
-            for (Widget w : collectMoaChildren(root)) {
-                String hay = normaliseMoaText(w.getText());
-                if (hay.isEmpty()) continue;
-                // Token-set membership avoids substring false positives (e.g. "log" matching "logstrum").
-                java.util.Set<String> haySet = new java.util.HashSet<>(java.util.Arrays.asList(hay.split(" ")));
-                boolean all = true;
-                for (String t : tokens) {
-                    if (t.isEmpty()) continue;
-                    if (!haySet.contains(t)) { all = false; break; }
+            Widget[][] groups = { root.getDynamicChildren(), root.getNestedChildren(), root.getStaticChildren() };
+            for (Widget[] g : groups) {
+                if (g == null) continue;
+                for (Widget w : g) {
+                    if (w == null) continue;
+                    String hay = normaliseMoaText(w.getText());
+                    if (hay.isEmpty()) continue;
+                    // Token-set membership avoids substring false positives (e.g. "log" matching "logstrum").
+                    java.util.Set<String> haySet = new java.util.HashSet<>(java.util.Arrays.asList(hay.split(" ")));
+                    boolean all = true;
+                    for (String t : tokens) {
+                        if (t.isEmpty()) continue;
+                        if (!haySet.contains(t)) { all = false; break; }
+                    }
+                    if (all) return w;
                 }
-                if (all) return w;
             }
             return null;
         }).orElse(null);
-    }
-
-    private static java.util.List<Widget> collectMoaChildren(Widget root) {
-        java.util.List<Widget> out = new java.util.ArrayList<>();
-        Widget[][] groups = { root.getDynamicChildren(), root.getNestedChildren(), root.getStaticChildren() };
-        for (Widget[] g : groups) {
-            if (g == null) continue;
-            for (Widget w : g) if (w != null) out.add(w);
-        }
-        return out;
     }
 
     private static String normaliseMoaText(String s) {
@@ -2908,12 +2903,17 @@ public class Rs2Walker {
         if (root == null) return null;
         return Microbot.getClientThread().runOnClientThreadOptional(() -> {
             int idx = 0;
-            for (Widget sibling : collectMoaChildren(root)) {
-                String t = sibling.getText();
-                if (t == null || t.isEmpty()) continue;
-                if (t.contains(MOA_LOCKED_MARKUP)) continue;
-                if (sibling == destMatch) return indexToHotkey(idx);
-                idx++;
+            Widget[][] groups = { root.getDynamicChildren(), root.getNestedChildren(), root.getStaticChildren() };
+            for (Widget[] g : groups) {
+                if (g == null) continue;
+                for (Widget sibling : g) {
+                    if (sibling == null) continue;
+                    String t = sibling.getText();
+                    if (t == null || t.isEmpty()) continue;
+                    if (t.contains(MOA_LOCKED_MARKUP)) continue;
+                    if (sibling == destMatch) return indexToHotkey(idx);
+                    idx++;
+                }
             }
             return null;
         }).orElse(null);
