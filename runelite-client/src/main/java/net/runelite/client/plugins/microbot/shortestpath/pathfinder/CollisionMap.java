@@ -157,6 +157,7 @@ public class CollisionMap {
         int moaAddedHere = 0;
         int moaVisited = 0;
         int moaIgnored = 0;
+        List<Integer> moaCosts = null;
 
         // Transports are pre-filtered by PathfinderConfig.refreshTransports
         // Thus any transports in the list are guaranteed to be valid per the user's settings
@@ -177,8 +178,13 @@ public class CollisionMap {
                     if (isMoa) moaIgnored++;
                     continue;
                 }
-                neighbors.add(new TransportNode(transport.getDestination(), node, config.getDistanceBeforeUsingTeleport() + transport.getDuration()));
-                if (isMoa) moaAddedHere++;
+                int cost = config.getDistanceBeforeUsingTeleport() + transport.getDuration();
+                neighbors.add(new TransportNode(transport.getDestination(), node, cost));
+                if (isMoa) {
+                    moaAddedHere++;
+                    if (moaCosts == null) moaCosts = new ArrayList<>();
+                    moaCosts.add(cost);
+                }
             } else {
                 neighbors.add(new TransportNode(transport.getDestination(), node, transport.getDuration()));
             }
@@ -186,10 +192,10 @@ public class CollisionMap {
         }
 
         if (moaSeenHere > 0) {
-            log.debug("[MoA] getNeighbors @ ({},{},{}): seen={} added={} visited={} ignored={} (distanceBeforeUsingTeleport={}, cost={})",
+            log.debug("[MoA] getNeighbors @ ({},{},{}): seen={} added={} visited={} ignored={} (distanceBeforeUsingTeleport={}, costs={})",
                     x, y, z, moaSeenHere, moaAddedHere, moaVisited, moaIgnored,
                     config.getDistanceBeforeUsingTeleport(),
-                    config.getDistanceBeforeUsingTeleport() + 4);
+                    moaCosts == null ? "[]" : moaCosts);
         }
 
         if (isBlocked(x, y, z)) {

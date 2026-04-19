@@ -2861,10 +2861,12 @@ public class Rs2Walker {
             for (Widget w : collectMoaChildren(root)) {
                 String hay = normaliseMoaText(w.getText());
                 if (hay.isEmpty()) continue;
+                // Token-set membership avoids substring false positives (e.g. "log" matching "logstrum").
+                java.util.Set<String> haySet = new java.util.HashSet<>(java.util.Arrays.asList(hay.split(" ")));
                 boolean all = true;
                 for (String t : tokens) {
                     if (t.isEmpty()) continue;
-                    if (!hay.contains(t)) { all = false; break; }
+                    if (!haySet.contains(t)) { all = false; break; }
                 }
                 if (all) return w;
             }
