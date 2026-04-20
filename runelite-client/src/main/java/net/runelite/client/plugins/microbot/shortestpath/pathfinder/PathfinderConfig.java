@@ -577,6 +577,23 @@ public class PathfinderConfig {
             return false;
         }
 
+        // Region-level lock: once handleSeasonalTransport sees a region render with
+        // <str>…</str> (locked), reject every destination in that region. Without this,
+        // the pathfinder keeps picking a different Asgarnia/Desert/etc. destination on
+        // each re-path — walker fails, blacklists one, re-path picks the next, infinite
+        // "running around" loop. Display info format: "Map of Alacrity: <Region> - <Name>".
+        if (traceMoa && !Rs2Walker.lockedMoaRegions.isEmpty()) {
+            String disp = transport.getDisplayInfo();
+            int colon = disp.indexOf(':');
+            int dash = colon >= 0 ? disp.indexOf(" - ", colon) : -1;
+            if (colon >= 0 && dash > colon) {
+                String region = disp.substring(colon + 1, dash).trim().toLowerCase();
+                if (Rs2Walker.lockedMoaRegions.contains(region)) {
+                    return false;
+                }
+            }
+        }
+
         // Check if the feature flag is disabled
         if (!isFeatureEnabled(transport)) {
             log.debug("Transport Type {} is disabled by feature flag", transport.getType());

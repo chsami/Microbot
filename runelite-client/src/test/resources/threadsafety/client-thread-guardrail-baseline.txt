@@ -689,9 +689,6 @@ net.runelite.client.plugins.microbot.util.walker.Rs2MiniMap#getMinimapDrawWidget
 net.runelite.client.plugins.microbot.util.walker.Rs2MiniMap#worldToMinimap(WorldPoint): Point  ->  net.runelite.api.Client#getTopLevelWorldView(): WorldView
 net.runelite.client.plugins.microbot.util.walker.Rs2MiniMap#worldToMinimap(WorldPoint): Point  ->  net.runelite.api.coords.LocalPoint#fromWorld(WorldView, WorldPoint): LocalPoint
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#closeWorldMap(): boolean  ->  net.runelite.api.widgets.Widget#getBounds(): Rectangle
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#collectMoaChildren(Widget): List  ->  net.runelite.api.widgets.Widget#getDynamicChildren(): Widget[]
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#collectMoaChildren(Widget): List  ->  net.runelite.api.widgets.Widget#getNestedChildren(): Widget[]
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#collectMoaChildren(Widget): List  ->  net.runelite.api.widgets.Widget#getStaticChildren(): Widget[]
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#distanceToRegion(int, int): int  ->  net.runelite.api.Client#getTopLevelWorldView(): WorldView
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#distanceToRegion(int, int): int  ->  net.runelite.api.WorldView#getPlane(): int
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#getPointWithWallDistance(WorldPoint): WorldPoint  ->  net.runelite.api.Client#getTopLevelWorldView(): WorldView

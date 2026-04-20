@@ -6,6 +6,7 @@ import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 
 import java.awt.*;
 import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 
 import static java.awt.event.KeyEvent.CHAR_UNDEFINED;
 
@@ -26,29 +27,23 @@ public class Rs2Keyboard
 	}
 
 	/**
-	 * Executes a given action with the canvas temporarily made focusable if it wasn't already.
-	 * This ensures key events are properly dispatched to the game client.
-	 *
-	 * @param action the code to run while the canvas is focusable
+	 * Kept as a no-op wrapper so existing call sites still compile / read naturally.
+	 * The previous implementation toggled {@code Canvas.setFocusable(true)} around
+	 * dispatch; on many window managers that call nudges the OS to grant focus to the
+	 * game window, stealing it from whatever app the user was actually typing in.
+	 * Direct-listener dispatch (see {@link #dispatchKeyEvent}) makes the toggle
+	 * unnecessary, so this wrapper just runs the action.
 	 */
 	private static void withFocusCanvas(Runnable action)
 	{
-		Canvas canvas = getCanvas();
-		boolean originalFocus = canvas.isFocusable();
-		if (!originalFocus) canvas.setFocusable(true);
-
-		try
-		{
-			action.run();
-		}
-		finally
-		{
-			if (!originalFocus) canvas.setFocusable(false);
-		}
+		action.run();
 	}
 
 	/**
-	 * Dispatches a low-level KeyEvent to the canvas after a specified delay.
+	 * Delivers a synthetic KeyEvent to the canvas's registered listeners directly,
+	 * bypassing AWT's focus-aware dispatch pipeline. This is what eliminates the
+	 * focus-steal that {@code Canvas.dispatchEvent} combined with a focusable flip
+	 * used to cause.
 	 *
 	 * @param id       the KeyEvent type (e.g. KEY_TYPED, KEY_PRESSED, etc.)
 	 * @param keyCode  the key code from {@link KeyEvent}
@@ -59,7 +54,22 @@ public class Rs2Keyboard
 	{
 		Canvas canvas = getCanvas();
 		KeyEvent event = new KeyEvent(canvas, id, System.currentTimeMillis() + delay, 0, keyCode, keyChar);
-		canvas.dispatchEvent(event);
+		KeyListener[] listeners = canvas.getKeyListeners();
+		for (KeyListener l : listeners)
+		{
+			switch (id)
+			{
+				case KeyEvent.KEY_TYPED:
+					l.keyTyped(event);
+					break;
+				case KeyEvent.KEY_PRESSED:
+					l.keyPressed(event);
+					break;
+				case KeyEvent.KEY_RELEASED:
+					l.keyReleased(event);
+					break;
+			}
+		}
 	}
 
 	/**
