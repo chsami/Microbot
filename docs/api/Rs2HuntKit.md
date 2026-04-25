@@ -30,7 +30,7 @@ Like `Rs2Bank`, the kit UI uses `MenuAction.CC_OP` on widgets. **The `identifier
 
 ### Dev shell / client thread note
 
-Many Microbot “Rs2*” utilities are designed to be called from script/executor threads (not the RuneLite client thread). If you drive them from a `GameTick` subscription in the dev shell, avoid blocking waits and expect some helpers (like `openView()` and `withdrawX()` amount entry) to behave differently than in real scripts.
+Many Microbot “Rs2*” utilities are designed to be called from script/executor threads (not the RuneLite client thread). If you drive them from a `GameTick` subscription in the dev shell, avoid blocking waits and expect some helpers (like `openView()`) to behave differently than in real scripts (notably: `Global.sleepUntil(...)` is a no-op on the client thread). For **Deposit-X / Withdraw-X**, the “Enter amount:” wait matches `Rs2Bank` (`sleepUntil` on a widget predicate); script-thread callers are still best for reliable keyboard entry.
 
 ## Reading the cache
 

@@ -989,27 +989,11 @@ public final class Rs2HuntKit
 			return false;
 		}
 		invokeDepositMenu(op, rs2Item);
-		// Note: client-thread amount entry is inherently flaky in some contexts due to focus/timing.
-		// Prefer calling deposit/withdraw X from script threads when possible.
-		boolean found;
-		if (Microbot.getClient() != null && Microbot.getClient().isClientThread())
-		{
-			final boolean[] ok = {false};
-			net.runelite.client.plugins.microbot.util.Global.sleepUntilOnClientThread(() -> {
-				Widget widget = Rs2Widget.getWidget(ENTER_AMOUNT_GROUP, ENTER_AMOUNT_CHILD);
-				ok[0] = widget != null && "Enter amount:".equalsIgnoreCase(widget.getText());
-				return ok[0];
-			}, 5000);
-			found = ok[0];
-		}
-		else
-		{
-			found = sleepUntil(() -> {
-				Widget widget = Rs2Widget.getWidget(ENTER_AMOUNT_GROUP, ENTER_AMOUNT_CHILD);
-				return widget != null && "Enter amount:".equalsIgnoreCase(widget.getText());
-			}, 5000);
-		}
-		if (!found)
+		boolean foundEnterAmount = sleepUntil(() -> {
+			Widget widget = Rs2Widget.getWidget(ENTER_AMOUNT_GROUP, ENTER_AMOUNT_CHILD);
+			return widget != null && "Enter amount:".equalsIgnoreCase(widget.getText());
+		}, 5000);
+		if (!foundEnterAmount)
 		{
 			return false;
 		}
@@ -1379,27 +1363,11 @@ public final class Rs2HuntKit
 			return false;
 		}
 		invokeMenu(op, rs2Item);
-		// Note: client-thread amount entry is inherently flaky in some contexts due to focus/timing.
-		// Prefer calling deposit/withdraw X from script threads when possible.
-		boolean found;
-		if (Microbot.getClient() != null && Microbot.getClient().isClientThread())
-		{
-			final boolean[] ok = {false};
-			net.runelite.client.plugins.microbot.util.Global.sleepUntilOnClientThread(() -> {
-				Widget widget = Rs2Widget.getWidget(ENTER_AMOUNT_GROUP, ENTER_AMOUNT_CHILD);
-				ok[0] = widget != null && "Enter amount:".equalsIgnoreCase(widget.getText());
-				return ok[0];
-			}, 5000);
-			found = ok[0];
-		}
-		else
-		{
-			found = sleepUntil(() -> {
-				Widget widget = Rs2Widget.getWidget(ENTER_AMOUNT_GROUP, ENTER_AMOUNT_CHILD);
-				return widget != null && "Enter amount:".equalsIgnoreCase(widget.getText());
-			}, 5000);
-		}
-		if (!found)
+		boolean foundEnterAmount = sleepUntil(() -> {
+			Widget widget = Rs2Widget.getWidget(ENTER_AMOUNT_GROUP, ENTER_AMOUNT_CHILD);
+			return widget != null && "Enter amount:".equalsIgnoreCase(widget.getText());
+		}, 5000);
+		if (!foundEnterAmount)
 		{
 			return false;
 		}

@@ -395,6 +395,22 @@ net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem#lambda$loot$7
 net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem#lambda$loot$7(String, int, RS2Item): boolean  ->  net.runelite.api.TileItem#getQuantity(): int
 net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem#lootAllItemBasedOnValue(int, int): boolean  ->  net.runelite.api.ItemComposition#getName(): String
 net.runelite.client.plugins.microbot.util.grounditem.models.Rs2SpawnLocation#getItemName(): String  ->  net.runelite.api.ItemComposition#getName(): String
+net.runelite.client.plugins.microbot.util.huntkit.Rs2HuntKit#depositActionIndex(Rs2ItemModel, String): int  ->  net.runelite.api.widgets.Widget#getActions(): String[]
+net.runelite.client.plugins.microbot.util.huntkit.Rs2HuntKit#depositSlotBounds(int): Rectangle  ->  net.runelite.api.widgets.Widget#getBounds(): Rectangle
+net.runelite.client.plugins.microbot.util.huntkit.Rs2HuntKit#findKitSlotWidget(List, int): Widget  ->  net.runelite.api.widgets.Widget#getIndex(): int
+net.runelite.client.plugins.microbot.util.huntkit.Rs2HuntKit#getKitSideInventorySlotWidget(int): Widget  ->  net.runelite.api.widgets.Widget#getDynamicChildren(): Widget[]
+net.runelite.client.plugins.microbot.util.huntkit.Rs2HuntKit#getKitSideInventorySlotWidget(int): Widget  ->  net.runelite.api.widgets.Widget#getIndex(): int
+net.runelite.client.plugins.microbot.util.huntkit.Rs2HuntKit#invokeKitChromeAction(int, String): boolean  ->  net.runelite.api.widgets.Widget#getActions(): String[]
+net.runelite.client.plugins.microbot.util.huntkit.Rs2HuntKit#invokeKitChromeAction(int, String): boolean  ->  net.runelite.api.widgets.Widget#isHidden(): boolean
+net.runelite.client.plugins.microbot.util.huntkit.Rs2HuntKit#invokeMenu(int, Rs2ItemModel): void  ->  net.runelite.api.widgets.Widget#getBounds(): Rectangle
+net.runelite.client.plugins.microbot.util.huntkit.Rs2HuntKit#itemBounds(Rs2ItemModel): Rectangle  ->  net.runelite.api.widgets.Widget#getBounds(): Rectangle
+net.runelite.client.plugins.microbot.util.huntkit.Rs2HuntKit#kitItemContainer(): ItemContainer  ->  net.runelite.api.Client#getItemContainer(int): ItemContainer
+net.runelite.client.plugins.microbot.util.huntkit.Rs2HuntKit#lambda$depositX$15(): boolean  ->  net.runelite.api.widgets.Widget#getText(): String
+net.runelite.client.plugins.microbot.util.huntkit.Rs2HuntKit#lambda$withdrawX$20(): boolean  ->  net.runelite.api.widgets.Widget#getText(): String
+net.runelite.client.plugins.microbot.util.huntkit.Rs2HuntKit#scrollKitToSlot(int): boolean  ->  net.runelite.api.widgets.Widget#getHeight(): int
+net.runelite.client.plugins.microbot.util.huntkit.Rs2HuntKit#updateLocalKit(ItemContainerChanged): void  ->  net.runelite.api.Client#isClientThread(): boolean
+net.runelite.client.plugins.microbot.util.huntkit.Rs2HuntKit#updateLocalKit(ItemContainerChanged): void  ->  net.runelite.api.events.ItemContainerChanged#getContainerId(): int
+net.runelite.client.plugins.microbot.util.huntkit.Rs2HuntKit#withdrawActionIndex(Rs2ItemModel, String): int  ->  net.runelite.api.widgets.Widget#getActions(): String[]
 net.runelite.client.plugins.microbot.util.inventory.Rs2Gembag#onChatMessage(ChatMessage): void  ->  net.runelite.api.events.ChatMessage#getMessage(): String
 net.runelite.client.plugins.microbot.util.inventory.Rs2Gembag#onChatMessage(ChatMessage): void  ->  net.runelite.api.events.ChatMessage#getType(): ChatMessageType
 net.runelite.client.plugins.microbot.util.inventory.Rs2Gembag#onMenuOptionClicked(MenuOptionClicked): void  ->  net.runelite.api.events.MenuOptionClicked#getMenuOption(): String
