@@ -222,8 +222,15 @@ public final class Rs2HuntKit
 		return sleepUntil(Rs2HuntKit::isOpen, 3500);
 	}
 
+	/**
+	 * Fills traps/supplies from inventory via kit item **Fill** (only valid when kit UI is closed — same as in-game).
+	 */
 	public static boolean fill()
 	{
+		if (isOpen())
+		{
+			return false;
+		}
 		return Rs2Inventory.interact(KIT_ITEM_ID, "Fill") || Rs2Inventory.interact(KIT_NAME, "Fill");
 	}
 
@@ -794,6 +801,12 @@ public final class Rs2HuntKit
 		return -1;
 	}
 
+	private static boolean inventoryHasAtLeast(String name, int amount, boolean exact)
+	{
+		Rs2ItemModel inv = Rs2Inventory.get(name, false, exact);
+		return inv != null && Rs2Inventory.hasItemAmount(name, amount, inv.isStackable(), exact);
+	}
+
 	private static Widget getKitSideInventoryParent()
 	{
 		if (!isOpen())
@@ -1224,7 +1237,7 @@ public final class Rs2HuntKit
 
 	public static boolean withdrawItem(boolean checkInv, String name, boolean exact)
 	{
-		if (checkInv && Rs2Inventory.hasItem(name))
+		if (checkInv && Rs2Inventory.hasItem(name, exact))
 		{
 			return true;
 		}
@@ -1338,7 +1351,7 @@ public final class Rs2HuntKit
 
 	public static boolean withdrawFive(boolean checkInv, String name, boolean exact)
 	{
-		if (checkInv && Rs2Inventory.hasItemAmount(name, 5))
+		if (checkInv && inventoryHasAtLeast(name, 5, exact))
 		{
 			return true;
 		}
@@ -1427,7 +1440,7 @@ public final class Rs2HuntKit
 
 	public static boolean withdrawX(boolean checkInv, String name, int amount, boolean exact)
 	{
-		if (checkInv && Rs2Inventory.hasItemAmount(name, amount))
+		if (checkInv && inventoryHasAtLeast(name, amount, exact))
 		{
 			return true;
 		}
