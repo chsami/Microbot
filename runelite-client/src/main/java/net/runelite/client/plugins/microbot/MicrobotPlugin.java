@@ -22,6 +22,7 @@ import net.runelite.client.plugins.microbot.ui.MicrobotPluginListPanel;
 import net.runelite.client.plugins.microbot.ui.MicrobotTopLevelConfigPanel;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
+import net.runelite.client.plugins.microbot.util.huntkit.Rs2HuntKit;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Gembag;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2RunePouch;
@@ -229,6 +230,10 @@ public class MicrobotPlugin extends Plugin
 		else if (event.getContainerId() == InventoryID.BANK)
 		{
 			Rs2Bank.updateLocalBank(event);
+		}
+		else if (event.getContainerId() == InventoryID.HUNTSMANS_KIT)
+		{
+			Rs2HuntKit.updateLocalKit(event);
 		}
 		else if (Arrays.stream(getShopContainerIds()).anyMatch(sid -> Objects.equals(event.getContainerId(), sid))) {
 			Rs2Shop.storeShopItemsInMemory(event, event.getContainerId());
