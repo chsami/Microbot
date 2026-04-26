@@ -415,6 +415,13 @@ public abstract class Rs2Tile implements Tile {
             startX = playerLoc.getX() - Microbot.getClient().getBaseX();
             startY = playerLoc.getY() - Microbot.getClient().getBaseY();
         }
+        // Player can be outside the loaded scene grid (instance transitions, stale
+        // worldview, base mismatch in non-top-level views). Without this guard the
+        // visited[startX][startY] write throws ArrayIndexOutOfBoundsException and
+        // crashes the walker thread mid-loop.
+        if (!isWithinBounds(startX, startY)) {
+            return false;
+        }
         final int startPoint = (startX << 16) | startY;
 
         ArrayDeque<Integer> queue = new ArrayDeque<>();
