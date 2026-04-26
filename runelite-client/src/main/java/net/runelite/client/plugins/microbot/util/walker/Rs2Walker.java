@@ -262,10 +262,18 @@ public class Rs2Walker {
      * @param distance
      */
     private static WalkerState processWalk(WorldPoint target, int distance) {
-        return processWalk(target, distance, 0);
+        return processWalk(target, distance, 0, 0, Integer.MAX_VALUE);
     }
 
-    private static WalkerState processWalk(WorldPoint target, int distance, int partialRetries) {
+    // Bound for the no-progress recursion path (line where finalDist >= distance and we
+    // re-enter). Each retry can burn ~10s on a failed transport interaction or a stuck
+    // mini-map click, so 5 retries caps the worst-case stuck loop at ~50s before the
+    // walker bails to UNREACHABLE. Without this, a transport that passes plan-time but
+    // fails at click-time put the walker into an unbounded loop (3h+ in the wild).
+    private static final int MAX_NO_PROGRESS_RETRIES = 5;
+
+    private static WalkerState processWalk(WorldPoint target, int distance, int partialRetries,
+                                           int noProgressRetries, int prevFinalDist) {
         if (debug) {
             return WalkerState.EXIT;
         }
@@ -340,7 +348,7 @@ public class Rs2Walker {
                 lastMovedTimeMs = System.currentTimeMillis();
                 stuckCount = 0;
                 setTarget(target);
-                return processWalk(target, distance, partialRetries);
+                return processWalk(target, distance, partialRetries, noProgressRetries, prevFinalDist);
             }
             if (stuckCount > 10) {
                 var reachable = Rs2Tile.getReachableTilesFromTile(Rs2Player.getWorldLocation(), 5).keySet();
@@ -588,7 +596,7 @@ public class Rs2Walker {
                     log.info("[Walker] Walked partial path ({} tiles remaining), retrying from current position (attempt {}/3)",
                             finalDist, partialRetries + 1);
                     recalculatePath();
-                    return processWalk(target, distance, partialRetries + 1);
+                    return processWalk(target, distance, partialRetries + 1, noProgressRetries, prevFinalDist);
                 }
                 log.info("[Walker] Walked partial path, exhausted retries. final distance to target: {}", finalDist);
                 Telemetry.recordUnreachable("partial-retries-exhausted", Rs2Player.getWorldLocation(),
@@ -601,7 +609,16 @@ public class Rs2Walker {
                     // recursion loop that would spin on isNearPath() while the player is walking.
                     sleepUntil(() -> isNearPath() || !Rs2Player.isMoving(), 2000);
                 }
-                return processWalk(target, distance, partialRetries);
+                int nextNoProgress = (finalDist >= prevFinalDist) ? noProgressRetries + 1 : 0;
+                if (nextNoProgress > MAX_NO_PROGRESS_RETRIES) {
+                    log.warn("[Walker] No progress after {} retries (finalDist={}, prevFinalDist={}, exitReason={}) — bailing UNREACHABLE",
+                            nextNoProgress, finalDist, prevFinalDist, exitReason);
+                    Telemetry.recordUnreachable("no-progress-retries-exhausted", Rs2Player.getWorldLocation(),
+                            target, Rs2Player.getWorldLocation(), 0, distance, ShortestPathPlugin.getPathfinder());
+                    setTarget(null);
+                    return WalkerState.UNREACHABLE;
+                }
+                return processWalk(target, distance, partialRetries, nextNoProgress, finalDist);
             }
         } catch (Exception ex) {
             if (ex instanceof InterruptedException) {
@@ -2152,7 +2169,21 @@ public class Rs2Walker {
 
                         handleObject(transport, object);
                         sleepUntil(() -> !Rs2Player.isAnimating());
-                        return sleepUntilTrue(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < OFFSET);
+                        boolean reached = sleepUntilTrue(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < OFFSET);
+                        if (!reached) {
+                            // Static eligibility (member flag, levels, quest, varbits) said this
+                            // transport was usable, but the click produced no movement (10s timeout).
+                            // Hidden server-side gate (region unlock, sub-quest progression, etc.).
+                            // Blacklist the origin so the next pathfinder run routes around it
+                            // instead of re-emitting the same broken edge — the unbounded retry
+                            // loop this prevented produced ~3 hours of position oscillation in the
+                            // wild (240 STALL_RECALC events on one Varrock palace shortcut).
+                            log.warn("[Walker] Transport {} (type={} origin={} dest={}) failed to deliver player after click — blacklisting origin",
+                                    transport.getDisplayInfo(), transport.getType(), transport.getOrigin(), transport.getDestination());
+                            ShortestPathPlugin.getPathfinderConfig().addFailedTransportRestriction(transport.getOrigin());
+                            setTarget(null);
+                        }
+                        return reached;
                     }
                 }
             }

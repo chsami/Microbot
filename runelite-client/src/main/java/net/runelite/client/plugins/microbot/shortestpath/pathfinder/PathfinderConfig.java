@@ -122,6 +122,16 @@ public class PathfinderConfig {
     private final Set<Integer> restrictedPointsPacked;
     private final Set<Integer> internalRestrictedPointsPacked;
     private volatile boolean useNpcs;
+
+    // Runtime blacklist of transport origin tiles whose interaction failed to deliver
+    // the player to the destination. The static eligibility checks (member flag, levels,
+    // quests, varbits) can't capture every server-side gate (region unlocks, sub-quest
+    // progression, etc.), so a transport can pass plan-time and still no-op at click
+    // time. Without this, the pathfinder keeps emitting the same broken edge and the
+    // walker re-attempts it forever. TTL clears stale entries so the player can retry
+    // after world hops or unlock progression.
+    private final Map<Integer, Long> failedTransportOriginsPacked = new ConcurrentHashMap<>();
+    private static final long FAILED_TRANSPORT_TTL_MS = 5L * 60L * 1000L;
     //END microbot variables
     private volatile TeleportationItem useTeleportationItems;
 
@@ -565,6 +575,27 @@ public class PathfinderConfig {
                         .allMatch(varplayerCheck -> varplayerCheck.matches(Microbot.getVarbitPlayerValue(varplayerCheck.getVarplayerId())));
     }
 
+    public void addFailedTransportRestriction(WorldPoint origin) {
+        if (origin == null) return;
+        failedTransportOriginsPacked.put(WorldPointUtil.packWorldPoint(origin), System.currentTimeMillis());
+    }
+
+    public void clearFailedTransportRestrictions() {
+        failedTransportOriginsPacked.clear();
+    }
+
+    private boolean isRecentlyFailedOrigin(WorldPoint origin) {
+        if (origin == null) return false;
+        int packed = WorldPointUtil.packWorldPoint(origin);
+        Long failedAt = failedTransportOriginsPacked.get(packed);
+        if (failedAt == null) return false;
+        if (System.currentTimeMillis() - failedAt > FAILED_TRANSPORT_TTL_MS) {
+            failedTransportOriginsPacked.remove(packed);
+            return false;
+        }
+        return true;
+    }
+
     private boolean useTransport(Transport transport) {
         boolean traceMoa = transport.getType() == TransportType.SEASONAL_TRANSPORT
                 && transport.getDisplayInfo() != null
@@ -574,6 +605,14 @@ public class PathfinderConfig {
         // unrecognised name), don't let the pathfinder keep routing through it.
         if (traceMoa && Rs2Walker.blacklistedMoaDestinations.contains(
                 WorldPointUtil.packWorldPoint(transport.getDestination()))) {
+            return false;
+        }
+
+        // Runtime blacklist for transports whose origin tile recently failed to deliver
+        // the player. Skip before any other check so a broken edge stops re-emerging
+        // from the next pathfinder run (see addFailedTransportRestriction comment).
+        if (isRecentlyFailedOrigin(transport.getOrigin())) {
+            log.debug("Transport ( O: {} D: {} ) skipped: origin recently failed", transport.getOrigin(), transport.getDestination());
             return false;
         }
 
