@@ -420,6 +420,19 @@ public class PathfinderConfig {
         }
         long similarTime = System.currentTimeMillis() - similarStart;
 
+        // Patch H: scene-discovered doors. The TSV is incomplete (palace internal
+        // doors, throne rooms, etc.) — without these, BFS can't route through them
+        // and bails UNREACHABLE for destinations a human player could trivially
+        // reach. Scan loaded scene for door WallObjects and inject as virtual
+        // transports so BFS plans through them. handleDoors() in the walker opens
+        // them at click time.
+        long doorStart = System.currentTimeMillis();
+        int doorsAdded = discoverSceneDoors();
+        long doorTime = System.currentTimeMillis() - doorStart;
+        if (doorsAdded > 0) {
+            log.info("[refreshTransports] scene doors: added={}, time={}ms", doorsAdded, doorTime);
+        }
+
         refreshAvailableItemIds = null;
         refreshBoostedLevels = null;
         refreshCurrencyCache = null;
@@ -617,6 +630,130 @@ public class PathfinderConfig {
      */
     public boolean isWalkingEdgeBlocked(int fromPacked, int toPacked) {
         return !blockedWalkingEdges.isEmpty() && blockedWalkingEdges.contains(packEdge(fromPacked, toPacked));
+    }
+
+    /**
+     * Patch H: enumerate door WallObjects in the loaded scene and inject them as
+     * virtual Transport edges so BFS can route through doors not present in
+     * transports.tsv (palace internal chambers, generic interior doors, etc.).
+     *
+     * Only WallObjects whose ObjectComposition exposes an "Open" action are
+     * added — gated actions (Pay-toll, Pick-lock) imply quest/skill requirements
+     * that the TSV captures more accurately, so we defer to the TSV for those.
+     * Existing transports at the same edge are not overridden.
+     *
+     * @return number of door edges added (one direction == 1, bidirectional adds 2)
+     */
+    private int discoverSceneDoors() {
+        if (!GameState.LOGGED_IN.equals(client.getGameState())) return 0;
+
+        // Whole scan on client thread in one hop. Each WallObject requires an
+        // ObjectComposition lookup which itself needs the client thread; doing
+        // them individually from a background thread costs ~26s for ~200 walls
+        // because every lookup blocks waiting for a thread switch.
+        Integer result = Microbot.getClientThread().runOnClientThreadOptional(this::discoverSceneDoorsOnClientThread)
+                .orElse(0);
+        return result != null ? result : 0;
+    }
+
+    private int discoverSceneDoorsOnClientThread() {
+        try {
+            if (client.getTopLevelWorldView().getScene().isInstance()) return 0;
+        } catch (Exception e) {
+            return 0;
+        }
+
+        Player player = client.getLocalPlayer();
+        if (player == null) return 0;
+        WorldPoint playerLoc = player.getWorldLocation();
+        if (playerLoc == null) return 0;
+        int playerX = playerLoc.getX();
+        int playerY = playerLoc.getY();
+        int playerPlane = playerLoc.getPlane();
+
+        Scene scene = player.getWorldView().getScene();
+        Tile[][][] tiles = scene.getTiles();
+        if (tiles == null) return 0;
+
+        int added = 0;
+        for (int z = 0; z < tiles.length; z++) {
+            Tile[][] plane = tiles[z];
+            if (plane == null) continue;
+            for (int x = 0; x < plane.length; x++) {
+                Tile[] col = plane[x];
+                if (col == null) continue;
+                for (int y = 0; y < col.length; y++) {
+                    Tile tile = col[y];
+                    if (tile == null) continue;
+                    WallObject wall = tile.getWallObject();
+                    if (wall == null) continue;
+
+                    WorldPoint probe = wall.getWorldLocation();
+                    if (probe == null || probe.getPlane() != playerPlane) continue;
+                    // Same scene-radius cap as the rest of the walker (52 tiles).
+                    if (Math.max(Math.abs(probe.getX() - playerX), Math.abs(probe.getY() - playerY)) > 52) continue;
+                    if (Rs2Walker.sessionBlacklistedDoors.contains(probe)) continue;
+
+                    ObjectComposition comp = client.getObjectDefinition(wall.getId());
+                    if (comp == null || comp.getImpostorIds() != null) continue;
+                    String name = comp.getName();
+                    if (name == null || "null".equals(name)) continue;
+
+                    String[] actions = comp.getActions();
+                    if (actions == null) continue;
+                    String action = null;
+                    for (String a : actions) {
+                        if (a == null) continue;
+                        if (a.toLowerCase().startsWith("open")) {
+                            action = a;
+                            break;
+                        }
+                    }
+                    if (action == null) continue;
+
+                    int dx, dy;
+                    switch (wall.getOrientationA()) {
+                        case 1:   dx = -1; dy =  0; break;
+                        case 2:   dx =  0; dy =  1; break;
+                        case 4:   dx =  1; dy =  0; break;
+                        case 8:   dx =  0; dy = -1; break;
+                        default: continue;
+                    }
+
+                    WorldPoint neighbor = new WorldPoint(probe.getX() + dx, probe.getY() + dy, probe.getPlane());
+                    if (Rs2Walker.sessionBlacklistedDoors.contains(neighbor)) continue;
+
+                    int objectId = comp.getId();
+                    String displayInfo = "Door (" + name + ") @ " + probe;
+                    added += addRuntimeDoorEdge(probe, neighbor, displayInfo, action, name, objectId);
+                    added += addRuntimeDoorEdge(neighbor, probe, displayInfo, action, name, objectId);
+                }
+            }
+        }
+        return added;
+    }
+
+    private int addRuntimeDoorEdge(WorldPoint origin, WorldPoint destination,
+                                   String displayInfo, String action, String name, int objectId) {
+        Set<Transport> existing = transports.get(origin);
+        if (existing != null) {
+            for (Transport t : existing) {
+                if (destination.equals(t.getDestination())) {
+                    return 0; // TSV already covers this edge
+                }
+            }
+        }
+        Transport door = new Transport(origin, destination, displayInfo,
+                TransportType.TRANSPORT, false, action, name, objectId);
+        // Per refreshTransports invariant, transports and transportsPacked share
+        // the same Set reference per origin — add once via the shared reference.
+        Set<Transport> set = transports.computeIfAbsent(origin, k -> new HashSet<>());
+        int packedOrigin = WorldPointUtil.packWorldPoint(origin);
+        if (transportsPacked.get(packedOrigin) == null) {
+            transportsPacked.put(packedOrigin, set);
+        }
+        set.add(door);
+        return 1;
     }
 
     public void addFailedTransportRestriction(WorldPoint origin) {
