@@ -541,6 +541,43 @@ public class Rs2Walker {
                         }
                     }
 
+                    // Pre-scan the path segment we're about to skip past for any closed
+                    // door. handleDoors() per-iteration only inspects the current tile
+                    // boundary, but `i = targetIdx` jumps ahead after the click, so any
+                    // door between i and targetIdx never gets opened — the server then
+                    // strands the player against the closed door that BFS treated as a
+                    // normal walking edge. Open it here before the click goes through.
+                    // Walk j ascending — path tiles are in walking order, so the first
+                    // door we find is the nearest closed door between the player and
+                    // wherever the OSRS server will route them on this click. handleDoors()
+                    // opens it and returns; we break and let processWalk recurse so the
+                    // next iteration starts from the player's new position past the door
+                    // (and catches any further-out doors on its own next pre-scan).
+                    //
+                    // Bounded by HANDLER_RANGE distance, NOT by targetIdx — when the
+                    // walker uses an interpolated click target (the targetIdx < i path
+                    // above sets targetIdx = i - 1), the indexed range is empty but the
+                    // actual click destination is far, so the relevant doors live along
+                    // path[i..end] within Euclidean reach. Iterate until a door is found
+                    // or every tile in scene-range has been checked.
+                    boolean preDoorHandled = false;
+                    int preDoorAt = -1;
+                    for (int j = i; j < path.size(); j++) {
+                        int distFromPlayer = path.get(j).distanceTo2D(Rs2Player.getWorldLocation());
+                        if (distFromPlayer > HANDLER_RANGE) continue; // out of scene; handle when closer
+                        if (handleDoors(path, j)) {
+                            preDoorHandled = true;
+                            preDoorAt = j;
+                            break;
+                        }
+                    }
+                    if (preDoorHandled) {
+                        log.info("[Walker pre-scan] opened door at path idx {} ({}) before clicking past — re-evaluating",
+                                preDoorAt, path.get(preDoorAt));
+                        exitReason = "door-prescan";
+                        break;
+                    }
+
                     WorldPoint posBefore = playerLoc;
                     boolean clicked;
                     if (inInstance) {
@@ -548,6 +585,8 @@ public class Rs2Walker {
                     } else {
                         clicked = Rs2Walker.walkMiniMap(getPointWithWallDistance(targetWp));
                     }
+                    log.info("[Walker click] target={} pathIdx={} playerBefore={} clicked={}",
+                            targetWp, targetIdx, posBefore, clicked);
                     if (clicked) {
                         final WorldPoint b = targetWp;
                         final WorldPoint before = posBefore;
@@ -566,6 +605,12 @@ public class Rs2Walker {
                             if (b.distanceTo2D(now) <= proximityWake) return true;
                             return before.distanceTo2D(now) >= progressCap;
                         }, 2000);
+                        WorldPoint posAfter = Rs2Player.getWorldLocation();
+                        int moved = posAfter == null ? -1 : posBefore.distanceTo2D(posAfter);
+                        int distLeft = posAfter == null ? -1 : b.distanceTo2D(posAfter);
+                        long elapsedMs = System.currentTimeMillis() - clickedAt;
+                        log.info("[Walker click] result moved={} tiles posAfter={} distFromTarget={} elapsedMs={} reachedProximity={}",
+                                moved, posAfter, distLeft, elapsedMs, distLeft >= 0 && distLeft <= proximityWake);
                     }
                     // Keep stuck-detection honest: observed movement resets the movement timer.
                     // Without this, isStuckTooLong() fires after long successful walks because
@@ -1498,9 +1543,6 @@ public class Rs2Walker {
             return false;
         }
 
-        boolean diagonal = Math.abs(fromWp.getX() - toWp.getX()) > 0
-                && Math.abs(fromWp.getY() - toWp.getY()) > 0;
-
         for (int offset = 0; offset <= 1; offset++) {
             int doorIdx = index + offset;
             if (doorIdx >= path.size()) continue;
@@ -1510,12 +1552,14 @@ public class Rs2Walker {
                     ? Rs2WorldPoint.convertInstancedWorldPoint(rawDoorWp)
                     : rawDoorWp;
 
+            // Only probe the path tiles themselves (fromWp and toWp via the offset
+            // loop). Diagonal corner probes were opening doors on shoulder tiles
+            // that don't actually block the fromWp↔toWp edge — a wall at the
+            // corner facing one of the path tiles passes the orientation check but
+            // is on a different edge entirely. The OSRS server picks a shoulder
+            // for diagonals; opening the wrong shoulder's door is wasted action.
             List<WorldPoint> probes = new ArrayList<>();
             probes.add(doorWp);
-            if (diagonal) {
-                probes.add(new WorldPoint(toWp.getX(), fromWp.getY(), doorWp.getPlane()));
-                probes.add(new WorldPoint(fromWp.getX(), toWp.getY(), doorWp.getPlane()));
-            }
 
             for (WorldPoint probe : probes) {
                 boolean adjacentToPath = probe.distanceTo(fromWp) <= 1 || probe.distanceTo(toWp) <= 1;
