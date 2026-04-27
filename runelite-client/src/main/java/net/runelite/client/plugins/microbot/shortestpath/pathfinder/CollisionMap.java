@@ -226,6 +226,10 @@ public class CollisionMap {
             if (visited.get(neighborPacked)) continue;
             if (config.getRestrictedPointsPacked().contains(neighborPacked)) continue;
             if (config.getCustomRestrictions().contains(neighborPacked)) continue;
+            // Block walking across edges whose only crossing is a filtered transport
+            // (e.g. trellis fence on F2P). The TSV transport entry is the only signal
+            // the obstacle exists; without this guard BFS strolls across.
+            if (config.isWalkingEdgeBlocked(node.packedPosition, neighborPacked)) continue;
 
             if (ignoreCollisionPacked.contains(node.packedPosition)) {
                 neighbors.add(new Node(neighborPacked, node));

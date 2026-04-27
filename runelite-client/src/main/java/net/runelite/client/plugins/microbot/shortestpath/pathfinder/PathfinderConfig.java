@@ -132,6 +132,16 @@ public class PathfinderConfig {
     // after world hops or unlock progression.
     private final Map<Integer, Long> failedTransportOriginsPacked = new ConcurrentHashMap<>();
     private static final long FAILED_TRANSPORT_TTL_MS = 5L * 60L * 1000L;
+
+    // Walking edges that the BFS must treat as walls because the only known way to
+    // cross them is a transport that's currently filtered out (member flag, quest, F2P
+    // gate, etc.). Trellis at (3228,3470)<->(3228,3471) is the canonical case: the
+    // upstream collision map omits the fence, relying on the agility-shortcut transport
+    // to imply the obstacle. Without this set, BFS happily walks across the fence as if
+    // it were open ground when the transport is excluded — producing paths that look
+    // valid but require climbing an obstacle the player can't use. Encoded as
+    // (fromPacked << 32) | toPacked. Rebuilt every refreshTransports().
+    private final Set<Long> blockedWalkingEdges = ConcurrentHashMap.newKeySet();
     //END microbot variables
     private volatile TeleportationItem useTeleportationItems;
 
@@ -298,6 +308,7 @@ public class PathfinderConfig {
         transports.clear();
         transportsPacked.clear();
         usableTeleports.clear();
+        blockedWalkingEdges.clear();
 
         long mergeStart = System.currentTimeMillis();
         Map<WorldPoint, Set<Transport>> mergedList = createMergedList();
@@ -368,7 +379,25 @@ public class PathfinderConfig {
                 stats[2] += (int)(elapsed / 1_000);
                 if (usable) stats[1]++;
 
-                if (!usable) continue;
+                if (!usable) {
+                    // The transport is filtered out, but the TSV entry implies an
+                    // obstacle exists between origin and destination — the upstream
+                    // collision map sometimes relies on the transport edge to encode
+                    // the fence/jump-gap. If origin and destination are adjacent
+                    // (Chebyshev 1) on the same plane, treat the walking edge as
+                    // blocked in both directions so BFS doesn't stroll across.
+                    WorldPoint o = transport.getOrigin();
+                    WorldPoint d = transport.getDestination();
+                    if (o != null && d != null
+                            && o.getPlane() == d.getPlane()
+                            && Math.max(Math.abs(o.getX() - d.getX()), Math.abs(o.getY() - d.getY())) == 1) {
+                        int op = WorldPointUtil.packWorldPoint(o);
+                        int dp = WorldPointUtil.packWorldPoint(d);
+                        blockedWalkingEdges.add(packEdge(op, dp));
+                        blockedWalkingEdges.add(packEdge(dp, op));
+                    }
+                    continue;
+                }
                 checkedTransports++;
                 if (point == null) {
                     usableTeleports.add(transport);
@@ -573,6 +602,21 @@ public class PathfinderConfig {
         return transport.getVarplayers().isEmpty() ||
                 transport.getVarplayers().stream()
                         .allMatch(varplayerCheck -> varplayerCheck.matches(Microbot.getVarbitPlayerValue(varplayerCheck.getVarplayerId())));
+    }
+
+    private static long packEdge(int fromPacked, int toPacked) {
+        return ((long) fromPacked << 32) | (toPacked & 0xFFFFFFFFL);
+    }
+
+    /**
+     * True when the walking edge from {@code fromPacked} to {@code toPacked} is
+     * blocked by an excluded transport — i.e. the only known way to traverse this
+     * edge is a transport the player can't currently use (quest/skill/F2P gate).
+     * Used by {@link CollisionMap#getNeighbors} to prevent BFS from walking across
+     * fences whose only crossing is a filtered agility shortcut etc.
+     */
+    public boolean isWalkingEdgeBlocked(int fromPacked, int toPacked) {
+        return !blockedWalkingEdges.isEmpty() && blockedWalkingEdges.contains(packEdge(fromPacked, toPacked));
     }
 
     public void addFailedTransportRestriction(WorldPoint origin) {
