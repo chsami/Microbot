@@ -1276,8 +1276,10 @@ public class QuestScript extends Script {
                             .orElse(null));
         }
 
+        // canReach() pathfinds through closed doors (the walker opens them en route), so canReach==true
+        // doesn't mean a direct click will succeed. Require line-of-sight too, or we walk instead.
         if (npc != null && npc.getLocalLocation() != null && Rs2Camera.isTileOnScreen(npc.getLocalLocation())
-                && (Microbot.getClient().isInInstancedRegion() || Rs2Walker.canReach(npc.getWorldLocation()))) {
+                && (Microbot.getClient().isInInstancedRegion() || (Rs2Walker.canReach(npc.getWorldLocation()) && npc.hasLineOfSight()))) {
             Rs2Walker.setTarget(null);
 
             if (step.getText().stream().anyMatch(x -> x.toLowerCase().contains("kill"))) {
@@ -1381,8 +1383,11 @@ public class QuestScript extends Script {
             return false;
         }
 
+        // Walk first when more than one tile away AND the target is either unreachable or not in line of
+        // sight. canReach() can still return true with a closed door between us; routing through the
+        // walker lets it open the door before we try to interact.
         if (step.getDefinedPoint().getWorldPoint() != null && Rs2Player.getWorldLocation().distanceTo2D(step.getDefinedPoint().getWorldPoint()) > 1
-                && (object == null || !Rs2Walker.canReach(object.getWorldLocation()))) {
+                && (object == null || !Rs2Walker.canReach(object.getWorldLocation()) || !hasLineOfSightToObject(object))) {
             WorldPoint targetTile = null;
             WorldPoint stepLocation = object == null ? step.getDefinedPoint().getWorldPoint() : object.getWorldLocation();
             int radius = 0;
@@ -1475,6 +1480,12 @@ public class QuestScript extends Script {
                 return action;
         }
 
+        // Fallback: first non-empty action (the object's default left-click).
+        for (var action : actions) {
+            if (action != null && !action.isEmpty())
+                return action;
+        }
+
         return "";
     }
 
@@ -1485,17 +1496,34 @@ public class QuestScript extends Script {
         if (npcComp == null)
             return "Talk-to";
 
-        for (var action : npcComp.getActions()) {
+        var actions = npcComp.getActions();
+
+        for (var action : actions) {
             if (action != null && step.getText().stream().anyMatch(x -> x.toLowerCase().contains(action.toLowerCase())))
                 return action;
         }
 
-        return "Talk-to";
+        // Fallback: prefer Talk-to if the NPC has it, otherwise the first non-empty action.
+        String fallback = null;
+        for (var action : actions) {
+            if (action == null || action.isEmpty()) continue;
+            if ("Talk-to".equalsIgnoreCase(action)) return action;
+            if (fallback == null) fallback = action;
+        }
+        return fallback != null ? fallback : "Talk-to";
     }
 
 	private String chooseCorrectItemOption(QuestStep step, int itemId) {
-		for (var action : Rs2Inventory.get(itemId).getInventoryActions()) {
+		var actions = Rs2Inventory.get(itemId).getInventoryActions();
+
+		for (var action : actions) {
 			if (action != null && step.getText().stream().anyMatch(x -> x.toLowerCase().contains(action.toLowerCase())))
+				return action;
+		}
+
+		// Fallback: first non-empty inventory action (the item's default left-click).
+		for (var action : actions) {
+			if (action != null && !action.isEmpty())
 				return action;
 		}
 

@@ -255,8 +255,10 @@ public class PouchScript extends Script {
         if (pouch == null) {
             return;
         }
+        if (event.getMenuOption() == null) {
+            return;
+        }
         final int tick = Microbot.getClient().getTickCount() + 3;
-        System.out.println(event.getMenuOption());
         switch (event.getMenuOption().toLowerCase()) {
             case "fill":
                 clickedItems.add(new ClickOperation(pouch, tick, 1));

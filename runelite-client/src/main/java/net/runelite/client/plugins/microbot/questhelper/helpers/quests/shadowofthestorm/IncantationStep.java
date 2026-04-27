@@ -132,7 +132,7 @@ public class IncantationStep extends DetailedQuestStep
 			return;
 		}
 
-		if (event.getMenuOption().equals("Chant"))
+		if ("Chant".equals(event.getMenuOption()))
 		{
 			incantationPosition = 0;
 		}
