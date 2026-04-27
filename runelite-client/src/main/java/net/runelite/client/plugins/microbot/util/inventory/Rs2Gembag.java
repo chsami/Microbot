@@ -56,6 +56,7 @@ public class Rs2Gembag {
 
     public static void onMenuOptionClicked(MenuOptionClicked event) {
         if (!hasGemBag() || !isGemBagOpen()) return;
+        if (event.getMenuOption() == null) return;
 
         String itemName = Rs2UiHelper.stripColTags(event.getMenuTarget());
         if (!itemName.toLowerCase().contains("gem bag")) return;
