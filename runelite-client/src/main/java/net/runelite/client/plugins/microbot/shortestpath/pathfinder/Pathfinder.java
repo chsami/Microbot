@@ -325,45 +325,6 @@ public class Pathfinder implements Runnable {
 
             log.info("[Pathfinder] run() completed. done={}, cancelled={}, stats={}",
                     done, cancelled, getStats() != null ? getStats().toString() : "null");
-
-            // Diagnostic: walk the bestLastNode chain and log every transport hop in
-            // the final path. Lets us prove which transports BFS actually selected
-            // (e.g., distinguishes a palace door from an agility-shortcut trellis at
-            // adjacent tiles). Cheap — only walks the linked list once per run.
-            if (bestLastNode != null) {
-                int hops = 0;
-                Node cur = bestLastNode;
-                while (cur != null && cur.previous != null) {
-                    if (cur instanceof TransportNode) {
-                        log.info("[Pathfinder] transport hop in path: {} -> {} cost={}",
-                                WorldPointUtil.toString(cur.previous.packedPosition),
-                                WorldPointUtil.toString(cur.packedPosition),
-                                cur.cost);
-                        hops++;
-                    }
-                    cur = cur.previous;
-                }
-                if (hops == 0) {
-                    log.info("[Pathfinder] transport hops in path: 0 (walking-only)");
-                }
-
-                // Dump the full raw path (pre-smoother) for diagnosis. Tells us the
-                // actual tile sequence BFS picked, so we can spot illegal wall steps
-                // (e.g., (3228,3470) -> (3228,3471) without a transport — which would
-                // be the trellis fence walked through as if it weren't there).
-                java.util.List<WorldPoint> rawPath = bestLastNode.getPath();
-                int sz = rawPath.size();
-                log.info("[Pathfinder] raw path: {} tiles", sz);
-                if (sz > 0) {
-                    StringBuilder sb = new StringBuilder("[Pathfinder] raw path tiles: ");
-                    for (int i = 0; i < sz; i++) {
-                        WorldPoint p = rawPath.get(i);
-                        sb.append("(").append(p.getX()).append(",").append(p.getY()).append(",").append(p.getPlane()).append(")");
-                        if (i < sz - 1) sb.append(" ");
-                    }
-                    log.info(sb.toString());
-                }
-            }
         }
     }
 

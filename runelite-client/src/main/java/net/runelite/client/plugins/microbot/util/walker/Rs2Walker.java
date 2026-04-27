@@ -635,7 +635,7 @@ public class Rs2Walker {
                     if (isWalkCancelled(target)) {
                         return WalkerState.EXIT;
                     }
-                    log.info("[Walker click] target={} pathIdx={} playerBefore={} clicked={}",
+                    log.debug("[Walker click] target={} pathIdx={} playerBefore={} clicked={}",
                             targetWp, targetIdx, posBefore, clicked);
                     if (clicked) {
                         final WorldPoint b = targetWp;
@@ -685,7 +685,7 @@ public class Rs2Walker {
                         int moved = posAfter == null ? -1 : posBefore.distanceTo2D(posAfter);
                         int distLeft = posAfter == null ? -1 : b.distanceTo2D(posAfter);
                         long elapsedMs = System.currentTimeMillis() - clickedAt;
-                        log.info("[Walker click] result moved={} tiles posAfter={} distFromTarget={} elapsedMs={} reachedProximity={}",
+                        log.debug("[Walker click] result moved={} tiles posAfter={} distFromTarget={} elapsedMs={} reachedProximity={}",
                                 moved, posAfter, distLeft, elapsedMs, distLeft >= 0 && distLeft <= proximityWake);
                     }
                     // Keep stuck-detection honest: observed movement resets the movement timer.
