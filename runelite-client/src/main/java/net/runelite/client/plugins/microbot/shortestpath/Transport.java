@@ -119,6 +119,19 @@ public class Transport {
     @Getter
     private boolean isMembers = false;
 
+    /**
+     * True for runtime virtual edges injected by PathfinderConfig.discoverSceneDoors
+     * (Patch H). These represent scene WallObjects so BFS can route through doors
+     * not in transports.tsv. handleTransports must skip them — handleDoors opens
+     * the actual wall via orientation-checked WallObject scan, which is the only
+     * path-edge-aware way to interact with these doors. Letting handleTransports
+     * fire on a scene-discovered transport opens any door whose two tiles both
+     * appear on the path even when the path doesn't actually traverse it.
+     */
+    @Getter
+    @Setter
+    private boolean sceneDiscovered = false;
+
 
 
     /**

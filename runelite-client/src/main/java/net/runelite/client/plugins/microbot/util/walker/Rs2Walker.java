@@ -262,10 +262,18 @@ public class Rs2Walker {
      * @param distance
      */
     private static WalkerState processWalk(WorldPoint target, int distance) {
-        return processWalk(target, distance, 0);
+        return processWalk(target, distance, 0, 0, Integer.MAX_VALUE);
     }
 
-    private static WalkerState processWalk(WorldPoint target, int distance, int partialRetries) {
+    // Bound for the no-progress recursion path (line where finalDist >= distance and we
+    // re-enter). Each retry can burn ~10s on a failed transport interaction or a stuck
+    // mini-map click, so 5 retries caps the worst-case stuck loop at ~50s before the
+    // walker bails to UNREACHABLE. Without this, a transport that passes plan-time but
+    // fails at click-time put the walker into an unbounded loop (3h+ in the wild).
+    private static final int MAX_NO_PROGRESS_RETRIES = 5;
+
+    private static WalkerState processWalk(WorldPoint target, int distance, int partialRetries,
+                                           int noProgressRetries, int prevFinalDist) {
         if (debug) {
             return WalkerState.EXIT;
         }
@@ -307,6 +315,25 @@ public class Rs2Walker {
                 dst = path.get(path.size()-1);
             }
 
+            // BFS exhausted both queues without reaching the target — destination is
+            // genuinely unreachable (quest-locked gate, walled-off area, etc.). Bail
+            // ONLY if endpoint is outside the caller's proximity threshold: when
+            // dst is within `distance` of target, the partial path lands the player
+            // close enough to satisfy the request (e.g., NPCs accept 1-tile reach,
+            // BFS commonly exhausts at adjacent-to-target when the final tile is a
+            // throne/altar/object the player can't stand on). Walking the path is
+            // correct in that case. Bailing only matters when the closest-found tile
+            // is genuinely far — that's what produced the 25+ tile palace tour.
+            if (pathfinder.isSearchExhausted()
+                    && (dst == null || dst.distanceTo(target) > distance)) {
+                log.warn("[Walker] Pathfinder exhausted search without reaching target {} (best endpoint {}, dist={}, threshold={}) — bailing UNREACHABLE",
+                        target, dst, dst == null ? -1 : dst.distanceTo(target), distance);
+                Telemetry.recordUnreachable("search-exhausted", Rs2Player.getWorldLocation(),
+                        target, dst, path == null ? 0 : path.size(), distance, pathfinder);
+                setTarget(null);
+                return WalkerState.UNREACHABLE;
+            }
+
             boolean partialPath = false;
             if (dst == null || dst.distanceTo(target) > distance) {
                 if (path != null && path.size() > 1) {
@@ -340,7 +367,7 @@ public class Rs2Walker {
                 lastMovedTimeMs = System.currentTimeMillis();
                 stuckCount = 0;
                 setTarget(target);
-                return processWalk(target, distance, partialRetries);
+                return processWalk(target, distance, partialRetries, noProgressRetries, prevFinalDist);
             }
             if (stuckCount > 10) {
                 var reachable = Rs2Tile.getReachableTilesFromTile(Rs2Player.getWorldLocation(), 5).keySet();
@@ -514,6 +541,43 @@ public class Rs2Walker {
                         }
                     }
 
+                    // Pre-scan the path segment we're about to skip past for any closed
+                    // door. handleDoors() per-iteration only inspects the current tile
+                    // boundary, but `i = targetIdx` jumps ahead after the click, so any
+                    // door between i and targetIdx never gets opened — the server then
+                    // strands the player against the closed door that BFS treated as a
+                    // normal walking edge. Open it here before the click goes through.
+                    // Walk j ascending — path tiles are in walking order, so the first
+                    // door we find is the nearest closed door between the player and
+                    // wherever the OSRS server will route them on this click. handleDoors()
+                    // opens it and returns; we break and let processWalk recurse so the
+                    // next iteration starts from the player's new position past the door
+                    // (and catches any further-out doors on its own next pre-scan).
+                    //
+                    // Bounded by HANDLER_RANGE distance, NOT by targetIdx — when the
+                    // walker uses an interpolated click target (the targetIdx < i path
+                    // above sets targetIdx = i - 1), the indexed range is empty but the
+                    // actual click destination is far, so the relevant doors live along
+                    // path[i..end] within Euclidean reach. Iterate until a door is found
+                    // or every tile in scene-range has been checked.
+                    boolean preDoorHandled = false;
+                    int preDoorAt = -1;
+                    for (int j = i; j < path.size(); j++) {
+                        int distFromPlayer = path.get(j).distanceTo2D(Rs2Player.getWorldLocation());
+                        if (distFromPlayer > HANDLER_RANGE) continue; // out of scene; handle when closer
+                        if (handleDoors(path, j)) {
+                            preDoorHandled = true;
+                            preDoorAt = j;
+                            break;
+                        }
+                    }
+                    if (preDoorHandled) {
+                        log.info("[Walker pre-scan] opened door at path idx {} ({}) before clicking past — re-evaluating",
+                                preDoorAt, path.get(preDoorAt));
+                        exitReason = "door-prescan";
+                        break;
+                    }
+
                     WorldPoint posBefore = playerLoc;
                     boolean clicked;
                     if (inInstance) {
@@ -521,6 +585,8 @@ public class Rs2Walker {
                     } else {
                         clicked = Rs2Walker.walkMiniMap(getPointWithWallDistance(targetWp));
                     }
+                    log.debug("[Walker click] target={} pathIdx={} playerBefore={} clicked={}",
+                            targetWp, targetIdx, posBefore, clicked);
                     if (clicked) {
                         final WorldPoint b = targetWp;
                         final WorldPoint before = posBefore;
@@ -539,6 +605,12 @@ public class Rs2Walker {
                             if (b.distanceTo2D(now) <= proximityWake) return true;
                             return before.distanceTo2D(now) >= progressCap;
                         }, 2000);
+                        WorldPoint posAfter = Rs2Player.getWorldLocation();
+                        int moved = posAfter == null ? -1 : posBefore.distanceTo2D(posAfter);
+                        int distLeft = posAfter == null ? -1 : b.distanceTo2D(posAfter);
+                        long elapsedMs = System.currentTimeMillis() - clickedAt;
+                        log.debug("[Walker click] result moved={} tiles posAfter={} distFromTarget={} elapsedMs={} reachedProximity={}",
+                                moved, posAfter, distLeft, elapsedMs, distLeft >= 0 && distLeft <= proximityWake);
                     }
                     // Keep stuck-detection honest: observed movement resets the movement timer.
                     // Without this, isStuckTooLong() fires after long successful walks because
@@ -588,7 +660,7 @@ public class Rs2Walker {
                     log.info("[Walker] Walked partial path ({} tiles remaining), retrying from current position (attempt {}/3)",
                             finalDist, partialRetries + 1);
                     recalculatePath();
-                    return processWalk(target, distance, partialRetries + 1);
+                    return processWalk(target, distance, partialRetries + 1, noProgressRetries, prevFinalDist);
                 }
                 log.info("[Walker] Walked partial path, exhausted retries. final distance to target: {}", finalDist);
                 Telemetry.recordUnreachable("partial-retries-exhausted", Rs2Player.getWorldLocation(),
@@ -601,7 +673,16 @@ public class Rs2Walker {
                     // recursion loop that would spin on isNearPath() while the player is walking.
                     sleepUntil(() -> isNearPath() || !Rs2Player.isMoving(), 2000);
                 }
-                return processWalk(target, distance, partialRetries);
+                int nextNoProgress = (finalDist >= prevFinalDist) ? noProgressRetries + 1 : 0;
+                if (nextNoProgress > MAX_NO_PROGRESS_RETRIES) {
+                    log.warn("[Walker] No progress after {} retries (finalDist={}, prevFinalDist={}, exitReason={}) — bailing UNREACHABLE",
+                            nextNoProgress, finalDist, prevFinalDist, exitReason);
+                    Telemetry.recordUnreachable("no-progress-retries-exhausted", Rs2Player.getWorldLocation(),
+                            target, Rs2Player.getWorldLocation(), 0, distance, ShortestPathPlugin.getPathfinder());
+                    setTarget(null);
+                    return WalkerState.UNREACHABLE;
+                }
+                return processWalk(target, distance, partialRetries, nextNoProgress, finalDist);
             }
         } catch (Exception ex) {
             if (ex instanceof InterruptedException) {
@@ -1338,7 +1419,7 @@ public class Rs2Walker {
     // Session-local set of door tiles the walker detected as quest/stat-locked after a
     // failed interact. Cleared when the client restarts. Prevents infinite retry loops
     // through the same restricted door when the restriction isn't in restrictions.tsv.
-    static final Set<WorldPoint> sessionBlacklistedDoors = ConcurrentHashMap.newKeySet();
+    public static final Set<WorldPoint> sessionBlacklistedDoors = ConcurrentHashMap.newKeySet();
 
     static boolean hasQuestLockKeywords(String text) {
         if (text == null || text.isEmpty()) return false;
@@ -1462,9 +1543,6 @@ public class Rs2Walker {
             return false;
         }
 
-        boolean diagonal = Math.abs(fromWp.getX() - toWp.getX()) > 0
-                && Math.abs(fromWp.getY() - toWp.getY()) > 0;
-
         for (int offset = 0; offset <= 1; offset++) {
             int doorIdx = index + offset;
             if (doorIdx >= path.size()) continue;
@@ -1474,12 +1552,14 @@ public class Rs2Walker {
                     ? Rs2WorldPoint.convertInstancedWorldPoint(rawDoorWp)
                     : rawDoorWp;
 
+            // Only probe the path tiles themselves (fromWp and toWp via the offset
+            // loop). Diagonal corner probes were opening doors on shoulder tiles
+            // that don't actually block the fromWp↔toWp edge — a wall at the
+            // corner facing one of the path tiles passes the orientation check but
+            // is on a different edge entirely. The OSRS server picks a shoulder
+            // for diagonals; opening the wrong shoulder's door is wasted action.
             List<WorldPoint> probes = new ArrayList<>();
             probes.add(doorWp);
-            if (diagonal) {
-                probes.add(new WorldPoint(toWp.getX(), fromWp.getY(), doorWp.getPlane()));
-                probes.add(new WorldPoint(fromWp.getX(), toWp.getY(), doorWp.getPlane()));
-            }
 
             for (WorldPoint probe : probes) {
                 boolean adjacentToPath = probe.distanceTo(fromWp) <= 1 || probe.distanceTo(toWp) <= 1;
@@ -1874,6 +1954,17 @@ public class Rs2Walker {
         }
 
         for (Transport transport : transports) {
+            // Patch H virtual door edges exist purely so BFS can route through scene
+            // doors not in transports.tsv. The actual click is owned by handleDoors,
+            // which probes wall orientation against the consecutive fromWp↔toWp edge
+            // and only opens doors that block that specific step. handleTransports
+            // here would open any door whose origin matches path[i] and whose
+            // destination is anywhere later on the path — so a scene wall whose two
+            // tiles both happen to land on the path (common in Varrock palace where
+            // the path winds past multiple doors) gets opened off-edge.
+            if (transport.isSceneDiscovered()) {
+                continue;
+            }
             Collection<WorldPoint> worldPointCollections;
             //in some cases the getOrigin is null, for teleports that start the player location
             if (transport.getOrigin() == null) {
@@ -2150,9 +2241,26 @@ public class Rs2Walker {
                             }
                         }
 
+                        log.debug("[Walker] handleTransports interacting: type={} action='{}' origin={} dest={} object={} objectLoc={} sceneDiscovered={} display='{}'",
+                                transport.getType(), transport.getAction(), transport.getOrigin(), transport.getDestination(),
+                                object.getId(), object.getWorldLocation(), transport.isSceneDiscovered(), transport.getDisplayInfo());
                         handleObject(transport, object);
                         sleepUntil(() -> !Rs2Player.isAnimating());
-                        return sleepUntilTrue(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < OFFSET);
+                        boolean reached = sleepUntilTrue(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < OFFSET);
+                        if (!reached) {
+                            // Static eligibility (member flag, levels, quest, varbits) said this
+                            // transport was usable, but the click produced no movement (10s timeout).
+                            // Hidden server-side gate (region unlock, sub-quest progression, etc.).
+                            // Blacklist the origin so the next pathfinder run routes around it
+                            // instead of re-emitting the same broken edge — the unbounded retry
+                            // loop this prevented produced ~3 hours of position oscillation in the
+                            // wild (240 STALL_RECALC events on one Varrock palace shortcut).
+                            log.warn("[Walker] Transport {} (type={} origin={} dest={}) failed to deliver player after click — blacklisting origin",
+                                    transport.getDisplayInfo(), transport.getType(), transport.getOrigin(), transport.getDestination());
+                            ShortestPathPlugin.getPathfinderConfig().addFailedTransportRestriction(transport.getOrigin());
+                            setTarget(null);
+                        }
+                        return reached;
                     }
                 }
             }

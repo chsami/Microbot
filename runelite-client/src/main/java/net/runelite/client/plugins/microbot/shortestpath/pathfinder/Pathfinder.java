@@ -58,6 +58,15 @@ public class Pathfinder implements Runnable {
     private volatile boolean pathNeedsUpdate = false;
     private volatile boolean smoothed = false;
     private volatile Node bestLastNode;
+    // True when the BFS exhausted both boundary and pending without reaching a
+    // target — the destination is genuinely unreachable from the source given
+    // the current transport graph. Distinguished from cutoff timeout (queues
+    // still hold candidates) and target-found (loop broke early). Walker uses
+    // this to bail UNREACHABLE instead of walking a partial path toward the
+    // closest-by-heuristic node, which on a quest-locked area produced a
+    // 60-second tour around the locked region in the wild.
+    @Getter
+    private volatile boolean searchExhausted = false;
     /**
      * Teleportation transports are updated when this changes.
      * Can be either:
@@ -295,6 +304,11 @@ public class Pathfinder implements Runnable {
                 addNeighbors(node);
             }
 
+            // Capture exhaustion before finally clears the queues. Both empty
+            // after the while loop means BFS terminated by the loop condition
+            // (no more nodes to expand) — i.e. dest is unreachable. Cutoff and
+            // target-reached exits leave queues non-empty.
+            searchExhausted = !cancelled && boundary.isEmpty() && pending.isEmpty();
             log.info("[Pathfinder] Loop exited. cancelled={}, boundaryEmpty={}, pendingEmpty={}, bestLastNode={}",
                     cancelled, boundary.isEmpty(), pending.isEmpty(),
                     bestLastNode == null ? "null" : WorldPointUtil.toString(bestLastNode.packedPosition));

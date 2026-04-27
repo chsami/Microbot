@@ -122,6 +122,26 @@ public class PathfinderConfig {
     private final Set<Integer> restrictedPointsPacked;
     private final Set<Integer> internalRestrictedPointsPacked;
     private volatile boolean useNpcs;
+
+    // Runtime blacklist of transport origin tiles whose interaction failed to deliver
+    // the player to the destination. The static eligibility checks (member flag, levels,
+    // quests, varbits) can't capture every server-side gate (region unlocks, sub-quest
+    // progression, etc.), so a transport can pass plan-time and still no-op at click
+    // time. Without this, the pathfinder keeps emitting the same broken edge and the
+    // walker re-attempts it forever. TTL clears stale entries so the player can retry
+    // after world hops or unlock progression.
+    private final Map<Integer, Long> failedTransportOriginsPacked = new ConcurrentHashMap<>();
+    private static final long FAILED_TRANSPORT_TTL_MS = 5L * 60L * 1000L;
+
+    // Walking edges that the BFS must treat as walls because the only known way to
+    // cross them is a transport that's currently filtered out (member flag, quest, F2P
+    // gate, etc.). Trellis at (3228,3470)<->(3228,3471) is the canonical case: the
+    // upstream collision map omits the fence, relying on the agility-shortcut transport
+    // to imply the obstacle. Without this set, BFS happily walks across the fence as if
+    // it were open ground when the transport is excluded — producing paths that look
+    // valid but require climbing an obstacle the player can't use. Encoded as
+    // (fromPacked << 32) | toPacked. Rebuilt every refreshTransports().
+    private final Set<Long> blockedWalkingEdges = ConcurrentHashMap.newKeySet();
     //END microbot variables
     private volatile TeleportationItem useTeleportationItems;
 
@@ -207,8 +227,11 @@ public class PathfinderConfig {
             refreshRestrictionData();
             long t2 = System.currentTimeMillis();
 
-            // Do not switch back to inventory tab if we are inside of the telekinetic room in Mage Training Arena
-            if (Rs2Player.getWorldLocation().getRegionID() != 13463) {
+            // Do not switch back to inventory tab if we are inside of the telekinetic room in Mage Training Arena.
+            // Skip the tab switch entirely when LocalPlayer isn't hydrated yet (refresh can fire on a tick before
+            // the player object is available post-login, NPE'd the client during startup).
+            WorldPoint playerLoc = Rs2Player.getWorldLocation();
+            if (playerLoc != null && playerLoc.getRegionID() != 13463) {
                 Rs2Tab.switchTo(InterfaceTab.INVENTORY);
             }
             long t3 = System.currentTimeMillis();
@@ -288,6 +311,7 @@ public class PathfinderConfig {
         transports.clear();
         transportsPacked.clear();
         usableTeleports.clear();
+        blockedWalkingEdges.clear();
 
         long mergeStart = System.currentTimeMillis();
         Map<WorldPoint, Set<Transport>> mergedList = createMergedList();
@@ -358,7 +382,25 @@ public class PathfinderConfig {
                 stats[2] += (int)(elapsed / 1_000);
                 if (usable) stats[1]++;
 
-                if (!usable) continue;
+                if (!usable) {
+                    // The transport is filtered out, but the TSV entry implies an
+                    // obstacle exists between origin and destination — the upstream
+                    // collision map sometimes relies on the transport edge to encode
+                    // the fence/jump-gap. If origin and destination are adjacent
+                    // (Chebyshev 1) on the same plane, treat the walking edge as
+                    // blocked in both directions so BFS doesn't stroll across.
+                    WorldPoint o = transport.getOrigin();
+                    WorldPoint d = transport.getDestination();
+                    if (o != null && d != null
+                            && o.getPlane() == d.getPlane()
+                            && Math.max(Math.abs(o.getX() - d.getX()), Math.abs(o.getY() - d.getY())) == 1) {
+                        int op = WorldPointUtil.packWorldPoint(o);
+                        int dp = WorldPointUtil.packWorldPoint(d);
+                        blockedWalkingEdges.add(packEdge(op, dp));
+                        blockedWalkingEdges.add(packEdge(dp, op));
+                    }
+                    continue;
+                }
                 checkedTransports++;
                 if (point == null) {
                     usableTeleports.add(transport);
@@ -380,6 +422,19 @@ public class PathfinderConfig {
             filterSimilarTransports(target);
         }
         long similarTime = System.currentTimeMillis() - similarStart;
+
+        // Patch H: scene-discovered doors. The TSV is incomplete (palace internal
+        // doors, throne rooms, etc.) — without these, BFS can't route through them
+        // and bails UNREACHABLE for destinations a human player could trivially
+        // reach. Scan loaded scene for door WallObjects and inject as virtual
+        // transports so BFS plans through them. handleDoors() in the walker opens
+        // them at click time.
+        long doorStart = System.currentTimeMillis();
+        int doorsAdded = discoverSceneDoors();
+        long doorTime = System.currentTimeMillis() - doorStart;
+        if (doorsAdded > 0) {
+            log.info("[refreshTransports] scene doors: added={}, time={}ms", doorsAdded, doorTime);
+        }
 
         refreshAvailableItemIds = null;
         refreshBoostedLevels = null;
@@ -565,6 +620,169 @@ public class PathfinderConfig {
                         .allMatch(varplayerCheck -> varplayerCheck.matches(Microbot.getVarbitPlayerValue(varplayerCheck.getVarplayerId())));
     }
 
+    private static long packEdge(int fromPacked, int toPacked) {
+        return ((long) fromPacked << 32) | (toPacked & 0xFFFFFFFFL);
+    }
+
+    /**
+     * True when the walking edge from {@code fromPacked} to {@code toPacked} is
+     * blocked by an excluded transport — i.e. the only known way to traverse this
+     * edge is a transport the player can't currently use (quest/skill/F2P gate).
+     * Used by {@link CollisionMap#getNeighbors} to prevent BFS from walking across
+     * fences whose only crossing is a filtered agility shortcut etc.
+     */
+    public boolean isWalkingEdgeBlocked(int fromPacked, int toPacked) {
+        return !blockedWalkingEdges.isEmpty() && blockedWalkingEdges.contains(packEdge(fromPacked, toPacked));
+    }
+
+    /**
+     * Patch H: enumerate door WallObjects in the loaded scene and inject them as
+     * virtual Transport edges so BFS can route through doors not present in
+     * transports.tsv (palace internal chambers, generic interior doors, etc.).
+     *
+     * Only WallObjects whose ObjectComposition exposes an "Open" action are
+     * added — gated actions (Pay-toll, Pick-lock) imply quest/skill requirements
+     * that the TSV captures more accurately, so we defer to the TSV for those.
+     * Existing transports at the same edge are not overridden.
+     *
+     * @return number of door edges added (one direction == 1, bidirectional adds 2)
+     */
+    private int discoverSceneDoors() {
+        if (!GameState.LOGGED_IN.equals(client.getGameState())) return 0;
+
+        // Whole scan on client thread in one hop. Each WallObject requires an
+        // ObjectComposition lookup which itself needs the client thread; doing
+        // them individually from a background thread costs ~26s for ~200 walls
+        // because every lookup blocks waiting for a thread switch.
+        Integer result = Microbot.getClientThread().runOnClientThreadOptional(this::discoverSceneDoorsOnClientThread)
+                .orElse(0);
+        return result != null ? result : 0;
+    }
+
+    private int discoverSceneDoorsOnClientThread() {
+        try {
+            if (client.getTopLevelWorldView().getScene().isInstance()) return 0;
+        } catch (Exception e) {
+            return 0;
+        }
+
+        Player player = client.getLocalPlayer();
+        if (player == null) return 0;
+        WorldPoint playerLoc = player.getWorldLocation();
+        if (playerLoc == null) return 0;
+        int playerX = playerLoc.getX();
+        int playerY = playerLoc.getY();
+        int playerPlane = playerLoc.getPlane();
+
+        Scene scene = player.getWorldView().getScene();
+        Tile[][][] tiles = scene.getTiles();
+        if (tiles == null) return 0;
+
+        int added = 0;
+        for (int z = 0; z < tiles.length; z++) {
+            Tile[][] plane = tiles[z];
+            if (plane == null) continue;
+            for (int x = 0; x < plane.length; x++) {
+                Tile[] col = plane[x];
+                if (col == null) continue;
+                for (int y = 0; y < col.length; y++) {
+                    Tile tile = col[y];
+                    if (tile == null) continue;
+                    WallObject wall = tile.getWallObject();
+                    if (wall == null) continue;
+
+                    WorldPoint probe = wall.getWorldLocation();
+                    if (probe == null || probe.getPlane() != playerPlane) continue;
+                    // Same scene-radius cap as the rest of the walker (52 tiles).
+                    if (Math.max(Math.abs(probe.getX() - playerX), Math.abs(probe.getY() - playerY)) > 52) continue;
+                    if (Rs2Walker.sessionBlacklistedDoors.contains(probe)) continue;
+
+                    ObjectComposition comp = client.getObjectDefinition(wall.getId());
+                    if (comp == null || comp.getImpostorIds() != null) continue;
+                    String name = comp.getName();
+                    if (name == null || "null".equals(name)) continue;
+
+                    String[] actions = comp.getActions();
+                    if (actions == null) continue;
+                    String action = null;
+                    for (String a : actions) {
+                        if (a == null) continue;
+                        if (a.toLowerCase().startsWith("open")) {
+                            action = a;
+                            break;
+                        }
+                    }
+                    if (action == null) continue;
+
+                    int dx, dy;
+                    switch (wall.getOrientationA()) {
+                        case 1:   dx = -1; dy =  0; break;
+                        case 2:   dx =  0; dy =  1; break;
+                        case 4:   dx =  1; dy =  0; break;
+                        case 8:   dx =  0; dy = -1; break;
+                        default: continue;
+                    }
+
+                    WorldPoint neighbor = new WorldPoint(probe.getX() + dx, probe.getY() + dy, probe.getPlane());
+                    if (Rs2Walker.sessionBlacklistedDoors.contains(neighbor)) continue;
+
+                    int objectId = comp.getId();
+                    String displayInfo = "Door (" + name + ") @ " + probe;
+                    added += addRuntimeDoorEdge(probe, neighbor, displayInfo, action, name, objectId);
+                    added += addRuntimeDoorEdge(neighbor, probe, displayInfo, action, name, objectId);
+                }
+            }
+        }
+        return added;
+    }
+
+    private int addRuntimeDoorEdge(WorldPoint origin, WorldPoint destination,
+                                   String displayInfo, String action, String name, int objectId) {
+        Set<Transport> existing = transports.get(origin);
+        if (existing != null) {
+            for (Transport t : existing) {
+                if (destination.equals(t.getDestination())) {
+                    return 0; // TSV already covers this edge
+                }
+            }
+        }
+        Transport door = new Transport(origin, destination, displayInfo,
+                TransportType.TRANSPORT, false, action, name, objectId);
+        // Tag for handleTransports to skip — handleDoors opens these via the
+        // WallObject orientation check, which is the only edge-aware mechanism.
+        door.setSceneDiscovered(true);
+        // Per refreshTransports invariant, transports and transportsPacked share
+        // the same Set reference per origin — add once via the shared reference.
+        Set<Transport> set = transports.computeIfAbsent(origin, k -> new HashSet<>());
+        int packedOrigin = WorldPointUtil.packWorldPoint(origin);
+        if (transportsPacked.get(packedOrigin) == null) {
+            transportsPacked.put(packedOrigin, set);
+        }
+        set.add(door);
+        return 1;
+    }
+
+    public void addFailedTransportRestriction(WorldPoint origin) {
+        if (origin == null) return;
+        failedTransportOriginsPacked.put(WorldPointUtil.packWorldPoint(origin), System.currentTimeMillis());
+    }
+
+    public void clearFailedTransportRestrictions() {
+        failedTransportOriginsPacked.clear();
+    }
+
+    private boolean isRecentlyFailedOrigin(WorldPoint origin) {
+        if (origin == null) return false;
+        int packed = WorldPointUtil.packWorldPoint(origin);
+        Long failedAt = failedTransportOriginsPacked.get(packed);
+        if (failedAt == null) return false;
+        if (System.currentTimeMillis() - failedAt > FAILED_TRANSPORT_TTL_MS) {
+            failedTransportOriginsPacked.remove(packed);
+            return false;
+        }
+        return true;
+    }
+
     private boolean useTransport(Transport transport) {
         boolean traceMoa = transport.getType() == TransportType.SEASONAL_TRANSPORT
                 && transport.getDisplayInfo() != null
@@ -574,6 +792,14 @@ public class PathfinderConfig {
         // unrecognised name), don't let the pathfinder keep routing through it.
         if (traceMoa && Rs2Walker.blacklistedMoaDestinations.contains(
                 WorldPointUtil.packWorldPoint(transport.getDestination()))) {
+            return false;
+        }
+
+        // Runtime blacklist for transports whose origin tile recently failed to deliver
+        // the player. Skip before any other check so a broken edge stops re-emerging
+        // from the next pathfinder run (see addFailedTransportRestriction comment).
+        if (isRecentlyFailedOrigin(transport.getOrigin())) {
+            log.debug("Transport ( O: {} D: {} ) skipped: origin recently failed", transport.getOrigin(), transport.getDestination());
             return false;
         }
 
