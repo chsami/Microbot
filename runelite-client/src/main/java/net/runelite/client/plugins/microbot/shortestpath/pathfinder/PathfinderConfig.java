@@ -745,6 +745,9 @@ public class PathfinderConfig {
         }
         Transport door = new Transport(origin, destination, displayInfo,
                 TransportType.TRANSPORT, false, action, name, objectId);
+        // Tag for handleTransports to skip — handleDoors opens these via the
+        // WallObject orientation check, which is the only edge-aware mechanism.
+        door.setSceneDiscovered(true);
         // Per refreshTransports invariant, transports and transportsPacked share
         // the same Set reference per origin — add once via the shared reference.
         Set<Transport> set = transports.computeIfAbsent(origin, k -> new HashSet<>());
