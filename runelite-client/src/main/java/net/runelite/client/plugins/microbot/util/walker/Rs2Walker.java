@@ -2656,6 +2656,17 @@ public class Rs2Walker {
         }
 
         for (Transport transport : transports) {
+            // Patch H virtual door edges exist purely so BFS can route through scene
+            // doors not in transports.tsv. The actual click is owned by handleDoors,
+            // which probes wall orientation against the consecutive fromWp↔toWp edge
+            // and only opens doors that block that specific step. handleTransports
+            // here would open any door whose origin matches path[i] and whose
+            // destination is anywhere later on the path — so a scene wall whose two
+            // tiles both happen to land on the path (common in Varrock palace where
+            // the path winds past multiple doors) gets opened off-edge.
+            if (transport.isSceneDiscovered()) {
+                continue;
+            }
             Collection<WorldPoint> worldPointCollections;
             //in some cases the getOrigin is null, for teleports that start the player location
             if (transport.getOrigin() == null) {
