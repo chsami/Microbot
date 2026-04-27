@@ -585,7 +585,7 @@ public class Rs2Walker {
                     } else {
                         clicked = Rs2Walker.walkMiniMap(getPointWithWallDistance(targetWp));
                     }
-                    log.info("[Walker click] target={} pathIdx={} playerBefore={} clicked={}",
+                    log.debug("[Walker click] target={} pathIdx={} playerBefore={} clicked={}",
                             targetWp, targetIdx, posBefore, clicked);
                     if (clicked) {
                         final WorldPoint b = targetWp;
@@ -609,7 +609,7 @@ public class Rs2Walker {
                         int moved = posAfter == null ? -1 : posBefore.distanceTo2D(posAfter);
                         int distLeft = posAfter == null ? -1 : b.distanceTo2D(posAfter);
                         long elapsedMs = System.currentTimeMillis() - clickedAt;
-                        log.info("[Walker click] result moved={} tiles posAfter={} distFromTarget={} elapsedMs={} reachedProximity={}",
+                        log.debug("[Walker click] result moved={} tiles posAfter={} distFromTarget={} elapsedMs={} reachedProximity={}",
                                 moved, posAfter, distLeft, elapsedMs, distLeft >= 0 && distLeft <= proximityWake);
                     }
                     // Keep stuck-detection honest: observed movement resets the movement timer.
@@ -2241,7 +2241,7 @@ public class Rs2Walker {
                             }
                         }
 
-                        log.info("[Walker] handleTransports interacting: type={} action='{}' origin={} dest={} object={} objectLoc={} sceneDiscovered={} display='{}'",
+                        log.debug("[Walker] handleTransports interacting: type={} action='{}' origin={} dest={} object={} objectLoc={} sceneDiscovered={} display='{}'",
                                 transport.getType(), transport.getAction(), transport.getOrigin(), transport.getDestination(),
                                 object.getId(), object.getWorldLocation(), transport.isSceneDiscovered(), transport.getDisplayInfo());
                         handleObject(transport, object);
