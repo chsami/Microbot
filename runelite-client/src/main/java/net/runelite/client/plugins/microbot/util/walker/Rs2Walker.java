@@ -1830,7 +1830,7 @@ public class Rs2Walker {
     // Session-local set of door tiles the walker detected as quest/stat-locked after a
     // failed interact. Cleared when the client restarts. Prevents infinite retry loops
     // through the same restricted door when the restriction isn't in restrictions.tsv.
-    static final Set<WorldPoint> sessionBlacklistedDoors = ConcurrentHashMap.newKeySet();
+    public static final Set<WorldPoint> sessionBlacklistedDoors = ConcurrentHashMap.newKeySet();
     private static final Map<WorldPoint, Long> recentlyOpenedStationaryDoors = new ConcurrentHashMap<>();
     private static final long STATIONARY_DOOR_SUPPRESS_MS = 10_000;
 
