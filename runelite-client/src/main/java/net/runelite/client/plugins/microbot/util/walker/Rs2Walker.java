@@ -315,6 +315,25 @@ public class Rs2Walker {
                 dst = path.get(path.size()-1);
             }
 
+            // BFS exhausted both queues without reaching the target — destination is
+            // genuinely unreachable (quest-locked gate, walled-off area, etc.). Bail
+            // ONLY if endpoint is outside the caller's proximity threshold: when
+            // dst is within `distance` of target, the partial path lands the player
+            // close enough to satisfy the request (e.g., NPCs accept 1-tile reach,
+            // BFS commonly exhausts at adjacent-to-target when the final tile is a
+            // throne/altar/object the player can't stand on). Walking the path is
+            // correct in that case. Bailing only matters when the closest-found tile
+            // is genuinely far — that's what produced the 25+ tile palace tour.
+            if (pathfinder.isSearchExhausted()
+                    && (dst == null || dst.distanceTo(target) > distance)) {
+                log.warn("[Walker] Pathfinder exhausted search without reaching target {} (best endpoint {}, dist={}, threshold={}) — bailing UNREACHABLE",
+                        target, dst, dst == null ? -1 : dst.distanceTo(target), distance);
+                Telemetry.recordUnreachable("search-exhausted", Rs2Player.getWorldLocation(),
+                        target, dst, path == null ? 0 : path.size(), distance, pathfinder);
+                setTarget(null);
+                return WalkerState.UNREACHABLE;
+            }
+
             boolean partialPath = false;
             if (dst == null || dst.distanceTo(target) > distance) {
                 if (path != null && path.size() > 1) {
