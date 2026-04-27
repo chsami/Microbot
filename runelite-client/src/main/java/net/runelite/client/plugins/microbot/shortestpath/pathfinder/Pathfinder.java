@@ -245,6 +245,8 @@ public class Pathfinder implements Runnable {
             long cutoffDurationMillis = config.getCalculationCutoffMillis();
             long cutoffTimeMillis = System.currentTimeMillis() + cutoffDurationMillis;
             config.refreshTeleports(start, 31);
+            boolean reachedTarget = false;
+            boolean cutoffHit = false;
             while (!cancelled && (!boundary.isEmpty() || !pending.isEmpty())) {
                 Node b = boundary.peek();
                 Node p = pending.peek();
@@ -294,9 +296,13 @@ public class Pathfinder implements Runnable {
                         cutoffTimeMillis = System.currentTimeMillis() + cutoffDurationMillis;
                     }
                 }
-                if (reached) break;
+                if (reached) {
+                    reachedTarget = true;
+                    break;
+                }
 
                 if (System.currentTimeMillis() > cutoffTimeMillis) {
+                    cutoffHit = true;
                     log.info("[Pathfinder] Cutoff reached. bestDistance={}, nodesChecked={}", bestDistance, stats.getNodesChecked());
                     break;
                 }
@@ -304,11 +310,14 @@ public class Pathfinder implements Runnable {
                 addNeighbors(node);
             }
 
-            // Capture exhaustion before finally clears the queues. Both empty
-            // after the while loop means BFS terminated by the loop condition
-            // (no more nodes to expand) — i.e. dest is unreachable. Cutoff and
-            // target-reached exits leave queues non-empty.
-            searchExhausted = !cancelled && boundary.isEmpty() && pending.isEmpty();
+            // Capture exhaustion before finally clears the queues. Gate on
+            // !reachedTarget && !cutoffHit so polling the last queued node and
+            // then exiting via target-found or cutoff isn't misread as the BFS
+            // running out of frontier — those leave the queues empty for a
+            // benign reason and would otherwise trip a spurious UNREACHABLE
+            // downstream.
+            searchExhausted = !cancelled && !reachedTarget && !cutoffHit
+                    && boundary.isEmpty() && pending.isEmpty();
             log.info("[Pathfinder] Loop exited. cancelled={}, boundaryEmpty={}, pendingEmpty={}, bestLastNode={}",
                     cancelled, boundary.isEmpty(), pending.isEmpty(),
                     bestLastNode == null ? "null" : WorldPointUtil.toString(bestLastNode.packedPosition));
