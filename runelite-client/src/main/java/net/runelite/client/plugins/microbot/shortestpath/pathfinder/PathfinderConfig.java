@@ -184,6 +184,7 @@ public class PathfinderConfig {
     }
 
     public void refresh(WorldPoint target) {
+        diagAgilityShortcutLogged.set(false);
         calculationCutoffMillis = (long) config.calculationCutoff() * Constants.GAME_TICK_LENGTH;
         avoidWilderness = ShortestPathPlugin.override("avoidWilderness", config.avoidWilderness());
         useAgilityShortcuts = ShortestPathPlugin.override("useAgilityShortcuts", config.useAgilityShortcuts());
@@ -227,8 +228,11 @@ public class PathfinderConfig {
             refreshRestrictionData();
             long t2 = System.currentTimeMillis();
 
-            // Do not switch back to inventory tab if we are inside of the telekinetic room in Mage Training Arena
-            if (Rs2Player.getWorldLocation().getRegionID() != 13463) {
+            // Do not switch back to inventory tab if we are inside of the telekinetic room in Mage Training Arena.
+            // Skip the tab switch entirely when LocalPlayer isn't hydrated yet (refresh can fire on a tick before
+            // the player object is available post-login, NPE'd the client during startup).
+            WorldPoint playerLoc = Rs2Player.getWorldLocation();
+            if (playerLoc != null && playerLoc.getRegionID() != 13463) {
                 Rs2Tab.switchTo(InterfaceTab.INVENTORY);
             }
             long t3 = System.currentTimeMillis();
@@ -957,10 +961,23 @@ public class PathfinderConfig {
         return true;
     }
 
+    // Diagnostic one-shot — logs the world type set + agility shortcut decision the
+    // first time isFeatureEnabled sees an AGILITY_SHORTCUT after each refresh().
+    // Used to investigate whether the F2P gate is actually filtering trellises etc.
+    // Reset to false at the top of refresh() so each cache rebuild logs once.
+    private final java.util.concurrent.atomic.AtomicBoolean diagAgilityShortcutLogged =
+            new java.util.concurrent.atomic.AtomicBoolean(false);
+
     private boolean isFeatureEnabled(Transport transport) {
         TransportType type = transport.getType();
 
-        if (!client.getWorldType().contains(WorldType.MEMBERS)) {
+        boolean membersWorld = client.getWorldType().contains(WorldType.MEMBERS);
+        if (type == TransportType.AGILITY_SHORTCUT && diagAgilityShortcutLogged.compareAndSet(false, true)) {
+            log.warn("[F2P diag] AGILITY_SHORTCUT useTransport probe: worldTypes={} membersFlag={} useAgilityShortcuts={} transport.isMembers={} origin={} dest={}",
+                    client.getWorldType(), membersWorld, useAgilityShortcuts, transport.isMembers(), transport.getOrigin(), transport.getDestination());
+        }
+
+        if (!membersWorld) {
             // Transport types that require membership
             switch (type) {
                 case AGILITY_SHORTCUT:
