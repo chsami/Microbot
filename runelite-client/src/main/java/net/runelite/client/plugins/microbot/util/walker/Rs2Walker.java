@@ -265,10 +265,39 @@ public class Rs2Walker {
         return processWalk(target, distance, 0);
     }
 
+    private static final int MAX_RECALC_ATTEMPTS = 15;
+
+    /**
+     * Checks whether the walker has exceeded its maximum allowed path recalculation attempts.
+     * If the limit is reached, clears the target and returns true to signal the caller to give up.
+     *
+     * @param attempts the current number of recalculation attempts
+     * @return true if the limit has been exceeded, false otherwise
+     */
+    private static boolean hasExceededRecalcLimit(int attempts) {
+        if (attempts >= MAX_RECALC_ATTEMPTS) {
+            log.warn("[Walker] Exceeded max recalc attempts ({}), giving up", MAX_RECALC_ATTEMPTS);
+            setTarget(null);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Core walk loop that iteratively follows the calculated path to the target.
+     * Handles stall detection, partial path retries, and off-path recovery with a
+     * bounded recalculation limit to prevent infinite looping.
+     *
+     * @param target         the destination world point
+     * @param distance       acceptable distance threshold to consider arrival
+     * @param partialRetries number of partial-path retries already consumed
+     */
     private static WalkerState processWalk(WorldPoint target, int distance, int partialRetries) {
         if (debug) {
             return WalkerState.EXIT;
         }
+        int recalcAttempts = 0;
+        while (true) {
         try {
             if (!Microbot.isLoggedIn()) {
                 setTarget(null);
@@ -340,7 +369,10 @@ public class Rs2Walker {
                 lastMovedTimeMs = System.currentTimeMillis();
                 stuckCount = 0;
                 setTarget(target);
-                return processWalk(target, distance, partialRetries);
+                if (hasExceededRecalcLimit(++recalcAttempts)) {
+                    return WalkerState.UNREACHABLE;
+                }
+                continue;
             }
             if (stuckCount > 10) {
                 var reachable = Rs2Tile.getReachableTilesFromTile(Rs2Player.getWorldLocation(), 5).keySet();
@@ -588,7 +620,8 @@ public class Rs2Walker {
                     log.info("[Walker] Walked partial path ({} tiles remaining), retrying from current position (attempt {}/3)",
                             finalDist, partialRetries + 1);
                     recalculatePath();
-                    return processWalk(target, distance, partialRetries + 1);
+                    partialRetries++;
+                    continue;
                 }
                 log.info("[Walker] Walked partial path, exhausted retries. final distance to target: {}", finalDist);
                 Telemetry.recordUnreachable("partial-retries-exhausted", Rs2Player.getWorldLocation(),
@@ -597,11 +630,12 @@ public class Rs2Walker {
                 return WalkerState.UNREACHABLE;
             } else {
                 if ("off-path-but-moving".equals(exitReason)) {
-                    // Wait for the player to re-enter the path or to stop moving. Prevents a tight
-                    // recursion loop that would spin on isNearPath() while the player is walking.
                     sleepUntil(() -> isNearPath() || !Rs2Player.isMoving(), 2000);
                 }
-                return processWalk(target, distance, partialRetries);
+                if (hasExceededRecalcLimit(++recalcAttempts)) {
+                    return WalkerState.UNREACHABLE;
+                }
+                continue;
             }
         } catch (Exception ex) {
             if (ex instanceof InterruptedException) {
@@ -610,9 +644,9 @@ public class Rs2Walker {
                 return WalkerState.EXIT;
             }
             log.error("Exception in Rs2Walker:", ex);
+            return WalkerState.EXIT;
         }
-        log.info("Exiting walker: 403");
-        return WalkerState.EXIT;
+        }
     }
 
     public static boolean walkNextTo(GameObject target) {
