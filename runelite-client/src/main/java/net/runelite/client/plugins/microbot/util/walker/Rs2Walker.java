@@ -631,7 +631,9 @@ public class Rs2Walker {
             } else {
                 if ("off-path-but-moving".equals(exitReason)) {
                     sleepUntil(() -> isNearPath() || !Rs2Player.isMoving(), 2000);
+                    continue; // normal progress, don't count as recalc
                 }
+                // Actual recalc scenario (not-near-path, etc.)
                 if (hasExceededRecalcLimit(++recalcAttempts)) {
                     return WalkerState.UNREACHABLE;
                 }
