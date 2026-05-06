@@ -704,7 +704,7 @@ public class GrandExchangePlugin extends Plugin
 		{
 			List<Integer> ids = IntStream.range(0, client.getItemCount())
 					.mapToObj(itemManager::getItemComposition)
-					.filter(item -> item.isTradeable() && item.getNote() == -1
+					.filter(item -> item.isGeTradeable() && item.getNote() == -1
 						&& item.getName().toLowerCase().contains(input))
 					.limit(MAX_RESULT_COUNT + 1)
 					.sorted(Comparator.comparing(ItemComposition::getName))
@@ -728,7 +728,7 @@ public class GrandExchangePlugin extends Plugin
 			ToDoubleFunction<ItemComposition> comparator = fuzzySearchScorer.comparator(input);
 			List<Integer> ids = IntStream.range(0, client.getItemCount())
 					.mapToObj(itemManager::getItemComposition)
-					.filter(item -> item.isTradeable() && item.getNote() == -1)
+					.filter(item -> item.isGeTradeable() && item.getNote() == -1)
 					.filter(item -> comparator.applyAsDouble(item) > 0)
 					.sorted(Comparator.comparingDouble(comparator).reversed()
 						.thenComparing(ItemComposition::getName))

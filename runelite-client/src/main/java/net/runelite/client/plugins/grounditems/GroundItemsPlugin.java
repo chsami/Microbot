@@ -417,7 +417,7 @@ public class GroundItemsPlugin extends Plugin
 			.itemLayer(layer)
 			.name(itemComposition.getName())
 			.haPrice(alchPrice)
-			.tradeable(itemComposition.isTradeable())
+			.tradeable(itemComposition.isGeTradeable())
 			.ownership(item.getOwnership())
 			.isPrivate(item.isPrivate())
 			.spawnTime(Instant.now())

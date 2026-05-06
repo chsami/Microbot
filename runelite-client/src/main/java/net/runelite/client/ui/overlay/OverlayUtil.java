@@ -25,7 +25,15 @@
 package net.runelite.client.ui.overlay;
 
 import com.google.common.base.Strings;
-import net.runelite.api.Point;
+
+import java.awt.BasicStroke;
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.Polygon;
+import java.awt.RenderingHints;
+import java.awt.Shape;
+import java.awt.Stroke;
+import java.awt.image.BufferedImage;
 import net.runelite.api.*;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.client.util.ColorUtil;
