@@ -204,6 +204,7 @@ public class OverlayUtil
 	{
 		graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 	}
+<<<<<<< HEAD
 
 	static void shiftSnapCorner(OverlayPosition overlayPosition, Rectangle snapCorner, Rectangle bounds, int padding)
 	{
@@ -281,4 +282,6 @@ public class OverlayUtil
 		graphics.setColor(ColorUtil.colorWithAlpha(color, 0xFF));
 		graphics.drawString(text, x, y);
 	}
+=======
+>>>>>>> runelite/master
 }
