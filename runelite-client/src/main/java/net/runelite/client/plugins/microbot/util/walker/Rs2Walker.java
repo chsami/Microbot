@@ -269,18 +269,27 @@ public class Rs2Walker {
 
     /**
      * Checks whether the walker has exceeded its maximum allowed path recalculation attempts.
-     * If the limit is reached, clears the target and returns true to signal the caller to give up.
+     * When the limit is reached, checks if the player is close enough to the target to treat
+     * as arrived (common with world-map clicks and quest targets on unwalkable tiles).
      *
      * @param attempts the current number of recalculation attempts
-     * @return true if the limit has been exceeded, false otherwise
+     * @param target   the destination world point
+     * @param distance the acceptable arrival distance
+     * @return ARRIVED if close enough, UNREACHABLE if too far, or null if under the limit
      */
-    private static boolean hasExceededRecalcLimit(int attempts) {
-        if (attempts >= MAX_RECALC_ATTEMPTS) {
-            log.warn("[Walker] Exceeded max recalc attempts ({}), giving up", MAX_RECALC_ATTEMPTS);
-            setTarget(null);
-            return true;
+    private static WalkerState checkRecalcLimit(int attempts, WorldPoint target, int distance) {
+        if (attempts < MAX_RECALC_ATTEMPTS) {
+            return null;
         }
-        return false;
+        int closeDist = Rs2Player.getWorldLocation().distanceTo(target);
+        if (closeDist <= Math.max(distance, 5)) {
+            log.info("[Walker] Exceeded max recalc but close enough (dist={}), treating as arrived", closeDist);
+            setTarget(null);
+            return WalkerState.ARRIVED;
+        }
+        log.warn("[Walker] Exceeded max recalc attempts ({}), giving up (dist={})", MAX_RECALC_ATTEMPTS, closeDist);
+        setTarget(null);
+        return WalkerState.UNREACHABLE;
     }
 
     /**
@@ -360,6 +369,17 @@ public class Rs2Walker {
 
             checkIfStuck();
             if (isStuckTooLong()) {
+                // If we're adjacent to an unwalkable target tile (NPC, object, wall),
+                // the player is as close as they can get — treat as arrived instead of
+                // burning recalc attempts on a tile we can never stand on.
+                int distNow = Rs2Player.getWorldLocation().distanceTo(target);
+                LocalPoint lp = LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), target);
+                if (distNow <= 1 && !Rs2Tile.isWalkable(lp)) {
+                    log.info("[Walker] Adjacent to unwalkable target {} (dist={}), treating as arrived", target, distNow);
+                    setTarget(null);
+                    return WalkerState.ARRIVED;
+                }
+
                 long sinceMoved = System.currentTimeMillis() - lastMovedTimeMs;
                 long threshold = stallThresholdMs();
                 Telemetry.recordStallRecalc(sinceMoved, Rs2Player.getWorldLocation());
@@ -369,8 +389,9 @@ public class Rs2Walker {
                 lastMovedTimeMs = System.currentTimeMillis();
                 stuckCount = 0;
                 setTarget(target);
-                if (hasExceededRecalcLimit(++recalcAttempts)) {
-                    return WalkerState.UNREACHABLE;
+                WalkerState recalcResult = checkRecalcLimit(++recalcAttempts, target, distance);
+                if (recalcResult != null) {
+                    return recalcResult;
                 }
                 continue;
             }
@@ -634,8 +655,9 @@ public class Rs2Walker {
                     continue; // normal progress, don't count as recalc
                 }
                 // Actual recalc scenario (not-near-path, etc.)
-                if (hasExceededRecalcLimit(++recalcAttempts)) {
-                    return WalkerState.UNREACHABLE;
+                WalkerState recalcResult2 = checkRecalcLimit(++recalcAttempts, target, distance);
+                if (recalcResult2 != null) {
+                    return recalcResult2;
                 }
                 continue;
             }
@@ -851,7 +873,13 @@ public class Rs2Walker {
 
 
     public static boolean walkMiniMap(WorldPoint worldPoint) {
-        return walkMiniMap(worldPoint, 5);
+        // Preserve the player's current minimap zoom instead of resetting it.
+        // Forcibly setting zoom to 5 every click is detectable bot behaviour.
+        Point point = Rs2MiniMap.worldToMinimap(worldPoint);
+        if (point == null) return false;
+        if (!disableWalkerUpdate && !Rs2MiniMap.isPointInsideMinimap(point)) return false;
+        Microbot.getMouse().click(point);
+        return true;
     }
 
     /**
