@@ -1,5 +1,7 @@
 package net.runelite.client.plugins.microbot.util;
 
+import net.runelite.api.Client;
+import net.runelite.api.ItemComposition;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.client.plugins.microbot.Microbot;
@@ -37,6 +39,12 @@ import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
  * the correct items are equipped and in the inventory.
  */
 public class Rs2InventorySetup {
+
+    /**
+     * When {@code -Dmicrobot.bank.validateInventorySetup=true}, {@link #loadInventory()} logs warnings for stale preset
+     * ids, id/name drift, and impossible non-stackable quantities on a single row.
+     */
+    private static final String PROP_VALIDATE_INVENTORY_SETUP = "microbot.bank.validateInventorySetup";
 
     InventorySetup inventorySetup;
 
@@ -101,6 +109,8 @@ public class Rs2InventorySetup {
 			return false;
 		}
 
+		validateInventorySetupAgainstDefsIfEnabled();
+
         if (!Rs2Bank.findLockedSlots().isEmpty()) {
             Rs2Bank.toggleAllLocks();
         }
@@ -163,6 +173,128 @@ public class Rs2InventorySetup {
         lockLockedItemsFromSetup(inventorySetup);
 
 		return doesInventoryMatch();
+	}
+
+	private static String firstNonEmptyCompositionName(ItemComposition comp)
+	{
+		if (comp == null)
+		{
+			return null;
+		}
+		String a = comp.getMembersName();
+		String b = comp.getName();
+		if (a != null && !a.isEmpty())
+		{
+			return a;
+		}
+		if (b != null && !b.isEmpty())
+		{
+			return b;
+		}
+		return null;
+	}
+
+	private void validateInventorySetupAgainstDefsIfEnabled()
+	{
+		if (!Boolean.parseBoolean(System.getProperty(PROP_VALIDATE_INVENTORY_SETUP, "false")))
+		{
+			return;
+		}
+		if (inventorySetup == null)
+		{
+			return;
+		}
+		Client client = Microbot.getClient();
+		if (client == null)
+		{
+			return;
+		}
+
+		List<InventorySetupsItem> inv = inventorySetup.getInventory();
+		List<InventorySetupsItem> equip = inventorySetup.getEquipment();
+		List<InventorySetupsItem> all = new ArrayList<>();
+		if (inv != null)
+		{
+			all.addAll(inv);
+		}
+		if (equip != null)
+		{
+			all.addAll(equip);
+		}
+
+		Set<Integer> loggedIdNameDrift = new HashSet<>();
+
+		for (InventorySetupsItem item : all)
+		{
+			if (InventorySetupsItem.itemIsDummy(item))
+			{
+				continue;
+			}
+			if (item.isFuzzy())
+			{
+				continue;
+			}
+			int id = item.getId();
+			if (id <= 0)
+			{
+				Microbot.log("Inventory setup \"" + inventorySetup.getName()
+						+ "\": non-fuzzy row has invalid id for \"" + item.getName() + "\"", Level.WARN);
+				continue;
+			}
+			ItemComposition comp = client.getItemDefinition(id);
+			if (comp == null)
+			{
+				Microbot.log("Inventory setup \"" + inventorySetup.getName()
+						+ "\": no ItemComposition for id=" + id + " (\"" + item.getName() + "\")", Level.WARN);
+				continue;
+			}
+			String defName = firstNonEmptyCompositionName(comp);
+			String setupName = item.getName();
+			if (defName != null && setupName != null && loggedIdNameDrift.add(id)
+					&& !defName.equalsIgnoreCase(setupName)
+					&& !defName.toLowerCase(Locale.ROOT).contains(setupName.toLowerCase(Locale.ROOT))
+					&& !setupName.toLowerCase(Locale.ROOT).contains(defName.toLowerCase(Locale.ROOT)))
+			{
+				Microbot.log("Inventory setup \"" + inventorySetup.getName()
+						+ "\": id/name mismatch id=" + id + " setup=\"" + setupName + "\" def=\"" + defName + "\"", Level.WARN);
+			}
+		}
+
+		if (inv == null)
+		{
+			return;
+		}
+
+		Set<Integer> warnedNonStackableQty = new HashSet<>();
+		for (InventorySetupsItem item : inv)
+		{
+			if (InventorySetupsItem.itemIsDummy(item) || item.isFuzzy())
+			{
+				continue;
+			}
+			List<InventorySetupsItem> matchingItems = inv.stream().filter(i -> i.matches(item)).collect(Collectors.toList());
+			int desiredQuantity = matchingItems.stream().mapToInt(InventorySetupsItem::getQuantity).sum();
+			if (matchingItems.size() != 1 || desiredQuantity <= 1)
+			{
+				continue;
+			}
+			int itemId = item.getId();
+			if (itemId <= 0)
+			{
+				continue;
+			}
+			ItemComposition comp = client.getItemDefinition(itemId);
+			if (comp == null || comp.isStackable())
+			{
+				continue;
+			}
+			if (warnedNonStackableQty.add(itemId))
+			{
+				Microbot.log("Inventory setup \"" + inventorySetup.getName()
+						+ "\": non-stackable \"" + item.getName() + "\" (id=" + itemId + ") has quantity " + desiredQuantity
+						+ " on one row — use one row per item or enable fuzzy matching.", Level.WARN);
+			}
+		}
 	}
 
     /**

@@ -58,4 +58,53 @@ When you know the *intent* (consume, equip, drop) but not the verb the game uses
 
 ---
 
-<!-- Add new gotchas here as numbered entries (## 2, ## 3, ...). -->
+## 2. After opening the bank, wait for a live `ItemContainerChanged(BANK)` before trusting `bankItems()` / `hasBankItem`
+
+`Rs2Bank` mirrors the bank into `Rs2BankData` from `ItemContainerChanged` on the client thread. The interface can report open before the first container event is processed, so a script that calls `hasBankItem` / `withdraw*` in the same tick can see an empty or stale cache and conclude the item is missing.
+
+**Why this matters:** Intermittent false "not in bank" after `openBank()` and rare races when the cache is one tick behind the widget.
+
+**Pattern to follow:**
+
+- Use `Rs2Bank.openBank()` (it waits for a new bank epoch after the UI opens). If you open the bank through a custom path, wait until `ItemContainerChanged` has run or delay one game tick before bulk lookups.
+- `hasBankItem` retries 1-2 ticks when the bank is open and the first lookup saw quantity zero (insufficient quantity still fails immediately).
+
+**Where this applies:** `Rs2Bank.openBank`, `updateLocalBank`, `hasBankItem`, `count`, `findBankItem` call sites.
+
+**Defensive check:** Enable DEBUG and watch for `[Rs2Bank] hasBankItem miss after cache retry` or `no BANK ItemContainerChanged within` after opening.
+
+---
+
+## 3. Bank cache skips placeholder rows; automation only sees real stacks
+
+`Rs2Bank.updateLocalBank` drops items whose `ItemComposition.getPlaceholderTemplateId() > 0`. The client may show a placeholder in the slot; the cached list has no entry for it.
+
+**Why this matters:** Scripts that expect "any bank stack" for an item id may see false negatives when the account only has a placeholder until a real item is deposited.
+
+**Pattern to follow:** Treat placeholder-only slots as "not withdrawable" unless you add a dedicated placeholder-aware path. Document user-facing behavior in script configs.
+
+**Where this applies:** `Rs2Bank.updateLocalBank`, any helper using `bankItems()` / `findBankItem`.
+
+---
+
+## 4. Saved item id vs bank row (noted/unnoted and cache drift)
+
+`hasBankItem(id)`, `count(id)`, `hasItem(id)`, and id-based `withdraw*` resolve the bank row in order: **exact id** → **linked noted/unnoted id** from `ItemComposition` → **fuzzy name** from composition (`getMembersName` / `getName`) against cached bank stacks.
+
+**Why this matters:** Inventory setups and scripts often store `ItemID` constants; Jagex renumbers or the bank holds the noted variant while the preset uses the unnoted id (or vice versa). Without fallback you get false “not in bank”.
+
+**Pattern to follow:** Prefer fuzzy or name-based setup rows when ids are unstable; enable DEBUG to see `[Rs2Bank] bank id drift` when a fallback row differs from the requested id.
+
+**Where this applies:** `Rs2Bank.findBankStackRowForSavedId`, `resolveBankStackForSavedId`, id overloads of `hasBankItem` / `count` / `withdraw*`.
+
+---
+
+## 5. Optional inventory-setup validation (Tier A.3)
+
+Set JVM flag `-Dmicrobot.bank.validateInventorySetup=true` so `Rs2InventorySetup.loadInventory` warns once per issue: invalid id, missing `ItemComposition`, id/name mismatch vs cache, and a **single inventory row** with quantity greater than 1 for a **non-stackable** item (same rule as withdraw grouping: use one row per unstacked item or fuzzy mode).
+
+**Where this applies:** `Rs2InventorySetup.validateInventorySetupAgainstDefsIfEnabled`.
+
+---
+
+<!-- Add new gotchas here as numbered entries (## 6, ## 7, ...). -->

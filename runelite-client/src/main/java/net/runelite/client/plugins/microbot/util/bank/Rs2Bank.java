@@ -49,6 +49,7 @@ import java.awt.event.KeyEvent;
 import java.util.List;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.IntPredicate;
 import java.util.function.Predicate;
@@ -84,6 +85,130 @@ public class Rs2Bank {
     private static final AtomicBoolean validLoadedCache = new AtomicBoolean(false);
     // Used to synchronize calls
     private static final Object lock = new Object();
+
+    /**
+     * Incremented on each applied {@link ItemContainerChanged} for {@link InventoryID#BANK}. Used to wait for at least one
+     * live snapshot after {@link #openBank()} so {@link #bankItems()} is not read before {@link #updateLocalBank} runs.
+     */
+    private static final AtomicInteger BANK_LIVE_EPOCH = new AtomicInteger(0);
+
+    private static final int BANK_OPEN_CACHE_SYNC_TIMEOUT_MS = 4_000;
+
+    private static void awaitBankContainerSnapshotSince(int epochBeforeInteract)
+    {
+        if (!sleepUntil(() -> BANK_LIVE_EPOCH.get() > epochBeforeInteract, BANK_OPEN_CACHE_SYNC_TIMEOUT_MS)
+                && log.isDebugEnabled())
+        {
+            log.debug("[Rs2Bank] bank UI open but no BANK ItemContainerChanged within {}ms (epoch before={} after={})",
+                    BANK_OPEN_CACHE_SYNC_TIMEOUT_MS, epochBeforeInteract, BANK_LIVE_EPOCH.get());
+        }
+    }
+
+    /**
+     * When the bank is open and the lookup returned zero, the cache may lag one tick behind the widget; retry 1-2 ticks.
+     */
+    private static boolean bankItemRaceRetryWarranted(int observedCount)
+    {
+        return observedCount == 0 && isOpen();
+    }
+
+    private static void logBankHasMissDebug(String kind, int id, String name, int amountRequested, String detail)
+    {
+        if (log.isDebugEnabled())
+        {
+            log.debug("[Rs2Bank] hasBankItem miss after cache retry kind={} id={} name={} amount={} {}",
+                    kind, id, name != null ? name : "", amountRequested, detail != null ? detail : "");
+        }
+    }
+
+    private static String firstNonEmpty(String a, String b)
+    {
+        if (a != null && !a.isEmpty())
+        {
+            return a;
+        }
+        if (b != null && !b.isEmpty())
+        {
+            return b;
+        }
+        return null;
+    }
+
+    private static void logBankIdDriftDebug(int requestedId, Rs2ItemModel found, String kind)
+    {
+        if (!log.isDebugEnabled() || found == null)
+        {
+            return;
+        }
+        log.debug("[Rs2Bank] bank id drift kind={} requestedId={} foundId={} foundName={} qty={}",
+                kind, requestedId, found.getId(), found.getName(), found.getQuantity());
+    }
+
+    /**
+     * Resolves a bank row for a saved item id: exact id, noted/unnoted linked id, then fuzzy name from {@link ItemComposition}
+     * (covers stale {@link net.runelite.api.gameval.ItemID} constants and noted vs unnoted bank stacks).
+     */
+    private static Rs2ItemModel findBankStackRowForSavedId(int id)
+    {
+        assert id > 0;
+
+        Client client = Microbot.getClient();
+        if (client == null)
+        {
+            return null;
+        }
+
+        Rs2ItemModel direct = findBankItem(id);
+        if (direct != null)
+        {
+            return direct;
+        }
+
+        ItemComposition comp = client.getItemDefinition(id);
+        if (comp != null)
+        {
+            int linked = comp.getLinkedNoteId();
+            if (linked > 0 && linked != id)
+            {
+                Rs2ItemModel alt = findBankItem(linked);
+                if (alt != null)
+                {
+                    logBankIdDriftDebug(id, alt, "linked-note-id");
+                    return alt;
+                }
+            }
+        }
+
+        if (comp == null)
+        {
+            return null;
+        }
+
+        String lookupName = firstNonEmpty(comp.getMembersName(), comp.getName());
+        if (lookupName == null)
+        {
+            return null;
+        }
+
+        Rs2ItemModel byName = findBankItem(lookupName, false, 1);
+        if (byName != null && byName.getId() != id)
+        {
+            logBankIdDriftDebug(id, byName, "name-fuzzy");
+        }
+        return byName;
+    }
+
+    private static Rs2ItemModel resolveBankStackForSavedId(int id, int minAmount)
+    {
+        assert minAmount > 0;
+
+        Rs2ItemModel row = findBankStackRowForSavedId(id);
+        if (row == null)
+        {
+            return null;
+        }
+        return row.getQuantity() >= minAmount ? row : null;
+    }
 
     /**
      * Container describes from what interface the action happens
@@ -162,6 +287,8 @@ public class Rs2Bank {
 			return;
 		}
 
+		BANK_LIVE_EPOCH.incrementAndGet();
+
 		final Item[] items = event.getItemContainer().getItems();
 		if (items == null) {
 			rs2BankData.setEmpty();
@@ -227,7 +354,7 @@ public class Rs2Bank {
      * @return boolean
      */
     public static boolean hasItem(int id) {
-        return findBankItem(id) != null;
+        return id > 0 && findBankStackRowForSavedId(id) != null;
     }
 
     /**
@@ -318,7 +445,7 @@ public class Rs2Bank {
      */
     public static boolean hasItem(int[] ids) {
         return Arrays.stream(ids)
-                .anyMatch(id -> findBankItem(id) != null);
+                .anyMatch(id -> id > 0 && findBankStackRowForSavedId(id) != null);
     }
 
     /**
@@ -329,7 +456,7 @@ public class Rs2Bank {
      */
     public static boolean hasAllItems(int[] ids) {
         return Arrays.stream(ids)
-                .allMatch(id -> findBankItem(id) != null);
+                .allMatch(id -> id > 0 && findBankStackRowForSavedId(id) != null);
     }
 
     /**
@@ -341,10 +468,7 @@ public class Rs2Bank {
      */
     public static boolean hasItem(int[] ids, int amount) {
         return Arrays.stream(ids)
-                .anyMatch(id -> {
-                    Rs2ItemModel item = findBankItem(id);
-                    return item != null && item.getQuantity() >= amount;
-                });
+                .anyMatch(id -> id > 0 && resolveBankStackForSavedId(id, amount) != null);
     }
 
     /**
@@ -356,10 +480,7 @@ public class Rs2Bank {
      */
     public static boolean hasAllItems(int[] ids, int amount) {
         return Arrays.stream(ids)
-                .allMatch(id -> {
-                    Rs2ItemModel item = findBankItem(id);
-                    return item != null && item.getQuantity() >= amount;
-                });
+                .allMatch(id -> id > 0 && resolveBankStackForSavedId(id, amount) != null);
     }
 
     /**
@@ -370,7 +491,18 @@ public class Rs2Bank {
      * @return boolean
      */
     public static boolean hasBankItem(String name) {
-        return findBankItem(name, false, 1) != null;
+        if (findBankItem(name, false, 1) != null) {
+            return true;
+        }
+        if (!bankItemRaceRetryWarranted(0)) {
+            return false;
+        }
+        sleepTicks(2);
+        boolean ok = findBankItem(name, false, 1) != null;
+        if (!ok) {
+            logBankHasMissDebug("name", -1, name, 1, "cacheSize=" + bankItems().size());
+        }
+        return ok;
     }
 
     /**
@@ -392,7 +524,28 @@ public class Rs2Bank {
      * @return boolean
      */
     public static boolean hasBankItem(String name, int amount, boolean exact) {
-        return findBankItem(name, exact, amount) != null;
+        if (amount <= 0) {
+            return true;
+        }
+        if (findBankItem(name, exact, amount) != null) {
+            return true;
+        }
+        if (!isOpen()) {
+            return false;
+        }
+        Rs2ItemModel any = findBankItem(name, exact, 1);
+        if (any != null && any.getQuantity() < amount) {
+            return false;
+        }
+        if (!bankItemRaceRetryWarranted(0)) {
+            return false;
+        }
+        sleepTicks(2);
+        boolean ok = findBankItem(name, exact, amount) != null;
+        if (!ok) {
+            logBankHasMissDebug("name", -1, name, amount, "cacheSize=" + bankItems().size());
+        }
+        return ok;
     }
 
     /**
@@ -404,12 +557,53 @@ public class Rs2Bank {
      * @return boolean
      */
     public static boolean hasBankItem(String name, boolean exact) {
-        return findBankItem(name, exact) != null;
+        if (findBankItem(name, exact) != null) {
+            return true;
+        }
+        if (!bankItemRaceRetryWarranted(0)) {
+            return false;
+        }
+        sleepTicks(2);
+        boolean ok = findBankItem(name, exact) != null;
+        if (!ok) {
+            logBankHasMissDebug("name", -1, name, 1, "exact=" + exact + " cacheSize=" + bankItems().size());
+        }
+        return ok;
     }
 
     //hasBankItem overload to check with id and amount
     public static boolean hasBankItem(int id, int amount) {
-        return count(id) >= amount;
+        if (amount <= 0) {
+            return true;
+        }
+        if (id <= 0) {
+            return false;
+        }
+        Rs2ItemModel enough = resolveBankStackForSavedId(id, amount);
+        if (enough != null) {
+            return true;
+        }
+        Rs2ItemModel row = findBankStackRowForSavedId(id);
+        if (row != null) {
+            return false;
+        }
+        if (!isOpen()) {
+            return false;
+        }
+        if (!bankItemRaceRetryWarranted(0)) {
+            return false;
+        }
+        sleepTicks(2);
+        enough = resolveBankStackForSavedId(id, amount);
+        if (enough != null) {
+            return true;
+        }
+        row = findBankStackRowForSavedId(id);
+        if (row != null) {
+            return false;
+        }
+        logBankHasMissDebug("id", id, null, amount, "cacheSize=" + bankItems().size());
+        return false;
     }
 
     /**
@@ -424,9 +618,11 @@ public class Rs2Bank {
      * Query count of item inside of bank
      */
     public static int count(int id) {
-        Rs2ItemModel bankItem = findBankItem(id);
-        if (bankItem == null) return 0;
-        return bankItem.getQuantity();
+        if (id <= 0) {
+            return 0;
+        }
+        Rs2ItemModel bankItem = findBankStackRowForSavedId(id);
+        return bankItem == null ? 0 : bankItem.getQuantity();
     }
 
     /**
@@ -1198,7 +1394,7 @@ public class Rs2Bank {
      * @param id the item id
      */
     public static boolean withdrawOne(int id) {
-        return withdrawOne(findBankItem(id));
+        return withdrawOne(findBankStackRowForSavedId(id));
     }
 
     public static boolean withdrawItem(String name) {
@@ -1245,7 +1441,7 @@ public class Rs2Bank {
      * @param id the item id
      */
     public static boolean withdrawAllButOne(int id) {
-        return withdrawAllButOne(findBankItem(id));
+        return withdrawAllButOne(findBankStackRowForSavedId(id));
     }
 
     /**
@@ -1386,7 +1582,7 @@ public class Rs2Bank {
      * @param amount amount to withdraw
      */
     public static boolean withdrawX(int id, int amount) {
-        return withdrawXItem(findBankItem(id), amount);
+        return withdrawXItem(findBankStackRowForSavedId(id), amount);
     }
 
     /**
@@ -1464,7 +1660,7 @@ public class Rs2Bank {
      * @return
      */
     public static boolean withdrawAll(int id) {
-        return withdrawAll(findBankItem(id));
+        return withdrawAll(findBankStackRowForSavedId(id));
     }
 
     /**
@@ -1624,6 +1820,8 @@ public class Rs2Bank {
 
             if (isOpen()) return true;
 
+            int epochBeforeInteract = BANK_LIVE_EPOCH.get();
+
             WorldPoint anchor = Rs2Player.getWorldLocation();
 
             List<TileObject> candidates = Stream.of(
@@ -1646,7 +1844,11 @@ public class Rs2Bank {
                 if (banker == null || !Rs2Npc.interact(banker, "Bank")) return false;
             }
 
-            return sleepUntil(Rs2Bank::isOpen, 5_000);
+            if (!sleepUntil(Rs2Bank::isOpen, 5_000)) {
+                return false;
+            }
+            awaitBankContainerSnapshotSince(epochBeforeInteract);
+            return true;
         } catch (Exception ex) {
             Microbot.logStackTrace("Rs2Bank", ex);
             return false;
@@ -1764,6 +1966,8 @@ public class Rs2Bank {
 
             if (npc == null) return false;
 
+            int epochBeforeInteract = BANK_LIVE_EPOCH.get();
+
             boolean interactResult = Rs2Npc.interact(npc, "bank");
 
             if (!interactResult) {
@@ -1772,6 +1976,7 @@ public class Rs2Bank {
 
             sleepUntil(Rs2Bank::isOpen);
             sleep(Rs2Random.randomGaussian(800,200));
+            awaitBankContainerSnapshotSince(epochBeforeInteract);
             return true;
         } catch (Exception ex) {
             Microbot.logStackTrace("Rs2Bank", ex);
@@ -1798,6 +2003,8 @@ public class Rs2Bank {
 
             if (object == null) return false;
 
+            int epochBeforeInteract = BANK_LIVE_EPOCH.get();
+
             boolean interactResult = Rs2GameObject.interact(object, "bank");
 
             if (!interactResult) {
@@ -1806,6 +2013,7 @@ public class Rs2Bank {
 
             sleepUntil(Rs2Bank::isOpen);
             sleep(Rs2Random.randomGaussian(800,200));
+            awaitBankContainerSnapshotSince(epochBeforeInteract);
             return true;
         } catch (Exception ex) {
             Microbot.logStackTrace("Rs2Bank", ex);
