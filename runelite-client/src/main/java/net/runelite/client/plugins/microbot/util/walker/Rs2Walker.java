@@ -86,6 +86,8 @@ public class Rs2Walker {
     static int stuckCount = 0;
     static WorldPoint lastPosition;
     static long lastMovedTimeMs = 0;
+    /** Rising-edge detection for {@link #checkIfStuck()} animation progress without tile delta. */
+    private static boolean prevAnimatingForStuckCheck = false;
     static volatile WorldPoint currentTarget;
     static int nextWalkingDistance = 10;
 
@@ -93,6 +95,23 @@ public class Rs2Walker {
 
     // Set this to true, if you want to calculate the path but do not want to walk to it
     static boolean debug = false;
+
+    /** Bounds tail recursion that was previously unbounded {@code processWalk} self-calls. */
+    private static final int MAX_PROCESS_WALK_TAIL_ITERATIONS = 64;
+
+    /** Substrings for game-object names treated like doors (pathing heuristics). */
+    private static final String[] DOOR_LIKE_NAME_FRAGMENTS = {
+            "door", "gate", "barrier", "stile", "portcullis", "archway", "cattlegate", "fence"
+    };
+
+    /** Lower index = higher priority when multiple actions match (prefix, ASCII lower). */
+    private static final List<String> DOOR_ACTION_PRIORITY = List.of(
+            "pay-toll", "pick-lock", "walk-through", "go-through", "open",
+            "push", "climb-over", "climb-through", "squeeze-through", "cross", "force"
+    );
+
+    /** Max age for {@link Rs2LeaguesTransport#isLeaguesAreaTeleportPending(long)} in stall / stuck gates. */
+    private static final long LEAGUES_AREA_PENDING_STALL_MAX_AGE_MS = 60_000L;
 
     @Named("disableWalkerUpdate")
     static boolean disableWalkerUpdate;
@@ -395,6 +414,8 @@ public class Rs2Walker {
         if (debug) {
             return WalkerState.EXIT;
         }
+        int partialRetriesWorking = partialRetries;
+        for (int processWalkTail = 0; processWalkTail < MAX_PROCESS_WALK_TAIL_ITERATIONS; processWalkTail++) {
         try {
             if (!Microbot.isLoggedIn()) {
                 setTarget(null);
@@ -469,7 +490,8 @@ public class Rs2Walker {
             if (isStuckTooLong()) {
 				// Leagues area teleports can have long animations. Never trigger stall-recalc
 				// while the transport is in-flight, or we will interrupt and re-click.
-				if (Rs2LeaguesTransport.isTeleportInProgress())
+				if (Rs2LeaguesTransport.isTeleportInProgress()
+						|| Rs2LeaguesTransport.isLeaguesAreaTeleportPending(LEAGUES_AREA_PENDING_STALL_MAX_AGE_MS))
 				{
 					return WalkerState.MOVING;
 				}
@@ -482,7 +504,7 @@ public class Rs2Walker {
                 lastMovedTimeMs = System.currentTimeMillis();
                 stuckCount = 0;
                 setTarget(target);
-                return processWalk(target, distance, partialRetries);
+                continue;
             }
             if (stuckCount > 10) {
                 var reachable = Rs2Tile.getReachableTilesFromTile(Rs2Player.getWorldLocation(), 5).keySet();
@@ -792,12 +814,13 @@ public class Rs2Walker {
                 if (isWalkCancelled(target)) {
                     return WalkerState.EXIT;
                 }
-                if (partialRetries < 3) {
-                    Telemetry.recordPartialRetry(partialRetries + 1, finalDist);
+                if (partialRetriesWorking < 3) {
+                    Telemetry.recordPartialRetry(partialRetriesWorking + 1, finalDist);
                     log.info("[Walker] Walked partial path ({} tiles remaining), retrying from current position (attempt {}/3)",
-                            finalDist, partialRetries + 1);
+                            finalDist, partialRetriesWorking + 1);
                     recalculatePath();
-                    return processWalk(target, distance, partialRetries + 1);
+                    partialRetriesWorking++;
+                    continue;
                 }
                 log.info("[Walker] Walked partial path, exhausted retries. final distance to target: {}", finalDist);
                 Telemetry.recordUnreachable("partial-retries-exhausted", Rs2Player.getWorldLocation(),
@@ -813,7 +836,7 @@ public class Rs2Walker {
                         return WalkerState.EXIT;
                     }
                 }
-                return processWalk(target, distance, partialRetries);
+                continue;
             }
         } catch (Exception ex) {
             if (ex instanceof InterruptedException || ex.getCause() instanceof InterruptedException) {
@@ -822,8 +845,12 @@ public class Rs2Walker {
                 return WalkerState.EXIT;
             }
             log.error("Exception in Rs2Walker:", ex);
+            log.info("Exiting walker: 403");
+            return WalkerState.EXIT;
         }
-        log.info("Exiting walker: 403");
+        }
+        log.warn("[Walker] processWalk: exceeded max tail iterations ({}) for target={}",
+                MAX_PROCESS_WALK_TAIL_ITERATIONS, target);
         return WalkerState.EXIT;
     }
 
@@ -1993,6 +2020,54 @@ public class Rs2Walker {
         return dx * dx + dy * dy;
     }
 
+    private static ObjectComposition resolveCompositionForDoorProbe(TileObject object) {
+        ObjectComposition comp = Rs2GameObject.convertToObjectComposition(object);
+        if (comp == null) {
+            return null;
+        }
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            ObjectComposition c = comp;
+            for (int depth = 0; depth < 4 && c != null && c.getImpostorIds() != null; depth++) {
+                c = c.getImpostor();
+            }
+            return c;
+        }).orElse(comp);
+    }
+
+    private static boolean isNullOrPlaceholderObjectName(String name) {
+        if (name == null) {
+            return true;
+        }
+        String t = name.trim();
+        return t.isEmpty() || "null".equalsIgnoreCase(t);
+    }
+
+    private static int doorActionPriorityIndex(String action) {
+        if (action == null) {
+            return Integer.MAX_VALUE;
+        }
+        String al = action.toLowerCase(Locale.ROOT);
+        for (int i = 0; i < DOOR_ACTION_PRIORITY.size(); i++) {
+            if (al.startsWith(DOOR_ACTION_PRIORITY.get(i))) {
+                return i;
+            }
+        }
+        return Integer.MAX_VALUE;
+    }
+
+    private static boolean isDoorLikeGameObjectName(String name) {
+        if (name == null) {
+            return false;
+        }
+        String n = name.toLowerCase(Locale.ROOT);
+        for (String f : DOOR_LIKE_NAME_FRAGMENTS) {
+            if (n.contains(f)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static boolean handleDoors(List<WorldPoint> path, int index) {
         return handleDoors(path, index, false);
     }
@@ -2009,7 +2084,6 @@ public class Rs2Walker {
             return false;
         }
 
-        List<String> doorActions = List.of("pay-toll", "pick-lock", "walk-through", "go-through", "open");
         boolean isInstance = Microbot.getClient()
                 .getTopLevelWorldView()
                 .getScene()
@@ -2084,14 +2158,15 @@ public class Rs2Walker {
                         : Rs2GameObject.getGameObject(o -> o.getWorldLocation().equals(probe), probe, 3);
                 if (object == null) continue;
 
-                ObjectComposition comp = Rs2GameObject.convertToObjectComposition(object);
-                // Ignore imposter objects
-                if (comp == null || comp.getImpostorIds() != null || comp.getName().equals("null")) continue;
+                ObjectComposition comp = resolveCompositionForDoorProbe(object);
+                if (comp == null || isNullOrPlaceholderObjectName(comp.getName())) {
+                    continue;
+                }
 
                 String action = Arrays.stream(comp.getActions())
                         .filter(Objects::nonNull)
-                        .filter(act -> doorActions.stream().anyMatch(dact -> act.toLowerCase().startsWith(dact.toLowerCase())))
-                        .min(Comparator.comparing(act -> doorActions.indexOf(doorActions.stream().filter(dact -> act.toLowerCase().startsWith(dact)).findFirst().orElse(""))))
+                        .filter(act -> doorActionPriorityIndex(act) < Integer.MAX_VALUE)
+                        .min(Comparator.comparingInt(Rs2Walker::doorActionPriorityIndex))
                         .orElse(null);
 
                 if (action == null) continue;
@@ -2101,14 +2176,29 @@ public class Rs2Walker {
                 final String name = comp.getName();
 
                 if (object instanceof WallObject) {
-                    int orientation = ((WallObject) object).getOrientationA();
-
-                    if (searchNeighborPoint(orientation, probe, fromWp) || searchNeighborPoint(orientation, probe, toWp)) {
+                    WallObject wallObj = (WallObject) object;
+                    int orientationA = wallObj.getOrientationA();
+                    int orientationB = wallObj.getOrientationB();
+                    boolean pathTouchesBothEnds = probe.distanceTo(fromWp) <= 1 && probe.distanceTo(toWp) <= 1
+                            && fromWp.distanceTo(toWp) >= 1 && fromWp.distanceTo(toWp) <= 2;
+                    boolean orientOk = false;
+                    if (orientationA != 0) {
+                        orientOk = searchNeighborPoint(orientationA, probe, fromWp)
+                                || searchNeighborPoint(orientationA, probe, toWp);
+                    }
+                    if (!orientOk && orientationB != 0) {
+                        orientOk = searchNeighborPoint(orientationB, probe, fromWp)
+                                || searchNeighborPoint(orientationB, probe, toWp);
+                    }
+                    if (!orientOk && pathTouchesBothEnds) {
+                        orientOk = true;
+                    }
+                    if (orientOk) {
                         log.info("Found WallObject door - name {} with action {} at {} - from {} to {}", name, action, probe, fromWp, toWp);
                         found = true;
                     }
                 } else {
-                    if (name != null && name.toLowerCase().contains("door")) {
+                    if (isDoorLikeGameObjectName(name)) {
                         log.info("Found GameObject door - name {} with action {} at {} - from {} to {}", name, action, probe, fromWp, toWp);
                         found = true;
                     }
@@ -3623,13 +3713,24 @@ public class Rs2Walker {
         if (Rs2LeaguesTransport.isTeleportInProgress()) {
             return;
         }
+        if (Rs2LeaguesTransport.isLeaguesAreaTeleportPending(LEAGUES_AREA_PENDING_STALL_MAX_AGE_MS)) {
+            return;
+        }
 
-        if (Rs2Player.getWorldLocation().equals(lastPosition)) {
-            stuckCount++;
+        WorldPoint now = Rs2Player.getWorldLocation();
+        boolean anim = Rs2Player.isAnimating();
+        if (now != null && now.equals(lastPosition)) {
+            if (anim && !prevAnimatingForStuckCheck && isNearPath()) {
+                lastMovedTimeMs = System.currentTimeMillis();
+                stuckCount = 0;
+            } else {
+                stuckCount++;
+            }
         } else {
             stuckCount = 0;
             lastMovedTimeMs = System.currentTimeMillis();
         }
+        prevAnimatingForStuckCheck = anim;
     }
 
     // Base stall threshold. See stallThresholdMs() for activity-aware scaling.
@@ -3640,11 +3741,44 @@ public class Rs2Walker {
     private static final double STALL_ANIMATING_MULTIPLIER = 1.5;
     private static final double STALL_INTERACTING_MULTIPLIER = 1.5;
 
+    private static boolean interactingActorNearWalkablePath() {
+        Pathfinder pf = ShortestPathPlugin.getPathfinder();
+        if (pf == null) {
+            return false;
+        }
+        List<WorldPoint> path = pf.getWalkablePath();
+        if (path == null || path.isEmpty()) {
+            return false;
+        }
+        Actor actor = Rs2Player.getInteracting();
+        if (actor == null) {
+            return false;
+        }
+        WorldPoint loc = actor.getWorldLocation();
+        if (loc == null) {
+            return false;
+        }
+        for (WorldPoint p : path) {
+            if (p == null || p.getPlane() != loc.getPlane()) {
+                continue;
+            }
+            if (p.distanceTo2D(loc) <= 2) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static long stallThresholdMs() {
         double multiplier = 1.0;
         if (Rs2Player.isInCombat()) multiplier = Math.max(multiplier, STALL_COMBAT_MULTIPLIER);
         if (Rs2Player.isAnimating()) multiplier = Math.max(multiplier, STALL_ANIMATING_MULTIPLIER);
-        if (Rs2Player.isInteracting()) multiplier = Math.max(multiplier, STALL_INTERACTING_MULTIPLIER);
+        if (Rs2Player.isInteracting()) {
+            double interactMult = interactingActorNearWalkablePath()
+                    ? STALL_INTERACTING_MULTIPLIER
+                    : 1.0;
+            multiplier = Math.max(multiplier, interactMult);
+        }
         return Math.round(STALL_BASE_MS * multiplier);
     }
 
@@ -3652,6 +3786,9 @@ public class Rs2Walker {
         // Leagues teleport lifecycle must own "arrival vs timeout" detection.
         // Walker stall-recalc during an in-flight teleport causes re-click loops.
         if (Rs2LeaguesTransport.isTeleportInProgress()) {
+            return false;
+        }
+        if (Rs2LeaguesTransport.isLeaguesAreaTeleportPending(LEAGUES_AREA_PENDING_STALL_MAX_AGE_MS)) {
             return false;
         }
 

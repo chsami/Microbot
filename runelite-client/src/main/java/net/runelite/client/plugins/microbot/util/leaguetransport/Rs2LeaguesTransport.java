@@ -193,6 +193,38 @@ public final class Rs2LeaguesTransport
 		return s != null ? s.method : null;
 	}
 
+	/**
+	 * Prefix on {@link TransportAttemptSnapshot#getMethod()} for Leagues Area seasonal rows
+	 * (see {@link #buildTransportAttemptMethodLabel} + injected displayInfo {@code Leagues Area: …}).
+	 */
+	private static final String LEAGUES_AREA_ATTEMPT_PREFIX =
+			TransportType.SEASONAL_TRANSPORT + ":Leagues Area:";
+
+	/**
+	 * Whether a Leagues Area teleport was attempted recently but {@link #isTeleportInProgress()} is not
+	 * yet true (calibration daemon, UI delay, pre-click stall). Used by {@link Rs2Walker} stall logic.
+	 *
+	 * @param maxAgeMs non-negative upper bound on attempt age; larger windows catch slower UI paths
+	 */
+	public static boolean isLeaguesAreaTeleportPending(long maxAgeMs)
+	{
+		if (maxAgeMs < 0)
+		{
+			return false;
+		}
+		TransportAttemptSnapshot s = lastTransportAttempt;
+		if (s == null)
+		{
+			return false;
+		}
+		String m = s.getMethod();
+		if (m == null || !m.startsWith(LEAGUES_AREA_ATTEMPT_PREFIX))
+		{
+			return false;
+		}
+		return System.currentTimeMillis() - s.getTsMs() <= maxAgeMs;
+	}
+
 	public static TransportAttemptSnapshot getLastTransportAttemptSnapshot()
 	{
 		return lastTransportAttempt;
