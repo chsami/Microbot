@@ -823,7 +823,25 @@ public interface ShortestPathConfig extends Config {
 			position = 4,
 			section = sectionSpiritTrees
 	)
-	default boolean spiritTreeFarmingGuild() {
-		return true;
-	}
+    default boolean spiritTreeFarmingGuild() {
+        return true;
+    }
+
+    @ConfigSection(
+            name = "Developer",
+            description = "Optional — most users can ignore.",
+            position = 100
+    )
+    String sectionDeveloper = "sectionDeveloper";
+
+    @ConfigItem(
+            keyName = "reloadTransportDefinitions",
+            name = "Reload transport TSVs",
+            description = "Turn ON to reload web-walker transport tables from the client JAR; saves OFF automatically. Use after replacing packaged TSVs in a dev build.",
+            position = 0,
+            section = sectionDeveloper
+    )
+    default boolean reloadTransportDefinitions() {
+        return false;
+    }
 }

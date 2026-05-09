@@ -7,8 +7,6 @@ import net.runelite.api.Quest;
 import net.runelite.api.QuestState;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.client.plugins.microbot.Microbot;
-
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -262,12 +260,14 @@ public class Transport {
         }
 
         if ((value = fieldMap.get("Currency")) != null) {
-            // Split the string by space
             String[] parts = value.split(DELIM);
             if (parts.length > 1) {
-                // Parse the first part as an integer amount
-                currencyAmount = Integer.parseInt(parts[0]);
-                currencyName = parts[1];
+                try {
+                    currencyAmount = Integer.parseInt(parts[0].trim());
+                    currencyName = parts[1].trim();
+                } catch (NumberFormatException e) {
+                    log.debug("Skipping invalid Currency field: {}", value);
+                }
             }
         }
         //END microbot variables
@@ -340,6 +340,9 @@ public class Transport {
 
         if ((value = fieldMap.get("Varbits")) != null && !value.trim().isEmpty()) {
             for (String varbitCheck : value.split(DELIM_MULTI)) {
+                if (varbitCheck.isBlank()) {
+                    continue;
+                }
                 String[] parts;
                 TransportVarbit.Operator operator;
 
@@ -359,17 +362,25 @@ public class Transport {
                     parts = varbitCheck.split("@");
                     operator = TransportVarbit.Operator.COOLDOWN_MINUTES;
                 } else {
-                    throw new IllegalArgumentException("Invalid varbit format: " + varbitCheck);
+                    log.debug("Skipping invalid varbit token: {}", varbitCheck);
+                    continue;
                 }
 
-                int varbitId = Integer.parseInt(parts[0]);
-                int varbitValue = Integer.parseInt(parts[1]);
-                varbits.add(new TransportVarbit(varbitId, varbitValue, operator));
+                try {
+                    int varbitId = Integer.parseInt(parts[0].trim());
+                    int varbitValue = Integer.parseInt(parts[1].trim());
+                    varbits.add(new TransportVarbit(varbitId, varbitValue, operator));
+                } catch (NumberFormatException | ArrayIndexOutOfBoundsException e) {
+                    log.debug("Skipping malformed varbit token: {}", varbitCheck);
+                }
             }
         }
 
         if ((value = fieldMap.get("Varplayers")) != null && !value.trim().isEmpty()) {
             for (String varplayerCheck : value.split(DELIM_MULTI)) {
+                if (varplayerCheck.isBlank()) {
+                    continue;
+                }
                 String[] parts;
                 TransportVarPlayer.Operator operator;
 
@@ -389,12 +400,17 @@ public class Transport {
                     parts = varplayerCheck.split("@");
                     operator = TransportVarPlayer.Operator.COOLDOWN_MINUTES;
                 } else {
-                    throw new IllegalArgumentException("Invalid varplayer format: " + varplayerCheck);
+                    log.debug("Skipping invalid varplayer token: {}", varplayerCheck);
+                    continue;
                 }
 
-                int varplayerId = Integer.parseInt(parts[0]);
-                int varplayerValue = Integer.parseInt(parts[1]);
-                varplayers.add(new TransportVarPlayer(varplayerId, varplayerValue, operator));
+                try {
+                    int varplayerId = Integer.parseInt(parts[0].trim());
+                    int varplayerValue = Integer.parseInt(parts[1].trim());
+                    varplayers.add(new TransportVarPlayer(varplayerId, varplayerValue, operator));
+                } catch (NumberFormatException | ArrayIndexOutOfBoundsException e) {
+                    log.debug("Skipping malformed varplayer token: {}", varplayerCheck);
+                }
             }
         }
 
@@ -465,19 +481,32 @@ public class Transport {
         final String PREFIX_COMMENT = "#";
 
         try {
-            String s = new String(Util.readAllBytes(ShortestPathPlugin.class.getResourceAsStream(path)), StandardCharsets.UTF_8);
+            java.io.InputStream stream = ShortestPathPlugin.class.getResourceAsStream(path);
+            if (stream == null) {
+                log.warn("Transport resource missing, skipping: {}", path);
+                return;
+            }
+            String s = new String(Util.readAllBytes(stream), StandardCharsets.UTF_8);
             Scanner scanner = new Scanner(s);
 
             // Header line is the first line in the file and will start with either '#' or '# '
             String headerLine = scanner.nextLine();
+            if (headerLine.endsWith("\r")) {
+                headerLine = headerLine.substring(0, headerLine.length() - 1);
+            }
             headerLine = headerLine.startsWith(PREFIX_COMMENT + " ") ? headerLine.replace(PREFIX_COMMENT + " ", PREFIX_COMMENT) : headerLine;
             headerLine = headerLine.startsWith(PREFIX_COMMENT) ? headerLine.replace(PREFIX_COMMENT, "") : headerLine;
             String[] headers = headerLine.split(DELIM_COLUMN);
 
             Set<Transport> newTransports = new HashSet<>();
 
+            int lineNumber = 1;
             while (scanner.hasNextLine()) {
+                lineNumber++;
                 String line = scanner.nextLine();
+                if (line.endsWith("\r")) {
+                    line = line.substring(0, line.length() - 1);
+                }
 
                 if (line.startsWith(PREFIX_COMMENT) || line.isBlank()) {
                     continue;
@@ -491,11 +520,12 @@ public class Transport {
                     }
                 }
 
-
-                Transport transport = new Transport(fieldMap, transportType);
-
-                newTransports.add(transport);
-
+                try {
+                    Transport transport = new Transport(fieldMap, transportType);
+                    newTransports.add(transport);
+                } catch (RuntimeException e) {
+                    log.warn("Skipping transport row {} in {}: {}", lineNumber, path, e.getMessage());
+                }
             }
             scanner.close();
 
@@ -548,14 +578,11 @@ public class Transport {
                 }
             }
         } catch (IOException e) {
-            Microbot.log(e.getMessage());
-            e.printStackTrace();
-            throw new RuntimeException(e);
+            log.warn("Failed to read transport file {}: {}", path, e.getMessage());
         }
     }
 
-    public static HashMap<WorldPoint, Set<Transport>> loadAllFromResources() {
-        HashMap<WorldPoint, Set<Transport>> transports = new HashMap<>();
+    private static void appendStandardTransportFiles(HashMap<WorldPoint, Set<Transport>> transports) {
         addTransports(transports, "transports.tsv", TransportType.TRANSPORT);
         addTransports(transports, "agility_shortcuts.tsv", TransportType.AGILITY_SHORTCUT);
         addTransports(transports, "boats.tsv", TransportType.BOAT);
@@ -578,8 +605,21 @@ public class Transport {
         addTransports(transports, "magic_mushtrees.tsv", TransportType.MAGIC_MUSHTREE, 5);
         addTransports(transports, "seasonal_transports.tsv", TransportType.SEASONAL_TRANSPORT);
         addTransports(transports, "npcs.tsv", TransportType.NPC);
+    }
+
+    public static HashMap<WorldPoint, Set<Transport>> loadAllFromResources() {
+        HashMap<WorldPoint, Set<Transport>> transports = new HashMap<>();
+        appendStandardTransportFiles(transports);
         System.out.println("Loaded " + transports.size() + " transports");
         return transports;
+    }
+
+    /**
+     * Reload transport TSVs from the plugin classpath (same as {@link #loadAllFromResources()}).
+     * Apply to {@link PathfinderConfig} via {@link ShortestPathPlugin} config hot-reload.
+     */
+    public static HashMap<WorldPoint, Set<Transport>> reloadFromResources() {
+        return loadAllFromResources();
     }
 
     // To string method for debugging

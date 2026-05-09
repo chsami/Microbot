@@ -1540,6 +1540,10 @@ public final class Rs2LeaguesTransport
 		return out;
 	}
 
+	/** Inclusive-exclusive world coordinate bounds for catalog JSON (avoids bogus packed keys). */
+	private static final int PARSE_POINT_COORD_MAX_EXCLUSIVE = 16384;
+	private static final int PARSE_POINT_PLANE_MAX_INCLUSIVE = 3;
+
 	private static WorldPoint parsePoint(JsonObject obj)
 	{
 		if (obj == null)
@@ -1548,7 +1552,17 @@ public final class Rs2LeaguesTransport
 		}
 		try
 		{
-			return new WorldPoint(obj.get("x").getAsInt(), obj.get("y").getAsInt(), obj.get("p").getAsInt());
+			int x = obj.get("x").getAsInt();
+			int y = obj.get("y").getAsInt();
+			int p = obj.get("p").getAsInt();
+			if (x < 0 || x >= PARSE_POINT_COORD_MAX_EXCLUSIVE
+					|| y < 0 || y >= PARSE_POINT_COORD_MAX_EXCLUSIVE
+					|| p < 0 || p > PARSE_POINT_PLANE_MAX_INCLUSIVE)
+			{
+				log.warn("[Leagues] catalog parsePoint out of bounds x={} y={} p={}", x, y, p);
+				return null;
+			}
+			return new WorldPoint(x, y, p);
 		}
 		catch (Exception e)
 		{

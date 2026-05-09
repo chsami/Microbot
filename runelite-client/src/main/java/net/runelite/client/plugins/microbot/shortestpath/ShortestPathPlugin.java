@@ -106,6 +106,9 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
     @Inject
     private Client client;
 
+    @Inject
+    private ConfigManager configManager;
+
     @Getter
     @Inject
     private ClientThread clientThread;
@@ -381,6 +384,30 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
 
 		// Reset config in Rs2Walker when changed
 		Rs2Walker.setConfig(config);
+
+        if ("reloadTransportDefinitions".equals(event.getKey())) {
+            if (!Boolean.parseBoolean(event.getNewValue())) {
+                return;
+            }
+            try {
+                HashMap<WorldPoint, Set<Transport>> next = Transport.reloadFromResources();
+                if (pathfinderConfig != null) {
+                    pathfinderConfig.getAllTransports().clear();
+                    pathfinderConfig.getAllTransports().putAll(next);
+                    pathfinderConfig.invalidateTransportRefreshCache();
+                    WorldPoint wp = Rs2Player.getWorldLocation();
+                    if (Microbot.isLoggedIn() && wp != null) {
+                        pathfinderConfig.refresh(wp);
+                    }
+                    log.info("[WebWalker] Reloaded transport TSVs: {} origin keys", next.size());
+                }
+            } catch (Exception e) {
+                log.warn("[WebWalker] Transport TSV reload failed", e);
+            } finally {
+                configManager.setConfiguration(CONFIG_GROUP, "reloadTransportDefinitions", "false");
+            }
+            return;
+        }
 
         if ("drawDebugPanel".equals(event.getKey())) {
             if (config.drawDebugPanel()) {
