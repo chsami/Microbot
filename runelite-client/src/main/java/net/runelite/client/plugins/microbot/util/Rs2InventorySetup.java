@@ -104,18 +104,38 @@ public class Rs2InventorySetup {
      * @return true if the inventory matches the setup after loading, false otherwise.
      */
 	public boolean loadInventory() {
-		Rs2Bank.openBank();
-		if (!Rs2Bank.isOpen()) {
+		return loadInventory(true);
+	}
+
+	/**
+	 * @param skipIfAlreadyMatching when {@code true}, skip bank open when inventory already matches the setup,
+	 *                              there are no foreign items, and quantities are not over setup limits.
+	 */
+	public boolean loadInventory(boolean skipIfAlreadyMatching) {
+		if (inventorySetup == null) {
 			return false;
 		}
 
 		validateInventorySetupAgainstDefsIfEnabled();
 
+		Set<Integer> retainIds = computeSetupRetainItemIds();
+		Map<String, Boolean> fuzzy = computeSetupFuzzyKeepNames();
+		if (skipIfAlreadyMatching && doesInventoryMatch() && !needsDepositCleanupBeforeBanking(retainIds, fuzzy)) {
+			return true;
+		}
+
+		Rs2Bank.openBank();
+		if (!Rs2Bank.isOpen()) {
+			return false;
+		}
+
         if (!Rs2Bank.findLockedSlots().isEmpty()) {
             Rs2Bank.toggleAllLocks();
         }
 
-		Rs2Bank.depositAllExcept(itemsToNotDeposit());
+		if (needsDepositCleanupBeforeBanking(retainIds, fuzzy)) {
+			Rs2Bank.depositAllExcept(retainIds, fuzzy);
+		}
 
 		List<InventorySetupsItem> setupItems = inventorySetup.getInventory();
 
@@ -297,6 +317,128 @@ public class Rs2InventorySetup {
 		}
 	}
 
+	private List<InventorySetupsItem> allNonDummySetupItemsForDepositRules() {
+		List<InventorySetupsItem> out = new ArrayList<>();
+		if (inventorySetup == null) {
+			return out;
+		}
+		if (inventorySetup.getInventory() != null) {
+			for (InventorySetupsItem x : inventorySetup.getInventory()) {
+				if (x != null && !InventorySetupsItem.itemIsDummy(x)) {
+					out.add(x);
+				}
+			}
+		}
+		if (inventorySetup.getEquipment() != null) {
+			for (InventorySetupsItem x : inventorySetup.getEquipment()) {
+				if (x != null && !InventorySetupsItem.itemIsDummy(x)) {
+					out.add(x);
+				}
+			}
+		}
+		if (inventorySetup.getAdditionalFilteredItems() != null) {
+			for (InventorySetupsItem x : inventorySetup.getAdditionalFilteredItems().values()) {
+				if (x != null && !InventorySetupsItem.itemIsDummy(x)) {
+					out.add(x);
+				}
+			}
+		}
+		if (inventorySetup.getRune_pouch() != null) {
+			for (InventorySetupsItem x : inventorySetup.getRune_pouch()) {
+				if (x != null && x.getId() != -1 && x.getQuantity() > 0 && !InventorySetupsItem.itemIsDummy(x)) {
+					out.add(x);
+				}
+			}
+		}
+		return out;
+	}
+
+	private Set<Integer> computeSetupRetainItemIds() {
+		Set<Integer> ids = new HashSet<>();
+		Client client = Microbot.getClient();
+		for (InventorySetupsItem item : allNonDummySetupItemsForDepositRules()) {
+			if (item.isFuzzy()) {
+				continue;
+			}
+			int id = item.getId();
+			if (id <= 0) {
+				continue;
+			}
+			ids.add(id);
+			if (client != null) {
+				ItemComposition comp = client.getItemDefinition(id);
+				if (comp != null) {
+					int linked = comp.getLinkedNoteId();
+					if (linked > 0 && linked != id) {
+						ids.add(linked);
+					}
+				}
+			}
+		}
+		return ids;
+	}
+
+	private Map<String, Boolean> computeSetupFuzzyKeepNames() {
+		Map<String, Boolean> map = new LinkedHashMap<>();
+		for (InventorySetupsItem item : allNonDummySetupItemsForDepositRules()) {
+			String name = item.getName();
+			if (name == null || name.isEmpty()) {
+				continue;
+			}
+			map.merge(name, item.isFuzzy(), (a, b) -> a || b);
+		}
+		return map;
+	}
+
+	private boolean needsDepositCleanupBeforeBanking(Set<Integer> retainIds, Map<String, Boolean> fuzzy) {
+		if (retainIds == null || fuzzy == null) {
+			return true;
+		}
+
+		boolean foreign = Rs2Inventory.items()
+				.anyMatch(inv -> !Rs2Bank.isInventoryItemRetainedForSetupDeposit(inv, retainIds, fuzzy));
+		return foreign || inventoryExceedsSetupQuantities();
+	}
+
+	private boolean inventoryExceedsSetupQuantities() {
+		if (inventorySetup == null || inventorySetup.getInventory() == null) {
+			return false;
+		}
+		List<InventorySetupsItem> setupItems = inventorySetup.getInventory();
+		Set<String> seenGroup = new HashSet<>();
+		for (InventorySetupsItem item : setupItems) {
+			if (InventorySetupsItem.itemIsDummy(item)) {
+				continue;
+			}
+			String key = item.isFuzzy()
+					? "f:" + item.getName().toLowerCase(Locale.ROOT)
+					: "i:" + item.getId();
+			if (!seenGroup.add(key)) {
+				continue;
+			}
+			List<InventorySetupsItem> matching = setupItems.stream().filter(i -> i.matches(item)).collect(Collectors.toList());
+			int desiredQuantity = matching.stream().mapToInt(InventorySetupsItem::getQuantity).sum();
+			boolean isFuzzy = item.isFuzzy();
+			int itemId = item.getId();
+			String itemName = item.getName().toLowerCase(Locale.ROOT);
+			boolean singleStackRow = matching.size() == 1 && desiredQuantity > 1;
+			if (singleStackRow) {
+				int currentQuantity = isFuzzy ? Rs2Inventory.itemQuantity(itemName) : Rs2Inventory.itemQuantity(itemId);
+				if (currentQuantity > desiredQuantity) {
+					return true;
+				}
+			} else {
+				long alreadyPresent = isFuzzy
+						? Rs2Inventory.items(i -> i.getName().toLowerCase(Locale.ROOT).contains(itemName)).count()
+						: Rs2Inventory.items(i -> i.getId() == itemId).count();
+				if (alreadyPresent > matching.size()) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
     /**
      * Calculates the quantity of an item to withdraw based on the current inventory state.
      *
@@ -371,6 +513,23 @@ public class Rs2InventorySetup {
      * @return true if the equipment matches the setup after loading, false otherwise.
      */
     public boolean loadEquipment() {
+        return loadEquipment(true);
+    }
+
+	/**
+	 * @param skipIfAlreadyMatching when {@code true}, skip bank if equipment matches and inventory needs no deposit cleanup.
+	 */
+	public boolean loadEquipment(boolean skipIfAlreadyMatching) {
+		if (inventorySetup == null) {
+			return false;
+		}
+
+		Set<Integer> retainIds = computeSetupRetainItemIds();
+		Map<String, Boolean> fuzzy = computeSetupFuzzyKeepNames();
+		if (skipIfAlreadyMatching && doesEquipmentMatch() && !needsDepositCleanupBeforeBanking(retainIds, fuzzy)) {
+			return true;
+		}
+
         Rs2Bank.openBank();
         if (!Rs2Bank.isOpen()) {
             return false;
@@ -379,9 +538,8 @@ public class Rs2InventorySetup {
         //Clear inventory if full
         if (Rs2Inventory.isFull()) {
             Rs2Bank.depositAll();
-        } else {
-            //only deposit the items we don't need
-            Rs2Bank.depositAllExcept(itemsToNotDeposit());
+        } else if (needsDepositCleanupBeforeBanking(retainIds, fuzzy)) {
+            Rs2Bank.depositAllExcept(retainIds, fuzzy);
         }
 
 
@@ -613,26 +771,13 @@ public class Rs2InventorySetup {
     }
 
     /**
-     * Creates a list of item names that should not be deposited into the bank.
-     * Combines items from both the inventory setup and the equipment setup.
+     * Names that should not be deposited (exact vs fuzzy), derived from inventory, equipment, additional items, and rune pouch.
+     * For automation, prefer {@link Rs2Bank#depositAllExcept(Set, Map)} with ids from non-fuzzy rows plus linked noted/unnoted ids.
      *
-     * @return A list of item names that should not be deposited.
+     * @return map suitable for {@link Rs2Bank#depositAllExcept(Map)}
      */
     public Map<String, Boolean> itemsToNotDeposit() {
-        List<InventorySetupsItem> inventorySetupItems = getInventoryItems();
-        List<InventorySetupsItem> equipmentSetupItems = getEquipmentItems();
-
-        List<InventorySetupsItem> combined = new ArrayList<>();
-
-        combined.addAll(inventorySetupItems);
-        combined.addAll(equipmentSetupItems);
-
-        return combined.stream()
-                .collect(Collectors.toMap(
-                        InventorySetupsItem::getName,
-                        InventorySetupsItem::isFuzzy,
-                        (existing, replacement) -> existing)
-                );
+        return new LinkedHashMap<>(computeSetupFuzzyKeepNames());
     }
 
     /**

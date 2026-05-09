@@ -1373,6 +1373,56 @@ public class Rs2Bank {
     }
 
     /**
+     * Deposits all inventory items except those retained by exact id and/or name rules.
+     * <p>
+     * Include noted and unnoted ids in {@code retainItemIds} when both may appear in inventory.
+     * Name map semantics match {@link #depositAllExcept(Map)}: {@code true} = case-insensitive substring,
+     * {@code false} = exact name ({@link String#equalsIgnoreCase}).
+     *
+     * @param retainItemIds        ids to keep in inventory (may be empty)
+     * @param fuzzyOrExactNames    setup names to keep; value is fuzzy ({@code contains}) vs exact
+     * @return {@code true} if any item was deposited
+     */
+    public static boolean depositAllExcept(Set<Integer> retainItemIds, Map<String, Boolean> fuzzyOrExactNames) {
+        final Set<Integer> ids = retainItemIds == null ? Collections.emptySet() : retainItemIds;
+        final Map<String, Boolean> names = fuzzyOrExactNames == null ? Collections.emptyMap() : fuzzyOrExactNames;
+        return depositAllExcept(item -> isInventoryItemRetainedForSetupDeposit(item, ids, names));
+    }
+
+    /**
+     * Whether an inventory stack should be kept when trimming inventory for an inventory-setup load.
+     */
+    public static boolean isInventoryItemRetainedForSetupDeposit(
+            Rs2ItemModel item, Set<Integer> retainIds, Map<String, Boolean> fuzzyNames) {
+        if (item == null) {
+            return false;
+        }
+        if (retainIds != null && retainIds.contains(item.getId())) {
+            return true;
+        }
+        if (fuzzyNames == null || fuzzyNames.isEmpty()) {
+            return false;
+        }
+        String invName = item.getName();
+        if (invName == null) {
+            return false;
+        }
+        String invLower = invName.toLowerCase(Locale.ROOT);
+        for (Map.Entry<String, Boolean> e : fuzzyNames.entrySet()) {
+            String key = e.getKey();
+            if (key == null || key.isEmpty()) {
+                continue;
+            }
+            boolean fuzzy = Boolean.TRUE.equals(e.getValue());
+            String keyLower = key.toLowerCase(Locale.ROOT);
+            if (fuzzy ? invLower.contains(keyLower) : invName.equalsIgnoreCase(key)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * withdraw one item identified by its ItemWidget.
      *
      * @param rs2Item item to withdraw

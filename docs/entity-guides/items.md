@@ -107,4 +107,16 @@ Set JVM flag `-Dmicrobot.bank.validateInventorySetup=true` so `Rs2InventorySetup
 
 ---
 
-<!-- Add new gotchas here as numbered entries (## 6, ## 7, ...). -->
+## 6. Inventory-setup load: keep-list uses ids + names, deposit only when needed
+
+`Rs2InventorySetup.loadInventory()` (default) skips the bank when the inventory already matches the setup **and** there are no “foreign” stacks (items not in the setup’s keep list) **and** quantities do not exceed the setup’s grouped targets. Otherwise it opens the bank and calls `Rs2Bank.depositAllExcept(Set<Integer>, Map<String, Boolean>)`: non-fuzzy rows contribute exact ids (plus linked noted/unnoted ids); fuzzy rows contribute name keys (`true` = substring keep). The keep list includes inventory, equipment, additional filtered items, and rune pouch entries.
+
+**Why this matters:** Name-only `depositAllExcept(Map)` missed noted/unnoted pairs and extra sections; unconditional deposit caused unnecessary UI churn.
+
+**Pattern to follow:** Use `loadInventory(false)` when you must always open the bank (legacy behavior). For custom scripts, reuse `Rs2Bank.isInventoryItemRetainedForSetupDeposit` semantics when building keep predicates.
+
+**Where this applies:** `Rs2InventorySetup.loadInventory`, `loadEquipment`, `Rs2Bank.depositAllExcept(Set, Map)`.
+
+---
+
+<!-- Add new gotchas here as numbered entries (## 7, ## 8, ...). -->
