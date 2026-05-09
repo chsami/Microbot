@@ -513,8 +513,26 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
     public void onGameStateChanged(GameStateChanged event) {
         if (event.getGameState() == GameState.LOGGED_IN) {
             pendingLoginRefresh = true;
+			// Requested behavior: clear any prior route on login (safe no-op when none).
+			// Guard for unit tests where UI wiring may be null.
+			if (worldMapPointManager != null)
+			{
+				setTarget(null);
+			}
+			else
+			{
+				clearRouteState();
+			}
         }
     }
+
+	private static void clearRouteState()
+	{
+		// Unit-test fallback: `setTarget(null)` requires UI wiring; this must stay semantically equivalent to its cleanup.
+		ShortestPathPlugin.pathfinder = null;
+		ShortestPathPlugin.marker = null;
+		ShortestPathPlugin.startPointSet = false;
+	}
 
     void handlePendingLoginRefresh() {
         if (pendingLoginRefresh && pathfinderConfig != null) {

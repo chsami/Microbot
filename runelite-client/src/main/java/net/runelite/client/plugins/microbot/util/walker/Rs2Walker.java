@@ -43,9 +43,13 @@ import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.player.Rs2Pvp;
+import net.runelite.client.plugins.microbot.util.leaguetransport.Rs2LeaguesTransport;
+import net.runelite.client.plugins.microbot.util.leaguetransport.Rs2MapOfAlacrityTransport;
+import java.util.function.BooleanSupplier;
 import net.runelite.client.plugins.microbot.util.poh.PohTeleports;
 import net.runelite.client.plugins.microbot.util.poh.PohTransport;
 import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
+import net.runelite.client.plugins.microbot.util.leaguetransport.LeaguesRegion;
 import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import net.runelite.client.plugins.skillcalculator.skills.MagicAction;
@@ -71,6 +75,8 @@ import static net.runelite.client.plugins.microbot.util.Global.*;
 /**
  * TODO:
  * 1. fix teleports starting from inside the POH
+ * <p>
+ * Seasonal handlers ({@link Rs2LeaguesTransport#tryHandleLeaguesAreaTransport}, MoA) must not run on the client thread — same contract as {@link Rs2LeaguesTransport#leaguesTeleport}.
  */
 @Slf4j
 public class Rs2Walker {
@@ -99,6 +105,22 @@ public class Rs2Walker {
     // setTarget() / recalculatePath() stay unlocked — they are the cross-thread cancel
     // path and the volatile currentTarget read inside the walker loop picks up nulls.
     private static final ReentrantLock walkerLock = new ReentrantLock();
+
+    /**
+     * First-seen dedupe keys when both seasonal handlers decline (debug-only): packed destination hex (or {@code nodest}),
+     * then truncated {@code displayInfo} plus {@code |h} + hex {@link String#hashCode()} so long-prefix collisions split by dest.
+     * At most {@link #SEASONAL_HANDLER_MISS_LOG_CAP} distinct keys ever log — then new misses are silent until JVM restart.
+     */
+    private static final Set<String> SEASONAL_HANDLER_MISS_LOGGED = ConcurrentHashMap.newKeySet();
+    private static final AtomicInteger SEASONAL_HANDLER_MISS_LOGGED_COUNT = new AtomicInteger(0);
+    private static final int SEASONAL_HANDLER_MISS_LOG_CAP = 128;
+
+    /** Same package (e.g. unit tests) only — not part of script API. */
+    static void clearSeasonalHandlerMissDedupeForTesting()
+    {
+        SEASONAL_HANDLER_MISS_LOGGED.clear();
+        SEASONAL_HANDLER_MISS_LOGGED_COUNT.set(0);
+    }
 
     /**
      * Externally observable counters for walker health checks. The benchmark probe
@@ -349,6 +371,12 @@ public class Rs2Walker {
                 return WalkerState.EXIT;
             }
             if (isStuckTooLong()) {
+				// Leagues area teleports can have long animations. Never trigger stall-recalc
+				// while the transport is in-flight, or we will interrupt and re-click.
+				if (Rs2LeaguesTransport.isTeleportInProgress())
+				{
+					return WalkerState.MOVING;
+				}
                 long sinceMoved = System.currentTimeMillis() - lastMovedTimeMs;
                 long threshold = stallThresholdMs();
                 Telemetry.recordStallRecalc(sinceMoved, Rs2Player.getWorldLocation());
@@ -1353,9 +1381,16 @@ public class Rs2Walker {
             // Iterate over each available transport
             for (Transport transport : transportsAtPoint) {
 
-                // Special handling for teleportation transports
-                if (transport.getType() == TransportType.TELEPORTATION_ITEM ||
-                        transport.getType() == TransportType.TELEPORTATION_SPELL)
+                // Special handling for teleportation-like transports (originless)
+                // NOTE: Leagues "Area" teleports are injected as SEASONAL_TRANSPORT with null origin.
+                String di = transport.getDisplayInfo();
+                boolean isLeaguesAreaTeleport = transport.getType() == TransportType.SEASONAL_TRANSPORT
+                        && di != null
+                        && di.toLowerCase().startsWith("leagues area:");
+
+                if (transport.getType() == TransportType.TELEPORTATION_ITEM
+                        || transport.getType() == TransportType.TELEPORTATION_SPELL
+                        || isLeaguesAreaTeleport)
                 {
                     // For teleportation, we assume origin is null and simply check if the destination exists in the path.
                     int destIndex = path.indexOf(transport.getDestination());
@@ -1387,8 +1422,9 @@ public class Rs2Walker {
                     // For non-teleportation transports, ensure both origin and destination exist in the path
                     // and that the destination comes after the origin.
                     int indexOfDestination = path.indexOf(transport.getDestination());
-                    if (transport.getType() != TransportType.TELEPORTATION_ITEM &&
-                            transport.getType() != TransportType.TELEPORTATION_SPELL) {
+                    if (transport.getType() != TransportType.TELEPORTATION_ITEM
+                            && transport.getType() != TransportType.TELEPORTATION_SPELL
+                            && !isLeaguesAreaTeleport) {
                         int indexOfOrigin = path.indexOf(transport.getOrigin());
                         if (indexOfOrigin == -1 || indexOfDestination == -1 || indexOfDestination < indexOfOrigin) {
                             continue;
@@ -1437,7 +1473,11 @@ public class Rs2Walker {
                         t.getType() == TransportType.TELEPORTATION_SPELL || t.getType() == TransportType.CANOE ||
                         t.getType() == TransportType.BOAT || t.getType() == TransportType.CHARTER_SHIP ||
                         t.getType() == TransportType.SHIP || t.getType() == TransportType.MINECART ||
-                        t.getType() == TransportType.MAGIC_CARPET)
+                        t.getType() == TransportType.MAGIC_CARPET ||
+						(t.getType() == TransportType.SEASONAL_TRANSPORT
+								&& Rs2LeaguesTransport.isLeaguesActive()
+								&& t.getDisplayInfo() != null
+								&& t.getDisplayInfo().toLowerCase().startsWith("leagues area:")))
                 .peek(t -> {
                     // Set fairy ring requirements if not already set
                     if (t.getType() == TransportType.FAIRY_RING &&
@@ -1946,7 +1986,57 @@ public class Rs2Walker {
                 TileObject object = (wall != null)
                         ? wall
                         : Rs2GameObject.getGameObject(o -> o.getWorldLocation().equals(probe), probe, 3);
-                if (tryHandleDoorObject(object, probe, fromWp, toWp, doorActions, false)) {
+                if (object == null) continue;
+
+                ObjectComposition comp = Rs2GameObject.convertToObjectComposition(object);
+                // Ignore imposter objects
+                if (comp == null || comp.getImpostorIds() != null || comp.getName().equals("null")) continue;
+
+                String action = Arrays.stream(comp.getActions())
+                        .filter(Objects::nonNull)
+                        .filter(act -> doorActions.stream().anyMatch(dact -> act.toLowerCase().startsWith(dact.toLowerCase())))
+                        .min(Comparator.comparing(act -> doorActions.indexOf(doorActions.stream().filter(dact -> act.toLowerCase().startsWith(dact)).findFirst().orElse(""))))
+                        .orElse(null);
+
+                if (action == null) continue;
+
+                boolean found = false;
+
+                final String name = comp.getName();
+
+                if (object instanceof WallObject) {
+                    int orientation = ((WallObject) object).getOrientationA();
+
+                    if (searchNeighborPoint(orientation, probe, fromWp) || searchNeighborPoint(orientation, probe, toWp)) {
+                        log.info("Found WallObject door - name {} with action {} at {} - from {} to {}", name, action, probe, fromWp, toWp);
+                        found = true;
+                    }
+                } else {
+                    if (name != null && name.toLowerCase().contains("door")) {
+                        log.info("Found GameObject door - name {} with action {} at {} - from {} to {}", name, action, probe, fromWp, toWp);
+                        found = true;
+                    }
+                }
+
+                if (found) {
+                    if (!handleDoorException(object, action)) {
+                        WorldPoint posBefore = Rs2Player.getWorldLocation();
+                        Rs2GameObject.interact(object, action);
+                        Rs2Player.waitForWalking();
+                        WorldPoint posAfter = Rs2Player.getWorldLocation();
+                        boolean moved = posBefore != null && posAfter != null && !posBefore.equals(posAfter);
+                        if (!moved && isQuestLockedDoorDialogue()) {
+                            String dialogue = Rs2Dialogue.getDialogueText();
+                            log.warn("[Walker] Door at {} ({} action={}) appears quest/stat-locked — dialogue=\"{}\" — blacklisting tile, refreshing restrictions, recalculating",
+                                    probe, name, action, dialogue);
+                            sessionBlacklistedDoors.add(probe);
+                            Rs2Dialogue.clickContinue();
+                            if (ShortestPathPlugin.pathfinderConfig != null) {
+                                ShortestPathPlugin.pathfinderConfig.refresh();
+                            }
+                            recalculatePath();
+                        }
+                    }
                     return true;
                 }
             }
@@ -2624,7 +2714,8 @@ public class Rs2Walker {
 
                             Rs2NpcModel npc = Rs2Npc.getNpc(transport.getName());
 
-                            if (Rs2Npc.canWalkTo(npc, 20) && Rs2Npc.interact(npc, transport.getAction())) {
+                            // Wrap with observation so Leagues blocked-region chat can attribute this attempt.
+                            if (attemptObserved(transport, () -> npc != null && Rs2Npc.canWalkTo(npc, 20) && Rs2Npc.interact(npc, transport.getAction()))) {
                                 Rs2Player.waitForWalking();
                                 sleepUntil(Rs2Dialogue::isInDialogue,600*2);
 
@@ -2658,7 +2749,7 @@ public class Rs2Walker {
                         }
 
                         if (transport.getType() == TransportType.CHARTER_SHIP) {
-                            if (handleCharterShip(transport)) {
+                            if (attemptObserved(transport, () -> handleCharterShip(transport))) {
                                 sleepUntil(() -> !Rs2Player.isAnimating());
                                 sleepUntilTrue(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < 10);
                                 sleepTickJitter(4); // wait 4 extra ticks before walking
@@ -2670,7 +2761,7 @@ public class Rs2Walker {
                     log.debug("[Walker] Handling {} transport: {} (i={}, path[i]={}, origin={})",
                             transport.getType(), transport.getDisplayInfo(), i, path.get(i), origin);
                     if (transport.getType() == TransportType.POH) {
-                        boolean pohResult = handlePohTransport(transport);
+                        boolean pohResult = attemptObserved(transport, () -> handlePohTransport(transport));
                         log.debug("[Walker] handlePohTransport({}) returned {}", transport.getDisplayInfo(), pohResult);
                         if (pohResult) {
                             sleepUntil(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < OFFSET, 10000);
@@ -2679,14 +2770,14 @@ public class Rs2Walker {
                     }
 
                     if (transport.getType() == TransportType.CANOE) {
-                        if (handleCanoe(transport)) {
+                        if (attemptObserved(transport, () -> handleCanoe(transport))) {
                             sleepTickJitter(2);
                             break;
                         }
                     }
 
                     if (transport.getType() == TransportType.SPIRIT_TREE) {
-                        if (handleSpiritTree(transport)) {
+                        if (attemptObserved(transport, () -> handleSpiritTree(transport))) {
                             sleepUntil(() -> !Rs2Player.isAnimating());
                             sleepUntilTrue(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < 10);
                             break;
@@ -2694,28 +2785,28 @@ public class Rs2Walker {
                     }
 
                     if (transport.getType() == TransportType.QUETZAL) {
-                        if (handleQuetzal(transport)) {
+                        if (attemptObserved(transport, () -> handleQuetzal(transport))) {
                             sleepTickJitter(2);
                             break;
                         }
                     }
 
                     if (transport.getType() == TransportType.MAGIC_CARPET) {
-                        if (handleMagicCarpet(transport)) {
+                        if (attemptObserved(transport, () -> handleMagicCarpet(transport))) {
                             sleepTickJitter(2);
                             break;
                         }
                     }
 
                     if (transport.getType() == TransportType.WILDERNESS_OBELISK) {
-                        if (handleWildernessObelisk(transport)) {
+                        if (attemptObserved(transport, () -> handleWildernessObelisk(transport))) {
                             sleepTickJitter(2);
                             break;
                         }
                     }
 
                     if (transport.getType() == TransportType.GNOME_GLIDER) {
-                        if (handleGlider(transport)) {
+                        if (attemptObserved(transport, () -> handleGlider(transport))) {
                             sleepUntil(() -> !Rs2Player.isAnimating());
                             sleepUntilTrue(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < 10);
                             sleepTickJitter(3);
@@ -2724,21 +2815,21 @@ public class Rs2Walker {
                     }
 
                     if (transport.getType() == TransportType.FAIRY_RING && !Rs2Player.getWorldLocation().equals(transport.getDestination())) {
-                        if (handleFairyRing(transport)) {
+                        if (attemptObserved(transport, () -> handleFairyRing(transport))) {
                             sleepUntilTrue(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < OFFSET);
                             break;
                         }
                     }
 
                     if (transport.getType() == TransportType.TELEPORTATION_MINIGAME) {
-                        if (handleMinigameTeleport(transport)) {
+                        if (attemptObserved(transport, () -> handleMinigameTeleport(transport))) {
                             sleepUntilTrue(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < (OFFSET * 2));
                             break;
                         }
                     }
 
                     if (transport.getType() == TransportType.TELEPORTATION_ITEM) {
-                        if (handleTeleportItem(transport)) {
+                        if (attemptObserved(transport, () -> handleTeleportItem(transport))) {
                             sleepUntil(() -> !Rs2Player.isAnimating());
                             sleepUntilTrue(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < OFFSET);
                             break;
@@ -2746,7 +2837,7 @@ public class Rs2Walker {
                     }
 
                     if (transport.getType() == TransportType.TELEPORTATION_SPELL) {
-                        if (handleTeleportSpell(transport)) {
+                        if (attemptObserved(transport, () -> handleTeleportSpell(transport))) {
                             if (isLumbridgeHomeTeleport(transport)) {
                                 sleepUntilTrue(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < OFFSET, 600, 35000);
                             } else {
@@ -2759,7 +2850,7 @@ public class Rs2Walker {
                     }
 
                     if (transport.getType() == TransportType.SEASONAL_TRANSPORT) {
-                        if (handleSeasonalTransport(transport)) {
+                        if (attemptObserved(transport, () -> handleSeasonalTransport(transport))) {
                             sleepUntil(() -> !Rs2Player.isAnimating());
                             sleepUntilTrue(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < OFFSET);
                             break;
@@ -2782,30 +2873,21 @@ public class Rs2Walker {
                     List<TileObject> objects = Rs2GameObject.getAll(o -> {
                         if (o.getId() == transportObjectId) return true;
                         Integer legacyClosed = OPEN_TO_CLOSED_MAPPINGS.get(transportObjectId);
-                        return legacyClosed != null && o.getId() == legacyClosed;
+                        if (legacyClosed != null && o.getId() == legacyClosed) return true;
+                        if (!allowClosedVariant) return false;
+                        ObjectComposition comp = Rs2GameObject.convertToObjectComposition(o);
+                        if (comp == null || comp.getActions() == null) return false;
+                        String nm = comp.getName() == null ? "" : comp.getName().toLowerCase();
+                        boolean nameMatches = nm.contains("trapdoor") || nm.contains("manhole")
+                                || nm.contains("grate") || nm.contains("hatch");
+                        if (!nameMatches) return false;
+                        return Arrays.stream(comp.getActions()).filter(Objects::nonNull)
+                                .anyMatch(a -> a.equalsIgnoreCase("Open"));
                     }, transport.getOrigin(), 10).stream()
                             .sorted(Comparator
                                     .comparingInt((TileObject o) -> resolveTransportObjectAction(o, transportActions).isPresent() ? 0 : 1)
                                     .thenComparingInt(o -> o.getWorldLocation().distanceTo(transport.getOrigin())))
                             .collect(Collectors.toList());
-
-                    if (objects.isEmpty() && allowClosedVariant) {
-                        // The closed-variant fallback needs object composition lookups for name/action
-                        // matching. Keep it off the common exact-id path; doing this for every
-                        // climb-down object was the Varrock staircase delay.
-                        objects = Rs2GameObject.getAll(o -> {
-                            ObjectComposition comp = Rs2GameObject.convertToObjectComposition(o);
-                            if (comp == null || comp.getActions() == null) return false;
-                            String nm = comp.getName() == null ? "" : comp.getName().toLowerCase();
-                            boolean nameMatches = nm.contains("trapdoor") || nm.contains("manhole")
-                                    || nm.contains("grate") || nm.contains("hatch");
-                            if (!nameMatches) return false;
-                            return Arrays.stream(comp.getActions()).filter(Objects::nonNull)
-                                    .anyMatch(a -> a.equalsIgnoreCase("Open"));
-                        }, transport.getOrigin(), 10).stream()
-                                .sorted(Comparator.comparingInt(o -> o.getWorldLocation().distanceTo(transport.getOrigin())))
-                                .collect(Collectors.toList());
-                    }
 
                     TileObject object = objects.stream().findFirst().orElse(null);
                     if (object instanceof GroundObject) {
@@ -3420,7 +3502,7 @@ public class Rs2Walker {
         final WorldPoint loc = Rs2Player.getWorldLocation();
         if (loc == null) return true;
 
-        if (config.recalculateDistance() < 0) {
+        if (config.recalculateDistance() < 0 || lastPosition.equals(lastPosition = loc)) {
             return true;
         }
 
@@ -3440,6 +3522,12 @@ public class Rs2Walker {
     }
 
     private static void checkIfStuck() {
+        // Leagues area teleports sit on the same tile for a long animation before
+        // the actual location update. Don't treat that as "stuck" progress.
+        if (Rs2LeaguesTransport.isTeleportInProgress()) {
+            return;
+        }
+
         if (Rs2Player.getWorldLocation().equals(lastPosition)) {
             stuckCount++;
         } else {
@@ -3465,6 +3553,12 @@ public class Rs2Walker {
     }
 
     private static boolean isStuckTooLong() {
+        // Leagues teleport lifecycle must own "arrival vs timeout" detection.
+        // Walker stall-recalc during an in-flight teleport causes re-click loops.
+        if (Rs2LeaguesTransport.isTeleportInProgress()) {
+            return false;
+        }
+
         return lastMovedTimeMs > 0 && System.currentTimeMillis() - lastMovedTimeMs > stallThresholdMs();
     }
 
@@ -3497,323 +3591,170 @@ public class Rs2Walker {
         return pathfinder.getPath().size();
     }
 
-    // Map of Alacrity (League 6 / Demonic Pacts tier 3 relic — teleports to agility shortcuts).
-    // Item not in ItemID enum yet; widget group 187 is a two-step picker:
-    //   Step 1: click a region (LJ_LAYER1 children 0-9). Locked regions are visible but not
-    //           clickable. After clicking, the same widget repopulates with destinations.
-    //   Step 2: click the destination in the same LJ_LAYER1.
-    private static final int MAP_OF_ALACRITY_ITEM_ID = 33233;
-    private static final int MAP_OF_ALACRITY_WIDGET_GROUP = 187;
-    private static final int MAP_OF_ALACRITY_LIST_CHILD = 3;
-    // Strikethrough markup the client wraps around locked (unselectable) menu rows.
-    private static final String MOA_LOCKED_MARKUP = "<str>";
+    /**
+     * Forwards to {@link Rs2LeaguesTransport#recordTransportAttempt} for Leagues locked-region chat correlation.
+     * Delegate records only teleport-like transports while Leagues is active (seasonal + spells/items, e.g. ectophial).
+     */
+    public static void recordTransportAttempt(Transport transport)
+    {
+        Rs2LeaguesTransport.recordTransportAttempt(transport);
+    }
 
-    // Session blacklist of MoA destinations whose region or row is locked for this player,
-    // or whose display info doesn't resolve to any widget child. Prevents the pathfinder from
-    // re-picking the same doomed edge every tick.
-    public static final java.util.Set<Integer> blacklistedMoaDestinations =
-            java.util.concurrent.ConcurrentHashMap.newKeySet();
+    /**
+     * Writes {@code phase="result"} for {@link Rs2LeaguesTransport#appendTransportObservation} (seasonal rows only).
+     */
+    private static void recordTransportResult(Transport transport, boolean success)
+    {
+        if (transport == null || transport.getType() != TransportType.SEASONAL_TRANSPORT)
+        {
+            return;
+        }
+        if (!Rs2LeaguesTransport.isLeaguesActive())
+        {
+            return;
+        }
+        Rs2LeaguesTransport.appendTransportObservation("result", transport, success, success ? "ok" : "fail");
+    }
 
-    // Session cache of MoA regions detected as locked. Short-circuits every destination in
-    // that region without re-opening the widget each attempt. Key is lowercased region name.
-    public static final java.util.Set<String> lockedMoaRegions =
-            java.util.concurrent.ConcurrentHashMap.newKeySet();
+    /** Wraps an action with {@link #recordTransportAttempt} + {@link #recordTransportResult} (seasonal JSONL, Leagues snapshot for teleports).
+     * @see net.runelite.client.plugins.microbot.util.leaguetransport.Rs2LeaguesTransport
+     */
+    private static boolean attemptObserved(Transport transport, BooleanSupplier action)
+    {
+        if (transport == null || action == null)
+        {
+            return false;
+        }
+        boolean leaguesActive = Rs2LeaguesTransport.isLeaguesActive();
+        // Snapshot attempt for Leagues locked-region chat correlation (avoid churn outside leagues).
+        if (leaguesActive)
+        {
+            recordTransportAttempt(transport);
+        }
+        boolean ok = action.getAsBoolean();
+        if (leaguesActive)
+        {
+            recordTransportResult(transport, ok);
+        }
+        return ok;
+    }
 
+    /**
+     * Tries Leagues Area UI then Map of Alacrity for the same {@link Transport} row.
+     * Call only via {@link #attemptObserved} so {@link Rs2LeaguesTransport#recordTransportAttempt} already
+     * captured this row for locked-region chat correlation before either handler runs.
+     */
     private static boolean handleSeasonalTransport(Transport transport) {
+        if (transport == null) {
+            return false;
+        }
         String displayInfo = transport.getDisplayInfo();
-        log.debug("[MoA] entry: displayInfo='{}'", displayInfo);
         if (displayInfo == null) return false;
 
-        if (!displayInfo.toLowerCase().contains("map of alacrity")) {
-            log.debug("[MoA] not Map of Alacrity, skipping");
-            return false;
-        }
-
-        int packedDest = WorldPointUtil.packWorldPoint(transport.getDestination());
-        if (blacklistedMoaDestinations.contains(packedDest)) {
-            log.debug("[MoA] destination {} previously blacklisted this session — skipping",
-                    transport.getDestination());
-            return false;
-        }
-
-        Rs2ItemModel relic = Rs2Inventory.get(MAP_OF_ALACRITY_ITEM_ID);
-        if (relic == null) {
-            log.debug("[MoA] item {} not in inventory — abort", MAP_OF_ALACRITY_ITEM_ID);
-            return false;
-        }
-
-        // Display info format: "Map of Alacrity: <Region> - <Shortcut name>"
-        String rest = displayInfo.contains(":") ? displayInfo.split(":", 2)[1].trim() : displayInfo.trim();
-        int dashIdx = rest.indexOf(" - ");
-        if (dashIdx < 0) {
-            log.warn("[MoA] cannot split region/shortcut from '{}'", rest);
-            return false;
-        }
-        String region = rest.substring(0, dashIdx).trim();
-        String shortName = rest.substring(dashIdx + 3).trim();
-        log.debug("[MoA] region='{}' shortName='{}'", region, shortName);
-
-        if (lockedMoaRegions.contains(region.toLowerCase())) {
-            log.debug("[MoA] region '{}' already known-locked — skipping '{}'", region, shortName);
-            blacklistedMoaDestinations.add(packedDest);
-            return false;
-        }
-
-        String action = relic.getAction("Read");
-        if (action == null) action = relic.getActionFromList(Arrays.asList("Read", "Open", "Teleport", "Invoke"));
-        if (action == null) {
-            log.warn("[MoA] no usable action; available={}", Arrays.toString(relic.getInventoryActions()));
-            return false;
-        }
-        if (!Rs2Inventory.interact(relic, action)) {
-            log.warn("[MoA] Rs2Inventory.interact returned false for action '{}'", action);
-            return false;
-        }
-
-        // Step 1: wait for the region picker to render, then click the matching region.
-        if (!sleepUntil(() -> Rs2Widget.isWidgetVisible(MAP_OF_ALACRITY_WIDGET_GROUP, MAP_OF_ALACRITY_LIST_CHILD), 3000)) {
-            log.warn("[MoA] region widget {}.{} did not open", MAP_OF_ALACRITY_WIDGET_GROUP, MAP_OF_ALACRITY_LIST_CHILD);
-            return false;
-        }
-
-        Widget regionRoot = Rs2Widget.getWidget(MAP_OF_ALACRITY_WIDGET_GROUP, MAP_OF_ALACRITY_LIST_CHILD);
-        if (regionRoot == null) {
-            log.warn("[MoA] region widget lookup returned null");
-            return false;
-        }
-        dumpMapOfAlacrityWidget(regionRoot);
-
-        Widget regionMatch = findMoaWidget(regionRoot, region);
-        if (regionMatch == null) {
-            log.warn("[MoA] region '{}' not found in picker — check dump", region);
-            return false;
-        }
-        // Locked regions render with <str>...</str> strikethrough markup. Don't waste a press.
-        String regionText = Microbot.getClientThread().runOnClientThreadOptional(regionMatch::getText).orElse("");
-        if (regionText != null && regionText.contains(MOA_LOCKED_MARKUP)) {
-            log.warn("[MoA] region '{}' is locked (text='{}') — caching + blacklisting destination {}",
-                    region, regionText, transport.getDestination());
-            lockedMoaRegions.add(region.toLowerCase());
-            blacklistedMoaDestinations.add(packedDest);
-            return false;
-        }
-        log.debug("[MoA] selecting region '{}'", region);
-        Character regionHotkey = extractMoaHotkey(regionText);
-        if (regionHotkey == null) regionHotkey = computeMoaHotkeyByIndex(regionRoot, regionMatch);
-        if (regionHotkey != null) {
-            Rs2Keyboard.keyPress(regionHotkey);
-        } else {
-            log.warn("[MoA] no hotkey resolved for region '{}' — falling back to clickWidget", region);
-            if (!Rs2Widget.clickWidget(regionMatch)) {
-                log.warn("[MoA] region click returned false");
-                return false;
-            }
-        }
-
-        // Step 2: wait for the destination to appear in the (same) widget. If the region was
-        // locked or otherwise non-clickable, this poll will time out with shortName never
-        // showing, and we return false.
-        Widget destMatch = sleepUntilNotNull(() -> {
-            Widget root = Rs2Widget.getWidget(MAP_OF_ALACRITY_WIDGET_GROUP, MAP_OF_ALACRITY_LIST_CHILD);
-            if (root == null) return null;
-            return findMoaWidget(root, shortName);
-        }, 3000);
-
-        if (destMatch == null) {
-            // Don't blacklist here: a missing destination widget is ambiguous. Combat,
-            // lag, or the widget being closed by another handler can all manifest as
-            // "never appeared". Blacklisting on ambiguity permanently poisons legitimate
-            // destinations mid-session (e.g. player gets attacked during teleport, widget
-            // closes, we'd blacklist Nemus forever). Just return false and let the
-            // pathfinder/walker retry. Positive-evidence blacklisting (<str> markup on
-            // region or destination) below still applies.
-            log.warn("[MoA] destination '{}' never appeared after clicking region '{}' — retrying later",
-                    shortName, region);
-            Widget root = Rs2Widget.getWidget(MAP_OF_ALACRITY_WIDGET_GROUP, MAP_OF_ALACRITY_LIST_CHILD);
-            if (root != null) dumpMapOfAlacrityWidget(root);
-            return false;
-        }
-
-        // Individual destinations can also be locked inside an unlocked region.
-        String destText = Microbot.getClientThread().runOnClientThreadOptional(destMatch::getText).orElse("");
-        if (destText != null && destText.contains(MOA_LOCKED_MARKUP)) {
-            log.warn("[MoA] destination '{}' is locked (text='{}') — blacklisting", shortName, destText);
-            blacklistedMoaDestinations.add(packedDest);
-            return false;
-        }
-
-        // Select via the row's in-game hotkey (1-9 then A-Z). Keybinds work even when the row
-        // is scrolled off-screen, which clickWidget cannot handle.
-        log.debug("[MoA] selecting destination '{}' (text='{}')", shortName, destText);
-        Character hotkey = extractMoaHotkey(destText);
-        if (hotkey == null) {
-            Widget destRoot = Rs2Widget.getWidget(MAP_OF_ALACRITY_WIDGET_GROUP, MAP_OF_ALACRITY_LIST_CHILD);
-            hotkey = computeMoaHotkeyByIndex(destRoot, destMatch);
-        }
-        if (hotkey != null) {
-            Rs2Keyboard.keyPress(hotkey);
-            log.debug("[MoA] pressed hotkey '{}' for '{}'", hotkey, shortName);
-            // Wait for the MoA widget to close before returning. Without this, the caller's
-            // !isAnimating check in the walker loop passes instantly (animation hasn't
-            // started yet), and the walker races into the next transport step — e.g.
-            // clicking Royal seed pod mid-teleport, which then teleports the player
-            // back to Grand Tree and kicks off a MoA↔seed-pod loop.
-            sleepUntil(() -> !Rs2Widget.isWidgetVisible(MAP_OF_ALACRITY_WIDGET_GROUP, MAP_OF_ALACRITY_LIST_CHILD), 2000);
+        // Seasonal dispatcher: Leagues Area, then MoA. Pathfinder should only inject rows matching one of these (prefix / title).
+        if (Rs2LeaguesTransport.tryHandleLeaguesAreaTransport(transport))
+        {
             return true;
         }
-
-        log.warn("[MoA] no hotkey resolved for '{}' — falling back to clickWidget", shortName);
-        return Rs2Widget.clickWidget(destMatch);
-    }
-
-    // Matches the OSRS menu-row hotkey prefix, e.g. "[1] ..." or "1: ..." or "A. ...".
-    private static final Pattern MOA_HOTKEY_PATTERN =
-            Pattern.compile("^\\s*(?:\\[([0-9A-Za-z])\\]|([0-9A-Za-z])\\s*[:.])");
-    private static final Pattern MOA_MARKUP_PATTERN = Pattern.compile("<[^>]+>");
-    private static final Pattern MOA_PUNCT_PATTERN = Pattern.compile("[^a-zA-Z0-9 ]");
-    private static final Pattern MOA_WHITESPACE_PATTERN = Pattern.compile("\\s+");
-
-    // Token-contains match tolerant of punctuation, <col=..>/<str> markup, and case. Used for
-    // both the region picker and the destination picker. Fixes the colon mismatch between TSV
-    // short names (e.g. "Chaos Temple Stepping Stone") and in-game labels ("Chaos Temple:
-    // Stepping Stone") without per-row data curation.
-    private static Widget findMoaWidget(Widget root, String shortName) {
-        String normalised = normaliseMoaText(shortName);
-        if (normalised.isEmpty()) return null;
-        String[] tokens = normalised.split(" ");
-        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
-            Widget[][] groups = { root.getDynamicChildren(), root.getNestedChildren(), root.getStaticChildren() };
-            for (Widget[] g : groups) {
-                if (g == null) continue;
-                for (Widget w : g) {
-                    if (w == null) continue;
-                    String hay = normaliseMoaText(w.getText());
-                    if (hay.isEmpty()) continue;
-                    // Token-set membership avoids substring false positives (e.g. "log" matching "logstrum").
-                    java.util.Set<String> haySet = new java.util.HashSet<>(java.util.Arrays.asList(hay.split(" ")));
-                    boolean all = true;
-                    for (String t : tokens) {
-                        if (t.isEmpty()) continue;
-                        if (!haySet.contains(t)) { all = false; break; }
+        if (Rs2MapOfAlacrityTransport.tryUse(transport))
+        {
+            return true;
+        }
+        if (log.isDebugEnabled() && SEASONAL_HANDLER_MISS_LOGGED_COUNT.get() < SEASONAL_HANDLER_MISS_LOG_CAP)
+        {
+            WorldPoint destWp = transport.getDestination();
+            String hash = Integer.toHexString(displayInfo.hashCode());
+            String tail = displayInfo.length() > 160
+                    ? displayInfo.substring(0, 160) + "|h" + hash
+                    : displayInfo + "|h" + hash;
+            final String missKey;
+            Integer packedTileOrNull = null;
+            if (destWp != null)
+            {
+                packedTileOrNull = WorldPointUtil.packWorldPoint(destWp);
+                missKey = Integer.toHexString(packedTileOrNull) + "|" + tail;
+            }
+            else
+            {
+                missKey = "nodest|" + tail;
+            }
+            if (SEASONAL_HANDLER_MISS_LOGGED.add(missKey))
+            {
+                // Best-effort cap: only increment while below cap; duplicates and races are fine for debug-only logs.
+                for (;;)
+                {
+                    int prev = SEASONAL_HANDLER_MISS_LOGGED_COUNT.get();
+                    if (prev >= SEASONAL_HANDLER_MISS_LOG_CAP)
+                    {
+                        break;
                     }
-                    if (all) return w;
+                    if (SEASONAL_HANDLER_MISS_LOGGED_COUNT.compareAndSet(prev, prev + 1))
+                    {
+                        break;
+                    }
                 }
-            }
-            return null;
-        }).orElse(null);
-    }
-
-    private static String normaliseMoaText(String s) {
-        if (s == null) return "";
-        s = MOA_MARKUP_PATTERN.matcher(s).replaceAll(" ");
-        s = MOA_PUNCT_PATTERN.matcher(s).replaceAll(" ");
-        return MOA_WHITESPACE_PATTERN.matcher(s.toLowerCase()).replaceAll(" ").trim();
-    }
-
-    private static Character extractMoaHotkey(String rawText) {
-        if (rawText == null) return null;
-        String stripped = rawText.replaceAll("<[^>]+>", "").trim();
-        Matcher m = MOA_HOTKEY_PATTERN.matcher(stripped);
-        if (!m.find()) return null;
-        String g = m.group(1) != null ? m.group(1) : m.group(2);
-        if (g == null || g.isEmpty()) return null;
-        char c = g.charAt(0);
-        return Character.isLetter(c) ? Character.toUpperCase(c) : c;
-    }
-
-    // Fallback when the row text has no bracketed/colon-prefixed key we can parse.
-    // OSRS numbers unlocked rows 1-9 then A-Z; locked (<str>) rows are skipped.
-    private static Character computeMoaHotkeyByIndex(Widget root, Widget destMatch) {
-        if (root == null) return null;
-        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
-            int idx = 0;
-            Widget[][] groups = { root.getDynamicChildren(), root.getNestedChildren(), root.getStaticChildren() };
-            for (Widget[] g : groups) {
-                if (g == null) continue;
-                for (Widget sibling : g) {
-                    if (sibling == null) continue;
-                    String t = sibling.getText();
-                    if (t == null || t.isEmpty()) continue;
-                    if (t.contains(MOA_LOCKED_MARKUP)) continue;
-                    if (sibling == destMatch) return indexToHotkey(idx);
-                    idx++;
+                String sample = displayInfo.length() > 160 ? displayInfo.substring(0, 160) + "…" : displayInfo;
+                if (packedTileOrNull != null)
+                {
+                    sample = sample + " destPacked=" + Integer.toHexString(packedTileOrNull);
                 }
+                log.debug("[Walker] seasonal transport unmatched by Leagues Area + MoA (expect pathfinder-only matching rows); key={} sample={}",
+                        missKey, sample);
             }
-            return null;
-        }).orElse(null);
-    }
-
-    private static Character indexToHotkey(int i) {
-        if (i < 9) return (char) ('1' + i);
-        int letter = i - 9;
-        if (letter >= 26) return null;
-        return (char) ('A' + letter);
-    }
-
-    // Verbose one-shot dump of MoA destination widget children to the log. Helps us figure out
-    // the real in-game label format on the first invocation; can be trimmed once execution is
-    // known to work end-to-end. Widget accessors must run on the client thread.
-    private static void dumpMapOfAlacrityWidget(Widget listRoot) {
-        Microbot.getClientThread().runOnClientThreadOptional(() -> {
-            try {
-                Widget[] dyn = listRoot.getDynamicChildren();
-                Widget[] stc = listRoot.getStaticChildren();
-                Widget[] nst = listRoot.getNestedChildren();
-                log.debug("[MoA] widget dump: listRoot id={} text='{}' name='{}' dyn={} static={} nested={}",
-                        listRoot.getId(),
-                        listRoot.getText(),
-                        listRoot.getName(),
-                        dyn == null ? "null" : dyn.length,
-                        stc == null ? "null" : stc.length,
-                        nst == null ? "null" : nst.length);
-                Widget[] toDump = dyn != null ? dyn : (stc != null ? stc : nst);
-                if (toDump == null) return true;
-                for (int i = 0; i < toDump.length; i++) {
-                    Widget c = toDump[i];
-                    if (c == null) continue;
-                    log.debug("[MoA]   child[{}] id={} hidden={} text='{}' name='{}' actions={}",
-                            i, c.getId(), c.isHidden(), c.getText(), c.getName(),
-                            Arrays.toString(c.getActions()));
-                }
-            } catch (Exception e) {
-                log.warn("[MoA] widget dump threw", e);
-            }
-            return true;
-        });
+        }
+        return false;
     }
 
     private static boolean handleSpiritTree(Transport transport) {
         // Get Transport Information
         String displayInfo = transport.getDisplayInfo();
         int objectId = transport.getObjectId();
-        log.info("[Walker] handleSpiritTree: displayInfo={}, objectId={}", displayInfo, objectId);
+        if (log.isDebugEnabled())
+        {
+            log.debug("[Walker] handleSpiritTree: displayInfo={}, objectId={}", displayInfo, objectId);
+        }
         if (displayInfo == null || displayInfo.isEmpty()) {
-            log.info("[Walker] handleSpiritTree: displayInfo empty, returning false");
+            if (log.isDebugEnabled())
+            {
+                log.debug("[Walker] handleSpiritTree: displayInfo empty, returning false");
+            }
             return false;
         }
 
         if (!Rs2Widget.isWidgetVisible(ComponentID.ADVENTURE_LOG_CONTAINER)) {
             TileObject spiritTree = Rs2GameObject.findObjectById(objectId);
-            log.info("[Walker] handleSpiritTree: findObjectById({}) returned {}",
-                    objectId, spiritTree != null ? "non-null @ " + spiritTree.getWorldLocation() : "NULL");
+            if (log.isDebugEnabled())
+            {
+                log.debug("[Walker] handleSpiritTree: findObjectById({}) returned {}",
+                        objectId, spiritTree != null ? "non-null @ " + spiritTree.getWorldLocation() : "NULL");
+            }
             if (spiritTree == null) {
                 // POH fix: handleSpiritTree's findObjectById uses the transport's objectId
                 // which is keyed from the TSV. Inside a POH the spirit tree is a different
                 // object id than the overworld TSV expects. Fall back to the PohTeleports
                 // helper which knows the full set of POH spirit-tree ids.
                 spiritTree = PohTeleports.getSpiritTree();
-                log.info("[Walker] handleSpiritTree: POH fallback getSpiritTree() returned {}",
-                        spiritTree != null ? "non-null @ " + spiritTree.getWorldLocation() : "NULL");
+                if (log.isDebugEnabled())
+                {
+                    log.debug("[Walker] handleSpiritTree: POH fallback getSpiritTree() returned {}",
+                            spiritTree != null ? "non-null @ " + spiritTree.getWorldLocation() : "NULL");
+                }
             }
             boolean interactResult = Rs2GameObject.interact(spiritTree, "Travel");
-            log.info("[Walker] handleSpiritTree: interact(spiritTree, Travel) returned {}", interactResult);
+            if (log.isDebugEnabled())
+            {
+                log.debug("[Walker] handleSpiritTree: interact(spiritTree, Travel) returned {}", interactResult);
+            }
             if (!interactResult) {
                 return false;
             }
         }
 
         boolean result = interactWithAdventureLog(transport);
-        log.info("[Walker] handleSpiritTree: interactWithAdventureLog returned {}", result);
+        if (log.isDebugEnabled())
+        {
+            log.debug("[Walker] handleSpiritTree: interactWithAdventureLog returned {}", result);
+        }
         return result;
     }
 
@@ -5199,3 +5140,4 @@ public class Rs2Walker {
         return sleepUntil(() -> !Rs2Widget.isWidgetVisible(InterfaceID.Worldmap.CLOSE), 3000);
     }
 }
+

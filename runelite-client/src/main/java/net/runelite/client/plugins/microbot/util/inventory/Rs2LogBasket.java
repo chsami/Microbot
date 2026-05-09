@@ -9,6 +9,7 @@ import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
+import net.runelite.client.plugins.microbot.util.text.Rs2TextSanitizer;
 
 import java.util.List;
 import java.util.regex.Matcher;
@@ -313,11 +314,8 @@ public class Rs2LogBasket {
             return BasketContents.empty();
         }
         
-        // clean up the text - remove html tags and normalize
-        String cleanText = Rs2UiHelper.stripColTags(text)
-            .replace("<br>", " ")
-            .replace("&nbsp;", " ")
-            .trim();
+        // Clean up widget text: tags + <br> + nbsp/entities.
+        String cleanText = Rs2TextSanitizer.sanitizeWidgetMultilineText(text);
         
         // pattern to match "X x LogType logs" or "X x LogType log"
         Pattern pattern = Pattern.compile("(\\d+)\\s*x\\s*([a-zA-Z\\s]+?)\\s*logs?", Pattern.CASE_INSENSITIVE);

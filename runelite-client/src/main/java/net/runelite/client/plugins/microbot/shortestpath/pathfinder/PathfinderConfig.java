@@ -19,6 +19,8 @@ import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Spells;
 import net.runelite.client.plugins.microbot.util.magic.RuneFilter;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+import net.runelite.client.plugins.microbot.util.leaguetransport.Rs2LeaguesTransport;
+import net.runelite.client.plugins.microbot.util.leaguetransport.Rs2MapOfAlacrityTransport;
 import net.runelite.client.plugins.microbot.util.poh.PohTeleports;
 import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
@@ -54,6 +56,15 @@ public class PathfinderConfig {
 	private static final WorldPoint SPIRIT_TREE_PORT_SARIM = new WorldPoint(3058, 3257, 0);
 	private static final WorldPoint SPIRIT_TREE_HOSIDIUS = new WorldPoint(1693, 3540, 0);
 	private static final WorldPoint SPIRIT_TREE_FARMING_GUILD = new WorldPoint(1251, 3750, 0);
+
+	/** Order matches {@link #spiritTreeDestinationToggle(int)} — add destinations in both places only here + switch. */
+	private static final WorldPoint[] SPIRIT_TREE_DESTINATIONS_ORDERED = {
+			SPIRIT_TREE_ETCETERIA,
+			SPIRIT_TREE_BRIMHAVEN,
+			SPIRIT_TREE_PORT_SARIM,
+			SPIRIT_TREE_HOSIDIUS,
+			SPIRIT_TREE_FARMING_GUILD,
+	};
 
     private final SplitFlagMap mapData;
     private final ThreadLocal<CollisionMap> map;
@@ -183,6 +194,12 @@ public class PathfinderConfig {
         useSpiritTreePortSarim = ShortestPathPlugin.override("spiritTreePortSarim", config.spiritTreePortSarim());
         useSpiritTreeHosidius = ShortestPathPlugin.override("spiritTreeHosidius", config.spiritTreeHosidius());
         useSpiritTreeFarmingGuild = ShortestPathPlugin.override("spiritTreeFarmingGuild", config.spiritTreeFarmingGuild());
+
+        // Spirit trees: master toggle on + no destinations enabled => treat as disabled.
+        if (useSpiritTrees && !anySpiritTreeDestinationEnabled())
+        {
+            useSpiritTrees = false;
+        }
         useTeleportationItems = ShortestPathPlugin.override("useTeleportationItems", config.useTeleportationItems());
         useTeleportationMinigames = ShortestPathPlugin.override("useTeleportationMinigames", config.useTeleportationMinigames());
         useTeleportationLevers = ShortestPathPlugin.override("useTeleportationLevers", config.useTeleportationLevers());
@@ -208,7 +225,8 @@ public class PathfinderConfig {
             long t2 = System.currentTimeMillis();
 
             // Do not switch back to inventory tab if we are inside of the telekinetic room in Mage Training Arena
-            if (Rs2Player.getWorldLocation().getRegionID() != 13463) {
+            WorldPoint loc = Rs2Player.getWorldLocation();
+            if (loc == null || loc.getRegionID() != 13463) {
                 Rs2Tab.switchTo(InterfaceTab.INVENTORY);
             }
             long t3 = System.currentTimeMillis();
@@ -247,6 +265,7 @@ public class PathfinderConfig {
             }
             transportsPacked.put(packedLocation, usableWildyTeleports);
         }
+
     }
 
     public void filterLocations(Set<WorldPoint> locations, boolean canReviveFiltered) {
@@ -335,6 +354,12 @@ public class PathfinderConfig {
         int moaSeen = 0;
         int moaKept = 0;
 
+        // One snapshot for this refreshTransports pass (avoid re-querying unlocked regions per transport).
+        // Trade-off: unlock mid-refresh is picked up on next refresh — acceptable vs client-thread churn per edge.
+        // Scripts that must path immediately after unlock should trigger an explicit transport refresh / recalc.
+        // Reviewers: do not "fix" staleness by calling leaguesContext() per transport — intentional batching; callers refresh explicitly when needed.
+        final Rs2LeaguesTransport.LeaguesContext leaguesCtx = Rs2LeaguesTransport.leaguesContext();
+
         for (Map.Entry<WorldPoint, Set<Transport>> entry : mergedList.entrySet()) {
             WorldPoint point = entry.getKey();
             Set<Transport> usableTransports = new HashSet<>(entry.getValue().size());
@@ -342,9 +367,7 @@ public class PathfinderConfig {
                 totalTransports++;
                 updateActionBasedOnQuestState(transport);
 
-                boolean isMoa = transport.getType() == TransportType.SEASONAL_TRANSPORT
-                        && transport.getDisplayInfo() != null
-                        && transport.getDisplayInfo().toLowerCase().contains("map of alacrity");
+                boolean isMoa = isMapOfAlacritySeasonalRow(transport);
                 if (isMoa) moaSeen++;
 
                 long t0 = System.nanoTime();
@@ -358,7 +381,14 @@ public class PathfinderConfig {
                 stats[2] += (int)(elapsed / 1_000);
                 if (usable) stats[1]++;
 
+                // stats[1] is incremented when useTransport() is true; isTransportAllowed may still reject below.
+                // moaKept reflects the final kept set; per-type stats[1] can exceed checkedTransports when Leagues filters.
                 if (!usable) continue;
+
+                if (!Rs2LeaguesTransport.isTransportAllowed(leaguesCtx, transport)) {
+                    continue;
+                }
+
                 checkedTransports++;
                 if (point == null) {
                     usableTeleports.add(transport);
@@ -373,6 +403,8 @@ public class PathfinderConfig {
                 transportsPacked.put(WorldPointUtil.packWorldPoint(point), usableTransports);
             }
         }
+
+        Rs2LeaguesTransport.injectLeaguesTransports(leaguesCtx, usableTeleports, transports, transportsPacked, typeStats);
         long filterTime = System.currentTimeMillis() - filterStart;
 
         long similarStart = System.currentTimeMillis();
@@ -385,20 +417,22 @@ public class PathfinderConfig {
         refreshBoostedLevels = null;
         refreshCurrencyCache = null;
 
-        log.info("[refreshTransports] merge={}ms, cache={}ms, filter={}ms (useTransport={}ms), similar={}ms, total/usable={}/{}, teleports={}, varbits={}, varplayers={}",
+        // varbit/varplayer counts = distinct ids referenced by merged transport definitions this refresh, not total client var space.
+        log.info("[refreshTransports] merge={}ms, cache={}ms, filter={}ms (useTransport={}ms), similar={}ms, total/filterPassedChecked={}/{}, usableTeleportsPostInject={}, moaSeen={}, moaKept={}, uniqueVarbitIdsFromTransports={}, uniqueVarplayerIdsFromTransports={}",
                 mergeTime, cacheTime, filterTime, useTransportTimeNanos / 1_000_000, similarTime,
-                totalTransports, checkedTransports, usableTeleports.size(), varbitIds.size(), varplayerIds.size());
+                totalTransports, checkedTransports, usableTeleports.size(), moaSeen, moaKept, varbitIds.size(), varplayerIds.size());
 
         typeStats.entrySet().stream()
                 .sorted((a, b) -> Integer.compare(b.getValue()[2], a.getValue()[2]))
                 .limit(5)
-                .forEach(e -> log.info("[refreshTransports]   {} : count={}, usable={}, time={}ms",
+                .forEach(e -> log.info("[refreshTransports]   {} : count={}, useTransportPassed={}, time={}ms",
                         e.getKey(), e.getValue()[0], e.getValue()[1], e.getValue()[2] / 1000));
 
         log.debug("[MoA] refreshTransports: seen={} kept={} (useSeasonalTransports={}, VarbitID.LEAGUE_TYPE={})",
                 moaSeen, moaKept, useSeasonalTransports,
-                Microbot.getVarbitValue(10032));
+                Microbot.getVarbitValue(VarbitID.LEAGUE_TYPE));
     }
+
 
 
     private Map<WorldPoint, Set<Transport>> createMergedList() {
@@ -565,14 +599,22 @@ public class PathfinderConfig {
                         .allMatch(varplayerCheck -> varplayerCheck.matches(Microbot.getVarbitPlayerValue(varplayerCheck.getVarplayerId())));
     }
 
-    private boolean useTransport(Transport transport) {
-        boolean traceMoa = transport.getType() == TransportType.SEASONAL_TRANSPORT
-                && transport.getDisplayInfo() != null
-                && transport.getDisplayInfo().toLowerCase().contains("map of alacrity");
+    /**
+     * MoA seasonal row: same predicate for refresh stats and {@link #useTransport}.
+     * MoA TSV rows are expected to be {@link TransportType#SEASONAL_TRANSPORT} with a non-null destination.
+     */
+    private static boolean isMapOfAlacritySeasonalRow(Transport transport) {
+        return transport != null
+                && transport.getType() == TransportType.SEASONAL_TRANSPORT
+                && transport.getDestination() != null
+                && Rs2MapOfAlacrityTransport.isMapOfAlacrityTransport(transport);
+    }
 
-        // Session blacklist: once an MoA destination fails at runtime (locked region or
-        // unrecognised name), don't let the pathfinder keep routing through it.
-        if (traceMoa && Rs2Walker.blacklistedMoaDestinations.contains(
+    private boolean useTransport(Transport transport) {
+        boolean traceMoa = isMapOfAlacritySeasonalRow(transport);
+
+        // MoA: fail once -> block same dest this session (avoid reroute spam).
+        if (traceMoa && Rs2MapOfAlacrityTransport.isMoaDestinationBlacklisted(
                 WorldPointUtil.packWorldPoint(transport.getDestination()))) {
             return false;
         }
@@ -582,14 +624,16 @@ public class PathfinderConfig {
         // the pathfinder keeps picking a different Asgarnia/Desert/etc. destination on
         // each re-path — walker fails, blacklists one, re-path picks the next, infinite
         // "running around" loop. Display info format: "Map of Alacrity: <Region> - <Name>".
-        if (traceMoa && !Rs2Walker.lockedMoaRegions.isEmpty()) {
+        if (traceMoa) {
             String disp = transport.getDisplayInfo();
-            int colon = disp.indexOf(':');
-            int dash = colon >= 0 ? disp.indexOf(" - ", colon) : -1;
-            if (colon >= 0 && dash > colon) {
-                String region = disp.substring(colon + 1, dash).trim().toLowerCase();
-                if (Rs2Walker.lockedMoaRegions.contains(region)) {
-                    return false;
+            if (disp != null) {
+                int colon = disp.indexOf(':');
+                int dash = colon >= 0 ? disp.indexOf(" - ", colon) : -1;
+                if (colon >= 0 && dash > colon) {
+                    String region = disp.substring(colon + 1, dash).trim();
+                    if (Rs2MapOfAlacrityTransport.isMoaRegionLocked(region)) {
+                        return false;
+                    }
                 }
             }
         }
@@ -625,7 +669,7 @@ public class PathfinderConfig {
         if (!varbitChecks(transport)) {
             log.debug("Transport ( O: {} D: {} ) requires varbits {}", transport.getOrigin(), transport.getDestination(), transport.getVarbits());
             if (traceMoa) log.debug("[MoA] rejected '{}' — varbit check failed (varbits={}, LEAGUE_TYPE={})",
-                    transport.getDisplayInfo(), transport.getVarbits(), Microbot.getVarbitValue(10032));
+                    transport.getDisplayInfo(), transport.getVarbits(), Microbot.getVarbitValue(VarbitID.LEAGUE_TYPE));
             return false;
         }
 
@@ -728,25 +772,47 @@ public class PathfinderConfig {
         }
     }
 
+    /**
+     * Toggle for {@link #SPIRIT_TREE_DESTINATIONS_ORDERED}[{@code index}]. Must stay aligned with array length.
+     */
+    private boolean spiritTreeDestinationToggle(int index) {
+        switch (index) {
+            case 0:
+                return useSpiritTreeEtceteria;
+            case 1:
+                return useSpiritTreeBrimhaven;
+            case 2:
+                return useSpiritTreePortSarim;
+            case 3:
+                return useSpiritTreeHosidius;
+            case 4:
+                return useSpiritTreeFarmingGuild;
+            default:
+                throw new AssertionError("spirit tree index " + index);
+        }
+    }
+
+    /**
+     * True when any spirit-tree destination override is on. Uses {@link #SPIRIT_TREE_DESTINATIONS_ORDERED} only.
+     */
+    private boolean anySpiritTreeDestinationEnabled() {
+        for (int i = 0; i < SPIRIT_TREE_DESTINATIONS_ORDERED.length; i++) {
+            if (spiritTreeDestinationToggle(i)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private boolean isSpiritTreeDestinationEnabled(Transport transport) {
         WorldPoint destination = transport.getDestination();
         if (destination == null) {
             return true;
         }
-        if (destination.equals(SPIRIT_TREE_ETCETERIA)) {
-            return useSpiritTreeEtceteria;
-        }
-        if (destination.equals(SPIRIT_TREE_BRIMHAVEN)) {
-            return useSpiritTreeBrimhaven;
-        }
-        if (destination.equals(SPIRIT_TREE_PORT_SARIM)) {
-            return useSpiritTreePortSarim;
-        }
-        if (destination.equals(SPIRIT_TREE_HOSIDIUS)) {
-            return useSpiritTreeHosidius;
-        }
-        if (destination.equals(SPIRIT_TREE_FARMING_GUILD)) {
-            return useSpiritTreeFarmingGuild;
+        for (int i = 0; i < SPIRIT_TREE_DESTINATIONS_ORDERED.length; i++) {
+            if (destination.equals(SPIRIT_TREE_DESTINATIONS_ORDERED[i])) {
+                return spiritTreeDestinationToggle(i);
+            }
         }
         return true;
     }

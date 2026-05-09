@@ -48,6 +48,7 @@ import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.plugins.microbot.util.text.Rs2TextSanitizer;
 
 import java.util.*;
 import java.util.regex.Matcher;
@@ -97,7 +98,7 @@ public class JugPuzzle extends DetailedOwnerStep
 
 		if (widget != null)
 		{
-			String text = widget.getText().replace("<br>", " ");
+			String text = Rs2TextSanitizer.sanitizeWidgetMultilineText(widget.getText());
 			Matcher jugOnJugMatcher = JUG_VALUES_MATCHER.matcher(text);
 			Matcher jugEmptiedMatcher = JUG_EMPTIED.matcher(text);
 			Matcher jugFilledMatcher = JUG_FILLED.matcher(text);

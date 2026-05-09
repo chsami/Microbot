@@ -11,6 +11,7 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.Global;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
+import net.runelite.client.plugins.microbot.util.text.Rs2TextSanitizer;
 
 import java.util.*;
 import java.util.regex.Matcher;
@@ -23,6 +24,7 @@ public class Rs2Gembag {
 
     private static final Pattern GEM_PATTERN = Pattern.compile("You just found (?:an|a) (sapphire|emerald|ruby|diamond|dragonstone)!", Pattern.CASE_INSENSITIVE);
     private static final Pattern CHECK_PATTERN = Pattern.compile("Sapphires: (\\d+) / Emeralds: (\\d+) / Rubies: (\\d+) / Diamonds: (\\d+) / Dragonstones: (\\d+)");
+    private static final Pattern BR_TAG = Pattern.compile("(?i)<br\\s*/?>");
 
     @Getter
     private static final List<Integer> gemBagItemIds = List.of(ItemID.GEM_BAG, ItemID.GEM_BAG_OPEN);
@@ -46,7 +48,10 @@ public class Rs2Gembag {
             if (gemItem != null) updateGem(gemItem, 1);
         }
 
-        String cleanedMessage = message.replace("<br>", " / ");
+        // Keep line breaks as separators for CHECK_PATTERN ("... / ... / ..."); strip tags/entities so <col=…> does not break match.
+        String withBreaks = BR_TAG.matcher(Rs2TextSanitizer.normalizeGameText(message)).replaceAll(" / ");
+        String cleanedMessage = Rs2TextSanitizer.normalizeApostrophes(
+                Rs2TextSanitizer.stripTags(Rs2TextSanitizer.decodeKnownEntities(withBreaks))).trim();
 
         Matcher checkMatcher = CHECK_PATTERN.matcher(cleanedMessage);
         if (checkMatcher.find()) {
