@@ -45,6 +45,8 @@ import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.player.Rs2Pvp;
 import net.runelite.client.plugins.microbot.util.leaguetransport.Rs2LeaguesTransport;
 import net.runelite.client.plugins.microbot.util.leaguetransport.Rs2MapOfAlacrityTransport;
+import net.runelite.client.plugins.microbot.util.leaguetransport.SeasonalTransportHandler;
+import net.runelite.client.plugins.microbot.util.leaguetransport.SeasonalTransportHandlers;
 import net.runelite.client.plugins.microbot.util.logging.Rs2LogRateLimit;
 import java.util.function.BooleanSupplier;
 import net.runelite.client.plugins.microbot.util.poh.PohTeleports;
@@ -138,6 +140,31 @@ public class Rs2Walker {
     {
         SEASONAL_HANDLER_MISS_LOGGED.clear();
         SEASONAL_HANDLER_MISS_LOGGED_COUNT.set(0);
+    }
+
+    private static volatile List<SeasonalTransportHandler> seasonalTransportHandlers =
+            SeasonalTransportHandlers.defaultHandlerList();
+
+    /**
+     * Replaces the seasonal transport handler chain. Non-null, non-empty list; pass
+     * {@link SeasonalTransportHandlers#defaultHandlerList()} to restore built-ins.
+     * {@link net.runelite.client.plugins.microbot.MicrobotPlugin#startUp} resets defaults each session.
+     */
+    public static void setSeasonalTransportHandlers(List<SeasonalTransportHandler> handlers)
+    {
+        if (handlers == null || handlers.isEmpty())
+        {
+            seasonalTransportHandlers = SeasonalTransportHandlers.defaultHandlerList();
+        }
+        else
+        {
+            seasonalTransportHandlers = List.copyOf(handlers);
+        }
+    }
+
+    public static List<SeasonalTransportHandler> getSeasonalTransportHandlers()
+    {
+        return seasonalTransportHandlers;
     }
 
     /**
@@ -3969,14 +3996,21 @@ public class Rs2Walker {
         String displayInfo = transport.getDisplayInfo();
         if (displayInfo == null) return false;
 
-        // Seasonal dispatcher: Leagues Area, then MoA. Pathfinder should only inject rows matching one of these (prefix / title).
-        if (Rs2LeaguesTransport.tryHandleLeaguesAreaTransport(transport))
+        List<SeasonalTransportHandler> handlers = seasonalTransportHandlers;
+        for (SeasonalTransportHandler h : handlers)
         {
-            return true;
-        }
-        if (Rs2MapOfAlacrityTransport.tryUse(transport))
-        {
-            return true;
+            if (h == null)
+            {
+                continue;
+            }
+            if (!h.matches(transport))
+            {
+                continue;
+            }
+            if (h.tryUse(transport))
+            {
+                return true;
+            }
         }
         Telemetry.incrementSeasonalHandlerMiss();
         if (log.isDebugEnabled() && SEASONAL_HANDLER_MISS_LOGGED_COUNT.get() < SEASONAL_HANDLER_MISS_LOG_CAP)

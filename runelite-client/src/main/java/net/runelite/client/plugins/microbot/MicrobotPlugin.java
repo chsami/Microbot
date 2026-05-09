@@ -30,7 +30,9 @@ import net.runelite.client.plugins.microbot.util.overlay.GembagOverlay;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.reflection.Rs2Reflection;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
+import net.runelite.client.plugins.microbot.util.leaguetransport.LeaguesTransportAttemptSnapshot;
 import net.runelite.client.plugins.microbot.util.leaguetransport.Rs2LeaguesTransport;
+import net.runelite.client.plugins.microbot.util.leaguetransport.SeasonalTransportHandlers;
 import net.runelite.client.plugins.microbot.shortestpath.WorldPointUtil;
 import net.runelite.client.plugins.microbot.api.boat.Rs2BoatCache;
 import net.runelite.client.plugins.microbot.util.shop.Rs2Shop;
@@ -206,6 +208,8 @@ public class MicrobotPlugin extends Plugin
 		new InputSelector(clientToolbar);
 
 		Microbot.getPouchScript().startUp();
+
+		Rs2Walker.setSeasonalTransportHandlers(SeasonalTransportHandlers.defaultHandlerList());
 
 		if (overlayManager != null)
 		{
@@ -499,7 +503,7 @@ public class MicrobotPlugin extends Plugin
 	private void handleLeaguesLockedRegionMatch(String region, String rawForMatch)
 	{
 		long nowMs = System.currentTimeMillis();
-		Optional<Rs2LeaguesTransport.TransportAttemptSnapshot> snapOpt = Rs2LeaguesTransport.findTransportAttemptForLockedRegionChat(
+		Optional<LeaguesTransportAttemptSnapshot> snapOpt = Rs2LeaguesTransport.findTransportAttemptForLockedRegionChat(
 				region, nowMs, LEAGUES_LOCK_CHAT_MAX_ATTEMPT_AGE_MS);
 		if (!snapOpt.isPresent())
 		{
@@ -507,7 +511,7 @@ public class MicrobotPlugin extends Plugin
 			handleLeaguesLockedRegionStale(region, -1);
 			return;
 		}
-		Rs2LeaguesTransport.TransportAttemptSnapshot snap = snapOpt.get();
+		LeaguesTransportAttemptSnapshot snap = snapOpt.get();
 		Integer packedDest = snap.getPackedDest();
 		String methodSafe = snap.getMethod() != null ? snap.getMethod() : "";
 		long ageMs = nowMs - snap.getTsMs();
