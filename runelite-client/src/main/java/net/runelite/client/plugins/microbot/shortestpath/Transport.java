@@ -316,7 +316,7 @@ public class Transport {
             this.duration = Integer.parseInt(value);
         }
 
-        if (TransportType.isTeleport(transportType)) {
+        if (TransportType.isTeleport(transportType, origin)) {
             // Teleports should always have a non-zero wait,
             // so the pathfinder doesn't calculate the cost by distance
             this.duration = Math.max(this.duration, 1);

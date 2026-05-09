@@ -10,6 +10,14 @@ import static org.junit.Assert.assertFalse;
 public class Rs2TextSanitizerTest
 {
 	@Test
+	public void normalizeAsciiColonsMapsFullwidthAndCompatibilityForms()
+	{
+		assertEquals("Leagues Area: Kourend", Rs2TextSanitizer.normalizeAsciiColons("Leagues Area\uFF1a Kourend"));
+		assertEquals("a:b", Rs2TextSanitizer.normalizeAsciiColons("a\uFE55b"));
+		assertEquals("a:b", Rs2TextSanitizer.normalizeAsciiColons("a\u2236b"));
+	}
+
+	@Test
 	public void stripsTagsAndDecodesEntities()
 	{
 		String raw = "<col=ff0000>Zeah</col>&nbsp;(&#39;Test&#39;)&#160;and&#x2019;more";

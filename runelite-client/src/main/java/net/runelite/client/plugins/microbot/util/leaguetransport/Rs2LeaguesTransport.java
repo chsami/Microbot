@@ -16,7 +16,9 @@ import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.TransportType;
 import net.runelite.client.plugins.microbot.shortestpath.WorldPointUtil;
@@ -25,6 +27,7 @@ import net.runelite.client.plugins.microbot.util.logging.Rs2LogRateLimit;
 import net.runelite.client.plugins.microbot.util.text.Rs2TextSanitizer;
 
 import java.awt.Rectangle;
+import java.awt.event.KeyEvent;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.util.Collections;
@@ -129,11 +132,19 @@ public final class Rs2LeaguesTransport
 	}
 
 	/**
-	 * Latest seasonal transport click for correlating Leagues locked-region gamemessages.
-	 * Volatile single-writer-style snapshot; concurrent {@link #recordTransportAttempt} vs chat can race — attribution relies on
-	 * a short max-age check in {@link net.runelite.client.plugins.microbot.MicrobotPlugin#onChatMessage(net.runelite.api.events.ChatMessage)}.
+	 * Newest seasonal transport click (head of the recent-attempt ring when non-empty).
+	 * Chat attribution uses {@link #findTransportAttemptForLockedRegionChat} over a short ring so Leagues Area + MoA back-to-back
+	 * clicks do not always lose the row that matches locked-region copy.
 	 */
 	private static volatile TransportAttemptSnapshot lastTransportAttempt = null;
+
+	private static final int RECENT_TRANSPORT_ATTEMPTS_MAX = 4;
+	private static final Object RECENT_TRANSPORT_ATTEMPTS_LOCK = new Object();
+	private static final TransportAttemptSnapshot[] RECENT_TRANSPORT_ATTEMPTS = new TransportAttemptSnapshot[RECENT_TRANSPORT_ATTEMPTS_MAX];
+	private static int recentTransportAttemptsCount = 0;
+
+	/** Previous {@link LeaguesContext#unlockedRegions} seen in {@link #injectLeaguesTransports} — detects new unlocks for blacklist prune. */
+	private static volatile EnumSet<LeaguesRegion> lastInjectedUnlockedForBlacklistPrune = null;
 	/**
 	 * Distinct parse-miss keys for locked-region chat that failed {@link #parseRegionName}.
 	 * Keys are capped normalized strings plus a hex {@link String#hashCode()} suffix when truncated so 160-char prefixes
@@ -159,6 +170,8 @@ public final class Rs2LeaguesTransport
 	private static final int LEAGUES_PARSE_MISS_AT_CAP_SEEN_FULL_LOG_INTERVAL = 25;
 	/** One debug line per JVM if a seasonal row has null {@link Transport#getType()} — indicates bad merged transport data. */
 	private static final AtomicBoolean LOGGED_NULL_SEASONAL_TRANSPORT_TYPE = new AtomicBoolean(false);
+	/** One debug line per JVM if TELEPORT_ROW widget name drifts after click (layout / shield mismatch). */
+	private static final AtomicBoolean LOGGED_TELEPORT_ROW_NAME_MISMATCH = new AtomicBoolean(false);
 	/** Rate-limit for {@link #recordBlockedDestinationFromChat} success {@code log.info} (no per-message DEBUG; see method Javadoc). */
 	private static final AtomicInteger LEAGUES_BLOCKED_DEST_FROM_CHAT_INFO = new AtomicInteger(0);
 	private static final int LEAGUES_BLOCKED_DEST_FROM_CHAT_INFO_INTERVAL = 25;
@@ -188,6 +201,122 @@ public final class Rs2LeaguesTransport
 	public static void clearLastTransportAttempt()
 	{
 		lastTransportAttempt = null;
+		synchronized (RECENT_TRANSPORT_ATTEMPTS_LOCK)
+		{
+			for (int i = 0; i < RECENT_TRANSPORT_ATTEMPTS_MAX; i++)
+			{
+				RECENT_TRANSPORT_ATTEMPTS[i] = null;
+			}
+			recentTransportAttemptsCount = 0;
+		}
+	}
+
+	private static void pushRecentTransportAttempt(TransportAttemptSnapshot snap)
+	{
+		if (snap == null)
+		{
+			return;
+		}
+		lastTransportAttempt = snap;
+		synchronized (RECENT_TRANSPORT_ATTEMPTS_LOCK)
+		{
+			for (int i = Math.min(RECENT_TRANSPORT_ATTEMPTS_MAX - 1, recentTransportAttemptsCount); i > 0; i--)
+			{
+				RECENT_TRANSPORT_ATTEMPTS[i] = RECENT_TRANSPORT_ATTEMPTS[i - 1];
+			}
+			RECENT_TRANSPORT_ATTEMPTS[0] = snap;
+			if (recentTransportAttemptsCount < RECENT_TRANSPORT_ATTEMPTS_MAX)
+			{
+				recentTransportAttemptsCount++;
+			}
+		}
+	}
+
+	/**
+	 * Picks freshest attempt at or below {@code maxAgeMs} that matches locked-region chat {@code regionCaptured}
+	 * (same capture string as {@link #captureLockedRegionFromChatRaw}).
+	 */
+	public static Optional<TransportAttemptSnapshot> findTransportAttemptForLockedRegionChat(
+			String regionCaptured, long nowMs, long maxAgeMs)
+	{
+		if (regionCaptured == null || maxAgeMs < 0L)
+		{
+			return Optional.empty();
+		}
+		synchronized (RECENT_TRANSPORT_ATTEMPTS_LOCK)
+		{
+			for (int i = 0; i < recentTransportAttemptsCount; i++)
+			{
+				TransportAttemptSnapshot s = RECENT_TRANSPORT_ATTEMPTS[i];
+				if (s == null)
+				{
+					continue;
+				}
+				long ageMs = nowMs - s.getTsMs();
+				if (ageMs > maxAgeMs || ageMs < 0L)
+				{
+					continue;
+				}
+				if (attemptSnapshotMatchesLockedChatRegion(s, regionCaptured))
+				{
+					return Optional.of(s);
+				}
+			}
+		}
+		return Optional.empty();
+	}
+
+	private static boolean attemptSnapshotMatchesLockedChatRegion(TransportAttemptSnapshot snap, String regionCaptured)
+	{
+		if (snap == null)
+		{
+			return false;
+		}
+		String norm = normalizeRegionNameForLockedChat(regionCaptured);
+		if (norm.isEmpty())
+		{
+			return false;
+		}
+		LeaguesRegion lrChat = parseRegionNameNormalized(norm);
+		String method = snap.getMethod();
+		if (method == null)
+		{
+			return false;
+		}
+		Optional<LeaguesRegion> lrAttempt = parseLeaguesAreaRegionFromAttemptMethod(method);
+		if (lrChat != null && lrAttempt.isPresent())
+		{
+			return lrChat == lrAttempt.get();
+		}
+		// MoA / non-Leagues-Area labels: substring on normalized chat token only when enum match is not decisive.
+		return method.toLowerCase(Locale.ROOT).contains(norm);
+	}
+
+	private static Optional<LeaguesRegion> parseLeaguesAreaRegionFromAttemptMethod(String method)
+	{
+		if (method == null)
+		{
+			return Optional.empty();
+		}
+		String low = method.toLowerCase(Locale.ROOT);
+		String key = "leagues area:";
+		int i = low.indexOf(key);
+		if (i < 0)
+		{
+			return Optional.empty();
+		}
+		String rest = method.substring(i + key.length()).trim();
+		int pipe = rest.indexOf('|');
+		if (pipe >= 0)
+		{
+			rest = rest.substring(0, pipe);
+		}
+		rest = Rs2TextSanitizer.sanitizeLeaguesLockedRegionName(rest.trim());
+		if (rest.isEmpty())
+		{
+			return Optional.empty();
+		}
+		return Optional.ofNullable(parseRegionNameNormalized(rest));
 	}
 
 	/**
@@ -202,6 +331,15 @@ public final class Rs2LeaguesTransport
 	 * {@link net.runelite.client.plugins.microbot.MicrobotPlugin#LEAGUES_LOCK_CHAT_MAX_ATTEMPT_AGE_MS} are not attributed.
 	 */
 	public static void recordTransportAttempt(Transport transport)
+	{
+		recordTransportAttempt(transport, null);
+	}
+
+	/**
+	 * @param attemptHandler short tag for locked-region chat logs, e.g. {@code LeaguesArea} or {@code MoA}; appended as
+	 *                       {@code |handler=} on the method label when non-null.
+	 */
+	public static void recordTransportAttempt(Transport transport, String attemptHandler)
 	{
 		if (transport == null || transport.getDestination() == null)
 		{
@@ -226,7 +364,9 @@ public final class Rs2LeaguesTransport
 						packedDest, transport.getDestination(), sample);
 			}
 			Integer packed = WorldPointUtil.packWorldPoint(transport.getDestination());
-			lastTransportAttempt = new TransportAttemptSnapshot(packed, buildNullTypeAttemptMethodLabel(transport), System.currentTimeMillis());
+			pushRecentTransportAttempt(new TransportAttemptSnapshot(packed,
+					withAttemptHandlerSuffix(buildNullTypeAttemptMethodLabel(transport), attemptHandler),
+					System.currentTimeMillis()));
 			// Preserve prior behavior: keep a single JSONL attempt line for unexpected/null-typed seasonal rows.
 			appendTransportAttemptObservation(transport, "");
 			return;
@@ -234,14 +374,23 @@ public final class Rs2LeaguesTransport
 
 		TransportType type = transport.getType();
 		Integer packed = WorldPointUtil.packWorldPoint(transport.getDestination());
-		String method = buildTransportAttemptMethodLabel(transport);
-		lastTransportAttempt = new TransportAttemptSnapshot(packed, method, System.currentTimeMillis());
+		String method = withAttemptHandlerSuffix(buildTransportAttemptMethodLabel(transport), attemptHandler);
+		pushRecentTransportAttempt(new TransportAttemptSnapshot(packed, method, System.currentTimeMillis()));
 
 		// Avoid logging JSONL for every attempt; seasonal rows are the primary diagnostic target.
 		if (type == TransportType.SEASONAL_TRANSPORT)
 		{
 			appendTransportAttemptObservation(transport, "");
 		}
+	}
+
+	private static String withAttemptHandlerSuffix(String method, String attemptHandler)
+	{
+		if (attemptHandler == null || attemptHandler.isEmpty())
+		{
+			return method;
+		}
+		return method + "|handler=" + attemptHandler;
 	}
 
 	/**
@@ -277,7 +426,8 @@ public final class Rs2LeaguesTransport
 		}
 
 		String displayInfo = transport.getDisplayInfo();
-		Matcher areaPrefix = LEAGUES_AREA_PREFIX.matcher(displayInfo);
+		String displayInfoForPrefix = Rs2TextSanitizer.normalizeAsciiColons(displayInfo);
+		Matcher areaPrefix = LEAGUES_AREA_PREFIX.matcher(displayInfoForPrefix);
 		if (!areaPrefix.lookingAt())
 		{
 			return Optional.empty();
@@ -297,6 +447,7 @@ public final class Rs2LeaguesTransport
 			return Optional.empty();
 		}
 
+		recordTransportAttempt(transport, "LeaguesArea");
 		LeaguesTeleportResult res = leaguesTeleport(region, DEFAULT_TIMEOUT_MS);
 		if (!res.isSuccess() && log.isDebugEnabled())
 		{
@@ -311,6 +462,7 @@ public final class Rs2LeaguesTransport
 			{
 				persistRegionLanding(region, after);
 			}
+			clearLastTransportAttempt();
 		}
 		return Optional.of(res);
 	}
@@ -498,6 +650,35 @@ public final class Rs2LeaguesTransport
 	private static final AtomicLong WIDGET_VISIBILITY_CAP_HIT_LOG_MS = new AtomicLong(0L);
 	private static final AtomicLong WIDGET_VISIBILITY_CHECK_TIMEOUT_LOG_MS = new AtomicLong(0L);
 	private static final AtomicLong CALIBRATION_COMPLETE_DIALOG_FAIL_LOG_MS = new AtomicLong(0L);
+	/** Per JSONL path: last mtime + parsed rows (unlock filter applied later in {@link #loadCatalogTransports}). */
+	private static final Map<String, CatalogFileSnapshot> CATALOG_FILE_PARSE_CACHE = new ConcurrentHashMap<>();
+	private static final AtomicBoolean LOGGED_OLD_CATALOG_SCHEMA = new AtomicBoolean(false);
+
+	private static final class CatalogFileSnapshot
+	{
+		private final long mtimeMs;
+		private final java.util.List<CatalogParsedRow> rows;
+
+		private CatalogFileSnapshot(long mtimeMs, java.util.List<CatalogParsedRow> rows)
+		{
+			this.mtimeMs = mtimeMs;
+			this.rows = rows;
+		}
+	}
+
+	private static final class CatalogParsedRow
+	{
+		private final LeaguesRegion required;
+		private final String dedupeKey;
+		private final Transport transport;
+
+		private CatalogParsedRow(LeaguesRegion required, String dedupeKey, Transport transport)
+		{
+			this.required = required;
+			this.dedupeKey = dedupeKey;
+			this.transport = transport;
+		}
+	}
 
 	public static boolean isTeleportInProgress()
 	{
@@ -891,6 +1072,37 @@ public final class Rs2LeaguesTransport
 		return PERSIST_BLOCKED_DESTS.contains(packedWorldPoint);
 	}
 
+	/**
+	 * Drops persisted blacklist rows tagged with {@code region} (player unlocked that Leagues area).
+	 * Called automatically when {@link #injectLeaguesTransports} sees new unlocks; scripts may call after manual unlock.
+	 * <p>Does not remove dest-only rows ({@code PERSIST_BLOCKED_DEST_REGIONS} has no entry for that packed tile); those stay until
+	 * manually cleared or replaced.
+	 */
+	public static void invalidateBlacklistFor(LeaguesRegion region)
+	{
+		Objects.requireNonNull(region, "region");
+		ensurePersistLoaded();
+		ArrayList<Integer> drop = new ArrayList<>();
+		for (Map.Entry<Integer, LeaguesRegion> e : PERSIST_BLOCKED_DEST_REGIONS.entrySet())
+		{
+			if (region.equals(e.getValue()))
+			{
+				drop.add(e.getKey());
+			}
+		}
+		if (drop.isEmpty())
+		{
+			return;
+		}
+		for (Integer packed : drop)
+		{
+			PERSIST_BLOCKED_DEST_REGIONS.remove(packed);
+			PERSIST_BLOCKED_DESTS.remove(packed);
+			PERSIST_BLOCKED_DEST_METHODS.remove(packed);
+		}
+		flushPersist();
+	}
+
 	public static Map<Integer, LeaguesRegion> getBlacklistedDestinationRegionsSnapshot()
 	{
 		ensurePersistLoaded();
@@ -1106,7 +1318,6 @@ public final class Rs2LeaguesTransport
 
 		java.util.List<Transport> out = new ArrayList<>();
 		Set<String> seenKeys = new HashSet<>();
-		boolean warnedOldSchema = false;
 
 		java.util.List<Path> sources = new ArrayList<>();
 		Path file = catalogFile();
@@ -1136,126 +1347,163 @@ public final class Rs2LeaguesTransport
 			{
 				continue;
 			}
-
-			try (BufferedReader br = Files.newBufferedReader(source, StandardCharsets.UTF_8))
+			for (CatalogParsedRow row : loadCatalogFileRowsCached(source))
 			{
-				String line;
-				while ((line = br.readLine()) != null)
+				if (!unlockedRegions.contains(row.required))
 				{
-					line = line.trim();
-					if (line.isEmpty())
-					{
-						continue;
-					}
-
-					JsonObject obj;
-					try
-					{
-						obj = GSON.fromJson(line, JsonObject.class);
-					}
-					catch (Exception ignored)
-					{
-						continue;
-					}
-
-					if (obj == null || !obj.has("kind") || !"catalog-transport".equals(obj.get("kind").getAsString()))
-					{
-						continue;
-					}
-
-					int schema = 0;
-					try
-					{
-						schema = obj.has("schema") ? obj.get("schema").getAsInt() : 0;
-					}
-					catch (Exception ignored)
-					{
-						schema = 0;
-					}
-					if (schema != CATALOG_SCHEMA_VERSION)
-					{
-						if (!warnedOldSchema)
-						{
-							warnedOldSchema = true;
-							log.info("[Leagues] ignoring old catalog schema (expected {}, got {})", CATALOG_SCHEMA_VERSION, schema);
-						}
-						continue;
-					}
-
-					String req = obj.has("requiredRegion") ? obj.get("requiredRegion").getAsString() : "";
-					LeaguesRegion required;
-					try
-					{
-						required = req != null && !req.isEmpty() ? LeaguesRegion.valueOf(req) : null;
-					}
-					catch (Exception e)
-					{
-						required = null;
-					}
-					if (required == null || !unlockedRegions.contains(required))
-					{
-						continue;
-					}
-
-					String typeRaw = obj.has("transportType") ? obj.get("transportType").getAsString() : "";
-					TransportType type;
-					try
-					{
-						type = typeRaw != null && !typeRaw.isEmpty() ? TransportType.valueOf(typeRaw) : null;
-					}
-					catch (Exception e)
-					{
-						type = null;
-					}
-					if (type == null)
-					{
-						continue;
-					}
-
-					WorldPoint dest = parsePoint(obj.has("destination") ? obj.getAsJsonObject("destination") : null);
-					if (dest == null)
-					{
-						continue;
-					}
-					WorldPoint origin = parsePoint(obj.has("origin") ? obj.getAsJsonObject("origin") : null);
-
-					String displayInfo = obj.has("displayInfo") ? obj.get("displayInfo").getAsString() : "";
-					boolean members = obj.has("members") && obj.get("members").getAsBoolean();
-					String action = obj.has("action") ? obj.get("action").getAsString() : "";
-					String name = obj.has("name") ? obj.get("name").getAsString() : "";
-					int objectId = obj.has("objectId") ? obj.get("objectId").getAsInt() : -1;
-
-					String key = required.name() + "|" + type.name() + "|" +
-							(origin != null ? WorldPointUtil.packWorldPoint(origin) : 0) + "|" +
-							WorldPointUtil.packWorldPoint(dest) + "|" +
-							displayInfo + "|" + action + "|" + objectId;
-					if (!seenKeys.add(key))
-					{
-						continue;
-					}
-
-					Transport t;
-					if (origin == null)
-					{
-						t = new Transport(dest, displayInfo, type, members, 31, (Set<Set<Integer>>) null);
-					}
-					else if (objectId > 0 && action != null && !action.isEmpty())
-					{
-						t = new Transport(origin, dest, displayInfo, type, members, action, name, objectId);
-					}
-					else
-					{
-						t = new Transport(origin, dest, displayInfo, type, members, 1);
-					}
-
-					out.add(t);
+					continue;
 				}
-			}
-			catch (Exception ignored)
-			{
+				if (!seenKeys.add(row.dedupeKey))
+				{
+					continue;
+				}
+				out.add(row.transport);
 			}
 		}
 
+		return out;
+	}
+
+	private static java.util.List<CatalogParsedRow> loadCatalogFileRowsCached(Path source)
+	{
+		if (source == null || !Files.exists(source))
+		{
+			return Collections.emptyList();
+		}
+		try
+		{
+			long mtime = Files.getLastModifiedTime(source).toMillis();
+			String cacheKey = source.toAbsolutePath().normalize().toString();
+			CatalogFileSnapshot snap = CATALOG_FILE_PARSE_CACHE.get(cacheKey);
+			if (snap != null && snap.mtimeMs == mtime)
+			{
+				return snap.rows;
+			}
+			java.util.List<CatalogParsedRow> rows = parseCatalogFileRows(source);
+			CATALOG_FILE_PARSE_CACHE.put(cacheKey, new CatalogFileSnapshot(mtime, rows));
+			return rows;
+		}
+		catch (IOException e)
+		{
+			return Collections.emptyList();
+		}
+	}
+
+	private static java.util.List<CatalogParsedRow> parseCatalogFileRows(Path source)
+	{
+		java.util.List<CatalogParsedRow> out = new ArrayList<>();
+		try (BufferedReader br = Files.newBufferedReader(source, StandardCharsets.UTF_8))
+		{
+			String line;
+			while ((line = br.readLine()) != null)
+			{
+				line = line.trim();
+				if (line.isEmpty())
+				{
+					continue;
+				}
+
+				JsonObject obj;
+				try
+				{
+					obj = GSON.fromJson(line, JsonObject.class);
+				}
+				catch (Exception ignored)
+				{
+					continue;
+				}
+
+				if (obj == null || !obj.has("kind") || !"catalog-transport".equals(obj.get("kind").getAsString()))
+				{
+					continue;
+				}
+
+				int schema = 0;
+				try
+				{
+					schema = obj.has("schema") ? obj.get("schema").getAsInt() : 0;
+				}
+				catch (Exception ignored)
+				{
+					schema = 0;
+				}
+				if (schema != CATALOG_SCHEMA_VERSION)
+				{
+					if (LOGGED_OLD_CATALOG_SCHEMA.compareAndSet(false, true))
+					{
+						log.info("[Leagues] ignoring old catalog schema (expected {}, got {})", CATALOG_SCHEMA_VERSION, schema);
+					}
+					continue;
+				}
+
+				String req = obj.has("requiredRegion") ? obj.get("requiredRegion").getAsString() : "";
+				LeaguesRegion required;
+				try
+				{
+					required = req != null && !req.isEmpty() ? LeaguesRegion.valueOf(req) : null;
+				}
+				catch (Exception e)
+				{
+					required = null;
+				}
+				if (required == null)
+				{
+					continue;
+				}
+
+				String typeRaw = obj.has("transportType") ? obj.get("transportType").getAsString() : "";
+				TransportType type;
+				try
+				{
+					type = typeRaw != null && !typeRaw.isEmpty() ? TransportType.valueOf(typeRaw) : null;
+				}
+				catch (Exception e)
+				{
+					type = null;
+				}
+				if (type == null)
+				{
+					continue;
+				}
+
+				WorldPoint dest = parsePoint(obj.has("destination") ? obj.getAsJsonObject("destination") : null);
+				if (dest == null)
+				{
+					continue;
+				}
+				WorldPoint origin = parsePoint(obj.has("origin") ? obj.getAsJsonObject("origin") : null);
+
+				String displayInfo = obj.has("displayInfo") ? obj.get("displayInfo").getAsString() : "";
+				boolean members = obj.has("members") && obj.get("members").getAsBoolean();
+				String action = obj.has("action") ? obj.get("action").getAsString() : "";
+				String name = obj.has("name") ? obj.get("name").getAsString() : "";
+				int objectId = obj.has("objectId") ? obj.get("objectId").getAsInt() : -1;
+
+				String key = required.name() + "|" + type.name() + "|" +
+						(origin != null ? WorldPointUtil.packWorldPoint(origin) : 0) + "|" +
+						WorldPointUtil.packWorldPoint(dest) + "|" +
+						displayInfo + "|" + action + "|" + objectId;
+
+				Transport t;
+				if (origin == null)
+				{
+					t = new Transport(dest, displayInfo, type, members, 31, (Set<Set<Integer>>) null);
+				}
+				else if (objectId > 0 && action != null && !action.isEmpty())
+				{
+					t = new Transport(origin, dest, displayInfo, type, members, action, name, objectId);
+				}
+				else
+				{
+					t = new Transport(origin, dest, displayInfo, type, members, 1);
+				}
+
+				out.add(new CatalogParsedRow(required, key, t));
+			}
+		}
+		catch (Exception ignored)
+		{
+		}
 		return out;
 	}
 
@@ -1297,7 +1545,21 @@ public final class Rs2LeaguesTransport
 			return;
 		}
 
-		calibrateMissingLandingsAsync(ctx.unlockedRegions);
+		EnumSet<LeaguesRegion> unlockedNow = EnumSet.copyOf(ctx.unlockedRegions);
+		EnumSet<LeaguesRegion> prevUnlocked = lastInjectedUnlockedForBlacklistPrune;
+		if (prevUnlocked != null)
+		{
+			for (LeaguesRegion r : unlockedNow)
+			{
+				if (!prevUnlocked.contains(r))
+				{
+					invalidateBlacklistFor(r);
+				}
+			}
+		}
+		lastInjectedUnlockedForBlacklistPrune = unlockedNow;
+
+		// Calibration is kicked only from {@link #tickLeaguesCalibration} — avoid per-refresh probe + varbit work here (L0.4).
 		injectLeaguesAreaTeleports(ctx.unlockedRegions, usableTeleports, typeStats);
 		injectLeaguesCatalogTransports(ctx.unlockedRegions, usableTeleports, transports, transportsPacked, typeStats);
 	}
@@ -1489,6 +1751,10 @@ public final class Rs2LeaguesTransport
 			{
 				return false;
 			}
+			// L0.9: Jagex copy can fail parseRegionName while chat still matches locked-region pattern — blacklist by
+			// destination only so the walker stops retrying the same teleport.
+			persistBlacklistDestination(packedDest, null, method);
+			clearLastTransportAttempt();
 			String missKey = norm.length() > 160
 					? norm.substring(0, 160) + "|h" + Integer.toHexString(norm.hashCode())
 					: norm;
@@ -1506,7 +1772,7 @@ public final class Rs2LeaguesTransport
 					// Strictly cap distinct samples; concurrent callers share lock so size/add is consistent.
 					if (!LEAGUES_LOCKED_REGION_PARSE_MISS_SAMPLES.add(missKey))
 					{
-						return false;
+						return true;
 					}
 					emitSampleLog = true;
 				}
@@ -1515,7 +1781,7 @@ public final class Rs2LeaguesTransport
 					// Already in main sample set → duplicate chat; never hits at-cap dedupe below.
 					if (LEAGUES_LOCKED_REGION_PARSE_MISS_SAMPLES.contains(missKey))
 					{
-						return false;
+						return true;
 					}
 					atCapSkip = true;
 				}
@@ -1540,11 +1806,11 @@ public final class Rs2LeaguesTransport
 							log.debug("[Leagues] locked-region parse-miss dropped (at-cap dedupe set full); missKey prefix='{}'",
 									missKey.length() > 80 ? missKey.substring(0, 80) + "…" : missKey);
 						}
-						return false;
+						return true;
 					}
 					if (!LEAGUES_PARSE_MISS_AT_CAP_SEEN.add(missKey))
 					{
-						return false;
+						return true;
 					}
 					// Strictly cap growth: lock makes count consistent with set adds.
 					int prev = LEAGUES_PARSE_MISS_AT_CAP_SEEN_COUNT.get();
@@ -1559,16 +1825,16 @@ public final class Rs2LeaguesTransport
 					log.info("[Leagues] locked-region parse-miss skipped={} (distinct-sample cap {}); extend parseRegionName",
 							n, LEAGUES_PARSE_MISS_DISTINCT_LOG_CAP);
 				}
-				return false;
+				return true;
 			}
 
 			if (emitSampleLog && Rs2LogRateLimit.everyN(LEAGUES_PARSE_MISS_INFO, LEAGUES_PARSE_MISS_INFO_INTERVAL))
 			{
 				String sample = regionNameRaw == null ? ""
 						: regionNameRaw.length() > 120 ? regionNameRaw.substring(0, 120) + "…" : regionNameRaw;
-				log.info("[Leagues] locked-region chat did not map to LeaguesRegion; extend parseRegionName. sample='{}'", sample);
+				log.info("[Leagues] locked-region chat did not map to LeaguesRegion; dest-only blacklist applied. sample='{}'", sample);
 			}
-			return false;
+			return true;
 		}
 		if (Rs2LogRateLimit.everyN(LEAGUES_BLOCKED_DEST_FROM_CHAT_INFO, LEAGUES_BLOCKED_DEST_FROM_CHAT_INFO_INTERVAL))
 		{
@@ -1721,6 +1987,7 @@ public final class Rs2LeaguesTransport
 				{
 					if (CALIBRATION_CANCEL_REQUESTED.get())
 					{
+						dismissOpenMenusAfterCalibrationCancel();
 						break;
 					}
 					if (target == null)
@@ -1736,6 +2003,7 @@ public final class Rs2LeaguesTransport
 					log.info("[Leagues] calibrate landing start: {}", target);
 					if (CALIBRATION_CANCEL_REQUESTED.get())
 					{
+						dismissOpenMenusAfterCalibrationCancel();
 						break;
 					}
 					final WorldPoint before = Rs2Player.getWorldLocation();
@@ -2328,7 +2596,21 @@ public final class Rs2LeaguesTransport
 			// Critical: do not report success until the teleport actually completes.
 			// Otherwise the walker replans mid-teleport and repeatedly interrupts the action.
 			int remaining = remainingMs(startedAtMs, timeoutMs);
-			if (remaining <= 0 || !waitForTeleportArrival(region, before, remaining))
+			final boolean arrived;
+			if (remaining <= 0)
+			{
+				arrived = false;
+			}
+			else
+			{
+				final int rem = remaining;
+				final WorldPoint bef = before;
+				final LeaguesRegion reg = region;
+				boolean[] box = {false};
+				Rs2Walker.runWithWalkerLockReleased(() -> box[0] = waitForTeleportArrival(reg, bef, rem));
+				arrived = box[0];
+			}
+			if (!arrived)
 			{
 				String msg = "Leagues transport: teleport timeout.";
 				Microbot.status = msg;
@@ -2576,6 +2858,7 @@ public final class Rs2LeaguesTransport
 					LeagueTransportWidgets.pack(region.getTeleportCcOpGroup(), region.getTeleportCcOpChild()),
 					region.getTeleportCcOpOption(),
 					region.toMenuTarget());
+			scheduleDebugCheckTeleportRowNameMatches(region);
 			return true;
 		}
 
@@ -2584,7 +2867,43 @@ public final class Rs2LeaguesTransport
 				LeagueTransportWidgets.pack(LeagueTransportWidgets.TELEPORT_ROW_GROUP, LeagueTransportWidgets.TELEPORT_ROW_CHILD),
 				region.getTeleportCcOpOption(),
 				region.toMenuTarget());
+		scheduleDebugCheckTeleportRowNameMatches(region);
 		return true;
+	}
+
+	/** Next client tick: if teleport row name does not match {@link LeaguesRegion#toMenuTarget()}, log once (DEBUG). */
+	private static void scheduleDebugCheckTeleportRowNameMatches(LeaguesRegion region)
+	{
+		if (region == null || !log.isDebugEnabled())
+		{
+			return;
+		}
+		Microbot.getClientThread().invokeLater(() ->
+		{
+			int packed = LeagueTransportWidgets.pack(LeagueTransportWidgets.TELEPORT_ROW_GROUP, LeagueTransportWidgets.TELEPORT_ROW_CHILD);
+			Widget row = Rs2Widget.getWidget(packed);
+			if (row == null || row.isHidden())
+			{
+				return;
+			}
+			String name = row.getName();
+			String expect = region.toMenuTarget();
+			if (name != null && expect != null && !name.equals(expect) && LOGGED_TELEPORT_ROW_NAME_MISMATCH.compareAndSet(false, true))
+			{
+				log.debug("[Leagues] TELEPORT_ROW name mismatch after click: region={} expected={} actual={}", region, expect, name);
+			}
+		});
+	}
+
+	/** Best-effort close of open menus after calibration cancel (logout) so in-flight UI does not confuse walker. */
+	private static void dismissOpenMenusAfterCalibrationCancel()
+	{
+		var ct = Microbot.getClientThread();
+		if (ct == null)
+		{
+			return;
+		}
+		ct.invokeLater(() -> Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE));
 	}
 
 	private static int remainingMs(long startedAtMs, int timeoutMs)

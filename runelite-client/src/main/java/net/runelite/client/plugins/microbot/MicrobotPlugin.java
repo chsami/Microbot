@@ -499,21 +499,21 @@ public class MicrobotPlugin extends Plugin
 	private void handleLeaguesLockedRegionMatch(String region, String rawForMatch)
 	{
 		long nowMs = System.currentTimeMillis();
-		Rs2LeaguesTransport.TransportAttemptSnapshot snap = Rs2LeaguesTransport.getLastTransportAttemptSnapshot();
-		if (snap == null)
+		Optional<Rs2LeaguesTransport.TransportAttemptSnapshot> snapOpt = Rs2LeaguesTransport.findTransportAttemptForLockedRegionChat(
+				region, nowMs, LEAGUES_LOCK_CHAT_MAX_ATTEMPT_AGE_MS);
+		if (!snapOpt.isPresent())
 		{
 			handleLeaguesLockedRegionStale(region, -1);
 			return;
 		}
+		Rs2LeaguesTransport.TransportAttemptSnapshot snap = snapOpt.get();
 		Integer packedDest = snap.getPackedDest();
 		String methodSafe = snap.getMethod() != null ? snap.getMethod() : "";
 		long ageMs = nowMs - snap.getTsMs();
 
-		// Guard against stale/racey attribution (e.g. other teleports attempted after click).
 		if (packedDest == null || ageMs > LEAGUES_LOCK_CHAT_MAX_ATTEMPT_AGE_MS)
 		{
 			handleLeaguesLockedRegionStale(region, ageMs);
-			// Only clear when we had an attempt snapshot but chose not to attribute it (stale / missing dest).
 			Rs2LeaguesTransport.clearLastTransportAttempt();
 			return;
 		}

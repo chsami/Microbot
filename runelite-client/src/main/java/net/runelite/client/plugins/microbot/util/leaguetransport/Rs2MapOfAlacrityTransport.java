@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -39,10 +40,11 @@ public final class Rs2MapOfAlacrityTransport
 {
 	private static final AtomicBoolean MOA_AUDIT_STUB_LOGGED = new AtomicBoolean(false);
 	/**
-	 * Not in RuneLite {@code ItemID} yet — verify against game/wiki when leagues update; wrong id fails equip/invoke silently.
-	 * In-game name: {@code Map of Alacrity} (relic). REVIEW: re-check {@code ItemID} / wiki each league launch.
+	 * Fallback when {@link Rs2Inventory#get(String, boolean)} cannot find the relic by name (league id drift).
+	 * Prefer {@link #resolveMapOfAlacrityRelic()} in {@link #tryUse}.
 	 */
-	private static final int MAP_OF_ALACRITY_ITEM_ID = 33233;
+	private static final int MAP_OF_ALACRITY_ITEM_ID_FALLBACK = 33233;
+	private static final AtomicInteger MOA_RELIC_ID_MISMATCH_LOG = new AtomicInteger(0);
 	// From client widget dump (Leagues MoA interface); update if Jagex changes group/child IDs.
 	private static final int MAP_OF_ALACRITY_WIDGET_GROUP = 187;
 	private static final int MAP_OF_ALACRITY_LIST_CHILD = 3;
@@ -67,7 +69,59 @@ public final class Rs2MapOfAlacrityTransport
 
 	private static void addBlacklistedMoaDestination(int packedDest)
 	{
-		blacklistedMoaDestinations.add(packedDest);
+		if (packedDest == 0)
+		{
+			return;
+		}
+		if (blacklistedMoaDestinations.add(packedDest))
+		{
+			Rs2LeaguesTransport.persistBlacklistDestination(packedDest, null, "MoA");
+		}
+	}
+
+	/**
+	 * Resolves relic by exact name first, then {@value #MAP_OF_ALACRITY_ITEM_ID_FALLBACK}. Logs once per session when name id
+	 * differs from fallback (update constant after league settles).
+	 */
+	private static Rs2ItemModel resolveMapOfAlacrityRelic()
+	{
+		Rs2ItemModel byName = Rs2Inventory.get("Map of Alacrity", true);
+		if (byName != null)
+		{
+			int id = byName.getId();
+			if (id != MAP_OF_ALACRITY_ITEM_ID_FALLBACK && MOA_RELIC_ID_MISMATCH_LOG.compareAndSet(0, 1))
+			{
+				log.warn("[MoA] Map of Alacrity resolved by name id={} != fallback={}; update fallback when ids stable.",
+						id, MAP_OF_ALACRITY_ITEM_ID_FALLBACK);
+			}
+			return byName;
+		}
+		return Rs2Inventory.get(MAP_OF_ALACRITY_ITEM_ID_FALLBACK);
+	}
+
+	private static int moaListPageSignature(Widget listRoot)
+	{
+		if (listRoot == null)
+		{
+			return 0;
+		}
+		return Microbot.getClientThread().runOnClientThreadOptional(() ->
+		{
+			Widget[] d = listRoot.getDynamicChildren();
+			int n = d == null ? 0 : d.length;
+			int h = n * 31;
+			if (d != null)
+			{
+				int cap = Math.min(4, d.length);
+				for (int i = 0; i < cap; i++)
+				{
+					Widget w = d[i];
+					String t = w != null ? w.getText() : "";
+					h = h * 31 + (t != null ? t.hashCode() : 0);
+				}
+			}
+			return h;
+		}).orElse(0);
 	}
 
 	private static void addLockedMoaRegion(String region)
@@ -99,7 +153,7 @@ public final class Rs2MapOfAlacrityTransport
 		{
 			return "";
 		}
-		return displayInfo.replace('\uFF1A', ':').replace('\uFE55', ':').replace('\u2236', ':');
+		return Rs2TextSanitizer.normalizeAsciiColons(displayInfo);
 	}
 
 	/**
@@ -191,7 +245,7 @@ public final class Rs2MapOfAlacrityTransport
 			return false;
 		}
 
-		Rs2ItemModel relic = Rs2Inventory.get(MAP_OF_ALACRITY_ITEM_ID);
+		Rs2ItemModel relic = resolveMapOfAlacrityRelic();
 		if (relic == null)
 		{
 			return false;
@@ -218,6 +272,7 @@ public final class Rs2MapOfAlacrityTransport
 		{
 			return false;
 		}
+		Rs2LeaguesTransport.recordTransportAttempt(transport, "MoA");
 		if (!Rs2Inventory.interact(relic, action))
 		{
 			return false;
@@ -250,9 +305,18 @@ public final class Rs2MapOfAlacrityTransport
 
 		Character regionHotkey = extractMoaHotkey(regionText);
 		if (regionHotkey == null) regionHotkey = computeMoaHotkeyByIndex(regionRoot, regionMatch);
+		final int sigBefore = moaListPageSignature(regionRoot);
 		if (regionHotkey != null)
 		{
 			Rs2Keyboard.keyPress(regionHotkey);
+			if (sigBefore != 0)
+			{
+				sleepUntil(() ->
+				{
+					Widget r = Rs2Widget.getWidget(MAP_OF_ALACRITY_WIDGET_GROUP, MAP_OF_ALACRITY_LIST_CHILD);
+					return r != null && moaListPageSignature(r) != sigBefore;
+				}, 3000);
+			}
 		}
 		else
 		{

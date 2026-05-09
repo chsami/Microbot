@@ -1,5 +1,7 @@
 package net.runelite.client.plugins.microbot.shortestpath;
 
+import net.runelite.api.coords.WorldPoint;
+
 public enum TransportType {
     TRANSPORT,
     AGILITY_SHORTCUT,
@@ -32,15 +34,32 @@ public enum TransportType {
      * and not teleports because they have a pre-defined origin and no
      * wilderness level limit.
      */
+    /**
+     * Teleport classification when origin is unknown. Seasonal rows default to {@code true} so
+     * disabling teleports / item detection stays conservative.
+     */
     public static boolean isTeleport(TransportType transportType) {
+        return isTeleport(transportType, null);
+    }
+
+    /**
+     * Whether this transport should follow teleport costing and walker teleport branches.
+     * {@link #SEASONAL_TRANSPORT} rows with a non-null origin (object/NPC anchored) are treated like
+     * ordinary transports: walk to origin, then use — no {@code distanceBeforeUsingTeleport} penalty.
+     *
+     * @param origin transport origin; {@code null} means originless (catalog teleport-style seasonal)
+     */
+    public static boolean isTeleport(TransportType transportType, WorldPoint origin) {
         if (transportType == null) {
             return false;
+        }
+        if (transportType == SEASONAL_TRANSPORT) {
+            return origin == null;
         }
         switch (transportType) {
             case TELEPORTATION_ITEM:
             case TELEPORTATION_MINIGAME:
             case TELEPORTATION_SPELL:
-            case SEASONAL_TRANSPORT:
                 return true;
             default:
                 return false;

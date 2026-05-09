@@ -173,7 +173,7 @@ public class CollisionMap {
                 continue;
             }
 
-            if (TransportType.isTeleport(transport.getType())) {
+            if (TransportType.isTeleport(transport.getType(), transport.getOrigin())) {
                 if (config.isIgnoreTeleportAndItems()) {
                     if (isMoa) moaIgnored++;
                     continue;

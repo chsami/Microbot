@@ -30,6 +30,18 @@ public final class Rs2TextSanitizer
 	private static final Pattern ITEM_NAME_SUFFIX_PATTERN = Pattern.compile("^(.*?)(?:\\s*\\((\\d+)\\))?$");
 
 	/** Strip markup tags, repeatedly, and drop dangling {@code <} with no {@code >}. */
+	/**
+	 * Fullwidth / compatibility Unicode colons → ASCII {@code ':'} for prefix parsing (Leagues Area titles, MoA).
+	 */
+	public static String normalizeAsciiColons(String raw)
+	{
+		if (raw == null || raw.isEmpty())
+		{
+			return raw == null ? "" : raw;
+		}
+		return raw.replace('\uFF1A', ':').replace('\uFE55', ':').replace('\u2236', ':');
+	}
+
 	public static String stripTags(String raw)
 	{
 		if (raw == null || raw.isEmpty())

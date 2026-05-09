@@ -64,6 +64,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
@@ -209,6 +210,41 @@ public class Rs2Walker {
     public static boolean walkTo(WorldPoint target, int distance) {
         return walkWithState(target, distance) == WalkerState.ARRIVED;
     }
+    /**
+     * Runs {@code action} while temporarily releasing {@link #walkerLock} for the current thread.
+     * Used by long-running Leagues teleport wait so a second {@link #walkWithState} can proceed instead of blocking
+     * on {@link java.util.concurrent.locks.ReentrantLock#lockInterruptibly()} for the full teleport timeout.
+     * <p>No-op release path when the current thread does not hold the lock (e.g. calibration daemon).
+     */
+    public static void runWithWalkerLockReleased(Runnable action)
+    {
+        if (action == null)
+        {
+            throw new NullPointerException("action");
+        }
+        if (!walkerLock.isHeldByCurrentThread())
+        {
+            action.run();
+            return;
+        }
+        int depth = walkerLock.getHoldCount();
+        for (int i = 0; i < depth; i++)
+        {
+            walkerLock.unlock();
+        }
+        try
+        {
+            action.run();
+        }
+        finally
+        {
+            for (int i = 0; i < depth; i++)
+            {
+                walkerLock.lock();
+            }
+        }
+    }
+
     public static WalkerState walkWithState(WorldPoint target, int distance) {
         if (config == null) {
             return WalkerState.EXIT;
@@ -230,6 +266,66 @@ public class Rs2Walker {
                 return walkWithStateInternal(target, distance);
             }
         } finally {
+            walkerLock.unlock();
+        }
+    }
+
+    /**
+     * Like {@link #walkWithState} but bounds how long this thread waits for {@link #walkerLock}.
+     * Use when another walk may hold the lock during Leagues UI (see {@link Rs2LeaguesTransport#leaguesTeleport})
+     * or when a bounded wait is preferable to {@link java.util.concurrent.locks.ReentrantLock#lockInterruptibly()}.
+     *
+     * @param lockWaitMs max wait for the lock; {@code 0} = {@link ReentrantLock#tryLock()} only (no blocking)
+     * @return {@link WalkerState#EXIT} if the lock is not acquired in time or the thread is interrupted
+     */
+    public static WalkerState walkWithStateTry(WorldPoint target, int distance, long lockWaitMs)
+    {
+        if (config == null)
+        {
+            return WalkerState.EXIT;
+        }
+        if (target == null)
+        {
+            log.warn("[Walker] walkWithStateTry: null target");
+            return WalkerState.EXIT;
+        }
+        if (lockWaitMs < 0)
+        {
+            throw new IllegalArgumentException("lockWaitMs must be >= 0");
+        }
+        boolean locked;
+        try
+        {
+            if (lockWaitMs == 0)
+            {
+                locked = walkerLock.tryLock();
+            }
+            else
+            {
+                locked = walkerLock.tryLock(lockWaitMs, TimeUnit.MILLISECONDS);
+            }
+        }
+        catch (InterruptedException ie)
+        {
+            Thread.currentThread().interrupt();
+            return WalkerState.EXIT;
+        }
+        if (!locked)
+        {
+            log.warn("[Walker] walkWithStateTry: walkerLock not acquired within {}ms (thread={}) target={}",
+                    lockWaitMs, Thread.currentThread().getName(), target);
+            return WalkerState.EXIT;
+        }
+        try
+        {
+            if (config.walkWithBankedTransports())
+            {
+                return walkWithBankedTransportsAndStateLocked(target, distance, false);
+            }
+            return walkWithStateInternal(target, distance);
+        }
+        finally
+        {
             walkerLock.unlock();
         }
     }
@@ -2675,7 +2771,7 @@ public class Rs2Walker {
                     log.debug("[Walker] skip {}: destination {} not in path", transport.getDisplayInfo(), transport.getDestination());
                     continue;
                 }
-                if (TransportType.isTeleport(transport.getType()) && Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < 3) {
+                if (TransportType.isTeleport(transport.getType(), transport.getOrigin()) && Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < 3) {
                     log.debug("[Walker] skip {}: already near destination", transport.getDisplayInfo());
                     continue;
                 }
@@ -2683,7 +2779,7 @@ public class Rs2Walker {
                 // Pre-compute origin/destination indices once per transport (not per inner iteration)
                 int precomputedIndexOfOrigin = -1;
                 int precomputedIndexOfDest = -1;
-                if (!TransportType.isTeleport(transport.getType())) {
+                if (!TransportType.isTeleport(transport.getType(), transport.getOrigin())) {
                     Integer originIdx = pathFirstIndex.get(transport.getOrigin());
                     Integer destIdx = pathFirstIndex.get(transport.getDestination());
                     precomputedIndexOfOrigin = originIdx != null ? originIdx : -1;
@@ -2850,7 +2946,7 @@ public class Rs2Walker {
                     }
 
                     if (transport.getType() == TransportType.SEASONAL_TRANSPORT) {
-                        if (attemptObserved(transport, () -> handleSeasonalTransport(transport))) {
+                        if (attemptObservedWithoutAttemptRecord(transport, () -> handleSeasonalTransport(transport))) {
                             sleepUntil(() -> !Rs2Player.isAnimating());
                             sleepUntilTrue(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < OFFSET);
                             break;
@@ -3640,9 +3736,29 @@ public class Rs2Walker {
     }
 
     /**
+     * Like {@link #attemptObserved} but does not call {@link #recordTransportAttempt} before the action.
+     * Seasonal handlers record attempts at their click sites so {@link Rs2LeaguesTransport#getLastTransportAttemptSnapshot}
+     * matches the handler that actually ran (Leagues Area vs MoA).
+     */
+    private static boolean attemptObservedWithoutAttemptRecord(Transport transport, BooleanSupplier action)
+    {
+        if (transport == null || action == null)
+        {
+            return false;
+        }
+        boolean leaguesActive = Rs2LeaguesTransport.isLeaguesActive();
+        boolean ok = action.getAsBoolean();
+        if (leaguesActive)
+        {
+            recordTransportResult(transport, ok);
+        }
+        return ok;
+    }
+
+    /**
      * Tries Leagues Area UI then Map of Alacrity for the same {@link Transport} row.
-     * Call only via {@link #attemptObserved} so {@link Rs2LeaguesTransport#recordTransportAttempt} already
-     * captured this row for locked-region chat correlation before either handler runs.
+     * Attempt recording is done inside each handler ({@link Rs2LeaguesTransport#tryHandleLeaguesAreaTransportResult},
+     * {@link Rs2MapOfAlacrityTransport#tryUse}) — use {@link #attemptObservedWithoutAttemptRecord} at the call site.
      */
     private static boolean handleSeasonalTransport(Transport transport) {
         if (transport == null) {
@@ -4322,7 +4438,7 @@ public class Rs2Walker {
         Set<Integer> teleportItemIds = ShortestPathPlugin.getPathfinderConfig().getAllTransports().values()
                 .stream()
                 .flatMap(Set::stream)
-                .filter(t -> TransportType.isTeleport(t.getType()))
+                .filter(t -> TransportType.isTeleport(t.getType(), t.getOrigin()))
                 .map(Transport::getItemIdRequirements)
                 .flatMap(Set::stream)
                 .flatMap(Set::stream)
