@@ -45,6 +45,7 @@ import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.player.Rs2Pvp;
 import net.runelite.client.plugins.microbot.util.leaguetransport.Rs2LeaguesTransport;
 import net.runelite.client.plugins.microbot.util.leaguetransport.Rs2MapOfAlacrityTransport;
+import net.runelite.client.plugins.microbot.util.logging.Rs2LogRateLimit;
 import java.util.function.BooleanSupplier;
 import net.runelite.client.plugins.microbot.util.poh.PohTeleports;
 import net.runelite.client.plugins.microbot.util.poh.PohTransport;
@@ -149,8 +150,50 @@ public class Rs2Walker {
         public static final AtomicInteger stallRecalcCount = new AtomicInteger();
         public static final AtomicInteger partialRetryCount = new AtomicInteger();
         public static final AtomicInteger unreachableCount = new AtomicInteger();
+        /** Locked-region chat attributed to a recent transport attempt and blacklisted. */
+        public static final AtomicInteger leaguesLockAttributedCount = new AtomicInteger();
+        /** Locked-region chat with no matching recent attempt or expired attempt snapshot. */
+        public static final AtomicInteger leaguesLockStaleCount = new AtomicInteger();
+        /** Locked-region chat where region text did not map to {@link LeaguesRegion} (dest-only blacklist path). */
+        public static final AtomicInteger leaguesLockParseMissCount = new AtomicInteger();
+        /** Neither Leagues Area nor MoA handler accepted a seasonal transport row. */
+        public static final AtomicInteger seasonalHandlerMissCount = new AtomicInteger();
         public static final AtomicLong lastEventAtMs = new AtomicLong();
         public static volatile String lastReason = "";
+
+        private static final ConcurrentHashMap<String, AtomicInteger> doorRejectByCause = new ConcurrentHashMap<>();
+        private static final AtomicInteger doorRejectSummaryLogSeq = new AtomicInteger(0);
+        private static final int DOOR_REJECT_SUMMARY_LOG_INTERVAL = 40;
+
+        /**
+         * Rate-limited debug summary of {@link #doorRejectByCause} tallies (noise control on tight door clusters).
+         */
+        public static void recordDoorReject(String cause) {
+            if (cause == null || cause.isEmpty()) {
+                cause = "unknown";
+            }
+            doorRejectByCause.computeIfAbsent(cause, k -> new AtomicInteger()).incrementAndGet();
+            if (Rs2LogRateLimit.everyN(doorRejectSummaryLogSeq, DOOR_REJECT_SUMMARY_LOG_INTERVAL)
+                    && log.isDebugEnabled()) {
+                log.debug("[WalkerTelemetry] DOOR_REJECT summary={}", doorRejectByCause);
+            }
+        }
+
+        public static void incrementLeaguesLockAttributed() {
+            leaguesLockAttributedCount.incrementAndGet();
+        }
+
+        public static void incrementLeaguesLockStale() {
+            leaguesLockStaleCount.incrementAndGet();
+        }
+
+        public static void incrementLeaguesLockParseMiss() {
+            leaguesLockParseMissCount.incrementAndGet();
+        }
+
+        public static void incrementSeasonalHandlerMiss() {
+            seasonalHandlerMissCount.incrementAndGet();
+        }
 
         public static void recordOffPathRecalc(WorldPoint playerPos, int pathSize) {
             offPathRecalcCount.incrementAndGet();
@@ -194,6 +237,12 @@ public class Rs2Walker {
             stallRecalcCount.set(0);
             partialRetryCount.set(0);
             unreachableCount.set(0);
+            leaguesLockAttributedCount.set(0);
+            leaguesLockStaleCount.set(0);
+            leaguesLockParseMissCount.set(0);
+            seasonalHandlerMissCount.set(0);
+            doorRejectByCause.clear();
+            doorRejectSummaryLogSeq.set(0);
             lastEventAtMs.set(0);
             lastReason = "";
             log.info("[WalkerTelemetry] counters reset");
@@ -2155,8 +2204,20 @@ public class Rs2Walker {
                         : Rs2GameObject.getGameObject(o -> o.getWorldLocation().equals(probe), probe, 3);
                 if (object == null) continue;
 
+                ObjectComposition baseComp = Rs2GameObject.convertToObjectComposition(object);
                 ObjectComposition comp = resolveCompositionForDoorProbe(object);
-                if (comp == null || isNullOrPlaceholderObjectName(comp.getName())) {
+                if (comp == null) {
+                    Telemetry.recordDoorReject("composition-null");
+                    continue;
+                }
+                if (baseComp != null && baseComp.getImpostorIds() != null
+                        && !isNullOrPlaceholderObjectName(baseComp.getName())
+                        && isNullOrPlaceholderObjectName(comp.getName())) {
+                    Telemetry.recordDoorReject("impostor-rejected");
+                    continue;
+                }
+                if (isNullOrPlaceholderObjectName(comp.getName())) {
+                    Telemetry.recordDoorReject("name-not-door");
                     continue;
                 }
 
@@ -2166,7 +2227,10 @@ public class Rs2Walker {
                         .min(Comparator.comparingInt(Rs2Walker::doorActionPriorityIndex))
                         .orElse(null);
 
-                if (action == null) continue;
+                if (action == null) {
+                    Telemetry.recordDoorReject("no-action");
+                    continue;
+                }
 
                 boolean found = false;
 
@@ -2193,11 +2257,15 @@ public class Rs2Walker {
                     if (orientOk) {
                         log.info("Found WallObject door - name {} with action {} at {} - from {} to {}", name, action, probe, fromWp, toWp);
                         found = true;
+                    } else {
+                        Telemetry.recordDoorReject("orient-mismatch");
                     }
                 } else {
                     if (isDoorLikeGameObjectName(name)) {
                         log.info("Found GameObject door - name {} with action {} at {} - from {} to {}", name, action, probe, fromWp, toWp);
                         found = true;
+                    } else {
+                        Telemetry.recordDoorReject("name-not-door");
                     }
                 }
 
@@ -3910,6 +3978,7 @@ public class Rs2Walker {
         {
             return true;
         }
+        Telemetry.incrementSeasonalHandlerMiss();
         if (log.isDebugEnabled() && SEASONAL_HANDLER_MISS_LOGGED_COUNT.get() < SEASONAL_HANDLER_MISS_LOG_CAP)
         {
             WorldPoint destWp = transport.getDestination();

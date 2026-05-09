@@ -503,6 +503,7 @@ public class MicrobotPlugin extends Plugin
 				region, nowMs, LEAGUES_LOCK_CHAT_MAX_ATTEMPT_AGE_MS);
 		if (!snapOpt.isPresent())
 		{
+			Rs2Walker.Telemetry.incrementLeaguesLockStale();
 			handleLeaguesLockedRegionStale(region, -1);
 			return;
 		}
@@ -513,6 +514,7 @@ public class MicrobotPlugin extends Plugin
 
 		if (packedDest == null || ageMs > LEAGUES_LOCK_CHAT_MAX_ATTEMPT_AGE_MS)
 		{
+			Rs2Walker.Telemetry.incrementLeaguesLockStale();
 			handleLeaguesLockedRegionStale(region, ageMs);
 			Rs2LeaguesTransport.clearLastTransportAttempt();
 			return;

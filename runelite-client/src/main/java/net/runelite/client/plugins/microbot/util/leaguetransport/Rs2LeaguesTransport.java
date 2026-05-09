@@ -650,6 +650,11 @@ public final class Rs2LeaguesTransport
 
 	// Catalog schema version. Bump to invalidate old crowd-sourced files.
 	private static final int CATALOG_SCHEMA_VERSION = 2;
+	/** Rotate append target before write when file exceeds this size (bytes). */
+	private static final long LEAGUES_OBS_JSONL_MAX_BYTES = 5L * 1024 * 1024;
+	/** Keep {@code observations.jsonl.1} .. {@code .(N-1)} after rotate; current file is recreated empty. */
+	private static final int LEAGUES_OBS_JSONL_ROTATION_SLOTS = 3;
+
 	private static Path catalogFile()
 	{
 		return leaguesVersionDir().resolve("leagues-transport-catalog.jsonl");
@@ -1185,6 +1190,52 @@ public final class Rs2LeaguesTransport
 		appendTransportObservationInternal(phase, transport, Boolean.valueOf(success), detail);
 	}
 
+	private static void maybeRotateLeaguesObservationsJsonl(Path mainFile)
+	{
+		try
+		{
+			if (!Files.exists(mainFile))
+			{
+				return;
+			}
+			long sz = Files.size(mainFile);
+			if (sz < LEAGUES_OBS_JSONL_MAX_BYTES)
+			{
+				return;
+			}
+			Path dir = mainFile.getParent();
+			if (dir == null)
+			{
+				return;
+			}
+			String base = mainFile.getFileName().toString();
+			int lastSlot = LEAGUES_OBS_JSONL_ROTATION_SLOTS - 1;
+			if (lastSlot >= 1)
+			{
+				Path oldest = dir.resolve(base + "." + lastSlot);
+				if (Files.exists(oldest))
+				{
+					Files.delete(oldest);
+				}
+			}
+			for (int slot = lastSlot - 1; slot >= 1; slot--)
+			{
+				Path from = dir.resolve(base + "." + slot);
+				Path to = dir.resolve(base + "." + (slot + 1));
+				if (Files.exists(from))
+				{
+					Files.move(from, to, StandardCopyOption.REPLACE_EXISTING);
+				}
+			}
+			Path first = dir.resolve(base + ".1");
+			Files.move(mainFile, first, StandardCopyOption.REPLACE_EXISTING);
+		}
+		catch (IOException e)
+		{
+			log.debug("[Leagues] observation JSONL rotate failed: {}", e.getMessage());
+		}
+	}
+
 	private static void appendTransportObservationInternal(String phase, Transport transport, Boolean success, String detail)
 	{
 		if (phase == null || transport == null)
@@ -1206,6 +1257,7 @@ public final class Rs2LeaguesTransport
 		{
 			Path file = observationsFile();
 			Files.createDirectories(file.getParent());
+			maybeRotateLeaguesObservationsJsonl(file);
 
 			JsonObject obj = new JsonObject();
 			obj.addProperty("kind", "transport-observation");
@@ -1876,6 +1928,7 @@ public final class Rs2LeaguesTransport
 						return true;
 					}
 					emitSampleLog = true;
+					Rs2Walker.Telemetry.incrementLeaguesLockParseMiss();
 				}
 				else
 				{
@@ -1913,6 +1966,7 @@ public final class Rs2LeaguesTransport
 					{
 						return true;
 					}
+					Rs2Walker.Telemetry.incrementLeaguesLockParseMiss();
 					// Strictly cap growth: lock makes count consistent with set adds.
 					int prev = LEAGUES_PARSE_MISS_AT_CAP_SEEN_COUNT.get();
 					if (prev < LEAGUES_PARSE_MISS_AT_CAP_SEEN_MAX)
@@ -1945,6 +1999,7 @@ public final class Rs2LeaguesTransport
 		persistBlacklistDestination(packedDest, region, method);
 		// Prevent later unrelated lock messages from reusing same attempt context.
 		clearLastTransportAttempt();
+		Rs2Walker.Telemetry.incrementLeaguesLockAttributed();
 		return true;
 	}
 
@@ -2159,6 +2214,8 @@ public final class Rs2LeaguesTransport
 			}
 		}, "microbot-leagues-landing-calibration");
 		t.setDaemon(true);
+		t.setUncaughtExceptionHandler((thread, ex) ->
+				log.warn("[Leagues] calibrate landing uncaught on {}", thread != null ? thread.getName() : "?", ex));
 		t.start();
 	}
 
