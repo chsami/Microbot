@@ -67,6 +67,16 @@ public final class Rs2MapOfAlacrityTransport
 		return region != null && lockedMoaRegions.contains(region.toLowerCase(Locale.ROOT));
 	}
 
+	/**
+	 * Changes when session MoA blacklist / lock sets mutate — included in {@code PathfinderConfig} transport refresh memo key.
+	 */
+	public static int moaTransportCacheFingerprint()
+	{
+		int h = blacklistedMoaDestinations.hashCode();
+		h = 31 * h + lockedMoaRegions.hashCode();
+		return h;
+	}
+
 	private static void addBlacklistedMoaDestination(int packedDest)
 	{
 		if (packedDest == 0)

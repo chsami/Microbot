@@ -22,6 +22,7 @@ import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.TransportType;
 import net.runelite.client.plugins.microbot.shortestpath.WorldPointUtil;
+import net.runelite.client.plugins.microbot.shortestpath.pathfinder.PathfinderConfig;
 import net.runelite.client.plugins.microbot.shortestpath.PrimitiveIntHashMap;
 import net.runelite.client.plugins.microbot.util.logging.Rs2LogRateLimit;
 import net.runelite.client.plugins.microbot.util.text.Rs2TextSanitizer;
@@ -72,7 +73,7 @@ import static net.runelite.client.plugins.microbot.util.Global.sleepUntilTrue;
  *
  * Entry points:
  * - {@link #leaguesContext()} for pathfinder gating/injection
- * - {@link #injectLeaguesTransports(LeaguesContext, java.util.List, java.util.Set, PrimitiveIntHashMap, java.util.Map)} for pathfinder refresh
+ * - {@link #injectLeaguesTransports(PathfinderConfig, LeaguesContext, java.util.Set, java.util.Map, PrimitiveIntHashMap, java.util.Map)} for pathfinder refresh
  * - {@link #tryHandleLeaguesAreaTransport(Transport)} / {@link #tryHandleLeaguesAreaTransportResult(Transport)} for walker seasonal execution
  *
  * <p><b>Threading:</b> Do not call {@link #leaguesTeleport} (or {@link #tryHandleLeaguesAreaTransport}) from the RuneLite
@@ -1565,13 +1566,14 @@ public final class Rs2LeaguesTransport
 	 * @implNote Unit tests cover parsers/helpers; full injection path is exercised manually in Leagues — update if an automated integration suite is added.
 	 */
 	public static void injectLeaguesTransports(
+			PathfinderConfig pathfinderConfig,
 			LeaguesContext ctx,
 			Set<Transport> usableTeleports,
 			Map<WorldPoint, Set<Transport>> transports,
 			PrimitiveIntHashMap<Set<Transport>> transportsPacked,
 			Map<TransportType, int[]> typeStats)
 	{
-		if (ctx == null || !ctx.active || ctx.unlockedRegions.isEmpty()
+		if (pathfinderConfig == null || ctx == null || !ctx.active || ctx.unlockedRegions.isEmpty()
 				|| usableTeleports == null || transports == null || transportsPacked == null || typeStats == null)
 		{
 			return;
@@ -1592,11 +1594,44 @@ public final class Rs2LeaguesTransport
 		lastInjectedUnlockedForBlacklistPrune = unlockedNow;
 
 		// Calibration is kicked only from {@link #tickLeaguesCalibration} — avoid per-refresh probe + varbit work here (L0.4).
-		injectLeaguesAreaTeleports(ctx.unlockedRegions, usableTeleports, typeStats);
-		injectLeaguesCatalogTransports(ctx.unlockedRegions, usableTeleports, transports, transportsPacked, typeStats);
+		injectLeaguesAreaTeleports(pathfinderConfig, ctx, ctx.unlockedRegions, usableTeleports, typeStats);
+		injectLeaguesCatalogTransports(pathfinderConfig, ctx, ctx.unlockedRegions, usableTeleports, transports, transportsPacked, typeStats);
+	}
+
+	/**
+	 * Keep one originless teleport per packed destination: lowest {@link Transport#getDuration} wins.
+	 */
+	private static boolean mergeOriginlessTeleportByBestDuration(Set<Transport> usableTeleports, Transport candidate)
+	{
+		if (candidate == null || candidate.getOrigin() != null || candidate.getDestination() == null)
+		{
+			return false;
+		}
+		int p = WorldPointUtil.packWorldPoint(candidate.getDestination());
+		int minDur = candidate.getDuration();
+		for (Transport o : usableTeleports)
+		{
+			if (o == null || o.getOrigin() != null || o.getDestination() == null)
+			{
+				continue;
+			}
+			if (WorldPointUtil.packWorldPoint(o.getDestination()) == p)
+			{
+				minDur = Math.min(minDur, o.getDuration());
+			}
+		}
+		if (candidate.getDuration() > minDur)
+		{
+			return false;
+		}
+		usableTeleports.removeIf(o -> o != null && o.getOrigin() == null && o.getDestination() != null
+				&& WorldPointUtil.packWorldPoint(o.getDestination()) == p);
+		return usableTeleports.add(candidate);
 	}
 
 	private static void injectLeaguesAreaTeleports(
+			PathfinderConfig pathfinderConfig,
+			LeaguesContext ctx,
 			EnumSet<LeaguesRegion> unlockedLeaguesRegions,
 			Set<Transport> usableTeleports,
 			Map<TransportType, int[]> typeStats)
@@ -1621,8 +1656,14 @@ public final class Rs2LeaguesTransport
 					true,
 					31,
 					java.util.Collections.emptySet());
-			usableTeleports.add(t);
-			added++;
+			if (!pathfinderConfig.isTransportUsableWithLeaguesContext(t, ctx))
+			{
+				continue;
+			}
+			if (mergeOriginlessTeleportByBestDuration(usableTeleports, t))
+			{
+				added++;
+			}
 		}
 
 		if (added > 0)
@@ -1636,6 +1677,8 @@ public final class Rs2LeaguesTransport
 	}
 
 	private static void injectLeaguesCatalogTransports(
+			PathfinderConfig pathfinderConfig,
+			LeaguesContext ctx,
 			EnumSet<LeaguesRegion> unlockedLeaguesRegions,
 			Set<Transport> usableTeleports,
 			Map<WorldPoint, Set<Transport>> transports,
@@ -1654,18 +1697,24 @@ public final class Rs2LeaguesTransport
 				continue;
 			}
 
-			TransportType tt = t.getType();
-			if (tt != null)
+			if (!pathfinderConfig.isTransportUsableWithLeaguesContext(t, ctx))
 			{
-				int[] stats = typeStats.computeIfAbsent(tt, k -> new int[]{0, 0, 0});
-				stats[0] += 1;
-				stats[1] += 1;
+				continue;
 			}
 
+			TransportType tt = t.getType();
 			if (t.getOrigin() == null)
 			{
-				usableTeleports.add(t);
-				addedOriginless++;
+				if (mergeOriginlessTeleportByBestDuration(usableTeleports, t))
+				{
+					addedOriginless++;
+					if (tt != null)
+					{
+						int[] stats = typeStats.computeIfAbsent(tt, k -> new int[]{0, 0, 0});
+						stats[0] += 1;
+						stats[1] += 1;
+					}
+				}
 			}
 			else
 			{
@@ -1680,6 +1729,12 @@ public final class Rs2LeaguesTransport
 				}
 				packedSet.add(t);
 				addedOriginBased++;
+				if (tt != null)
+				{
+					int[] stats = typeStats.computeIfAbsent(tt, k -> new int[]{0, 0, 0});
+					stats[0] += 1;
+					stats[1] += 1;
+				}
 			}
 		}
 

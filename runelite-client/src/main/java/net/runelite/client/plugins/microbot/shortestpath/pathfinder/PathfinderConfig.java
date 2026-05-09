@@ -151,6 +151,12 @@ public class PathfinderConfig {
     private Map<String, int[]> refreshCurrencyCache;
     private static final Skill[] SKILLS = Skill.values();
 
+    /**
+     * Memo of last {@link #refreshTransports} result when {@link #computeTransportRefreshCacheKeyHash} and
+     * verification (boosted skills + transport varbits/varplayers) match. Cleared by {@link #invalidateTransportRefreshCache()}.
+     */
+    private volatile TransportRefreshSnapshot transportRefreshSnapshot;
+
     public PathfinderConfig(SplitFlagMap mapData, Map<WorldPoint, Set<Transport>> transports,
                             List<Restriction> restrictions,
                             Client client, ShortestPathConfig config) {
@@ -304,6 +310,29 @@ public class PathfinderConfig {
         useSpiritTrees &= QuestState.FINISHED.equals(Rs2Player.getQuestState(Quest.TREE_GNOME_VILLAGE));
         useQuetzals &= QuestState.FINISHED.equals(Rs2Player.getQuestState(Quest.TWILIGHTS_PROMISE));
 
+        final Rs2LeaguesTransport.LeaguesContext leaguesCtx = Rs2LeaguesTransport.leaguesContext();
+        final int refreshCacheKeyHash = computeTransportRefreshCacheKeyHash(target, leaguesCtx);
+
+        TransportRefreshSnapshot snap = transportRefreshSnapshot;
+        if (snap != null && snap.cacheKeyHash == refreshCacheKeyHash && client != null) {
+            int[] boostedProbe = new int[SKILLS.length];
+            Microbot.getClientThread().runOnClientThreadOptional(() -> {
+                for (int i = 0; i < SKILLS.length; i++) {
+                    boostedProbe[i] = client.getBoostedSkillLevel(SKILLS[i]);
+                }
+                return true;
+            });
+            int verProbe = computeTransportRefreshVerificationHash(boostedProbe, snap.sortedVarbits, snap.sortedVarplayers);
+            if (verProbe == snap.verificationHash) {
+                snap.restoreInto(this);
+                if (useBankItems && config != null && config.maxSimilarTransportDistance() > 0) {
+                    filterSimilarTransports(target);
+                }
+                log.info("[refreshTransports] cache hit key={}", refreshCacheKeyHash);
+                return;
+            }
+        }
+
         transports.clear();
         transportsPacked.clear();
         usableTeleports.clear();
@@ -358,7 +387,6 @@ public class PathfinderConfig {
         // Trade-off: unlock mid-refresh is picked up on next refresh — acceptable vs client-thread churn per edge.
         // Scripts that must path immediately after unlock should trigger an explicit transport refresh / recalc.
         // Reviewers: do not "fix" staleness by calling leaguesContext() per transport — intentional batching; callers refresh explicitly when needed.
-        final Rs2LeaguesTransport.LeaguesContext leaguesCtx = Rs2LeaguesTransport.leaguesContext();
 
         for (Map.Entry<WorldPoint, Set<Transport>> entry : mergedList.entrySet()) {
             WorldPoint point = entry.getKey();
@@ -404,7 +432,7 @@ public class PathfinderConfig {
             }
         }
 
-        Rs2LeaguesTransport.injectLeaguesTransports(leaguesCtx, usableTeleports, transports, transportsPacked, typeStats);
+        Rs2LeaguesTransport.injectLeaguesTransports(this, leaguesCtx, usableTeleports, transports, transportsPacked, typeStats);
         long filterTime = System.currentTimeMillis() - filterStart;
 
         long similarStart = System.currentTimeMillis();
@@ -412,6 +440,12 @@ public class PathfinderConfig {
             filterSimilarTransports(target);
         }
         long similarTime = System.currentTimeMillis() - similarStart;
+
+        int[] sortedVarbits = varbitIds.stream().mapToInt(Integer::intValue).sorted().toArray();
+        int[] sortedVarplayers = varplayerIds.stream().mapToInt(Integer::intValue).sorted().toArray();
+        int verificationHash = computeTransportRefreshVerificationHash(refreshBoostedLevels, sortedVarbits, sortedVarplayers);
+        transportRefreshSnapshot = TransportRefreshSnapshot.capture(
+                refreshCacheKeyHash, verificationHash, sortedVarbits, sortedVarplayers, transports, usableTeleports);
 
         refreshAvailableItemIds = null;
         refreshBoostedLevels = null;
@@ -466,6 +500,14 @@ public class PathfinderConfig {
 
     public void refresh() {
         refresh(null);
+    }
+
+    /**
+     * Drop {@link #transportRefreshSnapshot} so the next {@link #refresh(WorldPoint)} rebuilds transport maps
+     * (inventory/quest/varbit changes that are not captured by the memo key, script-driven transport mutations, etc.).
+     */
+    public void invalidateTransportRefreshCache() {
+        transportRefreshSnapshot = null;
     }
 
     private void refreshRestrictionData() {
@@ -733,6 +775,21 @@ public class PathfinderConfig {
         }
 
         return true;
+    }
+
+    /**
+     * Same gating as the main {@link #refreshTransports} loop, for rows injected after the merge pass
+     * (Leagues catalog / Area teleports): quest action patch, {@link #useTransport}, {@link Rs2LeaguesTransport#isTransportAllowed}.
+     */
+    public boolean isTransportUsableWithLeaguesContext(Transport transport, Rs2LeaguesTransport.LeaguesContext leaguesCtx) {
+        if (transport == null || leaguesCtx == null) {
+            return false;
+        }
+        updateActionBasedOnQuestState(transport);
+        if (!useTransport(transport)) {
+            return false;
+        }
+        return Rs2LeaguesTransport.isTransportAllowed(leaguesCtx, transport);
     }
 
     /**
@@ -1255,6 +1312,169 @@ public class PathfinderConfig {
             return "Transport";
         } else {
             return transport.getType().toString();
+        }
+    }
+
+    private int computeTransportRefreshCacheKeyHash(WorldPoint target, Rs2LeaguesTransport.LeaguesContext leaguesCtx) {
+        assert leaguesCtx != null;
+        int targetPacked = target == null ? 0 : WorldPointUtil.packWorldPoint(target);
+        int invFp = fingerprintInventoryEquipmentBank();
+        int members = (client != null && client.getWorldType().contains(WorldType.MEMBERS)) ? 1 : 0;
+        int preferTp = (config != null && config.preferTransportToTarget()) ? 1 : 0;
+        int maxSimilar = config != null ? config.maxSimilarTransportDistance() : 0;
+        return Objects.hash(
+                packTransportRefreshToggleBits(),
+                useTeleportationItems,
+                ignoreTeleportAndItems,
+                useBankItems,
+                useNpcs,
+                targetPacked,
+                invFp,
+                members,
+                Rs2Walker.disableTeleports,
+                Rs2MapOfAlacrityTransport.moaTransportCacheFingerprint(),
+                Microbot.getVarbitValue(VarbitID.LEAGUE_TYPE),
+                leaguesCtx.isActive(),
+                leaguesCtx.getUnlockedRegions().hashCode(),
+                usePoh,
+                PohTeleports.isInHouse(),
+                maxSimilar,
+                preferTp,
+                distanceBeforeUsingTeleport);
+    }
+
+    private long packTransportRefreshToggleBits() {
+        long bits = 0;
+        int s = 0;
+        if (useAgilityShortcuts) bits |= 1L << s;
+        s++;
+        if (useGrappleShortcuts) bits |= 1L << s;
+        s++;
+        if (useBoats) bits |= 1L << s;
+        s++;
+        if (useCanoes) bits |= 1L << s;
+        s++;
+        if (useCharterShips) bits |= 1L << s;
+        s++;
+        if (useShips) bits |= 1L << s;
+        s++;
+        if (useFairyRings) bits |= 1L << s;
+        s++;
+        if (useGnomeGliders) bits |= 1L << s;
+        s++;
+        if (useMinecarts) bits |= 1L << s;
+        s++;
+        if (usePoh) bits |= 1L << s;
+        s++;
+        if (useQuetzals) bits |= 1L << s;
+        s++;
+        if (useSpiritTrees) bits |= 1L << s;
+        s++;
+        if (useTeleportationLevers) bits |= 1L << s;
+        s++;
+        if (useTeleportationMinigames) bits |= 1L << s;
+        s++;
+        if (useTeleportationPortals) bits |= 1L << s;
+        s++;
+        if (useTeleportationSpells) bits |= 1L << s;
+        s++;
+        if (useMagicCarpets) bits |= 1L << s;
+        s++;
+        if (useHotAirBalloons) bits |= 1L << s;
+        s++;
+        if (useMagicMushtrees) bits |= 1L << s;
+        s++;
+        if (useSeasonalTransports) bits |= 1L << s;
+        s++;
+        if (useWildernessObelisks) bits |= 1L << s;
+        s++;
+        if (useSpiritTreeEtceteria) bits |= 1L << s;
+        s++;
+        if (useSpiritTreeBrimhaven) bits |= 1L << s;
+        s++;
+        if (useSpiritTreePortSarim) bits |= 1L << s;
+        s++;
+        if (useSpiritTreeHosidius) bits |= 1L << s;
+        s++;
+        if (useSpiritTreeFarmingGuild) bits |= 1L << s;
+        s++;
+        if (avoidWilderness) bits |= 1L << s;
+        return bits;
+    }
+
+    private int fingerprintInventoryEquipmentBank() {
+        final int[] h = {1};
+        Rs2Inventory.items().forEach(item -> {
+            h[0] = 31 * h[0] + item.getId();
+            h[0] = 31 * h[0] + item.getQuantity();
+        });
+        Rs2Equipment.all().forEach(item -> {
+            h[0] = 31 * h[0] + item.getId();
+            h[0] = 31 * h[0] + item.getQuantity();
+        });
+        if (useBankItems) {
+            Rs2Bank.getAll().forEach(item -> {
+                h[0] = 31 * h[0] + item.getId();
+                h[0] = 31 * h[0] + item.getQuantity();
+            });
+        }
+        return h[0];
+    }
+
+    private static int computeTransportRefreshVerificationHash(int[] boostedLevels, int[] sortedVarbits, int[] sortedVarplayers) {
+        assert boostedLevels != null;
+        int h = Arrays.hashCode(boostedLevels);
+        for (int id : sortedVarbits) {
+            h = 31 * h + id;
+            h = 31 * h + Microbot.getVarbitValue(id);
+        }
+        for (int id : sortedVarplayers) {
+            h = 31 * h + id;
+            h = 31 * h + Microbot.getVarbitPlayerValue(id);
+        }
+        return h;
+    }
+
+    private static final class TransportRefreshSnapshot {
+        private final int cacheKeyHash;
+        private final int verificationHash;
+        private final int[] sortedVarbits;
+        private final int[] sortedVarplayers;
+        private final Map<WorldPoint, Set<Transport>> transportsData;
+        private final Set<Transport> usableData;
+
+        private TransportRefreshSnapshot(int cacheKeyHash, int verificationHash, int[] sortedVarbits, int[] sortedVarplayers,
+                Map<WorldPoint, Set<Transport>> transportsData, Set<Transport> usableData) {
+            this.cacheKeyHash = cacheKeyHash;
+            this.verificationHash = verificationHash;
+            this.sortedVarbits = sortedVarbits;
+            this.sortedVarplayers = sortedVarplayers;
+            this.transportsData = transportsData;
+            this.usableData = usableData;
+        }
+
+        static TransportRefreshSnapshot capture(int cacheKeyHash, int verificationHash, int[] sortedVarbits, int[] sortedVarplayers,
+                Map<WorldPoint, Set<Transport>> srcTransports, Set<Transport> srcUsable) {
+            assert srcTransports != null && srcUsable != null;
+            Map<WorldPoint, Set<Transport>> copy = new HashMap<>(srcTransports.size());
+            for (Map.Entry<WorldPoint, Set<Transport>> e : srcTransports.entrySet()) {
+                copy.put(e.getKey(), new HashSet<>(e.getValue()));
+            }
+            Set<Transport> usableCopy = new HashSet<>(srcUsable);
+            return new TransportRefreshSnapshot(cacheKeyHash, verificationHash, sortedVarbits, sortedVarplayers, copy, usableCopy);
+        }
+
+        void restoreInto(PathfinderConfig c) {
+            c.transports.clear();
+            c.transportsPacked.clear();
+            c.usableTeleports.clear();
+            for (Map.Entry<WorldPoint, Set<Transport>> e : transportsData.entrySet()) {
+                WorldPoint wp = e.getKey();
+                Set<Transport> set = new HashSet<>(e.getValue());
+                c.transports.put(wp, set);
+                c.transportsPacked.put(WorldPointUtil.packWorldPoint(wp), set);
+            }
+            c.usableTeleports.addAll(new HashSet<>(usableData));
         }
     }
 

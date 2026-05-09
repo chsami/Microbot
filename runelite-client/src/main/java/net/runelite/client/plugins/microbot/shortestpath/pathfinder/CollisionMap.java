@@ -198,32 +198,10 @@ public class CollisionMap {
                     moaCosts == null ? "[]" : moaCosts);
         }
 
-        if (isBlocked(x, y, z)) {
-            boolean westBlocked = isBlocked(x - 1, y, z);
-            boolean eastBlocked = isBlocked(x + 1, y, z);
-            boolean southBlocked = isBlocked(x, y - 1, z);
-            boolean northBlocked = isBlocked(x, y + 1, z);
-            boolean southWestBlocked = isBlocked(x - 1, y - 1, z);
-            boolean southEastBlocked = isBlocked(x + 1, y - 1, z);
-            boolean northWestBlocked = isBlocked(x - 1, y + 1, z);
-            boolean northEastBlocked = isBlocked(x + 1, y + 1, z);
-            traversable[0] = !westBlocked;
-            traversable[1] = !eastBlocked;
-            traversable[2] = !southBlocked;
-            traversable[3] = !northBlocked;
-            traversable[4] = !southWestBlocked && !westBlocked && !southBlocked;
-            traversable[5] = !southEastBlocked && !eastBlocked && !southBlocked;
-            traversable[6] = !northWestBlocked && !westBlocked && !northBlocked;
-            traversable[7] = !northEastBlocked && !eastBlocked && !northBlocked;
-        } else {
-            traversable[0] = w(x, y, z);
-            traversable[1] = e(x, y, z);
-            traversable[2] = s(x, y, z);
-            traversable[3] = n(x, y, z);
-            traversable[4] = sw(x, y, z);
-            traversable[5] = se(x, y, z);
-            traversable[6] = nw(x, y, z);
-            traversable[7] = ne(x, y, z);
+        // Single source of truth with {@link #canStep} — fixes blocked-tile diagonal corner-cut vs unblocked mismatch.
+        for (int i = 0; i < 8; i++) {
+            OrdinalDirection d = ORDINAL_VALUES[i];
+            traversable[i] = canStep(x, y, z, d.x, d.y);
         }
 
         for (int i = 0; i < traversable.length; i++) {
@@ -265,6 +243,99 @@ public class CollisionMap {
                         continue;
                     }
                     neighbors.add(new Node(transport.getOrigin(), node));
+                }
+            }
+        }
+
+        return neighbors;
+    }
+
+    /**
+     * Predecessor expansion for bidirectional search: every forward edge {@code pred → node} appears as
+     * a {@code node} expansion to {@code pred}. Origin-less teleports are omitted (caller builds
+     * {@code incomingByDestPacked} without them).
+     */
+    public List<Node> getReverseNeighbors(Node node, VisitedTiles visitedBackward, PathfinderConfig config,
+            Set<Integer> puzzleAllowPacked, Map<Integer, Set<Transport>> incomingByDestPacked) {
+        final int x = WorldPointUtil.unpackWorldX(node.packedPosition);
+        final int y = WorldPointUtil.unpackWorldY(node.packedPosition);
+        final int z = WorldPointUtil.unpackWorldPlane(node.packedPosition);
+
+        neighbors.clear();
+
+        if (incomingByDestPacked != null) {
+            Set<Transport> incoming = incomingByDestPacked.getOrDefault(node.packedPosition, Collections.emptySet());
+            for (Transport transport : incoming) {
+                WorldPoint origin = transport.getOrigin();
+                if (origin == null) {
+                    continue;
+                }
+                int originPacked = WorldPointUtil.packWorldPoint(origin);
+                if (visitedBackward.get(originPacked)) {
+                    continue;
+                }
+                if (TransportType.isTeleport(transport.getType(), transport.getOrigin())) {
+                    if (config.isIgnoreTeleportAndItems()) {
+                        continue;
+                    }
+                    neighbors.add(new TransportNode(origin, node, config.getDistanceBeforeUsingTeleport() + transport.getDuration()));
+                } else {
+                    neighbors.add(new TransportNode(origin, node, transport.getDuration()));
+                }
+            }
+        }
+
+        for (int i = 0; i < 8; i++) {
+            OrdinalDirection d = ORDINAL_VALUES[i];
+            traversable[i] = canStep(x - d.x, y - d.y, z, d.x, d.y);
+        }
+
+        for (int i = 0; i < traversable.length; i++) {
+            OrdinalDirection d = ORDINAL_VALUES[i];
+            int prevPacked = WorldPointUtil.packWorldPoint(x - d.x, y - d.y, z);
+            if (visitedBackward.get(prevPacked)) {
+                continue;
+            }
+            if (config.getRestrictedPointsPacked().contains(prevPacked)) {
+                continue;
+            }
+
+            if (ignoreCollisionPacked.contains(node.packedPosition)) {
+                neighbors.add(new Node(prevPacked, node));
+                continue;
+            }
+
+            if (getCachedRegionId() == TOA_PUZZLE_REGION) {
+                if (!puzzleAllowPacked.contains(prevPacked)) {
+                    WorldPoint globalWorldPoint = Rs2WorldPoint.convertInstancedWorldPoint(WorldPointUtil.unpackWorldPoint(prevPacked));
+                    if (globalWorldPoint != null) {
+                        TileObject go = Rs2GameObject.getGroundObject(globalWorldPoint);
+                        if (go != null && go.getId() == 45340) {
+                            continue;
+                        }
+                    }
+                }
+            }
+
+            if (traversable[i]) {
+                neighbors.add(new Node(prevPacked, node));
+            } else if (Math.abs(d.x + d.y) == 1 && isBlocked(x, y, z)) {
+                int wx = x - d.x;
+                int wy = y - d.y;
+                int bpx = wx + d.x;
+                int bpy = wy + d.y;
+                if (bpx != x || bpy != y) {
+                    continue;
+                }
+                Set<Transport> ts = config.getTransportsPacked().getOrDefault(node.packedPosition, Collections.emptySet());
+                for (Transport transport : ts) {
+                    if (transport.getOrigin() == null) {
+                        continue;
+                    }
+                    if (WorldPointUtil.packWorldPoint(transport.getOrigin()) != node.packedPosition) {
+                        continue;
+                    }
+                    neighbors.add(new Node(WorldPointUtil.packWorldPoint(wx, wy, z), node));
                 }
             }
         }
