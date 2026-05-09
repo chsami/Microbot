@@ -110,9 +110,6 @@ public class Rs2Walker {
             "push", "climb-over", "climb-through", "squeeze-through", "cross", "force"
     );
 
-    /** Max age for {@link Rs2LeaguesTransport#isLeaguesAreaTeleportPending(long)} in stall / stuck gates. */
-    private static final long LEAGUES_AREA_PENDING_STALL_MAX_AGE_MS = 60_000L;
-
     @Named("disableWalkerUpdate")
     static boolean disableWalkerUpdate;
 
@@ -491,7 +488,7 @@ public class Rs2Walker {
 				// Leagues area teleports can have long animations. Never trigger stall-recalc
 				// while the transport is in-flight, or we will interrupt and re-click.
 				if (Rs2LeaguesTransport.isTeleportInProgress()
-						|| Rs2LeaguesTransport.isLeaguesAreaTeleportPending(LEAGUES_AREA_PENDING_STALL_MAX_AGE_MS))
+						|| Rs2LeaguesTransport.isLeaguesAreaTeleportPending(60_000L))
 				{
 					return WalkerState.MOVING;
 				}
@@ -3713,7 +3710,7 @@ public class Rs2Walker {
         if (Rs2LeaguesTransport.isTeleportInProgress()) {
             return;
         }
-        if (Rs2LeaguesTransport.isLeaguesAreaTeleportPending(LEAGUES_AREA_PENDING_STALL_MAX_AGE_MS)) {
+        if (Rs2LeaguesTransport.isLeaguesAreaTeleportPending(60_000L)) {
             return;
         }
 
@@ -3788,7 +3785,7 @@ public class Rs2Walker {
         if (Rs2LeaguesTransport.isTeleportInProgress()) {
             return false;
         }
-        if (Rs2LeaguesTransport.isLeaguesAreaTeleportPending(LEAGUES_AREA_PENDING_STALL_MAX_AGE_MS)) {
+        if (Rs2LeaguesTransport.isLeaguesAreaTeleportPending(60_000L)) {
             return false;
         }
 
