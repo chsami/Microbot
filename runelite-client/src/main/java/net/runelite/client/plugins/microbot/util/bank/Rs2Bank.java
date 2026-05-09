@@ -131,6 +131,15 @@ public class Rs2Bank {
     }
 
     /**
+     * After depositing to the bank (or other mutations), wait for {@link #updateLocalBank} so {@link #bankItems()}
+     * matches the server/container. Call with {@link #getBankLiveEpoch()} captured immediately before the mutation.
+     */
+    public static void syncBankInventoryAfterChange(int epochBeforeMutation)
+    {
+        awaitBankContainerSnapshotSince(epochBeforeMutation);
+    }
+
+    /**
      * When the bank is open and the lookup returned zero, the cache may lag one tick behind the widget; retry 1-2 ticks.
      */
     private static boolean bankItemRaceRetryWarranted(int observedCount)
@@ -171,6 +180,24 @@ public class Rs2Bank {
     }
 
     /**
+     * {@link Client#getItemDefinition(int)} is client-thread-only; pathfinder refresh and scripts call
+     * {@link #findBankStackRowForSavedId(int)} off-thread.
+     */
+    private static ItemComposition getItemDefinitionThreadSafe(int id)
+    {
+        Client c = Microbot.getClient();
+        if (c == null)
+        {
+            return null;
+        }
+        if (c.isClientThread())
+        {
+            return c.getItemDefinition(id);
+        }
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> c.getItemDefinition(id)).orElse(null);
+    }
+
+    /**
      * Resolves a bank row for a saved item id: exact id, noted/unnoted linked id, then fuzzy name from {@link ItemComposition}
      * (covers stale {@link net.runelite.api.gameval.ItemID} constants and noted vs unnoted bank stacks).
      */
@@ -178,19 +205,13 @@ public class Rs2Bank {
     {
         assert id > 0;
 
-        Client client = Microbot.getClient();
-        if (client == null)
-        {
-            return null;
-        }
-
         Rs2ItemModel direct = findBankItem(id);
         if (direct != null)
         {
             return direct;
         }
 
-        ItemComposition comp = client.getItemDefinition(id);
+        ItemComposition comp = getItemDefinitionThreadSafe(id);
         if (comp != null)
         {
             int linked = comp.getLinkedNoteId();

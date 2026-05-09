@@ -24,6 +24,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BooleanSupplier;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public abstract class Rs2Tile implements Tile {
@@ -47,6 +49,24 @@ public abstract class Rs2Tile implements Tile {
     private static final ThreadLocal<int[][]> DISTANCES_TL = ThreadLocal.withInitial(() -> new int[128][128]);
     private static final ThreadLocal<int[]> BUFFER_X_TL = ThreadLocal.withInitial(() -> new int[4096]);
     private static final ThreadLocal<int[]> BUFFER_Y_TL = ThreadLocal.withInitial(() -> new int[4096]);
+
+    /**
+     * Runs collision / scene reads on the client thread when the caller is off-thread (e.g. script executor).
+     */
+    private static <T> T runClientRead(Supplier<T> supplier, T ifNoClient) {
+        final Client client = Microbot.getClient();
+        if (client == null) {
+            return ifNoClient;
+        }
+        if (client.isClientThread()) {
+            return supplier.get();
+        }
+        return Microbot.getClientThread().invoke(supplier);
+    }
+
+    private static boolean runClientReadBoolean(BooleanSupplier action) {
+        return Boolean.TRUE.equals(runClientRead(() -> action.getAsBoolean(), false));
+    }
 
     /**
      * Initializes the tile executor
@@ -187,22 +207,32 @@ public abstract class Rs2Tile implements Tile {
     }
 
     public static boolean isWalkable(Tile tile) {
+        return runClientReadBoolean(() -> isWalkableTileInternal(tile));
+    }
+
+    private static boolean isWalkableTileInternal(Tile tile) {
         if (tile == null) return false;
 
-        final int[][] flags = getFlags();
+        final int[][] flags = getFlagsInternal();
         if (flags == null) return false;
 
         return isWalkable(flags, tile.getSceneLocation().getX(), tile.getSceneLocation().getY());
     }
 
     public static boolean isWalkable(WorldPoint worldPoint) {
+        return runClientReadBoolean(() -> isWalkableWorldPointInternal(worldPoint));
+    }
+
+    private static boolean isWalkableWorldPointInternal(WorldPoint worldPoint) {
+        if (worldPoint == null) return false;
+
         final WorldView wv = Microbot.getClient().getTopLevelWorldView();
         if (wv == null) return false;
 
-        return isWalkable(LocalPoint.fromWorld(wv, worldPoint));
+        return isWalkableLocalInternal(LocalPoint.fromWorld(wv, worldPoint));
     }
 
-    private static int[][] getFlags() {
+    private static int[][] getFlagsInternal() {
         final WorldView wv = Microbot.getClient().getTopLevelWorldView();
         if (wv == null) return null;
 
@@ -227,9 +257,13 @@ public abstract class Rs2Tile implements Tile {
     }
 
     public static boolean isWalkable(LocalPoint localPoint) {
+        return runClientReadBoolean(() -> isWalkableLocalInternal(localPoint));
+    }
+
+    private static boolean isWalkableLocalInternal(LocalPoint localPoint) {
         if (localPoint == null) return false;
 
-        final int[][] flags = getFlags();
+        final int[][] flags = getFlagsInternal();
         if (flags == null) return false;
 
         final int data = flags[localPoint.getSceneX()][localPoint.getSceneY()];
@@ -241,21 +275,30 @@ public abstract class Rs2Tile implements Tile {
     }
 
     public static List<WorldPoint> getWalkableTilesAroundTile(WorldPoint point, int radius) {
+        return runClientRead(() -> getWalkableTilesAroundTileInternal(point, radius), Collections.emptyList());
+    }
+
+    private static List<WorldPoint> getWalkableTilesAroundTileInternal(WorldPoint point, int radius) {
+        int useRadius = radius;
         final LocalPoint localPoint = LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), point);
         if (localPoint == null) return Collections.emptyList();
 
-        final int[][] flags = getFlags();
+        final int[][] flags = getFlagsInternal();
         if (flags == null) return Collections.emptyList(); // this differs from original impl. would return all tiles
 
         final int sceneX = localPoint.getSceneX();
         final int sceneY = localPoint.getSceneY();
         // limit radius to the size of flags
-        if (sceneX - radius < 0 || sceneX + radius >= FLAG_DATA_SIZE) radius = Math.min(sceneX, FLAG_DATA_SIZE - sceneX - 1);
-        if (sceneY - radius < 0 || sceneY + radius >= FLAG_DATA_SIZE) radius = Math.min(sceneY, FLAG_DATA_SIZE - sceneY - 1);
+        if (sceneX - useRadius < 0 || sceneX + useRadius >= FLAG_DATA_SIZE) {
+            useRadius = Math.min(sceneX, FLAG_DATA_SIZE - sceneX - 1);
+        }
+        if (sceneY - useRadius < 0 || sceneY + useRadius >= FLAG_DATA_SIZE) {
+            useRadius = Math.min(sceneY, FLAG_DATA_SIZE - sceneY - 1);
+        }
 
         final List<WorldPoint> worldPoints = new ArrayList<>();
-        for (int dx = -radius; dx <= radius; dx++) {
-            for (int dy = -radius; dy <= radius; dy++) {
+        for (int dx = -useRadius; dx <= useRadius; dx++) {
+            for (int dy = -useRadius; dy <= useRadius; dy++) {
                 if (dx == 0 && dy == 0) continue; // Skip the player's current position
                 if (!isWalkable(flags, sceneX + dx, sceneY + dy)) continue;
                 worldPoints.add(new WorldPoint(point.getX() + dx, point.getY() + dy, point.getPlane()));
@@ -304,6 +347,10 @@ public abstract class Rs2Tile implements Tile {
      * @return A HashMap containing WorldPoints and their corresponding distances from the start tile.
      */
     public static HashMap<WorldPoint, Integer> getReachableTilesFromTile(WorldPoint tile, int distance, boolean ignoreCollision) {
+        return runClientRead(() -> getReachableTilesFromTileInternal(tile, distance, ignoreCollision), new HashMap<>());
+    }
+
+    private static HashMap<WorldPoint, Integer> getReachableTilesFromTileInternal(WorldPoint tile, int distance, boolean ignoreCollision) {
         final HashMap<WorldPoint, Integer> tileDistances = new HashMap<>();
         tileDistances.put(tile, 0);
 
@@ -393,6 +440,10 @@ public abstract class Rs2Tile implements Tile {
      *         otherwise false.
      */
     public static boolean isTileReachable(WorldPoint targetPoint) {
+        return runClientReadBoolean(() -> isTileReachableInternal(targetPoint));
+    }
+
+    private static boolean isTileReachableInternal(WorldPoint targetPoint) {
         if (targetPoint == null) return false;
 
         final WorldPoint playerLoc = Rs2Player.getWorldLocation();
@@ -402,7 +453,7 @@ public abstract class Rs2Tile implements Tile {
         if (CollisionMap.ignoreCollisionPacked.contains(WorldPointUtil.packWorldPoint(targetPoint))) return true;
 
         final boolean[][] visited = new boolean[FLAG_DATA_SIZE][FLAG_DATA_SIZE];
-        final int[][] flags = getFlags();
+        final int[][] flags = getFlagsInternal();
         if (flags == null) return false;
 
         final int startX;
@@ -447,6 +498,10 @@ public abstract class Rs2Tile implements Tile {
      * @return true if any surrounding tile is walkable, false otherwise.
      */
     public static boolean areSurroundingTilesWalkable(WorldPoint worldPoint, int sizeX, int sizeY) {
+        return runClientReadBoolean(() -> areSurroundingTilesWalkableInternal(worldPoint, sizeX, sizeY));
+    }
+
+    private static boolean areSurroundingTilesWalkableInternal(WorldPoint worldPoint, int sizeX, int sizeY) {
         int plane = worldPoint.getPlane();
 
         // Calculate the boundaries of the object
@@ -464,7 +519,7 @@ public abstract class Rs2Tile implements Tile {
                 }
 
                 // Check if the surrounding tile is walkable
-                if (isTileReachable(new WorldPoint(x, y, plane))) {
+                if (isTileReachableInternal(new WorldPoint(x, y, plane))) {
                     return true;
                 }
             }
@@ -597,10 +652,14 @@ public abstract class Rs2Tile implements Tile {
      * @return The nearest walkable tile, or null if no walkable tile is found.
      */
     public static WorldPoint getNearestWalkableTile(WorldPoint source) {
+        return runClientRead(() -> getNearestWalkableTileWorldInternal(source), null);
+    }
+
+    private static WorldPoint getNearestWalkableTileWorldInternal(WorldPoint source) {
         for (Direction direction : Direction.values()) {
             WorldPoint neighbour = getNeighbour(direction, source);
             if (neighbour.equals(Rs2Player.getWorldLocation())) continue;
-            if (isWalkable(neighbour)) {
+            if (isWalkableWorldPointInternal(neighbour)) {
                 return neighbour;
             }
         }
@@ -629,19 +688,26 @@ public abstract class Rs2Tile implements Tile {
      *         tile is found.
      */
     public static WorldPoint getNearestWalkableTileWithLineOfSight(WorldPoint source) {
+        return runClientRead(() -> getNearestWalkableTileWithLineOfSightInternal(source), null);
+    }
+
+    private static WorldPoint getNearestWalkableTileWithLineOfSightInternal(WorldPoint source) {
+        final WorldView wv = Microbot.getClient().getTopLevelWorldView();
+        if (wv == null) return null;
+
         // check if source is walkable
-        if (!tileHasWalls(source)
-                && isValidTile(getTile(source.getX(), source.getY()))
-                && (isWalkable(LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), source.getX(), source.getY())) || isBankBooth(source))) {
+        if (!tileHasWallsInternal(source)
+                && isValidTileInternal(getTileInternal(source.getX(), source.getY()))
+                && (isWalkableLocalInternal(LocalPoint.fromWorld(wv, source.getX(), source.getY())) || isBankBoothInternal(source))) {
             return source;
         }
         //check if neightbours are walkable
         for (Direction direction : Direction.values()) {
             WorldPoint neighbour = getNeighbour(direction, source);
             if (neighbour.equals(Rs2Player.getWorldLocation())) continue;
-            if (!tileHasWalls(neighbour)
-                    && isValidTile(getTile(neighbour.getX(), neighbour.getY()))
-                    && (isWalkable(LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), neighbour.getX(), neighbour.getY())) || isBankBooth(neighbour))) {
+            if (!tileHasWallsInternal(neighbour)
+                    && isValidTileInternal(getTileInternal(neighbour.getX(), neighbour.getY()))
+                    && (isWalkableLocalInternal(LocalPoint.fromWorld(wv, neighbour.getX(), neighbour.getY())) || isBankBoothInternal(neighbour))) {
                 return neighbour;
             }
         }
@@ -660,6 +726,10 @@ public abstract class Rs2Tile implements Tile {
      * @return An {@link Rs2WorldPoint} representing the nearest walkable tile around the object, or {@code null} if none are found.
      */
     public static Rs2WorldPoint getNearestWalkableTile(GameObject tileObject) {
+        return runClientRead(() -> getNearestWalkableTileForObjectInternal(tileObject), null);
+    }
+
+    private static Rs2WorldPoint getNearestWalkableTileForObjectInternal(GameObject tileObject) {
         // Cache player's location and top-level world view
         Rs2WorldPoint playerLocation = Rs2Player.getRs2WorldPoint();
         WorldView topLevelWorldView = Microbot.getClient().getTopLevelWorldView();
@@ -681,7 +751,7 @@ public abstract class Rs2Tile implements Tile {
 
         // Filter points that are walkable
         List<WorldPoint> walkablePoints = interactablePoints.stream()
-                .filter(Rs2Tile::isWalkable)
+                .filter(Rs2Tile::isWalkableWorldPointInternal)
                 .collect(Collectors.toList());
 
         if (walkablePoints.isEmpty()) {
@@ -730,7 +800,7 @@ public abstract class Rs2Tile implements Tile {
             if (interactablePoints.isEmpty()) {
                 // If no melee points, remove points with walls
                 interactablePoints = gameObjectArea.getInteractable();
-                interactablePoints.removeIf(Rs2Tile::tileHasWalls);
+                interactablePoints.removeIf(Rs2Tile::tileHasWallsInternal);
             }
         }
 
@@ -752,6 +822,10 @@ public abstract class Rs2Tile implements Tile {
      * @return True if the tile has walls or obstacles, false otherwise.
      */
     public static boolean tileHasWalls(WorldPoint source) {
+        return runClientReadBoolean(() -> tileHasWallsInternal(source));
+    }
+
+    private static boolean tileHasWallsInternal(WorldPoint source) {
         return Rs2GameObject.getWallObjects().stream().filter(x -> x.getWorldLocation().equals(source)).findFirst().orElse(null) != null;
     }
 
@@ -769,6 +843,10 @@ public abstract class Rs2Tile implements Tile {
      * @return True if the tile contains a bank booth, false otherwise.
      */
     public static boolean isBankBooth(WorldPoint source) {
+        return runClientReadBoolean(() -> isBankBoothInternal(source));
+    }
+
+    private static boolean isBankBoothInternal(WorldPoint source) {
         GameObject gameObject = Rs2GameObject.getGameObjects().stream().filter(x -> x.getWorldLocation().equals(source)).findFirst().orElse(null);
         if (gameObject != null) {
             ObjectComposition objectComposition = Rs2GameObject.convertToObjectComposition(gameObject);
@@ -792,6 +870,10 @@ public abstract class Rs2Tile implements Tile {
      * @return The Tile at the specified coordinates, or null if the tile is invalid or not in the scene.
      */
     public static Tile getTile(int x, int y) {
+        return runClientRead(() -> getTileInternal(x, y), null);
+    }
+
+    private static Tile getTileInternal(int x, int y) {
         WorldPoint worldPoint = new WorldPoint(x, y, Microbot.getClient().getTopLevelWorldView().getPlane());
         LocalPoint localPoint;
 
@@ -820,6 +902,10 @@ public abstract class Rs2Tile implements Tile {
      * @return True if the tile is valid (not blocked by movement restrictions), false otherwise.
      */
     public static boolean isValidTile(Tile tile) {
+        return runClientReadBoolean(() -> isValidTileInternal(tile));
+    }
+
+    private static boolean isValidTileInternal(Tile tile) {
         if (tile == null) return false;
         int[][] flags = Microbot.getClient().getCollisionMaps()[Microbot.getClient().getPlane()].getFlags();
         int data = flags[tile.getSceneLocation().getX()][tile.getSceneLocation().getY()];
@@ -845,6 +931,10 @@ public abstract class Rs2Tile implements Tile {
      *         or null if no path is found.
      */
     public static List<Tile> fullPathTo(Tile source, Tile other) {
+        return runClientRead(() -> fullPathToInternal(source, other), null);
+    }
+
+    private static List<Tile> fullPathToInternal(Tile source, Tile other) {
         int z = source.getPlane();
         if (z != other.getPlane()) {
             return null;
@@ -1070,9 +1160,11 @@ public abstract class Rs2Tile implements Tile {
      * @param other The destination tile to reach.
      * @return A list of tiles representing the path from source to destination, or null if no path is found.
      */
-    public static List<Tile> pathTo(Tile source,Tile other)
-    {
+    public static List<Tile> pathTo(Tile source, Tile other) {
+        return runClientRead(() -> pathToInternal(source, other), null);
+    }
 
+    private static List<Tile> pathToInternal(Tile source, Tile other) {
         int z = source.getPlane();
         if (z != other.getPlane())
         {
