@@ -124,8 +124,15 @@ public class Rs2InventorySetup {
 			return true;
 		}
 
+		boolean bankWasOpen = Rs2Bank.isOpen();
+		int bankEpochBeforeOpen = Rs2Bank.getBankLiveEpoch();
 		Rs2Bank.openBank();
 		if (!Rs2Bank.isOpen()) {
+			return false;
+		}
+		if (!Rs2Bank.verifyBankMirrorAfterOpen(bankWasOpen, bankEpochBeforeOpen)) {
+			Microbot.log("Bank item mirror not ready after open (epoch before=" + bankEpochBeforeOpen
+					+ " after=" + Rs2Bank.getBankLiveEpoch() + ") — aborting setup load", Level.WARN);
 			return false;
 		}
 
@@ -530,10 +537,17 @@ public class Rs2InventorySetup {
 			return true;
 		}
 
+		boolean bankWasOpen = Rs2Bank.isOpen();
+		int bankEpochBeforeOpen = Rs2Bank.getBankLiveEpoch();
         Rs2Bank.openBank();
         if (!Rs2Bank.isOpen()) {
             return false;
         }
+		if (!Rs2Bank.verifyBankMirrorAfterOpen(bankWasOpen, bankEpochBeforeOpen)) {
+			Microbot.log("Bank item mirror not ready after open (epoch before=" + bankEpochBeforeOpen
+					+ " after=" + Rs2Bank.getBankLiveEpoch() + ") — aborting equipment load", Level.WARN);
+			return false;
+		}
 
         //Clear inventory if full
         if (Rs2Inventory.isFull()) {

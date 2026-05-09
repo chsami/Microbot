@@ -119,4 +119,17 @@ Set JVM flag `-Dmicrobot.bank.validateInventorySetup=true` so `Rs2InventorySetup
 
 ---
 
-<!-- Add new gotchas here as numbered entries (## 7, ## 8, ...). -->
+## 7. Release / regression — bank mirror (Tier C)
+
+**Automated (CI):** `Rs2BankSetupDepositRetainTest` covers `isInventoryItemRetainedForSetupDeposit` (id + fuzzy + exact name).
+
+**Manual smoke after a banking-affecting change:**
+
+1. Open bank on a live profile; confirm inventory-setup load (or a script using `Rs2Bank.hasBankItem`) sees **coins** (`995`) and at least **one rune** you know is in the bank.
+2. If setup load aborts with `Bank item mirror not ready after open`, capture DEBUG `Rs2Bank` logs and check `getBankLiveEpoch()` / `ItemContainerChanged(BANK)` delivery.
+
+**Where this applies:** `Rs2Bank.getBankLiveEpoch`, `verifyBankMirrorAfterOpen`, `Rs2InventorySetup.loadInventory` / `loadEquipment`.
+
+---
+
+<!-- Add new gotchas here as numbered entries (## 8, ## 9, ...). -->

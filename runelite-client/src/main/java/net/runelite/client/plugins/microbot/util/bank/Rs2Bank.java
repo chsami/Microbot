@@ -94,6 +94,32 @@ public class Rs2Bank {
 
     private static final int BANK_OPEN_CACHE_SYNC_TIMEOUT_MS = 4_000;
 
+    /**
+     * Monotonic counter incremented in {@link #updateLocalBank} for each applied bank container snapshot.
+     */
+    public static int getBankLiveEpoch() {
+        return BANK_LIVE_EPOCH.get();
+    }
+
+    /**
+     * Tier C gate: after {@link #openBank()}, {@link #bankItems()} is trustworthy only if a snapshot arrived.
+     * If the bank was already open before {@code openBank()}, require {@code getBankLiveEpoch() > 0}; otherwise require
+     * the epoch to have advanced past {@code epochBeforeOpenBankCall}.
+     *
+     * @param bankWasOpenBeforeOpenBankCall {@code true} if {@link #isOpen()} was already {@code true} before calling {@code openBank()}
+     * @param epochBeforeOpenBankCall       value of {@link #getBankLiveEpoch()} immediately before {@code openBank()}
+     */
+    public static boolean verifyBankMirrorAfterOpen(boolean bankWasOpenBeforeOpenBankCall, int epochBeforeOpenBankCall) {
+        if (!isOpen()) {
+            return false;
+        }
+        int e = BANK_LIVE_EPOCH.get();
+        if (bankWasOpenBeforeOpenBankCall) {
+            return e > 0;
+        }
+        return e > epochBeforeOpenBankCall;
+    }
+
     private static void awaitBankContainerSnapshotSince(int epochBeforeInteract)
     {
         if (!sleepUntil(() -> BANK_LIVE_EPOCH.get() > epochBeforeInteract, BANK_OPEN_CACHE_SYNC_TIMEOUT_MS)
