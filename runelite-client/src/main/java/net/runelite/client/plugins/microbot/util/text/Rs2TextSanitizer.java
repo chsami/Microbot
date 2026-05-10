@@ -77,8 +77,20 @@ public final class Rs2TextSanitizer
 	/** Strip tags and replace them with a single space (useful for tokenization/matching). */
 	public static String stripTagsToSpace(String raw)
 	{
-		String s = stripTags(raw);
-		return s.isEmpty() ? "" : s.replaceAll("\\s+", " ").trim();
+		if (raw == null || raw.isEmpty())
+		{
+			return "";
+		}
+		String s = raw;
+		String prev;
+		do
+		{
+			prev = s;
+			s = TAG_STRIP.matcher(s).replaceAll(" ");
+		}
+		while (!s.equals(prev));
+		s = s.replace('<', ' ');
+		return s.replaceAll("\\s+", " ").trim();
 	}
 
 	/**

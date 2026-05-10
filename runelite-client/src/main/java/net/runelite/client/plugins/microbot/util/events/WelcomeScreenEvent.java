@@ -28,8 +28,8 @@ public class WelcomeScreenEvent implements BlockingEvent {
             Client client = Microbot.getClient();
             Widget updateBottomRibbon = client.getWidget(InterfaceID.WelcomeScreen.URL);
             if (updateBottomRibbon != null) {
-                updateBottomRibbon.setOnClickListener((Object) null);
-                updateBottomRibbon.setOnOpListener((Object) null);
+                updateBottomRibbon.setOnClickListener((Object[]) null);
+                updateBottomRibbon.setOnOpListener((Object[]) null);
                 log.info("WelcomeScreenEvent execute: Cleared update ribbon listener to avoid accidental page opening.");
             } else {
                 log.info("WelcomeScreenEvent execute: Update ribbon widget is null");

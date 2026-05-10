@@ -328,6 +328,9 @@ public class CollisionMap {
             if (config.getRestrictedPointsPacked().contains(prevPacked)) {
                 continue;
             }
+            if (config.getCustomRestrictions().contains(prevPacked)) {
+                continue;
+            }
 
             if (ignoreCollisionPacked.contains(node.packedPosition)) {
                 neighbors.add(new Node(prevPacked, node));

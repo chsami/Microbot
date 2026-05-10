@@ -628,6 +628,16 @@ final class LeaguesTransportTeleport
 		}
 
 		boolean marked = TELEPORT_IN_PROGRESS.compareAndSet(false, true);
+		if (!marked)
+		{
+			String msg = "Leagues transport: another teleport in progress.";
+			Microbot.status = msg;
+			return LeaguesTeleportResult.failure(
+					LeaguesTeleportFailureReason.UNKNOWN,
+					msg,
+					region,
+					gate.unlockedRegions);
+		}
 		try
 		{
 			if (!performTeleportSequence(region, timeoutMs))
@@ -1062,7 +1072,7 @@ final class LeaguesTransportTeleport
 				case 2:
 					return Rs2Widget.isWidgetVisible(LeagueTransportWidgets.VIEW_AREAS_GROUP, LeagueTransportWidgets.VIEW_AREAS_CHILD);
 				case 3:
-					return Rs2Widget.isWidgetVisible(areasListRootGroup(targetRegion), areasListRootChild(targetRegion));
+					return true;
 				default:
 					return false;
 			}

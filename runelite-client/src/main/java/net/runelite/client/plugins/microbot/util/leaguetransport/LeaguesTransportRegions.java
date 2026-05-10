@@ -28,6 +28,7 @@ final class LeaguesTransportRegions
 					+ "haven[''\\u2019\\u2018\\u02BC\\u2032`]*t\\s+unlocked\\s+access\\s+to\\s+the"
 					+ "|don[''\\u2019\\u2018\\u02BC\\u2032`]*t\\s+have\\s+access\\s+to\\s+the"
 					+ "|do\\s+not\\s+have\\s+access\\s+to\\s+the"
+					+ "|can(?:not|[''\\u2019\\u2018\\u02BC\\u2032`]t)\\s+access(?:\\s+to)?\\s+the"
 					+ ")\\s+(.+)\\s+area(?:\\s*\\([^)]+\\))?(?:\\s+\\p{Alnum}+)*\\s*[\\p{Punct}]*$");
 
 	private static final Set<String> LEAGUES_LOCKED_REGION_PARSE_MISS_SAMPLES = ConcurrentHashMap.newKeySet();
@@ -150,6 +151,7 @@ final class LeaguesTransportRegions
 				return false;
 			}
 			LeaguesTransportPersistence.persistBlacklistDestination(packedDest, null, method);
+			Rs2LeaguesTransport.invalidateContext();
 			LeaguesTransportAttempts.clearLastTransportAttempt();
 			String missKey = norm.length() > 160
 					? norm.substring(0, 160) + "|h" + Integer.toHexString(norm.hashCode())

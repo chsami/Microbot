@@ -42,6 +42,11 @@ final class LeaguesTransportPersistence
 	static final String KEY_PROFILE_PURGE_MARKER = "leaguesProfilePersistencePurged";
 
 	private static final Map<Integer, String> CATALOG_VERSION_BY_MAJOR = new HashMap<>();
+	private static final Object PATH_SNAPSHOT_LOCK = new Object();
+	private static final Object SHARE_FILE_IO_LOCK = new Object();
+	private static volatile String cachedCatalogVersion;
+	private static volatile Path cachedVersionDir;
+	private static volatile Path cachedShareFile;
 
 	static
 	{
@@ -54,26 +59,49 @@ final class LeaguesTransportPersistence
 		return v > 0 ? v : 0;
 	}
 
+	private static void ensurePathSnapshot()
+	{
+		if (cachedShareFile != null)
+		{
+			return;
+		}
+		synchronized (PATH_SNAPSHOT_LOCK)
+		{
+			if (cachedShareFile != null)
+			{
+				return;
+			}
+			int major = leaguesMajor();
+			String curated = CATALOG_VERSION_BY_MAJOR.get(major);
+			String version = curated != null ? curated : major + ".0.0";
+			Path dir = Path.of(
+					System.getProperty("user.home"),
+					".runelite",
+					"microbot",
+					"leagues-transport",
+					"v" + version);
+			cachedCatalogVersion = version;
+			cachedVersionDir = dir;
+			cachedShareFile = dir.resolve("leagues-transport-cache.properties");
+		}
+	}
+
 	static String leaguesCatalogVersion()
 	{
-		int major = leaguesMajor();
-		String curated = CATALOG_VERSION_BY_MAJOR.get(major);
-		return curated != null ? curated : major + ".0.0";
+		ensurePathSnapshot();
+		return cachedCatalogVersion;
 	}
 
 	static Path leaguesVersionDir()
 	{
-		return Path.of(
-				System.getProperty("user.home"),
-				".runelite",
-				"microbot",
-				"leagues-transport",
-				"v" + leaguesCatalogVersion());
+		ensurePathSnapshot();
+		return cachedVersionDir;
 	}
 
 	private static Path shareFile()
 	{
-		return leaguesVersionDir().resolve("leagues-transport-cache.properties");
+		ensurePathSnapshot();
+		return cachedShareFile;
 	}
 
 	private static final Set<Integer> PERSIST_BLOCKED_DESTS = ConcurrentHashMap.newKeySet();
@@ -422,36 +450,50 @@ final class LeaguesTransportPersistence
 
 	private static void writeShareFile()
 	{
-		try
+		synchronized (SHARE_FILE_IO_LOCK)
 		{
-			Path file = shareFile();
-			Files.createDirectories(file.getParent());
-			String consentLine = "";
-			if (CALIBRATION_CONSENT_ALLOWED.get() || CALIBRATION_CONSENT_DENIED.get())
+			Path tmp = null;
+			try
 			{
-				consentLine = KEY_CALIBRATION_CONSENT + "="
-						+ (CALIBRATION_CONSENT_ALLOWED.get() ? "allowed" : "denied")
-						+ "\n";
-			}
-			String content = ""
-					+ "# Microbot Leagues transport cache (shareable)\n"
-					+ "# Copy between machines/profiles to share learned data.\n"
-					+ "# catalogVersion=" + leaguesCatalogVersion() + "\n"
-					+ KEY_PROFILE_PURGE_MARKER + "=true\n"
-					+ KEY_BLOCKED_DESTS + "=" + joinCsvInts(PERSIST_BLOCKED_DESTS) + "\n"
-					+ KEY_BLOCKED_DEST_REGIONS + "=" + joinDestRegionMap(PERSIST_BLOCKED_DEST_REGIONS) + "\n"
-					+ KEY_BLOCKED_DEST_METHODS + "=" + joinDestStringMap(PERSIST_BLOCKED_DEST_METHODS) + "\n"
-					+ KEY_REGION_LANDINGS + "=" + joinRegionLandings(PERSIST_REGION_LANDINGS) + "\n"
-					+ consentLine;
+				Path file = shareFile();
+				Files.createDirectories(file.getParent());
+				String consentLine = "";
+				if (CALIBRATION_CONSENT_ALLOWED.get() || CALIBRATION_CONSENT_DENIED.get())
+				{
+					consentLine = KEY_CALIBRATION_CONSENT + "="
+							+ (CALIBRATION_CONSENT_ALLOWED.get() ? "allowed" : "denied")
+							+ "\n";
+				}
+				String content = ""
+						+ "# Microbot Leagues transport cache (shareable)\n"
+						+ "# Copy between machines/profiles to share learned data.\n"
+						+ "# catalogVersion=" + leaguesCatalogVersion() + "\n"
+						+ KEY_PROFILE_PURGE_MARKER + "=true\n"
+						+ KEY_BLOCKED_DESTS + "=" + joinCsvInts(PERSIST_BLOCKED_DESTS) + "\n"
+						+ KEY_BLOCKED_DEST_REGIONS + "=" + joinDestRegionMap(PERSIST_BLOCKED_DEST_REGIONS) + "\n"
+						+ KEY_BLOCKED_DEST_METHODS + "=" + joinDestStringMap(PERSIST_BLOCKED_DEST_METHODS) + "\n"
+						+ KEY_REGION_LANDINGS + "=" + joinRegionLandings(PERSIST_REGION_LANDINGS) + "\n"
+						+ consentLine;
 
-			Path tmp = file.resolveSibling(file.getFileName().toString() + ".tmp");
-			Files.writeString(tmp, content, StandardCharsets.UTF_8);
-			Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-		}
-		catch (Exception e)
-		{
-			log.debug("[Leagues] share file write failed path={} type={} msg={}",
-					shareFile(), e.getClass().getName(), e.getMessage());
+				tmp = Files.createTempFile(file.getParent(), file.getFileName().toString() + ".", ".tmp");
+				Files.writeString(tmp, content, StandardCharsets.UTF_8);
+				Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+			}
+			catch (Exception e)
+			{
+				if (tmp != null)
+				{
+					try
+					{
+						Files.deleteIfExists(tmp);
+					}
+					catch (Exception ignored)
+					{
+					}
+				}
+				log.debug("[Leagues] share file write failed path={} type={} msg={}",
+						shareFile(), e.getClass().getName(), e.getMessage());
+			}
 		}
 	}
 

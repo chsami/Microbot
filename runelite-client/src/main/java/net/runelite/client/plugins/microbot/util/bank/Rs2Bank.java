@@ -120,23 +120,24 @@ public class Rs2Bank {
         return e > epochBeforeOpenBankCall;
     }
 
-    private static void awaitBankContainerSnapshotSince(int epochBeforeInteract)
+    private static boolean awaitBankContainerSnapshotSince(int epochBeforeInteract)
     {
-        if (!sleepUntil(() -> BANK_LIVE_EPOCH.get() > epochBeforeInteract, BANK_OPEN_CACHE_SYNC_TIMEOUT_MS)
-                && log.isDebugEnabled())
+        boolean advanced = sleepUntil(() -> BANK_LIVE_EPOCH.get() > epochBeforeInteract, BANK_OPEN_CACHE_SYNC_TIMEOUT_MS);
+        if (!advanced && log.isDebugEnabled())
         {
             log.debug("[Rs2Bank] bank UI open but no BANK ItemContainerChanged within {}ms (epoch before={} after={})",
                     BANK_OPEN_CACHE_SYNC_TIMEOUT_MS, epochBeforeInteract, BANK_LIVE_EPOCH.get());
         }
+        return advanced;
     }
 
     /**
      * After depositing to the bank (or other mutations), wait for {@link #updateLocalBank} so {@link #bankItems()}
      * matches the server/container. Call with {@link #getBankLiveEpoch()} captured immediately before the mutation.
      */
-    public static void syncBankInventoryAfterChange(int epochBeforeMutation)
+    public static boolean syncBankInventoryAfterChange(int epochBeforeMutation)
     {
-        awaitBankContainerSnapshotSince(epochBeforeMutation);
+        return awaitBankContainerSnapshotSince(epochBeforeMutation);
     }
 
     /**
@@ -1944,8 +1945,7 @@ public class Rs2Bank {
             if (!sleepUntil(Rs2Bank::isOpen, 5_000)) {
                 return false;
             }
-            awaitBankContainerSnapshotSince(epochBeforeInteract);
-            return true;
+            return awaitBankContainerSnapshotSince(epochBeforeInteract);
         } catch (Exception ex) {
             Microbot.logStackTrace("Rs2Bank", ex);
             return false;
@@ -2071,10 +2071,11 @@ public class Rs2Bank {
                 return false;
             }
 
-            sleepUntil(Rs2Bank::isOpen);
+            if (!sleepUntil(Rs2Bank::isOpen)) {
+                return false;
+            }
             sleep(Rs2Random.randomGaussian(800,200));
-            awaitBankContainerSnapshotSince(epochBeforeInteract);
-            return true;
+            return awaitBankContainerSnapshotSince(epochBeforeInteract);
         } catch (Exception ex) {
             Microbot.logStackTrace("Rs2Bank", ex);
         }
@@ -2108,10 +2109,11 @@ public class Rs2Bank {
                 return false;
             }
 
-            sleepUntil(Rs2Bank::isOpen);
+            if (!sleepUntil(Rs2Bank::isOpen)) {
+                return false;
+            }
             sleep(Rs2Random.randomGaussian(800,200));
-            awaitBankContainerSnapshotSince(epochBeforeInteract);
-            return true;
+            return awaitBankContainerSnapshotSince(epochBeforeInteract);
         } catch (Exception ex) {
             Microbot.logStackTrace("Rs2Bank", ex);
         }

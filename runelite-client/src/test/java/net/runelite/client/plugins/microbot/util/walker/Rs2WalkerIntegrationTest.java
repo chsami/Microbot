@@ -135,7 +135,10 @@ public class Rs2WalkerIntegrationTest {
         log.info("Player at: {}, target: {}", playerLoc, nearbyTarget);
 
         Rs2Walker.clearWalkingRoute("test:cleanup");
-        Thread.sleep(500);
+        long clearDeadline = System.currentTimeMillis() + 2000;
+        while (ShortestPathPlugin.getPathfinder() != null && System.currentTimeMillis() < clearDeadline) {
+            Thread.sleep(100);
+        }
 
         log.info("Setting target...");
         Rs2Walker.setTarget(nearbyTarget);

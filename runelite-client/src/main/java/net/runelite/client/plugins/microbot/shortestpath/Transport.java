@@ -488,6 +488,11 @@ public class Transport {
             }
             String s = new String(Util.readAllBytes(stream), StandardCharsets.UTF_8);
             Scanner scanner = new Scanner(s);
+            if (!scanner.hasNextLine()) {
+                scanner.close();
+                log.warn("Transport resource empty, skipping: {}", path);
+                return;
+            }
 
             // Header line is the first line in the file and will start with either '#' or '# '
             String headerLine = scanner.nextLine();

@@ -357,7 +357,7 @@ public final class Rs2LeaguesTransport
 	 */
 	public static final class LeaguesTeleportDriver extends LeaguesTransportTeleport.LeaguesTeleportDriver
 	{
-		private LeaguesTeleportDriver(LeaguesRegion targetRegion)
+		public LeaguesTeleportDriver(LeaguesRegion targetRegion)
 		{
 			super(targetRegion);
 		}

@@ -317,7 +317,7 @@ public class PathfinderConfig {
                 }
                 return true;
             });
-            int verProbe = computeTransportRefreshVerificationHash(boostedProbe, snap.sortedVarbits, snap.sortedVarplayers);
+            int verProbe = computeTransportRefreshVerificationHash(boostedProbe, snap.sortedVarbits, snap.sortedVarplayers, snap.sortedQuestIds);
             if (verProbe == snap.verificationHash) {
                 snap.restoreInto(this);
                 if (useBankItems && config != null && config.maxSimilarTransportDistance() > 0) {
@@ -438,9 +438,20 @@ public class PathfinderConfig {
 
         int[] sortedVarbits = varbitIds.stream().mapToInt(Integer::intValue).sorted().toArray();
         int[] sortedVarplayers = varplayerIds.stream().mapToInt(Integer::intValue).sorted().toArray();
-        int verificationHash = computeTransportRefreshVerificationHash(refreshBoostedLevels, sortedVarbits, sortedVarplayers);
+        int[] sortedQuestIds = mergedList.values().stream()
+                .flatMap(Set::stream)
+                .filter(Objects::nonNull)
+                .map(Transport::getQuests)
+                .filter(Objects::nonNull)
+                .flatMap(m -> m.keySet().stream())
+                .filter(Objects::nonNull)
+                .mapToInt(Quest::getId)
+                .distinct()
+                .sorted()
+                .toArray();
+        int verificationHash = computeTransportRefreshVerificationHash(refreshBoostedLevels, sortedVarbits, sortedVarplayers, sortedQuestIds);
         transportRefreshSnapshot = TransportRefreshSnapshot.capture(
-                refreshCacheKeyHash, verificationHash, sortedVarbits, sortedVarplayers, transports, usableTeleports);
+                refreshCacheKeyHash, verificationHash, sortedVarbits, sortedVarplayers, sortedQuestIds, transports, usableTeleports);
 
         refreshAvailableItemIds = null;
         refreshBoostedLevels = null;
@@ -1416,7 +1427,7 @@ public class PathfinderConfig {
         return h[0];
     }
 
-    private static int computeTransportRefreshVerificationHash(int[] boostedLevels, int[] sortedVarbits, int[] sortedVarplayers) {
+    private static int computeTransportRefreshVerificationHash(int[] boostedLevels, int[] sortedVarbits, int[] sortedVarplayers, int[] sortedQuestIds) {
         assert boostedLevels != null;
         int h = Arrays.hashCode(boostedLevels);
         for (int id : sortedVarbits) {
@@ -1427,7 +1438,25 @@ public class PathfinderConfig {
             h = 31 * h + id;
             h = 31 * h + Microbot.getVarbitPlayerValue(id);
         }
+        for (int questId : sortedQuestIds) {
+            h = 31 * h + questId;
+            Quest quest = resolveQuestById(questId);
+            QuestState state = quest == null ? QuestState.NOT_STARTED : Rs2Player.getQuestState(quest);
+            h = 31 * h + (state == QuestState.FINISHED ? 1 : 0);
+        }
+        QuestState clientOfKourendState = Rs2Player.getQuestState(Quest.CLIENT_OF_KOUREND);
+        h = 31 * h + Quest.CLIENT_OF_KOUREND.getId();
+        h = 31 * h + (clientOfKourendState == QuestState.FINISHED ? 1 : 0);
         return h;
+    }
+
+    private static Quest resolveQuestById(int questId) {
+        for (Quest quest : Quest.values()) {
+            if (quest.getId() == questId) {
+                return quest;
+            }
+        }
+        return null;
     }
 
     private static final class TransportRefreshSnapshot {
@@ -1435,20 +1464,24 @@ public class PathfinderConfig {
         private final int verificationHash;
         private final int[] sortedVarbits;
         private final int[] sortedVarplayers;
+        private final int[] sortedQuestIds;
         private final Map<WorldPoint, Set<Transport>> transportsData;
         private final Set<Transport> usableData;
 
         private TransportRefreshSnapshot(int cacheKeyHash, int verificationHash, int[] sortedVarbits, int[] sortedVarplayers,
+                int[] sortedQuestIds,
                 Map<WorldPoint, Set<Transport>> transportsData, Set<Transport> usableData) {
             this.cacheKeyHash = cacheKeyHash;
             this.verificationHash = verificationHash;
             this.sortedVarbits = sortedVarbits;
             this.sortedVarplayers = sortedVarplayers;
+            this.sortedQuestIds = sortedQuestIds;
             this.transportsData = transportsData;
             this.usableData = usableData;
         }
 
         static TransportRefreshSnapshot capture(int cacheKeyHash, int verificationHash, int[] sortedVarbits, int[] sortedVarplayers,
+                int[] sortedQuestIds,
                 Map<WorldPoint, Set<Transport>> srcTransports, Set<Transport> srcUsable) {
             assert srcTransports != null && srcUsable != null;
             Map<WorldPoint, Set<Transport>> copy = new HashMap<>(srcTransports.size());
@@ -1456,7 +1489,7 @@ public class PathfinderConfig {
                 copy.put(e.getKey(), new HashSet<>(e.getValue()));
             }
             Set<Transport> usableCopy = new HashSet<>(srcUsable);
-            return new TransportRefreshSnapshot(cacheKeyHash, verificationHash, sortedVarbits, sortedVarplayers, copy, usableCopy);
+            return new TransportRefreshSnapshot(cacheKeyHash, verificationHash, sortedVarbits, sortedVarplayers, sortedQuestIds, copy, usableCopy);
         }
 
         void restoreInto(PathfinderConfig c) {

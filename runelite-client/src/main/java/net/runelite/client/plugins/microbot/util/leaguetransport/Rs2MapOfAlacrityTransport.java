@@ -282,11 +282,11 @@ public final class Rs2MapOfAlacrityTransport
 		{
 			return false;
 		}
-		Rs2LeaguesTransport.recordTransportAttempt(transport, "MoA");
 		if (!Rs2Inventory.interact(relic, action))
 		{
 			return false;
 		}
+		Rs2LeaguesTransport.recordTransportAttempt(transport, "MoA");
 
 		if (!sleepUntil(() -> Rs2Widget.isWidgetVisible(MAP_OF_ALACRITY_WIDGET_GROUP, MAP_OF_ALACRITY_LIST_CHILD), 3000))
 		{

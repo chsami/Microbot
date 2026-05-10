@@ -602,12 +602,18 @@ final class LeaguesTransportObservations
 					continue;
 				}
 
-				WorldPoint dest = parsePoint(obj.has("destination") ? obj.getAsJsonObject("destination") : null);
+				WorldPoint dest = parsePoint(
+						obj.has("destination") && obj.get("destination").isJsonObject()
+								? obj.getAsJsonObject("destination")
+								: null);
 				if (dest == null)
 				{
 					continue;
 				}
-				WorldPoint origin = parsePoint(obj.has("origin") ? obj.getAsJsonObject("origin") : null);
+				WorldPoint origin = parsePoint(
+						obj.has("origin") && obj.get("origin").isJsonObject()
+								? obj.getAsJsonObject("origin")
+								: null);
 
 				String displayInfo = obj.has("displayInfo") ? obj.get("displayInfo").getAsString() : "";
 				boolean members = obj.has("members") && obj.get("members").getAsBoolean();

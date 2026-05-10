@@ -598,7 +598,10 @@ public abstract class Rs2Tile implements Tile {
         int x = 0;
         int y = 0;
         if (Microbot.getClient().getTopLevelWorldView().getScene().isInstance()) {
-            LocalPoint localPoint = Rs2Player.getLocalLocation();
+            LocalPoint localPoint = Rs2LocalPoint.fromWorldInstance(worldPoint);
+            if (localPoint == null) {
+                return false;
+            }
             x = localPoint.getSceneX();
             y = localPoint.getSceneY();
         } else {
