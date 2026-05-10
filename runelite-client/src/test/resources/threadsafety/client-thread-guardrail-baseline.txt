@@ -720,6 +720,10 @@ net.runelite.client.plugins.microbot.util.walker.Rs2MiniMap#getMinimapClipAreaSi
 net.runelite.client.plugins.microbot.util.walker.Rs2MiniMap#getMinimapDrawWidget(): Widget  ->  net.runelite.api.Client#isResized(): boolean
 net.runelite.client.plugins.microbot.util.walker.Rs2MiniMap#worldToMinimap(WorldPoint): Point  ->  net.runelite.api.Client#getTopLevelWorldView(): WorldView
 net.runelite.client.plugins.microbot.util.walker.Rs2MiniMap#worldToMinimap(WorldPoint): Point  ->  net.runelite.api.coords.LocalPoint#fromWorld(WorldView, WorldPoint): LocalPoint
+net.runelite.client.plugins.microbot.util.walker.Rs2Walker#applyWalkerDestination(WorldPoint): void  ->  net.runelite.api.Client#getLocalPlayer(): Player
+net.runelite.client.plugins.microbot.util.walker.Rs2Walker#applyWalkerDestination(WorldPoint): void  ->  net.runelite.api.Client#getTopLevelWorldView(): WorldView
+net.runelite.client.plugins.microbot.util.walker.Rs2Walker#applyWalkerDestination(WorldPoint): void  ->  net.runelite.api.Client#isClientThread(): boolean
+net.runelite.client.plugins.microbot.util.walker.Rs2Walker#applyWalkerDestination(WorldPoint): void  ->  net.runelite.api.coords.WorldPoint#fromLocalInstance(Client, LocalPoint): WorldPoint
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#closeWorldMap(): boolean  ->  net.runelite.api.widgets.Widget#getBounds(): Rectangle
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#distanceToRegion(int, int): int  ->  net.runelite.api.Client#getTopLevelWorldView(): WorldView
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#distanceToRegion(int, int): int  ->  net.runelite.api.WorldView#getPlane(): int
@@ -805,10 +809,7 @@ net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$tryHandleBlock
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#processWalk(WorldPoint, int, int): WalkerState  ->  net.runelite.api.Client#getTopLevelWorldView(): WorldView
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#restartPathfinding(WorldPoint, Set): boolean  ->  net.runelite.api.Client#isClientThread(): boolean
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#setStart(WorldPoint): void  ->  net.runelite.api.Client#isClientThread(): boolean
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#setTarget(WorldPoint): void  ->  net.runelite.api.Client#getLocalPlayer(): Player
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#setTarget(WorldPoint): void  ->  net.runelite.api.Client#getTopLevelWorldView(): WorldView
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#setTarget(WorldPoint): void  ->  net.runelite.api.Client#isClientThread(): boolean
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#setTarget(WorldPoint): void  ->  net.runelite.api.coords.WorldPoint#fromLocalInstance(Client, LocalPoint): WorldPoint
+net.runelite.client.plugins.microbot.util.walker.Rs2Walker#setTarget(WorldPoint, String): void  ->  net.runelite.api.Client#getLocalPlayer(): Player
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#staminaThreshold(): int  ->  net.runelite.api.Client#getLocalPlayer(): Player
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#staminaThreshold(): int  ->  net.runelite.api.Player#getName(): String
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#tryHandleBlockingPathObjectsWithTimeout(List, int, int, int, long): boolean  ->  net.runelite.api.ObjectComposition#getName(): String
