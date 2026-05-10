@@ -13,7 +13,10 @@ public final class Rs2LogRateLimit
 	{
 	}
 
-	/** @return true exactly once per JVM lifetime for the given token. */
+	/**
+	 * @return {@code true} on first successful {@code compareAndSet(false, true)} for {@code token}.
+	 * Callers may arm another one-shot window with {@code token.set(false)}.
+	 */
 	public static boolean once(AtomicBoolean token)
 	{
 		return token != null && token.compareAndSet(false, true);

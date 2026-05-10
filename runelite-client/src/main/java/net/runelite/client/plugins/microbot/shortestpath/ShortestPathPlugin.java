@@ -54,6 +54,7 @@ import net.runelite.client.plugins.microbot.shortestpath.pathfinder.CollisionMap
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.Pathfinder;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.PathfinderConfig;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.SplitFlagMap;
+import net.runelite.client.plugins.microbot.util.logging.Rs2LogRateLimit;
 import net.runelite.client.plugins.microbot.util.leaguetransport.Rs2LeaguesTransport;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
@@ -80,6 +81,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 
@@ -209,6 +211,28 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
     // so varbits, quest states, inventory, and bank containers are hydrated before
     // PathfinderConfig#refresh rebuilds the transport availability cache.
     volatile boolean pendingLoginRefresh = false;
+    /** Consecutive {@link #handlePendingLoginRefresh()} failures; reset on success. */
+    private int loginRefreshFailureCount;
+    /**
+     * Throttles WARN spam from repeated {@link PathfinderConfig#refresh()} failures while {@link #pendingLoginRefresh} stays set;
+     * nanoseconds from {@link System#nanoTime()}, 0 = none yet this streak (delta spacing avoids wall-clock skew).
+     */
+    private long lastLoginRefreshWarnAtNs;
+    /** Max pops/iterations in {@link #classifyRefreshInterruptCause}; keep constant and that method's docs aligned when changing. */
+    private static final int REFRESH_INTERRUPT_CAUSE_MAX_STEPS = 512;
+    private static final long LOGIN_REFRESH_WARN_MIN_INTERVAL_NS = 60_000_000_000L;
+    /**
+     * {@link Rs2LogRateLimit#once} uses this as "first INFO not yet consumed this streak"; cleared only after a successful
+     * {@link PathfinderConfig#refresh()} ({@link #handlePendingLoginRefresh} try success path). Non-interrupt failures do not
+     * clear it - next interrupt-classified failure still uses DEBUG until refresh succeeds.
+     */
+    private final AtomicBoolean refreshInterruptInfoGate = new AtomicBoolean();
+    /**
+     * Traversal buffers for {@link #classifyRefreshInterruptCause}. Used only while {@link #handlePendingLoginRefresh} holds
+     * {@code synchronized (this)} so refresh + traversal cannot race another caller on this plugin (deque/map reuse).
+     */
+    private final ArrayDeque<Throwable> refreshInterruptCauseStack = new ArrayDeque<>();
+    private final IdentityHashMap<Throwable, Boolean> refreshInterruptCauseSeen = new IdentityHashMap<>();
 
     /**
      * First successful session-init route clear after {@link #startUp()} (or plugin re-enable).
@@ -222,7 +246,9 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
 
     @Override
     protected void startUp() {
-		cacheConfigValues();
+        refreshInterruptInfoGate.set(false);
+        lastLoginRefreshWarnAtNs = 0L;
+        cacheConfigValues();
         SplitFlagMap map = SplitFlagMap.fromResources();
         Map<WorldPoint, Set<Transport>> transports = Transport.loadAllFromResources();
 
@@ -586,18 +612,35 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
 
     /**
      * One-off map/route reset when the session starts ({@link ShortestPathPlugin} loaded while already
-     * in game, or first {@link GameState#LOGGED_IN} after startup). Skipped on later LOGGED_IN events
-     * (world hops), matching leagues calibration style init rather than clear-on-every-login.
+     * in game, or first {@link GameState#LOGGED_IN} after startup). After it succeeds once,
+     * {@link #sessionInitRouteClearPending} is cleared — later {@link GameState#LOGGED_IN} events (world hops) skip this path so the
+     * route is not wiped mid-walk.
+     *
+     * @implNote Only {@link RuntimeException} is caught; {@link Error} propagates. Throws mainly from the
+     * {@code worldMapPointManager} / {@link #clearPluginTargets(String)} path, not {@link #clearRouteState()}.
+     * Called from {@link #startUp} ({@code clientThread.invokeLater}) and {@link #onGameStateChanged} on {@link GameState#LOGGED_IN}
+     * — not each {@link GameTick}, so retry WARN is bounded by login/hop frequency unless tests call this directly in a loop.
+     * If the clear throws, retry differs from the happy path above: another attempt needs a new {@link GameState#LOGGED_IN}
+     * (hop/re-login) or {@link #startUp} deferred invoke; staying logged in without those leaves {@link #sessionInitRouteClearPending}
+     * true until then (rare edge).
      */
     private void consumeSessionInitRouteClearIfNeeded() {
-        if (!sessionInitRouteClearPending || client == null || client.getGameState() != GameState.LOGGED_IN) {
+        if (!sessionInitRouteClearPending) {
             return;
         }
-        sessionInitRouteClearPending = false;
-        if (worldMapPointManager != null) {
-            clearPluginTargets("shortest-path-plugin:session-init");
-        } else {
-            clearRouteState();
+        // Wait until LOGGED_IN so session-init clear runs with a live game session (not during intermediate hop states).
+        if (client == null || client.getGameState() != GameState.LOGGED_IN) {
+            return;
+        }
+        try {
+            if (worldMapPointManager != null) {
+                clearPluginTargets("shortest-path-plugin:session-init");
+            } else {
+                clearRouteState();
+            }
+            sessionInitRouteClearPending = false;
+        } catch (RuntimeException e) {
+            log.warn("[ShortestPath] session-init route clear failed; will retry on next LOGGED_IN or startup deferred invoke", e);
         }
     }
 
@@ -618,6 +661,7 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
     @Subscribe
     public void onVarbitChanged(VarbitChanged event) {
         int id = event.getVarbitId();
+        // Varplayer-only VarbitChanged uses varbitId == -1 (see VarbitChanged javadoc).
         if (id < 0 || !isLeagueAreaSelectionVarbit(id)) {
             return;
         }
@@ -633,21 +677,127 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
         Rs2LeaguesTransport.calibrateMissingLandingsAsync(Rs2LeaguesTransport.unlockedRegions(), true);
     }
 
-	private static void clearRouteState()
-	{
-		// Unit-test fallback: `setTarget(null)` requires UI wiring; this must stay semantically equivalent to its cleanup.
-		ShortestPathPlugin.pathfinder = null;
-		ShortestPathPlugin.marker = null;
-		ShortestPathPlugin.startPointSet = false;
-	}
+    private static void clearRouteState() {
+        // Unit-test fallback: `setTarget(null)` requires UI wiring; this must stay semantically equivalent to its cleanup.
+        ShortestPathPlugin.pathfinder = null;
+        ShortestPathPlugin.marker = null;
+        ShortestPathPlugin.startPointSet = false;
+    }
 
+    /** Result of walking {@code Throwable} chains for {@link InterruptedException} during post-login refresh failure handling. */
+    private enum RefreshInterruptClassification {
+        NONE,
+        INTERRUPTED,
+        /** Step cap hit - a deep {@link InterruptedException} may still exist (or a non-interrupt chain may be deep). */
+        SCAN_TRUNCATED
+    }
+
+    /**
+     * Cause chain + {@link Throwable#getSuppressed()} (iterative DFS via explicit stack, cycle-safe, step-capped) for
+     * wrapped {@link InterruptedException}.
+     *
+     * @implNote Each iteration does exactly one {@link java.util.ArrayDeque#pop()}; {@code steps} increments once per iteration
+     * (including iterations that {@code continue} after a duplicate {@code seen} frame). At most {@value #REFRESH_INTERRUPT_CAUSE_MAX_STEPS}
+     * iterations run before {@link RefreshInterruptClassification#SCAN_TRUNCATED} (same upper bound on pops in one traversal).
+     * Caller must hold this plugin instance's monitor ({@code synchronized (this)}) — mutates {@link #refreshInterruptCauseStack} /
+     * {@link #refreshInterruptCauseSeen}.
+     */
+    private RefreshInterruptClassification classifyRefreshInterruptCause(Throwable root) {
+        if (root == null) {
+            return RefreshInterruptClassification.NONE;
+        }
+        refreshInterruptCauseSeen.clear();
+        refreshInterruptCauseStack.clear();
+        refreshInterruptCauseStack.push(root);
+        int steps = 0;
+        while (!refreshInterruptCauseStack.isEmpty()) {
+            // Stop before steps++/pop once steps reached cap (executed pops stay <= REFRESH_INTERRUPT_CAUSE_MAX_STEPS).
+            if (steps >= REFRESH_INTERRUPT_CAUSE_MAX_STEPS) {
+                return RefreshInterruptClassification.SCAN_TRUNCATED;
+            }
+            steps++;
+            Throwable t = refreshInterruptCauseStack.pop();
+            if (t == null || refreshInterruptCauseSeen.put(t, Boolean.TRUE) != null) {
+                continue;
+            }
+            if (t instanceof InterruptedException) {
+                return RefreshInterruptClassification.INTERRUPTED;
+            }
+            Throwable cause = t.getCause();
+            if (cause != null) {
+                refreshInterruptCauseStack.push(cause);
+            }
+            for (Throwable s : t.getSuppressed()) {
+                if (s != null) {
+                    refreshInterruptCauseStack.push(s);
+                }
+            }
+        }
+        return RefreshInterruptClassification.NONE;
+    }
+
+    /**
+     * Runs {@link PathfinderConfig#refresh()} when {@link #pendingLoginRefresh} is set (login / leagues varbits).
+     * Production: {@link #onGameTick}. Unit tests may invoke directly - {@link InterruptedException} handling re-interrupts
+     * {@linkplain Thread#currentThread() the caller's thread}.
+     *
+     * @implNote {@link PathfinderConfig#refresh()} runs synchronously on the caller - no internal executor;
+     * {@link Thread#interrupt()} restores interrupt status on that thread when interrupt-related failures surface during
+     * {@code refresh()} (CPU / client reads, not async offload).
+     * {@code refresh()} runs under {@code synchronized (this)} for the whole call; it must not call back into this plugin on the same
+     * thread in a way that re-enters {@code synchronized} ShortestPathPlugin methods or deadlock is possible.
+     */
     void handlePendingLoginRefresh() {
-        if (pendingLoginRefresh && pathfinderConfig != null) {
-            pendingLoginRefresh = false;
+        synchronized (this) {
+            if (!pendingLoginRefresh || pathfinderConfig == null) {
+                return;
+            }
             try {
                 pathfinderConfig.refresh();
+                pendingLoginRefresh = false;
+                loginRefreshFailureCount = 0;
+                lastLoginRefreshWarnAtNs = 0L;
+                refreshInterruptInfoGate.set(false);
             } catch (Exception e) {
-                log.warn("[ShortestPath] post-login refresh failed", e);
+                RefreshInterruptClassification ic = classifyRefreshInterruptCause(e);
+                if (ic == RefreshInterruptClassification.INTERRUPTED) {
+                    // once() runs before log — hypothetical log.info failure still consumes INFO slot for streak (acceptable).
+                    if (Rs2LogRateLimit.once(refreshInterruptInfoGate)) {
+                        log.info("[ShortestPath] post-login refresh interrupted (cause chain)", e);
+                    } else {
+                        log.debug("[ShortestPath] post-login refresh interrupted (cause chain)", e);
+                    }
+                    // refresh() runs on caller thread; re-interrupt matches caller (production: client tick via onGameTick).
+                    Thread.currentThread().interrupt();
+                    // No throttle accounting; pendingLoginRefresh stays true — retry on next game tick like other transient failures.
+                    return;
+                }
+                loginRefreshFailureCount++;
+                // Elapsed from nanoTime() — monotonic while JVM runs; adequate for 60s WARN spacing (VM suspend is rare edge).
+                // Delta fits in long for a 60s window; ignore nanoTime wrap (~292y uptime) for this throttle.
+                long nowNs = System.nanoTime();
+                boolean emitWarn = loginRefreshFailureCount <= 3
+                        || (lastLoginRefreshWarnAtNs != 0L
+                                && nowNs - lastLoginRefreshWarnAtNs >= LOGIN_REFRESH_WARN_MIN_INTERVAL_NS);
+                if (ic == RefreshInterruptClassification.SCAN_TRUNCATED) {
+                    if (emitWarn) {
+                        log.warn("[ShortestPath] post-login refresh failed ({}) [interrupt scan truncated]",
+                                loginRefreshFailureCount, e);
+                        lastLoginRefreshWarnAtNs = nowNs;
+                    } else {
+                        log.debug(
+                                "[ShortestPath] post-login refresh failed - interrupt cause scan hit {} steps "
+                                        + "(deep chain; may be interrupt or wide non-interrupt graph)",
+                                REFRESH_INTERRUPT_CAUSE_MAX_STEPS,
+                                e);
+                    }
+                } else if (emitWarn) {
+                    log.warn("[ShortestPath] post-login refresh failed ({})", loginRefreshFailureCount, e);
+                    lastLoginRefreshWarnAtNs = nowNs;
+                } else {
+                    log.debug("[ShortestPath] post-login refresh failed ({})", loginRefreshFailureCount, e);
+                }
+                // Keep pendingLoginRefresh true — retry on next game tick after hop/login hydrate (same cadence as interrupt branch above).
             }
         }
     }

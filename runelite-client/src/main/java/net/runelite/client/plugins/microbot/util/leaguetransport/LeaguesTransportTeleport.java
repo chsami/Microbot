@@ -14,6 +14,7 @@ import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
+import net.runelite.client.plugins.microbot.util.logging.Rs2LogRateLimit;
 import net.runelite.client.plugins.microbot.util.walker.WebWalkLog;
 import net.runelite.api.coords.WorldPoint;
 
@@ -24,6 +25,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import javax.swing.JOptionPane;
@@ -41,6 +43,8 @@ final class LeaguesTransportTeleport
 	{
 	}
 
+	/** Shared across all {@code calibrateMissingLandingsAsync} CAS races — one throttle for duplicate-queue skips. */
+	private static final AtomicInteger CALIBRATE_SKIP_LOG_COUNTER = new AtomicInteger(0);
 	private static final AtomicBoolean CALIBRATION_RUNNING = new AtomicBoolean(false);
 	private static final AtomicBoolean CALIBRATION_CANCEL_REQUESTED = new AtomicBoolean(false);
 	private static final AtomicLong CALIBRATION_PROBE_MS = new AtomicLong(0L);
@@ -437,17 +441,22 @@ final class LeaguesTransportTeleport
 
 		if (!CALIBRATION_RUNNING.compareAndSet(false, true))
 		{
+			if (Rs2LogRateLimit.everyN(CALIBRATE_SKIP_LOG_COUNTER, 50))
+			{
+				WebWalkLog.leagues("calibrate skip | worker already running");
+			}
 			return;
 		}
 
 		CALIBRATION_CANCEL_REQUESTED.set(false);
 
 		final EnumSet<LeaguesRegion> unlockedSnapshot = EnumSet.copyOf(unlockedRegions);
-		WebWalkLog.leaguesInfo("calibration worker starting | missingLandings={}", missingCount);
+		final int missingLandingsForWorkerLog = missingCount;
 		Thread t = new Thread(() ->
 		{
 			try
 			{
+				WebWalkLog.leaguesInfo("calibration worker starting | missingLandings={}", missingLandingsForWorkerLog);
 				int ok = 0;
 				int fail = 0;
 				int tried = 0;

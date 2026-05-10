@@ -39,12 +39,14 @@ public class Rs2WalkerUnitTest {
 
     @Before
     public void resetTelemetry() {
+        Rs2Walker.clearWalkerDedupeForTesting();
         Rs2Walker.Telemetry.reset();
         Rs2Walker.sessionBlacklistedDoors.clear();
     }
 
     @After
     public void tearDown() {
+        Rs2Walker.clearWalkerDedupeForTesting();
         Rs2Walker.Telemetry.reset();
         Rs2Walker.sessionBlacklistedDoors.clear();
     }

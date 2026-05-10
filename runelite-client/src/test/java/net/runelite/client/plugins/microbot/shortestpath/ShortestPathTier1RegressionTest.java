@@ -275,7 +275,7 @@ public class ShortestPathTier1RegressionTest {
     }
 
     @Test
-    public void bug5_refreshExceptionIsSwallowedAndFlagStillCleared() {
+    public void bug5_refreshExceptionLeavesFlagSetForNextTickRetry() {
         ShortestPathPlugin plugin = new ShortestPathPlugin();
         PathfinderConfig cfg = mock(PathfinderConfig.class);
         org.mockito.Mockito.doThrow(new RuntimeException("boom")).when(cfg).refresh();
@@ -284,7 +284,7 @@ public class ShortestPathTier1RegressionTest {
 
         plugin.handlePendingLoginRefresh();
 
-        assertFalse("failing refresh must still clear flag to avoid busy-looping",
+        assertTrue("failing refresh keeps flag so handlePendingLoginRefresh retries after login/hydrate stabilizes",
                 plugin.pendingLoginRefresh);
         verify(cfg, times(1)).refresh();
     }

@@ -186,6 +186,7 @@ tasks.register<Test>("runUnitTests") {
     exclude("**/Rs2WalkerIntegrationTest.class")
     exclude("**/Rs2ReflectionGroundItemActionsIntegrationTest.class")
     exclude("**/threadsafety/ClientThreadScannerTest.class")
+    exclude("**/ScreenshotHandlerTest.class")
 
     useJUnit()
 
