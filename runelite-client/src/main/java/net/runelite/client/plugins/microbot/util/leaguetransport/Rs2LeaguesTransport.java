@@ -29,6 +29,13 @@ public final class Rs2LeaguesTransport
 	public static final int LEAGUES_LOCK_CHAT_MAX_NORMALIZE_CHARS = 4096;
 	public static final int LEAGUES_LOCK_CHAT_TRUNC_WARN_INTERVAL = 200;
 
+	/**
+	 * Max age of last transport attempt for correlating locked-region gamemessages.
+	 *
+	 * @apiNote Stable for scripts; document in changelog when changing semantics.
+	 */
+	public static final long LEAGUES_LOCK_CHAT_MAX_ATTEMPT_AGE_MS = 15_000L;
+
 	public static final class LeaguesContext
 	{
 		private final boolean active;
@@ -83,6 +90,10 @@ public final class Rs2LeaguesTransport
 		LeaguesTransportAttempts.clearLastTransportAttempt();
 	}
 
+	/**
+	 * Latest transport attempt if younger than {@code maxAgeMs}. Matches {@code 1a5c485}: no geographic or label filtering;
+	 * {@code regionCaptured} is ignored at lookup time (region comes from chat when persisting the blacklist row).
+	 */
 	public static Optional<LeaguesTransportAttemptSnapshot> findTransportAttemptForLockedRegionChat(
 			String regionCaptured, long nowMs, long maxAgeMs)
 	{
@@ -164,6 +175,11 @@ public final class Rs2LeaguesTransport
 			clearLastTransportAttempt();
 		}
 		return Optional.of(res);
+	}
+
+	public static void onLockedRegionGameMessage(String msg)
+	{
+		LeaguesTransportChat.onLockedRegionGameMessage(msg);
 	}
 
 	public static LeaguesContext leaguesContext()

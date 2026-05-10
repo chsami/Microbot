@@ -234,6 +234,9 @@ final class LeaguesTransportRegions
 					packedDest, regionNameRaw, method != null ? method : "");
 		}
 		LeaguesTransportPersistence.persistBlacklistDestination(packedDest, region, method);
+		LeaguesTransportObservations.appendLockCatalogueEntry(region, packedDest, method);
+		// Pathfinder transport memo hash omits blacklist JSONL; refresh so injected graph matches persistence.
+		Rs2LeaguesTransport.invalidateContext();
 		LeaguesTransportAttempts.clearLastTransportAttempt();
 		Rs2Walker.Telemetry.incrementLeaguesLockAttributed();
 		return true;

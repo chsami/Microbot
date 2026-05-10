@@ -351,8 +351,21 @@
 1367 3087 0		29893		16752=1		Y	T	19	4	Pendant of ates: Kastori
 1364 3275 0		29893		16757=1		Y	T	19	4	Pendant of ates: Nemus Retreat
 										
-#Quetzal Whistle										
-1585 3053 0		29271;29273;29275	Children of the Sun			Y	T	19	4	Quetzal whistle
+#Quetzal Whistle — one row per map destination; quest Children of the Sun (item unlock). Varbit columns match quetzals.tsv for locked map pins.
+1389 2901 0		29271;29273;29275	Children of the Sun			Y	T	19	4	Quetzal whistle: Aldarin
+1697 3140 0		29271;29273;29275	Children of the Sun			Y	T	19	4	Quetzal whistle: Civitas illa Fortis
+1585 3053 0		29271;29273;29275	Children of the Sun			Y	T	19	4	Quetzal whistle: Hunter Guild
+1510 3221 0		29271;29273;29275	Children of the Sun			Y	T	19	4	Quetzal whistle: Quetzacalli Gorge
+1548 2995 0		29271;29273;29275	Children of the Sun			Y	T	19	4	Quetzal whistle: Sunset Coast
+1437 3171 0		29271;29273;29275	Children of the Sun			Y	T	19	4	Quetzal whistle: The Teomat
+1779 3111 0		29271;29273;29275	Children of the Sun	9958=1		Y	T	19	4	Quetzal whistle: Fortis Colosseum
+1700 3037 0		29271;29273;29275	Children of the Sun	9957=1		Y	T	19	4	Quetzal whistle: Outer Fortis
+1670 2933 0		29271;29273;29275	Children of the Sun	9956=1		Y	T	19	4	Quetzal whistle: Colossal Wyrm Remains
+1446 3108 0		29271;29273;29275	Children of the Sun	9955=1		Y	T	19	4	Quetzal whistle: Cam Torum Entrance
+1613 3300 0		29271;29273;29275	Children of the Sun	11379=1		Y	T	19	4	Quetzal whistle: Salvager Overlook
+1226 3091 0		29271;29273;29275	Children of the Sun			Y	T	19	4	Quetzal whistle: Tal Teklan
+1344 3022 0		29271;29273;29275	Children of the Sun	17757=1		Y	T	19	4	Quetzal whistle: Kastori
+1411 3361 0		29271;29273;29275	Children of the Sun			Y	T	19	4	Quetzal whistle: Auburnvale
 #Giantsoul Amulet										
 3174 9898 0		30638				Y	T	19	4	Giantsoul Amulet: Bryophyta
 6208 6336 0		30638				Y	T	19	4	Giantsoul Amulet: Obor

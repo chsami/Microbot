@@ -7,9 +7,7 @@ import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.TransportType;
 import net.runelite.client.plugins.microbot.shortestpath.WorldPointUtil;
 import net.runelite.client.plugins.microbot.util.logging.Rs2LogRateLimit;
-import net.runelite.client.plugins.microbot.util.text.Rs2TextSanitizer;
 
-import java.util.Locale;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -113,87 +111,31 @@ final class LeaguesTransportAttempts
 		}
 	}
 
+	/**
+	 * Same attribution model as {@code 1a5c485}: bind locked-region chat to the single latest transport attempt
+	 * (within {@code maxAgeMs}), not to a filtered ring-buffer entry. Chat supplies the locked shard name when recording;
+	 * the attempt supplies {@code packedDest}.
+	 *
+	 * @param regionCaptured unused (kept for API stability); region text is applied in {@link LeaguesTransportRegions#recordBlockedDestinationFromChat}
+	 */
 	static Optional<LeaguesTransportAttemptSnapshot> findTransportAttemptForLockedRegionChat(
-			String regionCaptured, long nowMs, long maxAgeMs)
+			@SuppressWarnings("unused") String regionCaptured, long nowMs, long maxAgeMs)
 	{
-		if (regionCaptured == null || maxAgeMs < 0L)
+		if (maxAgeMs < 0L)
 		{
 			return Optional.empty();
 		}
-		synchronized (RECENT_TRANSPORT_ATTEMPTS_LOCK)
-		{
-			for (int i = 0; i < recentTransportAttemptsCount; i++)
-			{
-				LeaguesTransportAttemptSnapshot s = RECENT_TRANSPORT_ATTEMPTS[i];
-				if (s == null)
-				{
-					continue;
-				}
-				long ageMs = nowMs - s.getTsMs();
-				if (ageMs > maxAgeMs || ageMs < 0L)
-				{
-					continue;
-				}
-				if (attemptSnapshotMatchesLockedChatRegion(s, regionCaptured))
-				{
-					return Optional.of(s);
-				}
-			}
-		}
-		return Optional.empty();
-	}
-
-	private static boolean attemptSnapshotMatchesLockedChatRegion(
-			LeaguesTransportAttemptSnapshot snap, String regionCaptured)
-	{
-		if (snap == null)
-		{
-			return false;
-		}
-		String norm = LeaguesTransportRegions.normalizeRegionNameForLockedChat(regionCaptured);
-		if (norm.isEmpty())
-		{
-			return false;
-		}
-		LeaguesRegion lrChat = LeaguesTransportRegions.parseRegionNameNormalized(norm);
-		String method = snap.getMethod();
-		if (method == null)
-		{
-			return false;
-		}
-		Optional<LeaguesRegion> lrAttempt = parseLeaguesAreaRegionFromAttemptMethod(method);
-		if (lrChat != null && lrAttempt.isPresent())
-		{
-			return lrChat == lrAttempt.get();
-		}
-		return method.toLowerCase(Locale.ROOT).contains(norm);
-	}
-
-	private static Optional<LeaguesRegion> parseLeaguesAreaRegionFromAttemptMethod(String method)
-	{
-		if (method == null)
+		LeaguesTransportAttemptSnapshot s = lastTransportAttempt;
+		if (s == null)
 		{
 			return Optional.empty();
 		}
-		String low = method.toLowerCase(Locale.ROOT);
-		String key = "leagues area:";
-		int i = low.indexOf(key);
-		if (i < 0)
+		long ageMs = nowMs - s.getTsMs();
+		if (ageMs > maxAgeMs || ageMs < 0L)
 		{
 			return Optional.empty();
 		}
-		String rest = method.substring(i + key.length()).trim();
-		int pipe = rest.indexOf('|');
-		if (pipe >= 0)
-		{
-			rest = rest.substring(0, pipe);
-		}
-		rest = Rs2TextSanitizer.sanitizeLeaguesLockedRegionName(rest.trim());
-		if (rest.isEmpty())
-		{
-			return Optional.empty();
-		}
-		return Optional.ofNullable(LeaguesTransportRegions.parseRegionNameNormalized(rest));
+		return Optional.of(s);
 	}
 
 	static void recordTransportAttempt(Transport transport, String attemptHandler)

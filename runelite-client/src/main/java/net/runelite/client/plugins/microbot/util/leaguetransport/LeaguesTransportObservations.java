@@ -55,6 +55,19 @@ final class LeaguesTransportObservations
 		return LeaguesTransportPersistence.leaguesVersionDir().resolve("leagues-transport-catalog.jsonl");
 	}
 
+	private static Path lockCatalogueFile()
+	{
+		return LeaguesTransportPersistence.leaguesVersionDir().resolve("leagues-lock-catalogue.jsonl");
+	}
+
+	private static final Set<String> LOCK_CATALOGUE_KEYS_SEEN = ConcurrentHashMap.newKeySet();
+	/** Serializes bootstrap + dedupe rollback; append body runs outside this lock. */
+	private static final Object LOCK_CATALOGUE_BOOTSTRAP_LOCK = new Object();
+	private static volatile boolean lockCatalogueKeysBootstrapped = false;
+	/** When leagues season / catalog version changes, drop in-memory keys so the next append rescans the new file. */
+	private static volatile String lockCatalogueKeysBootstrappedForCatalogVersion = null;
+	private static final int LEAGUES_LOCK_CATALOGUE_BOOTSTRAP_MAX_LINES = 100_000;
+
 	private static Path catalogDir()
 	{
 		return LeaguesTransportPersistence.leaguesVersionDir().resolve("leagues-transport-catalog.d");
@@ -291,6 +304,144 @@ final class LeaguesTransportObservations
 		catch (Exception e)
 		{
 			log.debug("[Leagues] catalog append failed: {}", e.getMessage());
+		}
+	}
+
+	private static void bootstrapLockCatalogueKeysFromDiskIfNeeded()
+	{
+		String catalogVersion = LeaguesTransportPersistence.leaguesCatalogVersion();
+		if (lockCatalogueKeysBootstrapped
+				&& lockCatalogueKeysBootstrappedForCatalogVersion != null
+				&& !catalogVersion.equals(lockCatalogueKeysBootstrappedForCatalogVersion))
+		{
+			synchronized (LOCK_CATALOGUE_BOOTSTRAP_LOCK)
+			{
+				if (lockCatalogueKeysBootstrapped
+						&& lockCatalogueKeysBootstrappedForCatalogVersion != null
+						&& !catalogVersion.equals(lockCatalogueKeysBootstrappedForCatalogVersion))
+				{
+					LOCK_CATALOGUE_KEYS_SEEN.clear();
+					lockCatalogueKeysBootstrapped = false;
+					lockCatalogueKeysBootstrappedForCatalogVersion = null;
+				}
+			}
+		}
+		if (lockCatalogueKeysBootstrapped)
+		{
+			return;
+		}
+		synchronized (LOCK_CATALOGUE_BOOTSTRAP_LOCK)
+		{
+			if (lockCatalogueKeysBootstrapped)
+			{
+				return;
+			}
+			Path file = lockCatalogueFile();
+			if (Files.exists(file))
+			{
+				try (BufferedReader br = Files.newBufferedReader(file, StandardCharsets.UTF_8))
+				{
+					String line;
+					int lineNum = 0;
+					while ((line = br.readLine()) != null)
+					{
+						lineNum++;
+						if (lineNum > LEAGUES_LOCK_CATALOGUE_BOOTSTRAP_MAX_LINES)
+						{
+							log.warn("[Leagues] lock-catalogue bootstrap stopped after {} lines (max={}); dedupe may miss older keys",
+									lineNum, LEAGUES_LOCK_CATALOGUE_BOOTSTRAP_MAX_LINES);
+							break;
+						}
+						line = line.trim();
+						if (line.isEmpty())
+						{
+							continue;
+						}
+						JsonObject obj;
+						try
+						{
+							obj = GSON.fromJson(line, JsonObject.class);
+						}
+						catch (Exception ignored)
+						{
+							continue;
+						}
+						if (obj != null
+								&& obj.has("kind")
+								&& "lock-catalogue".equals(obj.get("kind").getAsString())
+								&& obj.has("k"))
+						{
+							try
+							{
+								LOCK_CATALOGUE_KEYS_SEEN.add(obj.get("k").getAsString());
+							}
+							catch (Exception ignored)
+							{
+							}
+						}
+					}
+				}
+				catch (IOException e)
+				{
+					log.debug("[Leagues] lock-catalogue bootstrap read failed: {}", e.getMessage());
+				}
+			}
+			lockCatalogueKeysBootstrapped = true;
+			lockCatalogueKeysBootstrappedForCatalogVersion = catalogVersion;
+		}
+	}
+
+	/**
+	 * Append one {@code kind=lock-catalogue} JSONL row; skips when dedupe key {@code k} already exists on disk or in-memory set.
+	 */
+	static void appendLockCatalogueEntry(LeaguesRegion region, int packedDest, String methodRaw)
+	{
+		if (region == null)
+		{
+			return;
+		}
+		bootstrapLockCatalogueKeysFromDiskIfNeeded();
+		String normalizedMethod = LeaguesTransportLockCatalogue.normalizeLockCatalogueMethod(methodRaw);
+		String k = LeaguesTransportLockCatalogue.buildDedupeKey(packedDest, normalizedMethod);
+		synchronized (LOCK_CATALOGUE_BOOTSTRAP_LOCK)
+		{
+			if (!LOCK_CATALOGUE_KEYS_SEEN.add(k))
+			{
+				return;
+			}
+		}
+
+		try
+		{
+			Path file = lockCatalogueFile();
+			Files.createDirectories(file.getParent());
+
+			JsonObject obj = new JsonObject();
+			obj.addProperty("kind", "lock-catalogue");
+			obj.addProperty("catalogVersion", LeaguesTransportPersistence.leaguesCatalogVersion());
+			obj.addProperty("r", region.name());
+			obj.addProperty("d", packedDest);
+			obj.addProperty("t", System.currentTimeMillis());
+			obj.addProperty("m", normalizedMethod);
+			obj.addProperty("k", k);
+
+			try (Writer w = new OutputStreamWriter(Files.newOutputStream(
+					file,
+					StandardOpenOption.CREATE,
+					StandardOpenOption.WRITE,
+					StandardOpenOption.APPEND), StandardCharsets.UTF_8))
+			{
+				w.write(GSON.toJson(obj));
+				w.write("\n");
+			}
+		}
+		catch (Exception e)
+		{
+			synchronized (LOCK_CATALOGUE_BOOTSTRAP_LOCK)
+			{
+				LOCK_CATALOGUE_KEYS_SEEN.remove(k);
+			}
+			log.debug("[Leagues] lock-catalogue append failed: {}", e.getMessage());
 		}
 	}
 

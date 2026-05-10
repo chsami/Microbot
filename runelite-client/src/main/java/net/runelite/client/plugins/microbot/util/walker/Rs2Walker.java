@@ -5085,10 +5085,10 @@ public class Rs2Walker {
     }
 
     /**
-     * Option text on the Quetzal map (icons under {@link InterfaceID.QuetzalMenu#ICONS}).
-     * Prefers resolving from {@link Transport#getDestination()} so bank/custom tiles match (e.g. Auburnvale vs Hunter Guild row).
+     * Option text on the Quetzal map — Renu uses {@link InterfaceID.QuetzalMenu}, whistle uses {@link InterfaceID.QuetzalwhistleMenu}
+     * (same icon labels). Prefers resolving from {@link Transport#getDestination()} so bank/custom tiles match.
      */
-    private static String resolveQuetzalWhistleMapOptionLabel(Transport transport) {
+    private static String resolveQuetzalMapOptionLabel(Transport transport) {
         assert transport != null;
         WorldPoint dest = transport.getDestination();
         if (dest != null) {
@@ -5110,19 +5110,23 @@ public class Rs2Walker {
         return dest != null ? quetzalMapLabelForDestination(dest) : null;
     }
 
-    /** True when any Quetzal menu layer is visible (CONTENTS alone can stay hidden while MAP/ICONS show). */
+    /** True when any Quetzal or whistle-map layer is visible (CONTENTS alone can stay hidden while MAP/ICONS show). */
     private static boolean isQuetzalMapInterfaceVisible() {
         return Rs2Widget.isWidgetVisible(InterfaceID.QuetzalMenu.UNIVERSE)
                 || Rs2Widget.isWidgetVisible(InterfaceID.QuetzalMenu.MAP)
                 || Rs2Widget.isWidgetVisible(InterfaceID.QuetzalMenu.ICONS)
-                || Rs2Widget.isWidgetVisible(InterfaceID.QuetzalMenu.CONTENTS);
+                || Rs2Widget.isWidgetVisible(InterfaceID.QuetzalMenu.CONTENTS)
+                || Rs2Widget.isWidgetVisible(InterfaceID.QuetzalwhistleMenu.UNIVERSE)
+                || Rs2Widget.isWidgetVisible(InterfaceID.QuetzalwhistleMenu.MAP)
+                || Rs2Widget.isWidgetVisible(InterfaceID.QuetzalwhistleMenu.ICONS)
+                || Rs2Widget.isWidgetVisible(InterfaceID.QuetzalwhistleMenu.CONTENTS);
     }
 
     private static boolean finishQuetzalWhistleTransport(Transport transport) {
         assert transport != null;
         WorldPoint dest = transport.getDestination();
         assert dest != null;
-        String mapLabel = resolveQuetzalWhistleMapOptionLabel(transport);
+        String mapLabel = resolveQuetzalMapOptionLabel(transport);
         if (mapLabel == null || mapLabel.isEmpty()) {
             log.warn("Quetzal whistle: could not resolve map label (displayInfo={}, destination={})",
                     transport.getDisplayInfo(), dest);
@@ -5145,10 +5149,19 @@ public class Rs2Walker {
                 InterfaceID.QuetzalMenu.SCROLL,
                 InterfaceID.QuetzalMenu.CONTENTS,
                 InterfaceID.QuetzalMenu.UNIVERSE,
+                InterfaceID.QuetzalwhistleMenu.ICONS,
+                InterfaceID.QuetzalwhistleMenu.MAP,
+                InterfaceID.QuetzalwhistleMenu.SCROLL,
+                InterfaceID.QuetzalwhistleMenu.CONTENTS,
+                InterfaceID.QuetzalwhistleMenu.UNIVERSE,
         };
         for (int rootId : roots) {
+            // Widget#getDynamicChildren / isHidden must not run off the client thread — use marshalled helpers.
+            if (Rs2Widget.isHidden(rootId)) {
+                continue;
+            }
             Widget root = Rs2Widget.getWidget(rootId);
-            if (root == null || root.isHidden()) {
+            if (root == null) {
                 continue;
             }
             Widget hit = Rs2Widget.findWidget(mapOptionLabel, List.of(root), false);
@@ -5172,6 +5185,9 @@ public class Rs2Walker {
                     mapOptionLabel);
             return false;
         }
+
+        // ICONS subtree can attach shortly after the shell — brief pause before walking widget tree from walker thread.
+        sleep(Rs2Random.between(150, 400));
 
         AtomicReference<Widget> destRef = new AtomicReference<>();
         boolean iconReady = sleepUntilTrue(() -> {
@@ -5198,7 +5214,12 @@ public class Rs2Walker {
 
         if (Rs2Tile.isTileReachable(transport.getOrigin()) && Rs2Npc.interact(renu, "travel")) {
             Rs2Player.waitForWalking();
-            return clickQuetzalMapDestination(displayInfo, transport.getDestination());
+            WorldPoint dest = transport.getDestination();
+            String mapLabel = resolveQuetzalMapOptionLabel(transport);
+            if (mapLabel == null || mapLabel.isEmpty() || dest == null) {
+                return false;
+            }
+            return clickQuetzalMapDestination(mapLabel, dest);
         }
         return false;
     }

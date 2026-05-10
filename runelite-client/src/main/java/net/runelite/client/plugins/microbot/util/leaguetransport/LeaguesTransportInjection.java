@@ -54,6 +54,10 @@ final class LeaguesTransportInjection
 		}
 		lastInjectedUnlockedForBlacklistPrune = unlockedNow;
 
+		// Match monolith inject order: calibrate landings before area + catalog inject so cache is ready.
+		// Uses same unlock snapshot as inject below (tickLeaguesCalibration still rate-limits standalone probes).
+		LeaguesTransportTeleport.calibrateMissingLandingsAsync(unlockedNow);
+
 		injectLeaguesAreaTeleports(pathfinderConfig, ctx, ctx.getUnlockedRegions(), usableTeleports, typeStats);
 		injectLeaguesCatalogTransports(pathfinderConfig, ctx, ctx.getUnlockedRegions(), usableTeleports, transports, transportsPacked, typeStats);
 	}
