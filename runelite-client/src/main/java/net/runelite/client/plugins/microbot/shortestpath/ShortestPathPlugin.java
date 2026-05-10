@@ -31,6 +31,8 @@ import net.runelite.api.*;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
+import net.runelite.api.events.VarbitChanged;
+import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.events.MenuEntryAdded;
 import net.runelite.api.events.MenuOpened;
 import net.runelite.api.widgets.ComponentID;
@@ -52,9 +54,11 @@ import net.runelite.client.plugins.microbot.shortestpath.pathfinder.CollisionMap
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.Pathfinder;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.PathfinderConfig;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.SplitFlagMap;
+import net.runelite.client.plugins.microbot.util.leaguetransport.Rs2LeaguesTransport;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
+import net.runelite.client.plugins.microbot.util.walker.WebWalkLog;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.JagexColors;
 import net.runelite.client.ui.NavigationButton;
@@ -201,11 +205,16 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
     @Getter(AccessLevel.PACKAGE)
     private ShortestPathScript shortestPathScript;
 
-    // Set by onGameStateChanged when the client transitions to LOGGED_IN. Consumed on the next
-    // game tick so varbits, quest states, inventory, and bank containers are hydrated before
-    // PathfinderConfig#refresh rebuilds the transport availability cache. Without this the
-    // cache holds pre-login state after world-hops or re-logins.
+    // Set on LOGGED_IN or when League region-unlock varbits change. Consumed on the next game tick
+    // so varbits, quest states, inventory, and bank containers are hydrated before
+    // PathfinderConfig#refresh rebuilds the transport availability cache.
     volatile boolean pendingLoginRefresh = false;
+
+    /**
+     * First successful session-init route clear after {@link #startUp()} (or plugin re-enable).
+     * Never cleared on world hop / subsequent LOGGED_IN — avoids wiping Rs2Walker mid-walk.
+     */
+    private volatile boolean sessionInitRouteClearPending = true;
     @Provides
     public ShortestPathConfig provideConfig(ConfigManager configManager) {
         return configManager.getConfig(ShortestPathConfig.class);
@@ -266,6 +275,8 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
         keyManager.registerKeyListener(clueHotkeyListener);
         keyManager.registerKeyListener(farmingHotkeyListener);
         keyManager.registerKeyListener(hunterHotkeyListener);
+
+        clientThread.invokeLater(this::consumeSessionInitRouteClearIfNeeded);
     }
 
     @Override
@@ -302,13 +313,14 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
 
         shortestPathScript.shutdown();
 
+        sessionInitRouteClearPending = true;
         exit();
     }
 
     //Method from microbot
     public static void exit() {
+        Rs2Walker.clearWalkingRoute("shortest-path-plugin:exit");
         if (pathfindingExecutor != null) {
-            Rs2Walker.setTarget(null);
             pathfindingExecutor.shutdownNow();
             pathfindingExecutor = null;
         }
@@ -336,16 +348,44 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
             long refreshStart = System.currentTimeMillis();
             pathfinderConfig.refresh();
             long refreshTime = System.currentTimeMillis() - refreshStart;
-            pathfinderConfig.filterLocations(ends, canReviveFiltered);
+            // filterLocations mutates the set (removeIf / addAll). Callers often pass Set.of(...) — immutable.
+            Set<WorldPoint> endsWorking = new HashSet<>(ends);
+            pathfinderConfig.filterLocations(endsWorking, canReviveFiltered);
+            if (endsWorking.isEmpty()) {
+                WorldPoint walkerGoal = Rs2Walker.getCurrentTarget();
+                if (walkerGoal != null) {
+                    endsWorking.add(walkerGoal);
+                    WebWalkLog.spWarn("restart filter emptied ends during walk — restore goal {}",
+                            walkerGoal);
+                }
+            }
             synchronized (pathfinderMutex) {
-                if (ends.isEmpty()) {
-                    setTarget(null);
+                if (endsWorking.isEmpty()) {
+                    // Re-read: walk thread may set currentTarget after pre-sync filter pass (race with invokeLater).
+                    WorldPoint walkerRetry = Rs2Walker.getCurrentTarget();
+                    if (walkerRetry != null) {
+                        endsWorking.add(walkerRetry);
+                        WebWalkLog.spWarn("restart ends empty before PF — restore goal {} (retry)",
+                                walkerRetry);
+                    }
+                }
+                if (endsWorking.isEmpty()) {
+                    // Third read: walk thread may publish currentTarget after synchronized walkerRetry pass.
+                    WorldPoint invokeLaterFinal = Rs2Walker.getCurrentTarget();
+                    if (invokeLaterFinal != null) {
+                        endsWorking.add(invokeLaterFinal);
+                        WebWalkLog.spWarn("restart invokeLater final restore goal {} (avoid empty clear)", invokeLaterFinal);
+                    }
+                }
+                if (endsWorking.isEmpty()) {
+                    WebWalkLog.spWarn("restart ends empty after filter — clear route start={}", start);
+                    clearPluginTargets("shortest-path-plugin:restart-empty-ends");
                 } else {
-                    pathfinder = new Pathfinder(pathfinderConfig, start, ends);
+                    pathfinder = new Pathfinder(pathfinderConfig, start, endsWorking);
                     pathfinderFuture = finalExecutor.submit(pathfinder);
                 }
             }
-            log.info("[ShortestPath] restartPathfinding: invokeLater delay={}ms, config.refresh={}ms",
+            WebWalkLog.spDebug("restart invokeLater delay={}ms cfg.refresh={}ms",
                     invokeLaterDelay, refreshTime);
         });
     }
@@ -399,10 +439,10 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
                     if (Microbot.isLoggedIn() && wp != null) {
                         pathfinderConfig.refresh(wp);
                     }
-                    log.info("[WebWalker] Reloaded transport TSVs: {} origin keys", next.size());
+                    WebWalkLog.spInfo("transport TSV reload ok keys={}", next.size());
                 }
             } catch (Exception e) {
-                log.warn("[WebWalker] Transport TSV reload failed", e);
+                WebWalkLog.spWarn("transport TSV reload failed", e);
             } finally {
                 configManager.setConfiguration(CONFIG_GROUP, "reloadTransportDefinitions", "false");
             }
@@ -507,7 +547,7 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
 		} else if (PLUGIN_MESSAGE_CLEAR.equals(action)) {
 			ShortestPathPlugin.configOverride.clear();
 			cacheConfigValues();
-			setTarget(null);
+			clearPluginTargets("shortest-path-plugin:plugin-message-clear");
 		}
 	}
 
@@ -540,17 +580,57 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
     public void onGameStateChanged(GameStateChanged event) {
         if (event.getGameState() == GameState.LOGGED_IN) {
             pendingLoginRefresh = true;
-			// Requested behavior: clear any prior route on login (safe no-op when none).
-			// Guard for unit tests where UI wiring may be null.
-			if (worldMapPointManager != null)
-			{
-				setTarget(null);
-			}
-			else
-			{
-				clearRouteState();
-			}
+            consumeSessionInitRouteClearIfNeeded();
         }
+    }
+
+    /**
+     * One-off map/route reset when the session starts ({@link ShortestPathPlugin} loaded while already
+     * in game, or first {@link GameState#LOGGED_IN} after startup). Skipped on later LOGGED_IN events
+     * (world hops), matching leagues calibration style init rather than clear-on-every-login.
+     */
+    private void consumeSessionInitRouteClearIfNeeded() {
+        if (!sessionInitRouteClearPending || client == null || client.getGameState() != GameState.LOGGED_IN) {
+            return;
+        }
+        sessionInitRouteClearPending = false;
+        if (worldMapPointManager != null) {
+            clearPluginTargets("shortest-path-plugin:session-init");
+        } else {
+            clearRouteState();
+        }
+    }
+
+    private static boolean isLeagueAreaSelectionVarbit(int varbitId) {
+        switch (varbitId) {
+            case VarbitID.LEAGUE_AREA_SELECTION_0:
+            case VarbitID.LEAGUE_AREA_SELECTION_1:
+            case VarbitID.LEAGUE_AREA_SELECTION_2:
+            case VarbitID.LEAGUE_AREA_SELECTION_3:
+            case VarbitID.LEAGUE_AREA_SELECTION_4:
+            case VarbitID.LEAGUE_AREA_SELECTION_5:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    @Subscribe
+    public void onVarbitChanged(VarbitChanged event) {
+        int id = event.getVarbitId();
+        if (id < 0 || !isLeagueAreaSelectionVarbit(id)) {
+            return;
+        }
+        if (!Rs2LeaguesTransport.isLeaguesActive() || pathfinderConfig == null || client == null
+                || client.getGameState() != GameState.LOGGED_IN) {
+            return;
+        }
+        pathfinderConfig.invalidateTransportRefreshCache();
+        pendingLoginRefresh = true;
+        WebWalkLog.leaguesInfo(
+                "leagues area-selection varbit {} -> {} | transport cache invalidated, pathfinder refresh queued",
+                id, event.getValue());
+        Rs2LeaguesTransport.calibrateMissingLandingsAsync(Rs2LeaguesTransport.unlockedRegions(), true);
     }
 
 	private static void clearRouteState()
@@ -582,13 +662,33 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
             return;
         }
 
+        // Scripted ShortestPath walk (panel/hotkey): never overlay-clear map route while trigger is armed —
+        // avoids setTarget(null) when currentTarget is briefly inconsistent with pathfinder arrival heuristic.
+        if (shortestPathScript != null && shortestPathScript.getTriggerWalker() != null) {
+            return;
+        }
+
         final List<WorldPoint> path = pathfinder.getPath();
         if (path == null) return;
+
+        // Rs2Walker completion clears marker/pathfinder; overlay "arrival" here only applies to
+        // map-only routing. With large finishDistance the heuristic can fire early and wipe
+        // pathfinder while a script walk is still in progress.
+        if (Rs2Walker.getCurrentTarget() != null) {
+            return;
+        }
 
         for (WorldPoint target : pathfinder.getTargets()) {
             if (myLoc.distanceTo(target) < reachedDistance
                     && Rs2Tile.getReachableTilesFromTile(myLoc, reachedDistance).containsKey(path.get(path.size() - 1))) {
-                setTarget(null);
+                // TOCTOU: walk thread may set currentTarget after the outer guard on this same tick.
+                if (Rs2Walker.getCurrentTarget() != null) {
+                    return;
+                }
+                if (shortestPathScript != null && shortestPathScript.getTriggerWalker() != null) {
+                    return;
+                }
+                clearPluginTargets("shortest-path-plugin:overlay-arrival-heuristic");
                 if (Microbot.getClientThread().scheduledFuture != null) {
                     Microbot.getClientThread().scheduledFuture.cancel(true);
                 }
@@ -758,7 +858,7 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
         }
 
         if (entry.getOption().equals(CLEAR) && entry.getTarget().equals(PATH)) {
-			shortestPathScript.setTriggerWalker(null);
+			shortestPathScript.setTriggerWalker(null, "menu:world-map-clear-path");
         }
     }
 
@@ -795,11 +895,32 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
         if (target != null) {
             targets.add(target);
         }
-        setTargets(targets, append);
+        setTargets(targets, append, null);
+    }
+
+    /**
+     * Drops ShortestPath targets from UI/state; if Microbot walk is active, clears walker with {@code reason}.
+     */
+    private void clearPluginTargets(String clearActiveWalkerReason) {
+        setTargets(Collections.emptySet(), false, clearActiveWalkerReason);
     }
 
     private void setTargets(Set<WorldPoint> targets, boolean append) {
+        setTargets(targets, append, null);
+    }
+
+    private void setTargets(Set<WorldPoint> targets, boolean append, String clearActiveWalkerReason) {
         if (targets == null || targets.isEmpty()) {
+            // Map-only routing clears here; Microbot walks must clear Rs2Walker route so
+            // pathfinder, marker, and Rs2Walker.currentTarget stay in sync. Otherwise plugin-only
+            // teardown leaves currentTarget set → processWalk sees pathfinder-still-null EXIT.
+            if (Rs2Walker.getCurrentTarget() != null) {
+                Rs2Walker.clearWalkingRoute(
+                        clearActiveWalkerReason != null && !clearActiveWalkerReason.isBlank()
+                                ? clearActiveWalkerReason
+                                : "shortest-path-plugin:setTargets-empty-active-walker");
+                return;
+            }
             synchronized (pathfinderMutex) {
                 if (pathfinder != null) {
                     pathfinder.cancel();
@@ -1071,7 +1192,7 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
          * Therefor CTRL + X seemed a bit more robust and userfriendly
          */
         if (e.getKeyCode() == KeyEvent.VK_X && e.isControlDown()) {
-			shortestPathScript.setTriggerWalker(null);
+			shortestPathScript.setTriggerWalker(null, "hotkey:ctrl+x-stop-route");
         }
     }
 

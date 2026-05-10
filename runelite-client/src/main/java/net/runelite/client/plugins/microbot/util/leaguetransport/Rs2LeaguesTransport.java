@@ -298,7 +298,17 @@ public final class Rs2LeaguesTransport
 
 	public static void calibrateMissingLandingsAsync(EnumSet<LeaguesRegion> unlockedRegions)
 	{
-		LeaguesTransportTeleport.calibrateMissingLandingsAsync(unlockedRegions);
+		calibrateMissingLandingsAsync(unlockedRegions, false);
+	}
+
+	/**
+	 * @param logNoOpWhenFullyCalibrated when {@code true}, logs one INFO line if every unlocked region
+	 *                                   already has a persisted landing (e.g. varbit-driven refresh).
+	 */
+	public static void calibrateMissingLandingsAsync(EnumSet<LeaguesRegion> unlockedRegions,
+			boolean logNoOpWhenFullyCalibrated)
+	{
+		LeaguesTransportTeleport.calibrateMissingLandingsAsync(unlockedRegions, logNoOpWhenFullyCalibrated);
 	}
 
 	public static boolean isTeleportInProgress()

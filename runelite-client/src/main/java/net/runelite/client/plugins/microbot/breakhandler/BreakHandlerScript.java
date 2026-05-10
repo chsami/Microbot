@@ -356,7 +356,7 @@ public class BreakHandlerScript extends Script {
         // Pause all scripts
         Microbot.pauseAllScripts.compareAndSet(false, true);
         PluginPauseEvent.setPaused(true);
-        Rs2Walker.setTarget(null);
+        Rs2Walker.clearWalkingRoute("break-handler:initiating-break");
 
         // Remember the world we were in before the break
         preBreakWorld = Microbot.getClientThread().runOnClientThreadOptional(

@@ -2,15 +2,27 @@ package net.runelite.client.plugins.microbot.shortestpath.pathfinder;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.WorldPointUtil;
+import net.runelite.client.plugins.microbot.util.walker.WebWalkLog;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
+import org.slf4j.event.Level;
+
 @Slf4j
 public class Pathfinder implements Runnable {
+    /**
+     * Detailed pathfinder traces — set logger {@code net.runelite.client.plugins.microbot.shortestpath.pathfinder}
+     * to DEBUG, or use {@link Microbot#log(org.slf4j.event.Level, String, Object...)} routing via Microbot.
+     */
+    private static void pathfinderDiag(String format, Object... args) {
+        Microbot.log(Level.DEBUG, "[PathfinderDiag] " + format, args);
+    }
+
     private static final Comparator<Node> NODE_ORDER = Comparator
             .comparingInt(Node::fCost)
             .thenComparingInt(n -> n.cost)
@@ -94,7 +106,7 @@ public class Pathfinder implements Runnable {
         visited = new VisitedTiles(map);
         targetInWilderness = PathfinderConfig.isInWildernessPackedPoint(targets);
         wildernessLevel = 31;
-        log.debug("Created Pathfinder src={} dst={} config={}",
+        WebWalkLog.pf("created src={} dst={} config={}",
                 WorldPointUtil.toString(this.start),
                 WorldPointUtil.toString(this.targets),
                 config
@@ -354,6 +366,8 @@ public class Pathfinder implements Runnable {
         long cutoffDurationMillis = config.getCalculationCutoffMillis();
         long cutoffTimeMillis = System.currentTimeMillis() + cutoffDurationMillis;
         config.refreshTeleports(start, 31);
+        boolean reachedGoal = false;
+        boolean timedOut = false;
         while (!cancelled && (!boundary.isEmpty() || !pending.isEmpty())) {
             Node b = boundary.peek();
             Node p = pending.peek();
@@ -404,18 +418,32 @@ public class Pathfinder implements Runnable {
                 }
             }
             if (reached) {
+                reachedGoal = true;
                 break;
             }
 
             if (System.currentTimeMillis() > cutoffTimeMillis) {
-                log.info("[Pathfinder] Cutoff reached. bestDistance={}, nodesChecked={}", bestDistance, stats.getNodesChecked());
+                timedOut = true;
+                WebWalkLog.pf("cutoff bestDist={} nodes={}", bestDistance, stats.getNodesChecked());
                 break;
             }
 
             addNeighbors(node);
         }
 
-        log.info("[Pathfinder] Loop exited. cancelled={}, boundaryEmpty={}, pendingEmpty={}, bestLastNode={}",
+        String uniExit = cancelled ? "cancelled"
+                : reachedGoal ? "reached-goal"
+                : timedOut ? "time-cutoff"
+                : (boundary.isEmpty() && pending.isEmpty()) ? "queues-drained" : "loop-ended";
+        pathfinderDiag("uni finished exit=%s cancelled=%s boundaryEmpty=%s pendingEmpty=%s bestLastNode=%s cutoffMs=%d",
+                uniExit,
+                cancelled,
+                boundary.isEmpty(),
+                pending.isEmpty(),
+                bestLastNode == null ? "null" : WorldPointUtil.toString(bestLastNode.packedPosition),
+                config.getCalculationCutoffMillis());
+
+        WebWalkLog.pf("uni_loop_exit cancelled={} bEmpty={} pEmpty={} bestLast={}",
                 cancelled, boundary.isEmpty(), pending.isEmpty(),
                 bestLastNode == null ? "null" : WorldPointUtil.toString(bestLastNode.packedPosition));
     }
@@ -489,7 +517,7 @@ public class Pathfinder implements Runnable {
                     joinedPath = node.getPath();
                     pathNeedsUpdate = false;
                     bestLastNode = null;
-                    log.info("[Pathfinder] Bidir: exact forward hit goal");
+                    WebWalkLog.pf("bidir forward_hit_goal");
                     break;
                 }
 
@@ -526,7 +554,7 @@ public class Pathfinder implements Runnable {
                     joinedPath = combineBidirectionalPath(forwardAt.get(start), node);
                     pathNeedsUpdate = false;
                     bestLastNode = null;
-                    log.info("[Pathfinder] Bidir: backward hit start");
+                    WebWalkLog.pf("bidir backward_hit_start");
                     break;
                 }
 
@@ -534,7 +562,7 @@ public class Pathfinder implements Runnable {
             }
 
             if (System.currentTimeMillis() > cutoffTimeMillis) {
-                log.info("[Pathfinder] Bidir cutoff. nodesChecked={}", stats.getNodesChecked());
+                WebWalkLog.pf("bidir_cutoff nodes={}", stats.getNodesChecked());
                 break;
             }
         }
@@ -543,26 +571,43 @@ public class Pathfinder implements Runnable {
             joinedPath = combineBidirectionalPath(meetF[0], meetB[0]);
             pathNeedsUpdate = false;
             bestLastNode = null;
-            log.info("[Pathfinder] Bidir: best meet at {} totalCost={}",
+            WebWalkLog.pf("bidir meet_at={} cost={}",
                     WorldPointUtil.toString(meetF[0].packedPosition), bestMeetingCost[0]);
         }
 
-        log.info("[Pathfinder] Bidir exited. joinedPath={}, meetCost={}",
+        pathfinderDiag("bidir finished joinedPath=%s meetCost=%s forwardFrontier=%d/%d backwardFrontier=%d/%d cancelled=%s",
+                joinedPath == null ? "null" : joinedPath.size(),
+                bestMeetingCost[0] == Long.MAX_VALUE ? "n/a" : bestMeetingCost[0],
+                boundary.size(),
+                pending.size(),
+                boundaryBackward.size(),
+                pendingBackward.size(),
+                cancelled);
+
+        WebWalkLog.pf("bidir_exit joined={} meetCost={}",
                 joinedPath == null ? "null" : Integer.toString(joinedPath.size()),
                 bestMeetingCost[0] == Long.MAX_VALUE ? "n/a" : Long.toString(bestMeetingCost[0]));
     }
 
     @Override
     public void run() {
-        log.info("[Pathfinder] run() started: src={}, dst={}, cutoff={}ms",
+        WebWalkLog.pf("run_start src={} dst={} cutoffMs={}",
                 WorldPointUtil.toString(start), WorldPointUtil.toString(targets), config.getCalculationCutoffMillis());
         joinedPath = null;
         try {
             stats.start();
+            int minCheb = minChebyshevStartToAnyTarget();
             boolean useBidir = targetsPacked.length == 1
-                    && minChebyshevStartToAnyTarget() >= BIDIRECTIONAL_MIN_CHEBYSHEV;
+                    && minCheb >= BIDIRECTIONAL_MIN_CHEBYSHEV;
+            pathfinderDiag("run mode decision useBidir=%s minCheb=%d bidirThreshold=%d targetsPacked=%d cutoffMs=%d cancelAlready=%s",
+                    useBidir,
+                    minCheb,
+                    BIDIRECTIONAL_MIN_CHEBYSHEV,
+                    targetsPacked.length,
+                    config.getCalculationCutoffMillis(),
+                    cancelled);
             if (useBidir) {
-                log.info("[Pathfinder] Using bidirectional search (Chebyshev >= {})", BIDIRECTIONAL_MIN_CHEBYSHEV);
+                WebWalkLog.pf("mode bidir cheb>={}", BIDIRECTIONAL_MIN_CHEBYSHEV);
                 runBidirectional();
             } else {
                 runUnidirectional();
@@ -580,7 +625,7 @@ public class Pathfinder implements Runnable {
 
             stats.end();
 
-            log.info("[Pathfinder] run() completed. done={}, cancelled={}, stats={}",
+            WebWalkLog.pf("run_done done={} cancelled={} stats={}",
                     done, cancelled, getStats() != null ? getStats().toString() : "null");
         }
     }

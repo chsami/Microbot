@@ -218,7 +218,7 @@ public class QuestScript extends Script {
                     }
 
                     if (Rs2Dialogue.isInDialogue() && dialogueStartedStep == questStep) {
-                        Rs2Walker.setTarget(null);
+                        Rs2Walker.clearWalkingRoute("quest-helper:dialogue-space-step");
                         Rs2Keyboard.keyPress(KeyEvent.VK_SPACE);
                         return;
                     } else {
@@ -1296,7 +1296,7 @@ public class QuestScript extends Script {
 
         if (npc != null && npc.getLocalLocation() != null && Rs2Camera.isTileOnScreen(npc.getLocalLocation())
                 && (Microbot.getClient().isInInstancedRegion() || Rs2Walker.canReach(npc.getWorldLocation()))) {
-            Rs2Walker.setTarget(null);
+            Rs2Walker.clearWalkingRoute("quest-helper:npc-step-visible-interact");
 
             if (step.getText().stream().anyMatch(x -> x.toLowerCase().contains("kill"))) {
                 if (!Rs2Combat.inCombat()) {
@@ -1428,7 +1428,7 @@ public class QuestScript extends Script {
         }
 
         if (hasLineOfSightToObject(object) || object != null && (Rs2Camera.isTileOnScreen(object.getLocalLocation()) || object.getCanvasLocation() != null)) {
-            Rs2Walker.setTarget(null);
+            Rs2Walker.clearWalkingRoute("quest-helper:object-step-interact");
 
             if (itemId == -1)
                 object.click(chooseCorrectObjectOption(step, object));

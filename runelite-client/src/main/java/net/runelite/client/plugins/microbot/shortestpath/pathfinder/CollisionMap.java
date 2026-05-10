@@ -69,13 +69,9 @@ public class CollisionMap {
 
     /**
      * Single walking step permission check from (x,y,z) in direction (dx,dy).
-     * Mirrors the traversability logic in {@link #getNeighbors} so that a
-     * line-of-sight trace approves exactly the sequences of moves the BFS
-     * could have taken without a transport edge.
-     *
-     * <p>Walls, closed doors, and diagonal corner-cutting are all blocked
-     * here — which is the invariant the path smoother relies on to avoid
-     * skipping across transport origins.
+     * Used by {@link PathSmoother}. Graph expansion uses {@link #fillTraversableLegacy}
+     * instead; they intentionally differ where legacy blocked-tile logic diverges from
+     * {@code canStep}.
      */
     public boolean canStep(int x, int y, int z, int dx, int dy) {
         if (dx == 0 && dy == 0) return true;
@@ -98,6 +94,40 @@ public class CollisionMap {
         return false;
     }
 
+    /**
+     * Legacy neighbor traversability for {@link #getNeighbors} / {@link #getReverseNeighbors}.
+     * {@link #canStep} remains for {@link PathSmoother} line traces.
+     */
+    private void fillTraversableLegacy(int x, int y, int z, boolean[] out) {
+        if (isBlocked(x, y, z)) {
+            boolean westBlocked = isBlocked(x - 1, y, z);
+            boolean eastBlocked = isBlocked(x + 1, y, z);
+            boolean southBlocked = isBlocked(x, y - 1, z);
+            boolean northBlocked = isBlocked(x, y + 1, z);
+            boolean southWestBlocked = isBlocked(x - 1, y - 1, z);
+            boolean southEastBlocked = isBlocked(x + 1, y - 1, z);
+            boolean northWestBlocked = isBlocked(x - 1, y + 1, z);
+            boolean northEastBlocked = isBlocked(x + 1, y + 1, z);
+            out[0] = !westBlocked;
+            out[1] = !eastBlocked;
+            out[2] = !southBlocked;
+            out[3] = !northBlocked;
+            out[4] = !southWestBlocked && !westBlocked && !southBlocked;
+            out[5] = !southEastBlocked && !eastBlocked && !southBlocked;
+            out[6] = !northWestBlocked && !westBlocked && !northBlocked;
+            out[7] = !northEastBlocked && !eastBlocked && !northBlocked;
+        } else {
+            out[0] = w(x, y, z);
+            out[1] = e(x, y, z);
+            out[2] = s(x, y, z);
+            out[3] = n(x, y, z);
+            out[4] = sw(x, y, z);
+            out[5] = se(x, y, z);
+            out[6] = nw(x, y, z);
+            out[7] = ne(x, y, z);
+        }
+    }
+
     private static int packedPointFromOrdinal(int startPacked, OrdinalDirection direction) {
         final int x = WorldPointUtil.unpackWorldX(startPacked);
         final int y = WorldPointUtil.unpackWorldY(startPacked);
@@ -108,6 +138,7 @@ public class CollisionMap {
     // This is only safe if pathfinding is single-threaded
     private final List<Node> neighbors = new ArrayList<>(16);
     private final boolean[] traversable = new boolean[8];
+    private final boolean[] traversableReverseAccum = new boolean[8];
 
     public static final Set<Integer> ignoreCollisionPacked;
     static {
@@ -198,11 +229,7 @@ public class CollisionMap {
                     moaCosts == null ? "[]" : moaCosts);
         }
 
-        // Single source of truth with {@link #canStep} — fixes blocked-tile diagonal corner-cut vs unblocked mismatch.
-        for (int i = 0; i < 8; i++) {
-            OrdinalDirection d = ORDINAL_VALUES[i];
-            traversable[i] = canStep(x, y, z, d.x, d.y);
-        }
+        fillTraversableLegacy(x, y, z, traversable);
 
         for (int i = 0; i < traversable.length; i++) {
             OrdinalDirection d = ORDINAL_VALUES[i];
@@ -287,8 +314,10 @@ public class CollisionMap {
 
         for (int i = 0; i < 8; i++) {
             OrdinalDirection d = ORDINAL_VALUES[i];
-            traversable[i] = canStep(x - d.x, y - d.y, z, d.x, d.y);
+            fillTraversableLegacy(x - d.x, y - d.y, z, traversable);
+            traversableReverseAccum[i] = traversable[i];
         }
+        System.arraycopy(traversableReverseAccum, 0, traversable, 0, 8);
 
         for (int i = 0; i < traversable.length; i++) {
             OrdinalDirection d = ORDINAL_VALUES[i];

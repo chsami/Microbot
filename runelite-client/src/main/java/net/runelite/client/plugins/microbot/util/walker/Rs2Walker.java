@@ -49,6 +49,7 @@ import net.runelite.client.plugins.microbot.util.leaguetransport.SeasonalTranspo
 import net.runelite.client.plugins.microbot.util.leaguetransport.SeasonalTransportHandlers;
 import net.runelite.client.plugins.microbot.util.logging.Rs2LogRateLimit;
 import java.util.function.BooleanSupplier;
+import org.slf4j.event.Level;
 import net.runelite.client.plugins.microbot.util.poh.PohTeleports;
 import net.runelite.client.plugins.microbot.util.poh.PohTransport;
 import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
@@ -95,6 +96,15 @@ public class Rs2Walker {
     static volatile WorldPoint currentTarget;
     static int nextWalkingDistance = 10;
 
+    /**
+     * Active Microbot walk destination ({@code null} when no scripted walk). ShortestPath overlay
+     * must not clear {@link ShortestPathPlugin#getPathfinder()} while this is non-null — otherwise
+     * {@link #processWalk} loses the pathfinder while {@link #currentTarget} stays set (pathfinder-still-null EXIT).
+     */
+    public static WorldPoint getCurrentTarget() {
+        return currentTarget;
+    }
+
 	/**
 	 * Sticky interim minimap click target to avoid destination flapping when the minimap flag
 	 * disappears around bends. Once we click a reachable point, keep it until we get close
@@ -106,6 +116,10 @@ public class Rs2Walker {
 	private static volatile long interimLastProgressAtMs = 0L;
 	private static volatile int interimLastBestPathIdx = -1;
 	private static volatile long interimLastRetargetAtMs = 0L;
+
+	/** Cooldown so partial-segment in-transit {@link #recalculatePath()} does not spam. */
+	private static volatile long lastPartialTransRecalcMs = 0L;
+	private static final long PARTIAL_TRANS_RECAL_COOLDOWN_MS = 3500L;
 
 	private static final int INTERIM_CLOSE_TILES = 4;
 	private static final long INTERIM_PROGRESS_TIMEOUT_MS = 2500L;
@@ -119,6 +133,64 @@ public class Rs2Walker {
 
     /** Bounds tail recursion that was previously unbounded {@code processWalk} self-calls. */
     private static final int MAX_PROCESS_WALK_TAIL_ITERATIONS = 64;
+
+    /**
+     * Verbose walker traces — enable DEBUG logging for {@code net.runelite.client.plugins.microbot}.
+     * Uses {@link Microbot#log(Level, String, Object...)} so levels route consistently.
+     */
+    private static void walkerDiag(String format, Object... args) {
+        Microbot.log(Level.DEBUG, "[WalkerDiag] " + format, args);
+    }
+
+    private static void traceProcessWalkExit(String reason, WorldPoint target, int processWalkTail) {
+        WorldPoint activeTarget = currentTarget;
+        WebWalkLog.exitDetailDebug(
+                "trace={} target={} currentTarget={} interim={} stuck={} tailIdx={}/{} intr={} player={}",
+                reason,
+                target,
+                activeTarget,
+                interimTargetWp,
+                stuckCount,
+                processWalkTail,
+                MAX_PROCESS_WALK_TAIL_ITERATIONS,
+                Thread.currentThread().isInterrupted(),
+                Rs2Player.getWorldLocation());
+        boolean nullCurrent = activeTarget == null;
+        boolean mismatch = target != null && activeTarget != null && !target.equals(activeTarget);
+        WebWalkLog.exitWarn(
+                reason,
+                nullCurrent,
+                mismatch,
+                Thread.currentThread().isInterrupted(),
+                target,
+                activeTarget,
+                processWalkTail,
+                MAX_PROCESS_WALK_TAIL_ITERATIONS,
+                Rs2Player.getWorldLocation());
+    }
+
+    private static boolean walkCancelledDiag(WorldPoint target, String where, int processWalkTail) {
+        if (!isWalkCancelled(target)) {
+            return false;
+        }
+        traceProcessWalkExit("cancel:" + where, target, processWalkTail);
+        return true;
+    }
+
+    /**
+     * Clears walker goal and ShortestPath artifacts. Prefer over {@code setTarget(null)} so logs show why.
+     */
+    public static void clearWalkingRoute(String reason) {
+        setTarget(null, reason != null && !reason.isBlank() ? reason : "unspecified");
+    }
+
+    private static void logRouteClear(String reason) {
+        if (reason == null || reason.isBlank()) {
+            WebWalkLog.routeClearMissingReason(Thread.currentThread().getName());
+        } else {
+            WebWalkLog.routeClear(reason);
+        }
+    }
 
     /** Substrings for game-object names treated like doors (pathing heuristics). */
     private static final String[] DOOR_LIKE_NAME_FRAGMENTS = {
@@ -143,8 +215,9 @@ public class Rs2Walker {
     // stuckCount / lastPosition / lastMovedTimeMs / currentTarget / nextWalkingDistance.
     // Reentrant: same-thread dispatch (walkWithState -> walkWithBankedTransportsAndState
     // -> walkWithStateInternal -> recursive processWalk) reacquires freely.
-    // setTarget() / recalculatePath() stay unlocked — they are the cross-thread cancel
-    // path and the volatile currentTarget read inside the walker loop picks up nulls.
+    // setTarget() stays unlocked — cross-thread cancel; volatile currentTarget read in the loop
+    // can still see null only when setTarget(null) is intended. recalculatePath no longer nulls
+    // currentTarget between restarts (avoids false cancel during sleepUntil).
     private static final ReentrantLock walkerLock = new ReentrantLock();
 
     /**
@@ -480,6 +553,7 @@ public class Rs2Walker {
 		interimLastProgressAtMs = 0L;
 		interimLastBestPathIdx = -1;
 		interimLastRetargetAtMs = 0L;
+		lastPartialTransRecalcMs = 0L;
 
         if (Microbot.getClient().isClientThread()) {
             log.warn("Please do not call the walker from the main thread");
@@ -520,33 +594,45 @@ public class Rs2Walker {
         long lastAttemptedMinimapClickAtMs = 0L;
         for (int processWalkTail = 0; processWalkTail < MAX_PROCESS_WALK_TAIL_ITERATIONS; processWalkTail++) {
         try {
+            walkerDiag("tail iteration begin idx=%d/%d target=%s current=%s interim=%s partialRetries=%d",
+                    processWalkTail,
+                    MAX_PROCESS_WALK_TAIL_ITERATIONS,
+                    target,
+                    currentTarget,
+                    interimTargetWp,
+                    partialRetriesWorking);
             if (!Microbot.isLoggedIn()) {
-                setTarget(null);
+                traceProcessWalkExit("not-logged-in", target, processWalkTail);
+                setTarget(null, "rs2walker:processWalk:not-logged-in");
                 return WalkerState.EXIT;
             }
-            if (isWalkCancelled(target)) {
+            if (walkCancelledDiag(target, "processWalk:entry", processWalkTail)) {
                 return WalkerState.EXIT;
             }
 
             Pathfinder pathfinder = ShortestPathPlugin.getPathfinder();
             if (pathfinder == null) {
+                walkerDiag("pathfinder null; waiting up to 2000ms");
                 pathfinder = sleepUntilNotNull(ShortestPathPlugin::getPathfinder, 2_000);
-                if (isWalkCancelled(target)) {
+                if (walkCancelledDiag(target, "processWalk:after-wait-pathfinder", processWalkTail)) {
                     return WalkerState.EXIT;
                 }
                 if (pathfinder == null) {
-                    setTarget(null);
+                    traceProcessWalkExit("pathfinder-still-null", target, processWalkTail);
+                    setTarget(null, "rs2walker:processWalk:pathfinder-still-null");
                     return WalkerState.EXIT;
                 }
             }
 
             if (!pathfinder.isDone()) {
+                walkerDiag("pathfinder not done; sleeping until done max 10000ms");
                 boolean isDone = sleepUntilTrue(pathfinder::isDone, 100, 10_000);
-                if (isWalkCancelled(target)) {
+                if (walkCancelledDiag(target, "processWalk:after-wait-done", processWalkTail)) {
                     return WalkerState.EXIT;
                 }
                 if (!isDone) {
-                    setTarget(null);
+                    traceProcessWalkExit("pathfinder-timeout-not-done", target, processWalkTail);
+                    setTarget(null, "rs2walker:processWalk:pathfinder-timeout-not-done");
                     return WalkerState.EXIT;
                 }
             }
@@ -567,13 +653,12 @@ public class Rs2Walker {
             boolean partialPath = false;
             if (dst == null || dst.distanceTo(target) > distance) {
                 if (path != null && path.size() > 1) {
-                    log.info("[Walker] Path endpoint {} is {} tiles from target {}, walking partial path ({} tiles)",
-                            dst, dst.distanceTo(target), target, path.size());
+                    WebWalkLog.partialSegment(dst, dst.distanceTo(target), target, path.size());
                     partialPath = true;
                 } else {
                     Telemetry.recordUnreachable("no-walkable-path", Rs2Player.getWorldLocation(),
                             target, dst, path == null ? 0 : path.size(), distance, pathfinder);
-                    setTarget(null);
+                    setTarget(null, "rs2walker:processWalk:no-walkable-path");
                     return WalkerState.UNREACHABLE;
                 }
             }
@@ -582,12 +667,46 @@ public class Rs2Walker {
                 return WalkerState.ARRIVED;
             }
 
-            if (isNear(dst)) {
-                setTarget(null);
+            // Partial segment: before standing on the segment endpoint, refresh routing from current
+            // position so the continuation is ready (smooth handoff vs dead stop at segment end).
+            if (partialPath) {
+                WorldPoint playerPt = Rs2Player.getWorldLocation();
+                if (playerPt != null && dst != null) {
+                    int distToDstSeg = playerPt.distanceTo2D(dst);
+                    int distToGoal = playerPt.distanceTo2D(target);
+                    int closestEarly = getClosestTileIndex(path);
+                    int remainingSteps = closestEarly >= 0 ? (path.size() - 1 - closestEarly) : Integer.MAX_VALUE;
+                    final int nearSegmentEndTiles = 12;
+                    final int nearSegmentEndSteps = 10;
+                    boolean approachingSegmentEnd = distToDstSeg <= nearSegmentEndTiles
+                            || (remainingSteps != Integer.MAX_VALUE && remainingSteps <= nearSegmentEndSteps);
+                    if (approachingSegmentEnd && distToGoal > distance) {
+                        long now = System.currentTimeMillis();
+                        if (now - lastPartialTransRecalcMs >= PARTIAL_TRANS_RECAL_COOLDOWN_MS) {
+                            lastPartialTransRecalcMs = now;
+                            WebWalkLog.partialRecalc(
+                                    remainingSteps == Integer.MAX_VALUE ? -1 : remainingSteps,
+                                    distToDstSeg,
+                                    distToGoal,
+                                    dst,
+                                    target);
+                            recalculatePath();
+                            continue;
+                        }
+                    }
+                }
+            }
+
+            // Do not clear walk target while a sticky minimap interim is active — breaks
+            // isWalkCancelled and forces EXIT while the flag is still carrying the player.
+            // Partial paths end at an intermediate waypoint (dst still far from {@code target});
+            // clearing here would drop currentTarget before the partial-path retry/recalc branch.
+            if (!partialPath && isNear(dst) && interimTargetWp == null) {
+                setTarget(null, "rs2walker:processWalk:reached-path-endpoint");
             }
 
             checkIfStuck();
-            if (isWalkCancelled(target)) {
+            if (walkCancelledDiag(target, "processWalk:after-stuck-check", processWalkTail)) {
                 return WalkerState.EXIT;
             }
             if (isStuckTooLong()) {
@@ -601,11 +720,10 @@ public class Rs2Walker {
                 long sinceMoved = System.currentTimeMillis() - lastMovedTimeMs;
                 long threshold = stallThresholdMs();
                 Telemetry.recordStallRecalc(sinceMoved, Rs2Player.getWorldLocation());
-                log.info("[Walker] Stall recalc: sinceMoved={}ms threshold={}ms (inCombat={} animating={} interacting={})",
-                        sinceMoved, threshold,
+                WebWalkLog.stallRecalc(sinceMoved, threshold,
                         Rs2Player.isInCombat(), Rs2Player.isAnimating(), Rs2Player.isInteracting());
                 if (lastAttemptedMinimapClick != null) {
-                    log.info("[Walker] Stall recalc context: lastClick={} ok={} age={}ms interim={}",
+                    WebWalkLog.stallContextDebug(
                             lastAttemptedMinimapClick,
                             lastAttemptedMinimapClickOk,
                             Math.max(0L, System.currentTimeMillis() - lastAttemptedMinimapClickAtMs),
@@ -633,14 +751,20 @@ public class Rs2Walker {
 
             int indexOfStartPoint = getClosestTileIndex(path);
             if (indexOfStartPoint == -1) {
-                setTarget(null);
+                walkerDiag("getClosestTileIndex=-1 pathSize=%d player=%s pathFirst=%s pathLast=%s",
+                        path.size(),
+                        Rs2Player.getWorldLocation(),
+                        path.isEmpty() ? null : path.get(0),
+                        path.isEmpty() ? null : path.get(path.size() - 1));
+                traceProcessWalkExit("closest-index-none", target, processWalkTail);
+                setTarget(null, "rs2walker:processWalk:closest-index-none");
                 return WalkerState.EXIT;
             }
 
             lastPosition = Rs2Player.getWorldLocation();
 
             if (Rs2Player.getWorldLocation().distanceTo(target) == 0 || path.size() <= 1) {
-                setTarget(null);
+                setTarget(null, "rs2walker:processWalk:arrived-immediate");
                 return WalkerState.ARRIVED;
             }
 
@@ -705,7 +829,7 @@ public class Rs2Walker {
 
             for (int i = indexOfStartPoint; !doorOrTransportResult && i < path.size(); i++) {
                 WorldPoint currentWorldPoint = path.get(i);
-                if (isWalkCancelled(target)) {
+                if (walkCancelledDiag(target, "processWalk:path-loop", processWalkTail)) {
                     return WalkerState.EXIT;
                 }
 
@@ -737,9 +861,9 @@ public class Rs2Walker {
                         break;
                     }
                     Telemetry.recordOffPathRecalc(Rs2Player.getWorldLocation(), path.size());
-                    log.info("[Walker] No longer near path, recalculating");
+                    WebWalkLog.recalc("no_longer_near_path");
                     if (config.cancelInstead()) {
-                        setTarget(null);
+                        setTarget(null, "rs2walker:processWalk:off-path-cancel-instead");
                     } else {
                         recalculatePath();
                     }
@@ -866,6 +990,8 @@ public class Rs2Walker {
 									stuckCount = 0;
 								}
 								exitReason = "interim-in-flight";
+								walkerDiag("interim-in-flight interim=%s interimDist=%d player=%s moving=true",
+										interimFinal, interimDist, playerLoc);
 								break;
 							} else {
 								// Not moving but still far from the interim checkpoint. Treat the interim
@@ -976,7 +1102,7 @@ public class Rs2Walker {
                     if (!clicked) {
                         clicked = walkMiniMapToward(clickTarget, playerLoc, MINIMAP_REACH_EUCLIDEAN - 1);
                     }
-                    if (isWalkCancelled(target)) {
+                    if (walkCancelledDiag(target, "processWalk:after-minimap-click", processWalkTail)) {
                         return WalkerState.EXIT;
                     }
                     lastAttemptedMinimapClick = targetWp;
@@ -1017,7 +1143,7 @@ public class Rs2Walker {
                                 return now != null && (b.distanceTo2D(now) <= proximityWake || !now.equals(before) || Rs2Player.isMoving());
                             }, 2000);
                         }
-                        if (isWalkCancelled(target)) {
+                        if (walkCancelledDiag(target, "processWalk:after-click-wait", processWalkTail)) {
                             return WalkerState.EXIT;
                         }
 
@@ -1053,7 +1179,7 @@ public class Rs2Walker {
                         interimLastBestPathIdx = -1;
                         interimLastRetargetAtMs = 0L;
                         sleepUntil(() -> isWalkCancelled(target) || !Rs2Player.isMoving(), 2000);
-                        if (isWalkCancelled(target)) {
+                        if (walkCancelledDiag(target, "processWalk:after-click-failed-wait", processWalkTail)) {
                             return WalkerState.EXIT;
                         }
                         break;
@@ -1066,20 +1192,24 @@ public class Rs2Walker {
             }
 
             if (!"end-of-path".equals(exitReason)) {
-                log.info("[Walker] processWalk early-exit: reason={} player={} target={} pathEnd={} idxStart={}/{}",
-                        exitReason,
+                WebWalkLog.earlyExit(exitReason,
                         Rs2Player.getWorldLocation(),
                         target,
                         path.get(path.size() - 1),
                         indexOfStartPoint,
                         path.size());
+                walkerDiag("early-exit detail reason=%s interim=%s doorOrTransport=%s partialPath=%s",
+                        exitReason,
+                        interimTargetWp,
+                        doorOrTransportResult,
+                        partialPath);
             }
 
             // Only do the final-tile canvas click if we iterated the whole path cleanly.
             // Exiting because the player left the path ("off-path-but-moving"/"not-near-path")
             // means the player is still walking somewhere else — don't clobber that destination.
             if (!doorOrTransportResult && "end-of-path".equals(exitReason)) {
-                if (isWalkCancelled(target)) {
+                if (walkCancelledDiag(target, "processWalk:before-final-canvas", processWalkTail)) {
                     return WalkerState.EXIT;
                 }
                 if (!path.isEmpty()) {
@@ -1089,7 +1219,7 @@ public class Rs2Walker {
                     if (Rs2Tile.isTileReachable(finalTile) && Rs2Player.getWorldLocation().distanceTo(finalTile) >= distance) {
                         if (Rs2Walker.walkFastCanvas(finalTile)) {
                             sleepUntil(() -> isWalkCancelled(target) || Rs2Player.getWorldLocation().distanceTo(finalTile) < 2, 3000);
-                            if (isWalkCancelled(target)) {
+                            if (walkCancelledDiag(target, "processWalk:after-final-canvas-wait", processWalkTail)) {
                                 return WalkerState.EXIT;
                             }
                         }
@@ -1098,49 +1228,69 @@ public class Rs2Walker {
             }
             int finalDist = Rs2Player.getWorldLocation().distanceTo(target);
             if (finalDist <= distance) {
-                setTarget(null);
+                setTarget(null, "rs2walker:processWalk:arrived-within-distance");
                 return WalkerState.ARRIVED;
             } else if (partialPath) {
-                if (isWalkCancelled(target)) {
+                if (walkCancelledDiag(target, "processWalk:partial-path-branch", processWalkTail)) {
                     return WalkerState.EXIT;
                 }
                 if (partialRetriesWorking < 3) {
                     Telemetry.recordPartialRetry(partialRetriesWorking + 1, finalDist);
-                    log.info("[Walker] Walked partial path ({} tiles remaining), retrying from current position (attempt {}/3)",
-                            finalDist, partialRetriesWorking + 1);
+                    WebWalkLog.partialRetry(finalDist, partialRetriesWorking + 1, 3);
                     recalculatePath();
                     partialRetriesWorking++;
                     continue;
                 }
-                log.info("[Walker] Walked partial path, exhausted retries. final distance to target: {}", finalDist);
+                WebWalkLog.partialExhausted(finalDist);
                 Telemetry.recordUnreachable("partial-retries-exhausted", Rs2Player.getWorldLocation(),
                         target, Rs2Player.getWorldLocation(), 0, distance, ShortestPathPlugin.getPathfinder());
-                setTarget(null);
+                setTarget(null, "rs2walker:processWalk:partial-retries-exhausted");
                 return WalkerState.UNREACHABLE;
             } else {
                 if ("off-path-but-moving".equals(exitReason)) {
                     // Wait for the player to re-enter the path or to stop moving. Prevents a tight
                     // recursion loop that would spin on isNearPath() while the player is walking.
                     sleepUntil(() -> isWalkCancelled(target) || isNearPath() || !Rs2Player.isMoving(), 2000);
-                    if (isWalkCancelled(target)) {
+                    if (walkCancelledDiag(target, "processWalk:after-off-path-wait", processWalkTail)) {
                         return WalkerState.EXIT;
                     }
                 }
+                // Benign yields: outer for-loop increments processWalkTail each iteration; exempt so
+                // long minimap interim waits cannot exhaust MAX_PROCESS_WALK_TAIL_ITERATIONS and EXIT.
+                if ("interim-in-flight".equals(exitReason) || "off-path-but-moving".equals(exitReason)) {
+                    walkerDiag("tail exempt exitReason=%s tailBefore=%d", exitReason, processWalkTail);
+                    processWalkTail--;
+                }
+                walkerDiag("continue outer tail nextIdx=%d exitReason=%s finalDist=%d partialPath=%s",
+                        processWalkTail + 1,
+                        exitReason,
+                        Rs2Player.getWorldLocation().distanceTo(target),
+                        partialPath);
                 continue;
             }
         } catch (Exception ex) {
             if (ex instanceof InterruptedException || ex.getCause() instanceof InterruptedException) {
-                log.info("Pathfinder was interrupted, exiting: 397");
-                setTarget(null);
+                WebWalkLog.interruptedExit("pathfinder interrupted (397)");
+                traceProcessWalkExit("interrupted-exception", target, MAX_PROCESS_WALK_TAIL_ITERATIONS - 1);
+                setTarget(null, "rs2walker:processWalk:interrupted-exception");
                 return WalkerState.EXIT;
             }
             log.error("Exception in Rs2Walker:", ex);
-            log.info("Exiting walker: 403");
+            WebWalkLog.interruptedExit("walker exception exit (403)");
+            traceProcessWalkExit("exception-" + ex.getClass().getSimpleName(), target, MAX_PROCESS_WALK_TAIL_ITERATIONS - 1);
             return WalkerState.EXIT;
         }
         }
-        log.warn("[Walker] processWalk: exceeded max tail iterations ({}) for target={}",
-                MAX_PROCESS_WALK_TAIL_ITERATIONS, target);
+        Microbot.log(Level.WARN,
+                "[WalkerDiag] exceeded MAX_PROCESS_WALK_TAIL_ITERATIONS (%d) target=%s currentTarget=%s interim=%s stuck=%d player=%s — enable DEBUG for per-iteration traces",
+                MAX_PROCESS_WALK_TAIL_ITERATIONS,
+                target,
+                currentTarget,
+                interimTargetWp,
+                stuckCount,
+                Rs2Player.getWorldLocation());
+        WebWalkLog.tailExceeded(MAX_PROCESS_WALK_TAIL_ITERATIONS, target, currentTarget, interimTargetWp, stuckCount,
+                Rs2Player.getWorldLocation());
         return WalkerState.EXIT;
     }
 
@@ -1867,7 +2017,7 @@ public class Rs2Walker {
             }
         }
 
-        log.info("\n\nFound {} transports for path from {} to {}", transportList.size(), path.get(0), path.get(path.size() - 1));
+        WebWalkLog.bankPathTransportsDebug(transportList.size(), path.get(0), path.get(path.size() - 1));
 
         // Apply filtering and requirement setup if requested
         if (applyFiltering) {
@@ -1957,7 +2107,7 @@ public class Rs2Walker {
         if (!Rs2Inventory.hasItem("pickaxe")) {
             if (!Rs2Equipment.isWearing("pickaxe")) {
                 log.error("Unable to find pickaxe to mine rockfall");
-                setTarget(null);
+                setTarget(null, "rs2walker:motherlode-rockfall-no-pickaxe");
                 return false;
             }
         }
@@ -1996,7 +2146,7 @@ public class Rs2Walker {
 
         int initialDist = playerLoc.distanceTo(target);
         if (initialDist <= distance) {
-            setTarget(null);
+            setTarget(null, "rs2walker:tryDirectShortWalk:already-within-distance");
             return WalkerState.ARRIVED;
         }
 
@@ -2047,7 +2197,7 @@ public class Rs2Walker {
 
         WorldPoint afterClick = Rs2Player.getWorldLocation();
         if (afterClick != null && afterClick.distanceTo(target) <= distance) {
-            setTarget(null);
+            setTarget(null, "rs2walker:tryDirectShortWalk:arrived-after-click");
             return WalkerState.ARRIVED;
         }
 
@@ -2058,7 +2208,7 @@ public class Rs2Walker {
 
         WorldPoint afterWalk = Rs2Player.getWorldLocation();
         if (afterWalk != null && afterWalk.distanceTo(target) <= distance) {
-            setTarget(null);
+            setTarget(null, "rs2walker:tryDirectShortWalk:arrived-after-walk");
             return WalkerState.ARRIVED;
         }
 
@@ -3453,15 +3603,86 @@ public class Rs2Walker {
      * Force the walker to recalculate path
      */
     public static void recalculatePath() {
-        WorldPoint _currentTarget = currentTarget;
-        Rs2Walker.setTarget(null);
-        Rs2Walker.setTarget(_currentTarget);
+        WorldPoint goal = currentTarget;
+        if (goal == null) {
+            return;
+        }
+        // Must not call setTarget(null)+setTarget(goal): that briefly clears {@link #currentTarget},
+        // and processWalk on another thread treats null as cancel (isWalkCancelled).
+        applyWalkerDestination(goal);
     }
 
     /**
-     * @param target
+     * Updates world-map marker and restarts pathfinding for {@code target}. Does not assign
+     * {@link #currentTarget}; callers set it when appropriate.
+     */
+    private static void applyWalkerDestination(WorldPoint target) {
+        if (target == null) {
+            return;
+        }
+        if (!Microbot.isLoggedIn()) {
+            log.warn("Unable to apply walker destination: not logged in");
+            return;
+        }
+        Player localPlayer = Microbot.getClient().getLocalPlayer();
+        if (!ShortestPathPlugin.isStartPointSet() && localPlayer == null) {
+            log.warn("Start point is not set and player is null");
+            return;
+        }
+
+        Microbot.getWorldMapPointManager().removeIf(x -> x == ShortestPathPlugin.getMarker());
+        ShortestPathPlugin.setMarker(new WorldMapPoint(target, ShortestPathPlugin.MARKER_IMAGE));
+        ShortestPathPlugin.getMarker().setName("Target");
+        ShortestPathPlugin.getMarker().setTarget(ShortestPathPlugin.getMarker().getWorldPoint());
+        ShortestPathPlugin.getMarker().setJumpOnClick(true);
+        Microbot.getWorldMapPointManager().add(ShortestPathPlugin.getMarker());
+
+        WorldPoint start;
+        if (Microbot.getClient().getTopLevelWorldView().isInstance()) {
+            LocalPoint localLoc = Rs2Player.getLocalLocation();
+            start = localLoc != null
+                    ? WorldPoint.fromLocalInstance(Microbot.getClient(), localLoc)
+                    : null;
+            if (start == null) {
+                log.warn("[Walker] setTarget: instance localPoint conversion returned null (localLoc={} target={}) — falling back to raw world location",
+                        localLoc, target);
+                start = Rs2Player.getWorldLocation();
+            }
+        } else {
+            start = Rs2Player.getWorldLocation();
+        }
+        if (Microbot.getClient().getTopLevelWorldView().isInstance()) {
+            WorldPoint exitPortal = net.runelite.client.plugins.microbot.shortestpath.PohPanel.getExitPortalTile();
+            if (exitPortal != null) {
+                Microbot.log("[Walker] In POH instance — remapping pathfinder start " + start
+                        + " -> exit portal " + exitPortal);
+                start = exitPortal;
+            }
+        }
+        ShortestPathPlugin.setLastLocation(start);
+        final Pathfinder pathfinder = ShortestPathPlugin.getPathfinder();
+        if (ShortestPathPlugin.isStartPointSet() && pathfinder != null) {
+            start = pathfinder.getStart();
+        }
+        if (Microbot.getClient().isClientThread()) {
+            final WorldPoint _start = start;
+            Microbot.getClientThread().runOnSeperateThread(() -> restartPathfinding(_start, target));
+        } else {
+            restartPathfinding(start, target);
+        }
+    }
+
+    /**
+     * @param target destination, or {@code null} to clear (prefer {@link #clearWalkingRoute(String)} for observability)
      */
     public static void setTarget(WorldPoint target) {
+        setTarget(target, null);
+    }
+
+    /**
+     * @param clearReasonWhenNull logged when {@code target} is {@code null}; omit only from tests or legacy paths
+     */
+    public static void setTarget(WorldPoint target, String clearReasonWhenNull) {
         if (target != null && !Microbot.isLoggedIn()) {
             log.warn("Unable to set target: not logged in");
             return;
@@ -3475,6 +3696,7 @@ public class Rs2Walker {
         currentTarget = target;
 
         if (target == null) {
+            logRouteClear(clearReasonWhenNull);
             synchronized (ShortestPathPlugin.getPathfinderMutex()) {
                 final Pathfinder pathfinder = ShortestPathPlugin.getPathfinder();
                 if (pathfinder != null) {
@@ -3487,50 +3709,7 @@ public class Rs2Walker {
             ShortestPathPlugin.setMarker(null);
             ShortestPathPlugin.setStartPointSet(false);
         } else {
-            Microbot.getWorldMapPointManager().removeIf(x -> x == ShortestPathPlugin.getMarker());
-            ShortestPathPlugin.setMarker(new WorldMapPoint(target, ShortestPathPlugin.MARKER_IMAGE));
-            ShortestPathPlugin.getMarker().setName("Target");
-            ShortestPathPlugin.getMarker().setTarget(ShortestPathPlugin.getMarker().getWorldPoint());
-            ShortestPathPlugin.getMarker().setJumpOnClick(true);
-            Microbot.getWorldMapPointManager().add(ShortestPathPlugin.getMarker());
-
-            WorldPoint start;
-            if (Microbot.getClient().getTopLevelWorldView().isInstance()) {
-                LocalPoint localLoc = Rs2Player.getLocalLocation();
-                start = localLoc != null
-                        ? WorldPoint.fromLocalInstance(Microbot.getClient(), localLoc)
-                        : null;
-                if (start == null) {
-                    log.warn("[Walker] setTarget: instance localPoint conversion returned null (localLoc={} target={}) — falling back to raw world location",
-                            localLoc, target);
-                    start = Rs2Player.getWorldLocation();
-                }
-            } else {
-                start = Rs2Player.getWorldLocation();
-            }
-            // POH fix: when inside a POH instance, the raw instance-template tile doesn't match
-            // any registered POH transport origin (PohPanel registers them keyed to the exit
-            // portal tile). Remap the pathfinder start to the configured exit portal so the
-            // pathfinder can consider all POH teleports as step 0.
-            if (Microbot.getClient().getTopLevelWorldView().isInstance()) {
-                WorldPoint exitPortal = net.runelite.client.plugins.microbot.shortestpath.PohPanel.getExitPortalTile();
-                if (exitPortal != null) {
-                    Microbot.log("[Walker] In POH instance — remapping pathfinder start " + start
-                            + " -> exit portal " + exitPortal);
-                    start = exitPortal;
-                }
-            }
-            ShortestPathPlugin.setLastLocation(start);
-            final Pathfinder pathfinder = ShortestPathPlugin.getPathfinder();
-            if (ShortestPathPlugin.isStartPointSet() && pathfinder != null) {
-                start = pathfinder.getStart();
-            }
-            if (Microbot.getClient().isClientThread()) {
-                final WorldPoint _start = start;
-                Microbot.getClientThread().runOnSeperateThread(() -> restartPathfinding(_start, target));
-            } else {
-                restartPathfinding(start, target);
-            }
+            applyWalkerDestination(target);
         }
     }
 
@@ -6121,18 +6300,30 @@ public class Rs2Walker {
 
             if (bankingRouteDistance == -1) {
                 performanceLog.append("\tResult: Direct route only (banking route unavailable)\n");
-                log.info(performanceLog.toString());
+                WebWalkLog.compareDetail(performanceLog.toString());
+                WebWalkLog.compareSummary(totalTimeMs, directDistance, -1, "direct_only_bank_unavailable");
                 return new TransportRouteAnalysis(directPath, null, null, new ArrayList<>(),new ArrayList<>(),
                         "Direct route only (banking route unavailable)");
             }
 
-            boolean directIsFaster = directDistance <= bankingRouteDistance;
-            String recommendation = directIsFaster ?
-                    String.format("\tDirect route is faster (%d vs %d tiles)", directDistance, bankingRouteDistance) :
-                    String.format("\tBanking route is faster (%d vs %d tiles)", bankingRouteDistance, directDistance);
+            final boolean tie = directDistance == bankingRouteDistance;
+            final boolean directStrictlyFaster = directDistance < bankingRouteDistance;
+            final String recommendation;
+            final String verdictOneLine;
+            if (tie) {
+                recommendation = String.format("\tSame tile distance (%d); prefer direct (no bank hop)", directDistance);
+                verdictOneLine = String.format("tie %dt (prefer direct)", directDistance);
+            } else if (directStrictlyFaster) {
+                recommendation = String.format("\tDirect route is faster (%d vs %d tiles)", directDistance, bankingRouteDistance);
+                verdictOneLine = String.format("direct faster %dt vs %dt", directDistance, bankingRouteDistance);
+            } else {
+                recommendation = String.format("\tBanking route is faster (%d vs %d tiles)", bankingRouteDistance, directDistance);
+                verdictOneLine = String.format("bank faster %dt vs %dt", bankingRouteDistance, directDistance);
+            }
 
             performanceLog.append("\tResult:\n\t\t ").append(recommendation).append("\n");
-            log.info(performanceLog.toString());
+            WebWalkLog.compareDetail(performanceLog.toString());
+            WebWalkLog.compareSummary(totalTimeMs, directDistance, bankingRouteDistance, verdictOneLine);
 
             return new TransportRouteAnalysis(directPath,
                     nearestBank, nearestBank != null ? nearestBank.getWorldPoint() : null,pathToBank,pathWithBankedItemsToTarget, recommendation);
@@ -6141,8 +6332,8 @@ public class Rs2Walker {
             long totalEndTime = System.nanoTime();
             double totalTimeMs = (totalEndTime - totalStartTime) / 1_000_000.0;
             performanceLog.append("ERROR after ").append(String.format("%.2f ms", totalTimeMs)).append(": ").append(e.getMessage()).append("\n");
-            log.warn(performanceLog.toString());
-            log.warn("Error comparing routes to {}: {}", target, e.getMessage());
+            WebWalkLog.compareDetail(performanceLog.toString());
+            WebWalkLog.compareError(totalTimeMs, target, e.getMessage());
             return new TransportRouteAnalysis(new ArrayList<>(), null, null,new ArrayList<>(),new ArrayList<>(), "Error calculating routes: " + e.getMessage());
         }
     }
@@ -6220,19 +6411,19 @@ public class Rs2Walker {
         List<Transport> missingTransports = getMissingTransports(getTransportsForDestination(target, true, TransportType.TELEPORTATION_SPELL));
 
         Map<Integer, Integer> missingItemsWithQuantities = getMissingTransportItemIdsWithQuantities(missingTransports);
-        if(!missingTransports.isEmpty()){
-            log.info("\n\tFor {} transports to destination in the bank to target {} we found {} missing items",
+        if (!missingTransports.isEmpty()) {
+            WebWalkLog.bankWalkDebug("missing_items nTrans={} to={} missingKinds={}",
                     missingTransports.size(), target, missingItemsWithQuantities.size());
         }
         // If no missing transport items, go directly
         if (missingItemsWithQuantities.isEmpty() && !forceBanking) {
-            log.info("\n\tNo missing transport items, traveling directly to: \n\t" + target);
+            WebWalkLog.bankWalkDebug("direct_no_missing_items goal={}", target);
             WalkerState state = walkWithStateInternal(target, distance);
             if (state == WalkerState.ARRIVED) {
-                log.info("\n\tArrived directly at target: " + target);
+                WebWalkLog.bankWalkDebug("arrived goal={}", target);
             } else {
-                log.warn("\n\tFailed to arrive directly at target: " + target + ", state: " + state);
-                setTarget(null);
+                WebWalkLog.bankWalkFailed(target, state);
+                setTarget(null, "rs2walker:walkWithBankedTransports:direct-walk-failed");
                 return state;
 
             }

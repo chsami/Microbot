@@ -615,7 +615,7 @@ public class ClientUI
 						configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "TurnOn", !isEnabled);
 						questHelperNavBtn.setIcon(new ImageIcon(!isEnabled ? questIconOn : questIconOff ));
 						questHelperNavBtn.setToolTipText(!isEnabled ? "Disable 'Semi-Auto' Questing" : "Enable 'Semi-Auto' Questing");
-						if (isEnabled) Rs2Walker.setTarget(null);
+						if (isEnabled) Rs2Walker.clearWalkingRoute("client-ui:quest-helper-toggle-disable");
 					})
 					.build(), false
 			);

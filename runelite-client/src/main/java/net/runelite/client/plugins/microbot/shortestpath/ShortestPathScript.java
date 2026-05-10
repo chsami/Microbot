@@ -47,11 +47,20 @@ public class ShortestPathScript extends Script {
     }
 
 	public void setTriggerWalker(WorldPoint point) {
+		setTriggerWalker(point, null);
+	}
+
+	/**
+	 * @param stopReason when {@code point} is null, passed to {@link Rs2Walker#clearWalkingRoute(String)} (e.g. {@code hotkey:ctrl+x})
+	 */
+	public void setTriggerWalker(WorldPoint point, String stopReason) {
 		if (point == null)
 		{
-            log.debug("ShortestPathScript: setTriggerWalker called with null point");
+			String r = stopReason != null && !stopReason.isBlank()
+					? stopReason
+					: "shortest-path-script:trigger-null";
 			triggerWalker = null;
-			Rs2Walker.setTarget(null);
+			Rs2Walker.clearWalkingRoute(r);
             Future<?> future = walkTaskFuture;
             if (future != null && !future.isDone()) {
                 future.cancel(true);
@@ -85,7 +94,7 @@ public class ShortestPathScript extends Script {
                 if (target.equals(getTriggerWalker())
                         && (state == WalkerState.ARRIVED || state == WalkerState.UNREACHABLE || state == WalkerState.EXIT)) {
                     triggerWalker = null;
-                    Rs2Walker.setTarget(null);
+                    Rs2Walker.clearWalkingRoute("shortest-path-script:walk-task-terminal-state");
                 }
             } catch (Exception ex) {
                 log.error("Exception in ShortestPathScript walk task: {} - ", ex.getMessage(), ex);

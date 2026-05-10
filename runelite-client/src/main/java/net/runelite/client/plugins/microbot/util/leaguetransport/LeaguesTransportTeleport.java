@@ -14,6 +14,7 @@ import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
+import net.runelite.client.plugins.microbot.util.walker.WebWalkLog;
 import net.runelite.api.coords.WorldPoint;
 
 import java.awt.Rectangle;
@@ -390,6 +391,12 @@ final class LeaguesTransportTeleport
 
 	static void calibrateMissingLandingsAsync(EnumSet<LeaguesRegion> unlockedRegions)
 	{
+		calibrateMissingLandingsAsync(unlockedRegions, false);
+	}
+
+	static void calibrateMissingLandingsAsync(EnumSet<LeaguesRegion> unlockedRegions,
+			boolean logNoOpWhenFullyCalibrated)
+	{
 		if (unlockedRegions == null || unlockedRegions.isEmpty())
 		{
 			return;
@@ -410,22 +417,17 @@ final class LeaguesTransportTeleport
 		}
 		if (missingCount == 0)
 		{
-			if (LeaguesTransportPersistence.isCalibrationConsentAllowed())
+			if (logNoOpWhenFullyCalibrated)
 			{
-				Client client = Microbot.getClient();
-				if (!isClientReadyForCalibration(client))
-				{
-					long prev = CALIBRATION_COMPLETE_RETRY_AFTER_MS.get();
-					long now = System.currentTimeMillis();
-					if (prev == 0L || now >= prev)
-					{
-						CALIBRATION_COMPLETE_RETRY_AFTER_MS.set(now + 5000L);
-					}
-				}
-				promptCalibrationComplete(unlockedRegions);
+				WebWalkLog.leaguesInfo(
+						"calibrate noop | all landing tiles already cached | unlockedRegions={}",
+						unlockedRegions.size());
 			}
 			return;
 		}
+
+		WebWalkLog.leagues("calibrate queue | missingLandings={} unlockedRegions={}",
+				missingCount, unlockedRegions.size());
 
 		promptCalibrationConsentIfNeeded();
 		if (!LeaguesTransportPersistence.isCalibrationConsentAllowed())
@@ -441,6 +443,7 @@ final class LeaguesTransportTeleport
 		CALIBRATION_CANCEL_REQUESTED.set(false);
 
 		final EnumSet<LeaguesRegion> unlockedSnapshot = EnumSet.copyOf(unlockedRegions);
+		WebWalkLog.leaguesInfo("calibration worker starting | missingLandings={}", missingCount);
 		Thread t = new Thread(() ->
 		{
 			try

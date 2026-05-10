@@ -122,7 +122,7 @@ public class PiratesTreasure extends BaseQuest {
             if (questStep.getText().contains("Dig in the middle of the cross in Falador Park, and kill the Gardener (level 4) who appears. Once killed, dig again.")) {
                 if (!Rs2Inventory.contains(SPADE)) {
                     System.out.println("here2");
-                    Rs2Walker.setTarget(null);
+                    Rs2Walker.clearWalkingRoute("quest:pirates-treasure:detour-for-spade");
                     sleep(1200);
                     Rs2Walker.walkTo(2982, 3369, 0);
                     sleep(1200);

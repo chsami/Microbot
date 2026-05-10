@@ -34,7 +34,6 @@ import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.depositbox.DepositBoxLocation;
 import net.runelite.client.plugins.microbot.util.depositbox.Rs2DepositBox;
-import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.walker.enums.Allotments;
 import net.runelite.client.plugins.microbot.util.walker.enums.Birds;
 import net.runelite.client.plugins.microbot.util.walker.enums.Bushes;
@@ -701,8 +700,7 @@ public class ShortestPathPanel extends PluginPanel
 	void stopWalking()
 	{
 		Microbot.log("Web walking stopping..");
-		plugin.getShortestPathScript().setTriggerWalker(null);
-		Rs2Walker.setTarget(null);
+		plugin.getShortestPathScript().setTriggerWalker(null, "panel:stop-walking-button");
 	}
 
 	/* ------------------------------------------------------------------

@@ -1,11 +1,11 @@
 package net.runelite.client.plugins.microbot.util.leaguetransport;
 
-import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.TransportType;
 import net.runelite.client.plugins.microbot.shortestpath.WorldPointUtil;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.PathfinderConfig;
+import net.runelite.client.plugins.microbot.util.walker.WebWalkLog;
 import net.runelite.client.plugins.microbot.shortestpath.PrimitiveIntHashMap;
 
 import java.util.EnumSet;
@@ -17,7 +17,6 @@ import java.util.Set;
 /**
  * Pathfinder injection for Leagues Area and catalog transports.
  */
-@Slf4j
 final class LeaguesTransportInjection
 {
 	private LeaguesTransportInjection()
@@ -131,7 +130,7 @@ final class LeaguesTransportInjection
 			int[] stats = typeStats.computeIfAbsent(TransportType.SEASONAL_TRANSPORT, k -> new int[]{0, 0, 0});
 			stats[0] += added;
 			stats[1] += added;
-			log.info("[Leagues] injected {} Leagues Area teleports (originless {} -> {})",
+			WebWalkLog.leagues("inject_area n={} originless {} -> {}",
 					added, before, usableTeleports.size());
 		}
 	}
@@ -200,7 +199,7 @@ final class LeaguesTransportInjection
 
 		if (addedOriginless + addedOriginBased > 0)
 		{
-			log.info("[Leagues] injected {} catalog transports (originlessAdded={} originBasedAdded={} originless {} -> {})",
+			WebWalkLog.leagues("inject_catalog n={} originlessAdd={} originAdd={} usable {} -> {}",
 					addedOriginless + addedOriginBased,
 					addedOriginless,
 					addedOriginBased,

@@ -10,7 +10,6 @@ import net.runelite.api.gameval.ItemID;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.client.plugins.itemcharges.ItemChargeConfig;
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
 import net.runelite.client.plugins.microbot.shortestpath.*;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
@@ -22,8 +21,8 @@ import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.leaguetransport.Rs2LeaguesTransport;
 import net.runelite.client.plugins.microbot.util.leaguetransport.Rs2MapOfAlacrityTransport;
 import net.runelite.client.plugins.microbot.util.poh.PohTeleports;
-import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
+import net.runelite.client.plugins.microbot.util.walker.WebWalkLog;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -230,15 +229,11 @@ public class PathfinderConfig {
             refreshRestrictionData();
             long t2 = System.currentTimeMillis();
 
-            // Do not switch back to inventory tab if we are inside of the telekinetic room in Mage Training Arena
-            WorldPoint loc = Rs2Player.getWorldLocation();
-            if (loc == null || loc.getRegionID() != 13463) {
-                Rs2Tab.switchTo(InterfaceTab.INVENTORY);
-            }
-            long t3 = System.currentTimeMillis();
+            // Do not switch tabs here. refresh() runs often (pathfinder restarts, walker compareRoutes);
+            // forcing inventory was disruptive and unnecessary — Rs2Inventory reads containers without it.
 
-            log.info("[PathfinderConfig] refresh: transports={}ms, restrictions={}ms, tabSwitch={}ms, total={}ms",
-                    t1 - t0, t2 - t1, t3 - t2, t3 - t0);
+            WebWalkLog.cfg("refresh transports={}ms restr={}ms total={}ms",
+                    t1 - t0, t2 - t1, t2 - t0);
             //END microbot variables
         }
     }
@@ -328,7 +323,7 @@ public class PathfinderConfig {
                 if (useBankItems && config != null && config.maxSimilarTransportDistance() > 0) {
                     filterSimilarTransports(target);
                 }
-                log.info("[refreshTransports] cache hit key={}", refreshCacheKeyHash);
+                WebWalkLog.cfg("refresh_transports cache_hit key={}", refreshCacheKeyHash);
                 return;
             }
         }
@@ -452,14 +447,14 @@ public class PathfinderConfig {
         refreshCurrencyCache = null;
 
         // varbit/varplayer counts = distinct ids referenced by merged transport definitions this refresh, not total client var space.
-        log.info("[refreshTransports] merge={}ms, cache={}ms, filter={}ms (useTransport={}ms), similar={}ms, total/filterPassedChecked={}/{}, usableTeleportsPostInject={}, moaSeen={}, moaKept={}, uniqueVarbitIdsFromTransports={}, uniqueVarplayerIdsFromTransports={}",
+        WebWalkLog.cfg("refresh_transports merge={}ms cache={}ms filter={}ms useTrans={}ms similar={}ms total/chk={}/{} usablePost={} moaS={} moaK={} vb={} vp={}",
                 mergeTime, cacheTime, filterTime, useTransportTimeNanos / 1_000_000, similarTime,
                 totalTransports, checkedTransports, usableTeleports.size(), moaSeen, moaKept, varbitIds.size(), varplayerIds.size());
 
         typeStats.entrySet().stream()
                 .sorted((a, b) -> Integer.compare(b.getValue()[2], a.getValue()[2]))
                 .limit(5)
-                .forEach(e -> log.info("[refreshTransports]   {} : count={}, useTransportPassed={}, time={}ms",
+                .forEach(e -> WebWalkLog.cfg("refresh_transports type {} cnt={} passed={} timeMs={}",
                         e.getKey(), e.getValue()[0], e.getValue()[1], e.getValue()[2] / 1000));
 
         log.debug("[MoA] refreshTransports: seen={} kept={} (useSeasonalTransports={}, VarbitID.LEAGUE_TYPE={})",
