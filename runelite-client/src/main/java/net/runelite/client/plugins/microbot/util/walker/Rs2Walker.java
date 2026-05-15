@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.Point;
 import net.runelite.api.annotations.Component;
+import net.runelite.api.Perspective;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldArea;
 import net.runelite.api.coords.WorldPoint;
@@ -29,6 +30,13 @@ import net.runelite.client.plugins.microbot.util.coords.Rs2WorldArea;
 import net.runelite.client.plugins.microbot.util.coords.Rs2WorldPoint;
 import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
+import net.runelite.client.plugins.microbot.api.tileobject.models.Rs2TileObjectModel;
+import net.runelite.client.plugins.microbot.api.tileobject.models.TileObjectType;
+// Rs2GameObject is still referenced by ~70 helper methods (getAll, hasLineOfSight, hasAction,
+// getObjectIdsByName, findObjectById, etc.) that have no direct equivalent on the new
+// queryable cache API yet. The high-traffic interact / point lookups have been migrated
+// above; the remaining static helpers stay until those utilities land on Rs2TileObjectModel
+// / Rs2TileObjectCache. @SuppressWarnings("removal") on the class scope keeps the build clean.
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
@@ -95,6 +103,7 @@ import static net.runelite.client.plugins.microbot.util.Global.*;
  * Seasonal handlers ({@link Rs2LeaguesTransport#tryHandleLeaguesAreaTransport}, MoA) must not run on the client thread — same contract as {@link Rs2LeaguesTransport#leaguesTeleport}.
  */
 @Slf4j
+@SuppressWarnings("removal") // Many static Rs2GameObject helpers (getAll, hasLineOfSight, hasAction, ...) are still used; the queryable cache doesn't expose equivalents yet.
 public class Rs2Walker {
     @Setter
     public static ShortestPathConfig config;
@@ -2040,7 +2049,7 @@ public class Rs2Walker {
     }
 
     public static boolean walkNextTo(GameObject target) {
-        Rs2WorldArea gameObjectArea = new Rs2WorldArea(Objects.requireNonNull(Rs2GameObject.getWorldArea(target)));
+        Rs2WorldArea gameObjectArea = new Rs2WorldArea(Objects.requireNonNull(computeWorldArea(target)));
         List<WorldPoint> interactablePoints = gameObjectArea.getInteractable();
 
         if (interactablePoints.isEmpty()) {
@@ -2060,7 +2069,7 @@ public class Rs2Walker {
     }
 
     public static void walkNextToInstance(GameObject target) {
-        Rs2WorldArea gameObjectArea = new Rs2WorldArea(Objects.requireNonNull(Rs2GameObject.getWorldArea(target)));
+        Rs2WorldArea gameObjectArea = new Rs2WorldArea(Objects.requireNonNull(computeWorldArea(target)));
         List<WorldPoint> interactablePoints = gameObjectArea.getInteractable();
 
         if (interactablePoints.isEmpty()) {
@@ -2862,19 +2871,17 @@ public class Rs2Walker {
         for (int rockIndex = index; rockIndex < index + 2; rockIndex++) {
             var point = path.get(rockIndex);
 
-            TileObject object = null;
-            var tile = Rs2GameObject.getTiles(3).stream()
-                    .filter(x -> x.getWorldLocation().equals(point))
-                    .findFirst().orElse(null);
-
-            if (tile != null)
-                object = Rs2GameObject.getGameObject(point);
+            Rs2TileObjectModel object = Microbot.getRs2TileObjectCache().query()
+                    .where(o -> o.getWorldLocation().equals(point))
+                    .first();
 
             if (object == null) continue;
 
             if (object.getId() == ObjectID.MOTHERLODE_ROCKFALL_1 || object.getId() == ObjectID.MOTHERLODE_ROCKFALL_2) {
-                Rs2GameObject.interact(object, "mine");
-                return sleepUntil(() -> Rs2GameObject.getGameObject(point) == null);
+                object.click("mine");
+                return sleepUntil(() -> Microbot.getRs2TileObjectCache().query()
+                        .where(o -> o.getWorldLocation().equals(point))
+                        .first() == null);
             }
         }
 
@@ -3397,8 +3404,31 @@ public class Rs2Walker {
         return dx * dx + dy * dy;
     }
 
+    /**
+     * Computes the world-space bounding area for a multi-tile GameObject from its
+     * local center and size. Mirrors the helper that used to live on the deprecated
+     * Rs2GameObject class.
+     */
+    private static WorldArea computeWorldArea(GameObject gameObject) {
+        if (!gameObject.getLocalLocation().isInScene()) {
+            return null;
+        }
+        LocalPoint sw = new LocalPoint(
+                gameObject.getLocalLocation().getX() - (gameObject.sizeX() - 1) * Perspective.LOCAL_TILE_SIZE / 2,
+                gameObject.getLocalLocation().getY() - (gameObject.sizeY() - 1) * Perspective.LOCAL_TILE_SIZE / 2
+        );
+        LocalPoint ne = new LocalPoint(
+                gameObject.getLocalLocation().getX() + (gameObject.sizeX() - 1) * Perspective.LOCAL_TILE_SIZE / 2,
+                gameObject.getLocalLocation().getY() + (gameObject.sizeY() - 1) * Perspective.LOCAL_TILE_SIZE / 2
+        );
+        return new Rs2WorldArea(
+                net.runelite.api.coords.WorldPoint.fromLocal(Microbot.getClient(), sw),
+                net.runelite.api.coords.WorldPoint.fromLocal(Microbot.getClient(), ne)
+        );
+    }
+
     private static ObjectComposition resolveCompositionForDoorProbe(TileObject object) {
-        ObjectComposition comp = Rs2GameObject.convertToObjectComposition(object);
+        ObjectComposition comp = new Rs2TileObjectModel(object).getObjectComposition();
         if (comp == null) {
             return null;
         }
@@ -3570,20 +3600,40 @@ public class Rs2Walker {
                 // WallObjects can report their world location as an adjacent tile depending on
                 // orientation / scene representation. Use exact match first, then allow a small
                 // adjacency fallback so door handling triggers reliably.
-                WallObject wall = Rs2GameObject.getWallObject(o -> o.getWorldLocation().equals(probe), probe, 3);
-                if (wall == null) {
-                    wall = Rs2GameObject.getWallObject(o -> o.getWorldLocation().distanceTo2D(probe) <= 1, probe, 3);
+                Rs2TileObjectModel wallModel = Microbot.getRs2TileObjectCache().query()
+                        .where(o -> o.getTileObjectType() == TileObjectType.WALL)
+                        .where(o -> o.getWorldLocation().equals(probe))
+                        .within(probe, 3)
+                        .first();
+                if (wallModel == null) {
+                    wallModel = Microbot.getRs2TileObjectCache().query()
+                            .where(o -> o.getTileObjectType() == TileObjectType.WALL)
+                            .where(o -> o.getWorldLocation().distanceTo2D(probe) <= 1)
+                            .within(probe, 3)
+                            .first();
                 }
 
-                TileObject object = (wall != null)
-                        ? wall
-                        : Rs2GameObject.getGameObject(o -> o.getWorldLocation().equals(probe), probe, 3);
-                if (object == null) {
-                    object = Rs2GameObject.getGameObject(o -> o.getWorldLocation().distanceTo2D(probe) <= 1, probe, 3);
+                Rs2TileObjectModel objectModel = wallModel;
+                if (objectModel == null) {
+                    objectModel = Microbot.getRs2TileObjectCache().query()
+                            .where(o -> o.getTileObjectType() == TileObjectType.GAME)
+                            .where(o -> o.getWorldLocation().equals(probe))
+                            .within(probe, 3)
+                            .first();
                 }
-                if (object == null) continue;
+                if (objectModel == null) {
+                    objectModel = Microbot.getRs2TileObjectCache().query()
+                            .where(o -> o.getTileObjectType() == TileObjectType.GAME)
+                            .where(o -> o.getWorldLocation().distanceTo2D(probe) <= 1)
+                            .within(probe, 3)
+                            .first();
+                }
+                if (objectModel == null) continue;
 
-                ObjectComposition baseComp = Rs2GameObject.convertToObjectComposition(object);
+                TileObject object = objectModel.getTileObject();
+                WallObject wall = wallModel != null ? (WallObject) wallModel.getTileObject() : null;
+
+                ObjectComposition baseComp = objectModel.getObjectComposition();
                 ObjectComposition comp = resolveCompositionForDoorProbe(object);
                 if (comp == null) {
                     Telemetry.recordDoorReject("composition-null");
@@ -3670,7 +3720,7 @@ public class Rs2Walker {
                         WorldPoint posBefore = Rs2Player.getWorldLocation();
                         boolean interacted;
                         try {
-                            interacted = Rs2GameObject.interact(object, action);
+                            interacted = objectModel.click(action);
                         } catch (Exception ex) {
                             WebWalkLog.spInfo("door_interact_exception | mode=segment-door probe={} from={} to={} ex={}",
                                     compactWorldPoint(probe), compactWorldPoint(fromWp), compactWorldPoint(toWp), ex.getClass().getSimpleName());

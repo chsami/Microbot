@@ -12,8 +12,8 @@ import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
 import net.runelite.client.plugins.microbot.pouch.Pouch;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
+import net.runelite.client.plugins.microbot.api.tileobject.models.Rs2TileObjectModel;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
-import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
@@ -21,7 +21,6 @@ import net.runelite.client.plugins.microbot.util.misc.Rs2Food;
 import net.runelite.client.plugins.microbot.util.misc.Rs2Potion;
 import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
 import net.runelite.client.plugins.microbot.util.mouse.naturalmouse.util.Pair;
-import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.shop.Rs2Shop;
@@ -1727,7 +1726,7 @@ public class Rs2Inventory {
     public static boolean useUnNotedItemOnObject(String item, int objectID) {
         if (Rs2Bank.isOpen()) return false;
         useUnNoted(item);
-        Rs2GameObject.interact(objectID);
+        Microbot.getRs2TileObjectCache().query().interact(objectID);
         return true;
     }
 
@@ -1743,7 +1742,7 @@ public class Rs2Inventory {
         if (Rs2Bank.isOpen()) return false;
         if (!useUnNoted(item)) return false;
         sleep(100);
-        return isItemSelected() && Rs2GameObject.interact(object);
+        return isItemSelected() && new Rs2TileObjectModel(object).click();
     }
 
     /**
@@ -1758,7 +1757,7 @@ public class Rs2Inventory {
         if (Rs2Bank.isOpen()) return false;
         if (!use(item)) return false;
         sleep(100);
-        return isItemSelected() && Rs2GameObject.interact(objectID);
+        return isItemSelected() && Microbot.getRs2TileObjectCache().query().interact(objectID);
     }
 
     /**
@@ -1771,7 +1770,7 @@ public class Rs2Inventory {
         if (Rs2Bank.isOpen()) return false;
         if (!use(itemId)) return false;
         sleep(100);
-        return isItemSelected() && Rs2Npc.interact(npcID);
+        return isItemSelected() && Microbot.getRs2NpcCache().query().interact(npcID);
     }
 
     /**
@@ -1790,7 +1789,10 @@ public class Rs2Inventory {
         if (Rs2Bank.isOpen()) return false;
         if (!use(item)) return false;
         if (!sleepUntil(Rs2Inventory::isItemSelected, 1_000)) return false;
-        return Rs2Npc.interact(npc);
+        if (npc == null) return false;
+        return Microbot.getRs2NpcCache().query()
+                .where(n -> n.getIndex() == npc.getIndex())
+                .interact();
     }
 
     /**

@@ -50,6 +50,7 @@ public class Rs2TileObjectModel implements TileObject, IEntity {
 
     @Getter
     private final TileObjectType tileObjectType;
+    @Getter
     private final TileObject tileObject;
     private String[] actions;
 

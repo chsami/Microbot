@@ -21,8 +21,7 @@ import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
 import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
-import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
-import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
+import net.runelite.client.plugins.microbot.api.npc.models.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.security.Encryption;
 import net.runelite.client.plugins.microbot.util.security.LoginManager;
@@ -123,11 +122,13 @@ public class Rs2GrandExchange {
             if (isOpen()) {
                 return true;
             }
-            Rs2NpcModel npc = Rs2Npc.getNpc("Grand Exchange Clerk");
+            Rs2NpcModel npc = Microbot.getRs2NpcCache().query()
+                    .withName("Grand Exchange Clerk")
+                    .nearest();
             if (npc == null) {
                 return false;
             }
-            Rs2Npc.interact(npc, "exchange");
+            npc.click("exchange");
             if (Rs2Bank.isBankPinWidgetVisible()) {
                 ConfigProfile activeProfile = LoginManager.getActiveProfile();
                 if (activeProfile == null) {
