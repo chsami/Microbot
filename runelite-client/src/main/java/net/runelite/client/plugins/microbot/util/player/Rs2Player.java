@@ -457,7 +457,7 @@ public class Rs2Player {
         final long initialXp = Microbot.getClient().getOverallExperience();
         boolean triggered = sleepUntilTrue(() ->
                         initialXp != Microbot.getClient().getOverallExperience()
-                        || isAnimating(3000)
+                        || isAnimating()
                         || isInCombat()
                         || isMoving()
                         || Rs2Bank.isOpen()
