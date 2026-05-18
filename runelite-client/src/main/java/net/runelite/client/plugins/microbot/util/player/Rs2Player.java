@@ -442,19 +442,32 @@ public class Rs2Player {
      *   <li>Not interacting with a bank, deposit box, grand exchange, or chat dialog</li>
      * </ul>
      * <p>
-     * Additionally, waits up to 3000ms for an XP drop — if one occurs, the player was performing
-     * an XP-gaining activity (e.g., cleaning herbs) while standing still, which means they are
-     * not idle. If no XP drop occurs within the timeout, returns {@code true}.
+     * Waits up to 3000ms, polling every 100ms for either an XP drop or any blocking activity.
+     * Returns {@code false} immediately if an XP drop is detected (player was performing an
+     * XP-gaining activity) or any blocking condition becomes true. Returns {@code true} only
+     * if the timeout elapses with no blocking event.
      * <p>
      * TODO: include {@link #isInteracting()} once Runelite's implementation is fixed.
      *
      * @return {@code true} if the player is idle, {@code false} otherwise.
      */
     public static boolean isIdle() {
-        if (isAnimating(3000) || isInCombat() || isMoving() || Rs2Bank.isOpen() || Rs2DepositBox.isOpen() || Rs2GrandExchange.isOpen() || Rs2Dialogue.isInDialogue())
-            return false;
+        // Poll every 100ms for up to 3000ms — stop early if an XP drop occurs or
+        // any blocking condition becomes true.
+        final long initialXp = Microbot.getClient().getOverallExperience();
+        boolean triggered = sleepUntilTrue(() ->
+                        initialXp != Microbot.getClient().getOverallExperience()
+                        || isAnimating(3000)
+                        || isInCombat()
+                        || isMoving()
+                        || Rs2Bank.isOpen()
+                        || Rs2DepositBox.isOpen()
+                        || Rs2GrandExchange.isOpen()
+                        || Rs2Dialogue.isInDialogue(),
+                100, 3000
+        );
 
-        return !waitForXpDrop(3000);
+        return !triggered;
     }
 
     /**
