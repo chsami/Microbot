@@ -336,10 +336,14 @@ public class Rs2Player {
      * @return {@code true} if an XP drop was detected or the inventory became full, {@code false} otherwise.
      */
     public static boolean waitForXpDrop(int time, boolean inventoryFullCheck) {
-        final long skillExp = Microbot.getClient().getOverallExperience();
+        final long skillExp = Microbot.getClientThread().runOnClientThreadOptional(
+                () -> Microbot.getClient().getOverallExperience()
+        ).orElse(0L);
         return sleepUntilTrue(() ->
-                        skillExp != Microbot.getClient().getOverallExperience() ||
-                                (inventoryFullCheck && Rs2Inventory.isFull()),
+                        skillExp != Microbot.getClientThread().runOnClientThreadOptional(
+                                () -> Microbot.getClient().getOverallExperience()
+                        ).orElse(0L)
+                                || (inventoryFullCheck && Rs2Inventory.isFull()),
                 100, time
         );
     }
@@ -454,9 +458,13 @@ public class Rs2Player {
     public static boolean isIdle() {
         // Poll every 100ms for up to 3000ms — stop early if an XP drop occurs or
         // any blocking condition becomes true.
-        final long initialXp = Microbot.getClient().getOverallExperience();
+        final long initialXp = Microbot.getClientThread().runOnClientThreadOptional(
+                () -> Microbot.getClient().getOverallExperience()
+        ).orElse(0L);
         boolean triggered = sleepUntilTrue(() ->
-                        initialXp != Microbot.getClient().getOverallExperience()
+                        initialXp != Microbot.getClientThread().runOnClientThreadOptional(
+                                () -> Microbot.getClient().getOverallExperience()
+                        ).orElse(0L)
                         || isAnimating(3000)
                         || isInCombat()
                         || isMoving()
