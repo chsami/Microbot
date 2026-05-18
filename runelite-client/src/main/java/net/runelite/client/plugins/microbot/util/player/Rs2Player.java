@@ -16,9 +16,13 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.api.boat.Rs2BoatCache;
 import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
 import net.runelite.client.plugins.microbot.api.playerstate.Rs2PlayerStateCache;
+import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.coords.Rs2WorldPoint;
+import net.runelite.client.plugins.microbot.util.depositbox.Rs2DepositBox;
+import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
+import net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange;
 import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
@@ -296,6 +300,51 @@ public class Rs2Player {
     }
 
     /**
+     * Waits for an XP drop in any skill within a default timeout of 5000 milliseconds.
+     *
+     * @return {@code true} if an XP drop was detected within the timeout, {@code false} otherwise.
+     */
+    public static boolean waitForXpDrop() {
+        return waitForXpDrop(5000, false);
+    }
+
+    /**
+     * Waits for an XP drop in any skill within a given timeout.
+     *
+     * @param time  The maximum time (in milliseconds) to wait for the XP drop.
+     * @return {@code true} if an XP drop was detected within the timeout, {@code false} otherwise.
+     */
+    public static boolean waitForXpDrop(int time) {
+        return waitForXpDrop(time, false);
+    }
+
+    /**
+     * Waits for an XP drop in any skill or stops if the inventory is full.
+     *
+     * @param inventoryFullCheck If {@code true}, also stops waiting if the inventory becomes full.
+     * @return {@code true} if an XP drop was detected or the inventory became full, {@code false} otherwise.
+     */
+    public static boolean waitForXpDrop(boolean inventoryFullCheck) {
+        return waitForXpDrop(5000, inventoryFullCheck);
+    }
+
+    /**
+     * Waits for an XP drop in any skill within a given timeout or stops if the inventory is full.
+     *
+     * @param time               The maximum time (in milliseconds) to wait for the XP drop.
+     * @param inventoryFullCheck If {@code true}, also stops waiting if the inventory becomes full.
+     * @return {@code true} if an XP drop was detected or the inventory became full, {@code false} otherwise.
+     */
+    public static boolean waitForXpDrop(int time, boolean inventoryFullCheck) {
+        final long skillExp = Microbot.getClient().getOverallExperience();
+        return sleepUntilTrue(() ->
+                        skillExp != Microbot.getClient().getOverallExperience() ||
+                                (inventoryFullCheck && Rs2Inventory.isFull()),
+                100, time
+        );
+    }
+
+    /**
      * Wait for animation
      */
     public static void waitForAnimation() {
@@ -380,6 +429,32 @@ public class Rs2Player {
             return false;
         }
         return Optional.of(Microbot.getClient().getLocalPlayer().isInteracting()).orElse(false);
+    }
+
+    /**
+     * Checks if the player is idle (not performing any action).
+     * <p>
+     * The player is considered idle if all of the following are true:
+     * <ul>
+     *   <li>Not currently animating (animation is IDLE and no animation within the last 3000ms)</li>
+     *   <li>Not in combat</li>
+     *   <li>Not moving (pose animation equals idle pose animation)</li>
+     *   <li>Not interacting with a bank, deposit box, grand exchange, or chat dialog</li>
+     * </ul>
+     * <p>
+     * Additionally, waits up to 3000ms for an XP drop — if one occurs, the player was performing
+     * an XP-gaining activity (e.g., cleaning herbs) while standing still, which means they are
+     * not idle. If no XP drop occurs within the timeout, returns {@code true}.
+     * <p>
+     * TODO: include {@link #isInteracting()} once Runelite's implementation is fixed.
+     *
+     * @return {@code true} if the player is idle, {@code false} otherwise.
+     */
+    public static boolean isIdle() {
+        if (isAnimating(3000) || isInCombat() || isMoving() || Rs2Bank.isOpen() || Rs2DepositBox.isOpen() || Rs2GrandExchange.isOpen() || Rs2Dialogue.isInDialogue())
+            return false;
+
+        return !waitForXpDrop(3000);
     }
 
     /**
