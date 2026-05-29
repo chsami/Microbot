@@ -99,10 +99,6 @@ public class Microbot {
     public static AtomicBoolean pauseAllScripts = new AtomicBoolean(false);
     public static String status = "IDLE";
 
-    // Feature Flags
-    public static boolean enableAutoRunOn = true;
-    public static boolean useStaminaPotsIfNeeded = true;
-    public static int runEnergyThreshold = 1000;
     public static boolean isCantReachTargetDetectionEnabled = false;
 
     @Getter
