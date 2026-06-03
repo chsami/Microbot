@@ -86,6 +86,14 @@ public class Rs2Walker {
 
     public static boolean disableTeleports = false;
 
+    private static final int[] PICKAXE_IDS = {
+        ItemID.BRONZE_PICKAXE, ItemID.IRON_PICKAXE, ItemID.STEEL_PICKAXE, ItemID.BLACK_PICKAXE,
+        ItemID.MITHRIL_PICKAXE, ItemID.ADAMANT_PICKAXE, ItemID.RUNE_PICKAXE, ItemID.DRAGON_PICKAXE,
+        ItemID.DRAGON_PICKAXE_PRETTY, ItemID.INFERNAL_PICKAXE, ItemID.INFERNAL_PICKAXE_EMPTY,
+        ItemID._3A_PICKAXE, ItemID.CRYSTAL_PICKAXE, ItemID.CRYSTAL_PICKAXE_INACTIVE,
+        ItemID.TRAILBLAZER_PICKAXE, ItemID.TRAIL_GILDED_PICKAXE
+    };
+
     // Trapdoor and manhole mappings for open/closed states
     private static final Map<Integer, Integer> OPEN_TO_CLOSED_MAPPINGS = Map.of(
         1581, 1579, // open trapdoor -> closed trapdoor
@@ -252,20 +260,25 @@ public class Rs2Walker {
                 setTarget(null);
             }
 
-            checkIfStuck();
-            if (isStuckTooLong()) {
-                log.info("[Walker] Player has not moved for 10+ seconds, recalculating path");
-                lastMovedTimeMs = System.currentTimeMillis();
+            if (Rs2Dialogue.isInDialogue() || Rs2Bank.isOpen()) {
                 stuckCount = 0;
-                setTarget(target);
-                return processWalk(target, distance, partialRetries);
-            }
-            if (stuckCount > 10) {
-                var moveableTiles = Rs2Tile.getReachableTilesFromTile(Rs2Player.getWorldLocation(), 5).keySet().toArray(new WorldPoint[0]);
-                if (moveableTiles.length > 0) {
-                    walkMiniMap(moveableTiles[Rs2Random.between(0, moveableTiles.length)]);
-                    sleepGaussian(1000, 300);
+                lastMovedTimeMs = System.currentTimeMillis();
+            } else {
+                checkIfStuck();
+                if (isStuckTooLong()) {
+                    log.info("[Walker] Player has not moved for 10+ seconds, recalculating path");
+                    lastMovedTimeMs = System.currentTimeMillis();
                     stuckCount = 0;
+                    setTarget(target);
+                    return processWalk(target, distance, partialRetries);
+                }
+                if (stuckCount > 10) {
+                    var moveableTiles = Rs2Tile.getReachableTilesFromTile(Rs2Player.getWorldLocation(), 5).keySet().toArray(new WorldPoint[0]);
+                    if (moveableTiles.length > 0) {
+                        walkMiniMap(moveableTiles[Rs2Random.between(0, moveableTiles.length)]);
+                        sleepGaussian(1000, 300);
+                        stuckCount = 0;
+                    }
                 }
             }
 
@@ -419,7 +432,14 @@ public class Rs2Walker {
                 setTarget(null);
                 return WalkerState.UNREACHABLE;
             } else {
-                return processWalk(target, distance, partialRetries);
+                if (partialRetries < 3) {
+                    log.info("[Walker] Target not yet reached ({} tiles), retrying (attempt {}/3)", finalDist, partialRetries + 1);
+                    recalculatePath();
+                    return processWalk(target, distance, partialRetries + 1);
+                }
+                log.info("[Walker] Exhausted retries, target unreachable. Distance: {}", finalDist);
+                setTarget(null);
+                return WalkerState.UNREACHABLE;
             }
         } catch (Exception ex) {
             if (ex instanceof InterruptedException) {
@@ -566,6 +586,11 @@ public class Rs2Walker {
         Point canv = Perspective.localToCanvas(Microbot.getClient(), localPoint, Microbot.getClient().getTopLevelWorldView().getPlane());
         int canvasX = canv != null ? canv.getX() : -1;
         int canvasY = canv != null ? canv.getY() : -1;
+
+        if (canvasX < 0 || canvasY < 0) {
+            log.warn("walkFastLocal: canvas projection failed for {}, aborting walk", localPoint);
+            return;
+        }
 
         NewMenuEntry entry = new NewMenuEntry()
                 .param0(canvasX)
@@ -1043,12 +1068,10 @@ public class Rs2Walker {
         if (playerLoc == null || playerLoc.getRegionID() != 14936 || currentTarget == null || currentTarget.getRegionID() != 14936) return false;
 
         // We kill the path if no pickaxe is found to avoid walking around like an idiot
-        if (!Rs2Inventory.hasItem("pickaxe")) {
-            if (!Rs2Equipment.isWearing("pickaxe")) {
-                log.error("Unable to find pickaxe to mine rockfall");
-                setTarget(null);
-                return false;
-            }
+        if (!Rs2Inventory.hasItem(PICKAXE_IDS) && !Rs2Equipment.isWearing(PICKAXE_IDS)) {
+            log.error("Unable to find pickaxe to mine rockfall");
+            setTarget(null);
+            return false;
         }
 
         // Check current index & next index for rockfall
