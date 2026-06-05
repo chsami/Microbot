@@ -141,6 +141,16 @@ public class Rs2Walker {
     private static final long DOOR_EDGE_SKIP_COOLDOWN_MS = 700L;
     private static final long RECOVERY_MOVEMENT_IN_FLIGHT_MS = 1400L;
     private static final long DOOR_TRAVERSAL_RECOVERY_BLOCK_MS = 2_200L;
+    // "Walking to door" state. Clicking a gate/door several tiles away makes the OSRS server walk
+    // the player all the way to it and open it in one action. While that approach is in flight the
+    // walker must NOT fire recovery/minimap clicks (they cancel the walk-to-open and strand the
+    // player against a closed gate) and must keep the door interactable instead of suppressing it
+    // as "opened". The deadline scales with the click distance so a far gate gets time to arrive.
+    private static final int WALK_TO_DOOR_ADJACENT_TILES = 2;
+    private static final long WALK_TO_DOOR_BASE_MS = 2_000L;
+    private static final long WALK_TO_DOOR_PER_TILE_MS = 700L;
+    private static final long WALK_TO_DOOR_MAX_MS = 12_000L;
+    private static final long WALK_TO_DOOR_NO_PROGRESS_MS = 3_000L;
     private static final int PATHFINDER_DONE_POLL_WAIT_MS = 1200;
     private static final int PATHFINDER_DONE_RETRY_SLEEP_MIN_MS = 120;
     private static final int PATHFINDER_DONE_RETRY_SLEEP_MAX_MS = 220;
@@ -164,6 +174,12 @@ public class Rs2Walker {
     private static volatile long rawScanFocusedDoorSetAtMs = 0L;
     private static volatile int rawScanFocusedDoorAttempts = 0;
     private static volatile long doorInteractionSettleUntilMs = 0L;
+    private static volatile WorldPoint walkingToDoorTile = null;
+    private static volatile WorldPoint walkingToDoorFrom = null;
+    private static volatile WorldPoint walkingToDoorTo = null;
+    private static volatile long walkingToDoorUntilMs = 0L;
+    private static volatile int walkingToDoorClosestDist = Integer.MAX_VALUE;
+    private static volatile long walkingToDoorLastProgressMs = 0L;
     private static volatile long lastDoorEdgePassSkipAtMs = 0L;
     private static volatile long lastUnreachableRecoveryClickAtMs = 0L;
     private static volatile long walkSessionStartedAtMs = 0L;
@@ -1580,6 +1596,65 @@ public class Rs2Walker {
                                 }
                             }
 
+                            if (isWalkingToDoorActive()) {
+                                // We recently clicked a gate/door several tiles away; the server
+                                // walk-to-open is still carrying us. A recovery/minimap click here
+                                // would cancel that approach and strand us against the closed gate
+                                // (the reproduced bug). Yield until we arrive (or stop) and let the
+                                // walk-to-door finish; the state self-clears on traversal/timeout.
+                                final WorldPoint walkToDoorTarget = walkingToDoorTile;
+                                sleepUntil(() -> isWalkCancelled(target)
+                                                || isDoorEdgeResolved(walkingToDoorFrom, walkingToDoorTo)
+                                                || !Rs2Player.isMoving(),
+                                        1500);
+                                if (walkCancelledDiag(target, "processWalk:walking-to-door-yield", processWalkTail)) {
+                                    return WalkerState.EXIT;
+                                }
+                                walkerDiag("walking-to-door yield door=%s remMs=%d player=%s",
+                                        walkToDoorTarget,
+                                        Math.max(0L, walkingToDoorUntilMs - System.currentTimeMillis()),
+                                        Rs2Player.getWorldLocation());
+                                exitReason = "walking-to-door-yield";
+                                break;
+                            }
+
+                            // Raw-path recovery: the smoothed walkable path can dead-end against a
+                            // barrier (e.g. a gate that must be crossed from the far side) — the path
+                            // tile reads unreachable and the narrow Euclidean scan below can't follow
+                            // the winding detour to the crossing, so the walker livelocks. The RAW path
+                            // keeps the true tile-by-tile route, so walk toward the furthest reachable
+                            // raw tile; that advances us to the actual crossing point where door
+                            // handling can then open it. (Reach 12 == MINIMAP_REACH_EUCLIDEAN-1, which
+                            // is a local declared later in the loop.)
+                            if (rawPath != null && !rawPath.isEmpty()) {
+                                WorldPoint rawReach = findFurthestReachableRawPathPoint(rawPath, playerLoc, 12);
+                                if (rawReach != null && !rawReach.equals(playerLoc)) {
+                                    WorldPoint rawNav = getPointWithWallDistance(rawReach);
+                                    if (!Rs2Tile.isTileReachable(rawNav)) {
+                                        rawNav = rawReach;
+                                    }
+                                    boolean rawClicked = Rs2Walker.walkMiniMap(rawNav);
+                                    if (!rawClicked) {
+                                        rawClicked = walkMiniMapToward(rawNav, playerLoc, 12);
+                                    }
+                                    log.info("[Walker] unreachable raw-path recovery: clicked={} to={} (smoothed tile {} unreachable)",
+                                            rawClicked, compactWorldPoint(rawReach), compactWorldPoint(currentWorldPoint));
+                                    if (rawClicked) {
+                                        markFirstMovementClick("raw_path_recovery_click", target, playerLoc,
+                                                "to=" + compactWorldPoint(rawNav));
+                                        lastUnreachableRecoveryClickAtMs = System.currentTimeMillis();
+                                        WorldPoint pathLastRaw = path.get(path.size() - 1);
+                                        int finishThRaw = tightFinishThreshold(target, pathLastRaw, distance);
+                                        waitUntilIdleAfterSceneWalk(target, POST_SCENE_WALK_IDLE_WAIT_MS_MAX, target,
+                                                finishThRaw);
+                                        lastMovedTimeMs = System.currentTimeMillis();
+                                        stuckCount = 0;
+                                        exitReason = "unreachable-raw-path-recovery";
+                                        break;
+                                    }
+                                }
+                            }
+
                             // If we still can't resolve a blocker by interaction, do not stall.
                             // Click a reachable "progress" tile that advances toward the target/path.
                             // This keeps the walker responsive and usually moves us into the door's
@@ -2002,7 +2077,8 @@ public class Rs2Walker {
                 }
                 // Benign yields: outer for-loop increments processWalkTail each iteration; exempt so
                 // long minimap interim waits cannot exhaust MAX_PROCESS_WALK_TAIL_ITERATIONS and EXIT.
-                if ("interim-in-flight".equals(exitReason) || "off-path-but-moving".equals(exitReason)) {
+                if ("interim-in-flight".equals(exitReason) || "off-path-but-moving".equals(exitReason)
+                        || "walking-to-door-yield".equals(exitReason)) {
                     walkerDiag("tail exempt exitReason=%s tailBefore=%d", exitReason, processWalkTail);
                     processWalkTail--;
                 }
@@ -3703,6 +3779,10 @@ public class Rs2Walker {
                             return false;
                         }
                         markDoorInteractionSettling();
+                        int walkToDoorDist = doorApproachDistance(posBefore, probe, fromWp);
+                        if (walkToDoorDist > WALK_TO_DOOR_ADJACENT_TILES) {
+                            markWalkingToDoor(probe, fromWp, toWp, walkToDoorDist);
+                        }
                         waitForDoorInteractionProgress(fromWp, toWp);
                         WorldPoint posAfter = Rs2Player.getWorldLocation();
                         boolean traversed = didTraverseInteractedDoor(posBefore, posAfter, probe, fromWp, toWp);
@@ -3841,6 +3921,10 @@ public class Rs2Walker {
             return false;
         }
         markDoorInteractionSettling();
+        int walkToDoorDist = doorApproachDistance(posBefore, probe, fromWp);
+        if (walkToDoorDist > WALK_TO_DOOR_ADJACENT_TILES) {
+            markWalkingToDoor(probe, fromWp, toWp, walkToDoorDist);
+        }
         waitForDoorInteractionProgress(fromWp, toWp);
         WorldPoint posAfter = Rs2Player.getWorldLocation();
         boolean traversed = didTraverseInteractedDoor(posBefore, posAfter, probe, fromWp, toWp);
@@ -4065,6 +4149,116 @@ public class Rs2Walker {
         doorInteractionSettleUntilMs = System.currentTimeMillis() + DOOR_POST_INTERACT_SETTLE_MS;
     }
 
+    /**
+     * Record that we just clicked a gate/door {@code distanceToDoor} tiles away and are now walking
+     * to it. The deadline scales with distance (capped) so a far gate gets time to be reached and
+     * opened by the single server walk-to-open action. While this state is active the walker keeps
+     * the door interactable and refuses to fire recovery/minimap clicks that would cancel the
+     * approach. See {@link #isWalkingToDoorActive()}.
+     */
+    private static void markWalkingToDoor(WorldPoint doorTile, WorldPoint fromWp, WorldPoint toWp, int distanceToDoor) {
+        if (doorTile == null) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        walkingToDoorTile = doorTile;
+        walkingToDoorFrom = fromWp;
+        walkingToDoorTo = toWp;
+        walkingToDoorUntilMs = walkToDoorDeadlineMs(now, distanceToDoor);
+        walkingToDoorClosestDist = distanceToDoor;
+        walkingToDoorLastProgressMs = now;
+    }
+
+    /** Pure: absolute deadline for a walk-to-door click, scaling with distance and capped. */
+    static long walkToDoorDeadlineMs(long now, int distanceToDoor) {
+        long scaled = WALK_TO_DOOR_BASE_MS + (long) Math.max(0, distanceToDoor) * WALK_TO_DOOR_PER_TILE_MS;
+        return now + Math.min(WALK_TO_DOOR_MAX_MS, scaled);
+    }
+
+    /** Pure: the walk-to-door window is open while before the deadline and still making progress. */
+    static boolean walkToDoorWindowOpen(long now, long untilMs, long lastProgressMs, long noProgressMs) {
+        return now <= untilMs && (now - lastProgressMs) <= noProgressMs;
+    }
+
+    /** Pure: is {@code doorTile} within {@code segmentDist} of either endpoint, same plane. */
+    static boolean doorTileNearSegment(WorldPoint doorTile, WorldPoint fromWp, WorldPoint toWp, int segmentDist) {
+        if (doorTile == null) {
+            return false;
+        }
+        return (fromWp != null && fromWp.getPlane() == doorTile.getPlane() && doorTile.distanceTo2D(fromWp) <= segmentDist)
+                || (toWp != null && toWp.getPlane() == doorTile.getPlane() && doorTile.distanceTo2D(toWp) <= segmentDist);
+    }
+
+    private static void clearWalkingToDoor() {
+        walkingToDoorTile = null;
+        walkingToDoorFrom = null;
+        walkingToDoorTo = null;
+        walkingToDoorUntilMs = 0L;
+        walkingToDoorClosestDist = Integer.MAX_VALUE;
+        walkingToDoorLastProgressMs = 0L;
+    }
+
+    /**
+     * True while a recent far-door click is still being walked to: the distance-scaled deadline has
+     * not elapsed, the door edge has not resolved, and the player is still making progress toward the
+     * door. Self-clears the state when the edge resolves so callers see one source of truth, and
+     * releases (returns false) if the approach stalls so normal stuck-recovery can take over.
+     */
+    private static boolean isWalkingToDoorActive() {
+        WorldPoint doorTile = walkingToDoorTile;
+        if (doorTile == null) {
+            return false;
+        }
+        long now = System.currentTimeMillis();
+        if (now > walkingToDoorUntilMs) {
+            return false;
+        }
+        WorldPoint player = Rs2Player.getWorldLocation();
+        if (player == null || player.getPlane() != doorTile.getPlane()) {
+            return false;
+        }
+        if (isDoorEdgeResolved(walkingToDoorFrom, walkingToDoorTo)) {
+            clearWalkingToDoor();
+            return false;
+        }
+        int dist = player.distanceTo2D(doorTile);
+        if (dist < walkingToDoorClosestDist) {
+            walkingToDoorClosestDist = dist;
+            walkingToDoorLastProgressMs = now;
+        }
+        // Approach has stalled (blocked by something other than this door) — release so normal
+        // recovery / stall handling resumes.
+        return walkToDoorWindowOpen(now, walkingToDoorUntilMs, walkingToDoorLastProgressMs, WALK_TO_DOOR_NO_PROGRESS_MS);
+    }
+
+    private static boolean isWalkingToDoorOnSegment(WorldPoint fromWp, WorldPoint toWp) {
+        if (walkingToDoorTile == null || !isWalkingToDoorActive()) {
+            return false;
+        }
+        return doorTileNearSegment(walkingToDoorTile, fromWp, toWp, 2);
+    }
+
+    private static boolean isWalkingToDoorTile(WorldPoint doorTile) {
+        WorldPoint active = walkingToDoorTile;
+        return doorTile != null && active != null && isWalkingToDoorActive()
+                && active.getPlane() == doorTile.getPlane() && active.distanceTo2D(doorTile) <= 2;
+    }
+
+    /** Smaller of player->doorTile and player->fromWp (same plane only); MAX_VALUE if unknown. */
+    static int doorApproachDistance(WorldPoint player, WorldPoint doorTile, WorldPoint fromWp) {
+        if (player == null) {
+            return Integer.MAX_VALUE;
+        }
+        int d = Integer.MAX_VALUE;
+        if (doorTile != null && doorTile.getPlane() == player.getPlane()) {
+            d = Math.min(d, player.distanceTo2D(doorTile));
+        }
+        if (fromWp != null && fromWp.getPlane() == player.getPlane()) {
+            d = Math.min(d, player.distanceTo2D(fromWp));
+        }
+        return d;
+    }
+
     private static void markGlobalDoorInteractionCooldown() {
         nextDoorInteractionAllowedAtMs = Rs2DoorHandler.markGlobalDoorInteractionCooldown(DOOR_INTERACTION_GLOBAL_COOLDOWN_MS);
     }
@@ -4095,11 +4289,17 @@ public class Rs2Walker {
     }
 
     private static boolean recentlyOpenedStationaryDoorOnSegment(WorldPoint fromWp, WorldPoint toWp) {
-        return Rs2DoorHandler.recentlyOpenedStationaryDoorOnSegment(
+        boolean suppressed = Rs2DoorHandler.recentlyOpenedStationaryDoorOnSegment(
                 recentlyOpenedStationaryDoors,
                 STATIONARY_DOOR_SUPPRESS_MS,
                 fromWp,
                 toWp);
+        if (!suppressed) {
+            return false;
+        }
+        // Keep the gate/door we are actively walking to interactable — a prior throttle or
+        // not-yet-traversed interaction must not suppress the very door we still need to open.
+        return !isWalkingToDoorOnSegment(fromWp, toWp);
     }
 
     private static boolean wasStationaryDoorOpenedRecently(WorldPoint doorTile) {
@@ -4115,7 +4315,8 @@ public class Rs2Walker {
             recentlyOpenedStationaryDoors.remove(doorTile);
             return false;
         }
-        return true;
+        // Do not hide the door we are actively walking to from candidate scans.
+        return !isWalkingToDoorTile(doorTile);
     }
 
     /**
@@ -4898,6 +5099,10 @@ public class Rs2Walker {
 			return false;
 		}
         markDoorInteractionSettling();
+        int walkToDoorDist = doorApproachDistance(posBefore, bestLoc, bestFrom);
+        if (walkToDoorDist > WALK_TO_DOOR_ADJACENT_TILES) {
+            markWalkingToDoor(bestLoc, bestFrom, bestTo, walkToDoorDist);
+        }
 		waitForDoorInteractionProgress(bestFrom, bestTo);
 		WorldPoint posAfter = Rs2Player.getWorldLocation();
 		boolean traversed = didTraverseInteractedDoor(posBefore, posAfter, bestLoc, bestFrom, bestTo);
@@ -5462,6 +5667,7 @@ public class Rs2Walker {
 
         if (target == null) {
             logRouteClear(clearReasonWhenNull);
+            clearWalkingToDoor();
             synchronized (ShortestPathPlugin.getPathfinderMutex()) {
                 final Pathfinder pathfinder = ShortestPathPlugin.getPathfinder();
                 if (pathfinder != null) {

@@ -659,4 +659,93 @@ public class Rs2WalkerUnitTest {
 
         assertEquals(1, Rs2Walker.Telemetry.totalRecalcs());
     }
+
+    // ---------------------------------------------------------------------------
+    // Walking-to-door state — far gate/door fix
+    //
+    // Root cause: clicking a gate/door several tiles away makes the server walk the
+    // player there and open it in one action; the walker was cancelling that with
+    // recovery clicks and then falsely suppressing the door for 10s. These pin the
+    // pure decision logic of the fix (deadline scaling, progress window, segment match).
+    // ---------------------------------------------------------------------------
+
+    @Test
+    public void walkToDoorDeadline_scalesWithDistance() {
+        long now = 1_000_000L;
+        assertEquals("distance 0 floors at base", now + 2_000L, Rs2Walker.walkToDoorDeadlineMs(now, 0));
+        assertEquals("base 2000 + 5*700", now + 2_000L + 5 * 700L, Rs2Walker.walkToDoorDeadlineMs(now, 5));
+    }
+
+    @Test
+    public void walkToDoorDeadline_capsAtMax() {
+        long now = 1_000_000L;
+        // 2000 + 100*700 = 72000, must cap at 12000 so a bad/unknown distance can't pin the walker.
+        assertEquals(now + 12_000L, Rs2Walker.walkToDoorDeadlineMs(now, 100));
+    }
+
+    @Test
+    public void walkToDoorDeadline_negativeDistanceFloorsAtBase() {
+        long now = 1_000_000L;
+        assertEquals("negative/unknown distance must not underflow the deadline",
+                now + 2_000L, Rs2Walker.walkToDoorDeadlineMs(now, -5));
+    }
+
+    @Test
+    public void walkToDoorWindow_openWhileBeforeDeadlineAndProgressing() {
+        long now = 10_000L;
+        assertTrue(Rs2Walker.walkToDoorWindowOpen(now, now + 1, now, 3_000L));
+        assertTrue("recent progress (2s ago, < 3s budget) keeps the window open",
+                Rs2Walker.walkToDoorWindowOpen(now, now + 5_000L, now - 2_000L, 3_000L));
+    }
+
+    @Test
+    public void walkToDoorWindow_closedAfterDeadline() {
+        long now = 10_000L;
+        assertFalse("past the hard deadline the window must close so normal recovery resumes",
+                Rs2Walker.walkToDoorWindowOpen(now, now - 1, now, 3_000L));
+    }
+
+    @Test
+    public void walkToDoorWindow_closedAfterNoProgressTimeout() {
+        long now = 10_000L;
+        assertFalse("no progress for 3.5s (> 3s budget) must close the window even before the deadline",
+                Rs2Walker.walkToDoorWindowOpen(now, now + 10_000L, now - 3_500L, 3_000L));
+    }
+
+    @Test
+    public void doorTileNearSegment_withinTwoOfEitherEndpoint() {
+        WorldPoint door = new WorldPoint(3189, 3275, 0);
+        assertTrue("door 2 tiles from 'from' endpoint is on the segment",
+                Rs2Walker.doorTileNearSegment(door,
+                        new WorldPoint(3189, 3277, 0), new WorldPoint(3189, 3274, 0), 2));
+    }
+
+    @Test
+    public void doorTileNearSegment_rejectsFarSegmentWrongPlaneAndNull() {
+        WorldPoint door = new WorldPoint(3189, 3275, 0);
+        assertFalse("segment ~10 tiles away is not this door's segment",
+                Rs2Walker.doorTileNearSegment(door,
+                        new WorldPoint(3189, 3285, 0), new WorldPoint(3189, 3284, 0), 2));
+        assertFalse("same coords on another plane must not match",
+                Rs2Walker.doorTileNearSegment(door,
+                        new WorldPoint(3189, 3276, 1), new WorldPoint(3189, 3274, 1), 2));
+        assertFalse("null door tile must not NPE",
+                Rs2Walker.doorTileNearSegment(null,
+                        new WorldPoint(3189, 3276, 0), new WorldPoint(3189, 3274, 0), 2));
+    }
+
+    @Test
+    public void doorApproachDistance_takesNearerEndpointAndGuardsPlaneAndNull() {
+        WorldPoint player = new WorldPoint(3187, 3285, 0);
+        WorldPoint door = new WorldPoint(3189, 3275, 0);   // ~10 away
+        WorldPoint from = new WorldPoint(3188, 3281, 0);   // ~4 away (nearer)
+        assertEquals("uses the nearer of door/from",
+                player.distanceTo2D(from), Rs2Walker.doorApproachDistance(player, door, from));
+        assertEquals("null player must yield MAX_VALUE, not NPE",
+                Integer.MAX_VALUE, Rs2Walker.doorApproachDistance(null, door, from));
+        assertEquals("different-plane door+from must be ignored -> MAX_VALUE (no false 'adjacent')",
+                Integer.MAX_VALUE,
+                Rs2Walker.doorApproachDistance(player,
+                        new WorldPoint(3189, 3275, 1), new WorldPoint(3188, 3281, 1)));
+    }
 }
