@@ -67,6 +67,13 @@ public class Rs2CameraSmoothingTest {
 				Rs2Camera.SMOOTH_STEPS >= 4);
 	}
 
+	@Test
+	public void legacyCameraUnitsConvertToRev239ClientUnits() {
+		assertEquals(3696, Rs2Camera.toClientAngleUnits(462));
+		assertEquals(462, Rs2Camera.fromClientAngleUnits(3696));
+		assertEquals(3064, Rs2Camera.toClientAngleUnits(383));
+	}
+
 	private static MethodNode findMethod(ClassNode cn, String name, String desc) {
 		for (MethodNode m : cn.methods) {
 			if (m.name.equals(name) && m.desc.equals(desc)) return m;

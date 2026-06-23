@@ -20,6 +20,10 @@ import java.awt.event.KeyEvent;
 @Slf4j
 public class Rs2Camera {
     private static final NpcTracker NPC_TRACKER = new NpcTracker();
+    private static final int LEGACY_ANGLE_UNITS = 2048;
+    private static final int CLIENT_ANGLE_SCALE = 8;
+    private static final int LEGACY_MIN_PITCH = 128;
+    private static final int LEGACY_MAX_PITCH = 383;
 
     public static int angleToTile(Actor t) {
         return Microbot.getClientThread().invoke(() -> {
@@ -158,7 +162,7 @@ public class Rs2Camera {
     }
 
     public static int getPitch() {
-        return Microbot.getClient().getCameraPitch();
+        return fromClientAngleUnits(Microbot.getClient().getCameraPitch());
     }
 
     // set camera pitch
@@ -167,19 +171,15 @@ public class Rs2Camera {
     }
 
     public static void setPitchInstant(int pitch) {
-        int minPitch = 128;
-        int maxPitch = 383;
-        pitch = Math.max(minPitch, Math.min(maxPitch, pitch));
-        Microbot.getClient().setCameraPitchTarget(pitch);
+        pitch = Math.max(LEGACY_MIN_PITCH, Math.min(LEGACY_MAX_PITCH, pitch));
+        Microbot.getClient().setCameraPitchTarget(toClientAngleUnits(pitch));
     }
 
     public static float cameraPitchPercentage() {
-        int minPitch = 128;
-        int maxPitch = 383;
-        int currentPitch = Microbot.getClient().getCameraPitch();
+        int currentPitch = getPitch();
 
-        int adjustedPitch = currentPitch - minPitch;
-        int adjustedMaxPitch = maxPitch - minPitch;
+        int adjustedPitch = currentPitch - LEGACY_MIN_PITCH;
+        int adjustedMaxPitch = LEGACY_MAX_PITCH - LEGACY_MIN_PITCH;
 
         return (float) adjustedPitch / (float) adjustedMaxPitch;
     }
@@ -197,10 +197,7 @@ public class Rs2Camera {
     }
 
     public static int getAngle() {
-        // the client uses fixed point radians 0 - 2^14
-        // degrees = yaw * 360 / 2^14 = yaw / 45.5111...
-        // This leaves it on a scale of 45 versus a scale of 360 so we multiply it by 8 to fix that.
-        return (int) Math.abs(Microbot.getClient().getCameraYaw() / 45.51 * 8);
+        return (int) (getYaw() * (360.0 / LEGACY_ANGLE_UNITS));
     }
 
     /**
@@ -211,7 +208,7 @@ public class Rs2Camera {
      */
     public static int calculateCameraYaw(int npcAngle) {
         // Convert the NPC angle to CameraYaw using the derived formula
-        return (1536 + (int) Math.round(npcAngle * (2048.0 / 360.0))) % 2048;
+        return (1536 + (int) Math.round(npcAngle * (LEGACY_ANGLE_UNITS / 360.0))) % LEGACY_ANGLE_UNITS;
     }
 
     /**
@@ -280,7 +277,7 @@ public class Rs2Camera {
     }
     // Get camera/compass facing
     public static int getYaw() {
-        return Microbot.getClient().getCameraYaw();
+        return fromClientAngleUnits(Microbot.getClient().getCameraYaw());
     }
 
     // Set camera/compass facing
@@ -290,14 +287,22 @@ public class Rs2Camera {
     // West = 512
 
     public static void setYaw(int yaw) {
-        if (yaw < 0 || yaw >= 2048) return;
+        if (yaw < 0 || yaw >= LEGACY_ANGLE_UNITS) return;
         smoothTo(yaw, false);
     }
 
     public static void setYawInstant(int yaw) {
-        if (yaw >= 0 && yaw < 2048) {
-            Microbot.getClient().setCameraYawTarget(yaw);
+        if (yaw >= 0 && yaw < LEGACY_ANGLE_UNITS) {
+            Microbot.getClient().setCameraYawTarget(toClientAngleUnits(yaw));
         }
+    }
+
+    static int toClientAngleUnits(int legacyAngle) {
+        return legacyAngle * CLIENT_ANGLE_SCALE;
+    }
+
+    static int fromClientAngleUnits(int clientAngle) {
+        return clientAngle / CLIENT_ANGLE_SCALE;
     }
 
     static final int SMOOTH_MIN_DURATION_MS = 220;
@@ -307,18 +312,17 @@ public class Rs2Camera {
     // Short rotation hops (<3 units) are below the noise floor of the internal camera speed
     // and would be invisible anyway, so skip smoothing for those — avoids a 200ms stall on no-ops.
     private static void smoothTo(int target, boolean isPitch) {
-        int start = isPitch ? Microbot.getClient().getCameraPitch() : Microbot.getClient().getCameraYaw();
+        int start = isPitch ? getPitch() : getYaw();
         int clampedTarget;
         if (isPitch) {
-            int minPitch = 128, maxPitch = 383;
-            clampedTarget = Math.max(minPitch, Math.min(maxPitch, target));
+            clampedTarget = Math.max(LEGACY_MIN_PITCH, Math.min(LEGACY_MAX_PITCH, target));
         } else {
-            clampedTarget = Math.max(0, Math.min(2047, target));
+            clampedTarget = Math.max(0, Math.min(LEGACY_ANGLE_UNITS - 1, target));
         }
         int delta = shortestDelta(clampedTarget - start, isPitch);
         if (Math.abs(delta) < 3 || Microbot.getClient().isClientThread()) {
-            if (isPitch) Microbot.getClient().setCameraPitchTarget(clampedTarget);
-            else Microbot.getClient().setCameraYawTarget(clampedTarget);
+            if (isPitch) Microbot.getClient().setCameraPitchTarget(toClientAngleUnits(clampedTarget));
+            else Microbot.getClient().setCameraYawTarget(toClientAngleUnits(clampedTarget));
             return;
         }
         int totalMs = Rs2Random.logNormalBounded(SMOOTH_MIN_DURATION_MS, SMOOTH_MAX_DURATION_MS);
@@ -328,10 +332,10 @@ public class Rs2Camera {
             double eased = easeInOut(t);
             int next = start + (int) Math.round(delta * eased);
             if (!isPitch) {
-                next = ((next % 2048) + 2048) % 2048;
-                Microbot.getClient().setCameraYawTarget(next);
+                next = ((next % LEGACY_ANGLE_UNITS) + LEGACY_ANGLE_UNITS) % LEGACY_ANGLE_UNITS;
+                Microbot.getClient().setCameraYawTarget(toClientAngleUnits(next));
             } else {
-                Microbot.getClient().setCameraPitchTarget(next);
+                Microbot.getClient().setCameraPitchTarget(toClientAngleUnits(next));
             }
             if (i < SMOOTH_STEPS) Global.sleep(stepMs);
         }
@@ -339,8 +343,8 @@ public class Rs2Camera {
 
     private static int shortestDelta(int rawDelta, boolean isPitch) {
         if (isPitch) return rawDelta;
-        int d = ((rawDelta % 2048) + 2048) % 2048;
-        return d > 1024 ? d - 2048 : d;
+        int d = ((rawDelta % LEGACY_ANGLE_UNITS) + LEGACY_ANGLE_UNITS) % LEGACY_ANGLE_UNITS;
+        return d > LEGACY_ANGLE_UNITS / 2 ? d - LEGACY_ANGLE_UNITS : d;
     }
 
     private static double easeInOut(double t) {

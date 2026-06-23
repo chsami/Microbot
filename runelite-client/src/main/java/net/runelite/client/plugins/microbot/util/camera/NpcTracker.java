@@ -24,7 +24,8 @@ public class NpcTracker {
         if (actor == null) {
             return; // Actor not found, do nothing
         }
-        Microbot.getClient().setCameraYawTarget(Rs2Camera.calculateCameraYaw(Rs2Camera.angleToTile(actor)));
+        int yaw = Rs2Camera.calculateCameraYaw(Rs2Camera.angleToTile(actor));
+        Microbot.getClient().setCameraYawTarget(Rs2Camera.toClientAngleUnits(yaw));
     }
 
     /**
