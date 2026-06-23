@@ -14,6 +14,7 @@ import java.awt.event.KeyEvent;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.stream.Collectors;
@@ -76,21 +77,27 @@ public class Rs2Reflection {
     private static volatile Field cachedListField;
     private static volatile Field cachedStringField;
 
-    @SneakyThrows
     public static String[] getGroundItemActions(ItemComposition item) {
+        return getGroundItemActionsFromObject(item);
+    }
+
+    @SneakyThrows
+    static String[] getGroundItemActionsFromObject(Object item) {
+        if (item == null) return new String[]{};
+
         if (cachedOuterField != null && cachedListField != null) {
             try {
                 return extractWithCache(item);
             } catch (Exception e) {
                 log.warn("Ground item action cache invalidated, re-discovering");
-                cachedOuterField = null;
-                cachedListField = null;
-                cachedStringField = null;
+                resetGroundItemActionCache();
             }
         }
 
         for (Class<?> clazz = item.getClass(); clazz != null && clazz != Object.class; clazz = clazz.getSuperclass()) {
             for (Field outerField : clazz.getDeclaredFields()) {
+                if (Modifier.isStatic(outerField.getModifiers()) || outerField.isSynthetic()) continue;
+
                 Class<?> type = outerField.getType();
                 if (type.isPrimitive() || type == String.class || type.isArray()
                         || type.getName().startsWith("java.") || type.getName().startsWith("net.runelite.")) continue;
@@ -101,6 +108,7 @@ public class Rs2Reflection {
                 if (outerValue == null) continue;
 
                 for (Field listField : outerValue.getClass().getDeclaredFields()) {
+                    if (Modifier.isStatic(listField.getModifiers()) || listField.isSynthetic()) continue;
                     if (listField.getType() != ArrayList.class) continue;
 
                     listField.setAccessible(true);
@@ -126,7 +134,10 @@ public class Rs2Reflection {
 
                     Field stringField = null;
                     for (Field f : first.getClass().getDeclaredFields()) {
-                        if (f.getType() == String.class) { stringField = f; break; }
+                        if (!Modifier.isStatic(f.getModifiers()) && !f.isSynthetic() && f.getType() == String.class) {
+                            stringField = f;
+                            break;
+                        }
                     }
                     if (stringField == null) continue;
 
@@ -141,7 +152,13 @@ public class Rs2Reflection {
         return new String[]{};
     }
 
-    private static String[] extractWithCache(ItemComposition item) throws Exception {
+    static void resetGroundItemActionCache() {
+        cachedOuterField = null;
+        cachedListField = null;
+        cachedStringField = null;
+    }
+
+    private static String[] extractWithCache(Object item) throws Exception {
         cachedOuterField.setAccessible(true);
         Object outer = cachedOuterField.get(item);
         cachedOuterField.setAccessible(false);
