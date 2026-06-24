@@ -15,8 +15,8 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -109,14 +109,14 @@ public class Rs2Reflection {
 
                 for (Field listField : outerValue.getClass().getDeclaredFields()) {
                     if (Modifier.isStatic(listField.getModifiers()) || listField.isSynthetic()) continue;
-                    if (listField.getType() != ArrayList.class) continue;
+                    if (!List.class.isAssignableFrom(listField.getType())) continue;
 
                     listField.setAccessible(true);
                     Object listObj = listField.get(outerValue);
                     listField.setAccessible(false);
-                    if (!(listObj instanceof ArrayList)) continue;
+                    if (!(listObj instanceof List)) continue;
 
-                    ArrayList<?> list = (ArrayList<?>) listObj;
+                    List<?> list = (List<?>) listObj;
                     if (list.isEmpty()) continue;
 
                     Object first = null;
@@ -167,14 +167,14 @@ public class Rs2Reflection {
         cachedListField.setAccessible(true);
         Object listObj = cachedListField.get(outer);
         cachedListField.setAccessible(false);
-        if (!(listObj instanceof ArrayList)) return new String[]{};
+        if (!(listObj instanceof List)) return new String[]{};
 
-        ArrayList<?> list = (ArrayList<?>) listObj;
+        List<?> list = (List<?>) listObj;
         if (cachedStringField == null) return toStringArray(list);
         return extractFromBeans(list, cachedStringField);
     }
 
-    private static String[] toStringArray(ArrayList<?> list) {
+    private static String[] toStringArray(List<?> list) {
         String[] result = new String[list.size()];
         for (int i = 0; i < list.size(); i++) {
             Object el = list.get(i);
@@ -183,7 +183,7 @@ public class Rs2Reflection {
         return result;
     }
 
-    private static String[] extractFromBeans(ArrayList<?> list, Field stringField) throws Exception {
+    private static String[] extractFromBeans(List<?> list, Field stringField) throws Exception {
         String[] result = new String[list.size()];
         stringField.setAccessible(true);
         for (int i = 0; i < list.size(); i++) {

@@ -2,6 +2,8 @@ package groundactionfixture;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
 
 public final class GroundItemActionFixture {
     private GroundItemActionFixture() {
@@ -9,6 +11,10 @@ public final class GroundItemActionFixture {
 
     public static Object create(String... actions) {
         return new FakeItem(actions);
+    }
+
+    public static Object createWithListInterface(String... actions) {
+        return new FakeListItem(actions);
     }
 
     private static final class FakeItem {
@@ -35,6 +41,25 @@ public final class GroundItemActionFixture {
             for (String action : actions) {
                 this.actions.add(new ActionBean(action));
             }
+        }
+    }
+
+    private static final class FakeListItem {
+        private static final GroundOpsList STATIC_OUTER = new GroundOpsList("Wrong static outer action");
+        private final GroundOpsList groundOps;
+
+        private FakeListItem(String[] actions) {
+            groundOps = new GroundOpsList(actions);
+        }
+    }
+
+    private static final class GroundOpsList {
+        private static final List<ActionBean> STATIC_ACTIONS = new LinkedList<>(
+                Arrays.asList(new ActionBean("Wrong static list action")));
+        private final List<ActionBean> actions = new LinkedList<>();
+
+        private GroundOpsList(String... actions) {
+            for (String action : actions) this.actions.add(new ActionBean(action));
         }
     }
 

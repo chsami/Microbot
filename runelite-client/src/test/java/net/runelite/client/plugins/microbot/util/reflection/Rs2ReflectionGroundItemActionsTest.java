@@ -35,4 +35,12 @@ public class Rs2ReflectionGroundItemActionsTest {
 
         assertArrayEquals(new String[]{"Take", "Destroy"}, actions);
     }
+
+    @Test
+    public void discoverySupportsListInterfaceAndNonArrayListImplementation() {
+        String[] actions = Rs2Reflection.getGroundItemActionsFromObject(
+                GroundItemActionFixture.createWithListInterface("Take", "Destroy"));
+
+        assertArrayEquals(new String[]{"Take", "Destroy"}, actions);
+    }
 }
