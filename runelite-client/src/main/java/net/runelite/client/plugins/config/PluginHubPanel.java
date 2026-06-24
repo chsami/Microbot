@@ -30,6 +30,50 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
 import com.google.common.html.HtmlEscapers;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.Graphics;
+import java.awt.event.ActionEvent;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Deque;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.function.Function;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import javax.annotation.Nullable;
+import javax.inject.Inject;
+import javax.inject.Singleton;
+import javax.swing.AbstractAction;
+import javax.swing.BorderFactory;
+import javax.swing.GroupLayout;
+import javax.swing.ImageIcon;
+import javax.swing.JButton;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.KeyStroke;
+import javax.swing.LayoutStyle;
+import javax.swing.ScrollPaneConstants;
+import javax.swing.SwingUtilities;
+import javax.swing.border.EmptyBorder;
+import javax.swing.border.LineBorder;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.config.Config;
@@ -49,15 +93,6 @@ import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.LinkBrowser;
 import net.runelite.client.util.SwingUtil;
 import net.runelite.client.util.VerificationException;
-
-import javax.annotation.Nullable;
-import javax.inject.Inject;
-import javax.inject.Singleton;
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import javax.swing.border.LineBorder;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
@@ -248,7 +283,7 @@ class PluginHubPanel extends PluginPanel
 				}
 				else
 				{
-					descriptionText = "Plugin is incompatible and requires its author to update it";
+					descriptionText = "Plugin is incompatible, requires update by its author";
 				}
 			}
 			if (!descriptionText.startsWith("<html>"))
@@ -493,22 +528,18 @@ class PluginHubPanel extends PluginPanel
 			}
 		});
 
-		JLabel externalPluginWarning1 = new JLabel("<html>External plugins are verified to not be " +
-			"malicious or rule-breaking, but are not " +
-			"maintained by the RuneLite developers. " +
-			"They may cause bugs or instability.</html>");
-		externalPluginWarning1.setBackground(new Color(0xFFBB33));
-		externalPluginWarning1.setForeground(Color.BLACK);
-		externalPluginWarning1.setBorder(new EmptyBorder(5, 5, 5, 2));
-		externalPluginWarning1.setOpaque(true);
-
-		JLabel externalPluginWarning2 = new JLabel("Use at your own risk!");
-		externalPluginWarning2.setHorizontalAlignment(JLabel.CENTER);
-		externalPluginWarning2.setFont(FontManager.getRunescapeBoldFont());
-		externalPluginWarning2.setBackground(externalPluginWarning1.getBackground());
-		externalPluginWarning2.setForeground(externalPluginWarning1.getForeground());
-		externalPluginWarning2.setBorder(new EmptyBorder(0, 5, 5, 5));
-		externalPluginWarning2.setOpaque(true);
+		JLabel externalPluginWarning = new JLabel("<html>Plugin Hub plugins are provided by third parties not affiliated with RuneLite. " +
+			"<u>Click here to learn more.</u></html>");
+		externalPluginWarning.setBorder(new EmptyBorder(5, 5, 5, 5));
+		externalPluginWarning.setOpaque(true);
+		externalPluginWarning.addMouseListener(new MouseAdapter()
+		{
+			@Override
+			public void mouseClicked(MouseEvent e)
+			{
+				LinkBrowser.browse("https://github.com/runelite/runelite/wiki/Plugin-Hub-Review");
+			}
+		});
 
 		mainPanel = new JPanel();
 		mainPanel.setBorder(BorderFactory.createEmptyBorder(0, 7, 7, 7));
@@ -525,16 +556,11 @@ class PluginHubPanel extends PluginPanel
 			mainPanelWrapper.setLayout(layout);
 
 			layout.setVerticalGroup(layout.createSequentialGroup()
-				.addComponent(externalPluginWarning1)
-				.addComponent(externalPluginWarning2)
-				.addGap(7)
 				.addComponent(mainPanel, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE)
 				.addComponent(refreshing)
 				.addGap(0, 0, 0x7000));
 
 			layout.setHorizontalGroup(layout.createParallelGroup()
-				.addComponent(externalPluginWarning1, 0, Short.MAX_VALUE, Short.MAX_VALUE)
-				.addComponent(externalPluginWarning2, 0, Short.MAX_VALUE, Short.MAX_VALUE)
 				.addComponent(mainPanel)
 				.addComponent(refreshing, 0, Short.MAX_VALUE, Short.MAX_VALUE));
 		}
@@ -551,11 +577,17 @@ class PluginHubPanel extends PluginPanel
 
 			layout.setVerticalGroup(layout.createSequentialGroup()
 				.addGap(10)
+				.addComponent(externalPluginWarning)
+				.addGap(7)
 				.addComponent(searchBar, 30, 30, 30)
 				.addGap(10)
 				.addComponent(scrollPane));
 
 			layout.setHorizontalGroup(layout.createParallelGroup()
+				.addGroup(layout.createSequentialGroup()
+					.addGap(10)
+					.addComponent(externalPluginWarning)
+					.addGap(10))
 				.addGroup(layout.createSequentialGroup()
 					.addGap(10)
 					.addComponent(searchBar)
