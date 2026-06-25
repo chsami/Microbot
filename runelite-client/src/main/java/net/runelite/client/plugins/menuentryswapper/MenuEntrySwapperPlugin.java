@@ -582,21 +582,23 @@ public class MenuEntrySwapperPlugin extends Plugin
 					EntityOps subops = ops.getSubOps(opIdx);
 					if (subops != null)
 					{
+						// Sub-op tables are sparse by decoded sub-ID; keep the decoded ID so it
+						// can be packed into config and matched against menuEntry.getIdentifier().
 						int numSubOps = subops.getNumOps();
-						for (int subIdx = 0; subIdx < numSubOps; subIdx++)
+						for (int subID = 0; subID < numSubOps; subID++)
 						{
-							String subOp = subops.getOp(subIdx);
+							String subOp = subops.getOp(subID);
 
 							if (subOp != null)
 							{
 								subLeft.createMenuEntry(0)
 									.setOption(subOp)
 									.setType(MenuAction.RUNELITE)
-									.onClick(objectConsumer(composition, subOp, packSubID(opIdx, subIdx), false));
+									.onClick(objectConsumer(composition, subOp, packSubID(opIdx, subID), false));
 								subShift.createMenuEntry(0)
 									.setOption(subOp)
 									.setType(MenuAction.RUNELITE)
-									.onClick(objectConsumer(composition, subOp, packSubID(opIdx, subIdx), true));
+									.onClick(objectConsumer(composition, subOp, packSubID(opIdx, subID), true));
 							}
 						}
 					}

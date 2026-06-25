@@ -90,6 +90,7 @@ public class Rs2GroundItem {
                 String groundAction = groundActions[i];
                 if (groundAction == null || !groundAction.equalsIgnoreCase(action)) continue;
                 index = i;
+                break;
             }
 
             if (Microbot.getClient().isWidgetSelected()) {

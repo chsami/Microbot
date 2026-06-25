@@ -38,5 +38,6 @@ public interface EntityOps
 	@Nullable
 	String getOp(int idx);
 
+	@Nullable
 	EntityOps getSubOps(int idx);
 }
