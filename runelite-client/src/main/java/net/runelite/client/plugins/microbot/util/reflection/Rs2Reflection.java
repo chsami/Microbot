@@ -207,4 +207,3 @@ public class Rs2Reflection {
                 .invoke(menuEntry, itemId); //use the setItemId method through reflection
     }
 }
-

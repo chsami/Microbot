@@ -8,9 +8,9 @@ import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.grounditems.GroundItem;
 import net.runelite.client.plugins.grounditems.GroundItemsPlugin;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
-import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
 import net.runelite.client.plugins.microbot.util.models.RS2Item;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.reflection.Rs2Reflection;
@@ -97,24 +97,45 @@ public class Rs2GroundItem {
             } else {
                 menuAction = groundItemMenuAction(index);
                 if (menuAction == null) {
-                    log.error("Unable to resolve ground action '{}' for item {} ({}); discovered actions={}",
-                            action, groundItem.getName(), groundItem.getId(), Arrays.toString(groundActions));
+                    log.warn("Unable to interact with ground item '{}' using action '{}'; actions={}", groundItem.getName(), action, Arrays.toString(groundActions));
                     return false;
                 }
             }
-
-            Polygon canvas = Perspective.getCanvasTilePoly(Microbot.getClient(), localPoint);
-            Rectangle bounds = canvas != null
-                    ? canvas.getBounds()
-                    : new Rectangle(1, 1, Microbot.getClient().getCanvasWidth(), Microbot.getClient().getCanvasHeight());
-            Microbot.doInvoke(new NewMenuEntry()
-                    .option(action)
-                    .param0(param0)
-                    .param1(param1)
-                    .opcode(menuAction.getId())
-                    .identifier(identifier)
-                    .itemId(-1)
-                    .target(target), bounds);
+            LocalPoint localPoint1 = localPoint;
+            if (!Rs2Camera.isTileOnScreen(localPoint1)) {
+                Rs2Camera.turnTo(localPoint1);
+            }
+            Polygon canvas = Perspective.getCanvasTilePoly(Microbot.getClient(), localPoint1);
+            Rectangle bounds = canvas == null
+                    ? new Rectangle(1, 1, Microbot.getClient().getCanvasWidth(), Microbot.getClient().getCanvasHeight())
+                    : canvas.getBounds();
+            MenuAction selectedMenuAction = menuAction;
+            String selectedAction = action;
+            int worldViewId = localPoint1.getWorldView();
+            Microbot.getClientThread().runOnClientThreadOptional(() -> {
+                MenuEntry entry = Microbot.getClient().getMenu().createMenuEntry(-1)
+                        .setOption(selectedAction)
+                        .setTarget(target)
+                        .setIdentifier(identifier)
+                        .setType(selectedMenuAction)
+                        .setParam0(param0)
+                        .setParam1(param1)
+                        .setItemId(-1)
+                        .setWorldViewId(worldViewId);
+                Microbot.getClient().setMenuEntries(new MenuEntry[]{entry});
+                return true;
+            });
+            Rs2Reflection.invokeMenu(
+                    param0,
+                    param1,
+                    menuAction.getId(),
+                    identifier,
+                    -1,
+                    worldViewId,
+                    action,
+                    target,
+                    (int) bounds.getCenterX(),
+                    (int) bounds.getCenterY());
             return true;
         } catch (Exception ex) {
             Microbot.logStackTrace("Rs2GroundItem", ex);

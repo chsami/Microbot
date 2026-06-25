@@ -53,8 +53,8 @@ public class ExampleScript extends Script {
                 checkWidgets();
                 checkWalker();
                 checkDialogue();
-                checkHomeTeleport();
                 checkLooting();
+                checkHomeTeleport();
 
                 printSummary();
                 shutdown();
@@ -318,7 +318,9 @@ public class ExampleScript extends Script {
         int countAfterDrop = Rs2Inventory.count(itemId);
 
         check("Loot item from ground", () -> {
-            sleep(600);
+            boolean itemAppeared = sleepUntil(() -> Rs2GroundItem.exists(itemName, 5), 5000);
+            assertTrue(itemAppeared, "item did not appear on ground after drop");
+            sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isMoving(), 5000);
             boolean looted = Rs2GroundItem.loot(itemName, 5);
             assertTrue(looted, "Rs2GroundItem.loot() returned false");
             boolean pickedUp = sleepUntil(() -> Rs2Inventory.count(itemId) > countAfterDrop, 5000);

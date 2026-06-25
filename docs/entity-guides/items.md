@@ -133,3 +133,22 @@ Set JVM flag `-Dmicrobot.bank.validateInventorySetup=true` so `Rs2InventorySetup
 ---
 
 <!-- Add new gotchas here as numbered entries (## 8, ## 9, ...). -->
+
+## 8. Ground-item action reflection must fail closed to `Take`, not `CANCEL`
+
+`Rs2GroundItem` and `Rs2TileItemModel` recover ground-item actions from the injected client's `ItemComposition`. That backing layout is obfuscated and can shift on RuneLite bumps. If reflection cannot find a real action list, treat the ground item as exposing `Take` in the injected client's third ground-item slot instead of returning an empty action array.
+
+**Why this matters:** After the RuneLite 1.12.30 bump, the reflection path returned `[]` for ordinary loot such as Cowhide. Loot helpers then failed to map `"Take"` to `GROUND_ITEM_THIRD_OPTION`, silently dispatched a no-op/cancel action, and ExampleScript's drop-and-loot smoke test failed even though the dropped item was visible and lootable.
+
+**Pattern to follow:**
+
+```java
+String[] actions = Rs2Reflection.getGroundItemActions(itemComposition);
+// If reflection cannot recover actions, this must still contain "Take" at index 2.
+```
+
+Do not make call sites compensate by assuming `index == 0` when the action array is empty; keep the fallback centralized in `Rs2Reflection.getGroundItemActions`.
+
+**Where this applies:** `Rs2Reflection.getGroundItemActions`, `Rs2GroundItem.interact`, `Rs2TileItemModel.click`, and any future ground-item interaction helper that derives a `MenuAction` from item actions.
+
+**Defensive check:** Live smoke with ExampleScript's "Drop and loot item" check after any RuneLite or injected-client version bump.
