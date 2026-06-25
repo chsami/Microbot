@@ -1,6 +1,6 @@
-# Microbot Client-Thread Manifest
+﻿# Microbot Client-Thread Manifest
 
-Generated: 2026-06-23  
+Generated: 2026-06-23
 Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/threadsafety/ClientThreadScannerTest.java`
 
 > Manually regenerate with `./gradlew :client:runClientThreadScanner`. Commit the diff to track how RuneLite's client-thread surface evolves between revisions.
@@ -20,11 +20,11 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 
 ## Legend
 
-- **REQUIRES_CLIENT_THREAD** — `assert client.isClientThread()` in body. Throws `AssertionError` off-thread when `-ea` is enabled.
-- **CHECKS_THREAD_GUARD** — Reads `isClientThread()` to branch. Often a sleep/wait guard or a hybrid helper.
-- **SELF_MARSHALLING** — Calls `ClientThread.invoke*()` / `runOnClientThreadOptional()`. Safe to call from any thread.
-- **EVENT_HANDLER** — Annotated `@Subscribe`. RuneLite's event bus dispatches these on the client thread.
-- **CONFIRMED_LAMBDA** — Synthetic lambda body that was passed to `ClientThread.invoke*()`. Reached transitively, including nested lambdas.
+- **REQUIRES_CLIENT_THREAD** â€” `assert client.isClientThread()` in body. Throws `AssertionError` off-thread when `-ea` is enabled.
+- **CHECKS_THREAD_GUARD** â€” Reads `isClientThread()` to branch. Often a sleep/wait guard or a hybrid helper.
+- **SELF_MARSHALLING** â€” Calls `ClientThread.invoke*()` / `runOnClientThreadOptional()`. Safe to call from any thread.
+- **EVENT_HANDLER** â€” Annotated `@Subscribe`. RuneLite's event bus dispatches these on the client thread.
+- **CONFIRMED_LAMBDA** â€” Synthetic lambda body that was passed to `ClientThread.invoke*()`. Reached transitively, including nested lambdas.
 
 ## Methods that ASSERT client thread
 
@@ -4122,9 +4122,9 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 
 These `net.runelite.api.*` methods are invoked from inside methods that are guaranteed to run on the client thread. Each entry is tagged with the strength of the evidence:
 
-- **`ASSERT`** — caller has `assert client.isClientThread()` (highest confidence)
-- **`SUBSCRIBE`** — caller is `@Subscribe`-annotated, dispatched on the client thread by the event bus
-- **`LAMBDA`** — caller is a lambda body that was passed (transitively) to `ClientThread.invoke*()`
+- **`ASSERT`** â€” caller has `assert client.isClientThread()` (highest confidence)
+- **`SUBSCRIBE`** â€” caller is `@Subscribe`-annotated, dispatched on the client thread by the event bus
+- **`LAMBDA`** â€” caller is a lambda body that was passed (transitively) to `ClientThread.invoke*()`
 
 > This list is derived, not exhaustive. It catches API methods reached from known-on-thread callers in this repo. Many other API methods are also unsafe off-thread but call no asserting/subscribing/marshalling wrapper here.
 
