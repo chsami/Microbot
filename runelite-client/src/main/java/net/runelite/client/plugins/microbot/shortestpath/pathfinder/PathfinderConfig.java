@@ -59,6 +59,9 @@ public class PathfinderConfig {
 	private static final WorldPoint SPIRIT_TREE_HOSIDIUS = new WorldPoint(1693, 3540, 0);
 	private static final WorldPoint SPIRIT_TREE_FARMING_GUILD = new WorldPoint(1251, 3750, 0);
 	private static final Set<Long> STATIC_BLOCKED_EDGES_PACKED = loadStaticBlockedEdgesFromResources();
+	// Tiles within 1 of an aggressive-NPC hazard tile (the melee-aggro ring). Stepping onto one
+	// gets a high pathfinding penalty when avoidDangerousNpcs is on, so paths keep >=2 tiles away.
+	private static final Set<Integer> DANGEROUS_ADJACENT_TILES_PACKED = loadDangerousTilesFromResources();
 
 	/** Order matches {@link #spiritTreeDestinationToggle(int)} — add destinations in both places only here + switch. */
 	private static final WorldPoint[] SPIRIT_TREE_DESTINATIONS_ORDERED = {
@@ -101,6 +104,8 @@ public class PathfinderConfig {
     private volatile long calculationCutoffMillis;
     @Getter
     private volatile boolean avoidWilderness;
+    @Getter
+    private volatile boolean avoidDangerousNpcs;
     @Getter
     private volatile boolean useSpiritTrees;
     private volatile boolean useAgilityShortcuts,
@@ -192,6 +197,7 @@ public class PathfinderConfig {
     public void refresh(WorldPoint target) {
         calculationCutoffMillis = (long) config.calculationCutoff() * Constants.GAME_TICK_LENGTH;
         avoidWilderness = ShortestPathPlugin.override("avoidWilderness", config.avoidWilderness());
+        avoidDangerousNpcs = ShortestPathPlugin.override("avoidDangerousNpcs", config.avoidDangerousNpcs());
         useAgilityShortcuts = ShortestPathPlugin.override("useAgilityShortcuts", config.useAgilityShortcuts());
         useGrappleShortcuts = ShortestPathPlugin.override("useGrappleShortcuts", config.useGrappleShortcuts());
         useBoats = ShortestPathPlugin.override("useBoats", config.useBoats());
@@ -592,6 +598,43 @@ public class PathfinderConfig {
         edges.add(transportEdgeKey(
                 WorldPointUtil.packWorldPoint(origin),
                 WorldPointUtil.packWorldPoint(destination)));
+    }
+
+    /** True if {@code packedPoint} is within 1 tile of an aggressive-NPC hazard tile. */
+    public boolean isDangerousAdjacentTile(int packedPoint) {
+        return DANGEROUS_ADJACENT_TILES_PACKED.contains(packedPoint);
+    }
+
+    private static Set<Integer> loadDangerousTilesFromResources() {
+        Set<Integer> tiles = new HashSet<>();
+        final String prefixComment = "#";
+        final String delimColumn = "\t";
+
+        try {
+            String s = new String(Util.readAllBytes(
+                    ShortestPathPlugin.class.getResourceAsStream("dangerous_tiles.tsv")), StandardCharsets.UTF_8);
+            Scanner scanner = new Scanner(s);
+            while (scanner.hasNextLine()) {
+                String line = scanner.nextLine();
+                if (line.startsWith(prefixComment) || line.isBlank()) {
+                    continue;
+                }
+                WorldPoint hazard = parseBlockedEdgePoint(line.split(delimColumn)[0]);
+                // Penalize the hazard tile and all 8 neighbours (the melee-aggro ring) so the
+                // path keeps >=2 tiles away. Hazard tiles themselves are usually blocked anyway.
+                for (int dx = -1; dx <= 1; dx++) {
+                    for (int dy = -1; dy <= 1; dy++) {
+                        tiles.add(WorldPointUtil.packWorldPoint(
+                                hazard.getX() + dx, hazard.getY() + dy, hazard.getPlane()));
+                    }
+                }
+            }
+            scanner.close();
+        } catch (IOException e) {
+            throw new RuntimeException("Unable to load shortest-path dangerous tiles", e);
+        }
+
+        return Collections.unmodifiableSet(tiles);
     }
 
     private static boolean blocksWalkingEdgeWhenUnavailable(Transport transport) {

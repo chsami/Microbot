@@ -1,0 +1,14 @@
+# Tile	Display info
+# Tiles occupied by aggressive NPCs that attack you while you path next to them.
+# When the "Avoid dangerous NPCs" pathfinder option is on, a high step penalty is applied
+# to every tile within 1 of these (the melee-aggro ring), so paths keep >=2 tiles away
+# when a reasonable detour exists. It is a penalty, not a block: at a true chokepoint the
+# path still goes through. Each entry is "x y plane".
+3103 3347 0	Draynor Manor undead tree
+3107 3342 0	Draynor Manor undead tree
+3107 3344 0	Draynor Manor undead tree
+3108 3346 0	Draynor Manor undead tree
+3111 3339 0	Draynor Manor undead tree
+3111 3348 0	Draynor Manor undead tree
+3115 3344 0	Draynor Manor undead tree
+3120 3344 0	Draynor Manor undead tree

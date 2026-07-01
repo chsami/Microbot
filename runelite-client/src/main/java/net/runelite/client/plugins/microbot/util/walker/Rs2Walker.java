@@ -1645,6 +1645,21 @@ public class Rs2Walker {
                                         path.get(i), RECOVERY_MINIMAP_REACH_EUCLIDEAN - 1,
                                         wp -> inInstance || isKnownWalkableOrUnloaded(wp));
                             }
+                            // Don't let recovery park the player on a tile next to an aggressive NPC
+                            // (e.g. an undead tree). The planner avoids those via avoidDangerousNpcs,
+                            // but this runtime fallback would otherwise strand us in melee. Step the
+                            // target back along the path to the nearest non-hazard tile.
+                            PathfinderConfig dangerCfg = ShortestPathPlugin.pathfinderConfig;
+                            if (dangerCfg != null && dangerCfg.isAvoidDangerousNpcs() && recoverTarget != null
+                                    && dangerCfg.isDangerousAdjacentTile(WorldPointUtil.packWorldPoint(recoverTarget))) {
+                                int safeIdx = recoverIdx;
+                                while (safeIdx > indexOfStartPoint
+                                        && dangerCfg.isDangerousAdjacentTile(WorldPointUtil.packWorldPoint(path.get(safeIdx)))) {
+                                    safeIdx--;
+                                }
+                                recoverIdx = safeIdx;
+                                recoverTarget = path.get(safeIdx);
+                            }
                             boolean clicked = recoverTarget != null
                                     && !recoverTarget.equals(playerLoc)
                                     && Rs2Walker.walkMiniMap(recoverTarget);
