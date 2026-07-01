@@ -62,6 +62,7 @@ import net.runelite.client.plugins.microbot.util.walker.door.model.AwaitTicket;
 import net.runelite.client.plugins.microbot.util.walker.door.model.DoorResolution;
 import net.runelite.client.plugins.microbot.util.walker.banking.Rs2WalkerBankingPlanner;
 import net.runelite.client.plugins.microbot.util.walker.awaits.Rs2WalkerRuntimeAwaits;
+import net.runelite.client.plugins.microbot.util.walker.puzzles.DraynorBasementSolver;
 import net.runelite.client.plugins.microbot.util.walker.stall.Rs2WalkerStallPolicy;
 import net.runelite.client.plugins.microbot.util.walker.transport.Rs2WalkerTransportAwaits;
 import net.runelite.client.plugins.microbot.util.walker.lifecycle.Rs2WalkerLifecycleRuntime;
@@ -1053,6 +1054,18 @@ public class Rs2Walker {
      * @param distance
      */
     private static WalkerState processWalk(WorldPoint target, int distance) {
+        // Solve the Draynor basement lever puzzle first if walking to a basement tile, so the
+        // door-transports are unlocked before pathfinding. No-op outside the basement. The
+        // solver's internal walkTo calls clear currentTarget, so restore it before the real walk.
+        if (DraynorBasementSolver.isBasementTarget(target)) {
+            DraynorBasementSolver.solveIfNeeded(target);
+            // The solver's nested walkTo calls clear currentTarget; restore it so the real walk
+            // runs — but not if this walk was interrupted/cancelled while the (blocking) solver
+            // ran (the solver itself never interrupts, so an interrupt here is an external cancel).
+            if (!Thread.currentThread().isInterrupted()) {
+                setTarget(target, "rs2walker:basement-solve-restore");
+            }
+        }
         return processWalk(target, distance, 0);
     }
 

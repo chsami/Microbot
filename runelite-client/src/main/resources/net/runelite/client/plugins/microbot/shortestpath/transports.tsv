@@ -5265,3 +5265,22 @@
 #Grimstone Dungeon
 2902 10454 0	2902 10456 0	Climb;Uneven stone ledges;60120
 2902 10456 0	2902 10454 0	Climb;Uneven stone ledges;60120
+# Draynor Manor basement (Ernest the Chicken) lever-puzzle doors — gated by lever varbits 1788-1793
+3108 9757 0	3108 9759 0	Open;Door;144					1788=1;1789=1;1790=0;1793=0			1	Draynor basement puzzle door
+3108 9759 0	3108 9757 0	Open;Door;144					1788=1;1789=1;1790=0;1793=0			1	Draynor basement puzzle door
+3104 9760 0	3106 9760 0	Open;Door;139					1788=1;1790=0;1792=0;1793=0			1	Draynor basement puzzle door
+3106 9760 0	3104 9760 0	Open;Door;139					1788=1;1790=0;1792=0;1793=0			1	Draynor basement puzzle door
+3102 9757 0	3102 9759 0	Open;Door;145					1791=1;1792=0			1	Draynor basement puzzle door
+3102 9759 0	3102 9757 0	Open;Door;145					1791=1;1792=0			1	Draynor basement puzzle door
+3099 9760 0	3101 9760 0	Open;Door;140					1791=1;1792=0			1	Draynor basement puzzle door
+3101 9760 0	3099 9760 0	Open;Door;140					1791=1;1792=0			1	Draynor basement puzzle door
+3097 9762 0	3097 9764 0	Open;Door;143					1789=0;1791=1;1793=0			1	Draynor basement puzzle door
+3097 9764 0	3097 9762 0	Open;Door;143					1789=0;1791=1;1793=0			1	Draynor basement puzzle door
+3099 9765 0	3101 9765 0	Open;Door;138					1789=0;1791=1;1793=1			1	Draynor basement puzzle door
+3101 9765 0	3099 9765 0	Open;Door;138					1789=0;1791=1;1793=1			1	Draynor basement puzzle door
+3104 9765 0	3106 9765 0	Open;Door;137					1788=0;1792=1;1793=1			1	Draynor basement puzzle door
+3106 9765 0	3104 9765 0	Open;Door;137					1788=0;1792=1;1793=1			1	Draynor basement puzzle door
+3102 9762 0	3102 9764 0	Open;Door;142					1792=0;1793=1			1	Draynor basement puzzle door
+3102 9764 0	3102 9762 0	Open;Door;142					1792=0;1793=1			1	Draynor basement puzzle door
+3099 9755 0	3101 9755 0	Open;Door;141					1790=1;1791=1;1793=1			1	Draynor basement puzzle door
+3101 9755 0	3099 9755 0	Open;Door;141					1790=1;1791=1;1793=1			1	Draynor basement puzzle door
