@@ -135,7 +135,7 @@ public class Rs2Reflection {
                         cachedOuterField = outerField;
                         cachedListField = listField;
                         cachedStringField = null;
-                        return toStringArray(list);
+                        return groundItemActionsOrDefault(toStringArray(list));
                     }
 
                     Field stringField = null;
@@ -150,12 +150,12 @@ public class Rs2Reflection {
                     cachedOuterField = outerField;
                     cachedListField = listField;
                     cachedStringField = stringField;
-                    return extractFromBeans(list, stringField);
+                    return groundItemActionsOrDefault(extractFromBeans(list, stringField));
                 }
             }
         }
 
-        return new String[]{};
+        return defaultGroundItemActions();
     }
 
     static void resetGroundItemActionCache() {
@@ -169,16 +169,28 @@ public class Rs2Reflection {
         cachedOuterField.setAccessible(true);
         Object outer = cachedOuterField.get(item);
         cachedOuterField.setAccessible(false);
-        if (outer == null) return new String[]{};
+        if (outer == null) return defaultGroundItemActions();
 
         cachedListField.setAccessible(true);
         Object listObj = cachedListField.get(outer);
         cachedListField.setAccessible(false);
-        if (!(listObj instanceof List)) return new String[]{};
+        if (!(listObj instanceof List)) return defaultGroundItemActions();
 
         List<?> list = (List<?>) listObj;
-        if (cachedStringField == null) return toStringArray(list);
-        return extractFromBeans(list, cachedStringField);
+        if (cachedStringField == null) return groundItemActionsOrDefault(toStringArray(list));
+        return groundItemActionsOrDefault(extractFromBeans(list, cachedStringField));
+    }
+
+    private static String[] groundItemActionsOrDefault(String[] actions) {
+        if (actions == null || actions.length == 0) return defaultGroundItemActions();
+        for (String action : actions) {
+            if (action != null && !action.isBlank()) return actions;
+        }
+        return defaultGroundItemActions();
+    }
+
+    private static String[] defaultGroundItemActions() {
+        return new String[]{null, null, "Take", null, null};
     }
 
     private static String[] toStringArray(List<?> list) {

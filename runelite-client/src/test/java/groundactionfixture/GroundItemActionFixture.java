@@ -17,12 +17,48 @@ public final class GroundItemActionFixture {
         return new FakeListItem(actions);
     }
 
+    public static Object createWithoutGroundActions() {
+        return new FakeItemWithoutGroundActions();
+    }
+
+    public static Object createWithNullGroundOps() {
+        return new FakeItem(null);
+    }
+
+    public static Object createWithFlexibleActions(String... actions) {
+        return new FakeFlexibleItem(new ArrayList<>(Arrays.asList(actions)));
+    }
+
+    public static Object createWithInvalidFlexibleActions() {
+        return new FakeFlexibleItem("not a list");
+    }
+
+    private static final class FakeItemWithoutGroundActions {
+        private final String name = "Amethyst";
+    }
+
     private static final class FakeItem {
         private static final MisleadingOuter STATIC_OUTER = new MisleadingOuter();
         private final GroundOps groundOps;
 
         private FakeItem(String[] actions) {
-            groundOps = new GroundOps(actions);
+            groundOps = actions == null ? null : new GroundOps(actions);
+        }
+    }
+
+    private static final class FakeFlexibleItem {
+        private final FlexibleGroundOps groundOps;
+
+        private FakeFlexibleItem(Object actions) {
+            groundOps = new FlexibleGroundOps(actions);
+        }
+    }
+
+    private static final class FlexibleGroundOps {
+        private final Object actions;
+
+        private FlexibleGroundOps(Object actions) {
+            this.actions = actions;
         }
     }
 
