@@ -3736,24 +3736,12 @@ public class Rs2Walker {
                 final String name = comp.getName();
 
                 if (object instanceof WallObject) {
-                    WallObject wallObj = (WallObject) object;
-                    int orientationA = wallObj.getOrientationA();
-                    int orientationB = wallObj.getOrientationB();
-                    boolean pathTouchesBothEnds = probe.distanceTo(fromWp) <= 1 && probe.distanceTo(toWp) <= 1
-                            && fromWp.distanceTo(toWp) >= 1 && fromWp.distanceTo(toWp) <= 2;
-                    boolean orientOk = false;
-                    if (orientationA != 0) {
-                        orientOk = searchNeighborPoint(orientationA, probe, fromWp)
-                                || searchNeighborPoint(orientationA, probe, toWp);
-                    }
-                    if (!orientOk && orientationB != 0) {
-                        orientOk = searchNeighborPoint(orientationB, probe, fromWp)
-                                || searchNeighborPoint(orientationB, probe, toWp);
-                    }
-                    if (!orientOk && pathTouchesBothEnds) {
-                        orientOk = true;
-                    }
-                    if (orientOk) {
+                    // Validate the door's ACTUAL blocked edge against the segment, not the probe
+                    // tile. The probe can sit a tile off the wall (adjacency fallback above), and the
+                    // old probe-orientation check plus the pathTouchesBothEnds shortcut opened doors
+                    // merely beside the path. isDoorOnSegment walks the segment against the wall's
+                    // real edge, matching the GameObject branch and findDoorNearSegment.
+                    if (isDoorOnSegment(object, fromWp, toWp)) {
                         log.info("Found WallObject door - name {} with action {} at {} - from {} to {}", name, action, probe, fromWp, toWp);
                         found = true;
                     } else {
@@ -4447,8 +4435,11 @@ public class Rs2Walker {
         if (wall.getWorldLocation().getPlane() != fromWp.getPlane() || fromWp.getPlane() != toWp.getPlane()) return false;
 
         WorldPoint doorTile = wall.getWorldLocation();
-        WorldPoint blockedNeighbor = getWallDoorNeighborPoint(wall.getOrientationA(), doorTile);
-        if (blockedNeighbor == null) return false;
+        // A door panel can advertise a blocked edge on either orientation; check both so a
+        // legitimately-on-path door is never missed.
+        WorldPoint blockedNeighborA = getWallDoorNeighborPoint(wall.getOrientationA(), doorTile);
+        WorldPoint blockedNeighborB = getWallDoorNeighborPoint(wall.getOrientationB(), doorTile);
+        if (blockedNeighborA == null && blockedNeighborB == null) return false;
 
         int x = fromWp.getX();
         int y = fromWp.getY();
@@ -4461,7 +4452,8 @@ public class Rs2Walker {
             x += Integer.signum(toWp.getX() - x);
             y += Integer.signum(toWp.getY() - y);
             WorldPoint next = new WorldPoint(x, y, fromWp.getPlane());
-            if (isDoorEdgeTransition(previous, next, doorTile, blockedNeighbor)) {
+            if ((blockedNeighborA != null && isDoorEdgeTransition(previous, next, doorTile, blockedNeighborA))
+                    || (blockedNeighborB != null && isDoorEdgeTransition(previous, next, doorTile, blockedNeighborB))) {
                 return true;
             }
             previous = next;
