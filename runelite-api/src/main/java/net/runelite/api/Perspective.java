@@ -254,7 +254,7 @@ public class Perspective
 		if (x >= -ESCENE_OFFSET << LOCAL_COORD_BITS && y >= -ESCENE_OFFSET << LOCAL_COORD_BITS &&
 			x <= SCENE_SIZE + ESCENE_OFFSET << LOCAL_COORD_BITS && y <= SCENE_SIZE + ESCENE_OFFSET << LOCAL_COORD_BITS)
 		{
-			final double
+			final float
 				cameraPitch = client.getCameraFpPitch(),
 				cameraYaw = client.getCameraFpYaw();
 
@@ -376,7 +376,7 @@ public class Perspective
 
 	private static void modelToCanvasGpu(Client client, int end, int x3dCenter, int y3dCenter, int z3dCenter, int rotate, float[] x3d, float[] y3d, float[] z3d, int[] x2d, int[] y2d)
 	{
-		final double
+		final float
 			cameraPitch = client.getCameraFpPitch(),
 			cameraYaw = client.getCameraFpYaw();
 		final float
