@@ -308,7 +308,7 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
     //Method from microbot
     public static void exit() {
         if (pathfindingExecutor != null) {
-            Rs2Walker.setTarget(null);
+            Rs2Walker.clearWalkingRoute("shortest-path-plugin:exit");
             pathfindingExecutor.shutdownNow();
             pathfindingExecutor = null;
         }

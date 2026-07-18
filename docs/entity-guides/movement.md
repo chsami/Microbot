@@ -77,6 +77,8 @@ waitForDoorInteractionProgress(fromWp, toWp);
 
 **Defensive check:** In live testing, a door should produce one interaction followed by movement/path progress, not repeated `Raw path door handler resolved obstacle` messages every tick while the player is moving.
 
+If a previous minimap click is still moving the player, do not attribute that movement to a new gate interaction. A valid gate can be blacklisted when the walker clicks an interim waypoint, notices the gate while movement is still in flight, then compares the pre/post positions from the old minimap movement against the gate edge. Wrong-traversal blacklisting should only run when the player started near the attempted door edge.
+
 ## 5. Suppress the inverse adjacent transport after crossing a same-plane door
 
 Some doors are represented in `transports.tsv` as two adjacent same-plane transports, one for each direction. After the walker clicks one side and arrives on the other, immediately accepting the inverse transport can bounce the player back through the same door instead of letting the next minimap step continue away from it. Mark both tiles of a successful adjacent same-plane transport as recently handled for a short window.
@@ -286,12 +288,38 @@ if (isStuckTooLong()) {
 
 After a handled transport, avoid expensive path-adjacent or raw transport scans on ordinary open-ground segments unless a nearby planned transport or recent door attempt exists. Those scans are recovery tools, and on long outdoor routes a no-op scan can add several seconds before the next minimap click.
 
-For long-route minimap walking, let the next checkpoint selection happen before the current minimap target is fully consumed. Waiting until the player is only a few tiles from the interim makes the walker visibly stop before issuing the next click; handing off at a moderate remaining distance keeps movement continuous without rapid re-clicking. If an interim clears as close and no nearby route door/transport is pending, issue the next route-aligned continuation click immediately instead of waiting for idle-nudge recovery.
+For long-route minimap walking, let the next checkpoint selection happen before the current minimap target is fully consumed. Waiting until the player is only a few tiles from the interim makes the walker visibly stop before issuing the next click; handing off at a moderate remaining distance keeps movement continuous without rapid re-clicking. If an interim clears as close and no nearby route door/transport is pending, issue the next route-aligned continuation click immediately instead of waiting for idle-nudge recovery. Stale-progress checks must also count distance progress toward the actual interim checkpoint, not only smoothed path index progress; sparse smoothed paths can otherwise clear valid raw-path checkpoints as stale while the player is still walking toward them.
+
+Before the first movement click, only scan a small number of immediate route edges for doors or blockers. A door several segments ahead can be handled after the first minimap click moves the player toward it; spending startup time scanning every nearby raw segment creates a visible cold start.
 
 Continuation clicks that keep an active route moving should be tail-exempt like `interim-in-flight`; otherwise very long routes can exhaust `MAX_PROCESS_WALK_TAIL_ITERATIONS` while still making progress and trigger an unnecessary auto-retry.
 
 Sticky interim targets should also clear when route-index progress goes stale. If the player keeps moving but the closest path index does not advance for `INTERIM_PROGRESS_TIMEOUT_MS`, treat the checkpoint as stale and select a fresh route-aligned target instead of waiting for max-age expiry.
 
-When a route-following minimap click is outside the minimap clip, fallback clicks must stay on the raw path. A generic "reachable tile closer to target" fallback can select a tile far away from the route in open areas, especially near the final destination.
+When a route-following minimap click is outside the minimap clip, fallback clicks must stay on the raw path. This includes the "clicked but no movement yet" retry after a route click and route-backed direct short-walks near the final destination. A generic "reachable tile closer to target" fallback can select a tile far away from the route in open areas, especially near fences and the final destination. Raw fallback must be anchored from the stabilized route index, not a fresh nearest-raw-tile lookup, or the walker can snap backward to an already-travelled branch.
 
 For adjacent same-plane shortcuts, do not treat any movement away from the origin as success. Some shortcuts, such as stepping stones, can fail and place the player on a fallback tile; once the player is settled away from the expected destination, stop the landing wait and replan from the actual tile.
+
+## 14. Keep optimistic recovery clicks route-backed and paced
+
+Unreachable-tile recovery is a fallback for bounded reachability false negatives, not a license to pick an arbitrary minimap point. Recovery clicks should use the same route-backed raw-path fallback as normal route movement, then store the actual clicked target as the sticky interim checkpoint. After issuing the click, wait only for movement to start or the checkpoint/goal to be reached; do not wait for a full idle cycle before returning to the walk loop.
+
+**Why this matters:** Bounded local reachability can report a valid route tile as unreachable even though the server pathfinder can still walk toward it. Arbitrary or repeated recovery clicks can pull the player away from the planned route and create visible stop-start movement.
+
+**Pattern to follow:**
+
+```java
+int reach = STALL_RECOVERY_MINIMAP_REACH_EUCLIDEAN;
+WorldPoint clickTarget = clampToEuclideanRadius(playerLoc, recoverTarget, reach - 1);
+WorldPoint clickedTarget = clickMiniMapOrFallback(rawPath, clickTarget, playerLoc, reach - 1, false, rawAnchorIndex);
+if (clickedTarget != null) {
+    interimTargetWp = clickedTarget;
+    waitForMovementStartAfterRecovery(target, playerLoc, clickedTarget, target, finishThreshold);
+}
+```
+
+**Where this applies:** `Rs2Walker.processWalk` unreachable-smoothed-tile recovery, route-backed direct short-walks, and any fallback that runs after local reachability says a route tile is not currently reachable.
+
+**Defensive check:** Exercise a long outdoor route and a route with gates or transports. Recovery logs should select route-backed points, and there should be no long idle pause between `unreachable optimistic recovery` and the next route-aligned movement.
+
+After recovery sets a sticky interim target, do not issue another optimistic recovery while that interim is still active and movement/progress is fresh. Yield as `interim-in-flight` or another tail-exempt movement state until the checkpoint is close, stale, or expired. Otherwise the walker can loop through several recovery clicks while the player is already moving, especially when local reachability reports the next smoothed tile as unreachable.
