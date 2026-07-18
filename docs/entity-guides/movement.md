@@ -290,7 +290,7 @@ After a handled transport, avoid expensive path-adjacent or raw transport scans 
 
 For long-route minimap walking, let the next checkpoint selection happen before the current minimap target is fully consumed. Waiting until the player is only a few tiles from the interim makes the walker visibly stop before issuing the next click; handing off at a moderate remaining distance keeps movement continuous without rapid re-clicking. If an interim clears as close and no nearby route door/transport is pending, issue the next route-aligned continuation click immediately instead of waiting for idle-nudge recovery. Stale-progress checks must also count distance progress toward the actual interim checkpoint, not only smoothed path index progress; sparse smoothed paths can otherwise clear valid raw-path checkpoints as stale while the player is still walking toward them.
 
-Before the first movement click, only scan a small number of immediate route edges for doors or blockers. A door several segments ahead can be handled after the first minimap click moves the player toward it; spending startup time scanning every nearby raw segment creates a visible cold start.
+Before the first movement click, avoid timeout-backed speculative segment scans for doors, blockers, rockfalls, or transports. Let the first minimap click move the player toward the route; actual visible doors can still be handled by the dedicated pre-click route-door guard, and steady-state handling can resolve later obstacles once movement has started. Spending startup time scanning every nearby raw segment creates a visible cold start.
 
 Continuation clicks that keep an active route moving should be tail-exempt like `interim-in-flight`; otherwise very long routes can exhaust `MAX_PROCESS_WALK_TAIL_ITERATIONS` while still making progress and trigger an unnecessary auto-retry.
 
@@ -298,7 +298,7 @@ Sticky interim targets should also clear when route-index progress goes stale. I
 
 When a route-following minimap click is outside the minimap clip, fallback clicks must stay on the raw path. This includes the "clicked but no movement yet" retry after a route click and route-backed direct short-walks near the final destination. A generic "reachable tile closer to target" fallback can select a tile far away from the route in open areas, especially near fences and the final destination. Raw fallback must be anchored from the stabilized route index, not a fresh nearest-raw-tile lookup, or the walker can snap backward to an already-travelled branch.
 
-For adjacent same-plane shortcuts, do not treat any movement away from the origin as success. Some shortcuts, such as stepping stones, can fail and place the player on a fallback tile; once the player is settled away from the expected destination, stop the landing wait and replan from the actual tile.
+For adjacent same-plane shortcuts, do not treat any movement away from the origin as success. Some shortcuts, such as stepping stones, can fail and place the player on a fallback tile; once the player is settled away from the expected destination, stop the landing wait and replan from the actual tile. If the player is settled within one tile of the expected destination and is no longer on the origin, accept the landing instead of waiting for an exact tile that server pathing may not choose.
 
 ## 14. Keep optimistic recovery clicks route-backed and paced
 

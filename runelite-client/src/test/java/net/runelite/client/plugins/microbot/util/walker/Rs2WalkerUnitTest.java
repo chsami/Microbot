@@ -117,6 +117,63 @@ public class Rs2WalkerUnitTest {
     }
 
     @Test
+    public void isSettledNearAdjacentSamePlaneLanding_acceptsNearDestinationOffOrigin() {
+        Transport door = new Transport(
+                new WorldPoint(3152, 3363, 0),
+                new WorldPoint(3153, 3363, 0),
+                "Door",
+                TransportType.TRANSPORT,
+                false,
+                "Open",
+                "Door",
+                136);
+
+        assertTrue(Rs2Walker.isSettledNearAdjacentSamePlaneLanding(
+                door,
+                new WorldPoint(3154, 3363, 0),
+                new WorldPoint(3153, 3363, 0),
+                0));
+    }
+
+    @Test
+    public void isSettledNearAdjacentSamePlaneLanding_rejectsOriginTile() {
+        Transport door = new Transport(
+                new WorldPoint(3152, 3363, 0),
+                new WorldPoint(3153, 3363, 0),
+                "Door",
+                TransportType.TRANSPORT,
+                false,
+                "Open",
+                "Door",
+                136);
+
+        assertFalse(Rs2Walker.isSettledNearAdjacentSamePlaneLanding(
+                door,
+                new WorldPoint(3152, 3363, 0),
+                new WorldPoint(3153, 3363, 0),
+                0));
+    }
+
+    @Test
+    public void isSettledNearAdjacentSamePlaneLanding_rejectsTilesTooFarFromDestination() {
+        Transport door = new Transport(
+                new WorldPoint(3152, 3363, 0),
+                new WorldPoint(3153, 3363, 0),
+                "Door",
+                TransportType.TRANSPORT,
+                false,
+                "Open",
+                "Door",
+                136);
+
+        assertFalse(Rs2Walker.isSettledNearAdjacentSamePlaneLanding(
+                door,
+                new WorldPoint(3155, 3363, 0),
+                new WorldPoint(3153, 3363, 0),
+                0));
+    }
+
+    @Test
     public void shouldRecalculatePathAfterTransport_includesLongDistanceTransport() {
         Transport ship = new Transport(
                 new WorldPoint(3054, 3245, 0),
@@ -749,10 +806,10 @@ public class Rs2WalkerUnitTest {
     }
 
     @Test
-    public void shouldSkipStartupPreclickSegmentHandlers_skipsBeyondStartupLookahead() {
+    public void shouldSkipStartupPreclickSegmentHandlers_skipsBeforeFirstMovementClick() {
         assertTrue(Rs2Walker.shouldSkipStartupPreclickSegmentHandlers(
                 true,
-                8,
+                5,
                 5,
                 false,
                 false,
@@ -760,14 +817,7 @@ public class Rs2WalkerUnitTest {
     }
 
     @Test
-    public void shouldSkipStartupPreclickSegmentHandlers_keepsImmediateAndDoorRecoveryEdges() {
-        assertFalse(Rs2Walker.shouldSkipStartupPreclickSegmentHandlers(
-                true,
-                7,
-                5,
-                false,
-                false,
-                false));
+    public void shouldSkipStartupPreclickSegmentHandlers_keepsDoorRecoveryAndSteadyEdges() {
         assertFalse(Rs2Walker.shouldSkipStartupPreclickSegmentHandlers(
                 true,
                 8,

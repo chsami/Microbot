@@ -156,8 +156,6 @@ public class Rs2Walker {
     private static final int PATHFINDER_DONE_POLL_WAIT_MS = 1200;
     private static final int PATHFINDER_DONE_RETRY_SLEEP_MIN_MS = 120;
     private static final int PATHFINDER_DONE_RETRY_SLEEP_MAX_MS = 220;
-    private static final long STARTUP_FIRST_CLICK_BUDGET_MS = 2200L;
-    private static final int STARTUP_PRECLICK_DOOR_SCAN_LOOKAHEAD_EDGES = 2;
     private static final int POST_DOOR_FAST_CLICK_MAX_EUCLIDEAN = 13;
     private static final int POST_DOOR_EDGE_NUDGE_MAX_FROM_PLAYER = 3;
     private static final int POST_DOOR_EDGE_NUDGE_WAIT_MS = 1200;
@@ -433,13 +431,7 @@ public class Rs2Walker {
         if (firstMovementClickMarked) {
             return WalkerPhase.STEADY;
         }
-        long startedAt = walkSessionStartedAtMs;
-        if (startedAt <= 0) {
-            return WalkerPhase.STEADY;
-        }
-        return (System.currentTimeMillis() - startedAt) <= STARTUP_FIRST_CLICK_BUDGET_MS
-                ? WalkerPhase.STARTUP
-                : WalkerPhase.STEADY;
+        return WalkerPhase.STARTUP;
     }
 
     private static ObstaclePolicy obstaclePolicyForCurrentPhase() {
@@ -460,7 +452,7 @@ public class Rs2Walker {
         if (recentDoorAttemptNearSegment || doorSettling || recoveryInFlight) {
             return false;
         }
-        return segmentIdx > routeStartIdx + STARTUP_PRECLICK_DOOR_SCAN_LOOKAHEAD_EDGES;
+        return true;
     }
 
     /**
@@ -1622,13 +1614,13 @@ public class Rs2Walker {
                     if (skipPostTransportSegmentHandlers || skipStartupPreclickSegmentHandlers) {
                         if (skipStartupPreclickSegmentHandlers) {
                             markStartupPhase("preclick_segment_handler_skip", target,
-                                    "i=" + i + " reason=startup_preclick_budget");
+                                    "i=" + i + " reason=startup_before_first_click");
                         }
                         tmarkPostTransport("post_transport_segment_handler_skip",
                                 target,
                                 "i=" + i + " reason=" + (skipPostTransportSegmentHandlers
                                         ? "no_nearby_planned_transport"
-                                        : "startup_preclick_budget"));
+                                        : "startup_before_first_click"));
                     } else {
                     long segmentHandlerStartAt = System.currentTimeMillis();
                     int rawI = (i < smoothedToRaw.length) ? smoothedToRaw[i] : 0;
@@ -7932,6 +7924,7 @@ public class Rs2Walker {
                                                           int maxInclusive) {
         long waitStartedAt = System.currentTimeMillis();
         AtomicBoolean settledAwayFromAdjacentDestination = new AtomicBoolean(false);
+        AtomicBoolean settledNearAdjacentDestination = new AtomicBoolean(false);
         boolean completed = sleepUntil(() -> {
             if (isPlayerWithinChebyshevInclusive(destWait, maxInclusive)) {
                 return true;
@@ -7945,6 +7938,10 @@ public class Rs2Walker {
                     || Rs2Player.isMoving() || Rs2Player.isAnimating()) {
                 return false;
             }
+            if (isSettledNearAdjacentSamePlaneLanding(transport, playerLoc, destWait, maxInclusive)) {
+                settledNearAdjacentDestination.set(true);
+                return true;
+            }
             WorldPoint origin = transport == null ? null : transport.getOrigin();
             boolean settledAwayFromOrigin = origin != null && playerLoc.distanceTo2D(origin) > 1;
             if (playerLoc.distanceTo2D(destWait) > Math.max(1, maxInclusive)
@@ -7955,12 +7952,36 @@ public class Rs2Walker {
             return false;
         }, POST_HANDLE_OBJECT_LANDING_WAIT_MS);
 
+        if (settledNearAdjacentDestination.get()) {
+            WebWalkLog.spInfo("post-handleObject adjacent landing accepted | dest={} at={}",
+                    compactWorldPoint(destWait), compactWorldPoint(Rs2Player.getWorldLocation()));
+            return true;
+        }
         if (settledAwayFromAdjacentDestination.get()) {
             WebWalkLog.spInfo("post-handleObject adjacent landing failed | dest={} at={}",
                     compactWorldPoint(destWait), compactWorldPoint(Rs2Player.getWorldLocation()));
             return false;
         }
         return completed;
+    }
+
+    static boolean isSettledNearAdjacentSamePlaneLanding(Transport transport,
+                                                         WorldPoint playerLoc,
+                                                         WorldPoint destWait,
+                                                         int maxInclusive) {
+        if (!isAdjacentSamePlaneTransport(transport)
+                || playerLoc == null
+                || destWait == null
+                || playerLoc.getPlane() != destWait.getPlane()) {
+            return false;
+        }
+        WorldPoint origin = transport.getOrigin();
+        if (origin == null || playerLoc.equals(origin)) {
+            return false;
+        }
+        int destinationDistance = playerLoc.distanceTo2D(destWait);
+        return destinationDistance <= Math.max(1, maxInclusive)
+                && playerLoc.distanceTo2D(origin) > 0;
     }
 
     /**
