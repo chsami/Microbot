@@ -22,6 +22,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -459,6 +460,26 @@ public class Rs2WalkerUnitTest {
     }
 
     @Test
+    public void hintRouteProgressIndex_keepsProgressAnchoredAheadOfEarlierBranch() {
+        WorldPoint target = new WorldPoint(3200, 3201, 0);
+        List<WorldPoint> path = Arrays.asList(
+                new WorldPoint(3200, 3200, 0),
+                new WorldPoint(3201, 3200, 0),
+                new WorldPoint(3202, 3200, 0),
+                new WorldPoint(3203, 3200, 0),
+                new WorldPoint(3203, 3201, 0),
+                new WorldPoint(3202, 3201, 0),
+                new WorldPoint(3201, 3201, 0),
+                target);
+
+        Rs2Walker.hintRouteProgressIndex(path, 5, target);
+
+        assertEquals("a clicked-ahead route checkpoint should not snap back to a nearby earlier branch",
+                5,
+                Rs2Walker.stabilizeRouteProgressIndex(path, 2, target, new WorldPoint(3202, 3201, 0)));
+    }
+
+    @Test
     public void findForwardRecoveryIndex_prefersLaterReachableBranch() {
         WorldPoint player = new WorldPoint(1000, 1000, 0);
         List<WorldPoint> path = Arrays.asList(
@@ -506,6 +527,87 @@ public class Rs2WalkerUnitTest {
         int idx = Rs2Walker.findFurthestForwardClickableIndex(path, 3, player, wp -> false, 13);
 
         assertEquals("normal route following should interpolate toward the forward tile, not backtrack", 3, idx);
+    }
+
+    @Test
+    public void findFurthestRawPathPointMatching_keepsPrimaryClickOnForwardRawRoute() {
+        WorldPoint player = new WorldPoint(1000, 1000, 0);
+        List<WorldPoint> rawPath = Arrays.asList(
+                new WorldPoint(998, 1000, 0),
+                new WorldPoint(999, 1000, 0),
+                new WorldPoint(1000, 1001, 0),
+                new WorldPoint(1010, 1000, 0),
+                new WorldPoint(1009, 1000, 0),
+                new WorldPoint(1008, 1000, 0));
+
+        WorldPoint target = Rs2Walker.findFurthestRawPathPointMatching(
+                rawPath,
+                player,
+                13,
+                3,
+                wp -> true);
+
+        assertEquals("raw-route selection must not snap back to an earlier nearby branch",
+                new WorldPoint(1008, 1000, 0), target);
+    }
+
+    @Test
+    public void findFurthestRawPathPointMatching_honorsCandidatePredicate() {
+        WorldPoint player = new WorldPoint(3200, 3200, 0);
+        WorldPoint blocked = new WorldPoint(3203, 3200, 0);
+        WorldPoint allowed = new WorldPoint(3202, 3200, 0);
+        List<WorldPoint> rawPath = Arrays.asList(
+                new WorldPoint(3200, 3200, 0),
+                new WorldPoint(3201, 3200, 0),
+                allowed,
+                blocked);
+
+        WorldPoint target = Rs2Walker.findFurthestRawPathPointMatching(
+                rawPath,
+                player,
+                13,
+                0,
+                wp -> !wp.equals(blocked));
+
+        assertEquals("primary raw-route target must be the furthest acceptable raw tile",
+                allowed, target);
+    }
+
+    @Test
+    public void findFurthestRawPathPointMatching_doesNotReturnCurrentTile() {
+        WorldPoint player = new WorldPoint(3200, 3200, 0);
+        List<WorldPoint> rawPath = Arrays.asList(
+                player,
+                new WorldPoint(3215, 3200, 0));
+
+        WorldPoint target = Rs2Walker.findFurthestRawPathPointMatching(
+                rawPath,
+                player,
+                10,
+                0,
+                wp -> true);
+
+        assertNull("same-tile route targets are no-op clicks, not recovery candidates", target);
+    }
+
+    @Test
+    public void findFurthestRawPathPointMatching_stopsBeforeRouteStepBudgetIsExceeded() {
+        WorldPoint player = new WorldPoint(3200, 3200, 0);
+        List<WorldPoint> rawPath = Arrays.asList(
+                new WorldPoint(3200, 3200, 0),
+                new WorldPoint(3205, 3200, 0),
+                new WorldPoint(3210, 3200, 0),
+                new WorldPoint(3216, 3200, 0));
+
+        WorldPoint target = Rs2Walker.findFurthestRawPathPointMatching(
+                rawPath,
+                player,
+                13,
+                0,
+                wp -> true);
+
+        assertEquals("route step budget keeps one minimap click from spanning too far ahead",
+                new WorldPoint(3210, 3200, 0), target);
     }
 
     @Test
@@ -792,6 +894,58 @@ public class Rs2WalkerUnitTest {
     }
 
     @Test
+    public void shouldDeferRouteWorkForActiveInterim_movingFarCheckpoint_returnsTrue() {
+        assertTrue(Rs2Walker.shouldDeferRouteWorkForActiveInterim(
+                new WorldPoint(2890, 3396, 0),
+                new WorldPoint(2880, 3396, 0),
+                1_000L,
+                4_500L,
+                5_000L,
+                0L,
+                true,
+                5));
+    }
+
+    @Test
+    public void shouldDeferRouteWorkForActiveInterim_recentProgressStoppedFar_returnsTrue() {
+        assertTrue(Rs2Walker.shouldDeferRouteWorkForActiveInterim(
+                new WorldPoint(2890, 3396, 0),
+                new WorldPoint(2880, 3396, 0),
+                1_000L,
+                4_900L,
+                5_000L,
+                0L,
+                false,
+                5));
+    }
+
+    @Test
+    public void shouldDeferRouteWorkForActiveInterim_closeCheckpoint_returnsFalse() {
+        assertFalse(Rs2Walker.shouldDeferRouteWorkForActiveInterim(
+                new WorldPoint(2890, 3396, 0),
+                new WorldPoint(2886, 3396, 0),
+                1_000L,
+                4_500L,
+                5_000L,
+                0L,
+                true,
+                5));
+    }
+
+    @Test
+    public void shouldDeferRouteWorkForActiveInterim_staleStoppedCheckpoint_returnsFalse() {
+        assertFalse(Rs2Walker.shouldDeferRouteWorkForActiveInterim(
+                new WorldPoint(2890, 3396, 0),
+                new WorldPoint(2880, 3396, 0),
+                1_000L,
+                1_500L,
+                5_000L,
+                0L,
+                false,
+                5));
+    }
+
+    @Test
     public void interimPreclickTiles_runHandsOffEarlierThanWalk() {
         assertEquals(6, Rs2Walker.interimPreclickTiles(false));
         assertEquals(8, Rs2Walker.interimPreclickTiles(true));
@@ -803,6 +957,13 @@ public class Rs2WalkerUnitTest {
         assertEquals("active_route_idle_nudge", Rs2Walker.routeMovementClickPhase("active route idle nudge"));
         assertEquals("interim_close_route_click", Rs2Walker.routeMovementClickPhase("interim close route click"));
         assertEquals("route_movement_click", Rs2Walker.routeMovementClickPhase("other"));
+    }
+
+    @Test
+    public void shouldRunActiveRouteIdleNudge_waitsForImmediateTransport() {
+        assertFalse(Rs2Walker.shouldRunActiveRouteIdleNudge(true, true));
+        assertTrue(Rs2Walker.shouldRunActiveRouteIdleNudge(true, false));
+        assertFalse(Rs2Walker.shouldRunActiveRouteIdleNudge(false, false));
     }
 
     @Test

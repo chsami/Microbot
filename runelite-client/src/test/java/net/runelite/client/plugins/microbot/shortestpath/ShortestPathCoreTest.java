@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.shortestpath;
 
+import net.runelite.api.Quest;
 import net.runelite.api.VarPlayer;
 import net.runelite.api.coords.WorldArea;
 import net.runelite.api.coords.WorldPoint;
@@ -14,6 +15,10 @@ import static org.junit.Assert.*;
 public class ShortestPathCoreTest {
 
 	private static SplitFlagMap collisionMap;
+	private static final WorldPoint AL_KHARID_GATE_WEST_SOUTH = new WorldPoint(3267, 3227, 0);
+	private static final WorldPoint AL_KHARID_GATE_WEST_NORTH = new WorldPoint(3267, 3228, 0);
+	private static final WorldPoint AL_KHARID_GATE_EAST_SOUTH = new WorldPoint(3268, 3227, 0);
+	private static final WorldPoint AL_KHARID_GATE_EAST_NORTH = new WorldPoint(3268, 3228, 0);
 
 	@BeforeClass
 	public static void loadCollisionMap() {
@@ -194,6 +199,52 @@ public class ShortestPathCoreTest {
 	}
 
 	@Test
+	public void testAlKharidTollGateTransportsLoaded() {
+		HashMap<WorldPoint, Set<Transport>> transports = Transport.loadAllFromResources();
+
+		assertTollGateTransport(transports, AL_KHARID_GATE_WEST_SOUTH, AL_KHARID_GATE_EAST_SOUTH,
+				"Pay-toll(10gp)", 10, false);
+		assertTollGateTransport(transports, AL_KHARID_GATE_WEST_NORTH, AL_KHARID_GATE_EAST_NORTH,
+				"Pay-toll(10gp)", 10, false);
+		assertTollGateTransport(transports, AL_KHARID_GATE_EAST_SOUTH, AL_KHARID_GATE_WEST_SOUTH,
+				"Pay-toll(10gp)", 10, false);
+		assertTollGateTransport(transports, AL_KHARID_GATE_EAST_NORTH, AL_KHARID_GATE_WEST_NORTH,
+				"Pay-toll(10gp)", 10, false);
+
+		assertTollGateTransport(transports, AL_KHARID_GATE_WEST_SOUTH, AL_KHARID_GATE_EAST_SOUTH,
+				"Open", 0, true);
+		assertTollGateTransport(transports, AL_KHARID_GATE_WEST_NORTH, AL_KHARID_GATE_EAST_NORTH,
+				"Open", 0, true);
+		assertTollGateTransport(transports, AL_KHARID_GATE_EAST_SOUTH, AL_KHARID_GATE_WEST_SOUTH,
+				"Open", 0, true);
+		assertTollGateTransport(transports, AL_KHARID_GATE_EAST_NORTH, AL_KHARID_GATE_WEST_NORTH,
+				"Open", 0, true);
+	}
+
+	@Test
+	public void testAlKharidTollGateIsEdgeBlockedNotTileRestricted() {
+		Set<Integer> gateTiles = new HashSet<>(Arrays.asList(
+				WorldPointUtil.packWorldPoint(AL_KHARID_GATE_WEST_SOUTH),
+				WorldPointUtil.packWorldPoint(AL_KHARID_GATE_WEST_NORTH),
+				WorldPointUtil.packWorldPoint(AL_KHARID_GATE_EAST_SOUTH),
+				WorldPointUtil.packWorldPoint(AL_KHARID_GATE_EAST_NORTH)));
+
+		List<Restriction> restrictions = Restriction.loadAllFromResources();
+		assertFalse("Al Kharid gate tiles must not be quest-only restrictions",
+				restrictions.stream().anyMatch(r -> gateTiles.contains(r.getPackedWorldPoint())));
+
+		PathfinderConfig config = createMinimalConfig();
+		assertTrue("South Al Kharid gate edge should be blocked without transport",
+				config.isBlockedTransportStep(
+						WorldPointUtil.packWorldPoint(AL_KHARID_GATE_WEST_SOUTH),
+						WorldPointUtil.packWorldPoint(AL_KHARID_GATE_EAST_SOUTH)));
+		assertTrue("North Al Kharid gate edge should be blocked without transport",
+				config.isBlockedTransportStep(
+						WorldPointUtil.packWorldPoint(AL_KHARID_GATE_WEST_NORTH),
+						WorldPointUtil.packWorldPoint(AL_KHARID_GATE_EAST_NORTH)));
+	}
+
+	@Test
 	public void testNewTransportTypesLoaded() {
 		HashMap<WorldPoint, Set<Transport>> transports = Transport.loadAllFromResources();
 
@@ -257,6 +308,27 @@ public class ShortestPathCoreTest {
 
 		assertTrue("Lumbridge Home Teleport should be loaded", lumbridgeHomeTeleport.isPresent());
 		return lumbridgeHomeTeleport.get();
+	}
+
+	private static void assertTollGateTransport(HashMap<WorldPoint, Set<Transport>> transports,
+			WorldPoint origin, WorldPoint destination, String action, int currencyAmount, boolean princeAliRequired) {
+		Optional<Transport> match = transports.getOrDefault(origin, Collections.emptySet()).stream()
+				.filter(t -> destination.equals(t.getDestination()))
+				.filter(t -> action.equals(t.getAction()))
+				.filter(t -> "Gate".equals(t.getName()))
+				.findFirst();
+
+		assertTrue("Missing Al Kharid toll gate transport " + action + " from " + origin + " to " + destination,
+				match.isPresent());
+		Transport transport = match.get();
+		assertEquals("Gate transport should use normal TRANSPORT type",
+				TransportType.TRANSPORT, transport.getType());
+		assertEquals("Unexpected gate currency amount", currencyAmount, transport.getCurrencyAmount());
+		if (currencyAmount > 0) {
+			assertEquals("Unexpected gate currency name", "Coins", transport.getCurrencyName());
+		}
+		assertEquals("Unexpected Prince Ali Rescue requirement on gate transport",
+				princeAliRequired, transport.getQuests().containsKey(Quest.PRINCE_ALI_RESCUE));
 	}
 
 	@Test
