@@ -8585,12 +8585,6 @@ public class Rs2Walker {
         return 0;
     }
 
-    private static boolean isAlKharidTollGateTransport(Transport transport, TileObject tileObject) {
-        return isAlKharidTollGateTransport(transport)
-                && tileObject != null
-                && isAlKharidTollGateObjectId(tileObject.getId());
-    }
-
     private static boolean isAlKharidTollGateTransport(Transport transport) {
         return transport != null
                 && isAlKharidTollGateObjectId(transport.getObjectId())
@@ -8664,7 +8658,7 @@ public class Rs2Walker {
             }
         }
 
-        if (isAlKharidTollGateTransport(transport, tileObject) && isPayTollAction(transport.getAction())) {
+        if (isAlKharidTollGateTransport(transport) && isPayTollAction(transport.getAction())) {
             return handleAlKharidTollGate(transport);
         }
 
