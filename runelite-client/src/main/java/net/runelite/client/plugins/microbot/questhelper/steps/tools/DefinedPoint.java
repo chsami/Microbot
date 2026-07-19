@@ -32,7 +32,6 @@ import net.runelite.api.TileObject;
 import net.runelite.api.WorldView;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
-
 import javax.annotation.Nullable;
 import java.util.List;
 

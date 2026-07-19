@@ -24,12 +24,12 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.steps;
 
-import lombok.Getter;
 import net.runelite.client.plugins.microbot.questhelper.QuestHelperPlugin;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
 import net.runelite.client.plugins.microbot.questhelper.steps.emote.QuestEmote;
 import net.runelite.client.plugins.microbot.questhelper.steps.overlay.IconOverlay;
+import lombok.Getter;
 import net.runelite.api.ScriptID;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.InterfaceID;

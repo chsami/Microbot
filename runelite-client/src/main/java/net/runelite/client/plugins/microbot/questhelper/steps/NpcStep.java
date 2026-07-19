@@ -25,7 +25,6 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.steps;
 
-import lombok.Getter;
 import net.runelite.client.plugins.microbot.questhelper.QuestHelperConfig;
 import net.runelite.client.plugins.microbot.questhelper.QuestHelperPlugin;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
@@ -33,9 +32,10 @@ import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement
 import net.runelite.client.plugins.microbot.questhelper.steps.overlay.DirectionArrow;
 import net.runelite.client.plugins.microbot.questhelper.steps.tools.DefinedPoint;
 import net.runelite.client.plugins.microbot.questhelper.steps.tools.QuestPerspective;
+import lombok.Getter;
 import lombok.Setter;
-import net.runelite.api.*;
 import net.runelite.api.Point;
+import net.runelite.api.*;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.NpcChanged;
@@ -63,8 +63,8 @@ public class NpcStep extends DetailedQuestStep
 	protected final int npcID;
 	protected final List<Integer> alternateNpcIDs = new ArrayList<>();
 
-	@Setter
 	@Getter
+	@Setter
 	protected boolean allowMultipleHighlights;
 
 	@Getter
@@ -209,6 +209,19 @@ public class NpcStep extends DetailedQuestStep
 		for (NPC npc : playerWorldView.npcs())
 		{
 			addNpcToListGivenMatchingID(npc, this::npcPassesChecks, npcs);
+		}
+
+		/* TODO: Configurable boolean per NpcStep for whether to consider all world views
+		    This is as you're likely to want to only highlight stuff on your own ship, not on others'
+		*/
+		for (WorldView worldView : client.getTopLevelWorldView().worldViews())
+		{
+			if (worldView == playerWorldView) continue;
+
+			for (NPC npc : worldView.npcs())
+			{
+				addNpcToListGivenMatchingID(npc, this::npcPassesChecks, npcs);
+			}
 		}
 	}
 

@@ -27,9 +27,8 @@ package net.runelite.client.plugins.microbot.questhelper.panel.questorders;
 
 import com.google.common.collect.ImmutableList;
 import net.runelite.client.plugins.microbot.questhelper.questinfo.QuestHelperQuest;
-import lombok.Getter;
-
 import java.util.List;
+import lombok.Getter;
 
 /**
  * The order of these quests are parsed using data from the <a href="https://oldschool.runescape.wiki/w/Optimal_quest_guide">OSRS Wiki</a>
@@ -266,6 +265,8 @@ public class OptimalQuestGuide
 		QuestHelperQuest.SONG_OF_THE_ELVES,
 		QuestHelperQuest.CLOCK_TOWER,
 		QuestHelperQuest.THE_CORSAIR_CURSE,
+		QuestHelperQuest.THE_IDES_OF_MILK,
+		QuestHelperQuest.THE_RED_REEF,
 		// Quests & mini quests that are not part of the OSRS Wiki's Optimal Quest Guide
 		QuestHelperQuest.VALE_TOTEMS,
 		QuestHelperQuest.BARBARIAN_TRAINING,

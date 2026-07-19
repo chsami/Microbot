@@ -24,10 +24,10 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.requirements.sailing;
 
+import net.runelite.client.plugins.microbot.questhelper.requirements.AbstractRequirement;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.gameval.VarbitID;
-import net.runelite.client.plugins.microbot.questhelper.requirements.AbstractRequirement;
 
 import javax.annotation.Nonnull;
 import java.util.Objects;

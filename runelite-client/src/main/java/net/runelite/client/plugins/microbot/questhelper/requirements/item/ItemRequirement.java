@@ -43,13 +43,13 @@ import net.runelite.api.Client;
 import net.runelite.api.Item;
 import net.runelite.client.ui.overlay.components.LineComponent;
 import net.runelite.client.util.Text;
-import org.jetbrains.annotations.Nullable;
+import javax.annotation.Nullable;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
 import java.awt.*;
-import java.util.*;
 import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -93,7 +93,6 @@ public class ItemRequirement extends AbstractRequirement
 	 * Indicates whether the item must be equipped.
 	 */
 	@Setter
-	@Getter
 	protected boolean mustBeEquipped;
 
 	public boolean mustBeEquipped() {
@@ -647,11 +646,11 @@ public class ItemRequirement extends AbstractRequirement
 	public String getWikiUrl()
 	{
 		if (getUrlSuffix() != null) {
-			return "https://oldschool.runescape.wiki/w/" + getUrlSuffix();
+			return "https://oldschool.runescape.wiki/w/" + getUrlSuffix() + "#Item_sources";
 		}
 
 		if (getId() != -1) {
-			return "https://oldschool.runescape.wiki/w/Special:Lookup?type=item&id=" + getId();
+			return "https://oldschool.runescape.wiki/w/Special:Lookup?type=item&id=" + getId() + "#Item_sources";
 		}
 
 		return null;

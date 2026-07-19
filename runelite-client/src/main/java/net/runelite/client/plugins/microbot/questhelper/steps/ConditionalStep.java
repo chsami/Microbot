@@ -30,7 +30,9 @@ import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper
 import net.runelite.client.plugins.microbot.questhelper.requirements.ChatMessageRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.MultiChatMessageRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
+import net.runelite.client.plugins.microbot.questhelper.requirements.conditional.Conditions;
 import net.runelite.client.plugins.microbot.questhelper.requirements.conditional.InitializableRequirement;
+import net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicType;
 import net.runelite.client.plugins.microbot.questhelper.requirements.conditional.NpcCondition;
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.npc.DialogRequirement;
@@ -41,13 +43,14 @@ import lombok.NonNull;
 import lombok.Setter;
 import net.runelite.api.GameState;
 import net.runelite.api.events.*;
+import net.runelite.api.gameval.InterfaceID;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.ui.overlay.components.PanelComponent;
 
 import java.awt.*;
-import java.util.*;
 import java.util.List;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -107,9 +110,16 @@ public class ConditionalStep extends QuestStep implements OwnerStep
 		this.id = id;
 	}
 
+	public void addStep(ConditionalStep step)
+	{
+		var newSet = new HashSet<>(step.steps.keySet());
+		newSet.remove(null);
+		addStep(passOnceCompleted(new Conditions(LogicType.OR, new ArrayList<>(newSet)), step), step, false);
+	}
+
 	public void addStep(Requirement requirement, QuestStep step)
 	{
-		addStep(requirement, step, false);
+		addStep(passOnceCompleted(requirement, step), step, false);
 	}
 
 	// Each addStep can have an ID. When you add an ID, it keeps a separate ID to Steps OrderedHashSet.
@@ -119,9 +129,47 @@ public class ConditionalStep extends QuestStep implements OwnerStep
 	public void addStep(Requirement requirement, QuestStep step, boolean isLockable)
 	{
 		step.setLockable(isLockable);
-		this.steps.put(requirement, step);
+		this.steps.put(passOnceCompleted(requirement, step), step);
 
 		checkForConditions(requirement);
+	}
+
+	private Requirement passOnceCompleted(Requirement completion, QuestStep step)
+	{
+		return completion;
+//		var manualOverride = step.getSidebarManualSkipRequirement();
+//		if (completion == null || manualOverride == null)
+//		{
+//			return completion;
+//		}
+//		// Only auto-tick the sidebar when completion becomes true (rising edge). If we setShouldPass every
+//		// tick while the game still reports the step complete, an explicit untick is overwritten immediately.
+//		final boolean[] completionWasPassingLastCheck = { false };
+//		return not(new Requirement()
+//		{
+//			@Override
+//			public boolean check(Client client)
+//			{
+//				if (manualOverride.check(client))
+//				{
+//					completionWasPassingLastCheck[0] = true;
+//					return true;
+//				}
+//				boolean passed = completion.check(client);
+//				if (passed && !completionWasPassingLastCheck[0])
+//				{
+//					manualOverride.setShouldPass(true);
+//				}
+//				completionWasPassingLastCheck[0] = passed;
+//				return passed;
+//			}
+//
+//			@Override
+//			public @NotNull String getDisplayText()
+//			{
+//				return completion.getDisplayText();
+//			}
+//		});
 	}
 
 	private void checkForConditions(Requirement requirement)
@@ -267,6 +315,17 @@ public class ConditionalStep extends QuestStep implements OwnerStep
 		dialogConditions.forEach(requirement -> requirement.validateCondition(chatMessage));
 
 		handleChildRequirementValidation(step -> step.handleChatMessage(chatMessage, parentDefinedRecursion), parentDefinedRecursion);
+	}
+
+	@Subscribe
+	public void onWidgetClosed(WidgetClosed event)
+	{
+		final var DIALOG_GROUP_IDS = List.of(InterfaceID.CHAT_LEFT, InterfaceID.CHAT_RIGHT, InterfaceID.OBJECTBOX);
+		if (!DIALOG_GROUP_IDS.contains(event.getGroupId())) return;
+
+		clientThread.invokeAtTickEnd(() -> {
+			dialogConditions.forEach(requirement -> requirement.validateActiveWidget(client));
+		});
 	}
 
 	@Subscribe
@@ -428,6 +487,7 @@ public class ConditionalStep extends QuestStep implements OwnerStep
 				.map(ItemRequirement.class::cast)
 				.collect(Collectors.toList());
 		renderInventory(graphics, activeDp, itemRequirements, false);
+		renderBank(graphics, requirements);
 		for (AbstractWidgetHighlight widgetHighlights : widgetsToHighlight)
 		{
 			widgetHighlights.highlightChoices(graphics, client, plugin);

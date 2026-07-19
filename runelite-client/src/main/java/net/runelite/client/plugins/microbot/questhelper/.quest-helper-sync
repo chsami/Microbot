@@ -8,16 +8,22 @@
 # Use the quest-helper update scripts to manage synchronization.
 
 # Current sync position - this is the last external commit that has been integrated
-5539626281a502ba8c44fe59b8b57bce32fe4f16
+ae1f441248b9742c1eaa667b18052785eb6ed058
 
 # Sync metadata (for script reference)
-# External repo HEAD at last check: 5539626281a502ba8c44fe59b8b57bce32fe4f16
-# Last sync date: 2025-08-29
-# Sync method: automated script with manual package transformation
-# Integration branch: quest-helper-update-20250829_063754
-# Local commit: cb416ef02a (quest-helper: polish Enakhras Lament)
+# External repo HEAD at last check: ae1f441248b9742c1eaa667b18052785eb6ed058
+# Last sync date: 2026-07-19
+# Sync method: upstream source mirror with manual package transformation and Microbot hook preservation
+# Integration branch: local workspace
+# Local commit: pending
 
 # Sync history log:
+# 2026-07-19 - Complete sync to upstream ae1f4412 (Quest Helper 4.16.1 source)
+#   - Mirrored upstream src/main/java and src/main/resources into the Microbot package
+#   - Preserved Microbot QuestScript, custom quest logic, config toggles, and agent-server start hook
+#   - Package transformation: com.questhelper -> net.runelite.client.plugins.microbot.questhelper
+#   - Status: SUCCESS
+#
 # 2025-08-29 07:14:46 - Applied commit 55396262 (Polish enahkras lament #2294)
 #   - Enhanced EnakhrasLament.java with better code organization
 #   - Fixed Shadow Room brazier puzzle sequence and locations
@@ -43,9 +49,9 @@
 #   - Status: INITIALIZED
 
 # Integration status
-# Current external version: 4.10.0+
+# Current external version: 4.16.1
 # Integration health: HEALTHY  
-# Last validation: 2025-08-29
+# Last validation: 2026-07-19
 # Compilation status: SUCCESS
 # Package transformation: COMPLETE
 # Sync file location: CORRECT (moved from project root)

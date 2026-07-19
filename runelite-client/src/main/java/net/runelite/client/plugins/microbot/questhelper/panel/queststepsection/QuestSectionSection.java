@@ -36,7 +36,6 @@ import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.SwingUtil;
-
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
@@ -44,15 +43,20 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public class QuestSectionSection extends AbstractQuestSection implements MouseListener
 {
 	// Idea is to contain multiple sections or queststeppanel
 	private static final int TITLE_PADDING = 5;
-	private static final ImageIcon DRAG_ICON = new ImageIcon(ImageUtil.loadImageResource(QuestHelperPlugin.class, "/hamburger.png"));
+	private static final ImageIcon DRAG_ICON = new ImageIcon(ImageUtil.loadImageResource(QuestHelperPlugin.class, "hamburger.png"));
 
 	private final QuestOverviewPanel questOverviewPanel;
 	private final QuestHelperPlugin questHelperPlugin;
@@ -125,7 +129,7 @@ public class QuestSectionSection extends AbstractQuestSection implements MouseLi
 		stepsPanel.setBorder(new EmptyBorder(10, 5, 10, 5));
 
 		// Dragging functionality
-		this.draggable = panelDetails.getPanelDetails().stream().anyMatch((pDetails -> pDetails.getId() != -1));
+		this.draggable = panelDetails.getPanelDetails().stream().anyMatch((pDetails -> pDetails.getId() != Integer.MIN_VALUE));
 		List<Integer> order = questHelperPlugin.loadSidebarOrder(questManager.getSelectedQuest());
 
 		List<PanelDetails> panelDetailsList = panelDetails.getPanelDetails();
@@ -476,7 +480,7 @@ public class QuestSectionSection extends AbstractQuestSection implements MouseLi
 	public List<Integer> getIds()
 	{
 		List<Integer> allIds = new ArrayList<>();
-		if (panelDetails.getId() != -1) allIds.add(panelDetails.getId());
+		if (panelDetails.getId() != Integer.MIN_VALUE) allIds.add(panelDetails.getId());
 
 		allIds.addAll(subPanels.stream()
 			.map(AbstractQuestSection::getIds)

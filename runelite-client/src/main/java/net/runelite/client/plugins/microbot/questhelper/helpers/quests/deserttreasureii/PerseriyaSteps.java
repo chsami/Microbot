@@ -47,7 +47,11 @@ import net.runelite.client.plugins.microbot.questhelper.requirements.zone.ZoneRe
 import net.runelite.client.plugins.microbot.questhelper.steps.*;
 import net.runelite.api.Prayer;
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.gameval.*;
+import net.runelite.api.gameval.ItemID;
+import net.runelite.api.gameval.NpcID;
+import net.runelite.api.gameval.ObjectID;
+import net.runelite.api.gameval.SpriteID;
+import net.runelite.api.gameval.VarbitID;
 
 import java.util.Arrays;
 import java.util.List;
@@ -451,9 +455,7 @@ public class PerseriyaSteps extends ConditionalStep
 		natureAxonPresent = new NpcRequirement(NpcID.DT2_SCAR_MAZE_3_PATHING_NPC, "Abyssal Axon (Nature)");
 		completedAxonRoom = new VarbitRequirement(VarbitID.DT2_SCAR_MAZE_CHALLENGE_1_DONE, 1);
 
-		nothingInHands = and(new NoItemRequirement("Weapon", ItemSlots.WEAPON),
-			new NoItemRequirement("Shield", ItemSlots.SHIELD));
-		((Conditions) nothingInHands).setText("Nothing equipped in your hands");
+		nothingInHands = new NoItemRequirement("Nothing equipped in your hands.", ItemSlots.EMPTY_HANDS);
 
 		inNorthOfAbyssRoom2 = new ZoneRequirement(northAbyssRoom2P1, northAbyssRoom2P2, northAbyssRoom2P3, northAbyssRoom2P4, northAbyssRoom2P5);
 		inNerveRoom = new ZoneRequirement(nerveRoom1, nerveRoom2, nerveRoom3);

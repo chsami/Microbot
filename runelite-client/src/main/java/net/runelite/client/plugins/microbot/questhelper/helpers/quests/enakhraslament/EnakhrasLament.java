@@ -51,10 +51,7 @@ import net.runelite.api.gameval.NpcID;
 import net.runelite.api.gameval.ObjectID;
 import net.runelite.api.gameval.VarbitID;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class EnakhrasLament extends BasicQuestHelper
 {
@@ -265,7 +262,10 @@ public class EnakhrasLament extends BasicQuestHelper
 		camelHead.setHighlightInInventory(true);
 
 		breadOrCake = new ItemRequirement("Bread or cake", ItemID.BREAD);
-		breadOrCake.addAlternates(ItemID.CAKE);
+		// Excluded mud pie, botanical pie, mushroom pie, dragonfruit pie as unsure if those would work due to inedibility and/or newness of pie
+		breadOrCake.addAlternates(ItemID.CAKE, ItemID.CHOCOLATE_CAKE, ItemID.REDBERRY_PIE, ItemID.MEAT_PIE, ItemID.APPLE_PIE, ItemID.GARDEN_PIE, ItemID.FISH_PIE, ItemID.ADMIRAL_PIE, ItemID.WILD_PIE, ItemID.SUMMER_PIE);
+		breadOrCake.addAlternates(ItemID.PLAIN_PIZZA, ItemID.MEAT_PIZZA, ItemID.ANCHOVIE_PIZZA, ItemID.PINEAPPLE_PIZZA);
+		breadOrCake.addAlternates(ItemID.POTATO_BUTTER, ItemID.POTATO_CHILLI_CARNE, ItemID.POTATO_CHEESE, ItemID.POTATO_EGG_TOMATO, ItemID.POTATO_MUSHROOM_ONION, ItemID.POTATO_TUNA_SWEETCORN);
 		breadOrCake.setHighlightInInventory(true);
 		breadOrCake.setDisplayMatchedItemName(true);
 
@@ -469,7 +469,8 @@ public class EnakhrasLament extends BasicQuestHelper
 		goUpFromPuzzleRoom = new ObjectStep(this, ObjectID.ENAKH_TEMPLE_LADDERUP, new WorldPoint(3104, 9332, 1), "Go up the ladder.");
 		passBarrier.addSubSteps(goUpFromPuzzleRoom);
 
-		castCrumbleUndead = new NpcStep(this, NpcID.ENAKH_BONEGUARD, new WorldPoint(3104, 9307, 2), "Cast crumble undead on the Boneguard.", earth2,
+		castCrumbleUndead = new NpcStep(this, NpcID.ENAKH_BONEGUARD, new WorldPoint(3104, 9307, 2), "Cast crumble undead on the Boneguard. " +
+			"Make sure you take off any armour or weapons which give you a negative magic attack bonus or else you might splash.", earth2,
 			airRuneOrStaff, chaos, onNormals);
 
 		goDownToFinalRoom = new ObjectStep(this, ObjectID.ENAKH_TEMPLE_PILLAR_LADDER_TOP, new WorldPoint(3105, 9300, 2), "Climb down the stone ladder past " +

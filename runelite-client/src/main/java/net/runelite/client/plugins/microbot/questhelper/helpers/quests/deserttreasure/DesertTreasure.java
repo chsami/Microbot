@@ -49,6 +49,7 @@ import net.runelite.client.plugins.microbot.questhelper.rewards.ItemReward;
 import net.runelite.client.plugins.microbot.questhelper.rewards.QuestPointReward;
 import net.runelite.client.plugins.microbot.questhelper.rewards.UnlockReward;
 import net.runelite.client.plugins.microbot.questhelper.steps.*;
+import net.runelite.api.NullItemID;
 import net.runelite.api.QuestState;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
@@ -58,7 +59,6 @@ import net.runelite.api.gameval.ObjectID;
 import net.runelite.api.gameval.VarbitID;
 
 import java.util.*;
-
 import static net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper.or;
 
 public class DesertTreasure extends BasicQuestHelper
@@ -428,7 +428,7 @@ public class DesertTreasure extends BasicQuestHelper
 		talkToArchaeologistAgainAfterTranslation = new NpcStep(this, NpcID.FOURDIAMONDS_INDIANA_VIS, new WorldPoint(3177, 3043, 0), "Talk to the Archaeologist again.");
 		talkToArchaeologistAgainAfterTranslation.addDialogStep("Help him");
 		talkToArchaeologistAgainAfterTranslation.addTeleport(bedabinTeleport);
-		buyDrink = new NpcStep(this, NpcID.FOURDIAMONDS_BARTENDER, new WorldPoint(3159, 2978, 0), "Buy a drink from the pub in the Bandit Camp, then talk to the Bartender again.", coins650);
+		buyDrink = new NpcStep(this, NpcID.FOURDIAMONDS_BARTENDER, new WorldPoint(3159, 2978, 0), "Unequip any god-related items you have on, or else you'll be attacked by bandits. Go buy a drink from the pub in the Bandit Camp, then talk to the Bartender again.", coins650);
 		buyDrink.addDialogStep("Buy a drink");
 		buyDrink.addDialogStep("Buy a beer");
 		talkToBartender = new NpcStep(this, NpcID.FOURDIAMONDS_BARTENDER, new WorldPoint(3159, 2978, 0), "Talk to the bartender in the Bandit Camp again.");

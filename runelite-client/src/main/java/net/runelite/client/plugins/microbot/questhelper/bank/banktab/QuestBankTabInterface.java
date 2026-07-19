@@ -132,10 +132,6 @@ public class QuestBankTabInterface
 			return;
 		}
 		String menuOption = event.getMenuOption();
-		if (menuOption == null)
-		{
-			return;
-		}
 
 		// If click a base tab, close
 		boolean clickedTabTag = menuOption.startsWith("View tab") && !event.getMenuTarget().equals("quest-helper");

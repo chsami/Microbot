@@ -32,11 +32,12 @@ import net.runelite.client.plugins.microbot.questhelper.requirements.ManualRequi
 import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.conditional.Conditions;
 import net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicType;
-import net.runelite.client.plugins.microbot.questhelper.steps.choice.DialogChoiceStep;
 import lombok.Getter;
+import net.runelite.client.plugins.microbot.questhelper.steps.choice.DialogChoiceStep;
 import lombok.NonNull;
 import net.runelite.client.ui.overlay.components.PanelComponent;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;

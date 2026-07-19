@@ -24,27 +24,30 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.helpers.quests.monksfriend;
 
+import net.runelite.client.plugins.microbot.questhelper.collections.ItemCollections;
 import net.runelite.client.plugins.microbot.questhelper.panel.PanelDetails;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.BasicQuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
+import static net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper.and;
 import net.runelite.client.plugins.microbot.questhelper.requirements.zone.Zone;
 import net.runelite.client.plugins.microbot.questhelper.requirements.zone.ZoneRequirement;
 import net.runelite.client.plugins.microbot.questhelper.rewards.ExperienceReward;
 import net.runelite.client.plugins.microbot.questhelper.rewards.ItemReward;
 import net.runelite.client.plugins.microbot.questhelper.rewards.QuestPointReward;
-import net.runelite.client.plugins.microbot.questhelper.steps.*;
+import net.runelite.client.plugins.microbot.questhelper.steps.ConditionalStep;
+import net.runelite.client.plugins.microbot.questhelper.steps.DetailedQuestStep;
+import net.runelite.client.plugins.microbot.questhelper.steps.NpcStep;
+import net.runelite.client.plugins.microbot.questhelper.steps.ObjectStep;
+import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.api.gameval.NpcID;
 import net.runelite.api.gameval.ObjectID;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import static net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper.and;
 
 public class MonksFriend extends BasicQuestHelper
 {
@@ -89,12 +92,9 @@ public class MonksFriend extends BasicQuestHelper
 
 		log = new ItemRequirement("Logs", ItemID.LOGS);
 		jugOfWater = new ItemRequirement("Jug of Water", ItemID.JUG_WATER);
+		jugOfWater.setTooltip("You can find one in the Yanille cooking shop");
 		blanket = new ItemRequirement("Child's blanket", ItemID.CHILDS_BLANKET);
-		ardougneCloak = new ItemRequirement("Ardougne cloak 1 or higher for teleports to the monastery", ItemID.CERT_ARRAVCERTIFICATE).isNotConsumed();
-	}
-
-	public void setupConditions()
-	{
+		ardougneCloak = new ItemRequirement("Ardougne cloak 1 or higher for teleports to the monastery", ItemCollections.ARDOUGNE_CLOAK).isNotConsumed();
 	}
 
 	public void setupSteps()

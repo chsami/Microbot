@@ -27,11 +27,12 @@
 package net.runelite.client.plugins.microbot.questhelper.requirements.player;
 
 import net.runelite.client.plugins.microbot.questhelper.requirements.AbstractRequirement;
-import lombok.Getter;
 import net.runelite.api.Client;
-import net.runelite.api.gameval.VarbitID;
 
 import javax.annotation.Nonnull;
+
+import lombok.Getter;
+import net.runelite.api.gameval.VarbitID;
 
 /**
  * Requirement that checks if a player has a required number of Port Task slots free.

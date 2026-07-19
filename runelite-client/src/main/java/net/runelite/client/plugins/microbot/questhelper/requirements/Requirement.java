@@ -26,9 +26,9 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.requirements;
 
+import net.runelite.client.plugins.microbot.questhelper.QuestHelperConfig;
 import net.runelite.api.Client;
 import net.runelite.client.config.ConfigManager;
-import net.runelite.client.plugins.microbot.questhelper.QuestHelperConfig;
 import net.runelite.client.ui.overlay.components.LineComponent;
 
 import javax.annotation.Nonnull;

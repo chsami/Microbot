@@ -29,27 +29,35 @@ import net.runelite.client.plugins.microbot.questhelper.questhelpers.BasicQuestH
 import net.runelite.client.plugins.microbot.questhelper.requirements.ManualRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
+import static net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper.and;
+import static net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper.nor;
+import static net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper.or;
 import net.runelite.client.plugins.microbot.questhelper.requirements.zone.Zone;
 import net.runelite.client.plugins.microbot.questhelper.requirements.zone.ZoneRequirement;
 import net.runelite.client.plugins.microbot.questhelper.rewards.ExperienceReward;
 import net.runelite.client.plugins.microbot.questhelper.rewards.ItemReward;
 import net.runelite.client.plugins.microbot.questhelper.rewards.QuestPointReward;
-import net.runelite.client.plugins.microbot.questhelper.steps.*;
+import net.runelite.client.plugins.microbot.questhelper.steps.ConditionalStep;
+import net.runelite.client.plugins.microbot.questhelper.steps.ItemStep;
+import net.runelite.client.plugins.microbot.questhelper.steps.NpcStep;
+import net.runelite.client.plugins.microbot.questhelper.steps.ObjectStep;
+import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.widget.WidgetHighlight;
 import net.runelite.client.plugins.microbot.questhelper.util.QHObjectID;
-import net.runelite.api.Skill;
-import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.events.ItemContainerChanged;
-import net.runelite.api.gameval.*;
-import net.runelite.client.eventbus.Subscribe;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.IntStream;
-
-import static net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper.*;
+import net.runelite.api.Skill;
+import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.events.ItemContainerChanged;
+import net.runelite.api.gameval.InventoryID;
+import net.runelite.api.gameval.ItemID;
+import net.runelite.api.gameval.NpcID;
+import net.runelite.api.gameval.ObjectID;
+import net.runelite.api.gameval.VarPlayerID;
+import net.runelite.client.eventbus.Subscribe;
 
 public class SheepShearer extends BasicQuestHelper
 {

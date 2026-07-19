@@ -36,7 +36,6 @@ import net.runelite.client.plugins.microbot.questhelper.steps.ReorderableConditi
 import net.runelite.client.plugins.microbot.questhelper.steps.tools.QuestPerspective;
 import net.runelite.api.Client;
 import net.runelite.api.coords.WorldPoint;
-
 import java.util.Map;
 
 public class ChartingConditionalStep extends ReorderableConditionalStep

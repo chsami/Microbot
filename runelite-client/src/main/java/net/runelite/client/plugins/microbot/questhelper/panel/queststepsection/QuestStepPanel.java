@@ -27,9 +27,12 @@ package net.runelite.client.plugins.microbot.questhelper.panel.queststepsection;
 import net.runelite.client.plugins.microbot.questhelper.QuestHelperPlugin;
 import net.runelite.client.plugins.microbot.questhelper.managers.QuestManager;
 import net.runelite.client.plugins.microbot.questhelper.panel.JGenerator;
+import net.runelite.client.plugins.microbot.questhelper.panel.ManualStepSkipStore;
 import net.runelite.client.plugins.microbot.questhelper.panel.PanelDetails;
 import net.runelite.client.plugins.microbot.questhelper.panel.QuestRequirementsPanel;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
+import net.runelite.client.plugins.microbot.questhelper.requirements.ManualRequirement;
+import net.runelite.client.plugins.microbot.questhelper.steps.BoardShipStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.PortTaskStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
 import net.runelite.api.Client;
@@ -41,19 +44,26 @@ import javax.annotation.Nullable;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 
 public class QuestStepPanel extends AbstractQuestSection implements MouseListener
 {
 	private static final int TITLE_PADDING = 5;
 
 	private final QuestHelperPlugin questHelperPlugin;
-	private final HashMap<QuestStep, JTextPane> steps = new HashMap<>();
+	private final Map<QuestStep, JTextPane> stepTextPanes = new HashMap<>();
+	private final Map<QuestStep, JPanel> stepRowPanels = new HashMap<>();
+	private final Map<QuestStep, JCheckBox> manualSkipBoxes = new HashMap<>();
+	private final Map<String, Boolean> persistedManualSkips;
+	private final List<QuestStep> orderedSidebarSteps = new ArrayList<>();
+	private boolean suppressManualSkipEvents;
 	private final @Nullable QuestRequirementsPanel requiredItemsPanel;
 	private final @Nullable QuestRequirementsPanel recommendedItemsPanel;
 	private boolean stepAutoLocked;
@@ -65,6 +75,18 @@ public class QuestStepPanel extends AbstractQuestSection implements MouseListene
 		this.panelDetails = panelDetails;
 		this.questHelperPlugin = questHelperPlugin;
 		this.questHelper = questManager.getSelectedQuest();
+		if (this.questHelper != null)
+		{
+			this.persistedManualSkips = ManualStepSkipStore.load(
+				this.questHelper.getConfigManager(),
+				this.questHelper.gson,
+				this.questHelper.getDisplayedQuestName()
+			);
+		}
+		else
+		{
+			this.persistedManualSkips = new HashMap<>();
+		}
 
 		setLayout(new BorderLayout(0, 1));
 		setBorder(new EmptyBorder(5, 0, 0, 0));
@@ -131,7 +153,7 @@ public class QuestStepPanel extends AbstractQuestSection implements MouseListene
 		if (panelDetails.getRecommended() != null)
 		{
 			recommendedItemsPanel = new QuestRequirementsPanel("Optionally bring the following items:", panelDetails.getRecommended(), questManager,
-					false);
+				false);
 			bodyPanel.add(recommendedItemsPanel, BorderLayout.CENTER);
 		}
 		else
@@ -145,18 +167,16 @@ public class QuestStepPanel extends AbstractQuestSection implements MouseListene
 
 		for (QuestStep step : panelDetails.getSteps())
 		{
-			if(step instanceof PortTaskStep)
+			if (step instanceof PortTaskStep)
 			{
 				for (QuestStep step2 : ((PortTaskStep) step).getStepsList())
 				{
-					JTextPane questStepLabel = createQuestStepLabel(step2);
-					steps.put(step2, questStepLabel);
-					questStepsPanel.add(questStepLabel);
+					addStepRow(questStepsPanel, step2);
 				}
-			}else{
-				JTextPane questStepLabel = createQuestStepLabel(step);
-				steps.put(step, questStepLabel);
-				questStepsPanel.add(questStepLabel);
+			}
+			else
+			{
+				addStepRow(questStepsPanel, step);
 			}
 		}
 
@@ -171,7 +191,179 @@ public class QuestStepPanel extends AbstractQuestSection implements MouseListene
 		}
 	}
 
-	private JTextPane createQuestStepLabel(QuestStep step){
+	private void addStepRow(JPanel questStepsPanel, QuestStep step)
+	{
+		orderedSidebarSteps.add(step);
+		JPanel row = buildStepRow(step);
+		stepRowPanels.put(step, row);
+		questStepsPanel.add(row);
+	}
+
+	private JPanel buildStepRow(QuestStep step)
+	{
+		JPanel row = new JPanel(new BorderLayout());
+		row.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+
+		JTextPane questStepLabel = createQuestStepTextPane(step);
+		stepTextPanes.put(step, questStepLabel);
+		row.add(questStepLabel, BorderLayout.CENTER);
+
+		ManualRequirement m = step.getSidebarManualSkipRequirement();
+		String pk = step.getSidebarManualSkipPersistenceKey();
+		if (m != null && pk != null && !pk.isBlank())
+		{
+			boolean persistedSkipped = Boolean.TRUE.equals(persistedManualSkips.get(pk));
+			if (persistedSkipped)
+			{
+				m.setShouldPass(true);
+			}
+
+			JCheckBox skip = new JCheckBox();
+			skip.setToolTipText("Skip step");
+			skip.setOpaque(true);
+			Client c = questHelperPlugin.getClient();
+			skip.setSelected(c != null && m.check(c));
+			manualSkipBoxes.put(step, skip);
+			skip.addActionListener(e -> {
+				if (suppressManualSkipEvents)
+				{
+					return;
+				}
+				boolean sel = skip.isSelected();
+				m.setShouldPass(sel);
+				if (sel)
+				{
+					persistedManualSkips.put(pk, true);
+				}
+				else
+				{
+					persistedManualSkips.remove(pk);
+				}
+				if (questHelper != null)
+				{
+					questHelper.notifyManualSidebarSkipChanged(pk, sel);
+				}
+			});
+			skip.addMouseListener(new MouseAdapter()
+			{
+				@Override
+				public void mousePressed(MouseEvent e)
+				{
+					maybeShowManualSkipContextMenu(step, skip, e);
+				}
+
+				@Override
+				public void mouseReleased(MouseEvent e)
+				{
+					maybeShowManualSkipContextMenu(step, skip, e);
+				}
+			});
+			row.add(skip, BorderLayout.EAST);
+		}
+
+		row.setVisible(step.isShowInSidebar());
+		return row;
+	}
+
+	private void maybeShowManualSkipContextMenu(QuestStep clickedStep, JCheckBox source, MouseEvent e)
+	{
+		if (!e.isPopupTrigger())
+		{
+			return;
+		}
+		JPopupMenu menu = new JPopupMenu();
+		JMenuItem tickUpTo = new JMenuItem("Tick all up to this step");
+		tickUpTo.addActionListener(ev -> tickManualSkipCheckboxesUpTo(clickedStep));
+		menu.add(tickUpTo);
+		JMenuItem resetAll = new JMenuItem("Reset all tick boxes");
+		resetAll.addActionListener(ev -> resetAllManualSkipCheckboxes());
+		menu.add(resetAll);
+		menu.show(source, e.getX(), e.getY());
+	}
+
+	private void tickManualSkipCheckboxesUpTo(QuestStep clickedStep)
+	{
+		if (clickedStep == null || orderedSidebarSteps.isEmpty())
+		{
+			return;
+		}
+		int endIndex = orderedSidebarSteps.indexOf(clickedStep);
+		if (endIndex < 0)
+		{
+			return;
+		}
+		suppressManualSkipEvents = true;
+		try
+		{
+			for (int i = 0; i <= endIndex; i++)
+			{
+				QuestStep step = orderedSidebarSteps.get(i);
+				ManualRequirement m = step.getSidebarManualSkipRequirement();
+				String pk = step.getSidebarManualSkipPersistenceKey();
+				if (m == null || pk == null || pk.isBlank())
+				{
+					continue;
+				}
+				m.setShouldPass(true);
+				persistedManualSkips.put(pk, true);
+				JCheckBox box = manualSkipBoxes.get(step);
+				if (box != null)
+				{
+					box.setSelected(true);
+				}
+				if (questHelper != null)
+				{
+					questHelper.notifyManualSidebarSkipChanged(pk, true);
+				}
+			}
+		}
+		finally
+		{
+			suppressManualSkipEvents = false;
+		}
+	}
+
+	private void resetAllManualSkipCheckboxes()
+	{
+		if (questHelper != null)
+		{
+			questHelper.resetAllManualSidebarSkips();
+		}
+		if (manualSkipBoxes.isEmpty())
+		{
+			return;
+		}
+		suppressManualSkipEvents = true;
+		try
+		{
+			for (Map.Entry<QuestStep, JCheckBox> e : manualSkipBoxes.entrySet())
+			{
+				QuestStep step = e.getKey();
+				JCheckBox box = e.getValue();
+				ManualRequirement m = step.getSidebarManualSkipRequirement();
+				String pk = step.getSidebarManualSkipPersistenceKey();
+				if (m != null)
+				{
+					m.setShouldPass(false);
+				}
+				if (pk != null && !pk.isBlank())
+				{
+					persistedManualSkips.remove(pk);
+				}
+				if (box != null)
+				{
+					box.setSelected(false);
+				}
+			}
+		}
+		finally
+		{
+			suppressManualSkipEvents = false;
+		}
+	}
+
+	private JTextPane createQuestStepTextPane(QuestStep step)
+	{
 		JTextPane questStepLabel = JGenerator.makeJTextPane();
 		questStepLabel.setLayout(new BorderLayout());
 		questStepLabel.setAlignmentX(SwingConstants.LEFT);
@@ -183,13 +375,37 @@ public class QuestStepPanel extends AbstractQuestSection implements MouseListene
 		));
 		questStepLabel.setText(generateText(step));
 		questStepLabel.setOpaque(true);
-		questStepLabel.setVisible(step.isShowInSidebar());
+		questStepLabel.setVisible(true);
 		return questStepLabel;
+	}
+
+	private void syncManualSkipCheckboxesFromRequirements(Client client)
+	{
+		if (manualSkipBoxes.isEmpty())
+		{
+			return;
+		}
+		suppressManualSkipEvents = true;
+		try
+		{
+			for (Map.Entry<QuestStep, JCheckBox> e : manualSkipBoxes.entrySet())
+			{
+				ManualRequirement m = e.getKey().getSidebarManualSkipRequirement();
+				if (m != null)
+				{
+					e.getValue().setSelected(client != null && m.check(client));
+				}
+			}
+		}
+		finally
+		{
+			suppressManualSkipEvents = false;
+		}
 	}
 
 	public void updateAllText()
 	{
-		steps.forEach((questStep, textPane) -> {
+		stepTextPanes.forEach((questStep, textPane) -> {
 			if (textPane != null)
 			{
 				String newText = generateText(questStep);
@@ -226,7 +442,7 @@ public class QuestStepPanel extends AbstractQuestSection implements MouseListene
 
 	public List<QuestStep> getSteps()
 	{
-		return new ArrayList<>(steps.keySet());
+		return new ArrayList<>(stepTextPanes.keySet());
 	}
 
 	public void setLockable(boolean canLock)
@@ -282,19 +498,19 @@ public class QuestStepPanel extends AbstractQuestSection implements MouseListene
 
 	public void updateTextToFaded(QuestStep questStep)
 	{
-		if (steps.get(questStep) != null)
+		if (stepTextPanes.get(questStep) != null)
 		{
-			steps.get(questStep).setForeground(Color.DARK_GRAY);
-			steps.get(questStep).setToolTipText(questStep.getFadeCondition().getDisplayText());
+			stepTextPanes.get(questStep).setForeground(Color.DARK_GRAY);
+			stepTextPanes.get(questStep).setToolTipText(questStep.getFadeCondition().getDisplayText());
 		}
 	}
 
 	public void updateTextToUnfaded(QuestStep questStep)
 	{
-		if (steps.get(questStep) != null)
+		if (stepTextPanes.get(questStep) != null)
 		{
-			steps.get(questStep).setForeground(Color.LIGHT_GRAY);
-			steps.get(questStep).setToolTipText(null);
+			stepTextPanes.get(questStep).setForeground(Color.LIGHT_GRAY);
+			stepTextPanes.get(questStep).setToolTipText(null);
 		}
 	}
 
@@ -302,14 +518,14 @@ public class QuestStepPanel extends AbstractQuestSection implements MouseListene
 	{
 		expand();
 
-		if (steps.get(lastHighlightedStep) != null)
+		if (stepTextPanes.get(lastHighlightedStep) != null)
 		{
-			steps.get(lastHighlightedStep).setForeground(Color.LIGHT_GRAY);
+			stepTextPanes.get(lastHighlightedStep).setForeground(Color.LIGHT_GRAY);
 		}
 
-		if (steps.get(currentStep) != null)
+		if (stepTextPanes.get(currentStep) != null)
 		{
-			steps.get(currentStep).setForeground(ColorScheme.BRAND_ORANGE);
+			stepTextPanes.get(currentStep).setForeground(ColorScheme.BRAND_ORANGE);
 			headerLabel.setForeground(Color.BLACK);
 			headerPanel.setBackground(ColorScheme.BRAND_ORANGE);
 			viewControls.setBackground(ColorScheme.BRAND_ORANGE);
@@ -329,9 +545,9 @@ public class QuestStepPanel extends AbstractQuestSection implements MouseListene
 		headerPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR.darker());
 		viewControls.setBackground(ColorScheme.DARKER_GRAY_COLOR.darker());
 		leftTitleContainer.setBackground(ColorScheme.DARKER_GRAY_COLOR.darker());
-		if (steps.get(currentlyActiveQuestSidebarStep()) != null)
+		if (stepTextPanes.get(currentlyActiveQuestSidebarStep()) != null)
 		{
-			steps.get(currentlyActiveQuestSidebarStep()).setForeground(Color.LIGHT_GRAY);
+			stepTextPanes.get(currentlyActiveQuestSidebarStep()).setForeground(Color.LIGHT_GRAY);
 		}
 
 		collapse();
@@ -430,19 +646,24 @@ public class QuestStepPanel extends AbstractQuestSection implements MouseListene
 		}
 
 		updateStepVisibility(client);
+		syncManualSkipCheckboxesFromRequirements(client);
 	}
 
 	public boolean updateStepVisibility(Client client)
 	{
 		boolean stepVisibilityChanged = false;
-		for (QuestStep step : steps.keySet())
+		for (QuestStep step : stepTextPanes.keySet())
 		{
 			boolean oldVisibility = step.isShowInSidebar();
 			boolean newVisibility = step.getConditionToHide() == null || !step.getConditionToHide().check(client);
 			stepVisibilityChanged = stepVisibilityChanged || (oldVisibility != newVisibility);
 
 			step.setShowInSidebar(newVisibility);
-			steps.get(step).setVisible(newVisibility);
+			JPanel row = stepRowPanels.get(step);
+			if (row != null)
+			{
+				row.setVisible(newVisibility);
+			}
 		}
 
 		if (stepVisibilityChanged)
@@ -463,7 +684,7 @@ public class QuestStepPanel extends AbstractQuestSection implements MouseListene
 
 	public List<Integer> getIds()
 	{
-		if (panelDetails.getId() == -1) return List.of();
+		if (panelDetails.getId() == Integer.MIN_VALUE) return List.of();
 		return List.of(panelDetails.getId());
 	}
 

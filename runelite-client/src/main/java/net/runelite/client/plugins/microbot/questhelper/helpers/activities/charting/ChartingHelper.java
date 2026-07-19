@@ -24,22 +24,32 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.helpers.activities.charting;
 
-import net.runelite.client.plugins.microbot.questhelper.QuestHelperConfig;
-import net.runelite.client.plugins.microbot.questhelper.helpers.activities.charting.steps.*;
+import net.runelite.client.plugins.microbot.questhelper.helpers.activities.charting.steps.ChartingCaveTelescopeStep;
+import net.runelite.client.plugins.microbot.questhelper.helpers.activities.charting.steps.ChartingCrateStep;
+import net.runelite.client.plugins.microbot.questhelper.helpers.activities.charting.steps.ChartingCurrentStep;
+import net.runelite.client.plugins.microbot.questhelper.helpers.activities.charting.steps.ChartingDivingStep;
+import net.runelite.client.plugins.microbot.questhelper.helpers.activities.charting.steps.ChartingGenericObjectStep;
+import net.runelite.client.plugins.microbot.questhelper.helpers.activities.charting.steps.ChartingPuzzleWrapStep;
+import net.runelite.client.plugins.microbot.questhelper.helpers.activities.charting.steps.ChartingTaskStep;
+import net.runelite.client.plugins.microbot.questhelper.helpers.activities.charting.steps.ChartingTelescopeStep;
+import net.runelite.client.plugins.microbot.questhelper.helpers.activities.charting.steps.ChartingWeatherStep;
+import net.runelite.api.gameval.VarbitID;
 import net.runelite.client.plugins.microbot.questhelper.panel.PanelDetails;
 import net.runelite.client.plugins.microbot.questhelper.panel.TopLevelPanelDetails;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.ComplexStateQuestHelper;
-import net.runelite.client.plugins.microbot.questhelper.questinfo.HelperConfig;
 import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.StepIsActiveRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.conditional.Conditions;
 import net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicType;
+import net.runelite.client.plugins.microbot.questhelper.QuestHelperConfig;
+import net.runelite.client.plugins.microbot.questhelper.questinfo.HelperConfig;
 import net.runelite.client.plugins.microbot.questhelper.steps.DetailedQuestStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
-import net.runelite.api.gameval.VarbitID;
-
-import java.util.*;
-
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import static net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper.not;
 
 public class ChartingHelper extends ComplexStateQuestHelper

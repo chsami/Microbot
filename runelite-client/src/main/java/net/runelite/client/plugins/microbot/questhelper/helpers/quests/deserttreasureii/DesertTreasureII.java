@@ -64,7 +64,9 @@ import net.runelite.api.gameval.VarbitID;
 
 import java.util.*;
 
-import static net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper.*;
+import static net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper.and;
+import static net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper.not;
+import static net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper.or;
 
 public class DesertTreasureII extends BasicQuestHelper
 {

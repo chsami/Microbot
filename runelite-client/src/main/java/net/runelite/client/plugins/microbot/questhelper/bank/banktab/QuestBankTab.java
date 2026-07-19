@@ -34,10 +34,12 @@ import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRe
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.events.*;
-import net.runelite.api.gameval.*;
+import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.InventoryID;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.api.gameval.SpriteID;
+import net.runelite.api.gameval.VarClientID;
+import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.ItemQuantityMode;
 import net.runelite.api.widgets.JavaScriptCallback;
 import net.runelite.api.widgets.Widget;
@@ -55,13 +57,15 @@ import net.runelite.client.util.Text;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import java.awt.*;
 import java.awt.Point;
-import java.util.*;
+import java.awt.*;
 import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static net.runelite.client.plugins.microbot.questhelper.bank.banktab.PotionStorage.COMPONENTS_PER_POTION;
+import static net.runelite.client.plugins.microbot.questhelper.bank.banktab.PotionStorage.VIAL_IDX;
 import static net.runelite.client.plugins.banktags.BankTagsPlugin.*;
 
 @Singleton
