@@ -26,7 +26,6 @@ package net.runelite.client.plugins.microbot.questhelper.panel;
 
 import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
 import lombok.Getter;
-
 import java.util.ArrayList;
 import java.util.List;
 

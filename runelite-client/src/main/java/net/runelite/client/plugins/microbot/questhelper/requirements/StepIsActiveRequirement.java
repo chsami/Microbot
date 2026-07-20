@@ -26,7 +26,7 @@ package net.runelite.client.plugins.microbot.questhelper.requirements;
 
 import net.runelite.client.plugins.microbot.questhelper.steps.DetailedQuestStep;
 import net.runelite.api.Client;
-import org.jetbrains.annotations.NotNull;
+import javax.annotation.Nonnull;
 
 public class StepIsActiveRequirement extends AbstractRequirement
 {
@@ -43,7 +43,7 @@ public class StepIsActiveRequirement extends AbstractRequirement
 		return questStep.isStarted();
 	}
 
-	@NotNull
+	@Nonnull
 	@Override
 	public String getDisplayText()
 	{

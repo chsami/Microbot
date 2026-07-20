@@ -31,7 +31,11 @@ import net.runelite.api.Item;
 import net.runelite.api.ItemContainer;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.GameTick;
-import net.runelite.api.gameval.*;
+import net.runelite.api.gameval.InventoryID;
+import net.runelite.api.gameval.ItemID;
+import net.runelite.api.gameval.NpcID;
+import net.runelite.api.gameval.ObjectID;
+import net.runelite.api.gameval.VarbitID;
 import net.runelite.client.eventbus.Subscribe;
 
 import java.util.Arrays;

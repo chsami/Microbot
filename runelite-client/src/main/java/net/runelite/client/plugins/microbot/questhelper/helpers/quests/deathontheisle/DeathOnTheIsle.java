@@ -37,6 +37,8 @@ import net.runelite.client.plugins.microbot.questhelper.requirements.npc.NoFollo
 import net.runelite.client.plugins.microbot.questhelper.requirements.player.FreeInventorySlotRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.player.SkillRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.quest.QuestRequirement;
+import static net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper.and;
+import static net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper.not;
 import net.runelite.client.plugins.microbot.questhelper.requirements.util.Operation;
 import net.runelite.client.plugins.microbot.questhelper.requirements.var.VarbitRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.zone.Zone;
@@ -45,7 +47,15 @@ import net.runelite.client.plugins.microbot.questhelper.rewards.ExperienceReward
 import net.runelite.client.plugins.microbot.questhelper.rewards.ItemReward;
 import net.runelite.client.plugins.microbot.questhelper.rewards.QuestPointReward;
 import net.runelite.client.plugins.microbot.questhelper.rewards.UnlockReward;
-import net.runelite.client.plugins.microbot.questhelper.steps.*;
+import net.runelite.client.plugins.microbot.questhelper.steps.ConditionalStep;
+import net.runelite.client.plugins.microbot.questhelper.steps.DetailedQuestStep;
+import net.runelite.client.plugins.microbot.questhelper.steps.NpcStep;
+import net.runelite.client.plugins.microbot.questhelper.steps.ObjectStep;
+import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import net.runelite.api.QuestState;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
@@ -53,14 +63,6 @@ import net.runelite.api.gameval.ItemID;
 import net.runelite.api.gameval.NpcID;
 import net.runelite.api.gameval.ObjectID;
 import net.runelite.api.gameval.VarbitID;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import static net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper.and;
-import static net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper.not;
 
 /**
  * The quest guide for the "Death on the Isle" OSRS quest
@@ -499,6 +501,7 @@ public class DeathOnTheIsle extends BasicQuestHelper
 		accuseAdala.addDialogStep("Accuse Adala.");
 
 		fightAdala = new NpcStep(this, NpcID.DOTI_ADALA_MASK_INSIDE, new WorldPoint(1446, 2933, 2), "Fight Adala. You cannot lose this fight.");
+		fightAdala.addAlternateNpcs(NpcID.DOTI_ADALA_BOSS);
 		accuseAdala.addSubSteps(fightAdala);
 
 		speakToSuspects = new ConditionalStep(this, accuseAdala);

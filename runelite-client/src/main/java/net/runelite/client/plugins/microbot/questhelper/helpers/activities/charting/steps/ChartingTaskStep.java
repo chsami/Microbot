@@ -33,7 +33,6 @@ import net.runelite.client.plugins.microbot.questhelper.requirements.var.VarbitR
 import net.runelite.client.plugins.microbot.questhelper.steps.DetailedQuestStep;
 import lombok.Getter;
 import net.runelite.api.Skill;
-
 import static net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper.and;
 import static net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper.nor;
 

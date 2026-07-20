@@ -32,14 +32,13 @@ import net.runelite.client.plugins.microbot.questhelper.steps.DetailedOwnerStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.DetailedQuestStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.widget.WidgetHighlight;
+import java.awt.*;
+import java.util.List;
+import javax.annotation.Nullable;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
-
-import javax.annotation.Nullable;
-import java.awt.*;
-import java.util.List;
 
 @Slf4j
 public class EggSolver extends DetailedOwnerStep

@@ -29,22 +29,20 @@ import net.runelite.client.plugins.microbot.questhelper.collections.ItemCollecti
 import net.runelite.client.plugins.microbot.questhelper.panel.PanelDetails;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.BasicQuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
+import static net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper.not;
 import net.runelite.client.plugins.microbot.questhelper.rewards.ItemReward;
 import net.runelite.client.plugins.microbot.questhelper.rewards.QuestPointReward;
 import net.runelite.client.plugins.microbot.questhelper.steps.ConditionalStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.DigStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.NpcStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
-import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.gameval.ItemID;
-import net.runelite.api.gameval.NpcID;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import static net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper.not;
+import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.gameval.ItemID;
+import net.runelite.api.gameval.NpcID;
 
 public class XMarksTheSpot extends BasicQuestHelper
 {

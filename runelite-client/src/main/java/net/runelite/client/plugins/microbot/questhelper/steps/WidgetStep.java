@@ -24,10 +24,10 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.steps;
 
-import lombok.Getter;
 import net.runelite.client.plugins.microbot.questhelper.QuestHelperPlugin;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.steps.widget.WidgetDetails;
+import lombok.Getter;
 import lombok.Setter;
 import net.runelite.api.widgets.Widget;
 
@@ -39,8 +39,8 @@ import java.util.function.BiConsumer;
 
 public class WidgetStep extends DetailedQuestStep
 {
-	@Setter
 	@Getter
+	@Setter
 	protected List<WidgetDetails> widgetDetails = new ArrayList<>();
 
 	protected List<BiConsumer<Graphics2D, QuestHelperPlugin>> extraWidgetOverlayHintFunctions = new ArrayList<>();

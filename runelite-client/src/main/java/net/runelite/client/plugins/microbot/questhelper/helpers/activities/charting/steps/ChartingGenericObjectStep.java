@@ -27,8 +27,11 @@ package net.runelite.client.plugins.microbot.questhelper.helpers.activities.char
 import net.runelite.client.plugins.microbot.questhelper.helpers.activities.charting.ChartingTaskDefinition;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
+import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
 import net.runelite.api.GameObject;
 import net.runelite.api.TileObject;
+import net.runelite.api.gameval.ItemID;
+import java.util.List;
 
 // This is a lazy implementation where we fully trust the location of the object to only have one thing to work
 public class ChartingGenericObjectStep extends ChartingTaskObjectStep

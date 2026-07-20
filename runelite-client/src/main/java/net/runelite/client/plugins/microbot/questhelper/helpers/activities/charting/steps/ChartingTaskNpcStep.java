@@ -33,9 +33,9 @@ import net.runelite.client.plugins.microbot.questhelper.requirements.var.VarbitR
 import net.runelite.client.plugins.microbot.questhelper.steps.NpcStep;
 import lombok.Getter;
 import net.runelite.api.Skill;
-
 import static net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper.and;
 import static net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper.nor;
+import static net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper.or;
 
 @Getter
 public class ChartingTaskNpcStep extends NpcStep implements ChartingTaskInterface

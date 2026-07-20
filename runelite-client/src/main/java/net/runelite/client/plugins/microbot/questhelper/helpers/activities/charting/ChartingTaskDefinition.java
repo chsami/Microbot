@@ -24,10 +24,9 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.helpers.activities.charting;
 
+import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
 import lombok.Getter;
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
-
 import java.util.ArrayList;
 import java.util.List;
 

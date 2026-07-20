@@ -1,10 +1,10 @@
 package net.runelite.client.plugins.microbot.questhelper.steps.choice;
 
 import net.runelite.client.plugins.microbot.questhelper.QuestHelperConfig;
+import java.util.Map;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.util.Map;
 import java.util.regex.Pattern;
 
 public class DialogChoiceStep extends WidgetChoiceStep

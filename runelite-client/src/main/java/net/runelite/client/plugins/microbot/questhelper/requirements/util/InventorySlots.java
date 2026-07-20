@@ -27,9 +27,9 @@
 package net.runelite.client.plugins.microbot.questhelper.requirements.util;
 
 import net.runelite.api.Client;
+import net.runelite.api.gameval.InventoryID;
 import net.runelite.api.Item;
 import net.runelite.api.ItemContainer;
-import net.runelite.api.gameval.InventoryID;
 
 import java.util.Arrays;
 import java.util.Objects;

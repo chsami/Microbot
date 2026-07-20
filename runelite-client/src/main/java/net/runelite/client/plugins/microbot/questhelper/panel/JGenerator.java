@@ -72,7 +72,7 @@ public class JGenerator
         jTextArea.setOpaque(false);
         jTextArea.setEditable(false);
         jTextArea.setFocusable(false);
-        jTextArea.setBackground(UIManager.getColor("Label.background"));
+        jTextArea.setBackground(javax.swing.UIManager.getColor("Label.background"));
         jTextArea.setBorder(new EmptyBorder(0, 0, 0, 0));
 
         return jTextArea;
@@ -86,7 +86,7 @@ public class JGenerator
         jTextArea.setOpaque(false);
         jTextArea.setEditable(false);
         jTextArea.setFocusable(false);
-        jTextArea.setBackground(UIManager.getColor("Label.background"));
+        jTextArea.setBackground(javax.swing.UIManager.getColor("Label.background"));
         jTextArea.setBorder(new EmptyBorder(0, 0, 0, 0));
 
         return jTextArea;

@@ -45,19 +45,16 @@ public class Cheerer
 	public static void createCheerers(RuneliteObjectManager runeliteObjectManager, Client client, ConfigManager configManager)
 	{
 		cheerers.clear();
-		if (client.getLocalPlayer() == null)
-		{
-			return;
-		}
 		createWOM(runeliteObjectManager, client);
 		createZoinkwiz(runeliteObjectManager, client);
 	}
 
 	private static void createWOM(RuneliteObjectManager runeliteObjectManager, Client client)
 	{
-		WorldPoint playerPos = client.getLocalPlayer().getWorldLocation();
-		WorldPoint pointAbovePlayer = new WorldPoint(playerPos.getX(), playerPos.getY() + 1, playerPos.getPlane());
-		FakeNpc wiseOldMan = runeliteObjectManager.createFakeNpc("global", wiseOldManOutfit(client), pointAbovePlayer, 862);
+		// Spawn the initial NPC in lumbridge.
+		// When the NPC is activated from the player completing a quest, we will always update the position anyway.
+		var spawnPos = new WorldPoint(3223, 3218, 0);
+		FakeNpc wiseOldMan = runeliteObjectManager.createFakeNpc("global", wiseOldManOutfit(client), spawnPos, 862);
 		wiseOldMan.setName("Wise Old Man");
 		wiseOldMan.setExamine("Loves questing.");
 		wiseOldMan.addExamineAction(runeliteObjectManager);
@@ -86,9 +83,10 @@ public class Cheerer
 
 	private static void createZoinkwiz(RuneliteObjectManager runeliteObjectManager, Client client)
 	{
-		WorldPoint playerPos = client.getLocalPlayer().getWorldLocation();
-		WorldPoint pointAbovePlayer = new WorldPoint(playerPos.getX(), playerPos.getY() + 1, playerPos.getPlane());
-		FakeNpc zoinkwiz = runeliteObjectManager.createFakeNpc("global", zoinkwizOutfit(client), pointAbovePlayer, 862);
+		// Spawn the initial NPC in lumbridge.
+		// When the NPC is activated from the player completing a quest, we will always update the position anyway.
+		var spawnPos = new WorldPoint(3223, 3218, 0);
+		FakeNpc zoinkwiz = runeliteObjectManager.createFakeNpc("global", zoinkwizOutfit(client), spawnPos, 862);
 		zoinkwiz.setName("Zoinkwiz");
 		zoinkwiz.setExamine("Loves questing.");
 		zoinkwiz.addExamineAction(runeliteObjectManager);

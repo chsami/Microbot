@@ -50,8 +50,11 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class QuestRequirementsPanel extends JPanel
 {
@@ -92,7 +95,7 @@ public class QuestRequirementsPanel extends JPanel
 		var headerPanel = new JPanel();
 		headerPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		headerPanel.setLayout(new BorderLayout());
-		headerPanel.setBorder(new EmptyBorder(5, 5, 5, 10));
+		headerPanel.setBorder(new EmptyBorder(5, 5, 5, 5));
 
 		var headerLabel = JGenerator.makeJTextArea(header);
 		headerLabel.setForeground(Color.WHITE);

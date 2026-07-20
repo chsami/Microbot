@@ -43,7 +43,11 @@ import net.runelite.client.plugins.microbot.questhelper.steps.ObjectStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
 import net.runelite.api.Prayer;
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.gameval.*;
+import net.runelite.api.gameval.ItemID;
+import net.runelite.api.gameval.NpcID;
+import net.runelite.api.gameval.ObjectID;
+import net.runelite.api.gameval.SpriteID;
+import net.runelite.api.gameval.VarbitID;
 
 import java.util.Arrays;
 import java.util.List;

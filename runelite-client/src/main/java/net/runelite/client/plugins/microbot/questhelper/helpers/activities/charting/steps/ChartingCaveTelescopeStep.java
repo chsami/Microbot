@@ -33,12 +33,12 @@ import net.runelite.client.plugins.microbot.questhelper.requirements.var.VarbitR
 import net.runelite.client.plugins.microbot.questhelper.requirements.zone.Zone;
 import net.runelite.client.plugins.microbot.questhelper.requirements.zone.ZoneRequirement;
 import net.runelite.client.plugins.microbot.questhelper.steps.ConditionalStep;
+import net.runelite.client.plugins.microbot.questhelper.steps.DetailedQuestStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.ObjectStep;
 import lombok.Getter;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.ObjectID;
-
 import static net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper.and;
 import static net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper.nor;
 

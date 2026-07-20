@@ -27,6 +27,8 @@ package net.runelite.client.plugins.microbot.questhelper.helpers.mischelpers.far
 
 import net.runelite.client.plugins.microbot.questhelper.QuestHelperConfig;
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
+import java.util.ArrayList;
+import java.util.List;
 import net.runelite.api.Client;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.client.config.ConfigManager;

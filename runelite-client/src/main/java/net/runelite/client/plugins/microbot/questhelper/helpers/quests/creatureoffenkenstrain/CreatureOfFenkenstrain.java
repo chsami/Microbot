@@ -151,7 +151,9 @@ public class CreatureOfFenkenstrain extends BasicQuestHelper
 		silverBar = new ItemRequirement("Silver bar", ItemID.SILVER_BAR);
 		bronzeWire = new ItemRequirement("Bronze wire", ItemID.BRONZECRAFTWIRE, 3);
 		needle = new ItemRequirement("Needle", ItemID.NEEDLE).isNotConsumed();
+		needle.setTooltip("Costume needle cannot be used as a substitute");
 		thread = new ItemRequirement("Thread", ItemID.THREAD, 5);
+		thread.setTooltip("Costume needle cannot be used as a substitute");
 		spade = new ItemRequirement("Spade", ItemID.SPADE).isNotConsumed();
 		coins = new ItemRequirement("Coins at least", ItemCollections.COINS, 100);
 		pickledBrain = new ItemRequirement("Pickled Brain", ItemID.FENK_BRAIN);
@@ -268,7 +270,7 @@ public class CreatureOfFenkenstrain extends BasicQuestHelper
 			marbleAmulet.highlighted(),
 			obsidianAmulet.highlighted());
 
-		goDownstairsForStar = new ObjectStep(this, ObjectID.FENK_STAIRS_LV1_TOP, new WorldPoint(3573, 3553, 1),
+		goDownstairsForStar = new ObjectStep(this, ObjectID.FENK_STAIRS_LV1_TOP, new WorldPoint(3537, 3553, 1),
 			"Go back to the ground floor.");
 
 		talkToGardenerForHead = new NpcStep(this, NpcID.FENK_GARDENER, new WorldPoint(3548, 3562, 0),

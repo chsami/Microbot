@@ -27,12 +27,11 @@ package net.runelite.client.plugins.microbot.questhelper.helpers.quests.demonsla
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.steps.ConditionalStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
+import java.util.HashMap;
 import net.runelite.api.events.WidgetLoaded;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.Widget;
-
-import java.util.HashMap;
 
 public class IncantationStep extends ConditionalStep
 {

@@ -29,6 +29,7 @@ import net.runelite.client.plugins.microbot.questhelper.collections.ItemCollecti
 import net.runelite.client.plugins.microbot.questhelper.panel.PanelDetails;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.BasicQuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
+import static net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper.and;
 import net.runelite.client.plugins.microbot.questhelper.requirements.var.VarbitRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.zone.Zone;
 import net.runelite.client.plugins.microbot.questhelper.requirements.zone.ZoneRequirement;
@@ -40,18 +41,15 @@ import net.runelite.client.plugins.microbot.questhelper.steps.NpcStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.ObjectStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
 import net.runelite.client.plugins.microbot.questhelper.util.QHObjectID;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.api.gameval.NpcID;
 import net.runelite.api.gameval.ObjectID;
 import net.runelite.api.gameval.VarbitID;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import static net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper.and;
 
 public class RuneMysteries extends BasicQuestHelper
 {

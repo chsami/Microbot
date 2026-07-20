@@ -33,16 +33,15 @@ import net.runelite.client.plugins.microbot.questhelper.steps.ConditionalStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.NpcStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.ObjectStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.api.gameval.NpcID;
 import net.runelite.api.gameval.ObjectID;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 public class WitchsPotion extends BasicQuestHelper
 {

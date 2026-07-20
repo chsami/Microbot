@@ -48,14 +48,28 @@ public class FarmingPatch
 	private final PatchImplementation implementation;
 	private int farmer = -1;
 	private final int patchNumber;
-	@Getter
+	@Getter(AccessLevel.NONE)
 	private final WorldPoint location;
-	@Getter
 	private final Shape patchArea;
+
+	FarmingPatch(String name, @Varbit int varbit, PatchImplementation implementation)
+	{
+		this(name, varbit, implementation, null, new Polygon(), -1, -1);
+	}
+
+	FarmingPatch(String name, @Varbit int varbit, PatchImplementation implementation, int farmer)
+	{
+		this(name, varbit, implementation, null, new Polygon(), farmer, -1);
+	}
+
+	FarmingPatch(String name, @Varbit int varbit, PatchImplementation implementation, int farmer, int patchNumber)
+	{
+		this(name, varbit, implementation, null, new Polygon(), farmer, patchNumber);
+	}
 
 	FarmingPatch(String name, @Varbit int varbit, PatchImplementation implementation, WorldPoint location)
 	{
-		this(name, varbit, implementation, location, new Polygon(), -1);
+		this(name, varbit, implementation, location, new Polygon(), -1, -1);
 	}
 
 	FarmingPatch(String name, @Varbit int varbit, PatchImplementation implementation, WorldPoint location, Shape patchArea)
@@ -77,6 +91,19 @@ public class FarmingPatch
 		this.patchNumber = patchNumber;
 		this.location = location;
 		this.patchArea = patchArea;
+	}
+
+	public WorldPoint getLocation()
+	{
+		if (location != null)
+		{
+			return location;
+		}
+		if (region == null)
+		{
+			return null;
+		}
+		return WorldPoint.fromRegion(region.getRegionID(), 32, 32, 0);
 	}
 
 	String configKey()

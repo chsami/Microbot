@@ -52,7 +52,11 @@ import net.runelite.api.Prayer;
 import net.runelite.api.QuestState;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.gameval.*;
+import net.runelite.api.gameval.ItemID;
+import net.runelite.api.gameval.NpcID;
+import net.runelite.api.gameval.ObjectID;
+import net.runelite.api.gameval.SpriteID;
+import net.runelite.api.gameval.VarPlayerID;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -443,7 +447,10 @@ public class FremennikMedium extends ComplexStateQuestHelper
 	@Override
 	public List<UnlockReward> getUnlockRewards()
 	{
-		return Arrays.asList(new UnlockReward("Improved rate of gaining approval on Miscellania."));
+		return Arrays.asList(
+			new UnlockReward("Improved rate of gaining approval on Miscellania."),
+			new UnlockReward("Unlocking infinite charges for your lyre with Fossegrimen costs 600 of each fish rather than 800")
+		);
 	}
 
 	@Override

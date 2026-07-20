@@ -25,7 +25,6 @@
 package net.runelite.client.plugins.microbot.questhelper.helpers.activities.charting;
 
 import lombok.Getter;
-
 import java.util.List;
 
 @Getter

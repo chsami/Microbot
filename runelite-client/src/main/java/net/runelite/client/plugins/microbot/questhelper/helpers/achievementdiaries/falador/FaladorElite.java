@@ -50,7 +50,11 @@ import net.runelite.client.plugins.microbot.questhelper.steps.emote.QuestEmote;
 import net.runelite.api.QuestState;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.gameval.*;
+import net.runelite.api.gameval.ItemID;
+import net.runelite.api.gameval.NpcID;
+import net.runelite.api.gameval.ObjectID;
+import net.runelite.api.gameval.VarbitID;
+import net.runelite.api.gameval.VarPlayerID;
 
 import java.util.ArrayList;
 import java.util.Arrays;

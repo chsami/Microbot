@@ -29,6 +29,8 @@ import net.runelite.client.plugins.microbot.questhelper.QuestHelperPlugin;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
+import java.awt.*;
+import java.awt.image.BufferedImage;
 import lombok.Setter;
 import net.runelite.api.Player;
 import net.runelite.api.coords.LocalPoint;
@@ -37,9 +39,6 @@ import net.runelite.api.events.GameTick;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.ui.overlay.OverlayUtil;
-
-import java.awt.*;
-import java.awt.image.BufferedImage;
 
 public class DigStep extends DetailedQuestStep
 {
@@ -96,11 +95,6 @@ public class DigStep extends DetailedQuestStep
 	public void makeWorldOverlayHint(Graphics2D graphics, QuestHelperPlugin plugin)
 	{
 		super.makeWorldOverlayHint(graphics, plugin);
-
-		if (inCutscene)
-		{
-			return;
-		}
 
 		LocalPoint localLocation = definedPoint.resolveLocalPoint(client);
 

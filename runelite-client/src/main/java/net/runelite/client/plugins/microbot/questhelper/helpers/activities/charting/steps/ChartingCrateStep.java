@@ -32,8 +32,9 @@ import net.runelite.client.plugins.microbot.questhelper.requirements.var.VarbitR
 import net.runelite.api.gameval.ItemID;
 import net.runelite.api.gameval.ObjectID;
 import net.runelite.api.gameval.VarbitID;
-
-import static net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper.*;
+import static net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper.and;
+import static net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper.not;
+import static net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper.or;
 
 public class ChartingCrateStep extends ChartingTaskObjectStep
 {

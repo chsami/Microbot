@@ -50,6 +50,7 @@ import net.runelite.client.plugins.microbot.questhelper.rewards.UnlockReward;
 import net.runelite.client.plugins.microbot.questhelper.steps.*;
 import net.runelite.api.QuestState;
 import net.runelite.api.Skill;
+import net.runelite.api.annotations.Varbit;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.api.gameval.NpcID;
