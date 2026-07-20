@@ -146,6 +146,51 @@ Verified 2026-07-20 by grepping all consumers under `plugins/microbot/`.
 
 `Pathfinder` external surface is small — only `getPath()` and `isDone()`. `PathfinderConfig` is heavily used *inside* `Rs2Walker` (43 refs) and by `leaguetransport` — its surface must be catalogued before Stage 2.
 
+### Stage 1 catalogue — complete external contract (2026-07-20)
+
+Read-only sweep of all **26** consumer files (`grep` for `microbot.shortestpath` usage outside the `shortestpath/` package). Counts are call-site occurrences, distinct methods only. This is the surface `Rs2PathApi` must reproduce.
+
+**`Pathfinder`** (instance, via `ShortestPathPlugin.getPathfinder()`):
+
+| Member | Uses |
+|---|---|
+| `getPath()` | 1 |
+| `isDone()` | 2 |
+
+**`PathfinderConfig`** (via `getPathfinderConfig()` / `pathfinderConfig`):
+
+| Member | Uses |
+|---|---|
+| `refresh()` | 18 |
+| `setUseBankItems(boolean)` | 13 |
+| `isUseBankItems()` | 5 |
+| `getTransports()` | 4 |
+| `getAllTransports()` | 2 |
+| `setIgnoreTeleportAndItems(boolean)` | 2 |
+| `isTransportUsableWithLeaguesContext(...)` | 2 |
+| `isUseSpiritTrees()` | 1 |
+
+**`Transport`** (instance getters/setters):
+
+| Member | Uses | | Member | Uses |
+|---|---|---|---|---|
+| `getDestination()` | 96 | | `getName()` | 11 |
+| `getDisplayInfo()` | 89 | | `getCurrencyAmount()` | 9 |
+| `getType()` | 85 | | `getCurrencyName()` | 7 |
+| `getOrigin()` | 48 | | `setItemIdRequirements(...)` | 3 |
+| `getObjectId()` | 20 | | `isMembers()` | 2 |
+| `getAction()` | 18 | | `getMaxWildernessLevel()` | 2 |
+| `getItemIdRequirements()` | 14 | | `setName(String)` | 1 |
+| | | | `distanceTo(...)` | 1 |
+
+**`TransportType`** (enum): all 20 constants referenced (`AGILITY_SHORTCUT`, `BOAT`, `CANOE`, `CHARTER_SHIP`, `FAIRY_RING`, `GNOME_GLIDER`, `MAGIC_CARPET`, `MINECART`, `NPC`, `POH`, `QUETZAL`, `SEASONAL_TRANSPORT`, `SHIP`, `SPIRIT_TREE`, `TELEPORTATION_ITEM`, `TELEPORTATION_MINIGAME`, `TELEPORTATION_PORTAL`, `TELEPORTATION_SPELL`, `TRANSPORT`, `WILDERNESS_OBELISK`) plus `isTeleport()` and `valueOf(...)`.
+
+**`WorldPointUtil`** (static): `packWorldPoint(...)` ×19, `unpackWorldPoint(...)` ×2, `undergroundAwareDistance(...)` ×2. (Note: also exposes `fromLocalInstance` internally — not called by consumers.)
+
+**`CollisionMap`**: only the static field `CollisionMap.ignoreCollisionPacked` (packed-point set), referenced once in `Rs2Tile`. No instance methods called externally.
+
+**Caveat:** counts include `Rs2Walker` (the largest consumer). `Transport` getter counts are call-sites, not distinct code paths. The `Transport`/`TransportType` value types and `WorldPointUtil` static helpers are cheap to keep as-is behind the facade (they are effectively pure data / pure functions); the facade's real job is wrapping the **mutable plugin state** (`Pathfinder`/`PathfinderConfig`/marker/future/mutex) enumerated in the contract table above.
+
 ### Consumers to migrate (24 files)
 `util/walker/*` (Rs2Walker + lifecycle/awaits/banking/shared), `util/bank/Rs2Bank`, `util/depositbox/Rs2DepositBox`, `util/skills/slayer/Rs2Slayer`, `util/poh/*`, `util/leaguetransport/*`, `util/tile/Rs2Tile`, `util/reachable/Rs2Reachable`, `util/npc/Rs2NpcManager`, `questhelper/QuestScript`, `breakhandler/**`, `Script.java`.
 
