@@ -9,6 +9,8 @@ Consolidated findings from a four-angle audit (pathfinder algorithm, Rs2Walker r
 
 **Rollup (2026-04-18 audit):** 22 DONE · 9 PARTIAL · 8 OPEN · total 39. (Tier 3 closed.)
 
+> **2026-07-20 reconciliation — direction set: FACADE-FIRST.** Spot-verified against the live tree on `So-I-dont-Fuck-The-Walker-KEK`. Confirmed: boat world-view is **DONE** (`WorldPointUtil.fromLocalInstance`, closes `UPSTREAM_COMPARISON.md` #6); `PrimitiveIntList` (#11) still **OPEN**; #3 **reclassified** (see row); #27 now **12/16** pairs (was 8). A full 39-item re-audit was **not** performed — only the items below were re-checked. **Decision:** before any further upstream backport, introduce a Microbot-owned path facade so `Rs2Walker` and the other consumers stop importing upstream internals directly. See the **"Facade migration (2026-07-20)"** section at the bottom for the frozen coupling contract and staged plan.
+
 ---
 
 ## Tier 1 — Correctness bugs (fix first)
@@ -19,7 +21,7 @@ Small patches, big payoff. Most are known but still unlanded.
 |---|---|---|---|---|
 | 1 | DONE | `PrimitiveIntHashMap.rehash()` data loss — `return;` → `continue;` | `PrimitiveIntHashMap.java:210` | S |
 | 2 | PARTIAL | Wilderness boundaries 8 tiles off, underground 198 tiles narrow — Chebyshev mod-6400 landed (`Pathfinder.java:155–162`), wilderness widths not re-verified | `Pathfinder.java`, `PathfinderConfig.java` | M |
-| 3 | OPEN | `teleportation_poh.tsv` is 0 bytes — backport ~88 upstream rows (file currently deleted in working tree, rows not migrated) | resources TSV | M |
+| 3 | NEEDS-VERIFY | `teleportation_poh.tsv` absent **by design** — local routes POH programmatically via `util/poh/` (`PohTransport`/`PohTeleports`), not a TSV. (`teleportation_portals.tsv`, 101 rows, is a *different* `TELEPORTATION_PORTAL` type: Castle Wars / god-wars portals, not POH.) Correct action is **not** "backport the TSV" but "confirm `util/poh` covers upstream's POH destination set". *Reclassified 2026-07-20.* | `util/poh/` | M |
 | 4 | DONE | `growBucket()` integer overflow — `Math.min(len, MAX/2-4)*2` | `PrimitiveIntHashMap.java:147` | S |
 | 5 | DONE | Missing `onGameStateChanged` refresh — quest/varbit goes stale after re-login | `ShortestPathPlugin.java:488` | S |
 
@@ -68,7 +70,7 @@ The "completeness of navigating the world" half.
 | 24 | PARTIAL | Quest Cape + Max Cape teleport rows — Max Cape rows present in `teleportation_items.tsv`, Quest Cape rows still missing | Endgame automation | S |
 | 25 | OPEN | 20+ skill cape teleports missing (Cooking, Magic, Prayer, Slayer, Herblore, …) — only Slayer/Skills necklace covered | | M |
 | 26 | PARTIAL | Achievement diary teleport toggles incomplete — only Varrock medium fully wired; Ardougne/Karamja/Desert harder tiers missing | | M |
-| 27 | PARTIAL | Magic Mushtree permutation matrix incomplete — 8 of expected 16 pairs present | Recent commit `75b1f167ce` added feature; confirm matrix coverage | M |
+| 27 | PARTIAL | Magic Mushtree permutation matrix incomplete — **12 of expected 16** data rows present in `magic_mushtrees.tsv` (re-counted 2026-07-20; was 8) | Recent commit `75b1f167ce` added feature; confirm remaining 4 pairs | M |
 | 28 | PARTIAL | Stronghold of Security spirit tree + Prifddinas crystal-tier destinations — placeholders in `spirit_trees.tsv`, actual rows incomplete | | S |
 | 29 | PARTIAL | Slayer Ring Ankous (3193,3611), Fairy Ring CJQ (Great Conch) — CJQ present, Ankous Slayer Ring variant still missing | | S |
 | 30 | OPEN | No `isOneWay` flag on transports — return-only boats and Legends' jagged-wall used bidirectionally | | M |
@@ -119,3 +121,42 @@ This plan synthesizes four parallel sub-agent reports, each with its own reasoni
 4. Concurrency / observability (static state, client-thread compliance, allocation hotspots, region eviction, structured logging, metrics, tests).
 
 Items already catalogued in `UPSTREAM_COMPARISON.md` are surfaced here only where they overlap with an execution tier; refer to that doc for the full upstream-sync punch list.
+
+---
+
+## Facade migration (2026-07-20)
+
+**Goal:** decouple automation from the shortest-path *internals* so future upstream backports stop rippling into `Rs2Walker` and the other consumers. The fork stays a fork; this is a boundary, not a rewrite. Once the boundary exists, backporting an upstream fix means changing code behind the facade only.
+
+### Why first
+`Rs2Walker` (~9k lines) reaches directly into `ShortestPathPlugin` static state — `getPathfinder`, `setPathfinder`, `getPathfinderFuture`, `getPathfinderMutex`, `getMarker`, `isStartPointSet`, etc. Every upstream change that touches those internals currently risks the walker (hence the branch name). A facade freezes the surface the walker sees.
+
+### Frozen coupling contract (what the facade MUST expose)
+Verified 2026-07-20 by grepping all consumers under `plugins/microbot/`.
+
+`ShortestPathPlugin` static members referenced externally (23):
+
+| Category | Members |
+|---|---|
+| Pathfinder lifecycle | `getPathfinder` / `setPathfinder` / `pathfinder`, `getPathfinderFuture` / `setPathfinderFuture`, `getPathfindingExecutor` / `setPathfindingExecutor`, `getPathfinderMutex` |
+| Config | `getPathfinderConfig` / `pathfinderConfig`, `setReachedDistance`, `configOverride`, `override`, `CONFIG_GROUP` |
+| Target / state | `exit`, `isStartPointSet` / `setStartPointSet`, `setLastLocation` |
+| Marker (overlay) | `getMarker` / `setMarker`, `MARKER_IMAGE` |
+| Data | `getTransports` |
+
+`Pathfinder` external surface is small — only `getPath()` and `isDone()`. `PathfinderConfig` is heavily used *inside* `Rs2Walker` (43 refs) and by `leaguetransport` — its surface must be catalogued before Stage 2.
+
+### Consumers to migrate (24 files)
+`util/walker/*` (Rs2Walker + lifecycle/awaits/banking/shared), `util/bank/Rs2Bank`, `util/depositbox/Rs2DepositBox`, `util/skills/slayer/Rs2Slayer`, `util/poh/*`, `util/leaguetransport/*`, `util/tile/Rs2Tile`, `util/reachable/Rs2Reachable`, `util/npc/Rs2NpcManager`, `questhelper/QuestScript`, `breakhandler/**`, `Script.java`.
+
+### Staged plan (each stage compiles + walker still runs before the next)
+1. **Catalogue** the full external surface of `Pathfinder`, `PathfinderConfig`, `Transport`, `TransportType`, `WorldPointUtil`, `CollisionMap` (not just `ShortestPathPlugin`). Produce the complete contract table.
+2. **Introduce `Rs2PathApi`** (Microbot-owned, e.g. under `util/walker/`) — a thin facade delegating to today's `ShortestPathPlugin` statics 1:1. No behaviour change.
+3. **Migrate consumers** to `Rs2PathApi`, one package at a time, compiling + smoke-testing the walker after each. Leave `Rs2Walker` for last (largest, riskiest).
+4. **Backport behind the facade** — resume the Tier 1–5 items (wilderness widths #2, `PrimitiveIntList` #11, POH coverage #3, etc.) changing only internals; consumers untouched.
+5. **(Optional) re-baseline** against latest `Skretzo/shortest-path` — the pinned comparison is `07fca57`; no upstream remote is configured yet.
+
+### Guardrails
+- **No walker edits** until the facade exists and the contract is frozen.
+- Keep every `ShortestPathPlugin` member above **binary-compatible** through the migration (the facade delegates; it does not replace them until all consumers move).
+- Validate each stage with `./gradlew :client:compileJava` and the existing `ShortestPathTier1RegressionTest` / `PathfinderBenchmarkTest`.
