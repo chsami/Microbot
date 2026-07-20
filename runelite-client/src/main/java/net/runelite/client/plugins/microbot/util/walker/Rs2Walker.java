@@ -110,7 +110,7 @@ public class Rs2Walker {
 
     /**
      * Active Microbot walk destination ({@code null} when no scripted walk). ShortestPath overlay
-     * must not clear {@link ShortestPathPlugin#getPathfinder()} while this is non-null — otherwise
+     * must not clear {@link Rs2PathApi#getPathfinder()} while this is non-null — otherwise
      * {@link #processWalk} loses the pathfinder while {@link #currentTarget} stays set (pathfinder-still-null EXIT).
      */
     public static WorldPoint getCurrentTarget() {
@@ -1131,7 +1131,7 @@ public class Rs2Walker {
             return WalkerState.ARRIVED;
         }
 
-        final Pathfinder pathfinder = ShortestPathPlugin.getPathfinder();
+        final Pathfinder pathfinder = Rs2PathApi.getPathfinder();
         if (pathfinder != null && !pathfinder.isDone()) {
             return WalkerState.MOVING;
         }
@@ -1143,7 +1143,7 @@ public class Rs2Walker {
         } else {
             currentTarget = target;
         }
-        ShortestPathPlugin.setReachedDistance(distance);
+        Rs2PathApi.setReachedDistance(distance);
         stuckCount = 0;
         lastMovedTimeMs = System.currentTimeMillis();
 		interimTargetWp = null;
@@ -1227,11 +1227,11 @@ public class Rs2Walker {
                 return WalkerState.EXIT;
             }
 
-            Pathfinder pathfinder = ShortestPathPlugin.getPathfinder();
+            Pathfinder pathfinder = Rs2PathApi.getPathfinder();
             if (pathfinder == null) {
                 markStartupPhase("pf_wait_enter", target, "reason=pathfinder_null");
                 walkerDiag("pathfinder null; waiting up to 2000ms");
-                pathfinder = sleepUntilNotNull(ShortestPathPlugin::getPathfinder, 2_000);
+                pathfinder = sleepUntilNotNull(Rs2PathApi::getPathfinder, 2_000);
                 if (walkCancelledDiag(target, "processWalk:after-wait-pathfinder", processWalkTail)) {
                     return WalkerState.EXIT;
                 }
@@ -1274,7 +1274,7 @@ public class Rs2Walker {
             }
             pathfinderPendingSinceMs = 0L;
 
-            if (ShortestPathPlugin.getMarker() == null) {
+            if (Rs2PathApi.getMarker() == null) {
                 restoreTargetMarker(target);
             }
 
@@ -1592,7 +1592,7 @@ public class Rs2Walker {
                     return WalkerState.EXIT;
                 }
 
-                if (ShortestPathPlugin.getMarker() == null) {
+                if (Rs2PathApi.getMarker() == null) {
                     restoreTargetMarker(target);
                 }
                 // Marker is a UI/overlay artifact (ShortestPath plugin). Walking must not depend
@@ -1903,7 +1903,7 @@ public class Rs2Walker {
                             if (recoverIdx < 0) {
                                 recoverIdx = findFurthestClickableIndex(path, i, playerLoc,
                                         wp -> {
-                                            Set<Transport> ts = ShortestPathPlugin.getTransports().get(wp);
+                                            Set<Transport> ts = Rs2PathApi.getTransports().get(wp);
                                             return ts != null && !ts.isEmpty();
                                         },
                                         recoveryMinimapReach);
@@ -1924,7 +1924,7 @@ public class Rs2Walker {
                             // (e.g. an undead tree). The planner avoids those via avoidDangerousNpcs,
                             // but this runtime fallback would otherwise strand us in melee. Step the
                             // target back along the path to the nearest non-hazard tile.
-                            PathfinderConfig dangerCfg = ShortestPathPlugin.pathfinderConfig;
+                            PathfinderConfig dangerCfg = Rs2PathApi.getPathfinderConfig();
                             if (dangerCfg != null && dangerCfg.isAvoidDangerousNpcs() && recoverTarget != null
                                     && dangerCfg.isDangerousAdjacentTile(WorldPointUtil.packWorldPoint(recoverTarget))) {
                                 int safeIdx = recoverIdx;
@@ -2099,7 +2099,7 @@ public class Rs2Walker {
 
                     int targetIdx = findFurthestForwardClickableIndex(path, i, playerLoc,
                             wp -> {
-                                Set<Transport> ts = ShortestPathPlugin.getTransports().get(wp);
+                                Set<Transport> ts = Rs2PathApi.getTransports().get(wp);
                                 return ts != null && !ts.isEmpty();
                             },
                             MINIMAP_REACH_EUCLIDEAN);
@@ -2410,7 +2410,7 @@ public class Rs2Walker {
                 }
                 WebWalkLog.partialExhausted(finalDist);
                 Telemetry.recordUnreachable("partial-retries-exhausted", Rs2Player.getWorldLocation(),
-                        target, Rs2Player.getWorldLocation(), 0, distance, ShortestPathPlugin.getPathfinder());
+                        target, Rs2Player.getWorldLocation(), 0, distance, Rs2PathApi.getPathfinder());
                 setTarget(null, "rs2walker:processWalk:partial-retries-exhausted");
                 return WalkerState.UNREACHABLE;
             } else {
@@ -3042,7 +3042,7 @@ public class Rs2Walker {
         if (clickTarget == null) {
             int clickableIdx = findFurthestForwardClickableIndex(path, startIdx, playerLoc,
                     wp -> {
-                        Set<Transport> ts = ShortestPathPlugin.getTransports().get(wp);
+                        Set<Transport> ts = Rs2PathApi.getTransports().get(wp);
                         return ts != null && !ts.isEmpty();
                     },
                     maxEuclidean);
@@ -3263,10 +3263,10 @@ public class Rs2Walker {
      * @return total amount of tiles
      */
     public static int getTotalTiles(WorldPoint start, WorldPoint destination) {
-        if (ShortestPathPlugin.getPathfinderConfig().getTransports().isEmpty()) {
-            ShortestPathPlugin.getPathfinderConfig().refresh();
+        if (Rs2PathApi.getPathfinderConfig().getTransports().isEmpty()) {
+            Rs2PathApi.getPathfinderConfig().refresh();
         }
-        Pathfinder pathfinder = new Pathfinder(ShortestPathPlugin.getPathfinderConfig(), start, destination);
+        Pathfinder pathfinder = new Pathfinder(Rs2PathApi.getPathfinderConfig(), start, destination);
         pathfinder.run();
         List<WorldPoint> path = pathfinder.getPath();
         if (path.isEmpty() || path.get(path.size() - 1).getPlane() != destination.getPlane()) return Integer.MAX_VALUE;
@@ -3338,7 +3338,7 @@ public class Rs2Walker {
     // takes an avg 200-300 ms
     // Used mainly for agility, might have to tweak this for other stuff
     public static boolean canReach(WorldPoint worldPoint, int sizeX, int sizeY, int pathSizeX, int pathSizeY,boolean useBankedItems) {
-        boolean originalUseBankItems = ShortestPathPlugin.getPathfinderConfig().isUseBankItems();
+        boolean originalUseBankItems = Rs2PathApi.getPathfinderConfig().isUseBankItems();
         WorldArea pathArea = null;
 
         // Create centered WorldArea for the object instead of corner-based
@@ -3350,12 +3350,12 @@ public class Rs2Walker {
         WorldArea objectArea = new WorldArea(objectSouthWest, sizeX + 2, sizeY + 2);
 
         try {
-            ShortestPathPlugin.getPathfinderConfig().setUseBankItems(useBankedItems);
-            ShortestPathPlugin.getPathfinderConfig().refresh(worldPoint);
-            if (ShortestPathPlugin.getPathfinderConfig().getTransports().isEmpty()) {
-                ShortestPathPlugin.getPathfinderConfig().refresh(worldPoint);
+            Rs2PathApi.getPathfinderConfig().setUseBankItems(useBankedItems);
+            Rs2PathApi.getPathfinderConfig().refresh(worldPoint);
+            if (Rs2PathApi.getPathfinderConfig().getTransports().isEmpty()) {
+                Rs2PathApi.getPathfinderConfig().refresh(worldPoint);
             }
-            Pathfinder pathfinder = new Pathfinder(ShortestPathPlugin.getPathfinderConfig(), Rs2Player.getWorldLocation(), worldPoint);
+            Pathfinder pathfinder = new Pathfinder(Rs2PathApi.getPathfinderConfig(), Rs2Player.getWorldLocation(), worldPoint);
             pathfinder.run();
 
             // Create centered WorldArea for the path endpoint instead of corner-based
@@ -3370,8 +3370,8 @@ public class Rs2Walker {
             log.trace("Exception in canReach: {} - ", e.getMessage(), e);
             return false;
         } finally {
-            ShortestPathPlugin.getPathfinderConfig().setUseBankItems(originalUseBankItems);
-            ShortestPathPlugin.getPathfinderConfig().refresh(worldPoint);
+            Rs2PathApi.getPathfinderConfig().setUseBankItems(originalUseBankItems);
+            Rs2PathApi.getPathfinderConfig().refresh(worldPoint);
         }
         return pathArea != null ? pathArea.intersectsWith2D(objectArea) : false;
     }
@@ -3413,9 +3413,9 @@ public class Rs2Walker {
      */
     public static List<WorldPoint> getWalkPath(WorldPoint start, WorldPoint target) {
         long startTime = System.nanoTime();
-        ShortestPathPlugin.getPathfinderConfig().refresh(target);
+        Rs2PathApi.getPathfinderConfig().refresh(target);
         long pathfinderStartTime = System.nanoTime();
-        Pathfinder pathfinderLocal = new Pathfinder(ShortestPathPlugin.getPathfinderConfig(), start, target);
+        Pathfinder pathfinderLocal = new Pathfinder(Rs2PathApi.getPathfinderConfig(), start, target);
         pathfinderLocal.run();
         List<WorldPoint> path = pathfinderLocal.getPath();
         long pathfinderEndTime = System.nanoTime();
@@ -3503,7 +3503,7 @@ public class Rs2Walker {
         while (currentIndex < path.size()) {
             WorldPoint currentPoint = path.get(currentIndex);
             // Get any transports that start at this point (or keyed by this point)
-            Set<Transport> transportsAtPoint = ShortestPathPlugin.getTransports().get(currentPoint);
+            Set<Transport> transportsAtPoint = Rs2PathApi.getTransports().get(currentPoint);
             if (transportsAtPoint == null || transportsAtPoint.isEmpty()) {
                 currentIndex++;
                 continue;
@@ -3679,7 +3679,7 @@ public class Rs2Walker {
     }
 
     private static boolean handleRockfall(List<WorldPoint> path, int index) {
-        if (ShortestPathPlugin.getPathfinder() == null) return false;
+        if (Rs2PathApi.getPathfinder() == null) return false;
 
         if (index == path.size() - 1) return false;
 
@@ -4297,7 +4297,7 @@ public class Rs2Walker {
         // off-path loops, and getTransports() is already the usable (config/quest/level-filtered) set,
         // so we never grab a transport the pathfinder excluded.
         final int NEARBY_TRANSPORT_REACH = 5;
-        Map<WorldPoint, Set<Transport>> transportsByOrigin = ShortestPathPlugin.getTransports();
+        Map<WorldPoint, Set<Transport>> transportsByOrigin = Rs2PathApi.getTransports();
         Set<Transport> transports = new HashSet<>();
         Set<Transport> transportsOnPlayerTile = transportsByOrigin.get(playerLoc);
         if (transportsOnPlayerTile != null) {
@@ -4744,7 +4744,7 @@ public class Rs2Walker {
     }
 
     private static boolean handleDoors(List<WorldPoint> path, int index, boolean allowSegmentProbe) {
-        if (ShortestPathPlugin.getPathfinder() == null || index >= path.size() - 1) return false;
+        if (Rs2PathApi.getPathfinder() == null || index >= path.size() - 1) return false;
 
         // Skip any door whose tile was blacklisted after a prior quest-lock detection —
         // avoid re-triggering the same failed interact loop this session.
@@ -4939,8 +4939,8 @@ public class Rs2Walker {
                                     probe, name, action, dialogue);
                             sessionBlacklistedDoors.add(probe);
                             Rs2Dialogue.clickContinue();
-                            if (ShortestPathPlugin.pathfinderConfig != null) {
-                                ShortestPathPlugin.pathfinderConfig.refresh();
+                            if (Rs2PathApi.getPathfinderConfig() != null) {
+                                Rs2PathApi.getPathfinderConfig().refresh();
                             }
                             recalculatePath();
                         }
@@ -5098,8 +5098,8 @@ public class Rs2Walker {
                     probe, name, action, dialogue);
             sessionBlacklistedDoors.add(probe);
             Rs2Dialogue.clickContinue();
-            if (ShortestPathPlugin.pathfinderConfig != null) {
-                ShortestPathPlugin.pathfinderConfig.refresh();
+            if (Rs2PathApi.getPathfinderConfig() != null) {
+                Rs2PathApi.getPathfinderConfig().refresh();
             }
             recalculatePath();
             return true;
@@ -5719,7 +5719,7 @@ public class Rs2Walker {
     }
 
     /**
-     * Strict catalog step: path tile equals transport origin in {@link ShortestPathPlugin#getTransports()}
+     * Strict catalog step: path tile equals transport origin in {@link Rs2PathApi#getTransports()}
      * and next tile equals that row's destination. Used where the walker must dispatch {@code handleTransports}
      * from the path index (origin keyed in the TSV-fed multimap).
      */
@@ -5746,7 +5746,7 @@ public class Rs2Walker {
 
     /**
      * Whether this path edge is covered by a transport catalog row (same coordinates loaded from TSV into
-     * {@link ShortestPathPlugin#getTransports()}). Includes strict origin-destination steps (including
+     * {@link Rs2PathApi#getTransports()}). Includes strict origin-destination steps (including
      * cross-plane rows such as ladders) and same-plane hops where the path starts on a tile Chebyshev-adjacent
      * to the catalog origin but still targets that row's destination, so door probing does not fight
      * {@code handleTransports}.
@@ -5798,7 +5798,7 @@ public class Rs2Walker {
         if (origin == null || dest == null) {
             return false;
         }
-        Set<Transport> transports = ShortestPathPlugin.getTransports().get(origin);
+        Set<Transport> transports = Rs2PathApi.getTransports().get(origin);
         if (transports == null || transports.isEmpty()) {
             return false;
         }
@@ -5809,7 +5809,7 @@ public class Rs2Walker {
         if (origin == null || dest == null) {
             return false;
         }
-        Set<Transport> transports = ShortestPathPlugin.getTransports().get(origin);
+        Set<Transport> transports = Rs2PathApi.getTransports().get(origin);
         if (transports == null || transports.isEmpty()) {
             return false;
         }
@@ -5831,7 +5831,7 @@ public class Rs2Walker {
                     continue;
                 }
                 WorldPoint catalogOrigin = new WorldPoint(from.getX() + dx, from.getY() + dy, from.getPlane());
-                Set<Transport> transports = ShortestPathPlugin.getTransports().get(catalogOrigin);
+                Set<Transport> transports = Rs2PathApi.getTransports().get(catalogOrigin);
                 if (transports == null || transports.isEmpty()) {
                     continue;
                 }
@@ -5855,7 +5855,7 @@ public class Rs2Walker {
                     continue;
                 }
                 WorldPoint catalogOrigin = new WorldPoint(from.getX() + dx, from.getY() + dy, from.getPlane());
-                Set<Transport> transports = ShortestPathPlugin.getTransports().get(catalogOrigin);
+                Set<Transport> transports = Rs2PathApi.getTransports().get(catalogOrigin);
                 if (transports == null || transports.isEmpty()) {
                     continue;
                 }
@@ -5889,7 +5889,7 @@ public class Rs2Walker {
 
     /**
      * True when this scene object is the interactable listed on a transport catalog row (same
-     * coordinates and object ids as TSV loaded into {@link ShortestPathPlugin#getTransports()}).
+     * coordinates and object ids as TSV loaded into {@link Rs2PathApi#getTransports()}).
      * Door-ahead / fallback / LOS scans must treat it as non-door so {@link #handleTransports} owns it.
      */
     private static boolean isCatalogTransportObject(TileObject object) {
@@ -5904,7 +5904,7 @@ public class Rs2Walker {
         if (id <= 0) {
             return false;
         }
-        Map<WorldPoint, Set<Transport>> map = ShortestPathPlugin.getTransports();
+        Map<WorldPoint, Set<Transport>> map = Rs2PathApi.getTransports();
         if (map == null || map.isEmpty()) {
             return false;
         }
@@ -7562,7 +7562,7 @@ public class Rs2Walker {
                 return;
             }
             Player localPlayer = client.getLocalPlayer();
-            if (!ShortestPathPlugin.isStartPointSet() && localPlayer == null) {
+            if (!Rs2PathApi.isStartPointSet() && localPlayer == null) {
                 log.warn("Start point is not set and player is null");
                 return;
             }
@@ -7573,34 +7573,34 @@ public class Rs2Walker {
         if (target == null) {
             resetRouteProgress();
             logRouteClear(clearReasonWhenNull);
-            synchronized (ShortestPathPlugin.getPathfinderMutex()) {
-                final Pathfinder pathfinder = ShortestPathPlugin.getPathfinder();
+            synchronized (Rs2PathApi.getPathfinderMutex()) {
+                final Pathfinder pathfinder = Rs2PathApi.getPathfinder();
                 if (pathfinder != null) {
                     pathfinder.cancel();
                 }
-                Future<?> pathfinderFuture = ShortestPathPlugin.getPathfinderFuture();
+                Future<?> pathfinderFuture = Rs2PathApi.getPathfinderFuture();
                 if (pathfinderFuture != null && !pathfinderFuture.isDone()) {
                     pathfinderFuture.cancel(true);
                 }
-                ShortestPathPlugin.setPathfinderFuture(null);
-                ShortestPathPlugin.setPathfinder(null);
+                Rs2PathApi.setPathfinderFuture(null);
+                Rs2PathApi.setPathfinder(null);
             }
 
             WorldMapPointManager wmm = Microbot.getWorldMapPointManager();
             if (wmm != null) {
-                wmm.remove(ShortestPathPlugin.getMarker());
+                wmm.remove(Rs2PathApi.getMarker());
             } else if (Rs2LogRateLimit.once(WORLD_MAP_REMOVE_NULL_LOGGED)) {
                 log.debug("[Walker] WorldMapPointManager null during route clear — marker may linger until teardown");
             }
-            ShortestPathPlugin.setMarker(null);
-            ShortestPathPlugin.setStartPointSet(false);
+            Rs2PathApi.setMarker(null);
+            Rs2PathApi.setStartPointSet(false);
         } else {
             applyWalkerDestination(target);
         }
     }
 
     private static void restoreTargetMarker(WorldPoint target) {
-        if (target == null || ShortestPathPlugin.getMarker() != null) {
+        if (target == null || Rs2PathApi.getMarker() != null) {
             return;
         }
 
@@ -7610,11 +7610,11 @@ public class Rs2Walker {
                 log.debug("[Walker] Cannot restore marker: WorldMapPointManager unavailable");
                 return;
             }
-            ShortestPathPlugin.setMarker(new WorldMapPoint(target, ShortestPathPlugin.MARKER_IMAGE));
-            ShortestPathPlugin.getMarker().setName("Target");
-            ShortestPathPlugin.getMarker().setTarget(ShortestPathPlugin.getMarker().getWorldPoint());
-            ShortestPathPlugin.getMarker().setJumpOnClick(true);
-            wmm.add(ShortestPathPlugin.getMarker());
+            Rs2PathApi.setMarker(new WorldMapPoint(target, Rs2PathApi.MARKER_IMAGE));
+            Rs2PathApi.getMarker().setName("Target");
+            Rs2PathApi.getMarker().setTarget(Rs2PathApi.getMarker().getWorldPoint());
+            Rs2PathApi.getMarker().setJumpOnClick(true);
+            wmm.add(Rs2PathApi.getMarker());
             log.info("[Walker] Restored missing path target marker at {}", target);
         } catch (Exception ex) {
             log.debug("[Walker] Failed to restore target marker at {}", target, ex);
@@ -7665,7 +7665,7 @@ public class Rs2Walker {
                 && recentlyOpenedStationaryDoorOnSegment(path.get(indexOfStartPoint), path.get(indexOfStartPoint + 1))) {
             return false;
         }
-        Set<Transport> transports = ShortestPathPlugin.getTransports().get(path.get(indexOfStartPoint));
+        Set<Transport> transports = Rs2PathApi.getTransports().get(path.get(indexOfStartPoint));
         if (transports == null || transports.isEmpty()) {
             return false;
         }
@@ -7883,7 +7883,7 @@ public class Rs2Walker {
                     }
 
                     if (transport.getType() == TransportType.SPIRIT_TREE) {
-                        if (!ShortestPathPlugin.getPathfinderConfig().isUseSpiritTrees()) {
+                        if (!Rs2PathApi.getPathfinderConfig().isUseSpiritTrees()) {
                             log.debug("[Walker] skip spirit tree transport — setting is off");
                             continue;
                         }
@@ -8521,7 +8521,7 @@ public class Rs2Walker {
         if (transport == null || transport.getDestination() == null) {
             return false;
         }
-        Pathfinder pathfinder = ShortestPathPlugin.getPathfinder();
+        Pathfinder pathfinder = Rs2PathApi.getPathfinder();
         if (pathfinder == null || !pathfinder.isDone()) {
             return false;
         }
@@ -9054,7 +9054,7 @@ public class Rs2Walker {
     }
 
     public static boolean isNear() {
-        final Pathfinder pathfinder = ShortestPathPlugin.getPathfinder();
+        final Pathfinder pathfinder = Rs2PathApi.getPathfinder();
         if (pathfinder == null) return false; // idk are we near if we don't have a path?
         final List<WorldPoint> path = pathfinder.getPath();
         if (path == null) return false;
@@ -9083,7 +9083,7 @@ public class Rs2Walker {
     }
 
     public static boolean isNearPath() {
-        final Pathfinder pathfinder = ShortestPathPlugin.getPathfinder();
+        final Pathfinder pathfinder = Rs2PathApi.getPathfinder();
         if (pathfinder == null) return true;
 
         final List<WorldPoint> path = pathfinder.getWalkablePath();
@@ -9295,7 +9295,7 @@ public class Rs2Walker {
     private static final long MINIMAP_CLICK_STALL_GRACE_MS = 12_000L;
 
     private static boolean interactingActorNearWalkablePath() {
-        Pathfinder pf = ShortestPathPlugin.getPathfinder();
+        Pathfinder pf = Rs2PathApi.getPathfinder();
         if (pf == null) {
             return false;
         }
@@ -9354,12 +9354,12 @@ public class Rs2Walker {
      * @param start
      */
     public void setStart(WorldPoint start) {
-        Pathfinder pathfinder = ShortestPathPlugin.getPathfinder();
+        Pathfinder pathfinder = Rs2PathApi.getPathfinder();
         if (pathfinder == null) {
             return;
         }
         Set<WorldPoint> targets = pathfinder.getTargets();
-        ShortestPathPlugin.setStartPointSet(true);
+        Rs2PathApi.setStartPointSet(true);
         if (isClientThread()) {
             Microbot.getClientThread().runOnSeperateThread(() -> restartPathfinding(start, targets));
         } else {
@@ -9376,7 +9376,7 @@ public class Rs2Walker {
      */
     public static int getDistanceBetween(WorldPoint startpoint, WorldPoint endpoint) {
         Set<WorldPoint> ends = Set.of(endpoint);
-        Pathfinder pathfinder = new Pathfinder(ShortestPathPlugin.getPathfinderConfig(), startpoint, ends);
+        Pathfinder pathfinder = new Pathfinder(Rs2PathApi.getPathfinderConfig(), startpoint, ends);
         pathfinder.run();
         return pathfinder.getPath().size();
     }
@@ -10445,11 +10445,11 @@ public class Rs2Walker {
      * @return true if the item is a teleportation item, false otherwise
      */
     public static boolean isTeleportItem(int itemId) {
-        if (ShortestPathPlugin.getPathfinderConfig().getAllTransports().isEmpty()) {
-            ShortestPathPlugin.getPathfinderConfig().refresh();
+        if (Rs2PathApi.getPathfinderConfig().getAllTransports().isEmpty()) {
+            Rs2PathApi.getPathfinderConfig().refresh();
         }
 
-        Set<Integer> teleportItemIds = ShortestPathPlugin.getPathfinderConfig().getAllTransports().values()
+        Set<Integer> teleportItemIds = Rs2PathApi.getPathfinderConfig().getAllTransports().values()
                 .stream()
                 .flatMap(Set::stream)
                 .filter(t -> TransportType.isTeleport(t.getType(), t.getOrigin()))
@@ -10493,13 +10493,13 @@ public class Rs2Walker {
         Set<WorldPoint> targetSet = new HashSet<>(targets);
 
         // Store original configuration to restore later
-        boolean originalUseBankItems =  ShortestPathPlugin.getPathfinderConfig().isUseBankItems();
+        boolean originalUseBankItems =  Rs2PathApi.getPathfinderConfig().isUseBankItems();
         try {
-            ShortestPathPlugin.getPathfinderConfig().setUseBankItems(useBankItems);
+            Rs2PathApi.getPathfinderConfig().setUseBankItems(useBankItems);
             // Configure pathfinder
-            ShortestPathPlugin.getPathfinderConfig().refresh();
+            Rs2PathApi.getPathfinderConfig().refresh();
             // Run pathfinder
-            Pathfinder pf = new Pathfinder(ShortestPathPlugin.getPathfinderConfig(), startPoint, targetSet);
+            Pathfinder pf = new Pathfinder(Rs2PathApi.getPathfinderConfig(), startPoint, targetSet);
             pf.run();
 
             List<WorldPoint> path = pf.getPath();
@@ -10527,8 +10527,8 @@ public class Rs2Walker {
 
         } finally {
             // Always restore original configuration
-            ShortestPathPlugin.getPathfinderConfig().setUseBankItems(originalUseBankItems);
-            ShortestPathPlugin.getPathfinderConfig().refresh();
+            Rs2PathApi.getPathfinderConfig().setUseBankItems(originalUseBankItems);
+            Rs2PathApi.getPathfinderConfig().refresh();
         }
     }
 
@@ -10761,7 +10761,7 @@ public class Rs2Walker {
         if (Rs2Tile.getReachableTilesFromTile(pl, distance).containsKey(target) || nearUnwalkableGoal) {
             return WalkerState.ARRIVED;
         }
-        final Pathfinder pathfinder = ShortestPathPlugin.getPathfinder();
+        final Pathfinder pathfinder = Rs2PathApi.getPathfinder();
         if (pathfinder != null && !pathfinder.isDone())
             return WalkerState.MOVING;
 
@@ -10958,8 +10958,8 @@ public class Rs2Walker {
                 log.warn("Failed to close bank after withdrawals");
                 return WalkerState.EXIT;
             }
-            ShortestPathPlugin.getPathfinderConfig().setUseBankItems(false);
-            ShortestPathPlugin.getPathfinderConfig().refresh(finalTarget);
+            Rs2PathApi.getPathfinderConfig().setUseBankItems(false);
+            Rs2PathApi.getPathfinderConfig().refresh(finalTarget);
             // Step 5: Continue to final target
             log.debug("Banking complete, continuing to final target: " + finalTarget);
             return walkWithStateInternal(finalTarget, distance);
