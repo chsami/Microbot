@@ -107,6 +107,34 @@ public enum PohPortal implements PohTeleport {
     WEISS("Weiss", TeleportLocationData.WEISS_ICY_BASALT.getLocation(),
             ObjectID.POH_PORTAL_MAG_WEISS, ObjectID.POH_PORTAL_MARBLE_WEISS, ObjectID.POH_PORTAL_TEAK_WEISS,
             ObjectID.POH_PORTAL_LEAGUE_5_WEISS),
+
+    // Backfilled 2026-07-20 from upstream Skretzo/shortest-path teleportation_portals_poh.tsv
+    // (destination = authoritative arrival tile from that data set). MAG/MARBLE/TEAK object-id
+    // families verified present; League variants omitted intentionally.
+    BARBARIAN_OUTPOST("Barbarian Outpost", new WorldPoint(2543, 3569, 0),
+            ObjectID.POH_PORTAL_MAG_BARBARIAN, ObjectID.POH_PORTAL_MARBLE_BARBARIAN, ObjectID.POH_PORTAL_TEAK_BARBARIAN),
+    FISHING_GUILD("Fishing Guild", new WorldPoint(2613, 3391, 0),
+            ObjectID.POH_PORTAL_MAG_FISHINGGUILD, ObjectID.POH_PORTAL_MARBLE_FISHINGGUILD, ObjectID.POH_PORTAL_TEAK_FISHINGGUILD),
+    PORT_KHAZARD("Port Khazard", new WorldPoint(2636, 3167, 0),
+            ObjectID.POH_PORTAL_MAG_KHAZARD, ObjectID.POH_PORTAL_MARBLE_KHAZARD, ObjectID.POH_PORTAL_TEAK_KHAZARD),
+    MARIM("Marim", new WorldPoint(2797, 2798, 1),
+            ObjectID.POH_PORTAL_MAG_MARIM, ObjectID.POH_PORTAL_MARBLE_MARIM, ObjectID.POH_PORTAL_TEAK_MARIM),
+    CIVITAS_ILLA_FORTIS("Civitas illa Fortis", new WorldPoint(1681, 3133, 0),
+            ObjectID.POH_PORTAL_MAG_FORTIS, ObjectID.POH_PORTAL_MARBLE_FORTIS, ObjectID.POH_PORTAL_TEAK_FORTIS),
+    OURANIA("Ourania", new WorldPoint(2468, 3246, 0),
+            ObjectID.POH_PORTAL_MAG_OURANIA, ObjectID.POH_PORTAL_MARBLE_OURANIA, ObjectID.POH_PORTAL_TEAK_OURANIA),
+    CEMETERY("Cemetery", new WorldPoint(2981, 3764, 0),
+            ObjectID.POH_PORTAL_MAG_CEMETERY, ObjectID.POH_PORTAL_MARBLE_CEMETERY, ObjectID.POH_PORTAL_TEAK_CEMETERY),
+    DAREEYAK("Dareeyak", new WorldPoint(2968, 3696, 0),
+            ObjectID.POH_PORTAL_MAG_DAREEYAK, ObjectID.POH_PORTAL_MARBLE_DAREEYAK, ObjectID.POH_PORTAL_TEAK_DAREEYAK),
+    TROLLHEIM("Trollheim", new WorldPoint(2890, 3679, 0),
+            ObjectID.POH_PORTAL_MAG_TROLLHEIM, ObjectID.POH_PORTAL_MARBLE_TROLLHEIM, ObjectID.POH_PORTAL_TEAK_TROLLHEIM),
+    LASSAR("Lassar", new WorldPoint(3004, 3470, 0),
+            ObjectID.POH_PORTAL_MAG_LASSAR, ObjectID.POH_PORTAL_MARBLE_LASSAR, ObjectID.POH_PORTAL_TEAK_LASSAR),
+    ICE_PLATEAU("Ice Plateau", new WorldPoint(2975, 3938, 0),
+            ObjectID.POH_PORTAL_MAG_ICEPLATEAU, ObjectID.POH_PORTAL_MARBLE_ICEPLATEAU, ObjectID.POH_PORTAL_TEAK_ICEPLATEAU),
+    PADDEWWA("Paddewwa", new WorldPoint(3097, 9881, 0),
+            ObjectID.POH_PORTAL_MAG_PADDEWWA, ObjectID.POH_PORTAL_MARBLE_PADDEWWA, ObjectID.POH_PORTAL_TEAK_PADDEWWA),
     ;
 
     PohPortal(String displayName, WorldPoint destination, Integer... objectIds) {
