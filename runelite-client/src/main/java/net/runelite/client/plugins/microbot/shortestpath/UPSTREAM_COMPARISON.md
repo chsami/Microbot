@@ -1,7 +1,38 @@
 # Shortest Path: Upstream vs Microbot Comparison
 
 Comparison of [Skretzo/shortest-path](https://github.com/Skretzo/shortest-path) (upstream) against the Microbot fork.
-Upstream commit: `07fca57` ("Data fixes and minor cleanups (#400)").
+Original baseline: `07fca57` ("Data fixes and minor cleanups (#400)"). **Everything below the "Re-baseline" section refers to that old baseline and is partly superseded — read the re-baseline first.**
+
+---
+
+## Re-baseline 2026-07-20 → upstream `7e7e5bf94b`
+
+Added the `skretzo` remote and fetched. Current upstream HEAD (`skretzo/master`) is **`7e7e5bf94b`** ("Update collision map") — **122 commits ahead** of the pinned `07fca57`, including a **major architectural refactor**. The `07fca57`-based punch list below is now largely obsolete; use this section as the current map.
+
+### Upstream has restructured (the fork is now architecturally distinct)
+
+Current upstream is no longer a monolith. New/renamed since `07fca57`:
+
+- **`transport/` package** with a real parser pipeline: `TransportLoader`, `TransportType`, `TransportTypeConfig`, `LoadInterner`, `BankPickupRequirements`, and `transport/parser/*` (`TsvParser`, `FieldParser`, `TransportRecord`, `WorldPointParser`, `QuestParser`, `SkillRequirementParser`, `VarRequirementParser`, …). Microbot still parses TSV inline in the `Transport` constructor.
+- **Model classes**: `Destination`, `DestinationRequirements`, `ItemVariations`, `JewelleryBoxTier`, `transport/requirement/{ItemRequirement,TransportItems}`.
+- **Pathfinder internals**: `NodeGraph`, `IntDeque`, `IntMinHeap`, `PathStep`, `PathfinderResult`, `PathTerminationReason`, `AbstractNodeKind`, `TransportAvailability`, `PrimitiveIntList`, and a standalone **`WildernessChecker`**. Microbot still uses the `Node`/`Pathfinder` design (with its own A*, bidirectional search, smoothing, packed-int `Node`).
+- **`leagues/` package** (`LeagueModeState`, `LeagueRegion`, `LeagueRegionChecker`) and **`PendingTask`** (deferred post-login refresh).
+- Resources moved under `src/main/resources/transports/`.
+
+**Implication:** a git merge is impossible (unrelated histories, different packages). Even *file-level* backports are now hard — upstream's logic lives in a different structure. Only **selective feature/data backports** are viable, and the Stage 1–3 **facade (`Rs2PathApi`)** is what makes them safe (consumers no longer see these internals). See `WEBWALKER_IMPROVEMENT_PLAN.md` "Facade migration".
+
+### Open-item status re-checked against real current upstream source
+
+| Item | Verdict vs `7e7e5bf94b` |
+|---|---|
+| **#2 wilderness boundaries** | ✅ **DONE / byte-identical.** Upstream `pathfinder/WildernessChecker.java` uses the exact same `WorldArea`s as Microbot `PathfinderConfig.java:41-46` (above-ground `2944,3525,448,448`; underground `2944,9918,518,458`; `LEVEL_20` 3680/10075; `LEVEL_30` 3760/10155; same `NOT_WILDERNESS_*`). No action. |
+| **#3 POH** | ⚠️ **Real gap, concrete now.** Upstream ships `resources/transports/teleportation_portals_poh.tsv` (**137 rows**: Annakarl, Ardougne, Ape Atoll Dungeon, … POH nexus/portal destinations). Microbot has **no** POH TSV — it routes POH programmatically via `util/poh/`. **Action:** verify `util/poh` covers this 137-row destination set (diff the upstream TSV against what `PohTransport`/`PohTeleports` produce), backfill gaps. |
+| **#10 reachability prune**, **#12 SplitFlagMap LRU eviction** | ❌ **No upstream counterpart** — not present in upstream `PathfinderConfig`/`SplitFlagMap`. These are **Microbot-original** optimization ideas from the webwalker audit, *not* upstream backports. Treat as independent perf work, not re-baseline items. |
+| **#30 one-way transports** | ❓ Not clearly present upstream on re-check; deprioritize (no confirmed upstream source to backport from). |
+| **#11 `PrimitiveIntList`** | Upstream has `PrimitiveIntList` for its *output* paths, but Microbot's `Node` is already packed-int; the only `List<WorldPoint>` left is the `getPath()` facade boundary (see `WEBWALKER_IMPROVEMENT_PLAN.md` #11). Not a behind-facade change. |
+
+### Recommended next Stage-4 target
+**#3 POH coverage** is the one concrete, real upstream gap: diff `skretzo/master:src/main/resources/transports/teleportation_portals_poh.tsv` against Microbot's programmatic POH set and backfill. It's data-level (low engine risk) and testable.
 
 ---
 

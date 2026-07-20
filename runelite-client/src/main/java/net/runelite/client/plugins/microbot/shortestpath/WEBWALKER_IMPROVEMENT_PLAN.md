@@ -205,7 +205,7 @@ Read-only sweep of all **26** consumer files (`grep` for `microbot.shortestpath`
    - `3c` (`e6e7f0c1fc`): `Rs2Walker` itself (77 refs). Verified: `:client:compileJava` clean + 73 shortestpath tests green (Core 43, Tier1 regression 18, PathSmoother 6, TransportType 4, +2).
    - Remaining `ShortestPathPlugin` references repo-wide are plugin **identity** only (`MicrobotPluginChoice`'s `.class`, `Microbot`'s `getSimpleName()` string check) — intentionally not routed through the facade. **100% of plugin-state access now goes through `Rs2PathApi`.**
 4. ⬜ **NEXT** — **Backport behind the facade** — resume the Tier 1–5 items (wilderness widths #2, `PrimitiveIntList` #11, POH coverage #3, etc.) changing only internals; consumers untouched.
-5. ⬜ **(Optional) re-baseline** against latest `Skretzo/shortest-path` — the pinned comparison is `07fca57`; no upstream remote is configured yet.
+5. ✅ **DONE (re-baseline)** — added the `skretzo` remote, fetched, and re-baselined against upstream HEAD `7e7e5bf94b` (122 commits + major refactor past `07fca57`). Findings in `UPSTREAM_COMPARISON.md` "Re-baseline 2026-07-20": #2 wilderness byte-identical to upstream `WildernessChecker` (DONE); **#3 POH is the one concrete real gap** (upstream ships `teleportation_portals_poh.tsv`, 137 rows; Microbot routes POH programmatically — verify `util/poh` coverage); #10/#12 have no upstream counterpart (Microbot-original). Upstream is now architecturally distinct — only selective feature/data backports are viable, which the facade enables.
 
 ### Guardrails
 - **No walker edits** until the facade exists and the contract is frozen.
