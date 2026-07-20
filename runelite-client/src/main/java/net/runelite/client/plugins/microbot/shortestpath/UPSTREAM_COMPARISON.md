@@ -144,15 +144,15 @@ Upstream has `fromLocalInstance(Client client, Player localPlayer)` which handle
 | Pendant of Ates (Kastori, Nemus) | Yes | ✅ Yes — in `teleportation_items.tsv` |
 | Separate Kharedst's Memoir / Book of the Dead | Yes | ✅ Yes — in `teleportation_items.tsv` |
 | Great Conch fairy ring (CJQ) | Yes | ✅ Yes — in `fairy_rings.tsv` |
-| **Cowbell Amulet** | Yes | ❌ **Missing** (0 hits) |
-| **Sailors' Amulet** | Yes | ❌ **Missing** (0 hits) |
-| **Laguna Aurorae spirit tree** | Yes | ❌ **Missing** (not in `spirit_trees.tsv`) |
+| Cowbell Amulet | Yes | ✅ Yes — `teleportation_items.tsv` (item 33104), backfilled 2026-07-20 |
+| Sailors' Amulet | Yes | ✅ Yes — `teleportation_items.tsv` (item 32399, 3 dests), backfilled 2026-07-20 |
+| Laguna Aurorae spirit tree | Yes | ✅ Yes — `spirit_trees.tsv` (Pandemonium-gated dest), backfilled 2026-07-20 |
 | **Bank-visit teleport discovery** | Yes | ❌ **Missing** — no `onItemContainerChanged` bank-knowledge tracking |
 | **Per-transport-type cost tuning** | Yes (`TransportTypeConfig`) | ❌ **Missing** |
 | **Currency *threshold*** (avoid expensive when low on gold) | Yes | ❌ **Missing** — note: currency *requirement* filtering (can-I-afford) **is** present (`PathfinderConfig.java:879`) |
 | Transport data as TSV with parser package | Yes | Architectural difference (Microbot parses inline in `Transport`) — not a feature gap |
 
-**Net still-missing (verified):** Cowbell Amulet, Sailors' Amulet, Laguna Aurorae spirit tree, bank-visit teleport discovery, per-transport-type cost tuning, currency-threshold cost avoidance. Everything else in the original table is already present.
+**Net still-missing (verified 2026-07-20):** bank-visit teleport discovery, per-transport-type cost tuning, currency-threshold cost avoidance. (Cowbell/Sailors'/Laguna Aurorae backfilled; everything else in the original table was already present.) The three remaining are feature work (config + event handling), not data adds.
 
 ### Player-Owned House (POH)
 
