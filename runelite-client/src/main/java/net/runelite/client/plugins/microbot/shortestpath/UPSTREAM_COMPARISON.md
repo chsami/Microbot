@@ -31,8 +31,22 @@ Current upstream is no longer a monolith. New/renamed since `07fca57`:
 | **#30 one-way transports** | ❓ Not clearly present upstream on re-check; deprioritize (no confirmed upstream source to backport from). |
 | **#11 `PrimitiveIntList`** | Upstream has `PrimitiveIntList` for its *output* paths, but Microbot's `Node` is already packed-int; the only `List<WorldPoint>` left is the `getPath()` facade boundary (see `WEBWALKER_IMPROVEMENT_PLAN.md` #11). Not a behind-facade change. |
 
+### Transport data files: upstream vs Microbot (2026-07-20)
+
+Microbot loads 22 TSVs (see `Transport.java`). File-level diff vs `skretzo/master:src/main/resources/transports/`:
+
+- **Upstream-only files** — `teleportation_portals_poh.tsv` (✅ now programmatic, see #3), `teleportation_boxes.tsv` (✅ POH mounted items — `Mounted{Glory,Xerics,Digsite,Mythical}`), `quetzal_whistle.tsv` (✅ inline in `teleportation_items.tsv`), `teleportation_spells_home.tsv` (⚠️ Microbot has 2 home rows in `teleportation_spells.tsv` vs upstream's 16 variants).
+- **Microbot-only files** (intentional): `blocked_edges.tsv`, `dangerous_tiles.tsv`, `npcs.tsv`, `restrictions.tsv`.
+
+**`transports.tsv` content diff** (present in both; upstream 5168 rows / Microbot 4949): compared by origin→destination identity.
+
+- Upstream 5140 distinct O→D pairs vs Microbot 4915. **778 upstream-only**, 553 Microbot-only.
+- Of the 778: only **14 named** transports; **764 anonymous route objects** (372 Climb, 137 Ladder, 123 Stairs, 43 Staircase, gates/doors/caves…).
+- **Not drift:** 737 distinct origins in the 778, of which only 24 overlap a Microbot origin — **713 are genuinely new origin tiles**. Concentrated central 2500–2999 (399), Varlamore/Kebos 1500–1999 (133), Misthalin 3000–3499 (131).
+- **Verdict:** real coverage gap (new route objects + new areas Microbot's baseline predates), but **bulk import is risky**: upstream's space-separated multi-word action column doesn't map trivially to Microbot's `;`-separated `Currency`/`isMembers` schema, and importing into areas the bundled `collision-map.zip` predates can mislead the walker. Recommended as a scoped, validated per-region sync — not a blind paste. The 14 named ones (Mount Quidamortem/Shayzien cart routes, Varrock↔Civitas illa Fortis, Watermill/Mines/Cellar network) are the low-risk starting subset.
+
 ### Recommended next Stage-4 target
-**#3 POH coverage** is the one concrete, real upstream gap: diff `skretzo/master:src/main/resources/transports/teleportation_portals_poh.tsv` against Microbot's programmatic POH set and backfill. It's data-level (low engine risk) and testable.
+**#3 POH coverage** is the one concrete, real upstream gap: diff `skretzo/master:src/main/resources/transports/teleportation_portals_poh.tsv` against Microbot's programmatic POH set and backfill. It's data-level (low engine risk) and testable. *(Done 2026-07-20 — see the #3 row above.)*
 
 ---
 
