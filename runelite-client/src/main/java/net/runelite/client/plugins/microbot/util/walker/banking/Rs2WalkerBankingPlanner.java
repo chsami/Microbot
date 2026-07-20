@@ -8,7 +8,7 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.Pathfinder;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Spells;
-import net.runelite.client.plugins.microbot.shortestpath.ShortestPathPlugin;
+import net.runelite.client.plugins.microbot.util.walker.Rs2PathApi;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.TransportType;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
@@ -40,11 +40,11 @@ public final class Rs2WalkerBankingPlanner {
             return new ArrayList<>();
         }
 
-        boolean originalUseBankItems = ShortestPathPlugin.getPathfinderConfig().isUseBankItems();
+        boolean originalUseBankItems = Rs2PathApi.getPathfinderConfig().isUseBankItems();
         try {
-            ShortestPathPlugin.getPathfinderConfig().setUseBankItems(useBankItems);
-            ShortestPathPlugin.getPathfinderConfig().refresh();
-            Pathfinder pf = new Pathfinder(ShortestPathPlugin.getPathfinderConfig(), Rs2Player.getWorldLocation(), destination);
+            Rs2PathApi.getPathfinderConfig().setUseBankItems(useBankItems);
+            Rs2PathApi.getPathfinderConfig().refresh();
+            Pathfinder pf = new Pathfinder(Rs2PathApi.getPathfinderConfig(), Rs2Player.getWorldLocation(), destination);
             pf.run();
 
             List<WorldPoint> path = pf.getPath();
@@ -57,8 +57,8 @@ public final class Rs2WalkerBankingPlanner {
             transports.forEach(t -> log.debug("Transport found: " + t));
             return transports;
         } finally {
-            ShortestPathPlugin.getPathfinderConfig().setUseBankItems(originalUseBankItems);
-            ShortestPathPlugin.getPathfinderConfig().refresh();
+            Rs2PathApi.getPathfinderConfig().setUseBankItems(originalUseBankItems);
+            Rs2PathApi.getPathfinderConfig().refresh();
         }
     }
 
@@ -223,10 +223,10 @@ public final class Rs2WalkerBankingPlanner {
             int bankingRouteDistance = -1;
 
             try {
-                boolean originalUseBankItems = ShortestPathPlugin.getPathfinderConfig().isUseBankItems();
+                boolean originalUseBankItems = Rs2PathApi.getPathfinderConfig().isUseBankItems();
                 try {
-                    ShortestPathPlugin.getPathfinderConfig().setUseBankItems(true);
-                    ShortestPathPlugin.getPathfinderConfig().refresh(target);
+                    Rs2PathApi.getPathfinderConfig().setUseBankItems(true);
+                    Rs2PathApi.getPathfinderConfig().refresh(target);
 
                     performanceLog.append("\t-Bank items available: ").append(Rs2Bank.bankItems().size()).append("\n");
 
@@ -307,8 +307,8 @@ public final class Rs2WalkerBankingPlanner {
                                 .append("\t -> No accessible bank found\n");
                     }
                 } finally {
-                    ShortestPathPlugin.getPathfinderConfig().setUseBankItems(originalUseBankItems);
-                    ShortestPathPlugin.getPathfinderConfig().refresh();
+                    Rs2PathApi.getPathfinderConfig().setUseBankItems(originalUseBankItems);
+                    Rs2PathApi.getPathfinderConfig().refresh();
                 }
             } catch (Exception e) {
                 performanceLog.append("Banking route calculation failed: ").append(e.getMessage()).append("\n");
@@ -329,7 +329,7 @@ public final class Rs2WalkerBankingPlanner {
 
             final boolean tie = directDistance == bankingRouteDistance;
             final boolean directStrictlyFaster = directDistance < bankingRouteDistance;
-            final boolean preferTransportToTarget = ShortestPathPlugin.override("preferTransportToTarget", false);
+            final boolean preferTransportToTarget = Rs2PathApi.override("preferTransportToTarget", false);
             final String recommendation;
             final String verdictOneLine;
             if (tie) {
