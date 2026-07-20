@@ -195,11 +195,15 @@ Read-only sweep of all **26** consumer files (`grep` for `microbot.shortestpath`
 `util/walker/*` (Rs2Walker + lifecycle/awaits/banking/shared), `util/bank/Rs2Bank`, `util/depositbox/Rs2DepositBox`, `util/skills/slayer/Rs2Slayer`, `util/poh/*`, `util/leaguetransport/*`, `util/tile/Rs2Tile`, `util/reachable/Rs2Reachable`, `util/npc/Rs2NpcManager`, `questhelper/QuestScript`, `breakhandler/**`, `Script.java`.
 
 ### Staged plan (each stage compiles + walker still runs before the next)
-1. **Catalogue** the full external surface of `Pathfinder`, `PathfinderConfig`, `Transport`, `TransportType`, `WorldPointUtil`, `CollisionMap` (not just `ShortestPathPlugin`). Produce the complete contract table.
-2. **Introduce `Rs2PathApi`** (Microbot-owned, e.g. under `util/walker/`) — a thin facade delegating to today's `ShortestPathPlugin` statics 1:1. No behaviour change.
-3. **Migrate consumers** to `Rs2PathApi`, one package at a time, compiling + smoke-testing the walker after each. Leave `Rs2Walker` for last (largest, riskiest).
-4. **Backport behind the facade** — resume the Tier 1–5 items (wilderness widths #2, `PrimitiveIntList` #11, POH coverage #3, etc.) changing only internals; consumers untouched.
-5. **(Optional) re-baseline** against latest `Skretzo/shortest-path` — the pinned comparison is `07fca57`; no upstream remote is configured yet.
+1. ✅ **DONE** (`2119eb9e77`) — **Catalogue** the full external surface. See "Stage 1 catalogue" above.
+2. ✅ **DONE** (`e52b781575`) — **Introduce `Rs2PathApi`** at `util/walker/Rs2PathApi.java`, thin 1:1 delegation, no behaviour change.
+3. ✅ **DONE** — **Migrate consumers** to `Rs2PathApi`, package by package, walker last:
+   - `3a` (`eb0e274d43`): leaf consumers — `Script`, `QuestScript`, `Rs2Bank`, `Rs2DepositBox`, `Rs2NpcManager`, `Rs2Slayer`, `Rs2LeaguesTransport`.
+   - `3b` (`6ee086b835`): walker helpers — `Rs2WalkerLifecycleRuntime`, `Rs2WalkerBankingPlanner`.
+   - `3c` (`e6e7f0c1fc`): `Rs2Walker` itself (77 refs). Verified: `:client:compileJava` clean + 73 shortestpath tests green (Core 43, Tier1 regression 18, PathSmoother 6, TransportType 4, +2).
+   - Remaining `ShortestPathPlugin` references repo-wide are plugin **identity** only (`MicrobotPluginChoice`'s `.class`, `Microbot`'s `getSimpleName()` string check) — intentionally not routed through the facade. **100% of plugin-state access now goes through `Rs2PathApi`.**
+4. ⬜ **NEXT** — **Backport behind the facade** — resume the Tier 1–5 items (wilderness widths #2, `PrimitiveIntList` #11, POH coverage #3, etc.) changing only internals; consumers untouched.
+5. ⬜ **(Optional) re-baseline** against latest `Skretzo/shortest-path` — the pinned comparison is `07fca57`; no upstream remote is configured yet.
 
 ### Guardrails
 - **No walker edits** until the facade exists and the contract is frozen.
