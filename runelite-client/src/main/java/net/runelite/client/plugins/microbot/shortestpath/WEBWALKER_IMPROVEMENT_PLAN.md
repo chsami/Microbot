@@ -9,6 +9,8 @@ Consolidated findings from a four-angle audit (pathfinder algorithm, Rs2Walker r
 
 **Rollup (2026-04-18 audit):** 22 DONE · 9 PARTIAL · 8 OPEN · total 39. (Tier 3 closed.)
 
+> **2026-07-20 Stage 4 audit — Tier 1–2 backlog is largely already implemented.** With the facade in place (Stages 1–3 done), a live-code sweep of the flagged "backport" items found most already landed since the 2026-04-18 audit: **#2 wilderness DONE** (boundaries match upstream), **#8 bidirectional BFS DONE**, **#31 currency filter DONE**, **#33/#34 transport-index perf DONE**, **#11 stale premise** (Node already packed-int). Genuinely still-open internal items: **#10** (transport reachability prune), **#12** (SplitFlagMap region LRU eviction), **#30** (one-way transport flag), and **#3** (POH coverage verify). These are correctness-/data-sensitive and want real upstream source to do accurately — **no upstream remote is configured yet** (comparison still pinned to `07fca57`). Recommended Stage 4 enabler: add the `Skretzo/shortest-path` remote and re-baseline before implementing #10/#12/#30.
+>
 > **2026-07-20 reconciliation — direction set: FACADE-FIRST.** Spot-verified against the live tree on `So-I-dont-Fuck-The-Walker-KEK`. Confirmed: boat world-view is **DONE** (`WorldPointUtil.fromLocalInstance`, closes `UPSTREAM_COMPARISON.md` #6); `PrimitiveIntList` (#11) still **OPEN**; #3 **reclassified** (see row); #27 now **12/16** pairs (was 8). A full 39-item re-audit was **not** performed — only the items below were re-checked. **Decision:** before any further upstream backport, introduce a Microbot-owned path facade so `Rs2Walker` and the other consumers stop importing upstream internals directly. See the **"Facade migration (2026-07-20)"** section at the bottom for the frozen coupling contract and staged plan.
 
 ---
@@ -20,7 +22,7 @@ Small patches, big payoff. Most are known but still unlanded.
 | # | Status | Issue | File | Effort |
 |---|---|---|---|---|
 | 1 | DONE | `PrimitiveIntHashMap.rehash()` data loss — `return;` → `continue;` | `PrimitiveIntHashMap.java:210` | S |
-| 2 | PARTIAL | Wilderness boundaries 8 tiles off, underground 198 tiles narrow — Chebyshev mod-6400 landed (`Pathfinder.java:155–162`), wilderness widths not re-verified | `Pathfinder.java`, `PathfinderConfig.java` | M |
+| 2 | DONE | Wilderness boundaries — **re-verified 2026-07-20 against upstream values**: `PathfinderConfig.java:41-46` now uses above-ground start Y=3525, level-20 Y=3680, level-30 Y=3760, underground 518×458, level-20 Y=10075, level-30 Y=10155 (all match `UPSTREAM_COMPARISON.md`), named `LEVEL_20`/`LEVEL_30`, wired via `isInLevel20/30Wilderness`. Chebyshev mod-6400 also landed. | `Pathfinder.java`, `PathfinderConfig.java` | M |
 | 3 | NEEDS-VERIFY | `teleportation_poh.tsv` absent **by design** — local routes POH programmatically via `util/poh/` (`PohTransport`/`PohTeleports`), not a TSV. (`teleportation_portals.tsv`, 101 rows, is a *different* `TELEPORTATION_PORTAL` type: Castle Wars / god-wars portals, not POH.) Correct action is **not** "backport the TSV" but "confirm `util/poh` covers upstream's POH destination set". *Reclassified 2026-07-20.* | `util/poh/` | M |
 | 4 | DONE | `growBucket()` integer overflow — `Math.min(len, MAX/2-4)*2` | `PrimitiveIntHashMap.java:147` | S |
 | 5 | DONE | Missing `onGameStateChanged` refresh — quest/varbit goes stale after re-login | `ShortestPathPlugin.java:488` | S |
@@ -35,10 +37,10 @@ Measurable against existing `PathfinderBenchmarkTest`.
 |---|---|---|---|---|
 | 6 | DONE | A* with Chebyshev heuristic (walking subgraph; transports stay in `pending` PQ) | 30–50% node reduction on long routes | M |
 | 7 | DONE | Line-of-sight path smoothing post-BFS — 78–85% path-tile reduction measured across corpus (`PathSmoother.java`, `Pathfinder.getWalkablePath()`) | 15–25% fewer walker clicks | M |
-| 8 | OPEN | Bidirectional BFS for long routes (Lumbridge→GE, Karamja→Iceberg) | √N speedup when src/dst far apart | L |
+| 8 | DONE | Bidirectional BFS for long routes — implemented (`Pathfinder.java` meet-in-the-middle, `BIDIRECTIONAL_MIN_CHEBYSHEV=2000`, fwd/back landmark residuals). *Verified 2026-07-20.* | √N speedup when src/dst far apart | L |
 | 9 | PARTIAL | Cache `SplitFlagMap` + parsed transports as singletons in `PathfinderConfig` — fields cached per instance, singleton discipline across Pathfinder constructions unclear | Eliminates per-pathfinder re-parse | S |
 | 10 | OPEN | Transport reachability prune at config load | 10–20% fewer teleports to explore | M |
-| 11 | OPEN | Backport upstream `PrimitiveIntList` for paths — still `List<Integer>` via `ArrayList` (`Node.java:49–56`) | Zero-alloc packed-int paths | M |
+| 11 | STALE-DESC | Premise no longer holds (2026-07-20): `Node` already uses a packed-int (`packedPosition`) linked structure, **not** `List<Integer>`. The only remaining `List<WorldPoint>` is the *output* path (`Pathfinder.path/smoothedPath/joinedPath`), which is the `getPath()` facade boundary — packing it would change the public signature, so it is explicitly **not** a behind-the-facade change. Close unless a measured alloc hotspot justifies an internal packed path + conversion at `getPath()`. | `Node.java`, `Pathfinder.java` | M |
 | 12 | OPEN | Region LRU eviction in `SplitFlagMap` | Long-session memory bound | M |
 
 ---
@@ -74,7 +76,7 @@ The "completeness of navigating the world" half.
 | 28 | PARTIAL | Stronghold of Security spirit tree + Prifddinas crystal-tier destinations — placeholders in `spirit_trees.tsv`, actual rows incomplete | | S |
 | 29 | PARTIAL | Slayer Ring Ankous (3193,3611), Fairy Ring CJQ (Great Conch) — CJQ present, Ankous Slayer Ring variant still missing | | S |
 | 30 | OPEN | No `isOneWay` flag on transports — return-only boats and Legends' jagged-wall used bidirectionally | | M |
-| 31 | OPEN | No currency-threshold cost filter — expensive teleports picked over cheap walks when gold is low | | L |
+| 31 | DONE | Currency-aware transport filtering present — `PathfinderConfig.java:879-892` checks `Transport.currencyAmount`/`currencyName` against inventory + (optionally) bank before allowing a transport. *Verified 2026-07-20.* | | L |
 
 ---
 
@@ -83,7 +85,7 @@ The "completeness of navigating the world" half.
 | # | Status | Issue | File:Line | Effort |
 |---|---|---|---|---|
 | 32 | PARTIAL | `log.debug()` unconditionally builds joined transport strings — guards present at `Rs2Walker.java:1548, 1604`; other sites (`~894, 1083, 1174`) still unguarded | `Rs2Walker.java:1548, 1579, 1604, 2610` | S |
-| 33 | OPEN | `getTransportsForPath` uses `path.indexOf()` per transport (O(n·m)) — build `Map<WorldPoint,Integer>` once | `Rs2Walker.java:986, 1014` | S |
+| 33 | DONE | `getTransportsForPath` now builds `buildPathFirstIndex(path)` (a `Map<WorldPoint,Integer>`) once and does `pathFirstIndex.get(...)` lookups instead of per-transport `indexOf` (`Rs2Walker.java:3498, 3540`). *Verified 2026-07-20.* | | S |
 | 34 | DONE | `handleTransports` rebuilds `pathFirstIndex` HashMap every call — now cached per call | `Rs2Walker.java:1560–1562` | S |
 | 35 | OPEN | `Rs2Player.getWorldLocation()` called 10+ times per tick — capture once per loop | `Rs2Walker.java:182, 268, 318` | S |
 | 36 | PARTIAL | Pathfinder `Future` cancellation has no wait/timeout — `.cancel(true)` in place, bounded-wait still missing | `ShortestPathPlugin.java:294` | M |
