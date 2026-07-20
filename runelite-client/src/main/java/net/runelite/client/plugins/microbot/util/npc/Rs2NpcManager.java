@@ -5,7 +5,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.shortestpath.ShortestPathPlugin;
+import net.runelite.client.plugins.microbot.util.walker.Rs2PathApi;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import org.slf4j.event.Level;
 
@@ -285,8 +285,8 @@ public class Rs2NpcManager {
      * @param avoidWilderness Whether to avoid locations in the Wilderness.
      */
     public static MonsterLocation getClosestLocation(String npcName, int minClustering, boolean avoidWilderness) {
-        boolean originalUseBankItems = ShortestPathPlugin.getPathfinderConfig().isUseBankItems();
-        ShortestPathPlugin.getPathfinderConfig().setUseBankItems(true);
+        boolean originalUseBankItems = Rs2PathApi.getPathfinderConfig().isUseBankItems();
+        Rs2PathApi.getPathfinderConfig().setUseBankItems(true);
         Microbot.log(Level.INFO,"Finding closest location for: " + npcName);
 
         List<MonsterLocation> allLocations = getNpcLocations(npcName);
@@ -327,7 +327,7 @@ public class Rs2NpcManager {
         }
 
         Microbot.log(Level.INFO,"Closest location for " + npcName + ": " + closest.getLocationName());
-        ShortestPathPlugin.getPathfinderConfig().setUseBankItems(originalUseBankItems);
+        Rs2PathApi.getPathfinderConfig().setUseBankItems(originalUseBankItems);
         return closest;
     }
 

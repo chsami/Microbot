@@ -5,7 +5,7 @@ import net.runelite.api.gameval.DBTableID;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.shortestpath.ShortestPathPlugin;
+import net.runelite.client.plugins.microbot.util.walker.Rs2PathApi;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.TransportType;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
@@ -268,7 +268,7 @@ public class Rs2Slayer {
      * @return the list
      */
     public static List<Transport> prepareItemTransports(WorldPoint cachedMonsterLocation) {
-        ShortestPathPlugin.getPathfinderConfig().setUseBankItems(true);
+        Rs2PathApi.getPathfinderConfig().setUseBankItems(true);
         List<Transport> transports = Rs2Walker.getTransportsForPath(Rs2Walker.getWalkPath(cachedMonsterLocation), 0)
                 .stream()
                 .filter(t -> t.getType() == TransportType.TELEPORTATION_ITEM || t.getType() == TransportType.FAIRY_RING)
@@ -278,7 +278,7 @@ public class Rs2Slayer {
                     }
                 })
                 .collect(Collectors.toList());
-        ShortestPathPlugin.getPathfinderConfig().setUseBankItems(false);
+        Rs2PathApi.getPathfinderConfig().setUseBankItems(false);
 
         transports
                 .forEach(t -> Microbot.log(Level.DEBUG,"Item required: " + t));

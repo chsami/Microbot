@@ -2,7 +2,7 @@ package net.runelite.client.plugins.microbot.util.leaguetransport;
 
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.client.plugins.microbot.shortestpath.ShortestPathPlugin;
+import net.runelite.client.plugins.microbot.util.walker.Rs2PathApi;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.TransportType;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.PathfinderConfig;
@@ -198,7 +198,7 @@ public final class Rs2LeaguesTransport
 
 	public static void invalidateContext()
 	{
-		PathfinderConfig cfg = ShortestPathPlugin.pathfinderConfig;
+		PathfinderConfig cfg = Rs2PathApi.getPathfinderConfig();
 		if (cfg != null)
 		{
 			cfg.invalidateTransportRefreshCache();

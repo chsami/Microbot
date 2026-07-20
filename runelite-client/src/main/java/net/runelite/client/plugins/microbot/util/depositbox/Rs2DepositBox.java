@@ -7,8 +7,8 @@ import net.runelite.api.TileObject;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.shortestpath.ShortestPathPlugin;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.Pathfinder;
+import net.runelite.client.plugins.microbot.util.walker.Rs2PathApi;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2BankID;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
@@ -492,11 +492,11 @@ public class Rs2DepositBox {
                 .map(DepositBoxLocation::getWorldPoint)
                 .collect(Collectors.toSet());
 
-        if (ShortestPathPlugin.getPathfinderConfig().getTransports().isEmpty()) {
-            ShortestPathPlugin.getPathfinderConfig().refresh();
+        if (Rs2PathApi.getPathfinderConfig().getTransports().isEmpty()) {
+            Rs2PathApi.getPathfinderConfig().refresh();
         }
 
-        Pathfinder pf = new Pathfinder(ShortestPathPlugin.getPathfinderConfig(), worldPoint, targets);
+        Pathfinder pf = new Pathfinder(Rs2PathApi.getPathfinderConfig(), worldPoint, targets);
         pf.run();
 
         List<WorldPoint> path = pf.getPath();

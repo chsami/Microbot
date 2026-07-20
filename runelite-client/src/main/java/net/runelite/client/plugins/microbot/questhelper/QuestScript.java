@@ -18,7 +18,7 @@ import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
 import net.runelite.client.plugins.microbot.questhelper.steps.*;
 import net.runelite.client.plugins.microbot.questhelper.steps.widget.WidgetHighlight;
-import net.runelite.client.plugins.microbot.shortestpath.ShortestPathPlugin;
+import net.runelite.client.plugins.microbot.util.walker.Rs2PathApi;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
 import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
@@ -234,8 +234,8 @@ public class QuestScript extends Script {
 
                     boolean isInCutscene = Microbot.getVarbitValue(4606) > 0;
                     if (isInCutscene) {
-                        if (ShortestPathPlugin.getMarker() != null)
-                            ShortestPathPlugin.exit();
+                        if (Rs2PathApi.getMarker() != null)
+                            Rs2PathApi.exit();
                         return;
                     }
 
@@ -1385,11 +1385,11 @@ public class QuestScript extends Script {
 
             for (var tile : Rs2Tile.getWalkableTilesAroundTile(object.getWorldLocation(), unreachableTargetCheckDist)) {
                 if (tileObjects.stream().noneMatch(x -> x.getWorldLocation().equals(tile))) {
-                    if (!Rs2Walker.walkTo(tile) && ShortestPathPlugin.getPathfinder() == null)
+                    if (!Rs2Walker.walkTo(tile) && Rs2PathApi.getPathfinder() == null)
                         return false;
 
-                    sleepUntil(() -> ShortestPathPlugin.getPathfinder() == null || ShortestPathPlugin.getPathfinder().isDone());
-                    if (ShortestPathPlugin.getPathfinder() == null || ShortestPathPlugin.getPathfinder().isDone()) {
+                    sleepUntil(() -> Rs2PathApi.getPathfinder() == null || Rs2PathApi.getPathfinder().isDone());
+                    if (Rs2PathApi.getPathfinder() == null || Rs2PathApi.getPathfinder().isDone()) {
                         unreachableTarget = false;
                         unreachableTargetCheckDist = 1;
                     }
@@ -1424,8 +1424,8 @@ public class QuestScript extends Script {
 
             Rs2Walker.walkTo(targetTile, 3);
 
-            if (ShortestPathPlugin.getPathfinder() != null) {
-                var path = ShortestPathPlugin.getPathfinder().getPath();
+            if (Rs2PathApi.getPathfinder() != null) {
+                var path = Rs2PathApi.getPathfinder().getPath();
                 if (path.get(path.size() - 1).distanceTo(step.getDefinedPoint().getWorldPoint()) <= 1)
                     return false;
             } else
