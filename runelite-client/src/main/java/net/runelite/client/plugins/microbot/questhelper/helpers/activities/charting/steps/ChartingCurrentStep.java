@@ -28,13 +28,15 @@ import net.runelite.client.plugins.microbot.questhelper.helpers.activities.chart
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
+import net.runelite.client.plugins.microbot.questhelper.requirements.quest.QuestRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.util.Operation;
 import net.runelite.client.plugins.microbot.questhelper.requirements.var.VarbitRequirement;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.api.gameval.ObjectID;
 import net.runelite.api.gameval.VarbitID;
-
-import static net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper.*;
+import static net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper.and;
+import static net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper.not;
+import static net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper.or;
 
 public class ChartingCurrentStep extends ChartingTaskObjectStep
 {

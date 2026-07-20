@@ -42,9 +42,13 @@ import net.runelite.api.Prayer;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.GameTick;
-import net.runelite.api.gameval.*;
+import net.runelite.api.gameval.ItemID;
+import net.runelite.api.gameval.NpcID;
+import net.runelite.api.gameval.ObjectID;
+import net.runelite.api.gameval.SpriteID;
+import net.runelite.api.gameval.VarbitID;
+
 import net.runelite.client.eventbus.Subscribe;
-import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 
 import java.util.*;
 
@@ -417,7 +421,7 @@ public class AgilityDungeonSteps extends DetailedOwnerStep
 		{
 			return;
 		}
-		WorldPoint currentPosition = Rs2Player.getWorldLocation();
+		WorldPoint currentPosition = player.getWorldLocation();
 		for (int i = 0; i < fifthSectionMap.length; i++)
 		{
 			MM2Route[] pathsFromNode = fifthSectionMap[i].getPaths();

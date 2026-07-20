@@ -44,7 +44,7 @@ public class NewVersionManager
 
 	private final String LAST_VERSION_SEEN_CONFIG_KEY = "lastversionchecked";
 
-	private final String UPDATE_CHAT_TEXT = "Quest Helper has been updated to 4.12.1! This improves the default order for Sea Charting, and adds a proximity mode you can toggle at the top of it!";
+	private final String UPDATE_CHAT_TEXT = "Quest Helper has been updated to 4.15.1! You can now filter by leagues regions, and the League's Helper is improved.";
 
 	public void updateChatWithNotificationIfNewVersion()
 	{

@@ -46,6 +46,8 @@ public interface QuestHelperConfig extends Config
 	String QUEST_HELPER_GROUP = "questhelper";
 	String QUEST_BACKGROUND_GROUP = "questhelpervars";
 	String QUEST_HELPER_SIDEBAR_ORDER_KEY_START = "quest-sidebar-order-";
+	/** Per-helper persisted manual step skips (JSON map of stable slot id to true). */
+	String QUEST_HELPER_MANUAL_SKIPS_KEY_PREFIX = "manual-step-skips-";
 
 	enum QuestOrdering implements Comparator<QuestHelper>
 	{
@@ -237,32 +239,33 @@ public interface QuestHelperConfig extends Config
 	}
 
 	@ConfigSection(
-			position = 0,
-			name = "Microbot",
-			description = "Microbot Options",
-			closedByDefault = false
+		position = 0,
+		name = "Microbot",
+		description = "Microbot Options",
+		closedByDefault = false
 	)
 	String microbotSection = "microbotSection";
 
-
 	@ConfigItem(
-			keyName = "TurnOn",
-			name = "Enable QuestHelper",
-			description = "Enable the quest helper that will automatically help with quests.",
-			section = microbotSection
+		keyName = "TurnOn",
+		name = "Enable QuestHelper",
+		description = "Enable the quest helper that will automatically help with quests.",
+		section = microbotSection
 	)
-	default boolean startStopQuestHelper() {
+	default boolean startStopQuestHelper()
+	{
 		return true;
 	}
 
 	@ConfigItem(
-			keyName = "obtainMissingItems",
-			name = "Obtain Missing Items",
-			description = "Controls whether the quest helper automatically obtains missing items from the bank and Grand Exchange. 'Ask' will prompt you the first time items are needed.",
-			section = microbotSection,
-			position = 1
+		keyName = "obtainMissingItems",
+		name = "Obtain Missing Items",
+		description = "Controls whether the quest helper automatically obtains missing items from the bank and Grand Exchange. 'Ask' will prompt you the first time items are needed.",
+		section = microbotSection,
+		position = 1
 	)
-	default ObtainMissingItemsOption obtainMissingItems() {
+	default ObtainMissingItemsOption obtainMissingItems()
+	{
 		return ObtainMissingItemsOption.ASK;
 	}
 
@@ -332,14 +335,15 @@ public interface QuestHelperConfig extends Config
 	}
 
 	@ConfigItem(
-			keyName = "valeTotemsWoodType",
-			name = "Vale Totems wood type",
-			description = "Which wood type the quester should gather for the Vale Totems miniquest. " +
-					"Must match the wood you used to build the totem. " +
-					"Leave on 'Ask me' to be prompted the first time the quest runs.",
-			section = microbotSection
+		keyName = "valeTotemsWoodType",
+		name = "Vale Totems wood type",
+		description = "Which wood type the quester should gather for the Vale Totems miniquest. " +
+			"Must match the wood you used to build the totem. " +
+			"Leave on 'Ask me' to be prompted the first time the quest runs.",
+		section = microbotSection
 	)
-	default ValeTotemsWoodType valeTotemsWoodType() {
+	default ValeTotemsWoodType valeTotemsWoodType()
+	{
 		return ValeTotemsWoodType.ASK;
 	}
 
@@ -789,6 +793,25 @@ public interface QuestHelperConfig extends Config
 	default boolean showCompletedQuests()
 	{
 		return false;
+	}
+
+	enum RegionFilterVisibility
+	{
+		AUTO,
+		SHOW,
+		HIDE
+	}
+
+	@ConfigItem(
+		keyName = "regionFilterVisibility",
+		name = "Region filtering",
+		description = "Controls when the league region filter is shown. Auto shows it only on league worlds.",
+		position = 5,
+		section = filterSection
+	)
+	default RegionFilterVisibility regionFilterVisibility()
+	{
+		return RegionFilterVisibility.AUTO;
 	}
 
 	@ConfigSection(

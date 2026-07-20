@@ -37,7 +37,7 @@ import java.util.*;
 public class PanelDetails
 {
 	@Getter
-	int id = -1;
+	int id = Integer.MIN_VALUE;
 
 	@Getter
 	String header;
@@ -137,6 +137,11 @@ public class PanelDetails
 	public void addSteps(QuestStep... steps)
 	{
 		this.steps.addAll(Arrays.asList(steps));
+	}
+
+	public void addSteps(Collection<QuestStep> steps)
+	{
+		this.steps.addAll(steps);
 	}
 
 	public boolean contains(QuestStep currentStep)

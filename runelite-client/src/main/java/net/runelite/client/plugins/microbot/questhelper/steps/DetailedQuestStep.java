@@ -43,17 +43,17 @@ import net.runelite.client.plugins.microbot.questhelper.util.worldmap.WorldMapAr
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
-import net.runelite.api.*;
 import net.runelite.api.Menu;
 import net.runelite.api.Point;
+import net.runelite.api.*;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.ItemDespawned;
 import net.runelite.api.events.ItemSpawned;
-import net.runelite.api.gameval.SpriteID;
 import net.runelite.api.widgets.Widget;
+import net.runelite.api.gameval.SpriteID;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.PluginMessage;
@@ -65,8 +65,8 @@ import net.runelite.client.ui.overlay.worldmap.WorldMapPointManager;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.util.*;
 import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -304,11 +304,6 @@ public class DetailedQuestStep extends QuestStep
 			return;
 		}
 
-		if (inCutscene)
-		{
-			return;
-		}
-
 		if (!markedTiles.isEmpty())
 		{
 			for (QuestTile location : markedTiles)
@@ -359,11 +354,6 @@ public class DetailedQuestStep extends QuestStep
 			return;
 		}
 
-		if (inCutscene)
-		{
-			return;
-		}
-
 		if (currentRender < (MAX_RENDER_SIZE / 2))
 		{
 			renderArrow(graphics);
@@ -374,11 +364,6 @@ public class DetailedQuestStep extends QuestStep
 	public void makeWorldLineOverlayHint(Graphics2D graphics, QuestHelperPlugin plugin)
 	{
 		if (client.getLocalPlayer() == null)
-		{
-			return;
-		}
-
-		if (inCutscene)
 		{
 			return;
 		}
@@ -468,6 +453,13 @@ public class DetailedQuestStep extends QuestStep
 				.collect(Collectors.toList());
 		renderInventory(graphics, definedPoint, itemRequirements, false);
 		renderInventory(graphics, definedPoint, teleportRequirements, true);
+
+		// TODO: Add a config to turn off as well?
+		if (!questHelper.getQuestHelperPlugin().isBankTabOpen())
+		{
+			renderBank(graphics, requirements);
+		}
+
 		for (AbstractWidgetHighlight widgetHighlights : widgetsToHighlight)
 		{
 			widgetHighlights.highlightChoices(graphics, client, plugin);
@@ -490,11 +482,6 @@ public class DetailedQuestStep extends QuestStep
 		if (questHelper.getConfig().showMiniMapArrow())
 		{
 			if (mapPoint == null)
-			{
-				return;
-			}
-
-			if (inCutscene)
 			{
 				return;
 			}
@@ -559,7 +546,7 @@ public class DetailedQuestStep extends QuestStep
 	{
 		super.makeOverlayHint(panelComponent, plugin, additionalText, new ArrayList<>());
 
-		if (inCutscene || hideRequirements)
+		if (hideRequirements)
 		{
 			return;
 		}
@@ -688,10 +675,6 @@ public class DetailedQuestStep extends QuestStep
 
 	private void checkAllTilesForItemHighlighting(Tile tile, Collection<Integer> ids, Graphics2D graphics)
 	{
-		if (inCutscene)
-		{
-			return;
-		}
 		Player player = client.getLocalPlayer();
 
 		if (player == null)
@@ -812,7 +795,7 @@ public class DetailedQuestStep extends QuestStep
 
 		if (currentMenuEntries != null)
 		{
-			Point mousePosition = client.getMouseCanvasPosition();
+			net.runelite.api.Point mousePosition = client.getMouseCanvasPosition();
 			int menuX = menu.getMenuX();
 			int menuY = menu.getMenuY();
 			int menuWidth = menu.getMenuWidth();
@@ -881,7 +864,14 @@ public class DetailedQuestStep extends QuestStep
 		{
 			return;
 		}
-		var playerWp = client.getLocalPlayer().getWorldLocation();
+
+		var localPlayer = client.getLocalPlayer();
+		if (localPlayer == null)
+		{
+			return;
+		}
+
+		var playerWp = localPlayer.getWorldLocation();
 		if (playerWp == null)
 		{
 			return;

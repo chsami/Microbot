@@ -73,7 +73,7 @@ public class KaramjaMedium extends BasicQuestHelper
 
 	Requirement grandTree, taiBwoWannaiTrio, dragonSlayerI, shiloVillage, junglePotion;
 
-	QuestStep enterAgilityArena, tag2Pillars, enterVolcano, returnThroughWall, useCart, doCleanup, makeSpiderStick, cookSpider,
+	QuestStep enterAgilityArena, tagPillar, enterVolcano, returnThroughWall, useCart, doCleanup, makeSpiderStick, cookSpider,
 		climbUpToBoat, travelToKhazard, cutTeak, cutMahogany, catchKarambwanji, catchKarambwan, getMachete, flyToKaramja, growFruitTree,
 		trapGraahk, chopVines, crossLava, climbBrimhavenStaircase, charterFromShipyard, mineRedTopaz, enterCrandor,
 		enterBrimDungeonVine, enterBrimDungeonLava, enterBrimDungeonStairs, claimReward;
@@ -108,7 +108,7 @@ public class KaramjaMedium extends BasicQuestHelper
 		doMedium.addStep(notEnteredCrandor, enteredCrandorTask);
 
 		claimedTicketTask = new ConditionalStep(this, enterAgilityArena);
-		claimedTicketTask.addStep(inAgilityArena, tag2Pillars);
+		claimedTicketTask.addStep(inAgilityArena, tagPillar);
 		doMedium.addStep(notClaimedTicket, claimedTicketTask);
 
 		usedCartTask = new ConditionalStep(this, useCart);
@@ -269,7 +269,7 @@ public class KaramjaMedium extends BasicQuestHelper
 		enterAgilityArena = new ObjectStep(this, ObjectID.AGILITYARENA_LADDERDOWN, new WorldPoint(2809, 3194, 0), "Pay Cap'n Izzy" +
 			" No Beard 200 coins and enter the Agility Arena in Brimhaven.",
 			coins.quantity(200));
-		tag2Pillars = new DetailedQuestStep(this, "Tag 2 marked pillars in a row.");
+		tagPillar = new DetailedQuestStep(this, "Tag a marked pillar.");
 		enterVolcano = new ObjectStep(this, ObjectID.VOLCANO_ENTRANCE, new WorldPoint(2857, 3169, 0),
 			"Enter the Karamja Volcano.");
 		returnThroughWall = new ObjectStep(this, ObjectID.DRAGONSECRETDOOR, new WorldPoint(2836, 9600, 0), "Return back through the shortcut.");
@@ -289,9 +289,12 @@ public class KaramjaMedium extends BasicQuestHelper
 		travelToKhazard.addSubSteps(climbUpToBoat);
 		cutTeak = new ObjectStep(this, ObjectID.TEAKTREE, new WorldPoint(2822, 3078, 0), "Chop a teak tree down either in" +
 			" the Hardwood Grove in Tai Bwo Wannai or in the Kharazi Jungle (requires Legends' Quest started).", axe, tradingSticks.quantity(100));
+		((ObjectStep) cutTeak).addAlternateObjects(ObjectID.TEAKTREE_UPDATE);
+		cutTeak.addDialogStep("Okay, I'll pay 100 trading sticks to enter.");
 		cutMahogany = new ObjectStep(this, ObjectID.MAHOGANYTREE, new WorldPoint(2820, 3080, 0), "Chop a mahogany tree " +
 			"down either in the Hardwood Grove in Tai Bwo Wannai or in the Kharazi Jungle (requires Legends' Quest started).", axe,
 			tradingSticks.quantity(100));
+		cutMahogany.addDialogStep("Okay, I'll pay 100 trading sticks to enter.");
 		catchKarambwanji = new NpcStep(this, NpcID._0_43_47_KARAMBWANJI, new WorldPoint(2791,3019,0),
 			"Using your small fishing net, catch some raw karambwanji just south of Tai Bwo Wannai, or buy some from the GE.", smallFishingNet);
 		catchKarambwan = new NpcStep(this, NpcID._0_45_48_KARAMBWAN, new WorldPoint(2899, 3119, 0),
@@ -413,7 +416,7 @@ public class KaramjaMedium extends BasicQuestHelper
 		allSteps.add(enteredCrandorSteps);
 
 		PanelDetails enterAgiSteps = new PanelDetails("Claim a ticket in The Agility Arena",
-			Arrays.asList(enterAgilityArena, tag2Pillars), coins.quantity(200));
+			Arrays.asList(enterAgilityArena, tagPillar), coins.quantity(200));
 		enterAgiSteps.setDisplayCondition(notClaimedTicket);
 		enterAgiSteps.setLockingStep(claimedTicketTask);
 		allSteps.add(enterAgiSteps);

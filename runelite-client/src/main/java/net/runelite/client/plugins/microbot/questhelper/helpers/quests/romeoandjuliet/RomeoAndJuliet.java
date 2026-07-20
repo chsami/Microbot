@@ -27,6 +27,7 @@ package net.runelite.client.plugins.microbot.questhelper.helpers.quests.romeoand
 import net.runelite.client.plugins.microbot.questhelper.panel.PanelDetails;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.BasicQuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
+import static net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper.and;
 import net.runelite.client.plugins.microbot.questhelper.requirements.zone.Zone;
 import net.runelite.client.plugins.microbot.questhelper.requirements.zone.ZoneRequirement;
 import net.runelite.client.plugins.microbot.questhelper.rewards.QuestPointReward;
@@ -34,17 +35,14 @@ import net.runelite.client.plugins.microbot.questhelper.steps.ConditionalStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.NpcStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.ObjectStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
-import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.gameval.ItemID;
-import net.runelite.api.gameval.NpcID;
-import net.runelite.api.gameval.ObjectID;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import static net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper.and;
+import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.gameval.ItemID;
+import net.runelite.api.gameval.NpcID;
+import net.runelite.api.gameval.ObjectID;
 
 public class RomeoAndJuliet extends BasicQuestHelper
 {
@@ -151,7 +149,7 @@ public class RomeoAndJuliet extends BasicQuestHelper
 		steps.put(50, bringPotionToJuliet);
 
 		var cFinishQuest = new ConditionalStep(this, finishQuest);
-		cFinishQuest.addStep(inJulietRoom, goDownstairsToFinishQuest);
+		giveLetterToRomeo.addStep(inJulietRoom, goDownstairsToFinishQuest);
 		steps.put(60, cFinishQuest);
 
 		return steps;

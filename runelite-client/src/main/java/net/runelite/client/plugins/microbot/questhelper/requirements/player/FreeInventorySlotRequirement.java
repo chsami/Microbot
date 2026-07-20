@@ -36,6 +36,7 @@ import net.runelite.api.ItemContainer;
 import net.runelite.api.gameval.InventoryID;
 
 import javax.annotation.Nonnull;
+import java.util.Locale;
 
 /**
  * Requirement that checks if a player has a required number of slots free in a given

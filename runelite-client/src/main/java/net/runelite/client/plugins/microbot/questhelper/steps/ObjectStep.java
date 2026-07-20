@@ -24,7 +24,6 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.steps;
 
-import lombok.Getter;
 import net.runelite.client.plugins.microbot.questhelper.QuestHelperConfig;
 import net.runelite.client.plugins.microbot.questhelper.QuestHelperPlugin;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
@@ -33,9 +32,11 @@ import net.runelite.client.plugins.microbot.questhelper.requirements.zone.Zone;
 import net.runelite.client.plugins.microbot.questhelper.steps.overlay.DirectionArrow;
 import net.runelite.client.plugins.microbot.questhelper.steps.tools.DefinedPoint;
 import net.runelite.client.plugins.microbot.questhelper.steps.tools.QuestPerspective;
+import lombok.Getter;
+import lombok.NonNull;
 import lombok.Setter;
-import net.runelite.api.*;
 import net.runelite.api.Point;
+import net.runelite.api.*;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.*;
@@ -66,6 +67,11 @@ public class ObjectStep extends DetailedQuestStep
 	private int lastPlane;
 	@Setter
 	private boolean revalidateObjects;
+
+	/// Force the highlight to use the clickbox highlight, regardless of the user's setting.
+	/// This is useful if the object you're trying to highlight is technically visible but cannot feasibly be outline-highlighted.
+	@Setter
+	private boolean forceClickboxHighlight = false;
 
 	public ObjectStep(QuestHelper questHelper, int objectID, WorldPoint worldPoint, String text, Requirement... requirements)
 	{
@@ -147,11 +153,9 @@ public class ObjectStep extends DetailedQuestStep
 	{
 		// TODO: This needs to be tested in Shadow of the Storm's Demon Room
 		objects.clear();
-		loadObjectsInWorldView(client.getTopLevelWorldView());
-		var playerWorldView = client.getLocalPlayer().getWorldView();
-		if (playerWorldView != client.getTopLevelWorldView())
+		for (WorldView worldView : client.getTopLevelWorldView().worldViews())
 		{
-			loadObjectsInWorldView(client.getLocalPlayer().getWorldView());
+			loadObjectsInWorldView(worldView);
 		}
 	}
 
@@ -308,11 +312,6 @@ public class ObjectStep extends DetailedQuestStep
 			return;
 		}
 
-		if (inCutscene)
-		{
-			return;
-		}
-
 		Point mousePosition = client.getMouseCanvasPosition();
 
 		if (client.getLocalPlayer() == null)
@@ -352,9 +351,14 @@ public class ObjectStep extends DetailedQuestStep
 
 			Color configColor = getQuestHelper().getConfig().targetOverlayColor();
 
-			QuestHelperConfig.ObjectHighlightStyle highlightStyle = visibilityHelper.isObjectVisible(tileObject)
+			var isObjectVisible = visibilityHelper.isObjectVisible(tileObject);
+			var highlightStyle = isObjectVisible
 				? questHelper.getConfig().highlightStyleObjects()
 				: CLICK_BOX;
+
+			if (highlightStyle == QuestHelperConfig.ObjectHighlightStyle.OUTLINE && forceClickboxHighlight) {
+				highlightStyle = QuestHelperConfig.ObjectHighlightStyle.CLICK_BOX;
+			}
 
 			switch (highlightStyle)
 			{
@@ -385,7 +389,7 @@ public class ObjectStep extends DetailedQuestStep
 		if (iconItemID != -1 && closestObject != null && questHelper.getConfig().showSymbolOverlay())
 		{
 			Shape clickbox = closestObject.getClickbox();
-			if (clickbox != null && !inCutscene)
+			if (clickbox != null)
 			{
 				Rectangle2D boundingBox = clickbox.getBounds2D();
 				graphics.drawImage(icon, (int) boundingBox.getCenterX() - 15, (int) boundingBox.getCenterY() - 10,
@@ -461,12 +465,6 @@ public class ObjectStep extends DetailedQuestStep
 	protected void handleObjects(TileObject object)
 	{
 		if (object == null)
-		{
-			return;
-		}
-
-		var worldViewsToConsider = List.of(client.getTopLevelWorldView(), client.getLocalPlayer().getWorldView());
-		if (!worldViewsToConsider.contains(object.getWorldView()))
 		{
 			return;
 		}

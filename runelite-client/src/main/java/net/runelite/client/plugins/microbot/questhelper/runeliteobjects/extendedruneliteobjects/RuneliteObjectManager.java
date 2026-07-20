@@ -29,15 +29,15 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import net.runelite.client.plugins.microbot.questhelper.steps.widget.WidgetDetails;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.*;
 import net.runelite.api.Menu;
 import net.runelite.api.Point;
+import net.runelite.api.*;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.*;
 import net.runelite.api.gameval.InterfaceID;
-import net.runelite.api.gameval.SpriteID;
 import net.runelite.api.widgets.Widget;
+import net.runelite.api.gameval.SpriteID;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.callback.Hooks;
 import net.runelite.client.chat.ChatColorType;
@@ -54,8 +54,8 @@ import net.runelite.client.ui.overlay.OverlayUtil;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.util.*;
 import java.util.List;
+import java.util.*;
 import java.util.function.Consumer;
 
 // This will hold all RuneliteObjects
@@ -817,14 +817,17 @@ public class RuneliteObjectManager
 	@Subscribe
 	public void onClientTick(ClientTick event)
 	{
+		var localPlayer = client.getLocalPlayer();
+
+		if (localPlayer == null)
+		{
+			return;
+		}
+
 		bufferRedClickAnimation = Math.floorMod(bufferRedClickAnimation + 1, ANIMATION_PERIOD);
 		if (bufferRedClickAnimation == 0)
 		{
 			redClickAnimationFrame++;
-		}
-		if (client.getLocalPlayer() == null)
-		{
-			return;
 		}
 		WorldPoint playerPosition = WorldPoint.fromLocalInstance(client, client.getLocalPlayer().getLocalLocation());
 		runeliteObjectGroups.forEach((groupID, extendedRuneliteObjectGroup) -> {

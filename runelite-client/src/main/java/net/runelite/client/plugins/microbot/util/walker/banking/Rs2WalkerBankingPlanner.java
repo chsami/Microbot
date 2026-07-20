@@ -80,7 +80,8 @@ public final class Rs2WalkerBankingPlanner {
                 || transport.getType() == TransportType.CHARTER_SHIP
                 || transport.getType() == TransportType.SHIP
                 || transport.getType() == TransportType.MINECART
-                || transport.getType() == TransportType.MAGIC_CARPET) {
+                || transport.getType() == TransportType.MAGIC_CARPET
+                || (transport.getType() == TransportType.TRANSPORT && transport.getCurrencyAmount() > 0)) {
             if (transport.getType() == TransportType.TELEPORTATION_SPELL && transport.getDisplayInfo() != null) {
                 String spellName = transport.getDisplayInfo().contains(":")
                         ? transport.getDisplayInfo().split(":")[0].trim()
@@ -405,7 +406,8 @@ public final class Rs2WalkerBankingPlanner {
                 || transportType == TransportType.CHARTER_SHIP
                 || transportType == TransportType.SHIP
                 || transportType == TransportType.MINECART
-                || transportType == TransportType.MAGIC_CARPET;
+                || transportType == TransportType.MAGIC_CARPET
+                || transportType == TransportType.TRANSPORT;
     }
 
     private static int getCurrencyItemId(String currencyName) {

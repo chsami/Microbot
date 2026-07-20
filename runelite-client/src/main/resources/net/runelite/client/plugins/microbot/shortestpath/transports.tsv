@@ -1018,6 +1018,14 @@
 3097 3432 2	3097 3432 1	Climb-down;Ladder;16685									
 											
 # Al Kharid
+3267 3227 0	3268 3227 0	Pay-toll(10gp);Gate;2786			10 Coins					2
+3267 3228 0	3268 3228 0	Pay-toll(10gp);Gate;2787			10 Coins					2
+3268 3227 0	3267 3227 0	Pay-toll(10gp);Gate;2788			10 Coins					2
+3268 3228 0	3267 3228 0	Pay-toll(10gp);Gate;2789			10 Coins					2
+3267 3227 0	3268 3227 0	Open;Gate;2786				Prince Ali Rescue				1
+3267 3228 0	3268 3228 0	Open;Gate;2787				Prince Ali Rescue				1
+3268 3227 0	3267 3227 0	Open;Gate;2788				Prince Ali Rescue				1
+3268 3228 0	3267 3228 0	Open;Gate;2789				Prince Ali Rescue				1
 3298 3124 0	3297 3124 0	Open;Prison door;2692									
 3297 3124 0	3298 3124 0	Open;Prison door;2692									
 3303 3117 0	3304 3115 0	Go-through;Shantay pass;4031		1854						2	

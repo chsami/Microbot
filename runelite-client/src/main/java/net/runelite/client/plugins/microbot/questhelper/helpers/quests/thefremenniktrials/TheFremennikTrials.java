@@ -49,7 +49,11 @@ import net.runelite.client.plugins.microbot.questhelper.rewards.UnlockReward;
 import net.runelite.client.plugins.microbot.questhelper.steps.*;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.gameval.*;
+import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.gameval.ItemID;
+import net.runelite.api.gameval.NpcID;
+import net.runelite.api.gameval.ObjectID;
+import net.runelite.api.gameval.VarbitID;
 
 import java.util.*;
 
@@ -298,7 +302,7 @@ public class TheFremennikTrials extends BasicQuestHelper
 		petRock = new ItemRequirement("Pet rock", ItemID.VT_USELESS_ROCK).isNotConsumed();
 		petRock.setTooltip("You can get another from Askeladden");
 
-		emptySlot4 = new ItemRequirement("4 empty inventory slots", -1, 4);
+		emptySlot4 = new ItemRequirement("Empty inventory slots for vegetables and a pet rock", -1, 4);
 
 		goldenWool = new ItemRequirement("Golden wool", ItemID.VIKING_GOLDEN_WOOL);
 		goldenFleece = new ItemRequirement("Golden fleece", ItemID.VIKING_GOLDEN_FLEECE);

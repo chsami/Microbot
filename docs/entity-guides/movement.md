@@ -77,6 +77,8 @@ waitForDoorInteractionProgress(fromWp, toWp);
 
 **Defensive check:** In live testing, a door should produce one interaction followed by movement/path progress, not repeated `Raw path door handler resolved obstacle` messages every tick while the player is moving.
 
+If a previous minimap click is still moving the player, do not attribute that movement to a new gate interaction. A valid gate can be blacklisted when the walker clicks an interim waypoint, notices the gate while movement is still in flight, then compares the pre/post positions from the old minimap movement against the gate edge. Wrong-traversal blacklisting should only run when the player started near the attempted door edge.
+
 ## 5. Suppress the inverse adjacent transport after crossing a same-plane door
 
 Some doors are represented in `transports.tsv` as two adjacent same-plane transports, one for each direction. After the walker clicks one side and arrives on the other, immediately accepting the inverse transport can bounce the player back through the same door instead of letting the next minimap step continue away from it. Mark both tiles of a successful adjacent same-plane transport as recently handled for a short window.
@@ -235,9 +237,9 @@ if (isStuckTooLong()) {
 
 For long open routes, retarget before the player fully stops when they are already close to the interim checkpoint, and keep normal minimap clicks slightly inside the observed minimap edge. This reduces visible stop/start pauses and outside-clip fallback clicks without reintroducing rapid click thrash.
 
-## 12. Do not let optimistic recovery override unresolved door blockers
+## 12. Do not let local recovery override unresolved door blockers
 
-Unreachable-tile recovery is useful for outdoor false negatives, but in tight rooms it can fight the door resolver. If a route edge still has a door-like scene object on or adjacent to the raw path, suppress broad minimap recovery and let the door scanners retry after their normal cooldowns. Do not permanently blacklist a path-adjacent fallback door just because one attempt traversed the wrong way; in small door clusters the same object may be the correct blocker again once the player has moved to the other side.
+Local-reachability recovery is useful for outdoor false negatives, but in tight rooms it can fight the door resolver. If a route edge still has a door-like scene object on or adjacent to the raw path, suppress broad minimap recovery and let the door scanners retry after their normal cooldowns. Do not permanently blacklist a path-adjacent fallback door just because one attempt traversed the wrong way; in small door clusters the same object may be the correct blocker again once the player has moved to the other side.
 
 **Why this matters:** In POH-style tight rooms with several doors close together, a fallback door click can move the player away from the intended route. If that door tile is session-blacklisted and optimistic recovery keeps clicking route tiles beyond the blocker, the walker loops around the room until a user manually opens the final door.
 
@@ -255,7 +257,7 @@ clickOptimisticRecoveryTarget();
 
 **Where this applies:** `Rs2Walker.processWalk` unreachable-tile handling, `tryResolvePathAdjacentBlocker`, and any fallback that issues minimap recovery clicks after door/path-adjacent scans fail.
 
-**Defensive check:** Reproduce a route through a small room with three nearby doors and a POH portal. The walker should retry the route-door blocker and avoid repeated `unreachable optimistic recovery` loops around the room; it should not need the user to manually open the final door.
+**Defensive check:** Reproduce a route through a small room with three nearby doors and a POH portal. The walker should retry the route-door blocker and avoid repeated `route-backed local recovery click` loops around the room; it should not need the user to manually open the final door.
 
 ## 13. Stall recalculation must also issue fresh movement
 
@@ -286,12 +288,115 @@ if (isStuckTooLong()) {
 
 After a handled transport, avoid expensive path-adjacent or raw transport scans on ordinary open-ground segments unless a nearby planned transport or recent door attempt exists. Those scans are recovery tools, and on long outdoor routes a no-op scan can add several seconds before the next minimap click.
 
-For long-route minimap walking, let the next checkpoint selection happen before the current minimap target is fully consumed. Waiting until the player is only a few tiles from the interim makes the walker visibly stop before issuing the next click; handing off at a moderate remaining distance keeps movement continuous without rapid re-clicking. If an interim clears as close and no nearby route door/transport is pending, issue the next route-aligned continuation click immediately instead of waiting for idle-nudge recovery.
+For long-route minimap walking, let the next checkpoint selection happen before the current minimap target is fully consumed. Waiting until the player is only a few tiles from the interim makes the walker visibly stop before issuing the next click; handing off at a moderate remaining distance keeps movement continuous without rapid re-clicking. If an interim clears as close and no nearby route door/transport is pending, issue the next route-aligned continuation click immediately instead of waiting for idle-nudge recovery. Stale-progress checks must also count distance progress toward the actual interim checkpoint, not only smoothed path index progress; sparse smoothed paths can otherwise clear valid raw-path checkpoints as stale while the player is still walking toward them.
+
+Before the first movement click, avoid timeout-backed speculative segment scans for doors, blockers, rockfalls, or transports. Let the first minimap click move the player toward the route; actual visible doors can still be handled by the dedicated pre-click route-door guard, and steady-state handling can resolve later obstacles once movement has started. Spending startup time scanning every nearby raw segment creates a visible cold start.
 
 Continuation clicks that keep an active route moving should be tail-exempt like `interim-in-flight`; otherwise very long routes can exhaust `MAX_PROCESS_WALK_TAIL_ITERATIONS` while still making progress and trigger an unnecessary auto-retry.
 
 Sticky interim targets should also clear when route-index progress goes stale. If the player keeps moving but the closest path index does not advance for `INTERIM_PROGRESS_TIMEOUT_MS`, treat the checkpoint as stale and select a fresh route-aligned target instead of waiting for max-age expiry.
 
-When a route-following minimap click is outside the minimap clip, fallback clicks must stay on the raw path. A generic "reachable tile closer to target" fallback can select a tile far away from the route in open areas, especially near the final destination.
+When a route-following minimap click is outside the minimap clip, fallback clicks must stay on the raw path. This includes the "clicked but no movement yet" retry after a route click and route-backed direct short-walks near the final destination. A generic "reachable tile closer to target" fallback can select a tile far away from the route in open areas, especially near fences and the final destination. Raw fallback must be anchored from the stabilized route index, not a fresh nearest-raw-tile lookup, or the walker can snap backward to an already-travelled branch.
 
-For adjacent same-plane shortcuts, do not treat any movement away from the origin as success. Some shortcuts, such as stepping stones, can fail and place the player on a fallback tile; once the player is settled away from the expected destination, stop the landing wait and replan from the actual tile.
+For adjacent same-plane shortcuts, do not treat any movement away from the origin as success. Some shortcuts, such as stepping stones, can fail and place the player on a fallback tile; once the player is settled away from the expected destination, stop the landing wait and replan from the actual tile. If the player is settled within one tile of the expected destination and is no longer on the origin, accept the landing instead of waiting for an exact tile that server pathing may not choose.
+
+## 14. Keep local recovery clicks route-backed and paced
+
+Local-reachability recovery is a fallback for bounded reachability false negatives, not a license to pick an arbitrary minimap point. Recovery clicks should use the same route-backed raw-path fallback as normal route movement, then store the actual clicked target as the sticky interim checkpoint. After issuing the click, wait only for movement to start or the checkpoint/goal to be reached; do not wait for a full idle cycle before returning to the walk loop.
+
+**Why this matters:** Bounded local reachability can report a valid route tile as unreachable even though the server pathfinder can still walk toward it. Arbitrary or repeated recovery clicks can pull the player away from the planned route and create visible stop-start movement.
+
+**Pattern to follow:**
+
+```java
+int reach = STALL_RECOVERY_MINIMAP_REACH_EUCLIDEAN;
+WorldPoint clickTarget = clampToEuclideanRadius(playerLoc, recoverTarget, reach - 1);
+WorldPoint clickedTarget = clickMiniMapOrFallback(rawPath, clickTarget, playerLoc, reach - 1, false, rawAnchorIndex);
+if (clickedTarget != null) {
+    interimTargetWp = clickedTarget;
+    waitForMovementStartAfterRecovery(target, playerLoc, clickedTarget, target, finishThreshold);
+}
+```
+
+**Where this applies:** `Rs2Walker.processWalk` local-reachability recovery, route-backed direct short-walks, and any fallback that runs after local reachability says a route tile is not currently reachable.
+
+**Defensive check:** Exercise a long outdoor route and a route with gates or transports. Recovery logs should select route-backed points, and there should be no long idle pause between `route-backed local recovery click` and the next route-aligned movement.
+
+After recovery sets a sticky interim target, do not issue another optimistic recovery while that interim is still active and movement/progress is fresh. Yield as `interim-in-flight` or another tail-exempt movement state until the checkpoint is close, stale, or expired. Otherwise the walker can loop through several recovery clicks while the player is already moving, especially when local reachability reports the next smoothed tile as unreachable.
+
+## 15. Keep primary route clicks on the raw route
+
+When a shortest-path raw route exists, choose the next minimap target from that raw route before applying smoothed-waypoint wall-distance nudges, bounded reachability shortcuts, or generic directional fallbacks. Sideways reachable tiles can be valid server walk targets while still being the wrong side of a fence, gate, or corridor corner. Generic fallback is only appropriate when no route-backed raw point is available.
+
+**Why this matters:** Tight routes near gates and fences can fail when the walker clicks a tile left or right of the drawn route line. The game then chooses its own path around the obstacle, which fights the planned door/transport handlers and produces stop-start recovery.
+
+**Pattern to follow:**
+
+```java
+WorldPoint rawTarget = findFurthestRawPathPointMatching(rawPath, playerLoc, reach, rawAnchor,
+        Rs2Walker::isKnownWalkableOrUnloaded);
+WorldPoint clickTarget = rawTarget != null ? rawTarget : getPointWithWallDistance(smoothedTarget);
+```
+
+**Where this applies:** `Rs2Walker.processWalk`, recovery clicks after false unreachable reports, route continuation clicks, direct short-walk fallbacks, and any minimap click helper used while a shortest-path raw route exists.
+
+**Defensive check:** Unit-test raw-route target selection with a route that doubles back near an earlier branch; the selected tile must stay at or ahead of the anchored raw route index.
+
+## 16. Yield before scans while an interim route click is in flight
+
+Sticky interim targets only reduce click thrash if they are checked before broad route scans. When a fresh interim checkpoint is still far away and the player is moving or has very recent checkpoint progress, yield before raw-scene scans, current-tile transport scans, direct short-walk attempts, and path segment scans. Resume normal route work once the checkpoint is close, stale, expired, on another plane, or movement has genuinely stopped.
+
+**Why this matters:** Long post-transport routes can otherwise run several no-op scans and select several small follow-up clicks while the previous minimap flag is still carrying the player. That looks like stop-start walking and burns tail iterations even though the route is making progress.
+
+**Pattern to follow:**
+
+```java
+if (shouldYieldForActiveRouteInterim(playerLoc, path, nowMs)) {
+    exitReason = "interim-in-flight";
+    continue;
+}
+```
+
+**Where this applies:** `Rs2Walker.processWalk` before broad raw-scene handling, current-tile transport handling, direct short-walk handling, and the main path loop.
+
+**Defensive check:** Start a long route immediately after a transport. While the player is still moving toward the active minimap checkpoint, the walker should log a tail-exempt `interim-in-flight` yield instead of repeated `post_transport_path_selected` clicks for nearby path indices.
+
+## 17. Dispatch immediate planned transports before idle nudges
+
+When the current route index is an explicit shortest-path transport edge, let the segment transport handler run even during startup, before route idle nudges or stall recovery clicks. Keep startup door/rockfall probes skipped, but do not postpone teleports, ships, ladders, or other catalog-backed route transports that start at the player's current segment.
+
+**Why this matters:** Originless spell/item teleports can be the first edge in a route. If startup logic suppresses the segment handler and idle recovery runs first, the walker can sit on the origin, spam no-op route nudges, trigger stall recovery, and only then cast the teleport.
+
+**Pattern to follow:**
+
+```java
+boolean immediateTransport = hasImmediatePlannedTransportStep(path, routeStartIdx, playerLoc);
+if (shouldRunActiveRouteIdleNudge(idleNudgeDue, immediateTransport)) {
+    tryIssueRouteRecoveryClick(rawPath, path, target, "active route idle nudge");
+}
+```
+
+**Where this applies:** `Rs2Walker.processWalk` startup handling, active route idle nudges, stall recovery clicks, and segment transport dispatch.
+
+**Defensive check:** Start a route whose first planned edge is Home Teleport. Logs should show `transport_handoff_enter` for `TELEPORTATION_SPELL` without several `active route idle nudge: clicked=false` entries first.
+
+## 18. Model conditional paid gates as transports plus blocked edges
+
+When a gate can be crossed by either a quest unlock or a currency payment, do not model the gate tiles as quest-only restrictions. A tile restriction cannot express "quest complete OR pay coins", and it can prevent the walker from reaching the paid transport origin. Model each crossing as explicit paid/free transports and add a blocked edge override so normal walking cannot bypass the unavailable transport.
+
+**Why this matters:** The Lumbridge-to-Al Kharid toll gate can be opened freely after Prince Ali Rescue or paid through with 10 coins. A quest-only restriction blocks the paid route for accounts without the quest, while no edge block can let the pathfinder walk through the gate without paying.
+
+**Pattern to follow:**
+
+```java
+// Wrong: restrict both sides of the gate to one quest state.
+3267 3227 0        Prince Ali Rescue
+
+// Right: transport data decides availability; blocked_edges prevents free walking.
+3267 3227 0    3268 3227 0    Pay-toll(10gp);Gate;2786    ...    10 Coins
+3267 3227 0    3268 3227 0    Open;Gate;2786              ...    Prince Ali Rescue
+```
+
+**Where this applies:** `transports.tsv`, `blocked_edges.tsv`, `restrictions.tsv`, `PathfinderConfig`, and `Rs2Walker.handleTransports`.
+
+**Defensive check:** Add resource tests that assert both paid and quest-free transports load, the gate tiles are not quest-only restricted, and the gate edge is blocked without a usable transport.

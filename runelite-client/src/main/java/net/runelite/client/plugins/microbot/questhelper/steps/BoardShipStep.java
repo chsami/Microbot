@@ -8,7 +8,6 @@ import net.runelite.client.plugins.microbot.questhelper.requirements.util.Port;
 import lombok.NonNull;
 import net.runelite.api.gameval.ObjectID;
 import net.runelite.client.ui.overlay.components.PanelComponent;
-
 import java.util.ArrayList;
 import java.util.List;
 

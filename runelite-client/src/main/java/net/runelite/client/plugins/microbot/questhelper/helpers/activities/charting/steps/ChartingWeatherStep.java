@@ -33,6 +33,7 @@ import net.runelite.client.plugins.microbot.questhelper.requirements.player.Skil
 import net.runelite.client.plugins.microbot.questhelper.requirements.var.VarbitRequirement;
 import net.runelite.client.plugins.microbot.questhelper.steps.ConditionalStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.DetailedQuestStep;
+import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
 import lombok.Getter;
 import net.runelite.api.Skill;
 import net.runelite.api.gameval.ItemID;

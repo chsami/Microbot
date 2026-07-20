@@ -25,6 +25,7 @@
 package net.runelite.client.plugins.microbot.questhelper.steps.choice;
 
 import net.runelite.client.plugins.microbot.questhelper.QuestHelperConfig;
+import java.util.Map;
 import lombok.Getter;
 import lombok.Setter;
 import net.runelite.api.Client;
@@ -34,7 +35,6 @@ import net.runelite.api.widgets.Widget;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.regex.Pattern;
 
 public class WidgetChoiceStep
@@ -54,6 +54,7 @@ public class WidgetChoiceStep
 	protected int excludedGroupId;
 	protected int excludedChildId;
 
+	@Getter
 	private final int choiceById;
 
 	@Getter
@@ -64,6 +65,7 @@ public class WidgetChoiceStep
 	protected int varbitValue = -1;
 	protected final Map<Integer, String> varbitValueToAnswer;
 
+	@Getter
 	protected boolean shouldNumber = false;
 
 	@Setter

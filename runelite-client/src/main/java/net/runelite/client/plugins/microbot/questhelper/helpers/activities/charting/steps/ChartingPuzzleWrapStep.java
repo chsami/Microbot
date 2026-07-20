@@ -33,7 +33,6 @@ import net.runelite.client.plugins.microbot.questhelper.requirements.var.VarbitR
 import net.runelite.client.plugins.microbot.questhelper.steps.PuzzleWrapperStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
 import net.runelite.api.Skill;
-
 import static net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper.nor;
 
 public class ChartingPuzzleWrapStep extends PuzzleWrapperStep implements ChartingTaskInterface

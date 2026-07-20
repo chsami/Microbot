@@ -29,9 +29,9 @@ import com.google.inject.Binder;
 import com.google.inject.Injector;
 import com.google.inject.Module;
 import com.google.inject.Provides;
-import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.questhelper.bank.banktab.BankTabItems;
 import net.runelite.client.plugins.microbot.questhelper.bank.banktab.PotionStorage;
+import net.runelite.client.plugins.microbot.questhelper.bank.banktab.QuestBankTabInterface;
 import net.runelite.client.plugins.microbot.questhelper.managers.*;
 import net.runelite.client.plugins.microbot.questhelper.panel.QuestHelperPanel;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
@@ -39,6 +39,7 @@ import net.runelite.client.plugins.microbot.questhelper.questinfo.QuestHelperQue
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
 import net.runelite.client.plugins.microbot.questhelper.runeliteobjects.Cheerer;
 import net.runelite.client.plugins.microbot.questhelper.runeliteobjects.GlobalFakeObjects;
+import net.runelite.client.plugins.microbot.questhelper.runeliteobjects.RuneliteConfigSetter;
 import net.runelite.client.plugins.microbot.questhelper.runeliteobjects.extendedruneliteobjects.RuneliteObjectManager;
 import net.runelite.client.plugins.microbot.questhelper.statemanagement.PlayerStateManager;
 import net.runelite.client.plugins.microbot.questhelper.tools.Icon;
@@ -49,7 +50,7 @@ import net.runelite.api.*;
 import net.runelite.api.events.*;
 import net.runelite.api.gameval.InventoryID;
 import net.runelite.api.gameval.VarPlayerID;
-import net.runelite.client.RuneLite;
+import net.runelite.api.gameval.VarbitID;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.chat.ChatMessageManager;
 import net.runelite.client.config.ConfigManager;
@@ -60,9 +61,11 @@ import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.events.RuneScapeProfileChanged;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.game.SkillIconManager;
+import net.runelite.client.game.SpriteManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.bank.BankSearch;
+import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.ui.components.colorpicker.ColorPickerManager;
@@ -101,6 +104,7 @@ public class QuestHelperPlugin extends Plugin
 	@Inject
 	private ClientThread clientThread;
 
+	@Getter
 	@Inject
 	private EventBus eventBus;
 
@@ -162,6 +166,17 @@ public class QuestHelperPlugin extends Plugin
 	@Inject
 	public SkillIconManager skillIconManager;
 
+	@Inject
+	public SpriteManager spriteManager;
+
+	@Inject
+	private QuestBankTabInterface questBankTabInterface;
+
+	public boolean fullCrate;
+
+	@Inject
+	QuestScript questScript;
+
 	private QuestHelperPanel panel;
 
 	private NavigationButton navButton;
@@ -170,9 +185,9 @@ public class QuestHelperPlugin extends Plugin
 
 	private final Collection<String> configEvents = Arrays.asList("orderListBy", "filterListBy", "questDifficulty", "showCompletedQuests");
 	private final Collection<String> configItemEvents = Arrays.asList("highlightNeededQuestItems", "highlightNeededMiniquestItems", "highlightNeededAchievementDiaryItems");
-	public boolean fullCrate;
-	@Inject
-	QuestScript questScript;
+
+	@Getter
+	private boolean inCutscene = false;
 
 	@Provides
 	QuestHelperConfig getConfig(ConfigManager configManager)
@@ -234,6 +249,7 @@ public class QuestHelperPlugin extends Plugin
 	@Override
 	protected void shutDown()
 	{
+		questScript.shutdown();
 		runeliteObjectManager.shutDown();
 
 		eventBus.unregister(playerStateManager);
@@ -260,6 +276,7 @@ public class QuestHelperPlugin extends Plugin
 	public void onGameTick(GameTick event)
 	{
 		questBankManager.loadInitialStateFromConfig(client);
+		playerStateManager.loadInitialStateFromConfig();
 		questManager.updateQuestState();
 	}
 
@@ -314,6 +331,7 @@ public class QuestHelperPlugin extends Plugin
 			questBankManager.saveBankToConfig();
 			SwingUtilities.invokeLater(() -> panel.refresh(Collections.emptyList(), true, new HashMap<>()));
 			questBankManager.emptyState();
+			playerStateManager.emptyState();
 			questManager.shutDownQuest(true);
 			profileChanged = true;
 		}
@@ -325,7 +343,10 @@ public class QuestHelperPlugin extends Plugin
 			GlobalFakeObjects.createNpcs(client, runeliteObjectManager, configManager, config);
 			newVersionManager.updateChatWithNotificationIfNewVersion();
 			questBankManager.setUnknownInitialState();
+			playerStateManager.setUnknownInitialState();
 			potionStorage.updateCachedPotions = true;
+			boolean isLeague = client.getWorldType().contains(WorldType.SEASONAL);
+			SwingUtilities.invokeLater(() -> panel.updateRegionFilterVisibility(isLeague));
 			clientThread.invokeAtTickEnd(() -> {
 				questManager.setupRequirements();
 				questManager.setupOnLogin();
@@ -342,6 +363,11 @@ public class QuestHelperPlugin extends Plugin
 	@Subscribe
 	public void onVarbitChanged(VarbitChanged event)
 	{
+		if (event.getVarbitId() == VarbitID.CUTSCENE_STATUS)
+		{
+			this.inCutscene = event.getValue() == 1;
+		}
+
 		if (!(client.getGameState() == GameState.LOGGED_IN))
 		{
 			return;
@@ -374,6 +400,12 @@ public class QuestHelperPlugin extends Plugin
 		if (!event.getGroup().equals(QuestHelperConfig.QUEST_HELPER_GROUP))
 		{
 			return;
+		}
+
+		if ("regionFilterVisibility".equals(event.getKey()))
+		{
+			boolean isLeague = client.getWorldType().contains(WorldType.SEASONAL);
+			SwingUtilities.invokeLater(() -> panel.updateRegionFilterVisibility(isLeague));
 		}
 
 		if (configEvents.contains(event.getKey()) || event.getKey().contains("skillfilter"))
@@ -452,6 +484,37 @@ public class QuestHelperPlugin extends Plugin
 			}
 			log.debug(String.valueOf(inv));
 		}
+		else if (developerMode && commandExecuted.getCommand().equals("qh"))
+		{
+			var args = commandExecuted.getArguments();
+			if (args.length == 0)
+			{
+				return;
+			}
+			var subCommand = args[0];
+			if (subCommand.equals("container"))
+			{
+				if (args.length < 2)
+				{
+					return;
+				}
+				var container = args[1];
+				switch (container)
+				{
+					case "keyring":
+						var keyringItems = QuestContainerManager.getKeyRingData().getItems();
+						for (var item : keyringItems)
+						{
+							log.debug("Key ring item: {}", item);
+						}
+						break;
+				}
+			}
+			else if (subCommand.equals("cheer"))
+			{
+				addCheerer();
+			}
+		}
 	}
 
 	@Subscribe(priority = 100)
@@ -468,6 +531,11 @@ public class QuestHelperPlugin extends Plugin
 	public List<BankTabItems> getPluginBankTagItemsForSections()
 	{
 		return questBankManager.getBankTagService().getPluginBankTagItemsForSections(false);
+	}
+
+	public boolean isBankTabOpen()
+	{
+		return questBankTabInterface.isQuestTabActive();
 	}
 
 	public @Nullable QuestHelper getSelectedQuest()
@@ -530,7 +598,8 @@ public class QuestHelperPlugin extends Plugin
 	@Subscribe
 	public void onChatMessage(ChatMessage chatMessage)
 	{
-		if (chatMessage.getMessage().equals("The crate is full of bananas.")) {
+		if (chatMessage.getMessage().equals("The crate is full of bananas."))
+		{
 			fullCrate = true;
 		}
 		if (config.showFan() && chatMessage.getType() == ChatMessageType.GAMEMESSAGE)

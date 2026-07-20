@@ -27,9 +27,8 @@ package net.runelite.client.plugins.microbot.questhelper.panel.questorders;
 
 import com.google.common.collect.ImmutableList;
 import net.runelite.client.plugins.microbot.questhelper.questinfo.QuestHelperQuest;
-import lombok.Getter;
-
 import java.util.List;
+import lombok.Getter;
 
 /**
  * The order of these quests are parsed using data from the <a href="https://oldschool.runescape.wiki/w/Quests/List">OSRS Wiki</a>
@@ -226,6 +225,8 @@ public class ReleaseDate
 		QuestHelperQuest.PRYING_TIMES,
 		QuestHelperQuest.CURRENT_AFFAIRS,
 		QuestHelperQuest.TROUBLED_TORTUGANS,
+		QuestHelperQuest.THE_IDES_OF_MILK,
+		QuestHelperQuest.THE_RED_REEF,
 		// Miniquests
 		QuestHelperQuest.ALFRED_GRIMHANDS_BARCRAWL,
 		QuestHelperQuest.THE_MAGE_ARENA,

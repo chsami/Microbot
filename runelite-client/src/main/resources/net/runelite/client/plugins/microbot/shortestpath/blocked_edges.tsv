@@ -1,5 +1,7 @@
 # Origin	Destination	Bidirectional	Display info
 # Static collision edge overrides for map data gaps. These block movement across the edge, not the whole tile.
+3267 3227 0	3268 3227 0	true	Al Kharid toll gate
+3267 3228 0	3268 3228 0	true	Al Kharid toll gate
 3229 3472 0	3229 3471 0	true	Varrock Palace garden south fence
 3230 3472 0	3230 3471 0	true	Varrock Palace garden south fence
 3231 3472 0	3231 3471 0	true	Varrock Palace garden south fence

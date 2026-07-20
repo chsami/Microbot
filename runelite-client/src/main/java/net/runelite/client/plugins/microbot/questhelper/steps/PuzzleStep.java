@@ -1,6 +1,5 @@
 package net.runelite.client.plugins.microbot.questhelper.steps;
 
-import lombok.Getter;
 import net.runelite.client.plugins.microbot.questhelper.QuestHelperPlugin;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
@@ -8,6 +7,7 @@ import net.runelite.client.plugins.microbot.questhelper.steps.widget.WidgetDetai
 import net.runelite.api.events.GameTick;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.eventbus.Subscribe;
+import lombok.Getter;
 
 import java.awt.*;
 import java.util.HashSet;

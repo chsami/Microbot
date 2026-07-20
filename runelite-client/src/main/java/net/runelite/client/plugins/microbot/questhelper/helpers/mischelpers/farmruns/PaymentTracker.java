@@ -24,14 +24,13 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.helpers.mischelpers.farmruns;
 
+import javax.inject.Inject;
+import javax.inject.Singleton;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.plugins.timetracking.TimeTrackingConfig;
-
-import javax.inject.Inject;
-import javax.inject.Singleton;
 
 @Slf4j
 @RequiredArgsConstructor(

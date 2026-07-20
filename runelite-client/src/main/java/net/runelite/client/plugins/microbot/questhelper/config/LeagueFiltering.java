@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Zoinkwiz
+ * Copyright (c) 2026, Syrif <https://github.com/syrifgit>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -22,43 +22,34 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package net.runelite.client.plugins.microbot.questhelper.requirements;
+package net.runelite.client.plugins.microbot.questhelper.config;
 
-import net.runelite.api.Client;
-import net.runelite.api.coords.WorldPoint;
-import net.runelite.client.plugins.microbot.questhelper.requirements.zone.Zone;
-import net.runelite.client.plugins.microbot.questhelper.steps.tools.QuestPerspective;
+import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
+import net.runelite.client.plugins.microbot.questhelper.questinfo.LeagueQuestRegions;
+import net.runelite.client.plugins.microbot.questhelper.questinfo.LeagueRegion;
 
-public class RegionHintArrowRequirement extends SimpleRequirement
+import java.util.EnumSet;
+
+/**
+ * Filters quests by league regions selected in the panel UI.
+ * When no regions are selected, all quests pass. When regions are selected,
+ * only quests completable with those regions are shown.
+ */
+public class LeagueFiltering
 {
-	private final Zone zone;
+	private static EnumSet<LeagueRegion> selectedRegions = null;
 
-	public RegionHintArrowRequirement(WorldPoint worldPoint)
+	public static void setSelectedRegions(EnumSet<LeagueRegion> regions)
 	{
-		assert(worldPoint != null);
-		this.zone = new Zone(worldPoint, worldPoint);
+		selectedRegions = (regions == null || regions.isEmpty()) ? null : regions;
 	}
 
-	public RegionHintArrowRequirement(Zone zone)
+	public static boolean passesLeagueFilter(QuestHelper questHelper)
 	{
-		assert(zone != null);
-		this.zone = zone;
-	}
-
-	public boolean check(Client client)
-	{
-		WorldPoint hintArrowPoint = client.getHintArrowPoint();
-		if (hintArrowPoint == null)
+		if (selectedRegions == null)
 		{
-			return false;
+			return true;
 		}
-
-		WorldPoint wp = QuestPerspective.getWorldPointConsideringWorldView(client, client.getTopLevelWorldView(), hintArrowPoint);
-		if (wp == null)
-		{
-			return false;
-		}
-
-		return zone.contains(wp);
+		return LeagueQuestRegions.isCompletableWith(questHelper.getQuest(), selectedRegions);
 	}
 }

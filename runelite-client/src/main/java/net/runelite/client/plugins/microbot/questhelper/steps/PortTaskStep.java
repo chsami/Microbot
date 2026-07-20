@@ -9,12 +9,10 @@ import net.runelite.client.plugins.microbot.questhelper.requirements.zone.ZoneRe
 import lombok.Getter;
 import net.runelite.api.gameval.ObjectID;
 import net.runelite.api.gameval.VarbitID;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
-
 import static net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper.and;
 import static net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper.or;
 

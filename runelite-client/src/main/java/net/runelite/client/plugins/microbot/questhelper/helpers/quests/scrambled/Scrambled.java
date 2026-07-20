@@ -30,6 +30,7 @@ import net.runelite.client.plugins.microbot.questhelper.panel.PanelDetails;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.BasicQuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.questinfo.QuestHelperQuest;
 import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
+import net.runelite.client.plugins.microbot.questhelper.requirements.conditional.NpcCondition;
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.npc.NpcHintArrowRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.player.SkillRequirement;
@@ -43,10 +44,6 @@ import net.runelite.client.plugins.microbot.questhelper.rewards.ExperienceReward
 import net.runelite.client.plugins.microbot.questhelper.rewards.QuestPointReward;
 import net.runelite.client.plugins.microbot.questhelper.rewards.UnlockReward;
 import net.runelite.client.plugins.microbot.questhelper.steps.*;
-import net.runelite.api.QuestState;
-import net.runelite.api.Skill;
-import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.gameval.*;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -54,7 +51,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-import static net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper.*;
+import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.gameval.ObjectID;
+import net.runelite.api.QuestState;
+import net.runelite.api.Skill;
+import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.gameval.NpcID;
+import net.runelite.api.gameval.ItemID;
+import net.runelite.api.gameval.VarbitID;
+import static net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper.and;
+import static net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper.not;
+import static net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper.or;
 
 /**
  * The quest guide for the "Scrambled" OSRS quest

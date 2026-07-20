@@ -25,9 +25,18 @@
 package net.runelite.client.plugins.microbot.questhelper.runeliteobjects;
 
 import net.runelite.client.plugins.microbot.questhelper.QuestHelperConfig;
+import net.runelite.client.plugins.microbot.questhelper.questinfo.PlayerQuests;
+import net.runelite.client.plugins.microbot.questhelper.requirements.runelite.PlayerQuestStateRequirement;
+import net.runelite.client.plugins.microbot.questhelper.requirements.util.Operation;
+import net.runelite.client.plugins.microbot.questhelper.runeliteobjects.extendedruneliteobjects.ReplacedNpc;
 import net.runelite.client.plugins.microbot.questhelper.runeliteobjects.extendedruneliteobjects.RuneliteObjectManager;
+import net.runelite.client.plugins.microbot.questhelper.runeliteobjects.extendedruneliteobjects.WidgetReplacement;
+import net.runelite.client.plugins.microbot.questhelper.steps.widget.WidgetDetails;
 import lombok.Setter;
 import net.runelite.api.Client;
+import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.gameval.NpcID;
 import net.runelite.client.config.ConfigManager;
 
 public class GlobalFakeObjects

@@ -49,7 +49,11 @@ import net.runelite.client.plugins.microbot.questhelper.rewards.UnlockReward;
 import net.runelite.client.plugins.microbot.questhelper.steps.*;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.gameval.*;
+import net.runelite.api.gameval.ItemID;
+import net.runelite.api.gameval.NpcID;
+import net.runelite.api.gameval.ObjectID;
+import net.runelite.api.gameval.VarbitID;
+import net.runelite.api.gameval.VarPlayerID;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -150,7 +154,7 @@ public class ElementalWorkshopI extends ComplexStateQuestHelper
 		slashedBook = new ItemRequirement("Slashed book", ItemID.ELEMENTAL_WORKSHOP_SHIELD_BOOK_SLASHED);
 		slashedBook.setTooltip("If you've lost it you can get another by searching the bookcase in the building south of " +
 			"the odd wall");
-		batteredKey = new KeyringRequirement("Battered Key", configManager, KeyringCollection.BATTERED_KEY);
+		batteredKey = new KeyringRequirement("Battered Key", KeyringCollection.BATTERED_KEY);
 		batteredKey.setTooltip("If you've lost it you can get another by searching the bookcase in the building south of " +
 			"the odd wall");
 		elementalOre = new ItemRequirement("Elemental ore", ItemID.ELEMENTAL_WORKSHOP_ORE);

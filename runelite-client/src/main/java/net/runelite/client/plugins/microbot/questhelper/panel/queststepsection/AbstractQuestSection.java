@@ -29,8 +29,8 @@ import net.runelite.client.plugins.microbot.questhelper.panel.PanelDetails;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
 import net.runelite.api.Client;
-
 import javax.swing.*;
+import java.util.HashMap;
 import java.util.List;
 
 public abstract class AbstractQuestSection extends JPanel

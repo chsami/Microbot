@@ -27,6 +27,7 @@ package net.runelite.client.plugins.microbot.questhelper.managers;
 
 import net.runelite.client.plugins.microbot.questhelper.QuestHelperConfig;
 import net.runelite.client.plugins.microbot.questhelper.QuestHelperPlugin;
+import net.runelite.client.plugins.microbot.questhelper.config.LeagueFiltering;
 import net.runelite.client.plugins.microbot.questhelper.config.SkillFiltering;
 import net.runelite.client.plugins.microbot.questhelper.panel.QuestHelperPanel;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestDetails;
@@ -229,6 +230,7 @@ public class QuestManager
 				.filter(config.difficulty())
 				.filter(QuestDetails::showCompletedQuests)
 				.filter(SkillFiltering::passesSkillFilter)
+				.filter(LeagueFiltering::passesLeagueFilter)
 				.sorted(config.orderListBy())
 				.collect(Collectors.toList());
 			Map<QuestHelperQuest, QuestState> completedQuests = QuestHelperQuest.getQuestHelpers(isDeveloperMode())
@@ -476,6 +478,7 @@ public class QuestManager
 				.stream()
 				.filter(pred)
 				.filter(QuestDetails::isNotCompleted)
+				.filter(LeagueFiltering::passesLeagueFilter)
 				.sorted(config.orderListBy())
 				.collect(Collectors.toList());
 
