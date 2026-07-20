@@ -376,3 +376,9 @@
 
 #Varlemore Waystone
 1439 9564 0		29090;29092;29093;29094;29095;29096;29097	Perilous Moons			Y	Y	29	4	Calcified moth: Crush
+# Cowbell amulet (Varlamore) - backfilled 2026-07-20 from upstream Skretzo/shortest-path
+3259 3277 0		33104				Y	T	20	4	Cowbell amulet
+# Sailors amulet (charged, Varlamore) - backfilled 2026-07-20 from upstream
+3058 2975 0		32399				Y	T	20	4	Sailors' amulet: The Pandemonium
+1889 3292 0		32399				Y	T	20	4	Sailors' amulet: Port Roberts
+1943 2757 0		32399				Y	T	20	4	Sailors' amulet: Deepfin Point
