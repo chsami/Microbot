@@ -54,6 +54,8 @@ Microbot loads 22 TSVs (see `Transport.java`). File-level diff vs `skretzo/maste
 
 ## Critical Bug Fixes Missing Locally
 
+> ⚠️ **HISTORICAL (2026-04-06). All six below are now FIXED** — see the "Re-baseline" section at the top and `WEBWALKER_IMPROVEMENT_PLAN.md`: #1 rehash `return`→`continue` (done), #2 wilderness boundaries (done, byte-identical to upstream `WildernessChecker`), #3 `growBucket` overflow (done), #4 `onGameStateChanged` refresh (done), #5 minimap null guard (done), #6 boat world-view `fromLocalInstance` (done). Kept for provenance only.
+
 ### 1. `PrimitiveIntHashMap.rehash()` — Data Loss Bug
 
 **File:** `PrimitiveIntHashMap.java:210`
@@ -130,25 +132,27 @@ Upstream has `fromLocalInstance(Client client, Player localPlayer)` which handle
 
 ### Transport System
 
-| Feature | Upstream | Local |
-|---------|----------|-------|
-| Hot Air Balloons | Yes | No |
-| Magic Mushtrees | Yes | No |
-| Seasonal Transports | Yes | No |
-| Teleportation Boxes | Yes | No |
-| POH Teleportation Portals | Yes | No |
-| Cowbell Amulet | Yes | No |
-| Pendant of Ates (Kastori, Nemus) | Yes | No |
-| Sailors' Amulet | Yes | No |
-| Separate Kharedst's Memoir / Book of the Dead | Yes | No |
-| Great Conch fairy ring (CJQ) | Yes | No |
-| Laguna Aurorae spirit tree | Yes | No |
-| Bank-visit teleport discovery | Yes | No |
-| Per-transport-type cost tuning (18 thresholds) | Yes | No |
-| Currency threshold (avoid expensive transports) | Yes | No |
-| Transport data as TSV with parser package | Yes | Inline string parsing |
+> ⚠️ **This table was the 2026-04-06 (`07fca57`) snapshot and was badly stale. Re-verified against the live tree 2026-07-20 — most rows were already present.** Corrected `Local` column below.
 
-Upstream's transport data model uses a dedicated parser package (`FieldParser`, `TransportRecord`, `TsvParser`, `WorldPointParser`, etc.) with a clean `TransportBuilder` pattern. Local parses TSV fields with raw string splitting directly in the `Transport` constructor.
+| Feature | Upstream | Local (verified 2026-07-20) |
+|---------|----------|-------|
+| Hot Air Balloons | Yes | ✅ Yes — `hot_air_balloons.tsv` |
+| Magic Mushtrees | Yes | ✅ Yes — `magic_mushtrees.tsv` |
+| Seasonal Transports | Yes | ✅ Yes — `seasonal_transports.tsv` |
+| Teleportation Boxes | Yes | ✅ Yes — POH mounted items (`Mounted{Glory,Xerics,Digsite,Mythical}`) |
+| POH Teleportation Portals | Yes | ✅ Yes — `PohPortal` (40 dests after 2026-07-20 backfill) |
+| Pendant of Ates (Kastori, Nemus) | Yes | ✅ Yes — in `teleportation_items.tsv` |
+| Separate Kharedst's Memoir / Book of the Dead | Yes | ✅ Yes — in `teleportation_items.tsv` |
+| Great Conch fairy ring (CJQ) | Yes | ✅ Yes — in `fairy_rings.tsv` |
+| **Cowbell Amulet** | Yes | ❌ **Missing** (0 hits) |
+| **Sailors' Amulet** | Yes | ❌ **Missing** (0 hits) |
+| **Laguna Aurorae spirit tree** | Yes | ❌ **Missing** (not in `spirit_trees.tsv`) |
+| **Bank-visit teleport discovery** | Yes | ❌ **Missing** — no `onItemContainerChanged` bank-knowledge tracking |
+| **Per-transport-type cost tuning** | Yes (`TransportTypeConfig`) | ❌ **Missing** |
+| **Currency *threshold*** (avoid expensive when low on gold) | Yes | ❌ **Missing** — note: currency *requirement* filtering (can-I-afford) **is** present (`PathfinderConfig.java:879`) |
+| Transport data as TSV with parser package | Yes | Architectural difference (Microbot parses inline in `Transport`) — not a feature gap |
+
+**Net still-missing (verified):** Cowbell Amulet, Sailors' Amulet, Laguna Aurorae spirit tree, bank-visit teleport discovery, per-transport-type cost tuning, currency-threshold cost avoidance. Everything else in the original table is already present.
 
 ### Player-Owned House (POH)
 
@@ -163,7 +167,7 @@ Upstream has granular POH support:
 - POH exit info display ("Nexus: Varrock", "Fairy Ring CIR", "Jewelry Box: Duel Arena")
 - POH transport origin remapping to landing tile `(1923, 5709, 0)`
 
-Local has a single `usePoh` toggle with a `PohPanel` and `createMergedList()` approach, no POH-specific overlay handling.
+> ⚠️ **Stale (2026-04-06).** Re-verified 2026-07-20: Microbot's `PohPanel` now has granular sub-panels — `portalPanel` (`PohPortal`), `nexusPanel` (`NexusPortal`), `checkboxPanel` (fairy ring / spirit tree / obelisk toggles), and `jewelleryBoxPanel` — plus `Mounted{Glory,Xerics,Digsite,Mythical}`. Most of the "granular POH" list above is present; the single-`usePoh`-toggle description is obsolete.
 
 ### Pathfinding & Performance
 
