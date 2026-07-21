@@ -273,6 +273,52 @@ Body: `{"name": "Banker", "action": "Bank"}` or `{"id": 3010, "action": "Attack"
 }
 ```
 
+#### GET /objects/neighbours
+
+Same filters as `GET /objects`, plus the walkability of the tiles surrounding each match. Use it to
+catalogue obstacles that sit *between* two walkable tiles — Motherlode rockfalls, rubble, rock
+slides — where modelling the obstacle as a transport in `transports.tsv` needs both of its open
+ends, which the object's own position does not give you.
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `id` / `name` / `nameContains` | - | Same filters as `GET /objects` |
+| `maxDistance` | `20` | Max tile distance (scene radius is ~104) |
+| `radius` | `1` | Neighbour ring size, clamped to 1-5 |
+| `limit` | config max | Max results |
+
+`sides` pairs opposing neighbours on each axis, so a blocking obstacle's two endpoints can be read
+straight off the response. Walkability comes from the **live scene** collision flags, not the
+bundled collision map, so it reflects what the player can actually do right now — which is the
+point when the bundled map has an obstacle baked in as a permanent wall.
+
+```bash
+curl -s -H "X-Agent-Token: $(cat ~/.runelite/.agent-token)" \
+  "http://127.0.0.1:8081/objects/neighbours?id=26679&maxDistance=104&limit=200"
+```
+
+```json
+{
+  "count": 1, "total": 1, "radius": 1,
+  "objects": [
+    {
+      "id": 26679, "name": "Rockfall", "type": "GAME", "reachable": true,
+      "position": {"x": 3742, "y": 5668, "plane": 0},
+      "selfWalkable": false,
+      "neighbours": [
+        {"position": {"x": 3741, "y": 5668, "plane": 0}, "dx": -1, "dy": 0, "walkable": true}
+      ],
+      "sides": {
+        "eastWest":   {"a": {"...": "dx=-1"}, "b": {"...": "dx=+1"}, "bothWalkable": true},
+        "northSouth": {"a": {"...": "dy=-1"}, "b": {"...": "dy=+1"}, "bothWalkable": false}
+      }
+    }
+  ]
+}
+```
+
+The axis whose `bothWalkable` is `true` gives the transport's origin/destination pair.
+
 #### POST /objects/interact
 
 Body: `{"name": "Oak tree", "action": "Chop down"}`
