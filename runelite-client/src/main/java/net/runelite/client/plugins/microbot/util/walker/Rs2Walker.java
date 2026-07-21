@@ -3025,7 +3025,13 @@ public class Rs2Walker {
             // the Euclidean bound and yields nothing for EVERY predicate — which is exactly the
             // sel=none case that dropped route clicks onto the off-route wall-nudge clamp. Retry
             // anchored at the player's own closest raw tile before giving up.
-            selected = selectRouteClickTargetAnchored(rawPath, playerLoc, maxEuclidean, -1);
+            // Keep the jitter on this path too. The player-anchored retry fires on most first clicks
+            // of a route, so using full reach here bypassed the reach variation exactly where it is
+            // most visible — measured click distances clustered at 9.0-10.0 instead of spreading.
+            selected = selectRouteClickTargetAnchored(rawPath, playerLoc, jitteredReach, -1);
+            if (selected == null && jitteredReach < maxEuclidean) {
+                selected = selectRouteClickTargetAnchored(rawPath, playerLoc, maxEuclidean, -1);
+            }
             if (selected != null) {
                 lastRouteClickTier = lastRouteClickTier + "@player";
             }
