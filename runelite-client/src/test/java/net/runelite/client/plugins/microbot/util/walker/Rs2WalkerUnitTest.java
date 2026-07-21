@@ -20,6 +20,7 @@ import java.util.function.Predicate;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
@@ -515,6 +516,53 @@ public class Rs2WalkerUnitTest {
             int reach = Rs2Walker.routeClickReach(max);
             assertEquals("a reach at/below the floor must pass through unchanged", max, reach);
         }
+    }
+
+    /**
+     * Leaving the Motherlode Mine must still be able to clear a rockfall standing in the path.
+     *
+     * <p>The gate used to require the walk TARGET to be in region 14936, so a walk from inside the
+     * mine to the Dwarven Mine (region 12185) bailed before inspecting anything. Observed live:
+     * {@code at=(3751,5672) goal=(3040,9810)} — every outbound route was unable to mine through.
+     */
+    @Test
+    public void rockfallGateAllowsWalksLeavingTheMotherlodeMine() {
+        WorldPoint insideMlm = new WorldPoint(3751, 5672, 0);
+        WorldPoint dwarvenMineGoal = new WorldPoint(3040, 9810, 0);
+
+        assertEquals("precondition: this tile is the Motherlode Mine region",
+                Rs2Walker.MOTHERLODE_MINE_REGION, insideMlm.getRegionID());
+        assertNotEquals("precondition: the outbound goal is in a different region — this is exactly "
+                        + "what the old target-based gate rejected",
+                Rs2Walker.MOTHERLODE_MINE_REGION, dwarvenMineGoal.getRegionID());
+
+        List<WorldPoint> path = Arrays.asList(insideMlm, new WorldPoint(3750, 5672, 0), dwarvenMineGoal);
+        assertTrue("standing in the mine must qualify regardless of where the walk ends",
+                Rs2Walker.isMotherlodeRockfallCandidate(insideMlm, path, 0));
+    }
+
+    /** A rockfall ahead on the path qualifies even when the player has not entered the mine yet. */
+    @Test
+    public void rockfallGateAllowsApproachingTheMineFromOutside() {
+        WorldPoint outside = new WorldPoint(3060, 9766, 0); // Dwarven Mine cave mouth
+        List<WorldPoint> path = Arrays.asList(outside, new WorldPoint(3728, 5692, 0));
+
+        assertNotEquals("precondition: the player is not in the mine yet",
+                Rs2Walker.MOTHERLODE_MINE_REGION, outside.getRegionID());
+        assertTrue("a path tile inside the mine must still arm the handler",
+                Rs2Walker.isMotherlodeRockfallCandidate(outside, path, 0));
+    }
+
+    /** The gate must stay closed everywhere else — rockfalls exist only in the Motherlode Mine. */
+    @Test
+    public void rockfallGateStaysClosedAwayFromTheMine() {
+        WorldPoint varrock = new WorldPoint(3210, 3424, 0);
+        List<WorldPoint> path = Arrays.asList(varrock, new WorldPoint(3211, 3424, 0));
+
+        assertFalse("an unrelated surface walk must not pay for the scene lookup",
+                Rs2Walker.isMotherlodeRockfallCandidate(varrock, path, 0));
+        assertFalse("a null or empty path must never arm the handler",
+                Rs2Walker.isMotherlodeRockfallCandidate(varrock, null, 0));
     }
 
     /**

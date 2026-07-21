@@ -290,6 +290,8 @@ public class Rs2Walker {
 
     /** Bounds tail recursion that was previously unbounded {@code processWalk} self-calls. */
     private static final int MAX_PROCESS_WALK_TAIL_ITERATIONS = 64;
+    /** Motherlode Mine — the only region containing {@code MOTHERLODE_ROCKFALL_1/2} obstacles. */
+    static final int MOTHERLODE_MINE_REGION = 14936;
 
     /**
      * Verbose walker traces — enable DEBUG logging for {@code net.runelite.client.plugins.microbot}.
@@ -4072,6 +4074,33 @@ public class Rs2Walker {
         return worldPoint.distanceTo(Rs2Player.getWorldLocation());
     }
 
+    /**
+     * Whether a rockfall could plausibly sit at {@code path[index]} or {@code path[index + 1]}, used
+     * to gate the (comparatively expensive) scene lookup in {@link #handleRockfall}.
+     *
+     * <p>Rockfalls only exist in the Motherlode Mine, so the region check is legitimate — but it must
+     * test where the rockfall could <em>be</em>: the player's tile, or the path tiles about to be
+     * inspected. It must never test the walk TARGET. Gating on the target meant a walk out of the
+     * mine — destination in another region, e.g. the Dwarven Mine at 12185 — returned false before
+     * looking at anything, so no outbound route could clear a rockfall standing directly in it.
+     */
+    static boolean isMotherlodeRockfallCandidate(WorldPoint playerLoc, List<WorldPoint> path, int index) {
+        if (path == null || path.isEmpty() || index < 0 || index >= path.size()) {
+            return false;
+        }
+        if (playerLoc != null && playerLoc.getRegionID() == MOTHERLODE_MINE_REGION) {
+            return true;
+        }
+        int lastCandidate = Math.min(index + 1, path.size() - 1);
+        for (int i = index; i <= lastCandidate; i++) {
+            WorldPoint candidate = path.get(i);
+            if (candidate != null && candidate.getRegionID() == MOTHERLODE_MINE_REGION) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static boolean handleRockfall(List<WorldPoint> path, int index) {
         if (Rs2PathApi.getPathfinder() == null) return false;
 
@@ -4080,22 +4109,16 @@ public class Rs2Walker {
         // If we are in instance, ignore checking RegionID
         if(Microbot.getClient().getTopLevelWorldView().isInstance()) return false;
 
-        // If we are not inside of the Motherloade mine, ignore the following logic
         WorldPoint playerLoc = Rs2Player.getWorldLocation();
-        if (playerLoc == null || playerLoc.getRegionID() != 14936 || currentTarget == null || currentTarget.getRegionID() != 14936) return false;
+        if (playerLoc == null) return false;
 
-        // We kill the path if no pickaxe is found to avoid walking around like an idiot
-        if (!Rs2Inventory.hasItem("pickaxe")) {
-            if (!Rs2Equipment.isWearing("pickaxe")) {
-                log.error("Unable to find pickaxe to mine rockfall");
-                setTarget(null, "rs2walker:motherlode-rockfall-no-pickaxe");
-                return false;
-            }
-        }
+        final int lastCandidate = Math.min(index + 1, path.size() - 1);
+        if (!isMotherlodeRockfallCandidate(playerLoc, path, index)) return false;
 
         // Check current index & next index for rockfall
-        for (int rockIndex = index; rockIndex < index + 2; rockIndex++) {
+        for (int rockIndex = index; rockIndex <= lastCandidate; rockIndex++) {
             var point = path.get(rockIndex);
+            if (point == null || point.getRegionID() != MOTHERLODE_MINE_REGION) continue;
 
             TileObject object = null;
             var tile = Rs2GameObject.getTiles(3).stream()
@@ -4108,6 +4131,13 @@ public class Rs2Walker {
             if (object == null) continue;
 
             if (object.getId() == ObjectID.MOTHERLODE_ROCKFALL_1 || object.getId() == ObjectID.MOTHERLODE_ROCKFALL_2) {
+                // Only abandon the walk once a rockfall is actually in the way. Checking for a
+                // pickaxe up front killed any route merely passing through the mine.
+                if (!Rs2Inventory.hasItem("pickaxe") && !Rs2Equipment.isWearing("pickaxe")) {
+                    log.error("Unable to find pickaxe to mine rockfall at {}", point);
+                    setTarget(null, "rs2walker:motherlode-rockfall-no-pickaxe");
+                    return false;
+                }
                 Rs2GameObject.interact(object, "mine");
                 return sleepUntil(() -> Rs2GameObject.getGameObject(point) == null);
             }
