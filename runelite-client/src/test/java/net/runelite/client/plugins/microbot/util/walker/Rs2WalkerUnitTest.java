@@ -489,6 +489,35 @@ public class Rs2WalkerUnitTest {
     }
 
     /**
+     * Anti-ban: consecutive clicks must not all cover the same tile span, but the jittered reach has
+     * hard bounds. Too short and the click lands inside the interim-close threshold, clearing the
+     * checkpoint immediately and causing click thrash; too long and it falls outside the minimap
+     * clip. Varying reach is the safe axis because it only changes how far ALONG the route we click,
+     * never sideways — lateral tile offsets leave the route and were removed for that reason.
+     */
+    @Test
+    public void routeClickReach_staysWithinSafeBandAndActuallyVaries() {
+        int max = 10;
+        java.util.Set<Integer> seen = new HashSet<>();
+        for (int i = 0; i < 400; i++) {
+            int reach = Rs2Walker.routeClickReach(max);
+            assertTrue("reach must never exceed the caller's minimap reach, got " + reach, reach <= max);
+            assertTrue("reach must stay clear of the interim-close threshold, got " + reach, reach >= 7);
+            seen.add(reach);
+        }
+        assertTrue("reach must actually vary between clicks, saw only " + seen, seen.size() > 1);
+    }
+
+    /** A caller reach at or below the floor must be returned unchanged rather than inverted. */
+    @Test
+    public void routeClickReach_degenerateBoundsAreSafe() {
+        for (int max : new int[]{0, 1, 5, 7}) {
+            int reach = Rs2Walker.routeClickReach(max);
+            assertEquals("a reach at/below the floor must pass through unchanged", max, reach);
+        }
+    }
+
+    /**
      * Off-path recovery must be able to step BACKWARD onto the route. When the player is pushed off
      * the path (e.g. stuck flush against a castle wall) and nothing ahead is reachable, the rejoin
      * helper picks the nearest reachable raw point even if it sits behind the anchor. Forward-only

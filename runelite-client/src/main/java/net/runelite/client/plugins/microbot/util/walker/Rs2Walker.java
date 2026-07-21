@@ -135,6 +135,13 @@ public class Rs2Walker {
 	private static final long PARTIAL_TRANS_RECAL_COOLDOWN_MS = 3500L;
 
 	private static final int INTERIM_CLOSE_TILES = 5;
+
+	/**
+	 * Floor for the jittered per-click route reach. Deliberately above {@link #INTERIM_CLOSE_TILES}
+	 * so a short click cannot land inside the interim-close threshold, which would clear the
+	 * checkpoint immediately and cause click thrash.
+	 */
+	private static final int ROUTE_CLICK_REACH_MIN_TILES = 7;
 	private static final int INTERIM_PRECLICK_TILES = 6;
 	private static final int INTERIM_RUN_PRECLICK_TILES = 8;
 	private static final int INTERIM_MOVING_POLL_MS = 450;
@@ -2999,7 +3006,19 @@ public class Rs2Walker {
             lastRouteClickTier = "norawpath";
             return null;
         }
-        WorldPoint selected = selectRouteClickTargetAnchored(rawPath, playerLoc, maxEuclidean, rawAnchorIndex);
+        // Anti-ban: vary HOW FAR ALONG the route we click. Selection otherwise always returns the
+        // furthest candidate inside a fixed radius, so every click covers the same tile span — a
+        // deterministic signature. Varying the reach is the safe axis: it only changes how far
+        // forward we pick, never sideways, so the target stays on the planned route (#20). Lateral
+        // tile offsets are the wrong axis and were removed for exactly that reason (#15); lateral
+        // randomness belongs inside the tile (click-point jitter), not in tile selection.
+        int jitteredReach = routeClickReach(maxEuclidean);
+        WorldPoint selected = selectRouteClickTargetAnchored(rawPath, playerLoc, jitteredReach, rawAnchorIndex);
+        if (selected == null && jitteredReach < maxEuclidean) {
+            // A shortened reach must never be the reason selection fails — that would drop the click
+            // onto the caller's off-route wall-nudge clamp. Retry at full reach before giving up.
+            selected = selectRouteClickTargetAnchored(rawPath, playerLoc, maxEuclidean, rawAnchorIndex);
+        }
         if (selected == null && rawAnchorIndex >= 0) {
             // The smoothed->raw anchor can point past the player's vicinity (stale mapping, sparse
             // smoothing, or a replanned route). The anchored forward scan then breaks immediately on
@@ -3012,6 +3031,23 @@ public class Rs2Walker {
             }
         }
         return selected;
+    }
+
+    /**
+     * Per-click route reach, jittered below {@code maxEuclidean} so consecutive clicks do not all
+     * cover the same tile span.
+     * <p>
+     * The floor matters: it must stay clear of {@link #INTERIM_CLOSE_TILES} or the interim
+     * checkpoint clears almost immediately and the walker re-clicks constantly, producing visible
+     * stop-start movement. The ceiling is the caller's reach, which is already tuned to the minimap
+     * clip — going above it just produces outside-clip fallbacks.
+     */
+    static int routeClickReach(int maxEuclidean) {
+        int floor = Math.min(ROUTE_CLICK_REACH_MIN_TILES, maxEuclidean);
+        if (maxEuclidean <= floor) {
+            return maxEuclidean;
+        }
+        return Rs2Random.betweenInclusive(floor, maxEuclidean);
     }
 
     private static WorldPoint selectRouteClickTargetAnchored(List<WorldPoint> rawPath, WorldPoint playerLoc,

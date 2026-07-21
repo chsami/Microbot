@@ -535,3 +535,23 @@ h = 31 * h + (satisfied ? 1 : 0);
 **Where this applies:** `PathfinderConfig.hashVarplayerConditionVerdicts`, `PathfinderConfig.hashVarbitConditionVerdicts`, `computeTransportRefreshVerificationHash`, the transport refresh snapshot, and any future cache key covering varbits/varplayers/skills. Varbits get the identical treatment: a raw varbit moving without flipping a condition verdict must not invalidate, which is what produced the ~2.4s dead time between pressing go and the first action.
 
 **Defensive check:** `refresh_transports cache_miss reason=verify ... changed=varplayers` should not appear immediately after a teleport. Unit-test that two different raw values inside the same cooldown window hash identically, and that crossing the threshold does not.
+
+## 24. Vary click reach, not click direction
+
+Route selection otherwise always returns the furthest candidate inside a fixed radius, so every click covers the same tile span — a deterministic signature. Jitter the reach per click instead (`routeClickReach`), which only changes how far **along** the route the target sits. Do **not** offset the target sideways: a lateral tile offset leaves the planned route, which is what produces clicks on the wrong side of a fence or inside a building (#15), and route membership is the property that keeps the server's own pathing on our route (#20). Lateral randomness belongs *inside* the tile, in click-point jitter, where it changes the pixel without changing the destination.
+
+Two bounds are load-bearing. The floor must stay clear of `INTERIM_CLOSE_TILES`, or a short click lands inside the interim-close threshold, clears the checkpoint immediately and produces click thrash with visible stop-start movement. The ceiling is the caller's reach, already tuned to the minimap clip; above it clicks simply fall outside the clip and take the fallback path. A shortened reach must also never be the reason selection fails — retry at full reach before falling through, or the click drops onto the off-route wall-nudge clamp (#19).
+
+**Pattern to follow:**
+
+```java
+int jitteredReach = routeClickReach(maxEuclidean);
+WorldPoint selected = selectRouteClickTargetAnchored(rawPath, playerLoc, jitteredReach, rawAnchorIndex);
+if (selected == null && jitteredReach < maxEuclidean) {
+    selected = selectRouteClickTargetAnchored(rawPath, playerLoc, maxEuclidean, rawAnchorIndex);
+}
+```
+
+**Where this applies:** `Rs2Walker.routeClickReach`, `Rs2Walker.selectRouteClickTarget`, and any future click-target randomisation.
+
+**Defensive check:** Unit-test that the jittered reach never exceeds the caller's reach, never drops to the interim-close threshold, actually varies across calls, and passes a degenerate reach through unchanged.
