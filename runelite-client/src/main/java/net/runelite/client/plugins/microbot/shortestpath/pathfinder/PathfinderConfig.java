@@ -108,6 +108,16 @@ public class PathfinderConfig {
      * on a null pathfinder for its whole duration before the first click can be issued.
      */
     private static final long SLOW_REFRESH_LOG_THRESHOLD_MS = 500L;
+
+    /**
+     * Inventory/equipment/bank fingerprint from the most recent cache-key computation, and the value
+     * carried over from the previous refresh. The fingerprint hashes item <em>quantity</em>, so
+     * spending coins (a charter ship fare, a toll gate) changes it and invalidates the transport
+     * cache key — forcing a full re-evaluation of every transport. Tracked so a cache miss can say
+     * whether the items changed or the game state did.
+     */
+    private volatile int lastComputedInvFingerprint;
+    private volatile int previousRefreshInvFingerprint;
     @Getter
     private volatile boolean avoidWilderness;
     @Getter
@@ -348,9 +358,26 @@ public class PathfinderConfig {
                     filterSimilarTransports(target);
                 }
                 WebWalkLog.cfg("refresh_transports cache_hit key={}", refreshCacheKeyHash);
+                previousRefreshInvFingerprint = lastComputedInvFingerprint;
                 return;
             }
         }
+
+        // Cache miss => full re-evaluation of every transport, which is the pathfinder cold start the
+        // walker blocks on. Attribute it: "key" means the cache key changed (items/coins/toggles),
+        // "verify" means items were identical but game state moved (skills/varbits/varplayers/quests).
+        // invFp vs prevInvFp isolates the common case of spending coins on a fare or toll.
+        String cacheMissReason = transportRefreshSnapshot == null
+                ? "no_snapshot"
+                : (transportRefreshSnapshot.cacheKeyHash != refreshCacheKeyHash ? "key" : "verify");
+        WebWalkLog.cfgSlow("refresh_transports cache_miss reason={} key={} prevKey={} invFp={} prevInvFp={} invChanged={}",
+                cacheMissReason,
+                refreshCacheKeyHash,
+                transportRefreshSnapshot == null ? 0 : transportRefreshSnapshot.cacheKeyHash,
+                lastComputedInvFingerprint,
+                previousRefreshInvFingerprint,
+                lastComputedInvFingerprint != previousRefreshInvFingerprint);
+        previousRefreshInvFingerprint = lastComputedInvFingerprint;
 
         transports.clear();
         transportsPacked.clear();
@@ -481,6 +508,20 @@ public class PathfinderConfig {
         WebWalkLog.cfg("refresh_transports merge={}ms cache={}ms filter={}ms useTrans={}ms similar={}ms total/chk={}/{} usablePost={} vb={} vp={}",
                 mergeTime, cacheTime, filterTime, useTransportTimeNanos / 1_000_000, similarTime,
                 totalTransports, checkedTransports, usableTeleports.size(), varbitIds.size(), varplayerIds.size());
+
+        // Surface the same breakdown at INFO when the miss is slow enough to be the visible cold
+        // start, so the dominant stage is identifiable without enabling debug logging.
+        long refreshTransportsTotalMs = mergeTime + cacheTime + filterTime + similarTime;
+        if (refreshTransportsTotalMs >= SLOW_REFRESH_LOG_THRESHOLD_MS) {
+            WebWalkLog.cfgSlow("slow refresh_transports merge={}ms cache={}ms filter={}ms useTrans={}ms similar={}ms total/chk={}/{} vb={} vp={}",
+                    mergeTime, cacheTime, filterTime, useTransportTimeNanos / 1_000_000, similarTime,
+                    totalTransports, checkedTransports, varbitIds.size(), varplayerIds.size());
+            typeStats.entrySet().stream()
+                    .sorted((a, b) -> Integer.compare(b.getValue()[2], a.getValue()[2]))
+                    .limit(3)
+                    .forEach(e -> WebWalkLog.cfgSlow("slow refresh_transports type {} cnt={} passed={} timeMs={}",
+                            e.getKey(), e.getValue()[0], e.getValue()[1], e.getValue()[2] / 1000));
+        }
 
         typeStats.entrySet().stream()
                 .sorted((a, b) -> Integer.compare(b.getValue()[2], a.getValue()[2]))
@@ -1473,6 +1514,7 @@ public class PathfinderConfig {
     private int computeTransportRefreshCacheKeyHash(WorldPoint target, Rs2LeaguesTransport.LeaguesContext leaguesCtx) {
         assert leaguesCtx != null;
         int invFp = fingerprintInventoryEquipmentBank();
+        lastComputedInvFingerprint = invFp;
         int members = (client != null && client.getWorldType().contains(WorldType.MEMBERS)) ? 1 : 0;
         int preferTp = (config != null && config.preferTransportToTarget()) ? 1 : 0;
         int maxSimilar = config != null ? config.maxSimilarTransportDistance() : 0;
