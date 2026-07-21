@@ -4,6 +4,7 @@ import net.runelite.api.Quest;
 import net.runelite.api.QuestState;
 import net.runelite.api.Skill;
 import net.runelite.client.plugins.microbot.shortestpath.TransportVarPlayer;
+import net.runelite.client.plugins.microbot.shortestpath.TransportVarbit;
 import org.junit.Test;
 
 import static org.junit.Assert.assertArrayEquals;
@@ -155,11 +156,34 @@ public class PathfinderConfigTransportRefreshHashTest {
                 new int[]{99, 1, 5},
                 new int[]{10, 0, 2});
 
-        int[] a = PathfinderConfig.encodeSortedVarplayerConditions(unordered);
-        int[] b = PathfinderConfig.encodeSortedVarplayerConditions(shuffled);
+        int[] a = PathfinderConfig.encodeSortedConditionTriples(unordered);
+        int[] b = PathfinderConfig.encodeSortedConditionTriples(shuffled);
 
         assertArrayEquals("insertion order must not change the encoding", a, b);
         assertEquals("duplicates must collapse (3 distinct conditions x 3 ints)", 9, a.length);
+    }
+
+    /**
+     * The walk-start cold start was attributed to {@code changed=varbits}. A varbit whose raw value
+     * moves without flipping any condition verdict must not invalidate the transport cache — that is
+     * a full ~2.6s re-evaluation the walker blocks on before it can issue its first action.
+     */
+    @Test
+    public void varbitValueChangeWithoutVerdictFlipDoesNotInvalidate() {
+        int varbitId = 4242;
+        int threshold = 5;
+        int greaterThan = TransportVarbit.Operator.GREATER_THAN.ordinal();
+        int[] conditions = new int[]{varbitId, greaterThan, threshold};
+
+        // 7 -> 9: both satisfy "> 5", so usability is unchanged.
+        assertEquals("a varbit moving without flipping its verdict must not invalidate",
+                PathfinderConfig.hashVarbitConditionVerdicts(conditions, id -> 7),
+                PathfinderConfig.hashVarbitConditionVerdicts(conditions, id -> 9));
+
+        // 7 -> 3 crosses the threshold, so the transport becomes unusable and must invalidate.
+        assertNotEquals("crossing the threshold changes usability and must invalidate",
+                PathfinderConfig.hashVarbitConditionVerdicts(conditions, id -> 7),
+                PathfinderConfig.hashVarbitConditionVerdicts(conditions, id -> 3));
     }
 
     /** Ordinals outside the supplied levels array must be ignored rather than throwing. */

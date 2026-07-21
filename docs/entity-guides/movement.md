@@ -515,6 +515,6 @@ h = 31 * h + id; h = 31 * h + operatorOrdinal; h = 31 * h + value;
 h = 31 * h + (satisfied ? 1 : 0);
 ```
 
-**Where this applies:** `PathfinderConfig.hashVarplayerConditionVerdicts`, `computeTransportRefreshVerificationHash`, the transport refresh snapshot, and any future cache key covering varbits/varplayers/skills.
+**Where this applies:** `PathfinderConfig.hashVarplayerConditionVerdicts`, `PathfinderConfig.hashVarbitConditionVerdicts`, `computeTransportRefreshVerificationHash`, the transport refresh snapshot, and any future cache key covering varbits/varplayers/skills. Varbits get the identical treatment: a raw varbit moving without flipping a condition verdict must not invalidate, which is what produced the ~2.4s dead time between pressing go and the first action.
 
 **Defensive check:** `refresh_transports cache_miss reason=verify ... changed=varplayers` should not appear immediately after a teleport. Unit-test that two different raw values inside the same cooldown window hash identically, and that crossing the threshold does not.
