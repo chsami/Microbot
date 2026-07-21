@@ -33,10 +33,14 @@ import java.util.concurrent.Future;
  * {@code TransportType}, {@code WorldPointUtil}) are treated as the stable Microbot-facing path API
  * and are deliberately <i>not</i> re-wrapped — they are pure data / pure functions.</p>
  *
- * <p><b>Migration status.</b> No consumers have been switched over yet; that is Stage 3, done one
- * package at a time with the walker last. Until then {@link ShortestPathPlugin}'s members remain
- * public and binary-compatible. Do not add logic here — if a call needs new behaviour, put it
- * behind the plugin and expose it through a matching delegate.</p>
+ * <p><b>Migration status.</b> Stage 3 is complete: every consumer under {@code microbot/util/} now
+ * routes through this facade, so the only remaining references to {@link ShortestPathPlugin}'s
+ * static members outside the {@code shortestpath} package are the delegations below. That invariant
+ * is greppable, and is what keeps the blast radius of an upstream backport confined to this class:
+ * <pre>grep -rn "ShortestPathPlugin\." microbot/util/   # expect hits in Rs2PathApi only</pre>
+ * {@link ShortestPathPlugin}'s members remain public and binary-compatible for out-of-tree callers.
+ * Do not add logic here — if a call needs new behaviour, put it behind the plugin and expose it
+ * through a matching delegate.</p>
  */
 public final class Rs2PathApi
 {
