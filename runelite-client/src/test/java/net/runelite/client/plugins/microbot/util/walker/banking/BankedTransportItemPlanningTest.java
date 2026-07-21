@@ -101,14 +101,22 @@ public class BankedTransportItemPlanningTest {
         }
     }
 
+    /**
+     * A concrete upstream example: the machete-gated jungle obstacles on Karamja. Uses data that
+     * predates this branch so the assertion does not depend on anything we added.
+     */
     @Test
-    public void theMotherlodeRockfallsQualify() {
-        List<Transport> rockfalls = matching("Rockfall");
-        assertFalse("Motherlode rockfalls should be catalogued", rockfalls.isEmpty());
-        for (Transport t : rockfalls) {
-            assertTrue("a rockfall needs a pickaxe, so it must be plannable",
+    public void theMacheteGatedJungleObstaclesQualify() {
+        List<Transport> jungle = matching("Jungle");
+        assertFalse("upstream data should contain machete-gated jungle obstacles", jungle.isEmpty());
+        int gated = 0;
+        for (Transport t : jungle) {
+            if (t.getItemIdRequirements() == null || t.getItemIdRequirements().isEmpty()) continue;
+            gated++;
+            assertTrue("a machete-gated obstacle must be plannable: " + describe(t),
                     Rs2WalkerBankingPlanner.planningCoversPlainTransport(t));
         }
+        assertTrue("at least one jungle obstacle should carry an item requirement", gated > 0);
     }
 
     @Test
