@@ -19,6 +19,7 @@ import net.runelite.client.plugins.devtools.MovementFlag;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
 import net.runelite.client.plugins.microbot.shortestpath.*;
+import net.runelite.client.plugins.microbot.shortestpath.pathfinder.CollisionMap;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.Pathfinder;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.PathfinderConfig;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
@@ -621,6 +622,65 @@ public class Rs2Walker {
             sleepUntil(() -> isWalkCancelled(cancelGoal) || !Rs2Player.isMoving(),
                     POST_SCENE_WALK_IDLE_SECOND_PHASE_MS_MAX);
         }
+    }
+
+    /**
+     * Whether any tile within {@code distance} of {@code target} is walkable in the collision map.
+     *
+     * <p>Pre-flight guard so a destination that does not exist as walkable terrain fails
+     * immediately instead of after a full route. A walk to {@code (3087,9720)} — inside the rock
+     * east of the Dwarven Mine, with 0 walkable tiles within 6 — spent ~80s covering 100+ tiles to
+     * the nearest reachable tile and then reported {@code partial-retries-exhausted}, which reads
+     * as a walker fault rather than a bad coordinate.
+     *
+     * <p><b>Permissive by design.</b> An unmapped region reads as fully blocked (see
+     * {@link CollisionMap#hasRegion}), so every ambiguous case returns {@code true} and lets the
+     * pathfinder decide. Only a target sitting in mapped, wholly blocked terrain is rejected —
+     * otherwise this would refuse instances and any region missing from the collision map.
+     */
+    static boolean hasWalkableTileWithin(CollisionMap map, WorldPoint target, int distance) {
+        if (map == null || target == null) {
+            return true;
+        }
+        if (!map.hasRegion(target.getX(), target.getY())) {
+            return true;
+        }
+        int radius = Math.max(0, distance);
+        for (int dx = -radius; dx <= radius; dx++) {
+            for (int dy = -radius; dy <= radius; dy++) {
+                int x = target.getX() + dx;
+                int y = target.getY() + dy;
+                if (!map.hasRegion(x, y)) {
+                    return true;
+                }
+                if (!map.isBlocked(x, y, target.getPlane())) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /** Nearest walkable tile to {@code target} within {@code maxRadius}, or null. Diagnostics only. */
+    static WorldPoint nearestWalkableTile(CollisionMap map, WorldPoint target, int maxRadius) {
+        if (map == null || target == null) {
+            return null;
+        }
+        for (int r = 1; r <= maxRadius; r++) {
+            for (int dx = -r; dx <= r; dx++) {
+                for (int dy = -r; dy <= r; dy++) {
+                    if (Math.max(Math.abs(dx), Math.abs(dy)) != r) {
+                        continue; // ring only; inner rings already scanned
+                    }
+                    int x = target.getX() + dx;
+                    int y = target.getY() + dy;
+                    if (map.hasRegion(x, y) && !map.isBlocked(x, y, target.getPlane())) {
+                        return new WorldPoint(x, y, target.getPlane());
+                    }
+                }
+            }
+        }
+        return null;
     }
 
     /** Door / gate from main path loop vs {@link #handleNearbyRawPathSceneObjects} raw-path scan (same nudge UX). */
@@ -1265,6 +1325,21 @@ public class Rs2Walker {
     private static WalkerState processWalk(WorldPoint target, int distance, int partialRetries) {
         if (debug) {
             return WalkerState.EXIT;
+        }
+        // Pre-flight: a destination with no walkable tile within the arrival distance can never be
+        // reached, so reject it here rather than after a full route ending at the nearest wall.
+        PathfinderConfig preflightConfig = Rs2PathApi.getPathfinderConfig();
+        CollisionMap preflightMap = preflightConfig != null ? preflightConfig.getMap() : null;
+        if (!hasWalkableTileWithin(preflightMap, target, distance)) {
+            WorldPoint nearestWalkable = nearestWalkableTile(preflightMap, target, 48);
+            log.warn("[Walker] walk rejected: target {} has no walkable tile within {} in the collision map"
+                            + " (nearest walkable {}); check the destination coordinate",
+                    target, distance,
+                    nearestWalkable != null ? nearestWalkable : "none within 48");
+            Telemetry.recordUnreachable("target-not-walkable", Rs2Player.getWorldLocation(),
+                    target, nearestWalkable, 0, distance, null);
+            setTarget(null, "rs2walker:processWalk:target-not-walkable");
+            return WalkerState.UNREACHABLE;
         }
         int partialRetriesWorking = partialRetries;
         // When the last partial retry was spent, so route progress made after it can refill the
