@@ -493,3 +493,28 @@ if (!landed) {
 **Where this applies:** `Rs2Walker.handleTransports` object interactions, `waitForPostHandleObjectLanding` callers, `markAdjacentSamePlaneTransportHandled`, and any adjacent same-plane transport regardless of `TransportType` — suppression is deliberately type-agnostic, so shortcuts and doors are covered alike.
 
 **Defensive check:** A crossed shortcut should produce at most one `post-handleObject landing unresolved` followed by route progress away from the shortcut — not a second interaction with the opposing entry at an adjacent destination tile (`dest=3150,3363` then `dest=3151,3363`).
+
+## 23. Never hash a raw cooldown timer into the transport cache key
+
+The transport refresh verification hash must contain values that change only when a transport's *usability* changes. A `COOLDOWN_MINUTES` varplayer compares against wall-clock minutes, so its raw value advances continuously — hashing it guarantees cache misses forever. Worse, casting Home Teleport writes `LAST_HOME_TELEPORT`, which is one of the hashed varplayers, so **the teleport invalidated the transport cache simply by being used**, forcing a full re-evaluation of every transport (~2.6s) immediately after the teleport it had just performed. Hash the condition *verdict* (`TransportVarPlayer.matches`) plus the condition identity instead of the raw value: the verdict flips exactly once, when the cooldown expires and the transport actually becomes usable.
+
+This is the same rule as #19's skill fix: only inputs that can flip a transport's usability may participate. Timers, regenerating stats, and other monotonically-drifting values must not.
+
+**Why this matters:** A Camelot -> Draynor walk beginning with a Home Teleport logged
+`transport_handoff ... ms=16562` with `refresh_transports cache_miss reason=verify ... changed=varplayers` firing inside that window — about 2.9s of a 16.5s teleport was the teleport invalidating its own cache.
+
+**Pattern to follow:**
+
+```java
+// Wrong: raw value ticks every minute, and casting the spell writes it.
+h = 31 * h + Microbot.getVarbitPlayerValue(id);
+
+// Right: only a usability flip participates.
+boolean satisfied = new TransportVarPlayer(id, value, operator).matches(actualValue);
+h = 31 * h + id; h = 31 * h + operatorOrdinal; h = 31 * h + value;
+h = 31 * h + (satisfied ? 1 : 0);
+```
+
+**Where this applies:** `PathfinderConfig.hashVarplayerConditionVerdicts`, `computeTransportRefreshVerificationHash`, the transport refresh snapshot, and any future cache key covering varbits/varplayers/skills.
+
+**Defensive check:** `refresh_transports cache_miss reason=verify ... changed=varplayers` should not appear immediately after a teleport. Unit-test that two different raw values inside the same cooldown window hash identically, and that crossing the threshold does not.

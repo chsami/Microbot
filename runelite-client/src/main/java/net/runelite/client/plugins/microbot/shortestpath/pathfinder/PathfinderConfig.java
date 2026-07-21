@@ -361,13 +361,13 @@ public class PathfinderConfig {
                 return true;
             });
             int verProbe = computeTransportRefreshVerificationHash(boostedProbe, snap.sortedSkillOrdinals,
-                    snap.sortedVarbits, snap.sortedVarplayers, snap.sortedQuestIds);
+                    snap.sortedVarbits, snap.sortedVarplayerConditions, snap.sortedQuestIds);
             if (verProbe != snap.verificationHash) {
                 // Name the component that moved. "reason=verify" alone cannot distinguish a boosted
                 // skill from a varbit/varplayer/quest, and guessing which one has already cost a
                 // round trip. Reuse the probe we just read rather than re-querying.
                 int[] now = computeTransportRefreshVerificationComponents(boostedProbe, snap.sortedSkillOrdinals,
-                        snap.sortedVarbits, snap.sortedVarplayers, snap.sortedQuestIds);
+                        snap.sortedVarbits, snap.sortedVarplayerConditions, snap.sortedQuestIds);
                 int[] was = snap.verificationComponents;
                 lastVerifyMissDetail = was == null || was.length != now.length
                         ? " changed=unknown"
@@ -427,6 +427,7 @@ public class PathfinderConfig {
 
         Set<Integer> varbitIds = new HashSet<>();
         Set<Integer> varplayerIds = new HashSet<>();
+        List<int[]> varplayerConditions = new ArrayList<>();
         // Skills that some transport actually gates on (see hasRequiredLevels: a level > 0 is a
         // requirement). Only these may participate in the verification hash — otherwise hitpoints
         // regenerating invalidates the whole transport cache.
@@ -434,7 +435,10 @@ public class PathfinderConfig {
         for (Set<Transport> ts : mergedList.values()) {
             for (Transport t : ts) {
                 t.getVarbits().forEach(v -> varbitIds.add(v.getVarbitId()));
-                t.getVarplayers().forEach(v -> varplayerIds.add(v.getVarplayerId()));
+                t.getVarplayers().forEach(v -> {
+                    varplayerIds.add(v.getVarplayerId());
+                    varplayerConditions.add(new int[]{v.getVarplayerId(), v.getOperator().ordinal(), v.getValue()});
+                });
                 int[] required = t.getSkillLevels();
                 if (required != null) {
                     for (int i = 0; i < required.length; i++) {
@@ -517,7 +521,7 @@ public class PathfinderConfig {
         long filterTime = System.currentTimeMillis() - filterStart;
 
         int[] sortedVarbits = varbitIds.stream().mapToInt(Integer::intValue).sorted().toArray();
-        int[] sortedVarplayers = varplayerIds.stream().mapToInt(Integer::intValue).sorted().toArray();
+        int[] sortedVarplayerConditions = encodeSortedVarplayerConditions(varplayerConditions);
         int[] sortedQuestIds = mergedList.values().stream()
                 .flatMap(Set::stream)
                 .filter(Objects::nonNull)
@@ -531,12 +535,12 @@ public class PathfinderConfig {
                 .toArray();
         int[] sortedSkillOrdinals = requiredSkillOrdinals.stream().mapToInt(Integer::intValue).sorted().toArray();
         int verificationHash = computeTransportRefreshVerificationHash(refreshBoostedLevels, sortedSkillOrdinals,
-                sortedVarbits, sortedVarplayers, sortedQuestIds);
+                sortedVarbits, sortedVarplayerConditions, sortedQuestIds);
         int[] verificationComponents = computeTransportRefreshVerificationComponents(refreshBoostedLevels,
-                sortedSkillOrdinals, sortedVarbits, sortedVarplayers, sortedQuestIds);
+                sortedSkillOrdinals, sortedVarbits, sortedVarplayerConditions, sortedQuestIds);
         transportRefreshSnapshot = TransportRefreshSnapshot.capture(
                 refreshCacheKeyHash, verificationHash, verificationComponents,
-                sortedSkillOrdinals, sortedVarbits, sortedVarplayers, sortedQuestIds,
+                sortedSkillOrdinals, sortedVarbits, sortedVarplayerConditions, sortedQuestIds,
                 transports, usableTeleports);
 
         long similarStart = System.currentTimeMillis();
@@ -1661,8 +1665,8 @@ public class PathfinderConfig {
     }
 
     private static int computeTransportRefreshVerificationHash(int[] boostedLevels, int[] sortedSkillOrdinals,
-            int[] sortedVarbits, int[] sortedVarplayers, int[] sortedQuestIds) {
-        return computeTransportRefreshVerificationHash(boostedLevels, sortedSkillOrdinals, sortedVarbits, sortedVarplayers,
+            int[] sortedVarbits, int[] sortedVarplayerConditions, int[] sortedQuestIds) {
+        return computeTransportRefreshVerificationHash(boostedLevels, sortedSkillOrdinals, sortedVarbits, sortedVarplayerConditions,
                 sortedQuestIds, questId -> {
             Quest quest = resolveQuestById(questId);
             return quest == null ? QuestState.NOT_STARTED : Rs2Player.getQuestState(quest);
@@ -1679,7 +1683,7 @@ public class PathfinderConfig {
      *                            collected from the transports themselves.
      */
     static int computeTransportRefreshVerificationHash(int[] boostedLevels, int[] sortedSkillOrdinals,
-            int[] sortedVarbits, int[] sortedVarplayers,
+            int[] sortedVarbits, int[] sortedVarplayerConditions,
             int[] sortedQuestIds, IntFunction<QuestState> questStateProvider) {
         assert boostedLevels != null;
         int h = 1;
@@ -1696,10 +1700,7 @@ public class PathfinderConfig {
             h = 31 * h + id;
             h = 31 * h + Microbot.getVarbitValue(id);
         }
-        for (int id : sortedVarplayers) {
-            h = 31 * h + id;
-            h = 31 * h + Microbot.getVarbitPlayerValue(id);
-        }
+        h = 31 * h + hashVarplayerConditionVerdicts(sortedVarplayerConditions);
         for (int questId : sortedQuestIds) {
             h = 31 * h + questId;
             h = 31 * h + questStateHashCode(questStateProvider.apply(questId));
@@ -1718,16 +1719,16 @@ public class PathfinderConfig {
      * of only reporting that something did.
      */
     static int[] computeTransportRefreshVerificationComponents(int[] boostedLevels, int[] sortedSkillOrdinals,
-            int[] sortedVarbits, int[] sortedVarplayers, int[] sortedQuestIds) {
+            int[] sortedVarbits, int[] sortedVarplayerConditions, int[] sortedQuestIds) {
         return computeTransportRefreshVerificationComponents(boostedLevels, sortedSkillOrdinals, sortedVarbits,
-                sortedVarplayers, sortedQuestIds, questId -> {
+                sortedVarplayerConditions, sortedQuestIds, questId -> {
             Quest quest = resolveQuestById(questId);
             return quest == null ? QuestState.NOT_STARTED : Rs2Player.getQuestState(quest);
         });
     }
 
     static int[] computeTransportRefreshVerificationComponents(int[] boostedLevels, int[] sortedSkillOrdinals,
-            int[] sortedVarbits, int[] sortedVarplayers, int[] sortedQuestIds,
+            int[] sortedVarbits, int[] sortedVarplayerConditions, int[] sortedQuestIds,
             IntFunction<QuestState> questStateProvider) {
         int skills = 1;
         if (boostedLevels != null && sortedSkillOrdinals != null) {
@@ -1744,13 +1745,7 @@ public class PathfinderConfig {
                 varbits = 31 * varbits + Microbot.getVarbitValue(id);
             }
         }
-        int varplayers = 1;
-        if (sortedVarplayers != null) {
-            for (int id : sortedVarplayers) {
-                varplayers = 31 * varplayers + id;
-                varplayers = 31 * varplayers + Microbot.getVarbitPlayerValue(id);
-            }
-        }
+        int varplayers = hashVarplayerConditionVerdicts(sortedVarplayerConditions);
         int quests = 1;
         if (sortedQuestIds != null) {
             for (int questId : sortedQuestIds) {
@@ -1759,6 +1754,74 @@ public class PathfinderConfig {
             }
         }
         return new int[]{skills, varbits, varplayers, quests};
+    }
+
+
+    /**
+     * Deterministic {varplayerId, operatorOrdinal, value} triples for every varplayer condition any
+     * transport declares, deduplicated and sorted.
+     */
+    static int[] encodeSortedVarplayerConditions(List<int[]> conditions) {
+        if (conditions == null || conditions.isEmpty()) {
+            return new int[0];
+        }
+        java.util.TreeSet<int[]> sorted = new java.util.TreeSet<>((a, b) -> {
+            if (a[0] != b[0]) return Integer.compare(a[0], b[0]);
+            if (a[1] != b[1]) return Integer.compare(a[1], b[1]);
+            return Integer.compare(a[2], b[2]);
+        });
+        sorted.addAll(conditions);
+        int[] out = new int[sorted.size() * 3];
+        int i = 0;
+        for (int[] c : sorted) {
+            out[i++] = c[0];
+            out[i++] = c[1];
+            out[i++] = c[2];
+        }
+        return out;
+    }
+
+    /**
+     * Hashes varplayer condition VERDICTS rather than raw varplayer values.
+     * <p>
+     * A {@code COOLDOWN_MINUTES} condition compares against wall-clock minutes, so its raw value
+     * advances continuously and would invalidate the transport cache forever. Worse, casting Home
+     * Teleport writes {@code LAST_HOME_TELEPORT} — one of the hashed varplayers — so a teleport
+     * invalidated the cache simply by being used, forcing a full re-evaluation of every transport
+     * (~2.6s) immediately after the teleport it had just performed.
+     * <p>
+     * Only a flip in whether a condition is satisfied can change a transport's usability, so that is
+     * what participates. The condition identity is hashed too, so adding/removing a condition still
+     * invalidates, and an expiring cooldown flips the verdict exactly once.
+     */
+    static int hashVarplayerConditionVerdicts(int[] conditions) {
+        return hashVarplayerConditionVerdicts(conditions, Microbot::getVarbitPlayerValue);
+    }
+
+    /** @param varplayerValueProvider injectable for tests; production reads the live varplayer. */
+    static int hashVarplayerConditionVerdicts(int[] conditions,
+            java.util.function.IntUnaryOperator varplayerValueProvider) {
+        if (conditions == null || conditions.length < 3) {
+            return 1;
+        }
+        TransportVarPlayer.Operator[] operators = TransportVarPlayer.Operator.values();
+        Map<Integer, Integer> actualValues = new HashMap<>();
+        int h = 1;
+        for (int i = 0; i + 2 < conditions.length; i += 3) {
+            int id = conditions[i];
+            int opOrdinal = conditions[i + 1];
+            int value = conditions[i + 2];
+            h = 31 * h + id;
+            h = 31 * h + opOrdinal;
+            h = 31 * h + value;
+            boolean satisfied = false;
+            if (opOrdinal >= 0 && opOrdinal < operators.length) {
+                int actual = actualValues.computeIfAbsent(id, varplayerValueProvider::applyAsInt);
+                satisfied = new TransportVarPlayer(id, value, operators[opOrdinal]).matches(actual);
+            }
+            h = 31 * h + (satisfied ? 1 : 0);
+        }
+        return h;
     }
 
     private static int questStateHashCode(QuestState state) {
@@ -1792,14 +1855,14 @@ public class PathfinderConfig {
         private final int[] sortedSkillOrdinals;
         private final int[] verificationComponents;
         private final int[] sortedVarbits;
-        private final int[] sortedVarplayers;
+        private final int[] sortedVarplayerConditions;
         private final int[] sortedQuestIds;
         private final Map<WorldPoint, Set<Transport>> transportsData;
         private final Set<Transport> usableData;
 
         private TransportRefreshSnapshot(int cacheKeyHash, int verificationHash, int[] verificationComponents,
                 int[] sortedSkillOrdinals,
-                int[] sortedVarbits, int[] sortedVarplayers,
+                int[] sortedVarbits, int[] sortedVarplayerConditions,
                 int[] sortedQuestIds,
                 Map<WorldPoint, Set<Transport>> transportsData, Set<Transport> usableData) {
             this.cacheKeyHash = cacheKeyHash;
@@ -1807,7 +1870,7 @@ public class PathfinderConfig {
             this.sortedSkillOrdinals = sortedSkillOrdinals;
             this.verificationComponents = verificationComponents;
             this.sortedVarbits = sortedVarbits;
-            this.sortedVarplayers = sortedVarplayers;
+            this.sortedVarplayerConditions = sortedVarplayerConditions;
             this.sortedQuestIds = sortedQuestIds;
             this.transportsData = transportsData;
             this.usableData = usableData;
@@ -1815,7 +1878,7 @@ public class PathfinderConfig {
 
         static TransportRefreshSnapshot capture(int cacheKeyHash, int verificationHash, int[] verificationComponents,
                 int[] sortedSkillOrdinals,
-                int[] sortedVarbits, int[] sortedVarplayers,
+                int[] sortedVarbits, int[] sortedVarplayerConditions,
                 int[] sortedQuestIds,
                 Map<WorldPoint, Set<Transport>> srcTransports, Set<Transport> srcUsable) {
             assert srcTransports != null && srcUsable != null;
@@ -1825,7 +1888,7 @@ public class PathfinderConfig {
             }
             Set<Transport> usableCopy = new HashSet<>(srcUsable);
             return new TransportRefreshSnapshot(cacheKeyHash, verificationHash, verificationComponents, sortedSkillOrdinals, sortedVarbits,
-                    sortedVarplayers, sortedQuestIds, copy, usableCopy);
+                    sortedVarplayerConditions, sortedQuestIds, copy, usableCopy);
         }
 
         void restoreInto(PathfinderConfig c) {

@@ -3,8 +3,10 @@ package net.runelite.client.plugins.microbot.shortestpath.pathfinder;
 import net.runelite.api.Quest;
 import net.runelite.api.QuestState;
 import net.runelite.api.Skill;
+import net.runelite.client.plugins.microbot.shortestpath.TransportVarPlayer;
 import org.junit.Test;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 
@@ -105,6 +107,59 @@ public class PathfinderConfigTransportRefreshHashTest {
         assertNotEquals("A boosted level for a skill transports require must invalidate the cache",
                 hashWithLevels(sortedSkillOrdinals, before),
                 hashWithLevels(sortedSkillOrdinals, after));
+    }
+
+    /**
+     * A cooldown gate must not churn the cache while it ticks. {@code COOLDOWN_MINUTES} compares
+     * against wall-clock minutes, so hashing its raw varplayer value invalidated the transport cache
+     * continuously — and casting Home Teleport writes {@code LAST_HOME_TELEPORT}, so the teleport
+     * invalidated the cache simply by being used, costing a full ~2.6s re-evaluation right after
+     * every teleport. Only the satisfied/not-satisfied verdict may participate.
+     */
+    @Test
+    public void cooldownVerdictIsStableWhileTicking_butFlipsWhenItExpires() {
+        int varplayerId = 12345;
+        int cooldownMinutes = 30;
+        int cooldownOp = TransportVarPlayer.Operator.COOLDOWN_MINUTES.ordinal();
+        int[] conditions = new int[]{varplayerId, cooldownOp, cooldownMinutes};
+        long nowMinutes = System.currentTimeMillis() / 60000L;
+
+        // Two different raw values, both still inside the 30 minute cooldown => same verdict.
+        int justTeleported = PathfinderConfig.hashVarplayerConditionVerdicts(
+                conditions, id -> (int) (nowMinutes - 1));
+        int fiveMinutesLater = PathfinderConfig.hashVarplayerConditionVerdicts(
+                conditions, id -> (int) (nowMinutes - 6));
+
+        assertEquals("a cooldown ticking must NOT invalidate the transport cache — this is what made "
+                        + "casting Home Teleport invalidate the cache by writing LAST_HOME_TELEPORT",
+                justTeleported, fiveMinutesLater);
+
+        // Past the threshold the transport becomes usable, so the verdict flips and must invalidate.
+        int cooldownExpired = PathfinderConfig.hashVarplayerConditionVerdicts(
+                conditions, id -> (int) (nowMinutes - (cooldownMinutes + 1)));
+
+        assertNotEquals("an expiring cooldown changes usability and must invalidate",
+                justTeleported, cooldownExpired);
+    }
+
+    /** Condition triples must be deduplicated and ordered so the hash is position-independent. */
+    @Test
+    public void varplayerConditionEncodingIsDeterministicAndDeduplicated() {
+        java.util.List<int[]> unordered = java.util.Arrays.asList(
+                new int[]{99, 1, 5},
+                new int[]{10, 0, 2},
+                new int[]{99, 1, 5}, // duplicate
+                new int[]{10, 0, 1});
+        java.util.List<int[]> shuffled = java.util.Arrays.asList(
+                new int[]{10, 0, 1},
+                new int[]{99, 1, 5},
+                new int[]{10, 0, 2});
+
+        int[] a = PathfinderConfig.encodeSortedVarplayerConditions(unordered);
+        int[] b = PathfinderConfig.encodeSortedVarplayerConditions(shuffled);
+
+        assertArrayEquals("insertion order must not change the encoding", a, b);
+        assertEquals("duplicates must collapse (3 distinct conditions x 3 ints)", 9, a.length);
     }
 
     /** Ordinals outside the supplied levels array must be ignored rather than throwing. */
