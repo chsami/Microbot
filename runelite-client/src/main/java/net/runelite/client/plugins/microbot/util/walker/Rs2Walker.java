@@ -635,6 +635,41 @@ public class Rs2Walker {
                 || "post-click-raw-path-scene-object-handled".equals(exitReason);
     }
 
+    /**
+     * Exit reasons meaning the path loop ended because the walker <em>did</em> something that
+     * advances the route — opened a door, took a transport, cleared a blocker — or because
+     * movement is already in flight. These are progress, not a failed attempt.
+     *
+     * <p>The partial-retry budget exists for "the goal is unreachable and we are stuck". Spending
+     * it on these instead conflated the two: a door open ends the iteration, lands in the partial
+     * branch, and burns a retry even though the walker just made progress. On a route whose path
+     * end is permanently short of the goal (any partial path), the budget is armed for the whole
+     * walk, so an ordinary door could exhaust it ~100 tiles into a working route and report
+     * UNREACHABLE while the player was still advancing. See {@code movement.md} #25.
+     */
+    static boolean isRouteProgressExit(String exitReason) {
+        if (exitReason == null) {
+            return false;
+        }
+        if (exitReason.startsWith("door-handled")) {
+            return true;
+        }
+        switch (exitReason) {
+            case "raw-path-scene-object-handled":
+            case "post-click-raw-path-scene-object-handled":
+            case "current-tile-transport-handled":
+            case "post-click-current-tile-transport-handled":
+            case "transport-handled":
+            case "rockfall-handled":
+            case "path-blocker-handled":
+            case "interim-in-flight":
+            case "recovery-move-in-flight":
+                return true;
+            default:
+                return false;
+        }
+    }
+
     private static void maybeCanvasNudgeAfterDoor(WorldPoint goal, int configuredDistance, List<WorldPoint> path) {
         if (goal == null || path == null || path.isEmpty()) {
             return;
@@ -1232,6 +1267,9 @@ public class Rs2Walker {
             return WalkerState.EXIT;
         }
         int partialRetriesWorking = partialRetries;
+        // When the last partial retry was spent, so route progress made after it can refill the
+        // budget. Without this the counter is monotonic for the entire walk.
+        long lastPartialRetryAtMs = 0L;
         WorldPoint lastAttemptedMinimapClick = null;
         boolean lastAttemptedMinimapClickOk = false;
         long lastAttemptedMinimapClickAtMs = 0L;
@@ -2443,7 +2481,24 @@ public class Rs2Walker {
                 if (walkCancelledDiag(target, "processWalk:partial-path-branch", processWalkTail)) {
                     return WalkerState.EXIT;
                 }
+                // Route progress since the last retry means the walk is working — refill the budget.
+                // It otherwise only ever increments, so "3 retries" meant three outer-loop iterations
+                // for the whole journey rather than three consecutive failures to advance.
+                if (partialRetriesWorking > 0 && routeProgressAdvancedAtMs > lastPartialRetryAtMs) {
+                    walkerDiag("partial retry budget refilled progressAt=%d lastRetryAt=%d spent=%d",
+                            routeProgressAdvancedAtMs, lastPartialRetryAtMs, partialRetriesWorking);
+                    partialRetriesWorking = 0;
+                }
+                // A handled door/transport/blocker ended the iteration because work was done, not
+                // because the walker is stuck. Still re-route, but do not charge the budget for it.
+                if (isRouteProgressExit(exitReason)) {
+                    walkerDiag("partial retry exempt exitReason=%s tail=%d spent=%d",
+                            exitReason, processWalkTail, partialRetriesWorking);
+                    recalculatePath();
+                    continue;
+                }
                 if (partialRetriesWorking < 3) {
+                    lastPartialRetryAtMs = System.currentTimeMillis();
                     Telemetry.recordPartialRetry(partialRetriesWorking + 1, finalDist);
                     WebWalkLog.partialRetry(finalDist, partialRetriesWorking + 1, 3);
                     recalculatePath();
@@ -2451,8 +2506,13 @@ public class Rs2Walker {
                     continue;
                 }
                 WebWalkLog.partialExhausted(finalDist);
+                // Report the real path endpoint and size. These were previously hardcoded to the
+                // player's location and 0, so the log read as "pathfinder returned an empty path at
+                // your feet" — and endpointToTarget became a surface-to-underground y delta rather
+                // than the actual shortfall.
+                WorldPoint unreachableEndpoint = path.isEmpty() ? null : path.get(path.size() - 1);
                 Telemetry.recordUnreachable("partial-retries-exhausted", Rs2Player.getWorldLocation(),
-                        target, Rs2Player.getWorldLocation(), 0, distance, Rs2PathApi.getPathfinder());
+                        target, unreachableEndpoint, path.size(), distance, Rs2PathApi.getPathfinder());
                 setTarget(null, "rs2walker:processWalk:partial-retries-exhausted");
                 return WalkerState.UNREACHABLE;
             } else {

@@ -518,6 +518,59 @@ public class Rs2WalkerUnitTest {
     }
 
     /**
+     * A handled door/transport/blocker must NOT be charged against the partial-retry budget.
+     *
+     * <p>Regression for a walk to an underground goal that reported UNREACHABLE while still
+     * advancing. The path end sat 31 tiles short of the goal, so {@code partialPath} was true on
+     * every iteration and the budget was armed for the whole walk. Opening one door ended the
+     * iteration, landed in the partial branch and spent a retry; the next iteration spent the last
+     * one a second later without the player ever walking. Three retries were gone ~100 tiles into a
+     * route that was working, and the walker gave up on the surface having never reached the ladder.
+     */
+    @Test
+    public void routeProgressExits_areNotChargedAgainstThePartialRetryBudget() {
+        for (String progress : new String[]{
+                "door-handled",
+                "door-handled-local-reachability",
+                "door-handled-during-interim",
+                "door-handled-before-minimap-click",
+                "transport-handled",
+                "current-tile-transport-handled",
+                "post-click-current-tile-transport-handled",
+                "raw-path-scene-object-handled",
+                "post-click-raw-path-scene-object-handled",
+                "rockfall-handled",
+                "path-blocker-handled",
+                "interim-in-flight",
+                "recovery-move-in-flight"}) {
+            assertTrue("'" + progress + "' means the walker advanced the route, so it must not spend "
+                            + "a partial retry", Rs2Walker.isRouteProgressExit(progress));
+        }
+    }
+
+    /**
+     * The exemption must stay narrow: reasons that mean the walker failed to advance still have to
+     * consume the budget, otherwise a genuinely unreachable goal never terminates and the walk spins
+     * until the outer tail cap trips.
+     */
+    @Test
+    public void nonProgressExits_stillConsumeThePartialRetryBudget() {
+        for (String stuck : new String[]{
+                "end-of-path",
+                "not-near-path",
+                "player-location-null",
+                "click-failed-off-minimap",
+                "door-edge-waiting-retry",
+                "door-edge-nearby-waiting-retry",
+                "door-recovery-suppressed",
+                "local-reachability-miss-no-click",
+                null}) {
+            assertFalse("'" + stuck + "' is not route progress and must still spend a retry",
+                    Rs2Walker.isRouteProgressExit(stuck));
+        }
+    }
+
+    /**
      * Off-path recovery must be able to step BACKWARD onto the route. When the player is pushed off
      * the path (e.g. stuck flush against a castle wall) and nothing ahead is reachable, the rejoin
      * helper picks the nearest reachable raw point even if it sits behind the anchor. Forward-only

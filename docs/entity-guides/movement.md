@@ -555,3 +555,31 @@ if (selected == null && jitteredReach < maxEuclidean) {
 **Where this applies:** `Rs2Walker.routeClickReach`, `Rs2Walker.selectRouteClickTarget`, and any future click-target randomisation.
 
 **Defensive check:** Unit-test that the jittered reach never exceeds the caller's reach, never drops to the interim-close threshold, actually varies across calls, and passes a degenerate reach through unchanged.
+
+## 25. Never charge a retry budget for an iteration that made progress
+
+A "give up after N attempts" counter must count *failures to advance*, not loop iterations. Two things break it otherwise.
+
+First, **a partial path is a persistent condition, not an event.** `partialPath` is recomputed every iteration as "the path end is further than `distance` from the goal", so any goal the pathfinder cannot fully reach — a tile short of an underground destination, a gated area, a dynamic-region target — makes it true from the first snapshot to the last. The budget is then armed for the entire walk rather than for a stuck stretch.
+
+Second, **the path loop exits for good reasons too.** Opening a door, taking a transport, clearing a rockfall, or having movement already in flight all end the iteration and land in the same branch as "we failed to move". Charging those spends the budget while the walker is doing exactly what it should.
+
+Together they are quietly fatal on long multi-leg routes. Observed: a walk to an underground goal whose path end sat 31 tiles short burned retry 1 at the end of the first segment, walked ~100 tiles over 46 seconds, then spent retries 2 and 3 within one second of opening a single door — the second without the player moving at all. It reported `UNREACHABLE` standing at the entrance, having never reached the ladder. Nothing in the log said "stuck", because it never was.
+
+So: refill the budget when route progress has advanced since the last charge, and exempt exit reasons that denote work done. Keep the exemption **narrow** — reasons meaning the walker failed to advance (`not-near-path`, `click-failed-off-minimap`, waiting/retry states) must still consume it, or a genuinely unreachable goal never terminates and instead spins until the outer tail cap trips.
+
+**Where this applies:** `Rs2Walker.processWalk` partial-retry branch, `Rs2Walker.isRouteProgressExit`, and any future attempt-capped recovery loop.
+
+**Defensive check:** Unit-test both directions of the classifier — every progress reason exempt, every stuck reason still charged, `null` treated as not-progress.
+
+## 26. Telemetry must report measurements, not placeholders
+
+`recordUnreachable` was called with the player's location as `pathEndpoint` and a literal `0` as `pathSize`. The emitted line read as *"the pathfinder returned an empty path ending at your feet"* — a completely different and much scarier failure than the real one, and it sent diagnosis after a phantom pathfinder bug.
+
+It also corrupted the derived field. `endpointToTarget` is computed from `pathEndpoint`, so instead of the true 31-tile shortfall it printed `6346`: the raw y-delta between a surface tile and an underground one. Both are plane 0 — underground is the same plane at `y + 6400` — so `WorldPoint.distanceTo` does not bail out, it just returns a meaningless number. Any distance compared across that boundary is nonsense, and any threshold against it can never be met.
+
+Pass the real endpoint and the real size. If a value is genuinely unavailable, log it as absent rather than substituting a plausible-looking stand-in.
+
+**Where this applies:** `Rs2Walker.Telemetry.*`, `WebWalkLog`, and any diagnostic that derives a field from an argument.
+
+**Defensive check:** When a log line drives a diagnosis, confirm at the call site that each value is measured rather than hardcoded before trusting it.
