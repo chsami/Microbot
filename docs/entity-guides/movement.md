@@ -470,3 +470,26 @@ private static final long ACTIVE_ROUTE_IDLE_NUDGE_MS = 1_200L;
 **Where this applies:** `Rs2Walker.tryIssueRouteContinuationClick`, `clearInterimTargetIfReachedOrExpired`, `shouldIssueActiveRouteIdleNudge`, and `ACTIVE_ROUTE_IDLE_NUDGE_MS` / `ACTIVE_ROUTE_IDLE_NUDGE_COOLDOWN_MS`.
 
 **Defensive check:** On a multi-hop route, the gap between `first_minimap_click` / route-fallback clicks and the next `active route idle nudge` should be roughly the walk time plus a few ticks — not walk time plus a full idle window. A repeating ~2.5s stationary gap per hop means continuation is being missed and only the nudge is driving the route.
+
+## 22. Suppress the inverse adjacent transport even when the landing check fails
+
+Gotcha #5 suppresses the inverse of an adjacent same-plane transport after a crossing, but only on the success path. Adjacent same-plane transports require landing on the *exact* destination tile, and agility shortcuts routinely deposit the player a tile off it — so a crossing can physically succeed while the landing check reports failure. On that path nothing was suppressed, leaving the inverse entry immediately eligible. Record the suppression whenever the player is no longer on the origin, regardless of the landing verdict; the landing result itself should stay unchanged so the route still replans.
+
+**Why this matters:** Near `(3150..3151, 3363)` the walker crossed an `AGILITY_SHORTCUT`, landed a tile off the catalogued destination, logged `post-handleObject landing unresolved`, then immediately took the opposing entry back across and stranded itself — roughly 19s of a 2m26s walk spent bouncing and recovering.
+
+**Pattern to follow:**
+
+```java
+boolean landed = waitForPostHandleObjectLanding(transport, destWait, maxInclusive);
+if (!landed) {
+    WorldPoint after = Rs2Player.getWorldLocation();
+    // Off the origin => we crossed, even though the strict landing check failed.
+    if (isAdjacentSamePlaneTransport(transport) && after != null && !after.equals(transport.getOrigin())) {
+        markAdjacentSamePlaneTransportHandled(transport, object);
+    }
+}
+```
+
+**Where this applies:** `Rs2Walker.handleTransports` object interactions, `waitForPostHandleObjectLanding` callers, `markAdjacentSamePlaneTransportHandled`, and any adjacent same-plane transport regardless of `TransportType` — suppression is deliberately type-agnostic, so shortcuts and doors are covered alike.
+
+**Defensive check:** A crossed shortcut should produce at most one `post-handleObject landing unresolved` followed by route progress away from the shortcut — not a second interaction with the opposing entry at an adjacent destination tile (`dest=3150,3363` then `dest=3151,3363`).

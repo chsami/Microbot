@@ -8491,11 +8491,26 @@ public class Rs2Walker {
                         }
                         boolean landedAfterObject = waitForPostHandleObjectLanding(transport, destWait, maxInclusive);
                         if (!landedAfterObject) {
+                            WorldPoint afterInteraction = Rs2Player.getWorldLocation();
+                            // Adjacent same-plane transports demand landing on the EXACT destination
+                            // tile (maxInclusive == 0), and agility shortcuts routinely deposit the
+                            // player a tile off it — so a crossing can physically succeed while this
+                            // check still fails. Suppression previously ran only on the success path,
+                            // which left the inverse transport immediately eligible: the walker
+                            // crossed, took the same shortcut straight back, and stranded itself. If
+                            // we are no longer on the origin we did cross, so suppress both tiles
+                            // regardless of the landing verdict. The landing result itself is
+                            // unchanged — this still returns false and replans.
+                            if (isAdjacentSamePlaneTransport(transport)
+                                    && afterInteraction != null
+                                    && !afterInteraction.equals(transport.getOrigin())) {
+                                markAdjacentSamePlaneTransportHandled(transport, object);
+                            }
                             WebWalkLog.spWarn(
                                     "post-handleObject landing unresolved (timeout={}ms) dest={} at={}",
                                     POST_HANDLE_OBJECT_LANDING_WAIT_MS,
                                     compactWorldPoint(destWait),
-                                    compactWorldPoint(Rs2Player.getWorldLocation()));
+                                    compactWorldPoint(afterInteraction));
                         }
                         if (landedAfterObject) {
                             markAdjacentSamePlaneTransportHandled(transport, object);

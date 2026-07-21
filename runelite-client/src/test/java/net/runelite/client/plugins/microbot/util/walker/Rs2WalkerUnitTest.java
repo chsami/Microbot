@@ -74,6 +74,33 @@ public class Rs2WalkerUnitTest {
                 Rs2Walker.adjacentSamePlaneTransportSuppressionPoints(door, null));
     }
 
+    /**
+     * Agility shortcuts catalogued as two opposing adjacent entries must be suppressible like doors.
+     * Observed live near (3150..3151, 3363): the walker crossed the shortcut, the strict landing
+     * check failed because it landed a tile off the catalogued destination, so suppression was
+     * skipped — leaving the inverse entry immediately eligible. It took the same shortcut straight
+     * back and could not recover. Suppression is deliberately type-agnostic; only adjacency and
+     * plane matter.
+     */
+    @Test
+    public void adjacentTransportSuppression_coversAgilityShortcuts() {
+        Transport shortcut = new Transport(
+                new WorldPoint(3151, 3363, 0),
+                new WorldPoint(3150, 3363, 0),
+                "Shortcut",
+                TransportType.AGILITY_SHORTCUT,
+                false,
+                "Climb-over",
+                "Stile",
+                0);
+
+        assertEquals("An adjacent same-plane agility shortcut must yield both tiles for suppression",
+                new HashSet<>(Arrays.asList(
+                        new WorldPoint(3151, 3363, 0),
+                        new WorldPoint(3150, 3363, 0))),
+                Rs2Walker.adjacentSamePlaneTransportSuppressionPoints(shortcut, null));
+    }
+
     @Test
     public void adjacentTransportSuppression_ignoresNonAdjacentTransports() {
         Transport ladder = new Transport(
