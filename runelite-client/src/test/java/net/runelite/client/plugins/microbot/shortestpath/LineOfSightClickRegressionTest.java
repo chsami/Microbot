@@ -41,9 +41,19 @@ public class LineOfSightClickRegressionTest {
     // The tile the old click layer selected: ~10 tiles out, off the raw path, NO LOS from start.
     private static final WorldPoint OLD_DEVIATING_CLICK = new WorldPoint(3176, 3428, 0);
 
+    /**
+     * The raw path is computed once for the whole class. Each {@code Pathfinder.run()} reloads all
+     * transports and, via {@code CollisionMap.getCachedRegionId}, calls
+     * {@code Rs2Player.getWorldLocation()} — which has no client thread under test and blocks for its
+     * full 10s timeout. Computing per-test cost the suite ~20s and printed two alarming (harmless)
+     * TimeoutException stack traces into CI output.
+     */
+    private static List<WorldPoint> sharedRawPath;
+
     @BeforeClass
     public static void load() {
         collisionMap = SplitFlagMap.fromResources();
+        sharedRawPath = computeRawPath(START, GOAL);
     }
 
     /** Straight walkable line check — mirrors Rs2Walker.hasWalkableLineOfSight / PathSmoother.lineOfSight. */
@@ -65,7 +75,7 @@ public class LineOfSightClickRegressionTest {
         return x == tx && y == ty;
     }
 
-    private static List<WorldPoint> rawPath(WorldPoint start, WorldPoint goal) {
+    private static List<WorldPoint> computeRawPath(WorldPoint start, WorldPoint goal) {
         HashMap<WorldPoint, Set<Transport>> transports = Transport.loadAllFromResources();
         PathfinderConfig config = new PathfinderConfig(collisionMap, transports,
                 Collections.emptyList(), null, null);
@@ -97,7 +107,7 @@ public class LineOfSightClickRegressionTest {
     @Test
     public void losClampSelectsAnOnRouteTileNotTheDeviatingClick() {
         CollisionMap map = new CollisionMap(collisionMap);
-        List<WorldPoint> raw = rawPath(START, GOAL);
+        List<WorldPoint> raw = sharedRawPath;
         assertFalse("raw path should not be empty", raw.isEmpty());
 
         // Furthest forward raw point with straight LOS from the start = the LOS-clamped first click.
@@ -116,7 +126,7 @@ public class LineOfSightClickRegressionTest {
     @Test
     public void greedyLosChainReachesGoalInFewStraightClicks() {
         CollisionMap map = new CollisionMap(collisionMap);
-        List<WorldPoint> raw = rawPath(START, GOAL);
+        List<WorldPoint> raw = sharedRawPath;
 
         // Greedy LOS-clamp: from current tile, jump to the furthest raw tile with straight LOS, repeat.
         List<WorldPoint> clicks = new ArrayList<>();
