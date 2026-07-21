@@ -1270,6 +1270,7 @@ public class Rs2Walker {
         // When the last partial retry was spent, so route progress made after it can refill the
         // budget. Without this the counter is monotonic for the entire walk.
         long lastPartialRetryAtMs = 0L;
+        WorldPoint lastPartialRetryAtLoc = null;
         WorldPoint lastAttemptedMinimapClick = null;
         boolean lastAttemptedMinimapClickOk = false;
         long lastAttemptedMinimapClickAtMs = 0L;
@@ -2484,9 +2485,20 @@ public class Rs2Walker {
                 // Route progress since the last retry means the walk is working — refill the budget.
                 // It otherwise only ever increments, so "3 retries" meant three outer-loop iterations
                 // for the whole journey rather than three consecutive failures to advance.
-                if (partialRetriesWorking > 0 && routeProgressAdvancedAtMs > lastPartialRetryAtMs) {
-                    walkerDiag("partial retry budget refilled progressAt=%d lastRetryAt=%d spent=%d",
-                            routeProgressAdvancedAtMs, lastPartialRetryAtMs, partialRetriesWorking);
+                //
+                // Standing somewhere new is required as well as the progress timestamp:
+                // routeProgressAdvancedAtMs is also bumped whenever the route is merely REPLACED, and
+                // each retry calls recalculatePath(), so the timestamp alone would let a retry refill
+                // the budget it just spent. When the target is genuinely unreachable the player stops
+                // moving, so requiring movement is what still lets the budget drain and terminate.
+                WorldPoint retryLoc = Rs2Player.getWorldLocation();
+                boolean movedSinceLastRetry = lastPartialRetryAtLoc == null
+                        || (retryLoc != null && !retryLoc.equals(lastPartialRetryAtLoc));
+                if (partialRetriesWorking > 0
+                        && movedSinceLastRetry
+                        && routeProgressAdvancedAtMs > lastPartialRetryAtMs) {
+                    walkerDiag("partial retry budget refilled progressAt=%d lastRetryAt=%d spent=%d at=%s",
+                            routeProgressAdvancedAtMs, lastPartialRetryAtMs, partialRetriesWorking, retryLoc);
                     partialRetriesWorking = 0;
                 }
                 // A handled door/transport/blocker ended the iteration because work was done, not
@@ -2499,6 +2511,7 @@ public class Rs2Walker {
                 }
                 if (partialRetriesWorking < 3) {
                     lastPartialRetryAtMs = System.currentTimeMillis();
+                    lastPartialRetryAtLoc = retryLoc;
                     Telemetry.recordPartialRetry(partialRetriesWorking + 1, finalDist);
                     WebWalkLog.partialRetry(finalDist, partialRetriesWorking + 1, 3);
                     recalculatePath();
