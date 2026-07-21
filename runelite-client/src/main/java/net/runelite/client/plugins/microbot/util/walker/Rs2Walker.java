@@ -4469,6 +4469,12 @@ public class Rs2Walker {
         long doorCandidateMs = 0L;
         long rockfallMs = 0L;
         boolean resolved = false;
+        // Probes stay within handlerRange+1 of the player (the loop skips indices beyond
+        // handlerRange) and only match objects within one tile of a probe, so a handlerRange+2
+        // radius is a superset of what the per-probe queries could have found.
+        final int snapshotRadius = handlerRange + 2;
+        rawScanWallSnapshot = Rs2GameObject.getWallObjects(o -> true, playerLoc, snapshotRadius);
+        rawScanGameObjectSnapshot = Rs2GameObject.getGameObjects(o -> true, playerLoc, snapshotRadius);
         try {
             for (int i = start; i < endExclusive; i++) {
                 WorldPoint currentWorldPoint = rawPath.get(i);
@@ -4526,6 +4532,8 @@ public class Rs2Walker {
 
             return false;
         } finally {
+            rawScanWallSnapshot = null;
+            rawScanGameObjectSnapshot = null;
             long totalMs = System.currentTimeMillis() - scanStartMs;
             if (totalMs >= SLOW_RAW_SCENE_SCAN_LOG_MS) {
                 log.info("[Walker] slow raw scene scan: total={}ms idx={} doors={}ms doorCand={}ms rockfall={}ms transports={}ms resolved={} allowTransports={}",
@@ -4537,6 +4545,81 @@ public class Rs2Walker {
 
     /** A raw-scene scan slower than this is user-visible dead time between route clicks. */
     private static final long SLOW_RAW_SCENE_SCAN_LOG_MS = 500L;
+
+    /**
+     * Scene snapshot scoped to one {@link #handleNearbyRawPathSceneObjects} pass.
+     * <p>
+     * Door probing previously issued up to four bounded scene queries <em>per probe</em>, and a scan
+     * walks ~12 raw indices x 2 offsets x several probes — hundreds of client-thread round trips.
+     * Measured live at 4564ms of a 5539ms scan that resolved nothing. Taking one bounded snapshot up
+     * front and matching probes against it in memory collapses that to two queries per scan.
+     * <p>
+     * Null outside a raw scan, so every other {@code handleDoors} caller keeps the original
+     * query-per-probe behaviour.
+     */
+    private static volatile List<WallObject> rawScanWallSnapshot = null;
+    private static volatile List<GameObject> rawScanGameObjectSnapshot = null;
+
+    /**
+     * Exact-tile match first, then a one-tile adjacency fallback — the same preference order the
+     * previous pair of bounded queries produced.
+     */
+    private static WallObject resolveProbeWallObject(WorldPoint probe) {
+        List<WallObject> snapshot = rawScanWallSnapshot;
+        if (snapshot != null) {
+            WallObject adjacent = null;
+            for (WallObject candidate : snapshot) {
+                if (candidate == null) {
+                    continue;
+                }
+                WorldPoint loc = candidate.getWorldLocation();
+                if (loc == null) {
+                    continue;
+                }
+                if (loc.equals(probe)) {
+                    return candidate;
+                }
+                if (adjacent == null && loc.distanceTo2D(probe) <= 1) {
+                    adjacent = candidate;
+                }
+            }
+            return adjacent;
+        }
+        WallObject wall = Rs2GameObject.getWallObject(o -> o.getWorldLocation().equals(probe), probe, 3);
+        if (wall == null) {
+            wall = Rs2GameObject.getWallObject(o -> o.getWorldLocation().distanceTo2D(probe) <= 1, probe, 3);
+        }
+        return wall;
+    }
+
+    /** @see #resolveProbeWallObject(WorldPoint) */
+    private static TileObject resolveProbeGameObject(WorldPoint probe) {
+        List<GameObject> snapshot = rawScanGameObjectSnapshot;
+        if (snapshot != null) {
+            GameObject adjacent = null;
+            for (GameObject candidate : snapshot) {
+                if (candidate == null) {
+                    continue;
+                }
+                WorldPoint loc = candidate.getWorldLocation();
+                if (loc == null) {
+                    continue;
+                }
+                if (loc.equals(probe)) {
+                    return candidate;
+                }
+                if (adjacent == null && loc.distanceTo2D(probe) <= 1) {
+                    adjacent = candidate;
+                }
+            }
+            return adjacent;
+        }
+        TileObject object = Rs2GameObject.getGameObject(o -> o.getWorldLocation().equals(probe), probe, 3);
+        if (object == null) {
+            object = Rs2GameObject.getGameObject(o -> o.getWorldLocation().distanceTo2D(probe) <= 1, probe, 3);
+        }
+        return object;
+    }
 
     private static boolean hasDoorCandidateOnRawSegment(List<WorldPoint> rawPath, int index) {
         if (rawPath == null || index < 0 || index >= rawPath.size() - 1) {
@@ -5139,17 +5222,9 @@ public class Rs2Walker {
                 // WallObjects can report their world location as an adjacent tile depending on
                 // orientation / scene representation. Use exact match first, then allow a small
                 // adjacency fallback so door handling triggers reliably.
-                WallObject wall = Rs2GameObject.getWallObject(o -> o.getWorldLocation().equals(probe), probe, 3);
-                if (wall == null) {
-                    wall = Rs2GameObject.getWallObject(o -> o.getWorldLocation().distanceTo2D(probe) <= 1, probe, 3);
-                }
+                WallObject wall = resolveProbeWallObject(probe);
 
-                TileObject object = (wall != null)
-                        ? wall
-                        : Rs2GameObject.getGameObject(o -> o.getWorldLocation().equals(probe), probe, 3);
-                if (object == null) {
-                    object = Rs2GameObject.getGameObject(o -> o.getWorldLocation().distanceTo2D(probe) <= 1, probe, 3);
-                }
+                TileObject object = (wall != null) ? wall : resolveProbeGameObject(probe);
                 if (object == null) continue;
                 if (!isDoorInteractionWithinRange(object, probe, fromWp, toWp, playerLoc, HANDLER_RANGE)) {
                     Telemetry.recordDoorReject("door-out-of-range");
