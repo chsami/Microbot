@@ -62,6 +62,29 @@ public final class Rs2WalkerBankingPlanner {
         }
     }
 
+    /**
+     * Whether a plain {@link TransportType#TRANSPORT} takes part in bank planning.
+     *
+     * <p>Previously only currency-bearing ones did, so an item-gated obstacle — a machete for a
+     * jungle bush, a pickaxe for a rockfall, a Shantay pass — fell through
+     * {@link #hasRequiredTransportItems} to its catch-all {@code return true}, was never reported as
+     * missing, and was never withdrawn. That contradicted the pathfinder:
+     * {@code PathfinderConfig.hasRequiredItems} counts <em>bank</em> contents when
+     * {@code useBankItems} is set, so a route was planned through the obstacle on the strength of a
+     * banked item the planner then declined to fetch, stranding the walk at the obstacle.
+     *
+     * <p>This only widens which transports are <em>eligible</em>. Collection is path-scoped —
+     * {@link #getTransportsForDestination} pathfinds first and inspects only transports on the
+     * resulting route — so an item is fetched solely when the chosen route actually needs it.
+     */
+    static boolean planningCoversPlainTransport(Transport transport) {
+        if (transport == null || transport.getType() != TransportType.TRANSPORT) {
+            return false;
+        }
+        return transport.getCurrencyAmount() > 0
+                || (transport.getItemIdRequirements() != null && !transport.getItemIdRequirements().isEmpty());
+    }
+
     public static boolean hasRequiredTransportItems(Transport transport) {
         if (transport == null) {
             return false;
@@ -81,7 +104,7 @@ public final class Rs2WalkerBankingPlanner {
                 || transport.getType() == TransportType.SHIP
                 || transport.getType() == TransportType.MINECART
                 || transport.getType() == TransportType.MAGIC_CARPET
-                || (transport.getType() == TransportType.TRANSPORT && transport.getCurrencyAmount() > 0)) {
+                || planningCoversPlainTransport(transport)) {
             if (transport.getType() == TransportType.TELEPORTATION_SPELL && transport.getDisplayInfo() != null) {
                 String spellName = transport.getDisplayInfo().contains(":")
                         ? transport.getDisplayInfo().split(":")[0].trim()
