@@ -101,6 +101,14 @@ public final class WebWalkLog {
         LOG.debug("[WebWalk] cfg | " + fmt, args);
     }
 
+    /**
+     * Config work slow enough to be a user-visible stall (e.g. a pathfinder-config refresh that the
+     * walker blocks on at route start). INFO so it appears without enabling debug logging.
+     */
+    public static void cfgSlow(String fmt, Object... args) {
+        LOG.info("[WebWalk] cfg | " + fmt, args);
+    }
+
     public static void leagues(String fmt, Object... args) {
         LOG.debug("[WebWalk] leagues | " + fmt, args);
     }

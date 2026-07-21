@@ -102,6 +102,12 @@ public class PathfinderConfig {
 
     @Getter
     private volatile long calculationCutoffMillis;
+
+    /**
+     * A {@link #refresh(WorldPoint)} slower than this is a user-visible cold start: the walker sits
+     * on a null pathfinder for its whole duration before the first click can be issued.
+     */
+    private static final long SLOW_REFRESH_LOG_THRESHOLD_MS = 500L;
     @Getter
     private volatile boolean avoidWilderness;
     @Getter
@@ -240,6 +246,13 @@ public class PathfinderConfig {
 
             WebWalkLog.cfg("refresh transports={}ms restr={}ms total={}ms",
                     t1 - t0, t2 - t1, t2 - t0);
+            // The walker blocks on a null pathfinder for the whole of refresh(), so a slow refresh
+            // is a visible cold start at route start. Surface it at INFO (not DEBUG) when it is
+            // actually slow, so it shows up in normal logs without enabling debug logging.
+            if (t2 - t0 >= SLOW_REFRESH_LOG_THRESHOLD_MS) {
+                WebWalkLog.cfgSlow("slow refresh transports={}ms restr={}ms total={}ms",
+                        t1 - t0, t2 - t1, t2 - t0);
+            }
             //END microbot variables
         }
     }

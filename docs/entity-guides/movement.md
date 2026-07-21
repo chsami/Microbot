@@ -400,3 +400,73 @@ When a gate can be crossed by either a quest unlock or a currency payment, do no
 **Where this applies:** `transports.tsv`, `blocked_edges.tsv`, `restrictions.tsv`, `PathfinderConfig`, and `Rs2Walker.handleTransports`.
 
 **Defensive check:** Add resource tests that assert both paid and quest-free transports load, the gate tiles are not quest-only restricted, and the gate edge is blocked without a usable transport.
+
+## 19. Gate minimap click targets on reachability, not walkability — and allow bidirectional rejoin
+
+A tile being *walkable* (`Rs2Tile.isWalkable`, i.e. not `BLOCK_MOVEMENT_FULL`) is not the same as being *reachable from the player*. Next to a wall the two diverge hard: a tile flush on the far side of a castle wall is walkable and Euclidean-close, but only reachable via a long detour. Any minimap click-target selection that filters on walkability/clip-visibility alone will happily pick the wrong side of the wall and stall. Select the next raw-route click point from the player's collision-**reachable** set (`Rs2Tile.getReachableTilesFromTile`, which honors edge flags) with a generous BFS depth (~2× the click radius) so real around-a-corner detours still qualify while the wrong side is excluded. Only fall back to a walkable/off-scene point when the target is genuinely off the loaded scene (collision can't be verified there). Likewise, `getPointWithWallDistance` computes tiles reachable *from the target*, so its nudge can land across a wall or inside a building — verify its result with `Rs2Tile.isTileReachable` before clicking it.
+
+Forward-only anchoring (introduced to stop the walker snapping back to already-travelled branches) overcorrects when the player is pushed *off* the path: if nothing ahead is reachable, forward-only recovery returns nothing and the walker stalls against the wall. Recovery must therefore be **bidirectional**: scan a bounded index window on both sides of the anchor and rejoin via the nearest reachable raw point, preferring the furthest-forward one so normal progress is never sacrificed. This is a rejoin path for the off-path case only; steady-state progress stays forward-only.
+
+**Why this matters:** Walking north up the west side of Varrock castle, the path runs flush against the wall. The selector picked a forward raw/nudged point on the far (east) side of the wall and clicked it, so the player pressed into the wall and stalled. The same mechanism clicks into houses (interior tile is walkable but unreachable) and produces "random far clicks" right after a teleport, when a stale smoothed waypoint or blind scaled-radius directional guess targets an unreachable tile.
+
+**Pattern to follow:**
+
+```java
+// Primary: furthest-forward COLLISION-REACHABLE raw point (wrong side of wall excluded).
+WorldPoint rawRouteTarget = selectRouteClickTarget(rawPath, playerLoc, reach, rawAnchorIndex);
+if (rawRouteTarget != null) {
+    clickTarget = rawRouteTarget;
+} else {
+    clickTarget = getPointWithWallDistance(targetWp);
+    if (!Rs2Tile.isTileReachable(clickTarget)) {
+        WorldPoint rejoin = findReachableRejoinRawPathPoint(rawPath, playerLoc, reach, rawAnchorIndex);
+        if (rejoin != null) clickTarget = rejoin; // step back onto the line if needed
+    }
+}
+// Directional scaled-radius guesses must also be reachability-gated:
+if (!reachable.contains(scaledFallback)) continue;
+```
+
+**Where this applies:** `Rs2Walker.selectRouteClickTarget`, `Rs2Walker.findReachableRejoinRawPathPoint`, `Rs2Walker.walkMiniMapToward`, `getPointWithWallDistance` consumers, and any minimap click-target selector used while a raw route exists.
+
+**Defensive check:** Unit-test the rejoin core with an injected reachability predicate: (a) player pushed one tile off-path with nothing ahead reachable must return a point *behind* the anchor; (b) with points ahead reachable it must return the furthest-forward one inside the reach circle; (c) nothing reachable must return null so stall/recalc can take over. Live-repro: walk north flush against Varrock castle's west wall — the walker should round the corner instead of pressing into the wall, and a fresh teleport should not produce a click far off the route.
+
+## 20. Clamp minimap click targets to line-of-sight, not a Euclidean radius
+
+A minimap click is resolved by the **game's own pathing** to the clicked tile — not by our route. So the click target must be a tile the player can reach in a **straight walkable line** (line-of-sight). If the target is off a straight line (around a building corner, past an open door), the game improvises its own route to it and deviates: cutting the corner through the door, looping wide, or trapping itself so it has to backtrack out. Do **not** pick the click by clamping a far smoothed waypoint to a Euclidean radius (`clampToEuclideanRadius`) — that routinely overshoots the first line-of-sight waypoint into no-LOS territory. Select the furthest forward raw-path point with straight LOS from the player (`hasWalkableLineOfSight`, mirroring `PathSmoother.lineOfSight` over the pathfinder `CollisionMap`). LOS is naturally long on open roads (clicks stay long) and short only at corners/tight rooms (where short clicks are correct), so it does not over-click.
+
+**Why this matters:** Walking from `(3183,3435)` to `(3173,3399)` past the **Varrock West Bank**, the player has straight LOS only ~3 tiles (to the corner `(3182,3432)`), but the click layer clamped a far waypoint to a 10-tile radius and clicked `(3176,3428)` — off the raw path and with no LOS. The game then looped the player wide around the bank and it had to backtrack. The raw path itself is optimal (down the west side); the defect is purely the no-LOS click. LOS clamping turns the whole 41-tile leg into 4 clean straight clicks (`3182,3432 → 3172,3425 → 3172,3399 → 3173,3399`).
+
+**Pattern to follow:**
+
+```java
+WorldPoint losTarget = findFurthestRawPathPointMatching(rawPath, playerLoc, reach, rawAnchor,
+        candidate -> hasWalkableLineOfSight(playerLoc, candidate));
+if (losTarget != null) return losTarget;           // straight line — game can't deviate
+// fall back to reachable / off-scene / rejoin only when no LOS point exists
+```
+
+**Where this applies:** `Rs2Walker.selectRouteClickTarget`, `Rs2Walker.hasWalkableLineOfSight`, and any minimap click-target selection that clamps to a Euclidean radius while a raw route exists.
+
+**Defensive check:** `LineOfSightClickRegressionTest` — from `(3183,3435)` to `(3173,3399)`, the old `(3176,3428)` click must have no LOS from the start, the LOS-clamped click must be on the raw route, and the greedy LOS chain must reach the goal in ≤ 8 straight clicks.
+
+## 21. Route continuation is one-shot — keep the idle-nudge window short
+
+`tryIssueRouteContinuationClick` only runs on the single pass where `clearInterimTargetIfReachedOrExpired` returns `true` (the transition where the interim checkpoint is cleared). If any guard blocks it on that exact pass — `isInteracting`, `isAnimating`, door/transport settling, or its own unresolved-door / upcoming-transport checks — the opportunity is lost and **nothing retries it**. The route then only resumes via the active-route idle nudge, so that stationary window is the visible dead stop between hops. Keep it to a few ticks; do not treat it as a rare recovery path, because in practice it is what continues normal routes.
+
+**Why this matters:** A 41-tile walk from `(3183,3435)` to `(3173,3399)` clicked correctly, walked to its checkpoint, then sat fully stopped for the whole `2500ms` idle window before issuing the next click — roughly a third of the total walk time spent standing still, once per hop.
+
+**Pattern to follow:**
+
+```java
+// One-shot: only fires on the pass that clears the interim checkpoint.
+if (clearedInterimTarget && !Rs2Player.isInteracting() && !Rs2Player.isAnimating()
+        && tryIssueRouteContinuationClick(rawPath, path, target)) { ... }
+
+// So the nudge window is the real continuation path — keep it a few ticks, not seconds.
+private static final long ACTIVE_ROUTE_IDLE_NUDGE_MS = 1_200L;
+```
+
+**Where this applies:** `Rs2Walker.tryIssueRouteContinuationClick`, `clearInterimTargetIfReachedOrExpired`, `shouldIssueActiveRouteIdleNudge`, and `ACTIVE_ROUTE_IDLE_NUDGE_MS` / `ACTIVE_ROUTE_IDLE_NUDGE_COOLDOWN_MS`.
+
+**Defensive check:** On a multi-hop route, the gap between `first_minimap_click` / route-fallback clicks and the next `active route idle nudge` should be roughly the walk time plus a few ticks — not walk time plus a full idle window. A repeating ~2.5s stationary gap per hop means continuation is being missed and only the nudge is driving the route.

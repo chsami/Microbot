@@ -439,6 +439,104 @@ public class Rs2WalkerUnitTest {
         assertEquals("null predicate must not NPE and must allow full scan", 2, idx);
     }
 
+    /**
+     * The anchored forward scan is shared by every route-click predicate (line-of-sight, reachable,
+     * walkable, off-scene). If the smoothed-&gt;raw anchor points past the player's vicinity, the scan
+     * breaks immediately on the Euclidean bound and returns null for ALL of them — observed live as
+     * {@code sel=none}, which dropped route clicks onto the off-route wall-nudge clamp. Selection
+     * must therefore retry anchored at the player's own closest raw tile.
+     */
+    @Test
+    public void rawPathScan_staleAnchorPastPlayerYieldsNothingForEveryPredicate() {
+        WorldPoint player = new WorldPoint(3183, 3435, 0);
+        List<WorldPoint> raw = new java.util.ArrayList<>();
+        for (int i = 0; i < 40; i++) {
+            raw.add(new WorldPoint(3183, 3435 - i, 0)); // 40-tile route running south
+        }
+
+        assertNotNull("anchored at the player, the scan must find a forward route point",
+                Rs2Walker.findFurthestRawPathPointMatching(raw, player, 10, 0, wp -> true));
+
+        assertNull("a stale anchor near the goal must yield nothing even for an always-true predicate",
+                Rs2Walker.findFurthestRawPathPointMatching(raw, player, 10, 38, wp -> true));
+    }
+
+    /**
+     * Off-path recovery must be able to step BACKWARD onto the route. When the player is pushed off
+     * the path (e.g. stuck flush against a castle wall) and nothing ahead is reachable, the rejoin
+     * helper picks the nearest reachable raw point even if it sits behind the anchor. Forward-only
+     * selection would return null here and the walker would stall.
+     */
+    @Test
+    public void findReachableRejoin_stepsBackwardWhenNothingAheadReachable() {
+        WorldPoint player = new WorldPoint(3203, 3201, 0); // one tile off the line, beside the wall
+        List<WorldPoint> path = Arrays.asList(
+                new WorldPoint(3200, 3200, 0),  // 0
+                new WorldPoint(3201, 3200, 0),  // 1
+                new WorldPoint(3202, 3200, 0),  // 2
+                new WorldPoint(3203, 3200, 0),  // 3 (anchor)
+                new WorldPoint(3204, 3200, 0),  // 4
+                new WorldPoint(3205, 3200, 0),  // 5
+                new WorldPoint(3206, 3200, 0)); // 6
+        // Only the tiles behind the anchor are reachable; the wall blocks everything ahead.
+        Set<WorldPoint> reachable = new HashSet<>(Arrays.asList(
+                new WorldPoint(3200, 3200, 0),
+                new WorldPoint(3201, 3200, 0),
+                new WorldPoint(3202, 3200, 0)));
+
+        WorldPoint rejoin = Rs2Walker.findReachableRejoinRawPathPoint(path, player, 10, 3, reachable::contains);
+
+        assertEquals("must rejoin the route by stepping back onto the nearest reachable raw tile",
+                new WorldPoint(3202, 3200, 0), rejoin);
+    }
+
+    /**
+     * When points ahead of the anchor are reachable, rejoin must prefer the furthest-forward one so
+     * recovery never sacrifices progress or snaps back to an already-travelled branch.
+     */
+    @Test
+    public void findReachableRejoin_prefersFurthestForwardReachable() {
+        WorldPoint player = new WorldPoint(3203, 3201, 0);
+        List<WorldPoint> path = Arrays.asList(
+                new WorldPoint(3200, 3200, 0),  // 0
+                new WorldPoint(3201, 3200, 0),  // 1
+                new WorldPoint(3202, 3200, 0),  // 2
+                new WorldPoint(3203, 3200, 0),  // 3 (anchor)
+                new WorldPoint(3204, 3200, 0),  // 4
+                new WorldPoint(3205, 3200, 0),  // 5
+                new WorldPoint(3206, 3200, 0)); // 6
+        Set<WorldPoint> reachable = new HashSet<>(path); // everything reachable
+
+        // maxEuclidean = 3 -> (3206,3200) is Euclidean sqrt(10) > 3 and must be rejected;
+        // (3205,3200) is sqrt(5) <= 3 and is the furthest-forward admissible point.
+        WorldPoint rejoin = Rs2Walker.findReachableRejoinRawPathPoint(path, player, 3, 3, reachable::contains);
+
+        assertEquals("rejoin must prefer the furthest-forward reachable raw tile inside the reach circle",
+                new WorldPoint(3205, 3200, 0), rejoin);
+    }
+
+    @Test
+    public void findReachableRejoin_returnsNullWhenNothingReachable() {
+        WorldPoint player = new WorldPoint(3203, 3201, 0);
+        List<WorldPoint> path = Arrays.asList(
+                new WorldPoint(3202, 3200, 0),
+                new WorldPoint(3203, 3200, 0),
+                new WorldPoint(3204, 3200, 0));
+
+        assertNull("no reachable raw point => null (caller lets stall/recalc take over)",
+                Rs2Walker.findReachableRejoinRawPathPoint(path, player, 10, 1, wp -> false));
+    }
+
+    @Test
+    public void findReachableRejoin_nullInputsAreSafe() {
+        WorldPoint player = new WorldPoint(3203, 3201, 0);
+        List<WorldPoint> path = Collections.singletonList(new WorldPoint(3203, 3200, 0));
+        assertNull(Rs2Walker.findReachableRejoinRawPathPoint(null, player, 10, 0, wp -> true));
+        assertNull(Rs2Walker.findReachableRejoinRawPathPoint(path, null, 10, 0, wp -> true));
+        assertNull(Rs2Walker.findReachableRejoinRawPathPoint(path, player, 10, 0, null));
+        assertNull(Rs2Walker.findReachableRejoinRawPathPoint(Collections.emptyList(), player, 10, 0, wp -> true));
+    }
+
     @Test
     public void stabilizeRouteProgressIndex_doesNotJumpBackToEarlierNearbyBranch() {
         WorldPoint target = new WorldPoint(3200, 3201, 0);

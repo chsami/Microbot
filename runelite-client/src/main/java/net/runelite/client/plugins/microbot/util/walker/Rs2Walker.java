@@ -19,6 +19,7 @@ import net.runelite.client.plugins.devtools.MovementFlag;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
 import net.runelite.client.plugins.microbot.shortestpath.*;
+import net.runelite.client.plugins.microbot.shortestpath.pathfinder.CollisionMap;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.Pathfinder;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.PathfinderConfig;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
@@ -172,10 +173,33 @@ public class Rs2Walker {
     private static final int STALL_RECOVERY_MINIMAP_REACH_EUCLIDEAN = 10;
     private static final int NORMAL_MINIMAP_REACH_EUCLIDEAN = 11;
     private static final int UNREACHABLE_RECOVERY_FORWARD_SCAN_TILES = 24;
-    private static final long ACTIVE_ROUTE_IDLE_NUDGE_MS = 2_500L;
+    /**
+     * Stationary window before an active route issues a recovery nudge.
+     * <p>
+     * {@link #tryIssueRouteContinuationClick} is one-shot: it only runs on the pass where the interim
+     * checkpoint is cleared. If a guard (interacting/animating/door or transport settling, or a
+     * pending route object) blocks it on that single pass, nothing retries and the route only resumes
+     * via this nudge — so this window is the visible dead stop between hops. Keep it to a few ticks
+     * (movement.md #13) rather than the old 2500ms. The nudge already requires the player to be
+     * genuinely still (not moving/animating/interacting) on the same tile, and
+     * {@link #ACTIVE_ROUTE_IDLE_NUDGE_COOLDOWN_MS} still prevents click spam.
+     */
+    private static final long ACTIVE_ROUTE_IDLE_NUDGE_MS = 1_200L;
 	private static final long ACTIVE_ROUTE_IDLE_NUDGE_COOLDOWN_MS = 2_000L;
 	private static final long POST_TRANSPORT_PATH_TMARK_WINDOW_MS = 15_000L;
 	private static final int ROUTE_PROGRESS_FORWARD_SEARCH_TILES = 40;
+
+	/**
+	 * How long to wait for {@code Rs2PathApi.getPathfinder()} to become non-null at route start.
+	 * <p>
+	 * The pathfinder is only published <em>after</em> {@code PathfinderConfig.refresh()} completes
+	 * (see {@code Rs2WalkerLifecycleRuntime.restartPathfinding}), and a cache-missing refresh has been
+	 * measured at 2.4-2.7s. The previous 2000ms cap expired mid-refresh, sending the walker into
+	 * {@code recalculatePath()} — which cancels the in-flight work and starts a second refresh, making
+	 * the cold start worse instead of recovering from it. Wait comfortably past the observed refresh
+	 * cost so recalculation stays a genuine failure path.
+	 */
+	private static final int PATHFINDER_NULL_WAIT_MS = 6_000;
 	private static final long POST_TRANSPORT_OFFPATH_WAIT_BUDGET_MS = 2_500L;
     private static final int POST_TRANSPORT_OFFPATH_WAIT_SLICE_MS = 450;
     private static final int TRANSPORT_DEST_MATCH_CHEBYSHEV = 1;
@@ -1230,8 +1254,8 @@ public class Rs2Walker {
             Pathfinder pathfinder = Rs2PathApi.getPathfinder();
             if (pathfinder == null) {
                 markStartupPhase("pf_wait_enter", target, "reason=pathfinder_null");
-                walkerDiag("pathfinder null; waiting up to 2000ms");
-                pathfinder = sleepUntilNotNull(Rs2PathApi::getPathfinder, 2_000);
+                walkerDiag("pathfinder null; waiting up to %dms", PATHFINDER_NULL_WAIT_MS);
+                pathfinder = sleepUntilNotNull(Rs2PathApi::getPathfinder, PATHFINDER_NULL_WAIT_MS);
                 if (walkCancelledDiag(target, "processWalk:after-wait-pathfinder", processWalkTail)) {
                     return WalkerState.EXIT;
                 }
@@ -2161,25 +2185,35 @@ public class Rs2Walker {
 
                     WorldPoint posBefore = playerLoc;
                     int rawAnchorIndex = rawIndexForSmoothedIndex(i, smoothedToRaw, rawPath);
-                    WorldPoint rawRouteTarget = inInstance ? null : findFurthestRawPathPointMatching(
-                            rawPath,
-                            playerLoc,
-                            MINIMAP_REACH_EUCLIDEAN - 1,
-                            rawAnchorIndex,
-                            Rs2Walker::isKnownWalkableOrUnloaded);
+                    // Prefer a collision-REACHABLE raw-route point. "Walkable" (tile not fully
+                    // blocked) is not the same as "reachable from the player": a tile flush on the
+                    // far side of a castle wall is walkable yet only reachable via a long detour, so
+                    // a Euclidean-close click there sends the player into the wall. Reachability
+                    // gating excludes the wrong side outright. See movement.md #19.
+                    WorldPoint rawRouteTarget = inInstance ? null
+                            : selectRouteClickTarget(rawPath, playerLoc, MINIMAP_REACH_EUCLIDEAN - 1, rawAnchorIndex);
                     WorldPoint clickTarget;
+                    String fallbackTag = "-";
                     if (rawRouteTarget != null && !rawRouteTarget.equals(playerLoc)) {
                         targetWp = rawRouteTarget;
                         clickTarget = rawRouteTarget;
                     } else {
-                        clickTarget = inInstance ? targetWp : getPointWithWallDistance(targetWp);
-                    }
-                    if (!inInstance && rawRouteTarget == null) {
-                        WorldPoint rawReachableTarget = findFurthestReachableRawPathPoint(rawPath, playerLoc,
-                                MINIMAP_REACH_EUCLIDEAN - 1, rawAnchorIndex);
-                        if (!Rs2Tile.isTileReachable(clickTarget) && rawReachableTarget != null) {
-                            targetWp = rawReachableTarget;
-                            clickTarget = rawReachableTarget;
+                        clickTarget = inInstance ? targetWp : getPointWithWallDistance(targetWp, playerLoc);
+                        // getPointWithWallDistance computes tiles reachable FROM THE TARGET, so its
+                        // wall nudge can land on the far side of a wall or inside a building; a stale
+                        // smoothed waypoint right after a teleport can also be unreachable. If the
+                        // resulting click is not reachable, rejoin the route via the nearest reachable
+                        // raw point on EITHER side of the anchor rather than clicking a wrong-side /
+                        // random-far tile.
+                        fallbackTag = "wallnudge";
+                        if (!inInstance && !Rs2Tile.isTileReachable(clickTarget)) {
+                            WorldPoint rejoin = findReachableRejoinRawPathPoint(rawPath, playerLoc,
+                                    MINIMAP_REACH_EUCLIDEAN - 1, rawAnchorIndex);
+                            if (rejoin != null && !rejoin.equals(playerLoc)) {
+                                targetWp = rejoin;
+                                clickTarget = rejoin;
+                                fallbackTag = "rejoin";
+                            }
                         }
                     }
                     if (!inInstance && handlePendingDoorBeforeRouteClick(rawPath, path, i, targetIdx,
@@ -2199,7 +2233,9 @@ public class Rs2Walker {
                                 posBefore,
                                 "to=" + compactWorldPoint(clickTarget));
                     }
-                    markStartupPhase("click_candidate_found", target, "to=" + compactWorldPoint(clickTarget));
+                    markStartupPhase("click_candidate_found", target,
+                            "to=" + compactWorldPoint(clickTarget)
+                                    + " sel=" + lastRouteClickTier + " fb=" + fallbackTag);
                     WorldPoint clickedTarget = clickMiniMapOrFallback(rawPath, clickTarget, playerLoc,
                             MINIMAP_REACH_EUCLIDEAN - 1, rawPath == null || rawPath.isEmpty(), rawAnchorIndex);
                     boolean clicked = clickedTarget != null;
@@ -2539,20 +2575,38 @@ public class Rs2Walker {
     }
 
     public static WorldPoint getPointWithWallDistance(WorldPoint target) {
+        return getPointWithWallDistance(target, null);
+    }
+
+    /**
+     * Nudges a click target off a wall edge onto an open neighbour. The candidate set
+     * ({@link Rs2Tile#getReachableTilesFromTile} radius 1) is an unordered {@link Set}, so returning
+     * the first clean tile picks an arbitrary side — that is how the walker ends up clicking the far
+     * side of a wall or into a building. When {@code playerLoc} is supplied, choose the clean
+     * neighbour reachable from the player and nearest to the player, keeping the nudge on the
+     * player's side (the road). See movement.md #19.
+     */
+    public static WorldPoint getPointWithWallDistance(WorldPoint target, WorldPoint playerLoc) {
         var tiles = Rs2Tile.getReachableTilesFromTile(target, 1);
 
-        var localPoint = LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), target);
-        if (Microbot.getClient().getTopLevelWorldView().getCollisionMaps() != null && localPoint != null) {
-            int[][] flags = Microbot.getClient().getTopLevelWorldView().getCollisionMaps()[Microbot.getClient().getTopLevelWorldView().getPlane()].getFlags();
+        var wv = Microbot.getClient().getTopLevelWorldView();
+        var localPoint = LocalPoint.fromWorld(wv, target);
+        if (wv.getCollisionMaps() != null && localPoint != null) {
+            int[][] flags = wv.getCollisionMaps()[wv.getPlane()].getFlags();
+
+            Set<WorldPoint> reachableFromPlayer = playerLoc == null
+                    ? Collections.emptySet()
+                    : Rs2Tile.getReachableTilesFromTile(playerLoc,
+                            Math.max(2, NORMAL_MINIMAP_REACH_EUCLIDEAN)).keySet();
 
             if (hasMinimapRelevantMovementFlag(localPoint, flags)) {
-                for (var tile : tiles.keySet()) {
-                    var localTilePoint = LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), tile);
-                    if (localTilePoint == null)
-                        continue;
-
-                    if (!hasMinimapRelevantMovementFlag(localTilePoint, flags))
-                        return tile;
+                WorldPoint best = bestWallDistanceNeighbor(tiles.keySet(), playerLoc, reachableFromPlayer,
+                        tile -> {
+                            var lp = LocalPoint.fromWorld(wv, tile);
+                            return lp != null && !hasMinimapRelevantMovementFlag(lp, flags);
+                        });
+                if (best != null) {
+                    return best;
                 }
             }
 
@@ -2564,21 +2618,54 @@ public class Rs2Walker {
                     || movementFlags.contains(MovementFlag.BLOCK_MOVEMENT_WEST)
                     || movementFlags.contains(MovementFlag.BLOCK_MOVEMENT_NORTH)
                     || movementFlags.contains(MovementFlag.BLOCK_MOVEMENT_SOUTH)) {
-                for (var tile : tiles.keySet()) {
-                    var localTilePoint = LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), tile);
-                    if (localTilePoint == null)
-                        continue;
-
-                    int tileData = flags[localTilePoint.getSceneX()][localTilePoint.getSceneY()];
-                    Set<MovementFlag> tileFlags = MovementFlag.getSetFlags(tileData);
-
-                    if (tileFlags.isEmpty())
-                        return tile;
+                WorldPoint best = bestWallDistanceNeighbor(tiles.keySet(), playerLoc, reachableFromPlayer,
+                        tile -> {
+                            var lp = LocalPoint.fromWorld(wv, tile);
+                            if (lp == null) {
+                                return false;
+                            }
+                            return MovementFlag.getSetFlags(flags[lp.getSceneX()][lp.getSceneY()]).isEmpty();
+                        });
+                if (best != null) {
+                    return best;
                 }
             }
         }
 
         return target;
+    }
+
+    /**
+     * Picks the wall-distance neighbour that best keeps the click on the player's side of the wall:
+     * prefer tiles reachable from the player, then the one nearest the player. Falls back to the
+     * first clean tile when the player position is unknown, preserving the original behaviour.
+     */
+    private static WorldPoint bestWallDistanceNeighbor(Collection<WorldPoint> candidates,
+                                                       WorldPoint playerLoc,
+                                                       Set<WorldPoint> reachableFromPlayer,
+                                                       Predicate<WorldPoint> isClean) {
+        WorldPoint best = null;
+        boolean bestReachable = false;
+        int bestDist = Integer.MAX_VALUE;
+        for (WorldPoint tile : candidates) {
+            if (tile == null || !isClean.test(tile)) {
+                continue;
+            }
+            if (playerLoc == null) {
+                return tile; // no player context: preserve original "first clean tile" behaviour
+            }
+            boolean reachable = reachableFromPlayer.contains(tile);
+            int dist = tile.distanceTo2D(playerLoc);
+            boolean better = best == null
+                    || (reachable && !bestReachable)
+                    || (reachable == bestReachable && dist < bestDist);
+            if (better) {
+                best = tile;
+                bestReachable = reachable;
+                bestDist = dist;
+            }
+        }
+        return best;
     }
 
     private static boolean isKnownWalkableOrUnloaded(WorldPoint target) {
@@ -2801,6 +2888,12 @@ public class Rs2Walker {
         }
 
         int cappedRadius = Math.max(2, maxEuclidean);
+        // The scaled-radius points below are geometric guesses toward an off-clip target. Right
+        // after a teleport (or when the target sits behind a wall) that guess can be an unreachable
+        // tile far off the route, producing the "random click far from the path" behaviour. Only
+        // click a guess that is actually reachable from the player.
+        Set<WorldPoint> reachable = Rs2Tile
+                .getReachableTilesFromTile(playerLoc, Math.max(2, cappedRadius)).keySet();
         int[] radii = new int[] {cappedRadius, 10, 8, 6, 4};
         for (int radius : radii) {
             if (radius >= distance) {
@@ -2813,6 +2906,9 @@ public class Rs2Walker {
                     playerLoc.getY() + (int) Math.round(dy * scale),
                     playerLoc.getPlane());
             if (fallback.equals(playerLoc)) {
+                continue;
+            }
+            if (!reachable.contains(fallback)) {
                 continue;
             }
             if (Rs2Walker.walkMiniMap(fallback)) {
@@ -2842,23 +2938,6 @@ public class Rs2Walker {
                     return true;
                 })
                 .orElse(false);
-    }
-
-    static WorldPoint findFurthestReachableRawPathPoint(List<WorldPoint> rawPath,
-                                                        WorldPoint playerLoc,
-                                                        int maxEuclidean) {
-        return findFurthestReachableRawPathPoint(rawPath, playerLoc, maxEuclidean, -1);
-    }
-
-    static WorldPoint findFurthestReachableRawPathPoint(List<WorldPoint> rawPath,
-                                                        WorldPoint playerLoc,
-                                                        int maxEuclidean,
-                                                        int rawAnchorIndex) {
-        Set<WorldPoint> reachable = playerLoc == null
-                ? Collections.emptySet()
-                : Rs2Tile.getReachableTilesFromTile(playerLoc, Math.max(2, maxEuclidean)).keySet();
-        return findFurthestRawPathPointMatching(rawPath, playerLoc, maxEuclidean, rawAnchorIndex,
-                reachable::contains);
     }
 
     static WorldPoint findFurthestRawPathPointMatching(List<WorldPoint> rawPath,
@@ -2900,6 +2979,200 @@ public class Rs2Walker {
         return best;
     }
 
+    /**
+     * Selects the next minimap click target from the raw route, gated on collision reachability.
+     * <p>
+     * Preference order:
+     * <ol>
+     *   <li>Furthest-forward raw point that is collision-reachable from the player. A point on the
+     *       far side of a wall is Euclidean-close but not reachable within the sampled area, so it is
+     *       excluded — this is what stops the walker clicking through castle walls / into buildings.</li>
+     *   <li>Furthest-forward raw point that is off the loaded scene. Collision cannot be verified for
+     *       unloaded tiles, but a minimap click toward a distant route point is still correct, so long
+     *       outdoor routes keep flowing.</li>
+     * </ol>
+     * Returns {@code null} when neither exists; the caller then falls back to wall-distance nudging
+     * plus {@link #findReachableRejoinRawPathPoint} rejoin handling.
+     */
+    private static WorldPoint selectRouteClickTarget(List<WorldPoint> rawPath, WorldPoint playerLoc,
+                                                     int maxEuclidean, int rawAnchorIndex) {
+        if (rawPath == null || rawPath.isEmpty() || playerLoc == null) {
+            lastRouteClickTier = "norawpath";
+            return null;
+        }
+        WorldPoint selected = selectRouteClickTargetAnchored(rawPath, playerLoc, maxEuclidean, rawAnchorIndex);
+        if (selected == null && rawAnchorIndex >= 0) {
+            // The smoothed->raw anchor can point past the player's vicinity (stale mapping, sparse
+            // smoothing, or a replanned route). The anchored forward scan then breaks immediately on
+            // the Euclidean bound and yields nothing for EVERY predicate — which is exactly the
+            // sel=none case that dropped route clicks onto the off-route wall-nudge clamp. Retry
+            // anchored at the player's own closest raw tile before giving up.
+            selected = selectRouteClickTargetAnchored(rawPath, playerLoc, maxEuclidean, -1);
+            if (selected != null) {
+                lastRouteClickTier = lastRouteClickTier + "@player";
+            }
+        }
+        return selected;
+    }
+
+    private static WorldPoint selectRouteClickTargetAnchored(List<WorldPoint> rawPath, WorldPoint playerLoc,
+                                                             int maxEuclidean, int rawAnchorIndex) {
+        // 1. Prefer the furthest forward raw point the player can reach in a STRAIGHT walkable line
+        //    (line-of-sight). A minimap click is resolved by the GAME's own pathing; if the target
+        //    is not on a straight walkable line, the game improvises its own route to it — cutting
+        //    corners, deviating wide, or trapping itself against a building (e.g. clicking a tile
+        //    ~10 tiles out past the Varrock West Bank corner, which it reaches by looping). Clicking
+        //    only LOS targets keeps the game walking exactly our route. See movement.md #19.
+        WorldPoint losTarget = null;
+        try {
+            losTarget = findFurthestRawPathPointMatching(rawPath, playerLoc, maxEuclidean,
+                    rawAnchorIndex, candidate -> hasWalkableLineOfSight(playerLoc, candidate));
+        } catch (Exception ex) {
+            log.debug("[Walker] LOS click selection failed, falling back: {}", ex.getMessage());
+        }
+        if (losTarget != null && !losTarget.equals(playerLoc)) {
+            lastRouteClickTier = "los";
+            return losTarget;
+        }
+        // 2. No LOS point (tight spot / just off-path): fall back to the furthest forward
+        //    collision-REACHABLE raw point. Depth is generous (2x the click radius) so legitimate
+        //    around-a-corner detours to a Euclidean-close point are still admitted, while the wrong
+        //    side of a wall is not.
+        Set<WorldPoint> reachable = Rs2Tile
+                .getReachableTilesFromTile(playerLoc, Math.max(2, maxEuclidean * 2)).keySet();
+        WorldPoint forwardReachable = findFurthestRawPathPointMatching(rawPath, playerLoc, maxEuclidean,
+                rawAnchorIndex, reachable::contains);
+        if (forwardReachable != null) {
+            lastRouteClickTier = "reach";
+            return forwardReachable;
+        }
+        // 3. Last resort WHILE A RAW ROUTE EXISTS: furthest forward walkable/unloaded raw point.
+        //    This tier can essentially always answer, which is the point — it guarantees selection
+        //    never falls through to the caller's smoothed-waypoint Euclidean clamp, which is what
+        //    produced the off-route click (3176,3428) that the game then detoured to. Worst case we
+        //    click a slightly-too-far tile that is still ON the planned route.
+        WorldPoint walkable = findFurthestRawPathPointMatching(rawPath, playerLoc, maxEuclidean,
+                rawAnchorIndex, Rs2Walker::isKnownWalkableOrUnloaded);
+        if (walkable != null && !walkable.equals(playerLoc)) {
+            lastRouteClickTier = "walkable";
+            return walkable;
+        }
+        // 4. Long route leaving the loaded area: furthest forward off-scene raw point.
+        WorldPoint offScene = findFurthestRawPathPointMatching(rawPath, playerLoc, maxEuclidean, rawAnchorIndex,
+                candidate -> isOffSceneOrUnloaded(candidate) && isMiniMapClickable(candidate, 5));
+        lastRouteClickTier = offScene != null ? "offscene" : "none";
+        return offScene;
+    }
+
+    /**
+     * Which tier of {@link #selectRouteClickTarget} produced the most recent click target
+     * ({@code los} / {@code reach} / {@code offscene} / {@code none}, or {@code wallnudge} /
+     * {@code rejoin} when selection fell through). Surfaced in the {@code click_candidate_found}
+     * tmark so a log alone shows which selection path a click came from.
+     */
+    private static volatile String lastRouteClickTier = "none";
+
+    private static boolean isOffSceneOrUnloaded(WorldPoint point) {
+        if (point == null) {
+            return false;
+        }
+        return LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), point) == null;
+    }
+
+    /**
+     * True if the player can walk from {@code from} to {@code to} in a straight (Bresenham-style)
+     * line without a collision-blocked step, per the pathfinder collision map that produced the raw
+     * path. A minimap click is resolved by the game's own pathing, so handing it a target that is
+     * NOT on a straight walkable line lets it improvise a detour (corner-cut through an open door,
+     * loop around a building). Restricting click targets to LOS keeps the game on our route.
+     * Mirrors {@code PathSmoother.lineOfSight} (collision only; transport-edge blocks are rare on a
+     * short click line and are handled by the route-object layer).
+     */
+    static boolean hasWalkableLineOfSight(WorldPoint from, WorldPoint to) {
+        if (from == null || to == null || from.getPlane() != to.getPlane()) {
+            return false;
+        }
+        PathfinderConfig cfg = Rs2PathApi.getPathfinderConfig();
+        if (cfg == null) {
+            return false;
+        }
+        CollisionMap map = cfg.getMap();
+        if (map == null) {
+            return false;
+        }
+        int x = from.getX();
+        int y = from.getY();
+        final int z = from.getPlane();
+        final int tx = to.getX();
+        final int ty = to.getY();
+        int guard = 0;
+        while ((x != tx || y != ty) && guard++ < 128) {
+            int dx = Integer.signum(tx - x);
+            int dy = Integer.signum(ty - y);
+            if (!map.canStep(x, y, z, dx, dy)) {
+                return false;
+            }
+            x += dx;
+            y += dy;
+        }
+        return x == tx && y == ty;
+    }
+
+    /**
+     * Finds a reachable raw-path point to rejoin the route after the player has been pushed off it
+     * (stuck against a wall, knocked back, or landed off-path after a teleport). Unlike the primary
+     * forward-only selection, this scans a bounded index window on BOTH sides of the anchor so the
+     * walker can step slightly backward onto the path line when nothing ahead is reachable. Forward
+     * points are still preferred (highest index first), so normal progress is never sacrificed and
+     * the walker cannot snap all the way back to an already-travelled branch.
+     */
+    private static WorldPoint findReachableRejoinRawPathPoint(List<WorldPoint> rawPath, WorldPoint playerLoc,
+                                                              int maxEuclidean, int rawAnchorIndex) {
+        if (playerLoc == null) {
+            return null;
+        }
+        Set<WorldPoint> reachable = Rs2Tile
+                .getReachableTilesFromTile(playerLoc, Math.max(2, maxEuclidean * 2)).keySet();
+        return findReachableRejoinRawPathPoint(rawPath, playerLoc, maxEuclidean, rawAnchorIndex,
+                reachable::contains);
+    }
+
+    /**
+     * Testable core of {@link #findReachableRejoinRawPathPoint(List, WorldPoint, int, int)} with an
+     * injectable reachability predicate (so it can be exercised without a live client).
+     */
+    static WorldPoint findReachableRejoinRawPathPoint(List<WorldPoint> rawPath, WorldPoint playerLoc,
+                                                      int maxEuclidean, int rawAnchorIndex,
+                                                      Predicate<WorldPoint> isReachable) {
+        if (rawPath == null || rawPath.isEmpty() || playerLoc == null || isReachable == null) {
+            return null;
+        }
+        int anchor = rawPathForwardAnchorIndex(rawPath, playerLoc, rawAnchorIndex);
+        if (anchor < 0) {
+            return null;
+        }
+        int window = maxEuclidean + 2;
+        int lo = Math.max(0, anchor - window);
+        int hi = Math.min(rawPath.size() - 1, anchor + window);
+        int maxSq = maxEuclidean * maxEuclidean;
+        // Highest index first => prefer the furthest-forward reachable point; only fall back to
+        // points behind the anchor when nothing ahead in the window is reachable.
+        for (int idx = hi; idx >= lo; idx--) {
+            WorldPoint candidate = rawPath.get(idx);
+            if (candidate == null || candidate.getPlane() != playerLoc.getPlane()
+                    || candidate.equals(playerLoc)) {
+                continue;
+            }
+            if (euclideanSq(candidate, playerLoc) > maxSq) {
+                continue;
+            }
+            if (isReachable.test(candidate)) {
+                return candidate;
+            }
+        }
+        return null;
+    }
+
     static WorldPoint findFurthestVisibleKnownRawPathPoint(List<WorldPoint> rawPath,
                                                            WorldPoint playerLoc,
                                                            int maxEuclidean) {
@@ -2912,6 +3185,17 @@ public class Rs2Walker {
                                                            int rawAnchorIndex) {
         if (rawPath == null || rawPath.isEmpty() || playerLoc == null) {
             return null;
+        }
+
+        // Prefer a straight-walkable (line-of-sight) route point here too, so the outside-clip
+        // route fallback follows the same policy as primary selection instead of handing the game a
+        // target it can only reach by detouring.
+        WorldPoint losFallback = findFurthestRawPathPointMatching(rawPath, playerLoc, maxEuclidean,
+                rawAnchorIndex, candidate -> !candidate.equals(playerLoc)
+                        && hasWalkableLineOfSight(playerLoc, candidate)
+                        && isMiniMapClickable(candidate, 5));
+        if (losFallback != null) {
+            return losFallback;
         }
 
         return findFurthestRawPathPointMatching(rawPath, playerLoc, maxEuclidean, rawAnchorIndex,
@@ -3033,12 +3317,11 @@ public class Rs2Walker {
         int[] routeSmoothedToRaw = mapSmoothedToRaw(path, rawPath);
         int rawAnchorIndex = rawIndexForSmoothedIndex(targetIdx, routeSmoothedToRaw, rawPath);
 
-        WorldPoint clickTarget = findFurthestRawPathPointMatching(
-                rawPath,
-                playerLoc,
-                maxEuclidean,
-                rawAnchorIndex,
-                Rs2Walker::isKnownWalkableOrUnloaded);
+        // Use the SAME line-of-sight-first selector as the main route loop. Recovery/idle-nudge and
+        // interim continuation clicks previously had their own walkable-only selection, so which
+        // policy applied depended on which path happened to fire (timing-dependent, e.g. a slow
+        // pathfinder makes the idle nudge issue the first click instead of the main loop).
+        WorldPoint clickTarget = selectRouteClickTarget(rawPath, playerLoc, maxEuclidean, rawAnchorIndex);
         if (clickTarget == null) {
             int clickableIdx = findFurthestForwardClickableIndex(path, startIdx, playerLoc,
                     wp -> {
