@@ -401,35 +401,40 @@ When a gate can be crossed by either a quest unlock or a currency payment, do no
 
 **Defensive check:** Add resource tests that assert both paid and quest-free transports load, the gate tiles are not quest-only restricted, and the gate edge is blocked without a usable transport.
 
-## 19. Gate minimap click targets on reachability, not walkability — and allow bidirectional rejoin
+## 19. Reachability-gate the FALLBACK click paths, and allow bidirectional rejoin
 
-A tile being *walkable* (`Rs2Tile.isWalkable`, i.e. not `BLOCK_MOVEMENT_FULL`) is not the same as being *reachable from the player*. Next to a wall the two diverge hard: a tile flush on the far side of a castle wall is walkable and Euclidean-close, but only reachable via a long detour. Any minimap click-target selection that filters on walkability/clip-visibility alone will happily pick the wrong side of the wall and stall. Select the next raw-route click point from the player's collision-**reachable** set (`Rs2Tile.getReachableTilesFromTile`, which honors edge flags) with a generous BFS depth (~2× the click radius) so real around-a-corner detours still qualify while the wrong side is excluded. Only fall back to a walkable/off-scene point when the target is genuinely off the loaded scene (collision can't be verified there). Likewise, `getPointWithWallDistance` computes tiles reachable *from the target*, so its nudge can land across a wall or inside a building — verify its result with `Rs2Tile.isTileReachable` before clicking it.
+A tile being *walkable* (`Rs2Tile.isWalkable`, i.e. not `BLOCK_MOVEMENT_FULL`) is not the same as being *reachable from the player*. Next to a wall the two diverge hard: a tile flush on the far side of a castle wall is walkable and Euclidean-close, but only reachable via a long detour. This matters for click targets that are **invented** rather than taken from the route:
 
-Forward-only anchoring (introduced to stop the walker snapping back to already-travelled branches) overcorrects when the player is pushed *off* the path: if nothing ahead is reachable, forward-only recovery returns nothing and the walker stalls against the wall. Recovery must therefore be **bidirectional**: scan a bounded index window on both sides of the anchor and rejoin via the nearest reachable raw point, preferring the furthest-forward one so normal progress is never sacrificed. This is a rejoin path for the off-path case only; steady-state progress stays forward-only.
+- `getPointWithWallDistance` picks a neighbour reachable *from the target*, from an unordered set, so its nudge can land on the far side of a wall or inside a building. Pass the player position so it prefers a neighbour reachable from and nearest to the player, and verify the result with `Rs2Tile.isTileReachable` before clicking it.
+- The scaled-radius directional fallback in `walkMiniMapToward` invents a geometric point toward an off-clip target. Only click it if it is actually reachable, otherwise a fresh teleport produces clicks far off the route.
 
-**Why this matters:** Walking north up the west side of Varrock castle, the path runs flush against the wall. The selector picked a forward raw/nudged point on the far (east) side of the wall and clicked it, so the player pressed into the wall and stalled. The same mechanism clicks into houses (interior tile is walkable but unreachable) and produces "random far clicks" right after a teleport, when a stale smoothed waypoint or blind scaled-radius directional guess targets an unreachable tile.
+Forward-only anchoring (introduced to stop the walker snapping back to already-travelled branches) overcorrects when the player is pushed *off* the path: if nothing ahead is reachable, forward-only recovery returns nothing and the walker stalls. Recovery must therefore be **bidirectional**: scan a bounded index window on both sides of the anchor and rejoin via the nearest reachable raw point, preferring the furthest-forward one so normal progress is never sacrificed. This is a rejoin path for the off-path case only; steady-state progress stays forward-only.
+
+**Do NOT extend this to primary selection.** An earlier revision selected the primary click from the player's bounded reachable set. That was reverted: a BFS bounded by click radius can exclude legitimate around-a-corner points and shorten clicks for no benefit, because a point taken from the raw route is safe by construction regardless of how the server walks to it (see #20). Reachability gating belongs only on targets that are *not* route points.
+
+**Why this matters:** Walking past the Varrock West Bank, the wall-distance nudge and a stale-anchor fallback produced clicks that were off the planned route, so the game improvised a detour. The route-membership rule in #20 fixes the primary path; these guards fix the invented-target paths.
 
 **Pattern to follow:**
 
 ```java
-// Primary: furthest-forward COLLISION-REACHABLE raw point (wrong side of wall excluded).
+// Primary: an on-route point (see #20) — no reachability gate needed.
 WorldPoint rawRouteTarget = selectRouteClickTarget(rawPath, playerLoc, reach, rawAnchorIndex);
 if (rawRouteTarget != null) {
     clickTarget = rawRouteTarget;
 } else {
-    clickTarget = getPointWithWallDistance(targetWp);
+    // Invented target: now reachability matters.
+    clickTarget = getPointWithWallDistance(targetWp, playerLoc);
     if (!Rs2Tile.isTileReachable(clickTarget)) {
         WorldPoint rejoin = findReachableRejoinRawPathPoint(rawPath, playerLoc, reach, rawAnchorIndex);
         if (rejoin != null) clickTarget = rejoin; // step back onto the line if needed
     }
 }
-// Directional scaled-radius guesses must also be reachability-gated:
-if (!reachable.contains(scaledFallback)) continue;
+if (!reachable.contains(scaledFallback)) continue; // directional guesses too
 ```
 
-**Where this applies:** `Rs2Walker.selectRouteClickTarget`, `Rs2Walker.findReachableRejoinRawPathPoint`, `Rs2Walker.walkMiniMapToward`, `getPointWithWallDistance` consumers, and any minimap click-target selector used while a raw route exists.
+**Where this applies:** `Rs2Walker.findReachableRejoinRawPathPoint`, `Rs2Walker.walkMiniMapToward`, `getPointWithWallDistance` consumers. **Not** `selectRouteClickTarget`.
 
-**Defensive check:** Unit-test the rejoin core with an injected reachability predicate: (a) player pushed one tile off-path with nothing ahead reachable must return a point *behind* the anchor; (b) with points ahead reachable it must return the furthest-forward one inside the reach circle; (c) nothing reachable must return null so stall/recalc can take over. Live-repro: walk north flush against Varrock castle's west wall — the walker should round the corner instead of pressing into the wall, and a fresh teleport should not produce a click far off the route.
+**Defensive check:** Unit-test the rejoin core with an injected reachability predicate: (a) player pushed one tile off-path with nothing ahead reachable must return a point *behind* the anchor; (b) with points ahead reachable it must return the furthest-forward one inside the reach circle; (c) nothing reachable must return null so stall/recalc can take over.
 
 ## 20. Keep minimap click targets on the raw route — do NOT clamp them to line-of-sight
 
