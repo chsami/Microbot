@@ -69,6 +69,20 @@ public class SplitFlagMap {
         return regionMaps[index].get(x, y, z, flag);
     }
 
+    /**
+     * Whether collision data was actually loaded for the region containing {@code (x, y)}.
+     *
+     * <p>Callers need this to tell "known to be blocked" apart from "no data". {@link #get} returns
+     * {@code false} for an unloaded region, and {@code CollisionMap.isBlocked} is the conjunction of
+     * four negated {@link #get} calls, so an <em>unmapped</em> region reads as fully blocked. Any
+     * check that treats blocked as unreachable must gate on this first, or it will reject every
+     * target in an instance or in a region missing from the collision map.
+     */
+    public boolean hasRegion(int x, int y) {
+        final int index = getIndex(x / REGION_SIZE, y / REGION_SIZE);
+        return index >= 0 && index < regionMaps.length && regionMaps[index] != null;
+    }
+
     private int getIndex(int regionX, int regionY) {
         return (regionX - regionExtents.getMinX()) + (regionY - regionExtents.getMinY()) * widthInclusive;
     }

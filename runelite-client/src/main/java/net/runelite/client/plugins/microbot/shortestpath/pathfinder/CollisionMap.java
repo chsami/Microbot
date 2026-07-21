@@ -68,6 +68,19 @@ public class CollisionMap {
     }
 
     /**
+     * Whether collision data exists for the region containing {@code (x, y)}.
+     *
+     * <p>Required to interpret {@link #isBlocked}: an <em>unmapped</em> region reads as fully
+     * blocked, because {@link SplitFlagMap#get} returns {@code false} for one and {@code isBlocked}
+     * negates all four directions. Gate on this before treating blocked as unreachable.
+     *
+     * @see SplitFlagMap#hasRegion(int, int)
+     */
+    public boolean hasRegion(int x, int y) {
+        return collisionData.hasRegion(x, y);
+    }
+
+    /**
      * Single walking step permission check from (x,y,z) in direction (dx,dy).
      * Used by {@link PathSmoother}. Graph expansion uses {@link #fillTraversableLegacy}
      * instead; they intentionally differ where legacy blocked-tile logic diverges from
