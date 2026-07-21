@@ -1,5 +1,16 @@
 # Movement Gotchas
 
+> **How to read these.** Each entry records a failure mode observed while working on the walker.
+> Two caveats for reviewers:
+>
+> - **"Pattern to follow" blocks are illustrative.** They may use shortened or pseudo-code names
+>   (`atTransportDestination`, `isRouteActive`, `clickOptimisticRecoveryTarget`, …) that do not exist
+>   verbatim in the source. The **"Where this applies"** line is the authoritative list of real symbols.
+> - **Some entries record approaches that were tried and reverted** (#19, #20). They are kept
+>   deliberately so the reverted idea is not reintroduced from an older note. Where an entry cites a
+>   measured log line, that measurement is the evidence; where it does not, treat it as a hypothesis
+>   that happened to hold at the time of writing.
+
 ## 1. Do not recurse on failed minimap clicks without changing the click target
 
 `Rs2Walker.processWalk` holds the walker lock while processing a path. If a minimap click is rejected because the calculated point is outside the minimap clip, immediately recursing with the same target can spin forever while still holding the lock. Shrink the click target toward the player or otherwise change the condition before retrying.
@@ -81,7 +92,7 @@ If a previous minimap click is still moving the player, do not attribute that mo
 
 ## 5. Suppress the inverse adjacent transport after crossing a same-plane door
 
-Some doors are represented in `transports.tsv` as two adjacent same-plane transports, one for each direction. After the walker clicks one side and arrives on the other, immediately accepting the inverse transport can bounce the player back through the same door instead of letting the next minimap step continue away from it. Mark both tiles of a successful adjacent same-plane transport as recently handled for a short window.
+Some doors are represented in `transports.tsv` as two adjacent same-plane transports, one for each direction. After the walker clicks one side and arrives on the other, immediately accepting the inverse transport can bounce the player back through the same door instead of letting the next minimap step continue away from it. Mark both tiles of a successful adjacent same-plane transport as recently handled for a short window. **This is necessary but not sufficient — see #22:** suppression must also run when the landing check *fails*, because an adjacent transport requires landing on the exact destination tile and a crossing can succeed while that check reports failure.
 
 **Why this matters:** Leaving Draynor Manor through the east/back door can alternate between `3123,3360,0` and `3123,3361,0`, repeatedly logging raw-path/current-tile transport handling and burning the route timeout before walking back to Draynor.
 
