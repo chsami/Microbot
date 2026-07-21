@@ -431,24 +431,25 @@ if (!reachable.contains(scaledFallback)) continue;
 
 **Defensive check:** Unit-test the rejoin core with an injected reachability predicate: (a) player pushed one tile off-path with nothing ahead reachable must return a point *behind* the anchor; (b) with points ahead reachable it must return the furthest-forward one inside the reach circle; (c) nothing reachable must return null so stall/recalc can take over. Live-repro: walk north flush against Varrock castle's west wall — the walker should round the corner instead of pressing into the wall, and a fresh teleport should not produce a click far off the route.
 
-## 20. Clamp minimap click targets to line-of-sight, not a Euclidean radius
+## 20. Keep minimap click targets on the raw route — do NOT clamp them to line-of-sight
 
-A minimap click is resolved by the **game's own pathing** to the clicked tile — not by our route. So the click target must be a tile the player can reach in a **straight walkable line** (line-of-sight). If the target is off a straight line (around a building corner, past an open door), the game improvises its own route to it and deviates: cutting the corner through the door, looping wide, or trapping itself so it has to backtrack out. Do **not** pick the click by clamping a far smoothed waypoint to a Euclidean radius (`clampToEuclideanRadius`) — that routinely overshoots the first line-of-sight waypoint into no-LOS territory. Select the furthest forward raw-path point with straight LOS from the player (`hasWalkableLineOfSight`, mirroring `PathSmoother.lineOfSight` over the pathfinder `CollisionMap`). LOS is naturally long on open roads (clicks stay long) and short only at corners/tight rooms (where short clicks are correct), so it does not over-click.
+A minimap click is resolved by the **game's own pathing**, so line of sight is irrelevant to walking: a player clicks past a corner, through a doorway, or around a building and the server routes them there. The invariant that matters is that the click target sits **on the raw route** — then wherever the server chooses to walk, we arrive on the planned path. Do not select the click by clamping a far smoothed waypoint to a Euclidean radius either; that is what produced an off-route target in the first place.
 
-**Why this matters:** Walking from `(3183,3435)` to `(3173,3399)` past the **Varrock West Bank**, the player has straight LOS only ~3 tiles (to the corner `(3182,3432)`), but the click layer clamped a far waypoint to a 10-tile radius and clicked `(3176,3428)` — off the raw path and with no LOS. The game then looped the player wide around the bank and it had to backtrack. The raw path itself is optimal (down the west side); the defect is purely the no-LOS click. LOS clamping turns the whole 41-tile leg into 4 clean straight clicks (`3182,3432 → 3172,3425 → 3172,3399 → 3173,3399`).
+**Why this matters:** Walking past the Varrock West Bank, selection returned null on a stale anchor (see #24), so the caller clamped a far smoothed waypoint to a ~10 tile radius and clicked `(3176,3428)` — a tile that is *not* on the raw route. The game pathed there its own way, deviating wide and backtracking.
+
+**Do not "fix" this with line-of-sight.** An earlier revision clamped clicks to a straight walkable line. It removed the symptom but made the walker advance corner-to-corner — stopping at every corner to re-aim, because it would only click as far as it could see in a straight line. That is a visible behavioural tell and it bought no correctness: an on-route target is safe regardless of how the server walks to it. It was reverted.
 
 **Pattern to follow:**
 
 ```java
-WorldPoint losTarget = findFurthestRawPathPointMatching(rawPath, playerLoc, reach, rawAnchor,
-        candidate -> hasWalkableLineOfSight(playerLoc, candidate));
-if (losTarget != null) return losTarget;           // straight line — game can't deviate
-// fall back to reachable / off-scene / rejoin only when no LOS point exists
+// Furthest forward point ON THE RAW ROUTE within minimap reach. No LOS requirement.
+WorldPoint forward = findFurthestRawPathPointMatching(rawPath, playerLoc, maxEuclidean,
+        rawAnchorIndex, Rs2Walker::isKnownWalkableOrUnloaded);
 ```
 
-**Where this applies:** `Rs2Walker.selectRouteClickTarget`, `Rs2Walker.hasWalkableLineOfSight`, and any minimap click-target selection that clamps to a Euclidean radius while a raw route exists.
+**Where this applies:** `Rs2Walker.selectRouteClickTarget`, `findFurthestVisibleKnownRawPathPoint`, and any minimap click selection while a raw route exists. Pending doors/gates are handled by `handlePendingDoorBeforeRouteClick` — not by shortening the click.
 
-**Defensive check:** `LineOfSightClickRegressionTest` — from `(3183,3435)` to `(3173,3399)`, the old `(3176,3428)` click must have no LOS from the start, the LOS-clamped click must be on the raw route, and the greedy LOS chain must reach the goal in ≤ 8 straight clicks.
+**Defensive check:** `RouteClickTargetRegressionTest` asserts the historic `(3176,3428)` is not on the raw route, and that the route offers several on-route candidates within minimap reach so a click is never artificially shortened to the nearest corner.
 
 ## 21. Route continuation is one-shot — keep the idle-nudge window short
 

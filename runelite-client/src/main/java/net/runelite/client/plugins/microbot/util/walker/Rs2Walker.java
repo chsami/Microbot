@@ -19,7 +19,6 @@ import net.runelite.client.plugins.devtools.MovementFlag;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
 import net.runelite.client.plugins.microbot.shortestpath.*;
-import net.runelite.client.plugins.microbot.shortestpath.pathfinder.CollisionMap;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.Pathfinder;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.PathfinderConfig;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
@@ -3017,51 +3016,27 @@ public class Rs2Walker {
 
     private static WorldPoint selectRouteClickTargetAnchored(List<WorldPoint> rawPath, WorldPoint playerLoc,
                                                              int maxEuclidean, int rawAnchorIndex) {
-        // 1. Prefer the furthest forward raw point the player can reach in a STRAIGHT walkable line
-        //    (line-of-sight). A minimap click is resolved by the GAME's own pathing; if the target
-        //    is not on a straight walkable line, the game improvises its own route to it — cutting
-        //    corners, deviating wide, or trapping itself against a building (e.g. clicking a tile
-        //    ~10 tiles out past the Varrock West Bank corner, which it reaches by looping). Clicking
-        //    only LOS targets keeps the game walking exactly our route. See movement.md #19.
-        WorldPoint losTarget = null;
-        try {
-            losTarget = findFurthestRawPathPointMatching(rawPath, playerLoc, maxEuclidean,
-                    rawAnchorIndex, candidate -> hasWalkableLineOfSight(playerLoc, candidate));
-        } catch (Exception ex) {
-            log.debug("[Walker] LOS click selection failed, falling back: {}", ex.getMessage());
-        }
-        if (losTarget != null && !losTarget.equals(playerLoc)) {
-            lastRouteClickTier = "los";
-            return losTarget;
-        }
-        // 2. No LOS point (tight spot / just off-path): fall back to the furthest forward
-        //    collision-REACHABLE raw point. Depth is generous (2x the click radius) so legitimate
-        //    around-a-corner detours to a Euclidean-close point are still admitted, while the wrong
-        //    side of a wall is not.
-        Set<WorldPoint> reachable = Rs2Tile
-                .getReachableTilesFromTile(playerLoc, Math.max(2, maxEuclidean * 2)).keySet();
-        WorldPoint forwardReachable = findFurthestRawPathPointMatching(rawPath, playerLoc, maxEuclidean,
-                rawAnchorIndex, reachable::contains);
-        if (forwardReachable != null) {
-            lastRouteClickTier = "reach";
-            return forwardReachable;
-        }
-        // 3. Last resort WHILE A RAW ROUTE EXISTS: furthest forward walkable/unloaded raw point.
-        //    This tier can essentially always answer, which is the point — it guarantees selection
-        //    never falls through to the caller's smoothed-waypoint Euclidean clamp, which is what
-        //    produced the off-route click (3176,3428) that the game then detoured to. Worst case we
-        //    click a slightly-too-far tile that is still ON the planned route.
-        WorldPoint walkable = findFurthestRawPathPointMatching(rawPath, playerLoc, maxEuclidean,
+        // Click the furthest forward point ON THE RAW ROUTE that is within minimap reach.
+        //
+        // A minimap click is resolved by the GAME's own pathing, so line of sight is irrelevant to
+        // walking: a player clicks past a corner, through a doorway, or around a building and the
+        // server routes them there. Requiring straight LOS made the walker advance corner-to-corner,
+        // stopping at each one to re-aim — a visible tell, and it bought no correctness. The
+        // invariant that actually matters is that the target sits ON the planned route, so wherever
+        // the server routes us we still arrive on that route.
+        //
+        // The off-route click (3176,3428) that started this came from the caller's
+        // smoothed-waypoint Euclidean clamp after selection returned null on a stale anchor — not
+        // from a lack of line of sight. Pending doors/gates are handled by
+        // handlePendingDoorBeforeRouteClick, not by shortening the click.
+        WorldPoint forward = findFurthestRawPathPointMatching(rawPath, playerLoc, maxEuclidean,
                 rawAnchorIndex, Rs2Walker::isKnownWalkableOrUnloaded);
-        if (walkable != null && !walkable.equals(playerLoc)) {
-            lastRouteClickTier = "walkable";
-            return walkable;
+        if (forward != null && !forward.equals(playerLoc)) {
+            lastRouteClickTier = "route";
+            return forward;
         }
-        // 4. Long route leaving the loaded area: furthest forward off-scene raw point.
-        WorldPoint offScene = findFurthestRawPathPointMatching(rawPath, playerLoc, maxEuclidean, rawAnchorIndex,
-                candidate -> isOffSceneOrUnloaded(candidate) && isMiniMapClickable(candidate, 5));
-        lastRouteClickTier = offScene != null ? "offscene" : "none";
-        return offScene;
+        lastRouteClickTier = "none";
+        return null;
     }
 
     /**
@@ -3072,51 +3047,8 @@ public class Rs2Walker {
      */
     private static volatile String lastRouteClickTier = "none";
 
-    private static boolean isOffSceneOrUnloaded(WorldPoint point) {
-        if (point == null) {
-            return false;
-        }
-        return LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), point) == null;
-    }
 
-    /**
-     * True if the player can walk from {@code from} to {@code to} in a straight (Bresenham-style)
-     * line without a collision-blocked step, per the pathfinder collision map that produced the raw
-     * path. A minimap click is resolved by the game's own pathing, so handing it a target that is
-     * NOT on a straight walkable line lets it improvise a detour (corner-cut through an open door,
-     * loop around a building). Restricting click targets to LOS keeps the game on our route.
-     * Mirrors {@code PathSmoother.lineOfSight} (collision only; transport-edge blocks are rare on a
-     * short click line and are handled by the route-object layer).
-     */
-    static boolean hasWalkableLineOfSight(WorldPoint from, WorldPoint to) {
-        if (from == null || to == null || from.getPlane() != to.getPlane()) {
-            return false;
-        }
-        PathfinderConfig cfg = Rs2PathApi.getPathfinderConfig();
-        if (cfg == null) {
-            return false;
-        }
-        CollisionMap map = cfg.getMap();
-        if (map == null) {
-            return false;
-        }
-        int x = from.getX();
-        int y = from.getY();
-        final int z = from.getPlane();
-        final int tx = to.getX();
-        final int ty = to.getY();
-        int guard = 0;
-        while ((x != tx || y != ty) && guard++ < 128) {
-            int dx = Integer.signum(tx - x);
-            int dy = Integer.signum(ty - y);
-            if (!map.canStep(x, y, z, dx, dy)) {
-                return false;
-            }
-            x += dx;
-            y += dy;
-        }
-        return x == tx && y == ty;
-    }
+
 
     /**
      * Finds a reachable raw-path point to rejoin the route after the player has been pushed off it
@@ -3185,17 +3117,6 @@ public class Rs2Walker {
                                                            int rawAnchorIndex) {
         if (rawPath == null || rawPath.isEmpty() || playerLoc == null) {
             return null;
-        }
-
-        // Prefer a straight-walkable (line-of-sight) route point here too, so the outside-clip
-        // route fallback follows the same policy as primary selection instead of handing the game a
-        // target it can only reach by detouring.
-        WorldPoint losFallback = findFurthestRawPathPointMatching(rawPath, playerLoc, maxEuclidean,
-                rawAnchorIndex, candidate -> !candidate.equals(playerLoc)
-                        && hasWalkableLineOfSight(playerLoc, candidate)
-                        && isMiniMapClickable(candidate, 5));
-        if (losFallback != null) {
-            return losFallback;
         }
 
         return findFurthestRawPathPointMatching(rawPath, playerLoc, maxEuclidean, rawAnchorIndex,
