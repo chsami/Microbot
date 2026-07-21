@@ -345,13 +345,21 @@ public class PathfinderConfig {
         TransportRefreshSnapshot snap = transportRefreshSnapshot;
         if (snap != null && snap.cacheKeyHash == refreshCacheKeyHash && client != null) {
             int[] boostedProbe = new int[SKILLS.length];
+            final int[] probeOrdinals = snap.sortedSkillOrdinals;
             Microbot.getClientThread().runOnClientThreadOptional(() -> {
-                for (int i = 0; i < SKILLS.length; i++) {
-                    boostedProbe[i] = client.getBoostedSkillLevel(SKILLS[i]);
+                // Only the skills some transport gates on; probing all 23 both cost client-thread
+                // time and let hitpoints/prayer drift invalidate an otherwise valid cache.
+                if (probeOrdinals != null) {
+                    for (int ordinal : probeOrdinals) {
+                        if (ordinal >= 0 && ordinal < SKILLS.length) {
+                            boostedProbe[ordinal] = client.getBoostedSkillLevel(SKILLS[ordinal]);
+                        }
+                    }
                 }
                 return true;
             });
-            int verProbe = computeTransportRefreshVerificationHash(boostedProbe, snap.sortedVarbits, snap.sortedVarplayers, snap.sortedQuestIds);
+            int verProbe = computeTransportRefreshVerificationHash(boostedProbe, snap.sortedSkillOrdinals,
+                    snap.sortedVarbits, snap.sortedVarplayers, snap.sortedQuestIds);
             if (verProbe == snap.verificationHash) {
                 snap.restoreInto(this);
                 if (useBankItems && config != null && config.maxSimilarTransportDistance() > 0) {
@@ -400,10 +408,22 @@ public class PathfinderConfig {
 
         Set<Integer> varbitIds = new HashSet<>();
         Set<Integer> varplayerIds = new HashSet<>();
+        // Skills that some transport actually gates on (see hasRequiredLevels: a level > 0 is a
+        // requirement). Only these may participate in the verification hash — otherwise hitpoints
+        // regenerating invalidates the whole transport cache.
+        Set<Integer> requiredSkillOrdinals = new HashSet<>();
         for (Set<Transport> ts : mergedList.values()) {
             for (Transport t : ts) {
                 t.getVarbits().forEach(v -> varbitIds.add(v.getVarbitId()));
                 t.getVarplayers().forEach(v -> varplayerIds.add(v.getVarplayerId()));
+                int[] required = t.getSkillLevels();
+                if (required != null) {
+                    for (int i = 0; i < required.length; i++) {
+                        if (required[i] > 0) {
+                            requiredSkillOrdinals.add(i);
+                        }
+                    }
+                }
             }
         }
 
@@ -490,9 +510,12 @@ public class PathfinderConfig {
                 .distinct()
                 .sorted()
                 .toArray();
-        int verificationHash = computeTransportRefreshVerificationHash(refreshBoostedLevels, sortedVarbits, sortedVarplayers, sortedQuestIds);
+        int[] sortedSkillOrdinals = requiredSkillOrdinals.stream().mapToInt(Integer::intValue).sorted().toArray();
+        int verificationHash = computeTransportRefreshVerificationHash(refreshBoostedLevels, sortedSkillOrdinals,
+                sortedVarbits, sortedVarplayers, sortedQuestIds);
         transportRefreshSnapshot = TransportRefreshSnapshot.capture(
-                refreshCacheKeyHash, verificationHash, sortedVarbits, sortedVarplayers, sortedQuestIds, transports, usableTeleports);
+                refreshCacheKeyHash, verificationHash, sortedSkillOrdinals, sortedVarbits, sortedVarplayers, sortedQuestIds,
+                transports, usableTeleports);
 
         long similarStart = System.currentTimeMillis();
         if (useBankItems && config.maxSimilarTransportDistance() > 0) {
@@ -1615,17 +1638,38 @@ public class PathfinderConfig {
         return h[0];
     }
 
-    private static int computeTransportRefreshVerificationHash(int[] boostedLevels, int[] sortedVarbits, int[] sortedVarplayers, int[] sortedQuestIds) {
-        return computeTransportRefreshVerificationHash(boostedLevels, sortedVarbits, sortedVarplayers, sortedQuestIds, questId -> {
+    private static int computeTransportRefreshVerificationHash(int[] boostedLevels, int[] sortedSkillOrdinals,
+            int[] sortedVarbits, int[] sortedVarplayers, int[] sortedQuestIds) {
+        return computeTransportRefreshVerificationHash(boostedLevels, sortedSkillOrdinals, sortedVarbits, sortedVarplayers,
+                sortedQuestIds, questId -> {
             Quest quest = resolveQuestById(questId);
             return quest == null ? QuestState.NOT_STARTED : Rs2Player.getQuestState(quest);
         });
     }
 
-    static int computeTransportRefreshVerificationHash(int[] boostedLevels, int[] sortedVarbits, int[] sortedVarplayers,
+    /**
+     * @param sortedSkillOrdinals skills that some transport actually gates on. Hashing every skill
+     *                            (the previous {@code Arrays.hashCode(boostedLevels)}) meant
+     *                            hitpoints regenerating or prayer draining invalidated the transport
+     *                            cache, forcing a full ~2.6s re-evaluation on most walks. A skill no
+     *                            transport requires cannot change any transport's usability, so it
+     *                            must not participate — mirroring how varbits/varplayers are already
+     *                            collected from the transports themselves.
+     */
+    static int computeTransportRefreshVerificationHash(int[] boostedLevels, int[] sortedSkillOrdinals,
+            int[] sortedVarbits, int[] sortedVarplayers,
             int[] sortedQuestIds, IntFunction<QuestState> questStateProvider) {
         assert boostedLevels != null;
-        int h = Arrays.hashCode(boostedLevels);
+        int h = 1;
+        if (sortedSkillOrdinals != null) {
+            for (int ordinal : sortedSkillOrdinals) {
+                if (ordinal < 0 || ordinal >= boostedLevels.length) {
+                    continue;
+                }
+                h = 31 * h + ordinal;
+                h = 31 * h + boostedLevels[ordinal];
+            }
+        }
         for (int id : sortedVarbits) {
             h = 31 * h + id;
             h = 31 * h + Microbot.getVarbitValue(id);
@@ -1674,17 +1718,20 @@ public class PathfinderConfig {
     private static final class TransportRefreshSnapshot {
         private final int cacheKeyHash;
         private final int verificationHash;
+        private final int[] sortedSkillOrdinals;
         private final int[] sortedVarbits;
         private final int[] sortedVarplayers;
         private final int[] sortedQuestIds;
         private final Map<WorldPoint, Set<Transport>> transportsData;
         private final Set<Transport> usableData;
 
-        private TransportRefreshSnapshot(int cacheKeyHash, int verificationHash, int[] sortedVarbits, int[] sortedVarplayers,
+        private TransportRefreshSnapshot(int cacheKeyHash, int verificationHash, int[] sortedSkillOrdinals,
+                int[] sortedVarbits, int[] sortedVarplayers,
                 int[] sortedQuestIds,
                 Map<WorldPoint, Set<Transport>> transportsData, Set<Transport> usableData) {
             this.cacheKeyHash = cacheKeyHash;
             this.verificationHash = verificationHash;
+            this.sortedSkillOrdinals = sortedSkillOrdinals;
             this.sortedVarbits = sortedVarbits;
             this.sortedVarplayers = sortedVarplayers;
             this.sortedQuestIds = sortedQuestIds;
@@ -1692,7 +1739,8 @@ public class PathfinderConfig {
             this.usableData = usableData;
         }
 
-        static TransportRefreshSnapshot capture(int cacheKeyHash, int verificationHash, int[] sortedVarbits, int[] sortedVarplayers,
+        static TransportRefreshSnapshot capture(int cacheKeyHash, int verificationHash, int[] sortedSkillOrdinals,
+                int[] sortedVarbits, int[] sortedVarplayers,
                 int[] sortedQuestIds,
                 Map<WorldPoint, Set<Transport>> srcTransports, Set<Transport> srcUsable) {
             assert srcTransports != null && srcUsable != null;
@@ -1701,7 +1749,8 @@ public class PathfinderConfig {
                 copy.put(e.getKey(), new HashSet<>(e.getValue()));
             }
             Set<Transport> usableCopy = new HashSet<>(srcUsable);
-            return new TransportRefreshSnapshot(cacheKeyHash, verificationHash, sortedVarbits, sortedVarplayers, sortedQuestIds, copy, usableCopy);
+            return new TransportRefreshSnapshot(cacheKeyHash, verificationHash, sortedSkillOrdinals, sortedVarbits,
+                    sortedVarplayers, sortedQuestIds, copy, usableCopy);
         }
 
         void restoreInto(PathfinderConfig c) {
