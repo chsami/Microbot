@@ -3,7 +3,9 @@ package net.runelite.client.plugins.microbot.shortestpath.pathfinder.live;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.CollisionData;
 import net.runelite.api.CollisionDataFlag;
+import net.runelite.api.GameObject;
 import net.runelite.api.ObjectComposition;
+import net.runelite.api.Point;
 import net.runelite.api.Tile;
 import net.runelite.api.WallObject;
 import net.runelite.api.WorldView;
@@ -11,8 +13,10 @@ import net.runelite.client.plugins.microbot.Microbot;
 
 import java.util.Arrays;
 import java.util.BitSet;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 import static net.runelite.api.Constants.SCENE_SIZE;
@@ -95,27 +99,30 @@ public final class LiveCollisionCapture {
             flagsByPlane[z] = plane != null ? plane.getFlags() : null;
         }
 
-        return build(wv.getBaseX(), wv.getBaseY(), planeCount, flagsByPlane, findDoorTiles(wv, planeCount));
+        return build(wv.getBaseX(), wv.getBaseY(), planeCount, flagsByPlane, findDoorEdges(wv, planeCount));
     }
 
     /**
-     * Scans the loaded scene for openable-door wall objects. Runs on the client thread as part of
-     * {@link #captureOnClientThread()}. {@code doorTile[z][sx][sy]} is set where a wall object with a
-     * door action sits, so {@link #build} can exempt every edge touching it.
+     * Scans the loaded scene for objects owned by the runtime door handler. Wall objects contribute
+     * only their oriented door edge; game-object doors contribute the edges touching their footprint
+     * because they do not expose a wall orientation.
      */
-    private static boolean[][][] findDoorTiles(WorldView wv, int planeCount) {
+    private static LiveCollisionDoorMask findDoorEdges(WorldView wv, int planeCount) {
         final Tile[][][] tiles = wv.getScene().getTiles();
         if (tiles == null) {
             return null;
         }
-        final boolean[][][] doorTile = new boolean[planeCount][][];
+        final LiveCollisionDoorMask doorEdges = new LiveCollisionDoorMask(planeCount);
+        // A scene can reference the same object id many times (and multi-tile game objects can appear
+        // on more than one Tile). Resolve each definition at most once per capture.
+        final Map<Integer, Boolean> wallDoorIds = new HashMap<>();
+        final Map<Integer, Boolean> gameObjectDoorIds = new HashMap<>();
         final int planes = Math.min(planeCount, tiles.length);
         for (int z = 0; z < planes; z++) {
             final Tile[][] plane = tiles[z];
             if (plane == null) {
                 continue;
             }
-            boolean[][] doors = null;
             for (int sx = 0; sx < SCENE_SIZE && sx < plane.length; sx++) {
                 final Tile[] col = plane[sx];
                 if (col == null) {
@@ -127,33 +134,54 @@ public final class LiveCollisionCapture {
                         continue;
                     }
                     final WallObject wall = tile.getWallObject();
-                    if (wall != null && isOpenableDoor(wall.getId())) {
-                        if (doors == null) {
-                            doors = new boolean[SCENE_SIZE][SCENE_SIZE];
+                    if (wall != null && wallDoorIds.computeIfAbsent(
+                            wall.getId(), LiveCollisionCapture::isOpenableDoor)) {
+                        doorEdges.markWall(z, sx, sy, wall.getOrientationA(), wall.getOrientationB());
+                    }
+                    final GameObject[] gameObjects = tile.getGameObjects();
+                    if (gameObjects == null) {
+                        continue;
+                    }
+                    for (GameObject gameObject : gameObjects) {
+                        if (gameObject == null) {
+                            continue;
                         }
-                        doors[sx][sy] = true;
+                        final Point min = gameObject.getSceneMinLocation();
+                        final Point max = gameObject.getSceneMaxLocation();
+                        if (min == null || max == null || min.getX() != sx || min.getY() != sy) {
+                            continue; // process a multi-tile object once, at its scene-min tile
+                        }
+                        if (!gameObjectDoorIds.computeIfAbsent(
+                                gameObject.getId(), LiveCollisionCapture::isOpenableGameObjectDoor)) {
+                            continue;
+                        }
+                        doorEdges.markGameObject(z, min.getX(), min.getY(), max.getX(), max.getY());
                     }
                 }
             }
-            doorTile[z] = doors;
         }
-        return doorTile;
+        return doorEdges;
     }
 
     private static boolean isOpenableDoor(int objectId) {
-        final ObjectComposition comp = Microbot.getClient().getObjectDefinition(objectId);
+        final ObjectComposition comp = resolvedComposition(objectId);
         if (comp == null) {
             return false;
         }
-        if (hasDoorAction(comp)) {
-            return true;
-        }
-        // A closed door is often a multiloc whose openable form is an impostor.
-        if (comp.getImpostorIds() != null) {
-            final ObjectComposition impostor = comp.getImpostor();
-            return impostor != null && hasDoorAction(impostor);
-        }
-        return false;
+        return hasDoorAction(comp);
+    }
+
+    private static boolean isOpenableGameObjectDoor(int objectId) {
+        final ObjectComposition comp = resolvedComposition(objectId);
+        return comp != null
+                && comp.getName() != null
+                && comp.getName().toLowerCase(Locale.ENGLISH).contains("door")
+                && hasDoorAction(comp);
+    }
+
+    private static ObjectComposition resolvedComposition(int objectId) {
+        final ObjectComposition comp = Microbot.getClient().getObjectDefinition(objectId);
+        return comp != null && comp.getImpostorIds() != null ? comp.getImpostor() : comp;
     }
 
     private static boolean hasDoorAction(ObjectComposition comp) {
@@ -179,13 +207,10 @@ public final class LiveCollisionCapture {
     }
 
     /**
-     * As {@link #build(int, int, int, int[][][])} but exempting openable-door edges: any edge touching a
-     * tile flagged in {@code doorTile} is left unknown so the pathfinder falls back to the static map and
-     * the runtime door handler opens it. {@code doorTile} may be {@code null} (no doors), as may any plane
-     * within it.
+     * As {@link #build(int, int, int, int[][][])} but exempting edges owned by the runtime door handler.
      */
     public static LiveCollisionSnapshot build(int baseX, int baseY, int planeCount, int[][][] flagsByPlane,
-                                              boolean[][][] doorTile) {
+                                              LiveCollisionDoorMask doorEdges) {
         final int cells = planeCount * SCENE_SIZE * SCENE_SIZE;
         final BitSet northKnown = new BitSet(cells);
         final BitSet northValue = new BitSet(cells);
@@ -197,7 +222,6 @@ public final class LiveCollisionCapture {
             if (flags == null) {
                 continue;
             }
-            final boolean[][] doors = doorTile != null ? doorTile[z] : null;
             for (int sx = 0; sx < SCENE_SIZE; sx++) {
                 for (int sy = 0; sy < SCENE_SIZE; sy++) {
                     final int index = (z * SCENE_SIZE + sy) * SCENE_SIZE + sx;
@@ -205,10 +229,9 @@ public final class LiveCollisionCapture {
                     final boolean walkableHere = standable(data);
 
                     // North edge: known only when both endpoints are trusted interior tiles (away from
-                    // the unreliable scene border) and neither is a door tile (doors defer to the static
-                    // map + runtime handler).
+                    // the unreliable scene border) and the runtime door handler does not own this edge.
                     if (interior(sx, sy) && interior(sx, sy + 1)
-                            && !isDoor(doors, sx, sy) && !isDoor(doors, sx, sy + 1)) {
+                            && (doorEdges == null || !doorEdges.exemptsNorth(z, sx, sy))) {
                         northKnown.set(index);
                         final int north = flags[sx][sy + 1];
                         final boolean open = walkableHere
@@ -222,7 +245,7 @@ public final class LiveCollisionCapture {
 
                     // East edge: same, for the east neighbour.
                     if (interior(sx, sy) && interior(sx + 1, sy)
-                            && !isDoor(doors, sx, sy) && !isDoor(doors, sx + 1, sy)) {
+                            && (doorEdges == null || !doorEdges.exemptsEast(z, sx, sy))) {
                         eastKnown.set(index);
                         final int east = flags[sx + 1][sy];
                         final boolean open = walkableHere
@@ -238,10 +261,6 @@ public final class LiveCollisionCapture {
         }
 
         return new LiveCollisionSnapshot(baseX, baseY, planeCount, northKnown, northValue, eastKnown, eastValue);
-    }
-
-    private static boolean isDoor(boolean[][] doors, int sx, int sy) {
-        return doors != null && doors[sx][sy];
     }
 
     /** A scene tile is trusted only when it is at least {@link #SCENE_BORDER_MARGIN} tiles from the edge. */

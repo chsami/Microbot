@@ -53,6 +53,7 @@ import net.runelite.client.plugins.microbot.shortestpath.pathfinder.Pathfinder;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.PathfinderConfig;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionCapture;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionOverlay;
+import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionSnapshot;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveRouteValidator;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.SplitFlagMap;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
@@ -573,6 +574,10 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
     // Set by object spawn/despawn events so a mid-scene change (door, temp object) triggers one recapture
     // on the next tick. Debounced to at most one rebuild per tick regardless of how many objects changed.
     private volatile boolean liveCollisionDirty = false;
+    // Kept set until the active route has actually been checked against the newest successful capture.
+    // This is intentionally separate from capture dirtiness: cooldown/pathfinder gates defer validation
+    // without losing it.
+    private boolean liveRouteValidationPending = false;
     // Cooldown so a run of live changes cannot spam route recalculation.
     private long lastLiveRecalcMs = 0L;
     private static final long LIVE_RECALC_COOLDOWN_MS = 3000L;
@@ -620,9 +625,12 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
         if (enabled != overlay.isEnabled()) {
             overlay.setEnabled(enabled);
             lastLiveCaptureBaseX = Integer.MIN_VALUE; // force a capture on enable, drop snapshot on disable
+            liveCollisionDirty = enabled;
+            liveRouteValidationPending = false;
         }
         if (!enabled) {
             liveCollisionDirty = false;
+            liveRouteValidationPending = false;
             return;
         }
 
@@ -633,19 +641,38 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
         final int baseX = wv.getBaseX();
         final int baseY = wv.getBaseY();
         final boolean baseChanged = baseX != lastLiveCaptureBaseX || baseY != lastLiveCaptureBaseY;
-        if (!baseChanged && !liveCollisionDirty) {
-            return;
+        final boolean captureNeeded = baseChanged || liveCollisionDirty
+                || (overlay.current() == null && !wv.isInstance());
+        if (captureNeeded) {
+            final LiveCollisionSnapshot snapshot = LiveCollisionCapture.captureOnClientThread();
+            if (snapshot == null) {
+                overlay.clear();
+                if (wv.isInstance()) {
+                    // Instances intentionally use static collision. Latch this scene so we do not retry
+                    // every tick; leaving it changes the base or produces a non-instance capture request.
+                    lastLiveCaptureBaseX = baseX;
+                    lastLiveCaptureBaseY = baseY;
+                    liveCollisionDirty = false;
+                    liveRouteValidationPending = false;
+                } else {
+                    // Collision data can be briefly unavailable during loading. Keep the capture pending
+                    // and do not claim this scene base was successfully captured.
+                    liveCollisionDirty = true;
+                }
+                return;
+            }
+
+            overlay.set(snapshot);
+            lastLiveCaptureBaseX = baseX;
+            lastLiveCaptureBaseY = baseY;
+            liveCollisionDirty = false;
+            // The newly trusted interior can invalidate a route which was calculated while those tiles
+            // were outside the old scene, so recenter captures need the same validation as object changes.
+            liveRouteValidationPending = true;
         }
 
-        overlay.set(LiveCollisionCapture.captureOnClientThread());
-        lastLiveCaptureBaseX = baseX;
-        lastLiveCaptureBaseY = baseY;
-        liveCollisionDirty = false;
-
-        // A scene reload usually just recenters the same collision, so only the mid-scene object case
-        // is worth a proactive recalc. Reloads let the walker's own machinery pick up the fresh snapshot.
-        if (!baseChanged) {
-            recalcIfRouteBlockedByLiveCollision(overlay);
+        if (liveRouteValidationPending && validateRouteAgainstLiveCollision(overlay)) {
+            liveRouteValidationPending = false;
         }
     }
 
@@ -655,25 +682,25 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
      * doors and transports are skipped by {@link LiveRouteValidator} (door edges are unknown in the
      * overlay, transport jumps are non-adjacent), so this does not fight the runtime door handler.
      */
-    private void recalcIfRouteBlockedByLiveCollision(LiveCollisionOverlay overlay) {
+    private boolean validateRouteAgainstLiveCollision(LiveCollisionOverlay overlay) {
         if (overlay.current() == null || Rs2Walker.getCurrentTarget() == null) {
-            return;
+            return true;
         }
         final long now = System.currentTimeMillis();
         if (now - lastLiveRecalcMs < LIVE_RECALC_COOLDOWN_MS) {
-            return;
+            return false;
         }
         final Pathfinder pf = ShortestPathPlugin.pathfinder;
         if (pf == null || !pf.isDone()) {
-            return;
+            return false;
         }
         final List<WorldPoint> path = pf.getPath();
         if (path == null || path.size() < 2) {
-            return;
+            return true;
         }
         final WorldPoint me = Rs2Player.getWorldLocation();
         if (me == null) {
-            return;
+            return false;
         }
 
         final CollisionMap map = pathfinderConfig.getMap();
@@ -686,6 +713,7 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
                     path.get(blocked), path.get(blocked + 1));
             Rs2Walker.recalculatePath();
         }
+        return true;
     }
 
     @Subscribe

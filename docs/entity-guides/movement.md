@@ -583,3 +583,62 @@ Pass the real endpoint and the real size. If a value is genuinely unavailable, l
 **Where this applies:** `Rs2Walker.Telemetry.*`, `WebWalkLog`, and any diagnostic that derives a field from an argument.
 
 **Defensive check:** When a log line drives a diagnosis, confirm at the call site that each value is measured rather than hardcoded before trusting it.
+
+## 27. Gate direct minimap clicks by Euclidean distance
+
+`WorldPoint.distanceTo` / `distanceTo2D` use Chebyshev distance, but the usable minimap area is
+approximately circular. A diagonally offset endpoint can therefore pass a short-walk distance check
+while lying outside the minimap clip. Before trying a direct endpoint click, apply an explicit
+Euclidean-radius check. When a raw route exists and the endpoint is outside that radius, select a
+forward route tile immediately; this is normal continuation, not an exceptional fallback.
+
+**Why this matters:** Near the end of a long route, the walker tried an endpoint that was diagonally
+within 13 Chebyshev tiles, predictably failed the circular minimap clip, and then logged a forward
+raw-route tile as a seemingly random fallback.
+
+**Pattern to follow:**
+
+```java
+if (shouldAttemptDirectMinimapTarget(end, player, maxEuclidean) && walkMiniMap(end)) {
+    return true;
+}
+WorldPoint continuation = findFurthestVisibleKnownRawPathPoint(rawPath, player, maxEuclidean, anchor);
+return continuation != null && walkMiniMap(continuation);
+```
+
+**Where this applies:** `Rs2Walker.tryDirectShortWalk`, route-backed final clicks, and any helper
+that converts a Chebyshev proximity check into a minimap click.
+
+**Defensive check:** Test a diagonal delta such as `(11, 11)` against a 12-tile minimap radius; it
+must be rejected even though its Chebyshev distance is only 11.
+
+## 28. Distinguish spatial proximity from route proximity
+
+A route that detours around a mountain, fence, or building can pass close to itself. A future
+smoothed waypoint may then be only a few world tiles from the player while remaining hundreds of raw
+route steps ahead. Do not treat that waypoint as the immediate locally unreachable blocker and do
+not anchor recovery to it. Bound local recovery candidates by forward raw-route distance; when the
+candidate belongs to a distant route fold, continue from the stabilized current route frontier.
+
+**Why this matters:** South of White Wolf Mountain, the route from Catherby toward Taverley first
+travels around the mountain and later returns near `(2867,3442)`. Local recovery selected that
+spatially close future branch from around `(2855,3440)`, causing every minimap click to fight the
+mountain collision and route the player back west indefinitely.
+
+**Pattern to follow:**
+
+```java
+if (!isLocalRecoveryCandidateOnForwardRoute(rawPath, smoothedToRaw,
+        routeStartIdx, candidateIdx, maxRawSteps)) {
+    issueRouteContinuationFromCurrentFrontier();
+    return;
+}
+recoverToward(candidate);
+```
+
+**Where this applies:** `Rs2Walker.processWalk` local-reachability recovery, route progress
+stabilization, and any fallback that chooses a waypoint using world distance on a self-near route.
+
+**Defensive check:** Construct a raw route whose final branch returns near its beginning. A
+spatially close waypoint beyond the raw-step budget must be rejected while an ordinary nearby
+forward waypoint remains eligible.

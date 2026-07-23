@@ -5,6 +5,7 @@ import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.CollisionMap;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.SplitFlagMap;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionCapture;
+import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionDoorMask;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionOverlay;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionSnapshot;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveRouteValidator;
@@ -115,30 +116,69 @@ public class LiveCollisionTest {
     }
 
     @Test
-    public void doorTileEdgesAreExemptEvenWhenLiveFlagsBlockThem() {
-        // A closed door blocks its doorway in the live flags; the door mask must leave those edges
-        // unknown so they fall back to the static map (passable) and the runtime door handler opens it.
+    public void wallDoorExemptsOnlyItsOrientedEdge() {
+        // A closed north-facing wall door owns only the north edge. Other live-blocked edges touching
+        // the same tile must remain authoritative instead of being erased by a tile-wide exemption.
         int[][][] flags = openScene();
         final int dx = 50, dy = 50;
-        // simulate a closed door: walls on all four sides of the door tile
         flags[0][dx][dy] |= CollisionDataFlag.BLOCK_MOVEMENT_NORTH
                 | CollisionDataFlag.BLOCK_MOVEMENT_EAST
                 | CollisionDataFlag.BLOCK_MOVEMENT_SOUTH
                 | CollisionDataFlag.BLOCK_MOVEMENT_WEST;
 
-        boolean[][][] doorTile = new boolean[1][SCENE_SIZE][SCENE_SIZE];
-        doorTile[0][dx][dy] = true;
+        LiveCollisionDoorMask doorEdges = new LiveCollisionDoorMask(1);
+        doorEdges.markWall(0, dx, dy, 2, 0); // orientation 2 = north
 
-        LiveCollisionSnapshot snap = LiveCollisionCapture.build(BASE_X, BASE_Y, 1, flags, doorTile);
+        LiveCollisionSnapshot snap = LiveCollisionCapture.build(BASE_X, BASE_Y, 1, flags, doorEdges);
 
-        // every edge touching the door tile is unknown -> static fallback, not a fabricated wall
+        // The physical doorway falls back to static so the runtime door handler can open it.
         assertNull(snap.edge(BASE_X + dx, BASE_Y + dy, 0, FLAG_NORTH));
-        assertNull(snap.edge(BASE_X + dx, BASE_Y + dy, 0, FLAG_EAST));
-        assertNull(snap.edge(BASE_X + dx, BASE_Y + dy - 1, 0, FLAG_NORTH)); // south edge (neighbour's north)
-        assertNull(snap.edge(BASE_X + dx - 1, BASE_Y + dy, 0, FLAG_EAST));  // west edge (neighbour's east)
+        // Unrelated edges around the same tile retain their live walls.
+        assertEquals(Boolean.FALSE, snap.edge(BASE_X + dx, BASE_Y + dy, 0, FLAG_EAST));
+        assertEquals(Boolean.FALSE, snap.edge(BASE_X + dx, BASE_Y + dy - 1, 0, FLAG_NORTH));
+        assertEquals(Boolean.FALSE, snap.edge(BASE_X + dx - 1, BASE_Y + dy, 0, FLAG_EAST));
 
         // a tile two away from the door is unaffected and still overlaid normally
         assertEquals(Boolean.TRUE, snap.edge(BASE_X + dx + 2, BASE_Y + dy + 2, 0, FLAG_NORTH));
+    }
+
+    @Test
+    public void gameObjectDoorExemptsEdgesTouchingItsFootprint() {
+        int[][][] flags = openScene();
+        final int dx = 50, dy = 50;
+        flags[0][dx][dy] |= CollisionDataFlag.BLOCK_MOVEMENT_NORTH
+                | CollisionDataFlag.BLOCK_MOVEMENT_EAST
+                | CollisionDataFlag.BLOCK_MOVEMENT_SOUTH
+                | CollisionDataFlag.BLOCK_MOVEMENT_WEST;
+
+        LiveCollisionDoorMask doorEdges = new LiveCollisionDoorMask(1);
+        doorEdges.markGameObject(0, dx, dy, dx, dy);
+        LiveCollisionSnapshot snap = LiveCollisionCapture.build(BASE_X, BASE_Y, 1, flags, doorEdges);
+
+        assertNull(snap.edge(BASE_X + dx, BASE_Y + dy, 0, FLAG_NORTH));
+        assertNull(snap.edge(BASE_X + dx, BASE_Y + dy, 0, FLAG_EAST));
+        assertNull(snap.edge(BASE_X + dx, BASE_Y + dy - 1, 0, FLAG_NORTH));
+        assertNull(snap.edge(BASE_X + dx - 1, BASE_Y + dy, 0, FLAG_EAST));
+    }
+
+    @Test
+    public void wallDoorCardinalOrientationsMapToSharedEdgeCoordinates() {
+        final int x = 50, y = 50;
+        LiveCollisionDoorMask edges = new LiveCollisionDoorMask(1);
+
+        edges.markWall(0, x, y, 1, 0); // west is neighbour's east edge
+        assertTrue(edges.exemptsEast(0, x - 1, y));
+        assertFalse(edges.exemptsEast(0, x, y));
+
+        edges = new LiveCollisionDoorMask(1);
+        edges.markWall(0, x, y, 8, 0); // south is neighbour's north edge
+        assertTrue(edges.exemptsNorth(0, x, y - 1));
+        assertFalse(edges.exemptsNorth(0, x, y));
+
+        edges = new LiveCollisionDoorMask(1);
+        edges.markWall(0, x, y, 4, 2); // east + north, including orientationB
+        assertTrue(edges.exemptsEast(0, x, y));
+        assertTrue(edges.exemptsNorth(0, x, y));
     }
 
     @Test
