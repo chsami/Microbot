@@ -4744,8 +4744,10 @@ public class Rs2Walker {
         long snapshotStartedAt = System.currentTimeMillis();
         rawScanWallSnapshot = Rs2GameObject.getWallObjects(o -> true, playerLoc, snapshotRadius);
         rawScanGameObjectSnapshot = Rs2GameObject.getGameObjects(o -> true, playerLoc, snapshotRadius);
+        rawScanDoorLocationSnapshot = Microbot.getClientThread()
+                .invoke(Rs2Walker::captureRawScanDoorLocationsOnClientThread);
         snapshotMs = System.currentTimeMillis() - snapshotStartedAt;
-        rawScanDoorCompositionCache = new HashMap<>();
+        rawScanDoorCompositionCache = new IdentityHashMap<>();
         rawScanDoorSegmentCache = new HashMap<>();
         rawScanDoorInteractionWaitMs = 0L;
         try {
@@ -4810,6 +4812,7 @@ public class Rs2Walker {
         } finally {
             rawScanWallSnapshot = null;
             rawScanGameObjectSnapshot = null;
+            rawScanDoorLocationSnapshot = null;
             rawScanDoorCompositionCache = null;
             rawScanDoorSegmentCache = null;
             long totalMs = System.currentTimeMillis() - scanStartMs;
@@ -4840,11 +4843,32 @@ public class Rs2Walker {
      */
     private static volatile List<WallObject> rawScanWallSnapshot = null;
     private static volatile List<GameObject> rawScanGameObjectSnapshot = null;
+    /** Immutable locations copied on the client thread for off-thread snapshot filtering. */
+    private static Map<TileObject, WorldPoint> rawScanDoorLocationSnapshot = null;
     /** Object definitions and segment matches are stable for one immutable scene snapshot. */
-    private static Map<Integer, Optional<ObjectComposition>> rawScanDoorCompositionCache = null;
+    private static Map<TileObject, Optional<ObjectComposition>> rawScanDoorCompositionCache = null;
     private static Map<String, Optional<TileObject>> rawScanDoorSegmentCache = null;
     /** Interaction/edge-resolution wait contained inside {@link #handleDoors}; excluded from probe cost. */
     private static volatile long rawScanDoorInteractionWaitMs = 0L;
+
+    private static Map<TileObject, WorldPoint> captureRawScanDoorLocationsOnClientThread() {
+        Map<TileObject, WorldPoint> locations = new IdentityHashMap<>();
+        if (rawScanWallSnapshot != null) {
+            for (WallObject wall : rawScanWallSnapshot) {
+                if (wall != null) {
+                    locations.put(wall, ((TileObject) wall).getWorldLocation());
+                }
+            }
+        }
+        if (rawScanGameObjectSnapshot != null) {
+            for (GameObject object : rawScanGameObjectSnapshot) {
+                if (object != null) {
+                    locations.put(object, ((TileObject) object).getWorldLocation());
+                }
+            }
+        }
+        return locations;
+    }
 
     /**
      * Exact-tile match first, then a one-tile adjacency fallback — the same preference order the
@@ -5688,6 +5712,10 @@ public class Rs2Walker {
         List<WallObject> wallSnapshot = rawScanWallSnapshot;
         List<GameObject> gameObjectSnapshot = rawScanGameObjectSnapshot;
         if (wallSnapshot != null || gameObjectSnapshot != null) {
+            Map<TileObject, WorldPoint> locations = rawScanDoorLocationSnapshot;
+            if (locations == null) {
+                return null;
+            }
             Map<String, Optional<TileObject>> segmentCache = rawScanDoorSegmentCache;
             String segmentKey = fromWp.getX() + "," + fromWp.getY() + "," + fromWp.getPlane()
                     + ">" + toWp.getX() + "," + toWp.getY() + "," + toWp.getPlane();
@@ -5704,9 +5732,10 @@ public class Rs2Walker {
                 candidates.addAll(gameObjectSnapshot);
             }
             TileObject match = candidates.stream()
-                    .filter(o -> isDoorCandidateOnSegment(o, playerLoc, fromWp, toWp,
+                    .filter(o -> isDoorCandidateOnSegment(o, locations.get(o),
+                            playerLoc, fromWp, toWp,
                             doorActions, searchDistance))
-                    .min(Comparator.comparingInt(o -> o.getWorldLocation().distanceTo2D(playerLoc)))
+                    .min(Comparator.comparingInt(o -> locations.get(o).distanceTo2D(playerLoc)))
                     .orElse(null);
             if (segmentCache != null) {
                 segmentCache.put(segmentKey, Optional.ofNullable(match));
@@ -5714,7 +5743,8 @@ public class Rs2Walker {
             return match;
         }
         return Rs2GameObject.getAll(o -> {
-                    return isDoorCandidateOnSegment(o, playerLoc, fromWp, toWp,
+                    return isDoorCandidateOnSegment(o, o.getWorldLocation(),
+                            playerLoc, fromWp, toWp,
                             doorActions, searchDistance);
                 }, playerLoc, searchDistance).stream()
                 .min(Comparator.comparingInt(o -> o.getWorldLocation().distanceTo2D(playerLoc)))
@@ -5722,15 +5752,16 @@ public class Rs2Walker {
     }
 
     private static boolean isDoorCandidateOnSegment(TileObject object,
+                                                    WorldPoint objectLocation,
                                                     WorldPoint playerLoc,
                                                     WorldPoint fromWp,
                                                     WorldPoint toWp,
                                                     List<String> doorActions,
                                                     int searchDistance) {
-        if (object == null || object.getWorldLocation() == null) {
+        if (object == null || objectLocation == null) {
             return false;
         }
-        WorldPoint loc = object.getWorldLocation();
+        WorldPoint loc = objectLocation;
         if (loc.getPlane() != playerLoc.getPlane()
                 || loc.distanceTo2D(playerLoc) > searchDistance
                 || sessionBlacklistedDoors.contains(loc)
@@ -5747,11 +5778,11 @@ public class Rs2Walker {
         if (object == null) {
             return null;
         }
-        Map<Integer, Optional<ObjectComposition>> compositionCache = rawScanDoorCompositionCache;
+        Map<TileObject, Optional<ObjectComposition>> compositionCache = rawScanDoorCompositionCache;
         if (compositionCache == null) {
             return Rs2GameObject.convertToObjectComposition(object);
         }
-        return compositionCache.computeIfAbsent(object.getId(),
+        return compositionCache.computeIfAbsent(object,
                         ignored -> Optional.ofNullable(Rs2GameObject.convertToObjectComposition(object)))
                 .orElse(null);
     }
