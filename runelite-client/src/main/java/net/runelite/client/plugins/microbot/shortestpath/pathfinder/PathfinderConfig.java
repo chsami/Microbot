@@ -11,6 +11,7 @@ import net.runelite.api.gameval.VarbitID;
 import net.runelite.client.plugins.itemcharges.ItemChargeConfig;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.shortestpath.*;
+import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionOverlay;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.policy.TransportRequirementPolicy;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
@@ -74,6 +75,13 @@ public class PathfinderConfig {
 
     private final SplitFlagMap mapData;
     private final ThreadLocal<CollisionMap> map;
+    /**
+     * One shared overlay behind every per-thread {@link CollisionMap}, so the client thread can swap in a
+     * fresh live snapshot that all pathfinding threads pick up. Disabled until the
+     * {@code useLiveCollision} config flag turns it on.
+     */
+    @Getter
+    private final LiveCollisionOverlay liveCollisionOverlay = new LiveCollisionOverlay();
     /**
      * All transports by origin {@link WorldPoint}. The null key is used for transports centered on the player.
      */
@@ -190,7 +198,7 @@ public class PathfinderConfig {
                             List<Restriction> restrictions,
                             Client client, ShortestPathConfig config) {
         this.mapData = mapData;
-        this.map = ThreadLocal.withInitial(() -> new CollisionMap(this.mapData));
+        this.map = ThreadLocal.withInitial(() -> new CollisionMap(this.mapData, this.liveCollisionOverlay));
         this.allTransports = Collections.synchronizedMap(new HashMap<>());
         replaceAllTransports(transports);
         this.usableTeleports = ConcurrentHashMap.newKeySet(allTransports.size() / 20);

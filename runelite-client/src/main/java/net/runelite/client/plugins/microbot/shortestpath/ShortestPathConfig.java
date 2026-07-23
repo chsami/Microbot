@@ -867,4 +867,15 @@ public interface ShortestPathConfig extends Config {
     default boolean reloadTransportDefinitions() {
         return false;
     }
+
+    @ConfigItem(
+            keyName = "useLiveCollision",
+            name = "Live collision (experimental)",
+            description = "Overlay RuneLite's live scene collision on the static map inside the loaded scene, so pathfinding reflects opened/closed doors, gates and temporary objects. Out-of-scene routing still uses the static map. Experimental — leave OFF unless testing.",
+            position = 1,
+            section = sectionDeveloper
+    )
+    default boolean useLiveCollision() {
+        return false;
+    }
 }

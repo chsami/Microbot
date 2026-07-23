@@ -1,0 +1,184 @@
+package net.runelite.client.plugins.microbot.shortestpath;
+
+import net.runelite.api.CollisionDataFlag;
+import net.runelite.client.plugins.microbot.shortestpath.pathfinder.CollisionMap;
+import net.runelite.client.plugins.microbot.shortestpath.pathfinder.SplitFlagMap;
+import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionCapture;
+import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionOverlay;
+import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionSnapshot;
+import org.junit.BeforeClass;
+import org.junit.Test;
+
+import static net.runelite.api.Constants.SCENE_SIZE;
+import static net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionSnapshot.FLAG_EAST;
+import static net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionSnapshot.FLAG_NORTH;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
+/**
+ * Stage 1 hybrid live-collision coverage: the pure flag translation in {@link LiveCollisionCapture#build},
+ * the snapshot's edge/validity semantics, and that {@link CollisionMap} lets an enabled overlay win inside
+ * the captured scene while falling back to the static map everywhere else. With no overlay, a
+ * {@code CollisionMap} must read byte-for-byte as the static-only map — the guard that keeps every other
+ * shortestpath test deterministic.
+ */
+public class LiveCollisionTest {
+
+    private static final int BASE_X = 3200;
+    private static final int BASE_Y = 3200;
+
+    private static SplitFlagMap staticFlags;
+
+    @BeforeClass
+    public static void loadCollisionMap() {
+        staticFlags = SplitFlagMap.fromResources();
+    }
+
+    // ---- pure translation (no client, no static map) ----
+
+    private static int[][][] openScene() {
+        // One plane, all tiles standable, no walls -> every interior edge open.
+        return new int[][][]{new int[SCENE_SIZE][SCENE_SIZE]};
+    }
+
+    @Test
+    public void openScene_interiorEdgesOpen_rimUnknown() {
+        LiveCollisionSnapshot snap = LiveCollisionCapture.build(BASE_X, BASE_Y, 1, openScene());
+
+        // interior tile: both edges known and open
+        assertEquals(Boolean.TRUE, snap.edge(BASE_X + 10, BASE_Y + 10, 0, FLAG_NORTH));
+        assertEquals(Boolean.TRUE, snap.edge(BASE_X + 10, BASE_Y + 10, 0, FLAG_EAST));
+
+        // north rim: north neighbour is outside the scene -> unknown -> null (static fallback)
+        assertNull(snap.edge(BASE_X + 10, BASE_Y + SCENE_SIZE - 1, 0, FLAG_NORTH));
+        // east rim: east neighbour outside -> unknown
+        assertNull(snap.edge(BASE_X + SCENE_SIZE - 1, BASE_Y + 10, 0, FLAG_EAST));
+
+        // entirely outside the scene -> null
+        assertNull(snap.edge(BASE_X - 5, BASE_Y + 10, 0, FLAG_NORTH));
+        assertNull(snap.edge(BASE_X + 10, BASE_Y + 10, 1, FLAG_NORTH)); // plane 1 not captured
+    }
+
+    @Test
+    public void wallBitBlocksTheEdge() {
+        int[][][] flags = openScene();
+        flags[0][10][10] |= CollisionDataFlag.BLOCK_MOVEMENT_NORTH;
+        flags[0][20][20] |= CollisionDataFlag.BLOCK_MOVEMENT_EAST;
+
+        LiveCollisionSnapshot snap = LiveCollisionCapture.build(BASE_X, BASE_Y, 1, flags);
+
+        assertEquals(Boolean.FALSE, snap.edge(BASE_X + 10, BASE_Y + 10, 0, FLAG_NORTH));
+        assertEquals(Boolean.FALSE, snap.edge(BASE_X + 20, BASE_Y + 20, 0, FLAG_EAST));
+        // the untouched edge of the same tile is still open
+        assertEquals(Boolean.TRUE, snap.edge(BASE_X + 10, BASE_Y + 10, 0, FLAG_EAST));
+    }
+
+    @Test
+    public void wallIsSymmetric_neighbourSouthBitAlsoBlocks() {
+        // A south wall on the north tile must block the same edge, since s(x,y)=n(x,y-1).
+        int[][][] flags = openScene();
+        flags[0][30][31] |= CollisionDataFlag.BLOCK_MOVEMENT_SOUTH; // south wall on the northern tile
+
+        LiveCollisionSnapshot snap = LiveCollisionCapture.build(BASE_X, BASE_Y, 1, flags);
+
+        // north edge of (30,30) connects (30,30)<->(30,31); the south wall on (30,31) closes it
+        assertEquals(Boolean.FALSE, snap.edge(BASE_X + 30, BASE_Y + 30, 0, FLAG_NORTH));
+    }
+
+    @Test
+    public void fullBlockClosesAllFourEdgesAroundTheTile() {
+        int[][][] flags = openScene();
+        final int fx = 40, fy = 40;
+        flags[0][fx][fy] |= CollisionDataFlag.BLOCK_MOVEMENT_FULL;
+
+        LiveCollisionSnapshot snap = LiveCollisionCapture.build(BASE_X, BASE_Y, 1, flags);
+
+        // the full tile's own outgoing north/east edges are closed
+        assertEquals(Boolean.FALSE, snap.edge(BASE_X + fx, BASE_Y + fy, 0, FLAG_NORTH));
+        assertEquals(Boolean.FALSE, snap.edge(BASE_X + fx, BASE_Y + fy, 0, FLAG_EAST));
+        // and the incoming edges: south neighbour's north, west neighbour's east
+        assertEquals(Boolean.FALSE, snap.edge(BASE_X + fx, BASE_Y + fy - 1, 0, FLAG_NORTH));
+        assertEquals(Boolean.FALSE, snap.edge(BASE_X + fx - 1, BASE_Y + fy, 0, FLAG_EAST));
+    }
+
+    // ---- CollisionMap integration against the real static map ----
+
+    @Test
+    public void noOverlay_readsIdenticalToStaticMap() {
+        CollisionMap plain = new CollisionMap(staticFlags);
+        CollisionMap withEmptyOverlay = new CollisionMap(staticFlags, new LiveCollisionOverlay());
+        withEmptyOverlay.beginSearch(); // overlay disabled -> pins null
+
+        // sweep a mapped area and confirm every edge matches
+        for (int x = 3200; x < 3260; x++) {
+            for (int y = 3200; y < 3260; y++) {
+                assertEquals(plain.n(x, y, 0), withEmptyOverlay.n(x, y, 0));
+                assertEquals(plain.e(x, y, 0), withEmptyOverlay.e(x, y, 0));
+                assertEquals(plain.isBlocked(x, y, 0), withEmptyOverlay.isBlocked(x, y, 0));
+            }
+        }
+    }
+
+    @Test
+    public void overlayBlocksAnOpenStaticEdge_andFallsBackOutsideScene() {
+        CollisionMap staticMap = new CollisionMap(staticFlags);
+
+        // find an interior mapped tile with an open north edge in Lumbridge
+        int tx = -1, ty = -1;
+        for (int x = 3210; x < 3250 && tx < 0; x++) {
+            for (int y = 3210; y < 3250; y++) {
+                if (staticFlags.hasRegion(x, y) && staticMap.n(x, y, 0)) {
+                    tx = x;
+                    ty = y;
+                    break;
+                }
+            }
+        }
+        assertTrue("expected an open north edge in Lumbridge", tx > 0);
+
+        // snapshot centred so the target tile is interior (not on the unknown rim)
+        final int baseX = tx - 52;
+        final int baseY = ty - 52;
+        int[][][] flags = openScene();
+        flags[0][tx - baseX][ty - baseY] |= CollisionDataFlag.BLOCK_MOVEMENT_NORTH;
+
+        LiveCollisionOverlay overlay = new LiveCollisionOverlay();
+        overlay.setEnabled(true);
+        overlay.set(LiveCollisionCapture.build(baseX, baseY, 1, flags));
+
+        CollisionMap live = new CollisionMap(staticFlags, overlay);
+        live.beginSearch();
+
+        // overlay wins inside the scene
+        assertTrue("precondition: static edge open", staticMap.n(tx, ty, 0));
+        assertFalse("overlay must block the edge", live.n(tx, ty, 0));
+
+        // a tile far outside the snapshot falls back to the static map
+        int farX = baseX + 5000;
+        int farY = baseY + 5000;
+        assertEquals(staticMap.n(farX, farY, 0), live.n(farX, farY, 0));
+        assertEquals(staticMap.e(farX, farY, 0), live.e(farX, farY, 0));
+    }
+
+    @Test
+    public void disabledOverlaySnapshot_isIgnored() {
+        int[][][] flags = openScene();
+        LiveCollisionOverlay overlay = new LiveCollisionOverlay();
+        // set() while disabled must not take effect
+        overlay.set(LiveCollisionCapture.build(3148, 3148, 1, flags));
+        assertNull(overlay.current());
+
+        CollisionMap staticMap = new CollisionMap(staticFlags);
+        CollisionMap live = new CollisionMap(staticFlags, overlay);
+        live.beginSearch();
+        for (int x = 3200; x < 3210; x++) {
+            for (int y = 3200; y < 3210; y++) {
+                assertEquals(staticMap.n(x, y, 0), live.n(x, y, 0));
+                assertEquals(staticMap.e(x, y, 0), live.e(x, y, 0));
+            }
+        }
+    }
+}

@@ -51,6 +51,8 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.CollisionMap;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.Pathfinder;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.PathfinderConfig;
+import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionCapture;
+import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionOverlay;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.SplitFlagMap;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
@@ -563,9 +565,50 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
         }
     }
 
+    // Scene base of the last live-collision capture, so the snapshot is only rebuilt when the scene
+    // actually reloads rather than every tick (avoids the per-tick allocation the design warns against).
+    private int lastLiveCaptureBaseX = Integer.MIN_VALUE;
+    private int lastLiveCaptureBaseY = Integer.MIN_VALUE;
+
+    /**
+     * Keeps the shared live-collision overlay in step with the config flag and the loaded scene. Runs on
+     * the client thread from {@link #onGameTick}. Rebuilds the immutable snapshot only when the scene
+     * base changes (a scene reload) or when the flag was just enabled. Finer-grained refresh on
+     * mid-scene object changes, and the recalc that acts on it, are later stages.
+     */
+    void refreshLiveCollision() {
+        if (pathfinderConfig == null) {
+            return;
+        }
+        final LiveCollisionOverlay overlay = pathfinderConfig.getLiveCollisionOverlay();
+        final boolean enabled = config.useLiveCollision();
+        if (enabled != overlay.isEnabled()) {
+            overlay.setEnabled(enabled);
+            lastLiveCaptureBaseX = Integer.MIN_VALUE; // force a capture on enable, drop snapshot on disable
+        }
+        if (!enabled) {
+            return;
+        }
+
+        final WorldView wv = client.getTopLevelWorldView();
+        if (wv == null) {
+            return;
+        }
+        final int baseX = wv.getBaseX();
+        final int baseY = wv.getBaseY();
+        if (baseX == lastLiveCaptureBaseX && baseY == lastLiveCaptureBaseY) {
+            return;
+        }
+
+        overlay.set(LiveCollisionCapture.captureOnClientThread());
+        lastLiveCaptureBaseX = baseX;
+        lastLiveCaptureBaseY = baseY;
+    }
+
     @Subscribe
     public void onGameTick(GameTick tick) {
         handlePendingLoginRefresh();
+        refreshLiveCollision();
 
         if (Rs2Walker.getCurrentTarget() != null) {
             return;

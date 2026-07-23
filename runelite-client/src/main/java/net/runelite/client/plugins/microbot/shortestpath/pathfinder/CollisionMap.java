@@ -5,6 +5,8 @@ import net.runelite.api.TileObject;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.TransportType;
+import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionOverlay;
+import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionSnapshot;
 import net.runelite.client.plugins.microbot.shortestpath.WorldPointUtil;
 import net.runelite.client.plugins.microbot.util.coords.Rs2WorldPoint;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
@@ -19,15 +21,50 @@ public class CollisionMap {
 
     private final SplitFlagMap collisionData;
 
+    /**
+     * Shared live-collision overlay. When enabled and covering {@code (x, y, z)}, its edges win over the
+     * static map; otherwise every read falls through to {@code collisionData}. Defaults to a disabled
+     * holder, so a {@link #CollisionMap(SplitFlagMap)} behaves exactly as the static-only map — the whole
+     * existing test suite is unaffected.
+     */
+    private final LiveCollisionOverlay overlay;
+
+    /**
+     * Snapshot pinned for the duration of one search, so a mid-search swap on the client thread cannot
+     * mix two scenes into a single path. Refreshed via {@link #beginSearch()}.
+     */
+    private LiveCollisionSnapshot pinnedSnapshot;
+
     public byte[] getPlanes() {
         return collisionData.getRegionMapPlaneCounts();
     }
 
     public CollisionMap(SplitFlagMap collisionData) {
+        this(collisionData, new LiveCollisionOverlay());
+    }
+
+    public CollisionMap(SplitFlagMap collisionData, LiveCollisionOverlay overlay) {
         this.collisionData = collisionData;
+        this.overlay = overlay;
+    }
+
+    /**
+     * Pins the overlay's current snapshot for the upcoming search. Called once at the start of a
+     * pathfind so every {@link #get} within that search sees one immutable view; between searches the
+     * client thread is free to swap in a newer snapshot.
+     */
+    public void beginSearch() {
+        pinnedSnapshot = overlay.current();
     }
 
     private boolean get(int x, int y, int z, int flag) {
+        final LiveCollisionSnapshot live = pinnedSnapshot;
+        if (live != null) {
+            final Boolean liveEdge = live.edge(x, y, z, flag);
+            if (liveEdge != null) {
+                return liveEdge;
+            }
+        }
         return collisionData.get(x, y, z, flag);
     }
 
