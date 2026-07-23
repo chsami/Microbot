@@ -152,7 +152,8 @@ public class AgentServerPlugin extends Plugin {
 				new QuestHelperHandler(gson),
 				new StateMachineDebugHandler(gson),
 				new ProfileHandler(gson),
-				new DynamicScriptDeployHandler(gson)
+				new DynamicScriptDeployHandler(gson),
+				new LiveCollisionHandler(gson)
 		);
 	}
 
