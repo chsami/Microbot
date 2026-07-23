@@ -1,13 +1,18 @@
 package net.runelite.client.plugins.microbot.shortestpath;
 
 import net.runelite.api.CollisionDataFlag;
+import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.CollisionMap;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.SplitFlagMap;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionCapture;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionOverlay;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionSnapshot;
+import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveRouteValidator;
 import org.junit.BeforeClass;
 import org.junit.Test;
+
+import java.util.Arrays;
+import java.util.List;
 
 import static net.runelite.api.Constants.SCENE_SIZE;
 import static net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionSnapshot.FLAG_EAST;
@@ -222,6 +227,88 @@ public class LiveCollisionTest {
         int farY = baseY + 5000;
         assertEquals(staticMap.n(farX, farY, 0), live.n(farX, farY, 0));
         assertEquals(staticMap.e(farX, farY, 0), live.e(farX, farY, 0));
+    }
+
+    // ---- Stage 3: route validation (LiveRouteValidator) ----
+
+    /** Overlay-blocks the north edge of {@code (tx,ty)} and returns a CollisionMap with it pinned. */
+    private CollisionMap mapBlockingNorthEdge(int tx, int ty) {
+        final int baseX = tx - 52, baseY = ty - 52;
+        int[][][] flags = openScene();
+        flags[0][tx - baseX][ty - baseY] |= CollisionDataFlag.BLOCK_MOVEMENT_NORTH;
+        LiveCollisionOverlay overlay = new LiveCollisionOverlay();
+        overlay.setEnabled(true);
+        overlay.set(LiveCollisionCapture.build(baseX, baseY, 1, flags));
+        CollisionMap map = new CollisionMap(staticFlags, overlay);
+        map.beginSearch();
+        return map;
+    }
+
+    /** A tile with a run of open north edges from y-2..y+1, so multi-step north paths are clear in static. */
+    private int[] findOpenNorthEdgeTile() {
+        CollisionMap staticMap = new CollisionMap(staticFlags);
+        for (int x = 3200; x < 3260; x++) {
+            for (int y = 3210; y < 3250; y++) {
+                if (staticFlags.hasRegion(x, y)
+                        && staticMap.n(x, y - 2, 0) && staticMap.n(x, y - 1, 0)
+                        && staticMap.n(x, y, 0) && staticMap.n(x, y + 1, 0)) {
+                    return new int[]{x, y};
+                }
+            }
+        }
+        throw new AssertionError("no run of open north edges found in Lumbridge");
+    }
+
+    @Test
+    public void routeValidator_nearestIndex() {
+        List<WorldPoint> path = Arrays.asList(
+                new WorldPoint(3200, 3200, 0), new WorldPoint(3200, 3201, 0), new WorldPoint(3200, 3202, 0));
+        assertEquals(1, LiveRouteValidator.nearestIndex(path, new WorldPoint(3200, 3201, 0)));
+        assertEquals(2, LiveRouteValidator.nearestIndex(path, new WorldPoint(3204, 3202, 0)));
+        assertEquals(0, LiveRouteValidator.nearestIndex(path, new WorldPoint(3200, 3201, 1))); // other plane ignored
+    }
+
+    @Test
+    public void routeValidator_detectsLiveBlockedWalkingStep() {
+        int[] t = findOpenNorthEdgeTile();
+        int tx = t[0], ty = t[1];
+        List<WorldPoint> path = Arrays.asList(
+                new WorldPoint(tx, ty, 0), new WorldPoint(tx, ty + 1, 0), new WorldPoint(tx, ty + 2, 0));
+
+        CollisionMap clear = new CollisionMap(staticFlags);
+        clear.beginSearch();
+        assertEquals("clear route", -1, LiveRouteValidator.firstBlockedStep(path, 0, 15, clear));
+
+        CollisionMap blocked = mapBlockingNorthEdge(tx, ty);
+        assertEquals("first step now blocked", 0, LiveRouteValidator.firstBlockedStep(path, 0, 15, blocked));
+    }
+
+    @Test
+    public void routeValidator_skipsTransportJumps() {
+        CollisionMap clear = new CollisionMap(staticFlags);
+        clear.beginSearch();
+        // a non-adjacent jump (walk transport) then a cross-plane jump (stairs) are not walking steps
+        List<WorldPoint> path = Arrays.asList(
+                new WorldPoint(3200, 3200, 0),
+                new WorldPoint(3260, 3260, 0),
+                new WorldPoint(3260, 3260, 1));
+        assertEquals(-1, LiveRouteValidator.firstBlockedStep(path, 0, 15, clear));
+    }
+
+    @Test
+    public void routeValidator_respectsLookahead() {
+        int[] t = findOpenNorthEdgeTile();
+        int tx = t[0], ty = t[1];
+        // blocked edge is the step from index 2 -> 3
+        List<WorldPoint> path = Arrays.asList(
+                new WorldPoint(tx, ty - 2, 0), new WorldPoint(tx, ty - 1, 0),
+                new WorldPoint(tx, ty, 0), new WorldPoint(tx, ty + 1, 0));
+        CollisionMap blocked = mapBlockingNorthEdge(tx, ty);
+
+        assertEquals("lookahead too short to see the block", -1,
+                LiveRouteValidator.firstBlockedStep(path, 0, 2, blocked));
+        assertEquals("longer lookahead finds it at index 2", 2,
+                LiveRouteValidator.firstBlockedStep(path, 0, 3, blocked));
     }
 
     @Test

@@ -53,6 +53,7 @@ import net.runelite.client.plugins.microbot.shortestpath.pathfinder.Pathfinder;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.PathfinderConfig;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionCapture;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionOverlay;
+import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveRouteValidator;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.SplitFlagMap;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
@@ -569,12 +570,46 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
     // actually reloads rather than every tick (avoids the per-tick allocation the design warns against).
     private int lastLiveCaptureBaseX = Integer.MIN_VALUE;
     private int lastLiveCaptureBaseY = Integer.MIN_VALUE;
+    // Set by object spawn/despawn events so a mid-scene change (door, temp object) triggers one recapture
+    // on the next tick. Debounced to at most one rebuild per tick regardless of how many objects changed.
+    private volatile boolean liveCollisionDirty = false;
+    // Cooldown so a run of live changes cannot spam route recalculation.
+    private long lastLiveRecalcMs = 0L;
+    private static final long LIVE_RECALC_COOLDOWN_MS = 3000L;
+    // Only the next few tiles of the route matter — far-ahead changes are re-checked as the player nears
+    // them, and may clear before then.
+    private static final int LIVE_RECALC_LOOKAHEAD = 15;
+
+    /** Flags the live-collision snapshot for rebuild. Cheap (a volatile write); fired from object events. */
+    private void markLiveCollisionDirty() {
+        liveCollisionDirty = true;
+    }
+
+    @Subscribe
+    public void onGameObjectSpawned(net.runelite.api.events.GameObjectSpawned event) {
+        markLiveCollisionDirty();
+    }
+
+    @Subscribe
+    public void onGameObjectDespawned(net.runelite.api.events.GameObjectDespawned event) {
+        markLiveCollisionDirty();
+    }
+
+    @Subscribe
+    public void onWallObjectSpawned(net.runelite.api.events.WallObjectSpawned event) {
+        markLiveCollisionDirty();
+    }
+
+    @Subscribe
+    public void onWallObjectDespawned(net.runelite.api.events.WallObjectDespawned event) {
+        markLiveCollisionDirty();
+    }
 
     /**
-     * Keeps the shared live-collision overlay in step with the config flag and the loaded scene. Runs on
-     * the client thread from {@link #onGameTick}. Rebuilds the immutable snapshot only when the scene
-     * base changes (a scene reload) or when the flag was just enabled. Finer-grained refresh on
-     * mid-scene object changes, and the recalc that acts on it, are later stages.
+     * Keeps the shared live-collision overlay in step with the config flag and the loaded scene, and
+     * proactively recalculates the walker's route when a mid-scene change has blocked the road ahead.
+     * Runs on the client thread from {@link #onGameTick}. Rebuilds the immutable snapshot only when the
+     * scene base changes (a reload) or an object changed since the last rebuild.
      */
     void refreshLiveCollision() {
         if (pathfinderConfig == null) {
@@ -587,6 +622,7 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
             lastLiveCaptureBaseX = Integer.MIN_VALUE; // force a capture on enable, drop snapshot on disable
         }
         if (!enabled) {
+            liveCollisionDirty = false;
             return;
         }
 
@@ -596,13 +632,60 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
         }
         final int baseX = wv.getBaseX();
         final int baseY = wv.getBaseY();
-        if (baseX == lastLiveCaptureBaseX && baseY == lastLiveCaptureBaseY) {
+        final boolean baseChanged = baseX != lastLiveCaptureBaseX || baseY != lastLiveCaptureBaseY;
+        if (!baseChanged && !liveCollisionDirty) {
             return;
         }
 
         overlay.set(LiveCollisionCapture.captureOnClientThread());
         lastLiveCaptureBaseX = baseX;
         lastLiveCaptureBaseY = baseY;
+        liveCollisionDirty = false;
+
+        // A scene reload usually just recenters the same collision, so only the mid-scene object case
+        // is worth a proactive recalc. Reloads let the walker's own machinery pick up the fresh snapshot.
+        if (!baseChanged) {
+            recalcIfRouteBlockedByLiveCollision(overlay);
+        }
+    }
+
+    /**
+     * If the walker is mid-route and live collision now blocks a walking step within the look-ahead,
+     * restart pathfinding so it routes around before stalling into the block. Cooldown-gated. Openable
+     * doors and transports are skipped by {@link LiveRouteValidator} (door edges are unknown in the
+     * overlay, transport jumps are non-adjacent), so this does not fight the runtime door handler.
+     */
+    private void recalcIfRouteBlockedByLiveCollision(LiveCollisionOverlay overlay) {
+        if (overlay.current() == null || Rs2Walker.getCurrentTarget() == null) {
+            return;
+        }
+        final long now = System.currentTimeMillis();
+        if (now - lastLiveRecalcMs < LIVE_RECALC_COOLDOWN_MS) {
+            return;
+        }
+        final Pathfinder pf = ShortestPathPlugin.pathfinder;
+        if (pf == null || !pf.isDone()) {
+            return;
+        }
+        final List<WorldPoint> path = pf.getPath();
+        if (path == null || path.size() < 2) {
+            return;
+        }
+        final WorldPoint me = Rs2Player.getWorldLocation();
+        if (me == null) {
+            return;
+        }
+
+        final CollisionMap map = pathfinderConfig.getMap();
+        map.beginSearch(); // pin the freshly captured snapshot for this validation
+        final int from = LiveRouteValidator.nearestIndex(path, me);
+        final int blocked = LiveRouteValidator.firstBlockedStep(path, from, LIVE_RECALC_LOOKAHEAD, map);
+        if (blocked >= 0) {
+            lastLiveRecalcMs = now;
+            log.debug("[LiveCollision] route step {} -> {} now blocked; recalculating",
+                    path.get(blocked), path.get(blocked + 1));
+            Rs2Walker.recalculatePath();
+        }
     }
 
     @Subscribe
