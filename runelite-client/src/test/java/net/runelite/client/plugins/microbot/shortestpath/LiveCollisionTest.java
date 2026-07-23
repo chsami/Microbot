@@ -89,6 +89,27 @@ public class LiveCollisionTest {
     }
 
     @Test
+    public void sceneBorderIsUnknown_soBoundaryArtifactsFallBackToStatic() {
+        // RuneLite's collision for the scene's outer ring is unreliable (verified live: a uniform band
+        // of false walls ~5 tiles deep). The capture leaves that border unknown -> static fallback.
+        int[][][] flags = openScene();
+        // put a "wall" both deep in the interior and out at the border
+        flags[0][50][50] |= CollisionDataFlag.BLOCK_MOVEMENT_NORTH; // interior
+        flags[0][2][50] |= CollisionDataFlag.BLOCK_MOVEMENT_NORTH;  // border (sx=2, within margin 8)
+
+        LiveCollisionSnapshot snap = LiveCollisionCapture.build(BASE_X, BASE_Y, 1, flags);
+
+        // interior wall is captured
+        assertEquals(Boolean.FALSE, snap.edge(BASE_X + 50, BASE_Y + 50, 0, FLAG_NORTH));
+        // border tile is unknown regardless of its flags -> defer to static
+        assertNull(snap.edge(BASE_X + 2, BASE_Y + 50, 0, FLAG_NORTH));
+        // a tile just inside the margin is known again
+        assertEquals(Boolean.TRUE, snap.edge(BASE_X + 8, BASE_Y + 50, 0, FLAG_NORTH));
+        // a tile just outside the margin is unknown
+        assertNull(snap.edge(BASE_X + 7, BASE_Y + 50, 0, FLAG_NORTH));
+    }
+
+    @Test
     public void doorTileEdgesAreExemptEvenWhenLiveFlagsBlockThem() {
         // A closed door blocks its doorway in the live flags; the door mask must leave those edges
         // unknown so they fall back to the static map (passable) and the runtime door handler opens it.

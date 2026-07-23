@@ -46,6 +46,17 @@ public final class LiveCollisionCapture {
     private static final Set<String> DOOR_ACTIONS = new HashSet<>(Arrays.asList(
             "open", "go-through", "walk-through", "pass", "pick-lock", "pay-toll"));
 
+    /**
+     * Tiles this close to the edge of the loaded scene are left unknown (deferred to the static map),
+     * because RuneLite's collision for the scene's outer ring is incomplete while adjacent chunks are
+     * only partially loaded — verified live, where the border produced a uniform band of false walls out
+     * to about five tiles while the deep interior matched reality. The scene always loads centred on the
+     * player (~tile 52 of 104), so the trusted interior still covers everything near the player, and by
+     * the time the player nears the border the scene has recentred. Eight gives headroom over the ~5
+     * tiles of artifact observed.
+     */
+    private static final int SCENE_BORDER_MARGIN = 8;
+
     private LiveCollisionCapture() {
     }
 
@@ -193,9 +204,11 @@ public final class LiveCollisionCapture {
                     final int data = flags[sx][sy];
                     final boolean walkableHere = standable(data);
 
-                    // North edge: known only when the north neighbour is inside the scene and neither
-                    // endpoint is a door tile (doors defer to the static map + runtime handler).
-                    if (sy + 1 < SCENE_SIZE && !isDoor(doors, sx, sy) && !isDoor(doors, sx, sy + 1)) {
+                    // North edge: known only when both endpoints are trusted interior tiles (away from
+                    // the unreliable scene border) and neither is a door tile (doors defer to the static
+                    // map + runtime handler).
+                    if (interior(sx, sy) && interior(sx, sy + 1)
+                            && !isDoor(doors, sx, sy) && !isDoor(doors, sx, sy + 1)) {
                         northKnown.set(index);
                         final int north = flags[sx][sy + 1];
                         final boolean open = walkableHere
@@ -207,9 +220,9 @@ public final class LiveCollisionCapture {
                         }
                     }
 
-                    // East edge: known only when the east neighbour is inside the scene and neither
-                    // endpoint is a door tile.
-                    if (sx + 1 < SCENE_SIZE && !isDoor(doors, sx, sy) && !isDoor(doors, sx + 1, sy)) {
+                    // East edge: same, for the east neighbour.
+                    if (interior(sx, sy) && interior(sx + 1, sy)
+                            && !isDoor(doors, sx, sy) && !isDoor(doors, sx + 1, sy)) {
                         eastKnown.set(index);
                         final int east = flags[sx + 1][sy];
                         final boolean open = walkableHere
@@ -229,6 +242,12 @@ public final class LiveCollisionCapture {
 
     private static boolean isDoor(boolean[][] doors, int sx, int sy) {
         return doors != null && doors[sx][sy];
+    }
+
+    /** A scene tile is trusted only when it is at least {@link #SCENE_BORDER_MARGIN} tiles from the edge. */
+    private static boolean interior(int sx, int sy) {
+        return sx >= SCENE_BORDER_MARGIN && sx < SCENE_SIZE - SCENE_BORDER_MARGIN
+                && sy >= SCENE_BORDER_MARGIN && sy < SCENE_SIZE - SCENE_BORDER_MARGIN;
     }
 
     private static boolean standable(int data) {
