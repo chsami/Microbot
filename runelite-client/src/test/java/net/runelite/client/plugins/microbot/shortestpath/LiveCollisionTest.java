@@ -89,6 +89,46 @@ public class LiveCollisionTest {
     }
 
     @Test
+    public void doorTileEdgesAreExemptEvenWhenLiveFlagsBlockThem() {
+        // A closed door blocks its doorway in the live flags; the door mask must leave those edges
+        // unknown so they fall back to the static map (passable) and the runtime door handler opens it.
+        int[][][] flags = openScene();
+        final int dx = 50, dy = 50;
+        // simulate a closed door: walls on all four sides of the door tile
+        flags[0][dx][dy] |= CollisionDataFlag.BLOCK_MOVEMENT_NORTH
+                | CollisionDataFlag.BLOCK_MOVEMENT_EAST
+                | CollisionDataFlag.BLOCK_MOVEMENT_SOUTH
+                | CollisionDataFlag.BLOCK_MOVEMENT_WEST;
+
+        boolean[][][] doorTile = new boolean[1][SCENE_SIZE][SCENE_SIZE];
+        doorTile[0][dx][dy] = true;
+
+        LiveCollisionSnapshot snap = LiveCollisionCapture.build(BASE_X, BASE_Y, 1, flags, doorTile);
+
+        // every edge touching the door tile is unknown -> static fallback, not a fabricated wall
+        assertNull(snap.edge(BASE_X + dx, BASE_Y + dy, 0, FLAG_NORTH));
+        assertNull(snap.edge(BASE_X + dx, BASE_Y + dy, 0, FLAG_EAST));
+        assertNull(snap.edge(BASE_X + dx, BASE_Y + dy - 1, 0, FLAG_NORTH)); // south edge (neighbour's north)
+        assertNull(snap.edge(BASE_X + dx - 1, BASE_Y + dy, 0, FLAG_EAST));  // west edge (neighbour's east)
+
+        // a tile two away from the door is unaffected and still overlaid normally
+        assertEquals(Boolean.TRUE, snap.edge(BASE_X + dx + 2, BASE_Y + dy + 2, 0, FLAG_NORTH));
+    }
+
+    @Test
+    public void nullDoorMask_behavesLikeNoDoors() {
+        int[][][] flags = openScene();
+        flags[0][60][60] |= CollisionDataFlag.BLOCK_MOVEMENT_NORTH;
+
+        LiveCollisionSnapshot withNull = LiveCollisionCapture.build(BASE_X, BASE_Y, 1, flags, null);
+        LiveCollisionSnapshot fourArg = LiveCollisionCapture.build(BASE_X, BASE_Y, 1, flags);
+
+        assertEquals(Boolean.FALSE, withNull.edge(BASE_X + 60, BASE_Y + 60, 0, FLAG_NORTH));
+        assertEquals(fourArg.edge(BASE_X + 60, BASE_Y + 60, 0, FLAG_NORTH),
+                withNull.edge(BASE_X + 60, BASE_Y + 60, 0, FLAG_NORTH));
+    }
+
+    @Test
     public void fullBlockClosesAllFourEdgesAroundTheTile() {
         int[][][] flags = openScene();
         final int fx = 40, fy = 40;
