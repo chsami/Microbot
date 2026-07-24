@@ -735,6 +735,9 @@ public class Pathfinder implements Runnable {
         WebWalkLog.pf("run_start src={} dst={} cutoffMs={}",
                 WorldPointUtil.toString(start), WorldPointUtil.toString(targets), config.getCalculationCutoffMillis());
         joinedPath = null;
+        // Pin the live-collision snapshot for this whole search so a mid-search swap on the client
+        // thread cannot mix two scenes into one path. No-op when live collision is disabled.
+        map.beginSearch();
         try {
             stats.start();
             computeNetworkLandmarks();

@@ -131,6 +131,66 @@ public class Rs2WalkerUnitTest {
     }
 
     @Test
+    public void rawTransportDispatch_allowsImmediateOriginlessTeleportEdge() {
+        List<WorldPoint> rawPath = Arrays.asList(
+                new WorldPoint(2610, 3100, 0),
+                new WorldPoint(3213, 3424, 0),
+                new WorldPoint(3214, 3424, 0));
+
+        assertTrue(Rs2Walker.isRawTransportOriginNearPlayer(
+                rawPath, 0, new WorldPoint(2610, 3100, 0), 2));
+    }
+
+    @Test
+    public void rawTransportDispatch_defersFutureTransportUntilApproach() {
+        List<WorldPoint> rawPath = Arrays.asList(
+                new WorldPoint(2610, 3100, 0),
+                new WorldPoint(2611, 3100, 0),
+                new WorldPoint(2623, 3093, 0),
+                new WorldPoint(3303, 3333, 0));
+
+        assertFalse("A future edge inside the broad handler window must not start a long run",
+                Rs2Walker.isRawTransportOriginNearPlayer(
+                        rawPath, 2, new WorldPoint(2610, 3100, 0), 2));
+        assertTrue("The same edge becomes dispatchable once the route has approached it",
+                Rs2Walker.isRawTransportOriginNearPlayer(
+                        rawPath, 2, new WorldPoint(2622, 3093, 0), 2));
+    }
+
+    @Test
+    public void rawTransportDispatch_rejectsOtherPlane() {
+        List<WorldPoint> rawPath = Arrays.asList(
+                new WorldPoint(2775, 3234, 1),
+                new WorldPoint(2772, 3234, 0));
+
+        assertFalse(Rs2Walker.isRawTransportOriginNearPlayer(
+                rawPath, 0, new WorldPoint(2775, 3234, 0), 2));
+    }
+
+    @Test
+    public void plannedTransportApproach_clicksUntilDispatchRange() {
+        WorldPoint player = new WorldPoint(2760, 3229, 0);
+        WorldPoint charterOrigin = new WorldPoint(2760, 3238, 0);
+
+        assertTrue("A planned transport nine tiles ahead still needs a route approach click",
+                Rs2Walker.shouldApproachPlannedTransportOrigin(
+                        true, charterOrigin, player, 2));
+        assertFalse("Once beside the transport, its handler owns the next action",
+                Rs2Walker.shouldApproachPlannedTransportOrigin(
+                        true, charterOrigin, new WorldPoint(2760, 3236, 0), 2));
+    }
+
+    @Test
+    public void plannedTransportApproach_rejectsOrdinaryAndOtherPlaneSteps() {
+        WorldPoint player = new WorldPoint(2760, 3229, 0);
+
+        assertFalse(Rs2Walker.shouldApproachPlannedTransportOrigin(
+                false, new WorldPoint(2760, 3238, 0), player, 2));
+        assertFalse(Rs2Walker.shouldApproachPlannedTransportOrigin(
+                true, new WorldPoint(2760, 3238, 1), player, 2));
+    }
+
+    @Test
     public void shouldRecalculatePathAfterTransport_skipsAdjacentSamePlaneTransport() {
         Transport door = new Transport(
                 new WorldPoint(3123, 3360, 0),
@@ -199,6 +259,54 @@ public class Rs2WalkerUnitTest {
                 door,
                 new WorldPoint(3155, 3363, 0),
                 new WorldPoint(3153, 3363, 0),
+                0));
+    }
+
+    @Test
+    public void isSettledNearAdjacentSamePlaneLanding_acceptsBoundedForwardAgilityOvershoot() {
+        Transport steppingStone = new Transport(
+                new WorldPoint(3154, 3363, 0),
+                new WorldPoint(3153, 3363, 0),
+                "Stepping stone",
+                TransportType.AGILITY_SHORTCUT,
+                false,
+                "Jump-onto",
+                "Stepping stone",
+                16533);
+
+        assertTrue(Rs2Walker.isSettledNearAdjacentSamePlaneLanding(
+                steppingStone,
+                new WorldPoint(3149, 3363, 0),
+                steppingStone.getDestination(),
+                0));
+    }
+
+    @Test
+    public void isSettledNearAdjacentSamePlaneLanding_rejectsReverseOrUnboundedAgilityMovement() {
+        Transport steppingStone = new Transport(
+                new WorldPoint(3154, 3363, 0),
+                new WorldPoint(3153, 3363, 0),
+                "Stepping stone",
+                TransportType.AGILITY_SHORTCUT,
+                false,
+                "Jump-onto",
+                "Stepping stone",
+                16533);
+
+        assertFalse(Rs2Walker.isSettledNearAdjacentSamePlaneLanding(
+                steppingStone,
+                new WorldPoint(3155, 3363, 0),
+                steppingStone.getDestination(),
+                0));
+        assertFalse(Rs2Walker.isSettledNearAdjacentSamePlaneLanding(
+                steppingStone,
+                new WorldPoint(3147, 3363, 0),
+                steppingStone.getDestination(),
+                0));
+        assertFalse(Rs2Walker.isSettledNearAdjacentSamePlaneLanding(
+                steppingStone,
+                new WorldPoint(3149, 3365, 0),
+                steppingStone.getDestination(),
                 0));
     }
 
@@ -590,7 +698,8 @@ public class Rs2WalkerUnitTest {
                 "rockfall-handled",
                 "path-blocker-handled",
                 "interim-in-flight",
-                "recovery-move-in-flight"}) {
+                "recovery-move-in-flight",
+                "route-fold-continuation-click"}) {
             assertTrue("'" + progress + "' means the walker advanced the route, so it must not spend "
                             + "a partial retry", Rs2Walker.isRouteProgressExit(progress));
         }
@@ -990,6 +1099,63 @@ public class Rs2WalkerUnitTest {
         assertEquals(target, Rs2Walker.clampToEuclideanRadius(player, target, 10));
     }
 
+    @Test
+    public void directMinimapTarget_usesEuclideanRatherThanChebyshevRange() {
+        WorldPoint player = new WorldPoint(3289, 3476, 0);
+
+        assertFalse("A diagonal endpoint can be Chebyshev-close but outside the circular minimap reach",
+                Rs2Walker.shouldAttemptDirectMinimapTarget(
+                        new WorldPoint(3300, 3487, 0), player, 12));
+        assertTrue("A cardinal endpoint on the Euclidean boundary remains eligible",
+                Rs2Walker.shouldAttemptDirectMinimapTarget(
+                        new WorldPoint(3301, 3476, 0), player, 12));
+        assertFalse("A different plane is never a direct minimap target",
+                Rs2Walker.shouldAttemptDirectMinimapTarget(
+                        new WorldPoint(3289, 3476, 1), player, 12));
+    }
+
+    @Test
+    public void localRecoveryCandidate_rejectsSpatiallyNearFutureRouteFold() {
+        List<WorldPoint> raw = new java.util.ArrayList<>();
+        int x = 2855;
+        int y = 3440;
+        raw.add(new WorldPoint(x, y, 0));
+        for (int i = 0; i < 15; i++) {
+            raw.add(new WorldPoint(--x, y, 0));
+        }
+        for (int i = 0; i < 15; i++) {
+            raw.add(new WorldPoint(x, ++y, 0));
+        }
+        for (int i = 0; i < 15; i++) {
+            raw.add(new WorldPoint(++x, y, 0));
+        }
+        for (int i = 0; i < 15; i++) {
+            raw.add(new WorldPoint(x, --y, 0));
+        }
+        // The future branch returns spatially close to the player, but remains 60 raw route steps
+        // ahead. Its proximity must not override the immediate route frontier.
+        int[] smoothedToRaw = {0, 6, 60};
+
+        assertTrue(Rs2Walker.isLocalRecoveryCandidateOnForwardRoute(
+                raw, smoothedToRaw, 0, 1, 48));
+        assertFalse(Rs2Walker.isLocalRecoveryCandidateOnForwardRoute(
+                raw, smoothedToRaw, 0, 2, 48));
+    }
+
+    @Test
+    public void localRecoveryCandidate_rejectsTransportJumpAndBackwardCandidate() {
+        List<WorldPoint> raw = Arrays.asList(
+                new WorldPoint(2808, 3436, 0),
+                new WorldPoint(2809, 3436, 0),
+                new WorldPoint(2900, 3400, 0));
+        int[] smoothedToRaw = {0, 1, 2};
+
+        assertFalse(Rs2Walker.isLocalRecoveryCandidateOnForwardRoute(
+                raw, smoothedToRaw, 0, 2, 48));
+        assertFalse(Rs2Walker.isLocalRecoveryCandidateOnForwardRoute(
+                raw, smoothedToRaw, 1, 0, 48));
+    }
+
     // ---------------------------------------------------------------------------
     // Raw-path wall-door segment probing
     // ---------------------------------------------------------------------------
@@ -1212,6 +1378,31 @@ public class Rs2WalkerUnitTest {
         assertEquals("active_route_idle_nudge", Rs2Walker.routeMovementClickPhase("active route idle nudge"));
         assertEquals("interim_close_route_click", Rs2Walker.routeMovementClickPhase("interim close route click"));
         assertEquals("route_movement_click", Rs2Walker.routeMovementClickPhase("other"));
+    }
+
+    @Test
+    public void routeArrivalSatisfied_preventsRecoveryClickAtGoal() {
+        WorldPoint goal = new WorldPoint(3304, 3336, 0);
+        List<WorldPoint> path = Arrays.asList(
+                new WorldPoint(3300, 3333, 0),
+                goal);
+
+        assertTrue(Rs2Walker.routeArrivalSatisfied(goal, goal, path, 10));
+    }
+
+    @Test
+    public void routeArrivalSatisfied_usesTightFinalApproachThreshold() {
+        WorldPoint goal = new WorldPoint(3304, 3336, 0);
+        List<WorldPoint> path = Arrays.asList(
+                new WorldPoint(3300, 3333, 0),
+                goal);
+
+        assertTrue(Rs2Walker.routeArrivalSatisfied(
+                new WorldPoint(3303, 3336, 0), goal, path, 10));
+        assertFalse(Rs2Walker.routeArrivalSatisfied(
+                new WorldPoint(3302, 3336, 0), goal, path, 10));
+        assertFalse(Rs2Walker.routeArrivalSatisfied(
+                new WorldPoint(3304, 3336, 1), goal, path, 10));
     }
 
     @Test

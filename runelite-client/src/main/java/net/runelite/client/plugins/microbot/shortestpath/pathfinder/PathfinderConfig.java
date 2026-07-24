@@ -11,6 +11,8 @@ import net.runelite.api.gameval.VarbitID;
 import net.runelite.client.plugins.itemcharges.ItemChargeConfig;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.shortestpath.*;
+import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionOverlay;
+import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionSnapshot;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.policy.TransportRequirementPolicy;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
@@ -74,6 +76,13 @@ public class PathfinderConfig {
 
     private final SplitFlagMap mapData;
     private final ThreadLocal<CollisionMap> map;
+    /**
+     * One shared overlay behind every per-thread {@link CollisionMap}, so the client thread can swap in a
+     * fresh live snapshot that all pathfinding threads pick up. Disabled until the
+     * {@code useLiveCollision} config flag turns it on.
+     */
+    @Getter
+    private final LiveCollisionOverlay liveCollisionOverlay = new LiveCollisionOverlay();
     /**
      * All transports by origin {@link WorldPoint}. The null key is used for transports centered on the player.
      */
@@ -190,7 +199,7 @@ public class PathfinderConfig {
                             List<Restriction> restrictions,
                             Client client, ShortestPathConfig config) {
         this.mapData = mapData;
-        this.map = ThreadLocal.withInitial(() -> new CollisionMap(this.mapData));
+        this.map = ThreadLocal.withInitial(() -> new CollisionMap(this.mapData, this.liveCollisionOverlay));
         this.allTransports = Collections.synchronizedMap(new HashMap<>());
         replaceAllTransports(transports);
         this.usableTeleports = ConcurrentHashMap.newKeySet(allTransports.size() / 20);
@@ -210,6 +219,57 @@ public class PathfinderConfig {
 
     public CollisionMap getMap() {
         return map.get();
+    }
+
+    /**
+     * Diagnostics for the live-collision overlay at one tile, for the agent server's
+     * {@code /live-collision} endpoint. Reads only immutable data (the static map and the pinned
+     * snapshot), so it is safe to call from any thread.
+     * <p>
+     * {@code overlayRaw} is the snapshot's own answer ({@code true}/{@code false}/{@code null} where
+     * {@code null} means "unknown, defer to static") — proving capture and the flag translation.
+     * {@code resolved} is what the pathfinder actually uses (overlay where known, else static), and
+     * {@code static} is the static-only reading. Where they differ, the overlay is changing routing.
+     */
+    public Map<String, Object> liveCollisionDiagnostics(int x, int y, int z) {
+        final Map<String, Object> out = new LinkedHashMap<>();
+        out.put("enabled", liveCollisionOverlay.isEnabled());
+
+        final LiveCollisionSnapshot snapshot = liveCollisionOverlay.current();
+        out.put("snapshotPresent", snapshot != null);
+        if (snapshot != null) {
+            out.put("baseX", snapshot.getBaseX());
+            out.put("baseY", snapshot.getBaseY());
+            out.put("planeCount", snapshot.getPlaneCount());
+        }
+        out.put("tile", Map.of("x", x, "y", y, "plane", z));
+
+        final CollisionMap staticMap = new CollisionMap(mapData);
+        final CollisionMap resolvedMap = new CollisionMap(mapData, liveCollisionOverlay);
+        resolvedMap.beginSearch();
+        out.put("static", edgeReadout(staticMap, x, y, z));
+        out.put("resolved", edgeReadout(resolvedMap, x, y, z));
+
+        if (snapshot != null) {
+            final Map<String, Object> raw = new LinkedHashMap<>();
+            raw.put("n", snapshot.edge(x, y, z, LiveCollisionSnapshot.FLAG_NORTH));
+            raw.put("e", snapshot.edge(x, y, z, LiveCollisionSnapshot.FLAG_EAST));
+            raw.put("s", snapshot.edge(x, y - 1, z, LiveCollisionSnapshot.FLAG_NORTH));
+            raw.put("w", snapshot.edge(x - 1, y, z, LiveCollisionSnapshot.FLAG_EAST));
+            out.put("overlayRaw", raw);
+        }
+        return out;
+    }
+
+    private static Map<String, Object> edgeReadout(CollisionMap m, int x, int y, int z) {
+        final Map<String, Object> e = new LinkedHashMap<>();
+        e.put("n", m.n(x, y, z));
+        e.put("e", m.e(x, y, z));
+        e.put("s", m.s(x, y, z));
+        e.put("w", m.w(x, y, z));
+        e.put("blocked", m.isBlocked(x, y, z));
+        e.put("hasRegion", m.hasRegion(x, y));
+        return e;
     }
 
     public void refresh(WorldPoint target) {
