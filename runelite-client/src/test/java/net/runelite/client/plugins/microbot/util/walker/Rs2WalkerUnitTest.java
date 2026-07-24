@@ -1534,4 +1534,27 @@ public class Rs2WalkerUnitTest {
 
         assertEquals(1, Rs2Walker.Telemetry.totalRecalcs());
     }
+
+    @Test
+    public void walkUntil_immediatelySatisfiedConditionReturnsArrivedWithoutWalkerSetup() {
+        WorldPoint target = new WorldPoint(3200, 3200, 0);
+
+        assertTrue(Rs2Walker.walkUntil(target, 2, () -> true));
+        assertEquals(WalkerState.ARRIVED,
+                Rs2Walker.walkWithStateUntil(target, 2, () -> true));
+    }
+
+    @Test
+    public void walkUntil_failedConditionFallsBackToNormalWalkerResult() {
+        WorldPoint target = new WorldPoint(3200, 3200, 0);
+
+        assertFalse(Rs2Walker.walkUntil(target, 2, () -> {
+            throw new IllegalStateException("test condition failure");
+        }));
+    }
+
+    @Test(expected = NullPointerException.class)
+    public void walkUntil_rejectsNullCondition() {
+        Rs2Walker.walkUntil(new WorldPoint(3200, 3200, 0), 2, null);
+    }
 }

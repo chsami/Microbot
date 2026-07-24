@@ -876,6 +876,26 @@ public class Rs2Walker {
     // can still see null only when setTarget(null) is intended. recalculatePath no longer nulls
     // currentTarget between restarts (avoids false cancel during sleepUntil).
     private static final ReentrantLock walkerLock = new ReentrantLock();
+    /**
+     * Optional completion rule owned by the thread currently executing {@link #walkUntil}.
+     *
+     * <p>The walker is globally serialized, but a thread-local keeps nested helper walks from
+     * inheriting a rule intended for a different target. Existing walk methods never install a
+     * context and therefore retain their exact behaviour.</p>
+     */
+    private static final ThreadLocal<WalkCompletionContext> walkCompletionContext = new ThreadLocal<>();
+
+    private static final class WalkCompletionContext {
+        private final WorldPoint target;
+        private final BooleanSupplier condition;
+        private boolean met;
+        private boolean failed;
+
+        private WalkCompletionContext(WorldPoint target, BooleanSupplier condition) {
+            this.target = target;
+            this.condition = condition;
+        }
+    }
 
     /**
      * First-seen dedupe keys when both seasonal handlers decline (debug-only): packed destination hex (or {@code nodest}),
@@ -1098,6 +1118,58 @@ public class Rs2Walker {
      */
     public static boolean walkTo(WorldPoint target, int distance) {
         return walkWithState(target, distance) == WalkerState.ARRIVED;
+    }
+
+    /**
+     * Walks toward {@code target} until either the normal arrival distance is reached or
+     * {@code completionCondition} becomes true.
+     *
+     * <p>The condition is polled by the thread that owns the walk at the walker's existing
+     * cancellation checkpoints. It must be fast, read-only, and safe to call from a script
+     * thread. The caller should perform the actual NPC/object interaction after this method
+     * returns; the condition must not click or mutate game state.</p>
+     *
+     * <p>This is opt-in. Existing {@link #walkTo(WorldPoint, int)} and
+     * {@link #walkWithState(WorldPoint, int)} callers are unaffected.</p>
+     *
+     * @return {@code true} when the destination is reached or the completion condition is met;
+     * otherwise {@code false}
+     */
+    public static boolean walkUntil(WorldPoint target, int distance, BooleanSupplier completionCondition) {
+        return walkWithStateUntil(target, distance, completionCondition) == WalkerState.ARRIVED;
+    }
+
+    /**
+     * State-returning variant of {@link #walkUntil(WorldPoint, int, BooleanSupplier)}.
+     * A satisfied completion condition is reported as {@link WalkerState#ARRIVED}, because the
+     * caller-defined interaction destination is ready even if the coordinate destination has
+     * not yet reached its distance threshold.
+     */
+    public static WalkerState walkWithStateUntil(
+            WorldPoint target,
+            int distance,
+            BooleanSupplier completionCondition) {
+        Objects.requireNonNull(completionCondition, "completionCondition");
+        if (target == null) {
+            return walkWithState(null, distance);
+        }
+
+        WalkCompletionContext previous = walkCompletionContext.get();
+        WalkCompletionContext context = new WalkCompletionContext(target, completionCondition);
+        walkCompletionContext.set(context);
+        try {
+            if (evaluateWalkCompletion(context)) {
+                return WalkerState.ARRIVED;
+            }
+            WalkerState result = walkWithState(target, distance);
+            return context.met ? WalkerState.ARRIVED : result;
+        } finally {
+            if (previous == null) {
+                walkCompletionContext.remove();
+            } else {
+                walkCompletionContext.set(previous);
+            }
+        }
     }
 
     /**
@@ -2834,9 +2906,39 @@ public class Rs2Walker {
     }
 
     private static boolean isWalkCancelled(WorldPoint target) {
+        WalkCompletionContext completion = walkCompletionContext.get();
+        if (completion != null && Objects.equals(completion.target, target)
+                && evaluateWalkCompletion(completion)) {
+            if (Objects.equals(currentTarget, target)) {
+                setTarget(null, "rs2walker:completion-condition-met");
+            }
+            return true;
+        }
         WorldPoint activeTarget = currentTarget;
         return target == null || activeTarget == null || !target.equals(activeTarget)
                 || Thread.currentThread().isInterrupted();
+    }
+
+    /**
+     * Completion callbacks are user-supplied extension code. One bad callback must not strand
+     * the global walker lock or abort an otherwise valid route, so disable it after its first
+     * exception and let normal distance-based walking continue.
+     */
+    private static boolean evaluateWalkCompletion(WalkCompletionContext context) {
+        if (context.met) {
+            return true;
+        }
+        if (context.failed) {
+            return false;
+        }
+        try {
+            context.met = context.condition.getAsBoolean();
+        } catch (RuntimeException ex) {
+            context.failed = true;
+            log.warn("[Walker] completion condition failed; continuing with distance-based walking: {}",
+                    ex.toString());
+        }
+        return context.met;
     }
 
     static boolean hasMinimapRelevantMovementFlag(LocalPoint point, int[][] flagMap) {
