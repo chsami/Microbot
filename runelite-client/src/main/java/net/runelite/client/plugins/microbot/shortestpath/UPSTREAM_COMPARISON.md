@@ -1,11 +1,60 @@
 # Shortest Path: Upstream vs Microbot Comparison
 
 Comparison of [Skretzo/shortest-path](https://github.com/Skretzo/shortest-path) (upstream) against the Microbot fork.
-Upstream commit: `07fca57` ("Data fixes and minor cleanups (#400)").
+Original baseline: `07fca57` ("Data fixes and minor cleanups (#400)"). **Everything below the "Re-baseline" section refers to that old baseline and is partly superseded — read the re-baseline first.**
+
+---
+
+## Re-baseline 2026-07-20 → upstream `7e7e5bf94b`
+
+Added the `skretzo` remote and fetched. Current upstream HEAD (`skretzo/master`) is **`7e7e5bf94b`** ("Update collision map") — **122 commits ahead** of the pinned `07fca57`, including a **major architectural refactor**. The `07fca57`-based punch list below is now largely obsolete; use this section as the current map.
+
+### Upstream has restructured (the fork is now architecturally distinct)
+
+Current upstream is no longer a monolith. New/renamed since `07fca57`:
+
+- **`transport/` package** with a real parser pipeline: `TransportLoader`, `TransportType`, `TransportTypeConfig`, `LoadInterner`, `BankPickupRequirements`, and `transport/parser/*` (`TsvParser`, `FieldParser`, `TransportRecord`, `WorldPointParser`, `QuestParser`, `SkillRequirementParser`, `VarRequirementParser`, …). Microbot still parses TSV inline in the `Transport` constructor.
+- **Model classes**: `Destination`, `DestinationRequirements`, `ItemVariations`, `JewelleryBoxTier`, `transport/requirement/{ItemRequirement,TransportItems}`.
+- **Pathfinder internals**: `NodeGraph`, `IntDeque`, `IntMinHeap`, `PathStep`, `PathfinderResult`, `PathTerminationReason`, `AbstractNodeKind`, `TransportAvailability`, `PrimitiveIntList`, and a standalone **`WildernessChecker`**. Microbot still uses the `Node`/`Pathfinder` design (with its own A*, bidirectional search, smoothing, packed-int `Node`).
+- **`leagues/` package** (`LeagueModeState`, `LeagueRegion`, `LeagueRegionChecker`) and **`PendingTask`** (deferred post-login refresh).
+- Resources moved under `src/main/resources/transports/`.
+
+**Implication:** a git merge is impossible (unrelated histories, different packages). Even *file-level* backports are now hard — upstream's logic lives in a different structure. Only **selective feature/data backports** are viable, and the Stage 1–3 **facade (`Rs2PathApi`)** is what makes them safe (consumers no longer see these internals). See `WEBWALKER_IMPROVEMENT_PLAN.md` "Facade migration".
+
+### Open-item status re-checked against real current upstream source
+
+| Item | Verdict vs `7e7e5bf94b` |
+|---|---|
+| **#2 wilderness boundaries** | ✅ **DONE / byte-identical.** Upstream `pathfinder/WildernessChecker.java` uses the exact same `WorldArea`s as Microbot `PathfinderConfig.java:41-46` (above-ground `2944,3525,448,448`; underground `2944,9918,518,458`; `LEVEL_20` 3680/10075; `LEVEL_30` 3760/10155; same `NOT_WILDERNESS_*`). No action. |
+| **#3 POH** | ✅ **DONE (2026-07-20).** Diffed upstream `teleportation_portals_poh.tsv` (137 rows / 50 dests) and the game's 42 `POH_PORTAL_MAG_*` portal-chamber destinations against Microbot's `PohPortal` enum. 12 were missing — Barbarian Outpost, Fishing Guild, Port Khazard, Marim, Civitas illa Fortis, Ourania, Cemetery, Dareeyak, Trollheim, Lassar, Ice Plateau, Paddewwa — and were **backfilled** with upstream arrival tiles + compiler-verified MAG/MARBLE/TEAK object ids (`PohPortal` 28→40). They flow into the transport graph automatically via `findPortalsInPoh()` → `PohPanel` → `PohTransport`. Compiles clean; shortestpath regression suite green. |
+| **#10 reachability prune**, **#12 SplitFlagMap LRU eviction** | ❌ **No upstream counterpart** — not present in upstream `PathfinderConfig`/`SplitFlagMap`. These are **Microbot-original** optimization ideas from the webwalker audit, *not* upstream backports. Treat as independent perf work, not re-baseline items. |
+| **#30 one-way transports** | ❓ Not clearly present upstream on re-check; deprioritize (no confirmed upstream source to backport from). |
+| **#11 `PrimitiveIntList`** | Upstream has `PrimitiveIntList` for its *output* paths, but Microbot's `Node` is already packed-int; the only `List<WorldPoint>` left is the `getPath()` facade boundary (see `WEBWALKER_IMPROVEMENT_PLAN.md` #11). Not a behind-facade change. |
+
+### Transport data files: upstream vs Microbot (2026-07-20)
+
+Microbot loads 22 TSVs (see `Transport.java`). File-level diff vs `skretzo/master:src/main/resources/transports/`:
+
+- **Upstream-only files** — `teleportation_portals_poh.tsv` (✅ now programmatic, see #3), `teleportation_boxes.tsv` (✅ POH mounted items — `Mounted{Glory,Xerics,Digsite,Mythical}`), `quetzal_whistle.tsv` (✅ inline in `teleportation_items.tsv`), `teleportation_spells_home.tsv` (⚠️ Microbot has 2 home rows in `teleportation_spells.tsv` vs upstream's 16 variants).
+- **Microbot-only files** (intentional): `blocked_edges.tsv`, `dangerous_tiles.tsv`, `npcs.tsv`, `restrictions.tsv`.
+
+**`transports.tsv` content diff** (present in both; upstream 5168 rows / Microbot 4949): compared by origin→destination identity.
+
+- Upstream 5140 distinct O→D pairs vs Microbot 4915. **778 upstream-only**, 553 Microbot-only.
+- Of the 778: only **14 named** transports; **764 anonymous route objects** (372 Climb, 137 Ladder, 123 Stairs, 43 Staircase, gates/doors/caves…).
+- **Not drift:** 737 distinct origins in the 778, of which only 24 overlap a Microbot origin — **713 are genuinely new origin tiles**. Concentrated central 2500–2999 (399), Varlamore/Kebos 1500–1999 (133), Misthalin 3000–3499 (131).
+- **Verdict:** real coverage gap (new route objects + new areas Microbot's baseline predates).
+- **✅ DONE (2026-07-20):** imported **768** of the 778 (`transports.tsv` 4949→5717), scripted + validated. Conversion: action `space`→`;` form; inserted `Currency`/`isMembers` columns; upstream named item variations + `|` OR-sets → Microbot numeric id-sets (`AXE`/`MACHETE`/`PICKAXE`/`ROPE` via `ItemVariations`→`ItemID`; `COINS=N`→Currency); fixed upstream typo `Shadows`→`Shadow of the Storm` (else the `Quest` gate silently drops). **Excluded:** 15 id-less rows (bare `Climb-up Staircase`, name-only walls/gates) unmatchable in Microbot's id-based format, and **2 Garden of Tranquillity trellis rows (obj 2149)** Microbot intentionally omits — caught by `testVarrockSewerPathAvoidsDisabledPalaceTrellisShortcut`. Paired with the **updated collision map** (`collision-map.zip` 2663→2724 regions) so new-area routes have collision coverage. Validated: shortestpath suite green (73 tests, incl. real cross-region pathfinding).
+- **Caveat:** imported members-area routes carry an empty `isMembers` (upstream lacked that column) — same as upstream's own behaviour; harmless since F2P can't reach those origins anyway.
+
+### Recommended next Stage-4 target
+**#3 POH coverage** is the one concrete, real upstream gap: diff `skretzo/master:src/main/resources/transports/teleportation_portals_poh.tsv` against Microbot's programmatic POH set and backfill. It's data-level (low engine risk) and testable. *(Done 2026-07-20 — see the #3 row above.)*
 
 ---
 
 ## Critical Bug Fixes Missing Locally
+
+> ⚠️ **HISTORICAL (2026-04-06). All six below are now FIXED** — see the "Re-baseline" section at the top and `WEBWALKER_IMPROVEMENT_PLAN.md`: #1 rehash `return`→`continue` (done), #2 wilderness boundaries (done, byte-identical to upstream `WildernessChecker`), #3 `growBucket` overflow (done), #4 `onGameStateChanged` refresh (done), #5 minimap null guard (done), #6 boat world-view `fromLocalInstance` (done). Kept for provenance only.
 
 ### 1. `PrimitiveIntHashMap.rehash()` — Data Loss Bug
 
@@ -83,25 +132,27 @@ Upstream has `fromLocalInstance(Client client, Player localPlayer)` which handle
 
 ### Transport System
 
-| Feature | Upstream | Local |
-|---------|----------|-------|
-| Hot Air Balloons | Yes | No |
-| Magic Mushtrees | Yes | No |
-| Seasonal Transports | Yes | No |
-| Teleportation Boxes | Yes | No |
-| POH Teleportation Portals | Yes | No |
-| Cowbell Amulet | Yes | No |
-| Pendant of Ates (Kastori, Nemus) | Yes | No |
-| Sailors' Amulet | Yes | No |
-| Separate Kharedst's Memoir / Book of the Dead | Yes | No |
-| Great Conch fairy ring (CJQ) | Yes | No |
-| Laguna Aurorae spirit tree | Yes | No |
-| Bank-visit teleport discovery | Yes | No |
-| Per-transport-type cost tuning (18 thresholds) | Yes | No |
-| Currency threshold (avoid expensive transports) | Yes | No |
-| Transport data as TSV with parser package | Yes | Inline string parsing |
+> ⚠️ **This table was the 2026-04-06 (`07fca57`) snapshot and was badly stale. Re-verified against the live tree 2026-07-20 — most rows were already present.** Corrected `Local` column below.
 
-Upstream's transport data model uses a dedicated parser package (`FieldParser`, `TransportRecord`, `TsvParser`, `WorldPointParser`, etc.) with a clean `TransportBuilder` pattern. Local parses TSV fields with raw string splitting directly in the `Transport` constructor.
+| Feature | Upstream | Local (verified 2026-07-20) |
+|---------|----------|-------|
+| Hot Air Balloons | Yes | ✅ Yes — `hot_air_balloons.tsv` |
+| Magic Mushtrees | Yes | ✅ Yes — `magic_mushtrees.tsv` |
+| Seasonal Transports | Yes | ✅ Yes — `seasonal_transports.tsv` |
+| Teleportation Boxes | Yes | ✅ Yes — POH mounted items (`Mounted{Glory,Xerics,Digsite,Mythical}`) |
+| POH Teleportation Portals | Yes | ✅ Yes — `PohPortal` (40 dests after 2026-07-20 backfill) |
+| Pendant of Ates (Kastori, Nemus) | Yes | ✅ Yes — in `teleportation_items.tsv` |
+| Separate Kharedst's Memoir / Book of the Dead | Yes | ✅ Yes — in `teleportation_items.tsv` |
+| Great Conch fairy ring (CJQ) | Yes | ✅ Yes — in `fairy_rings.tsv` |
+| Cowbell Amulet | Yes | ✅ Yes — `teleportation_items.tsv` (item 33104), backfilled 2026-07-20 |
+| Sailors' Amulet | Yes | ✅ Yes — `teleportation_items.tsv` (item 32399, 3 dests), backfilled 2026-07-20 |
+| Laguna Aurorae spirit tree | Yes | ✅ Yes — `spirit_trees.tsv` (Pandemonium-gated dest), backfilled 2026-07-20 |
+| **Bank-visit teleport discovery** | Yes | ❌ **Missing** — no `onItemContainerChanged` bank-knowledge tracking |
+| **Per-transport-type cost tuning** | Yes (`TransportTypeConfig`) | ❌ **Missing** |
+| **Currency *threshold*** (avoid expensive when low on gold) | Yes | ❌ **Missing** — note: currency *requirement* filtering (can-I-afford) **is** present (`PathfinderConfig.java:879`) |
+| Transport data as TSV with parser package | Yes | Architectural difference (Microbot parses inline in `Transport`) — not a feature gap |
+
+**Net still-missing (verified 2026-07-20):** bank-visit teleport discovery, per-transport-type cost tuning, currency-threshold cost avoidance. (Cowbell/Sailors'/Laguna Aurorae backfilled; everything else in the original table was already present.) The three remaining are feature work (config + event handling), not data adds.
 
 ### Player-Owned House (POH)
 
@@ -116,7 +167,7 @@ Upstream has granular POH support:
 - POH exit info display ("Nexus: Varrock", "Fairy Ring CIR", "Jewelry Box: Duel Arena")
 - POH transport origin remapping to landing tile `(1923, 5709, 0)`
 
-Local has a single `usePoh` toggle with a `PohPanel` and `createMergedList()` approach, no POH-specific overlay handling.
+> ⚠️ **Stale (2026-04-06).** Re-verified 2026-07-20: Microbot's `PohPanel` now has granular sub-panels — `portalPanel` (`PohPortal`), `nexusPanel` (`NexusPortal`), `checkboxPanel` (fairy ring / spirit tree / obelisk toggles), and `jewelleryBoxPanel` — plus `Mounted{Glory,Xerics,Digsite,Mythical}`. Most of the "granular POH" list above is present; the single-`usePoh`-toggle description is obsolete.
 
 ### Pathfinding & Performance
 

@@ -22,7 +22,7 @@ public final class WebWalkLog {
         LOG.warn("[WebWalk] clear | reason=<missing> thread={}", threadName);
     }
 
-    /** Cancel / EXIT / traceProcessWalkExit — compact WARN for production diagnosis. */
+    /** Cancel / EXIT / traceProcessWalkExit - compact WARN for production diagnosis. */
     public static void exitWarn(String reason, boolean nullCurrent, boolean targetMismatch, boolean interrupted,
             WorldPoint goal, WorldPoint current, int tailIdx, int tailMax, WorldPoint player) {
         LOG.warn("[WebWalk] exit | r={} nullCur={} mismatch={} intr={} goal={} cur={} tail={}/{} at={}",
@@ -33,18 +33,23 @@ public final class WebWalkLog {
         LOG.debug("[WebWalk] exit_dbg | " + fmt, args);
     }
 
-    /** interim-in-flight and similar yields — DEBUG to avoid tick spam. */
+    /** interim-in-flight and similar yields - DEBUG to avoid tick spam. */
     public static void yieldDebug(String reason, WorldPoint player, WorldPoint goal, WorldPoint pathEnd, int idxStart, int pathLen) {
         LOG.debug("[WebWalk] yield | r={} player={} goal={} end={} idx={}/{}",
                 reason, player, goal, pathEnd, idxStart, pathLen);
     }
 
     public static void earlyExit(String reason, WorldPoint player, WorldPoint goal, WorldPoint pathEnd, int idxStart, int pathLen) {
+        if ("interim-in-flight".equals(reason)) {
+            LOG.debug("[WebWalk] early_exit | r={} at={} goal={} end={} idx={}/{}",
+                    reason, player, goal, pathEnd, idxStart, pathLen);
+            return;
+        }
         LOG.info("[WebWalk] early_exit | r={} at={} goal={} end={} idx={}/{}",
                 reason, player, goal, pathEnd, idxStart, pathLen);
     }
 
-    /** Path ends far from goal — walking multi-hop segment. */
+    /** Path ends far from goal - walking multi-hop segment. */
     public static void partialSegment(WorldPoint pathEnd, int distToGoal, WorldPoint goal, int waypointCount) {
         LOG.info("[WebWalk] partial_seg | end={} dGoal={} goal={} nWp={}", pathEnd, distToGoal, goal, waypointCount);
     }
@@ -65,7 +70,7 @@ public final class WebWalkLog {
         LOG.debug("[WebWalk] stall_ctx | lastClick={} ok={} ageMs={} interim={}", lastClick, clickOk, clickAgeMs, interim);
     }
 
-    /** Off-path / unreachable recovery / generic replan — single INFO line. */
+    /** Off-path / unreachable recovery / generic replan - single INFO line. */
     public static void recalc(String reason) {
         LOG.info("[WebWalk] recalc | {}", reason);
     }
@@ -86,21 +91,29 @@ public final class WebWalkLog {
                 maxTail, target, current, interim, stuck, player);
     }
 
-    /** Pathfinder {@link net.runelite.client.plugins.microbot.shortestpath.pathfinder.Pathfinder} — DEBUG volume. */
+    /** Pathfinder {@link net.runelite.client.plugins.microbot.shortestpath.pathfinder.Pathfinder} - DEBUG volume. */
     public static void pf(String fmt, Object... args) {
         LOG.debug("[WebWalk] pf | " + fmt, args);
     }
 
-    /** {@link net.runelite.client.plugins.microbot.shortestpath.pathfinder.PathfinderConfig} refresh — DEBUG volume. */
+    /** {@link net.runelite.client.plugins.microbot.shortestpath.pathfinder.PathfinderConfig} refresh - DEBUG volume. */
     public static void cfg(String fmt, Object... args) {
         LOG.debug("[WebWalk] cfg | " + fmt, args);
+    }
+
+    /**
+     * Config work slow enough to be a user-visible stall (e.g. a pathfinder-config refresh that the
+     * walker blocks on at route start). INFO so it appears without enabling debug logging.
+     */
+    public static void cfgSlow(String fmt, Object... args) {
+        LOG.info("[WebWalk] cfg | " + fmt, args);
     }
 
     public static void leagues(String fmt, Object... args) {
         LOG.debug("[WebWalk] leagues | " + fmt, args);
     }
 
-    /** Leagues calibration, region unlock, explicit no-op — INFO (not tick-spam paths). */
+    /** Leagues calibration, region unlock, explicit no-op - INFO (not tick-spam paths). */
     public static void leaguesInfo(String fmt, Object... args) {
         LOG.info("[WebWalk] leagues | " + fmt, args);
     }
@@ -131,7 +144,7 @@ public final class WebWalkLog {
         LOG.warn("[WebWalk] compare_err | {}ms target={} err={}", String.format("%.1f", totalMs), target, err);
     }
 
-    /** Banked-route helper: per-path transport scan — DEBUG volume. */
+    /** Banked-route helper: per-path transport scan - DEBUG volume. */
     public static void bankPathTransportsDebug(int count, WorldPoint from, WorldPoint to) {
         LOG.debug("[WebWalk] bank_path | transports={} {} -> {}", count, from, to);
     }

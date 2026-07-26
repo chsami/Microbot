@@ -1018,6 +1018,14 @@
 3097 3432 2	3097 3432 1	Climb-down;Ladder;16685									
 											
 # Al Kharid
+3267 3227 0	3268 3227 0	Pay-toll(10gp);Gate;2786			10 Coins					2
+3267 3228 0	3268 3228 0	Pay-toll(10gp);Gate;2787			10 Coins					2
+3268 3227 0	3267 3227 0	Pay-toll(10gp);Gate;2788			10 Coins					2
+3268 3228 0	3267 3228 0	Pay-toll(10gp);Gate;2789			10 Coins					2
+3267 3227 0	3268 3227 0	Open;Gate;2786				Prince Ali Rescue				1
+3267 3228 0	3268 3228 0	Open;Gate;2787				Prince Ali Rescue				1
+3268 3227 0	3267 3227 0	Open;Gate;2788				Prince Ali Rescue				1
+3268 3228 0	3267 3228 0	Open;Gate;2789				Prince Ali Rescue				1
 3298 3124 0	3297 3124 0	Open;Prison door;2692									
 3297 3124 0	3298 3124 0	Open;Prison door;2692									
 3303 3117 0	3304 3115 0	Go-through;Shantay pass;4031		1854						2	
@@ -5284,3 +5292,772 @@
 3102 9764 0	3102 9762 0	Open;Door;142					1792=0;1793=1			1	Draynor basement puzzle door
 3099 9755 0	3101 9755 0	Open;Door;141					1790=1;1791=1;1793=1			1	Draynor basement puzzle door
 3101 9755 0	3099 9755 0	Open;Door;141					1790=1;1791=1;1793=1			1	Draynor basement puzzle door
+# --- Backfilled 2026-07-20 from upstream Skretzo/shortest-path (7e7e5bf94b): routes absent locally (intentional exclusions omitted) ---
+3205 3209 1	3206 3208 0	Climb-down;Staircase;16672								1	
+3169 3171 0	3169 9571 0	Climb-down;Dark hole;5947								2	
+3169 9571 0	3169 3171 0	Climb;Climbing rope;5946								2	
+3168 3172 0	3168 9572 0	Climb-down;Dark hole;5947								2	
+3168 9572 0	3168 3172 0	Climb;Climbing rope;5946								2	
+3170 3172 0	3170 9572 0	Climb-down;Dark hole;5947								2	
+3170 9572 0	3170 3172 0	Climb;Climbing rope;5946								2	
+3169 3173 0	3167 9573 0	Climb-down;Dark hole;5947								2	
+3225 9542 0	3219 9532 2	Enter;Tunnel;6659								2	
+3227 9542 0	3219 9532 2	Enter;Tunnel;6659								2	
+3218 9532 2	3226 9542 0	Enter;Tunnel;6658								2	
+3220 9532 2	3226 9542 0	Enter;Tunnel;6658								2	
+3239 9525 2	3241 9525 2	Climb;Rocks;6673								4	
+3241 9525 2	3239 9525 2	Climb;Rocks;6673								4	
+3239 9524 2	3241 9524 2	Climb;Rocks;6673								4	
+3241 9524 2	3239 9524 2	Climb;Rocks;6673								4	
+3238 9497 2	3240 9497 2	Climb;Rocks;6672								4	
+3238 9498 2	3240 9498 2	Climb;Rocks;6672								4	
+3238 9499 2	3240 9499 2	Climb;Rocks;6672								4	
+2597 3087 0	2596 3087 0	Open;Magic guild door;1732	66 Magic							1	
+2596 3087 0	2597 3087 0	Open;Magic guild door;1732								1	
+2597 3088 0	2596 3088 0	Open;Magic guild door;1733	66 Magic							1	
+2596 3088 0	2597 3088 0	Open;Magic guild door;1733								1	
+2584 3087 0	2585 3087 0	Open;Magic guild door;1733	66 Magic							1	
+2585 3087 0	2584 3087 0	Open;Magic guild door;1733								1	
+2584 3088 0	2585 3088 0	Open;Magic guild door;1732	66 Magic							1	
+2585 3088 0	2584 3088 0	Open;Magic guild door;1732								1	
+2683 3271 0	2683 3268 1	Cross;Gangplank;2085								3	
+2683 3268 1	2683 3271 0	Cross;Gangplank;2086								3	
+3077 3493 0	3077 9893 0	Open;trapdoor;12267				Shadow of the Storm				1	
+3077 9893 0	3077 3493 0	Climb;Cellar stairs;12265								1	
+3295 3428 0	3296 3428 0	Open;Gate;24560					3637>152			2	
+3296 3428 0	3295 3428 0	Open;Gate;24560					3637>152			2	
+3295 3429 0	3296 3429 0	Open;Gate;24561					3637>152			2	
+3296 3429 0	3295 3429 0	Open;Gate;24561					3637>152			2	
+2522 3595 0	2522 3597 0	Jump-across;Basalt rock;4551								2	
+2522 3597 0	2522 3595 0	Jump-to;Beach;4550								2	
+2522 3600 0	2522 3602 0	Jump-across;Basalt rock;4553								2	
+2522 3602 0	2522 3600 0	Jump-across;Basalt rock;4552								2	
+2518 3611 0	2516 3611 0	Jump-across;Basalt rock;4555								2	
+2516 3611 0	2518 3611 0	Jump-across;Basalt rock;4554								2	
+2514 3613 0	2514 3615 0	Jump-across;Basalt rock;4557								2	
+2514 3615 0	2514 3613 0	Jump-across;Basalt rock;4556								2	
+2514 3617 0	2514 3619 0	Jump-to;Rocky shore;4559								2	
+2514 3619 0	2514 3617 0	Jump-across;Basalt rock;4558								2	
+2508 3640 0	2505 3641 1	Climb-up;Staircase;4568									
+2508 3640 0	2505 3641 2	Top-floor;Staircase;4568									
+2505 3641 1	2506 3642 0	Climb-down;Staircase;4569									
+2505 3641 1	2505 3641 2	Climb-up;Staircase;4569									
+2505 3641 2	2506 3584 1	Climb-down;Staircase;4570									
+2505 3641 2	2506 3642 0	Bottom-floor;Staircase;4570									
+2510 3644 0	2518 9994 0	Climb;Iron ladder;4383									
+2518 9994 0	2510 3644 0	Climb;Iron ladder;4384									
+2515 10005 0	2515 10008 0	Climb;Iron ladder;4384									
+2515 10008 0	2515 10005 0	Climb;Iron ladder;4383									
+2516 10002 0	2516 10003 0	Open;Strange wall;4384									
+2513 10003 0	2513 10002 0	Open;Strange wall;4384									
+2504 3191 0	2515 3159 0	Follow;Elkoy;4968						111>0		5	
+2515 3159 0	2504 3191 0	Follow;Elkoy;4968						111>0		5	
+1509 3595 0	1509 3593 1	Climb-up;Ladder;42207									
+1509 3593 1	1509 3590 0	Climb-down;Ladder;42208									
+1496 3571 0	1496 3571 1	Climb-up;Ladder;42207									
+1496 3571 1	1496 3571 0	Climb-down;Ladder;42208									
+1519 3592 0	1519 3592 1	Climb-up;Ladder;42207									
+1519 3592 1	1519 3592 0	Climb-down;Ladder;42208									
+1539 3581 0	1539 3581 1	Climb-up;Ladder;42207									
+1539 3581 1	1539 3581 0	Climb-down;Ladder;42208									
+1524 3563 0	1520 3563 1	Climb;Stairs;27201									
+1520 3563 1	1524 3563 0	Climb;Stairs;27202									
+1527 3563 0	1523 3563 1	Climb;Stairs;27201									
+1523 3563 1	1527 3563 0	Climb;Stairs;27202									
+1524 3543 0	1528 3543 1	Climb;Stairs;27199									
+1528 3543 1	1524 3543 0	Climb;Stairs;27200									
+1539 3547 0	1539 3547 1	Climb-up;Ladder;42207									
+1539 3547 1	1539 3547 0	Climb-down;Ladder;42208									
+1539 3556 0	1539 3556 1	Climb-up;Ladder;42207									
+1539 3556 1	1539 3556 0	Climb-down;Ladder;42208									
+1543 3570 0	1543 3570 1	Climb-up;Ladder;42207									
+1543 3570 1	1543 3570 0	Climb-down;Ladder;42208									
+1552 3567 0	1552 3567 1	Climb-up;Staircase;42193									
+1552 3567 1	1552 3567 0	Climb-down;Staircase;42194									
+1552 3560 1	1552 3560 2	Climb-up;Staircase;42193									
+1552 3560 2	1552 3560 1	Climb-down;Staircase;42194									
+1565 3570 0	1565 3570 1	Climb-up;Ladder;42207									
+1565 3570 1	1565 3570 0	Climb-down;Ladder;42208									
+1567 3557 0	1571 3557 1	Climb-up;Staircase;42195									
+1571 3557 1	1567 3557 0	Climb-down;Staircase;42196									
+1567 3557 1	1563 3557 2	Climb-up;Staircase;42195									
+1563 3557 2	1567 3557 1	Climb-down;Staircase;42196									
+1568 3545 0	1568 3545 1	Climb-up;Ladder;42207									
+1568 3545 1	1568 3545 0	Climb-down;Ladder;42208									
+3651 3486 0	3653 3486 0	Pay-toll(2-Ecto);Energy Barrier;16105								2	
+3651 3485 0	3653 3485 0	Pay-toll(2-Ecto);Energy Barrier;16105								2	
+3653 3486 0	3651 3486 0	Pay-toll(2-Ecto);Energy Barrier;16105								2	
+3653 3485 0	3651 3485 0	Pay-toll(2-Ecto);Energy Barrier;16105								2	
+3669 3452 0	3669 3454 0	Pay-toll(2-Ecto);Energy Barrier;16105								2	
+3709 3496 0	3712 3496 0	Cross;Gangplank;11209								2	
+3712 3496 0	3709 3496 0	Cross;Gangplank;11210								2	
+3714 3503 0	3714 3503 1	Climb-up;Ship's ladder;11308								2	
+3714 3503 1	3714 3503 0	Climb-down;Ship's ladder;11309								2	
+3578 3526 0	3577 9927 0	Push;Memorial;5167				Creature of Fenkenstrain				2	
+3577 9927 0	3578 3526 0	Climb-up;Ladder;17387								2	
+3504 9969 0	3504 3569 0	Climb-up;Ladder;17387				Creature of Fenkenstrain				2	
+3504 3571 0	3504 9969 0	Push;Memorial;5167								2	
+3019 9741 0	3019 9741 0	Climb-down;Ladder;30367	60 Mining							2	
+3019 9741 0	3019 9741 0	Climb-up;Ladder;17386								2	
+3019 3337 0	3019 9737 0	Climb-down;Ladder;30367	60 Mining							2	
+3019 9737 0	3019 3337 0	Climb-up;Ladder;17386								2	
+3017 3339 0	3017 9739 0	Climb-down;Ladder;30367	60 Mining							2	
+3017 9739 0	3017 3339 0	Climb-up;Ladder;17386								2	
+3330 3520 0	3330 3523 0	Cross;Wilderness Ditch;23271								4	
+3330 3523 0	3330 3520 0	Cross;Wilderness Ditch;23271								4	
+3331 3520 0	3331 3523 0	Cross;Wilderness Ditch;23271								4	
+3331 3523 0	3331 3520 0	Cross;Wilderness Ditch;23271								4	
+3332 3520 0	3332 3523 0	Cross;Wilderness Ditch;23271								4	
+3332 3523 0	3332 3520 0	Cross;Wilderness Ditch;23271								4	
+3333 3520 0	3333 3523 0	Cross;Wilderness Ditch;23271								4	
+3333 3523 0	3333 3520 0	Cross;Wilderness Ditch;23271								4	
+3334 3520 0	3334 3523 0	Cross;Wilderness Ditch;23271								4	
+3334 3523 0	3334 3520 0	Cross;Wilderness Ditch;23271								4	
+3335 3520 0	3335 3523 0	Cross;Wilderness Ditch;23271								4	
+3335 3523 0	3335 3520 0	Cross;Wilderness Ditch;23271								4	
+3336 3520 0	3336 3523 0	Cross;Wilderness Ditch;23271								4	
+3336 3523 0	3336 3520 0	Cross;Wilderness Ditch;23271								4	
+3337 3520 0	3337 3523 0	Cross;Wilderness Ditch;23271								4	
+3337 3523 0	3337 3520 0	Cross;Wilderness Ditch;23271								4	
+3338 3520 0	3338 3523 0	Cross;Wilderness Ditch;23271								4	
+3338 3523 0	3338 3520 0	Cross;Wilderness Ditch;23271								4	
+3339 3520 0	3339 3523 0	Cross;Wilderness Ditch;23271								4	
+3339 3523 0	3339 3520 0	Cross;Wilderness Ditch;23271								4	
+3340 3520 0	3340 3523 0	Cross;Wilderness Ditch;23271								4	
+3340 3523 0	3340 3520 0	Cross;Wilderness Ditch;23271								4	
+3384 10052 0	3259 3663 0	Exit;Opening;40389								2	
+3386 10052 0	3259 3663 0	Exit;Opening;40389								2	
+3405 10145 0	3294 3749 0	Exit;Opening;40391								2	
+3406 10145 0	3294 3749 0	Exit;Opening;40391								2	
+3407 10145 0	3294 3749 0	Exit;Opening;40391								2	
+3067 3739 0	3187 10127 0	Jump-down;Crevice;40386								2	
+3068 3739 0	3187 10127 0	Jump-down;Crevice;40386								2	
+3220 10088 0	3220 10084 0	Jump-to;Pillar;31561	65 Agility							4	
+3220 10084 0	3220 10088 0	Jump-to;Pillar;31561	65 Agility							4	
+3198 10136 0	3202 10132 0	Jump-to;Pillar;31562								4	
+3202 10132 0	3198 10136 0	Jump-to;Pillar;31562								4	
+3200 10196 0	3204 10196 0	Jump-to;Pillar;31561								4	
+3204 10196 0	3200 10196 0	Jump-to;Pillar;31561								4	
+3180 10211 0	3180 10207 0	Jump-to;Pillar;31561								4	
+3180 10207 0	3180 10211 0	Jump-to;Pillar;31561								4	
+3217 10058 0	3102 3655 0	Climb-up;Stairs;31558								2	
+3246 10215 0	3124 3805 0	Climb-up;Stairs;43868								2	
+3184 3944 0	3184 3945 0	Open;Gate;26760								2	
+3184 3945 0	3184 3944 0	Open;Gate;26760			7500 Coins		4469=0;4468=0;4467=0;			2	
+3184 3945 0	3184 3944 0	Open;Gate;26760			6000 Coins		4469=0;4468=0;4467=1			2	
+3184 3945 0	3184 3944 0	Open;Gate;26760			3750 Coins		4469=0;4468=1			2	
+3184 3945 0	3184 3944 0	Open;Gate;26760					4469=1			2	
+2800 5160 0	2166 4409 2	Climb-down;Ladder;20278								2	
+2166 4409 2	2800 5160 0	Climb-up;Ladder;20281								2	
+2705 5363 0	2705 5366 1	Climb-up;Stairs;22931								1	
+2706 5363 0	2705 5366 1	Climb-up;Stairs;22931								1	
+2705 5366 1	2705 5363 0	Climb-down;Stairs;22933								1	
+2706 5366 1	2705 5363 0	Climb-down;Stairs;22933								1	
+2720 5358 0	2720 5361 1	Climb-up;Stairs;22939								1	
+2721 5358 0	2720 5361 1	Climb-up;Stairs;22939								1	
+2720 5361 1	2720 5358 0	Climb-down;Stairs;22940								1	
+2721 5361 1	2720 5358 0	Climb-down;Stairs;22940								1	
+2747 5374 0	3317 9603 0	Open;Bone door;22945								1	
+3317 9602 0	2747 5374 0	Open;Door;6919								1	
+3318 9602 0	2748 5374 0	Open;Door;6919								1	
+2736 5352 0	2733 5351 1	Climb-up;Stairs;22931								1	
+2736 5351 0	2733 5351 1	Climb-up;Stairs;22931								1	
+2733 5351 1	2736 5351 0	Climb-down;Stairs;22933								1	
+2733 5352 1	2736 5351 0	Climb-down;Stairs;22933								1	
+2727 5347 0	2731 5346 1	Climb-up;Stairs;22937								1	
+2727 5346 0	2731 5346 1	Climb-up;Stairs;22937								1	
+2731 5346 1	2727 5346 0	Climb-down;Stairs;22938								1	
+2731 5347 1	2727 5346 0	Climb-down;Stairs;22938								1	
+2694 5328 0	2694 5328 1	Climb-up;Ladder;22934								2	
+2694 5328 1	2694 5328 0	Climb-down;Ladder;22936								2	
+2705 5327 0	2701 5327 1	Climb-up;Stairs;22937								1	
+2705 5328 0	2701 5327 1	Climb-up;Stairs;22937								1	
+2701 5327 1	2705 5327 0	Climb-down;Stairs;22938								1	
+2701 5328 1	2705 5327 0	Climb-down;Stairs;22938								1	
+2738 5325 0	2738 5325 1	Climb-up;Ladder;22934								2	
+2738 5325 1	2738 5325 0	Climb-down;Ladder;22936								2	
+2705 5305 0	2701 5305 1	Climb-up;Stairs;22937								1	
+2705 5306 0	2701 5305 1	Climb-up;Stairs;22937								1	
+2701 5305 1	2705 5305 0	Climb-down;Stairs;22938								1	
+2701 5306 1	2705 5305 0	Climb-down;Stairs;22938								1	
+2730 5306 0	2734 5306 1	Climb-up;Stairs;22937								1	
+2730 5307 0	2734 5306 1	Climb-up;Stairs;22937								1	
+2734 5306 1	2730 5306 0	Climb-down;Stairs;22938								1	
+2734 5307 1	2730 5306 0	Climb-down;Stairs;22938								1	
+2729 5304 0	2729 5300 1	Climb-up;Stairs;22937								1	
+2730 5304 0	2729 5300 1	Climb-up;Stairs;22937								1	
+2729 5300 1	2729 5304 0	Climb-down;Stairs;22938								1	
+2730 5300 1	2729 5304 0	Climb-down;Stairs;22938								1	
+2713 5293 0	2709 5293 1	Climb-up;Stairs;22937								1	
+2713 5294 0	2709 5293 1	Climb-up;Stairs;22937								1	
+2709 5293 1	2713 5293 0	Climb-down;Stairs;22938								1	
+2709 5294 1	2713 5293 0	Climb-down;Stairs;22938								1	
+2721 5292 0	2725 5292 1	Climb-up;Stairs;22937								1	
+2721 5293 0	2725 5292 1	Climb-up;Stairs;22937								1	
+2725 5292 1	2721 5292 0	Climb-down;Stairs;22938								1	
+2725 5293 1	2721 5292 0	Climb-down;Stairs;22938								1	
+2713 5285 0	2713 5281 1	Climb-up;Stairs;22937								1	
+2714 5285 0	2713 5281 1	Climb-up;Stairs;22937								1	
+2713 5281 1	2713 5285 0	Climb-down;Stairs;22938								1	
+2714 5281 1	2713 5285 0	Climb-down;Stairs;22938								1	
+2713 5277 0	2713 5281 1	Climb-up;Stairs;22937								1	
+2714 5277 0	2713 5281 1	Climb-up;Stairs;22937								1	
+2713 5281 1	2713 5277 0	Climb-down;Stairs;22938								1	
+2714 5281 1	2713 5277 0	Climb-down;Stairs;22938								1	
+2708 5275 0	2708 5275 1	Climb-up;Ladder;22934								2	
+2708 5275 1	2708 5275 0	Climb-down;Ladder;22936								2	
+2722 5276 0	2722 5272 1	Climb-up;Stairs;22937								1	
+2723 5276 0	2722 5272 1	Climb-up;Stairs;22937								1	
+2722 5272 1	2722 5276 0	Climb-down;Stairs;22938								1	
+2723 5272 1	2722 5276 0	Climb-down;Stairs;22938								1	
+2733 5275 0	2733 5278 1	Climb-up;Stairs;22931								1	
+2734 5275 0	2733 5278 1	Climb-up;Stairs;22931								1	
+2733 5278 1	2733 5275 0	Climb-down;Stairs;22932								1	
+2734 5278 1	2733 5275 0	Climb-down;Stairs;22932								1	
+2738 5277 0	2738 5281 1	Climb-up;Stairs;22937								1	
+2739 5277 0	2738 5281 1	Climb-up;Stairs;22937								1	
+2738 5281 1	2738 5277 0	Climb-down;Stairs;22938								1	
+2739 5281 1	2738 5277 0	Climb-down;Stairs;22938								1	
+2722 5268 0	2722 5272 1	Climb-up;Stairs;22937								1	
+2723 5268 0	2722 5272 1	Climb-up;Stairs;22937								1	
+2722 5272 1	2722 5268 0	Climb-down;Stairs;22938								1	
+2723 5272 1	2722 5268 0	Climb-down;Stairs;22938								1	
+2722 5260 0	2722 5257 1	Climb-up;Stairs;22939								1	
+2723 5260 0	2722 5257 1	Climb-up;Stairs;22939								1	
+2722 5257 1	2722 5260 0	Climb-down;Stairs;22940								1	
+2723 5257 1	2722 5260 0	Climb-down;Stairs;22940								1	
+2703 5363 1	2703 5363 2	Climb-up;Ladder;22934								2	
+2703 5363 2	2703 5363 1	Climb-down;Ladder;22935								2	
+2740 5359 1	2740 5362 2	Climb-up;Stairs;22931								1	
+2741 5359 1	2740 5362 2	Climb-up;Stairs;22931								1	
+2740 5362 2	2740 5359 1	Climb-down;Stairs;22932								1	
+2741 5362 2	2740 5359 1	Climb-down;Stairs;22932								1	
+2745 5355 1	2745 5355 2	Climb-up;Ladder;22934								1	
+2745 5355 2	2745 5355 1	Climb-down;Ladder;22935								1	
+2698 5304 1	2695 5304 2	Climb-up;Stairs;22931								1	
+2695 5304 2	2698 5304 1	Climb-down;Stairs;22932								1	
+2739 5296 1	2742 5296 2	Climb-up;Stairs;22931								1	
+2742 5296 2	2739 5296 1	Climb-down;Stairs;22932								1	
+2696 5291 1	2696 5294 2	Climb-up;Stairs;22931								1	
+2697 5291 1	2696 5294 2	Climb-up;Stairs;22931								1	
+2696 5294 2	2696 5291 1	Climb-down;Stairs;22932								1	
+2697 5294 2	2696 5291 1	Climb-down;Stairs;22932								1	
+2743 5286 1	2743 5289 2	Climb-up;Stairs;22931								1	
+2743 5289 2	2743 5286 1	Climb-down;Stairs;22932								1	
+2739 5260 1	2739 5257 2	Climb-up;Stairs;22931								1	
+2740 5260 1	2739 5257 2	Climb-up;Stairs;22931								1	
+2739 5257 2	2739 5260 1	Climb-down;Stairs;22932								1	
+2740 5257 2	2739 5260 1	Climb-down;Stairs;22932								1	
+2722 5255 1	2722 5249 3	Climb-up;Stairs;22941								1	
+2723 5255 1	2722 5249 3	Climb-up;Stairs;22941								1	
+2722 5249 3	2722 5255 1	Climb-down;Stairs;22942								1	
+2723 5249 3	2722 5255 1	Climb-down;Stairs;22942								1	
+2719 5242 3	2715 5241 0	Climb-down;Ladder top;22666								2	
+3680 2963 0	3786 2824 0	Transport;Brother Tranquility;550								2	
+3786 2824 0	3680 2963 0	Transport;Brother Tranquility;550								2	
+3495 3464 0	3477 9845 0	Open;Trapdoor;5055									
+2764 3666 0	2766 3663 0	Use;Rope -> Boulder;5842		954						1	
+2865 3938 0	2866 3938 0	Squeeze-through;Broken fence;46817					6528>199				
+2866 3938 0	2865 3938 0	Squeeze-through;Broken fence;46817					6528>199				
+2895 3672 0	2893 10074 2	Enter;Cave Entrance;3759								1	
+1795 3106 0	1799 9506 0	Enter;Colosseum entrance;50749									
+1799 9506 0	1795 3106 0	Exit;Stairs;50750									
+1799 9507 0	1795 3106 0	Exit;Stairs;50750									
+2304 3194 0	2306 3194 0	Pass;Tree;8742						517>1		5	
+2970 3462 0	2972 3462 0	Climb-over;Crumbling wall;24749								2	
+2972 3462 0	2970 3462 0	Climb-over;Crumbling wall;24749	58 Thieving							2	
+1401 3536 0	1275 3559 0	Travel;Mountain Guide;7600					5421=1			7	1: Mount Quidamortem.
+1401 3536 0	1272 3475 0	Travel;Mountain Guide;7600					5421=1			7	2: South of Quidamortem.
+1275 3559 0	1401 3536 0	Travel;Mountain Guide;7600					5421=1			7	1: The Shayzien Outpost.
+1275 3559 0	1272 3475 0	Travel;Mountain Guide;7600					5421=1			7	2: South of Quidamortem.
+1272 3475 0	1401 3536 0	Travel;Mountain Guide;7600					5421=1			7	1: The Shayzien Outpost.
+1272 3475 0	1275 3559 0	Travel;Mountain Guide;7600					5421=1			7	2: Mount Quidamortem.
+1259 3430 0	1271 3436 0	Pass-through;Cave;57219								4	
+1271 3436 0	1259 3430 0	Pass-through;Cave;57220								4	
+1486 3232 0	1361 3309 0	Follow;Mountain Guide;14529					17226=1			5	
+1361 3309 0	1486 3232 0	Follow;Mountain Guide;14529					17226=1			5	
+3280 3412 0	1700 3141 0	Travel;Primio;12888				Children of the Sun				6	Civitas illa Fortis
+1703 3140 0	3280 3412 0	Travel;Primio;12889				Children of the Sun				6	Varrock
+2744 3152 0	2713 9564 0	Enter;Dungeon entrance;20876			875 Coins					2	
+2744 3152 0	2713 9564 0	Enter;Dungeon entrance;20876					5628=1			2	
+2745 3152 0	2713 9564 0	Enter;Dungeon entrance;20876			875 Coins					2	
+2745 3152 0	2713 9564 0	Enter;Dungeon entrance;20876					5628=1			2	
+2746 3152 0	2713 9564 0	Enter;Dungeon entrance;20876			875 Coins					2	
+2746 3152 0	2713 9564 0	Enter;Dungeon entrance;20876					5628=1			2	
+2713 9564 0	2745 3152 0	Leave;exit;20878								2	
+2835 2987 0	2835 2987 1	Climb-up;Ladder;16684								2	
+2835 2987 1	2835 2987 0	Climb-down;Ladder;16679								2	
+2834 2988 0	2834 2988 1	Climb-up;Ladder;16684								2	
+2834 2988 1	2834 2988 0	Climb-down;Ladder;16679								2	
+2835 2989 0	2835 2989 1	Climb-up;Ladder;16684								2	
+2835 2989 1	2835 2989 0	Climb-down;Ladder;16679								2	
+2836 2988 0	2836 2988 1	Climb-up;Ladder;16684								2	
+2836 2988 1	2836 2988 0	Climb-down;Ladder;16679								2	
+2861 2998 0	2861 2998 1	Climb-up;Ladder;17026								2	
+2861 2998 1	2861 2998 0	Climb-down;Ladder;16679								2	
+2860 2997 1	2860 2997 0	Climb-down;Ladder;16679								2	
+2862 2997 1	2862 2997 0	Climb-down;Ladder;16679								2	
+2861 2995 1	2861 2995 2	Climb-up;Ladder;2268								2	
+2861 2995 2	2861 2995 1	Climb-down;Ladder;2269								2	
+2823 2958 0	2823 2958 1	Climb-up;Ladder;16683								2	
+2823 2958 1	2823 2958 0	Climb-down;Ladder;16679								2	
+2824 2957 0	2824 2957 1	Climb-up;Ladder;16683								2	
+2824 2957 1	2824 2957 0	Climb-down;Ladder;16679								2	
+2824 2959 0	2824 2959 1	Climb-up;Ladder;16683								2	
+2824 2959 1	2824 2959 0	Climb-down;Ladder;16679								2	
+2825 2958 0	2825 2958 1	Climb-up;Ladder;16683								2	
+2825 2958 1	2825 2958 0	Climb-down;Ladder;16679								2	
+2845 2954 0	2845 2954 1	Climb-up;Ladder;16683								2	
+2845 2954 1	2845 2954 0	Climb-down;Ladder;16679								2	
+2844 2953 1	2844 2953 0	Climb-down;Ladder;16679								2	
+2844 2955 1	2844 2955 0	Climb-down;Ladder;16679								2	
+2859 2954 0	2859 2954 1	Climb-up;Ladder;16683								2	
+2859 2954 1	2859 2954 0	Climb-down;Ladder;16679								2	
+2860 2953 1	2860 2953 0	Climb-down;Ladder;16679								2	
+2860 2955 1	2860 2955 0	Climb-down;Ladder;16679								2	
+2870 2971 0	2870 2971 1	Climb-up;Ladder;16683								2	
+2870 2971 1	2870 2971 0	Climb-down;Ladder;16679								2	
+2872 2971 0	2872 2971 1	Climb-up;Ladder;16683								2	
+2872 2971 1	2872 2971 0	Climb-down;Ladder;16679								2	
+2569 3121 0	2569 9525 0	Climb-down;Staircase;16665								1	
+2570 3121 0	2569 9525 0	Climb-up;Staircase;16665								1	
+2569 9525 0	2569 3121 0	Climb-up;Staircase;16665								1	
+2569 9526 0	2569 3121 0	Climb-up;Staircase;16665								1	
+2572 9499 0	2588 9573 0	Pray-at;Altar;412								2	
+2579 9583 0	2567 9524 0	Climb-up;Staircase;16665								1	
+2578 9583 0	2567 9524 0	Climb-up;Staircase;16665								1	
+2594 3085 0	2594 9485 0	Climb-down;Ladder;17384								2	
+2594 9486 0	2594 3085 0	Climb-up;Ladder;17383								2	
+2591 3088 0	2590 3092 1	Climb-up;Staircase;15645								1	
+2590 3083 1	2590 3087 2	Climb-up;Staircase;15645								1	
+2591 3083 1	2590 3087 2	Climb-up;Staircase;15645								1	
+2590 3087 2	2590 3083 1	Climb-down;Staircase;15648								1	
+2591 3087 2	2590 3083 1	Climb-down;Staircase;15648								1	
+2549 3112 2	2549 3112 1	Climb-down;Ladder;2797								2	
+2548 3111 2	2549 3112 1	Climb-down;Ladder;2797								2	
+2548 3111 1	2549 3112 2	Climb-up;Ladder;2796								2	
+2550 3111 1	2549 3112 2	Climb-up;Ladder;2796								2	
+2549 3112 1	2549 3112 2	Climb-up;Ladder;2796								2	
+2545 3111 1	2544 3112 0	Climb-down;Ladder;17122								2	
+2543 3111 1	2544 3112 0	Climb-down;Ladder;17122								2	
+2545 3111 0	2545 3111 1	Climb-up;Ladder;2833								2	
+2543 3111 0	2543 3111 1	Climb-up;Ladder;2833								2	
+1829 9974 0	1702 3575 0	Climb-up;Ladder;34863								2	
+1831 9974 0	1702 3575 0	Climb-up;Ladder;34863								2	
+1798 9969 0	1670 3569 0	Climb-up;Staircase;34864								1	
+1799 9969 0	1670 3569 0	Climb-up;Staircase;34864								1	
+1800 9967 0	1670 3569 0	Climb-up;Staircase;34864								1	
+1799 9966 0	1670 3569 0	Climb-up;Staircase;34864								1	
+1671 3568 0	1800 9968 0	Climb-down;Staircase;34865								1	
+1671 3567 0	1800 9968 0	Climb-down;Staircase;34865								1	
+1670 3566 0	1800 9968 0	Climb-down;Staircase;34865								1	
+1824 9973 0	1825 9973 0	Open;Temple Door;34843								2	
+1825 9973 0	1824 9973 0	Open;Temple Door;34843					8398=1			2	
+1802 9958 0	1802 9956 0	Open;Temple Door;34843					8397=1			2	
+1802 9956 0	1802 9958 0	Open;Temple Door;34843					8397=1			2	
+1803 9968 0	1726 9994 0	Enter;Strange passage;28918					5087=1			1	
+1803 9967 0	1726 9994 0	Enter;Strange passage;28918					5087=1			1	
+1470 3652 0	1650 9987 0	Enter;Hole;28915					5088=1			2	
+1470 3654 0	1650 9987 0	Enter;Hole;28915					5088=1			2	
+1471 3653 0	1650 9987 0	Enter;Hole;28915					5088=1			2	
+1563 3790 0	1617 10101 0	Enter;Hole;28915					5088=1			2	
+1563 3792 0	1617 10101 0	Enter;Hole;28915					5088=1			2	
+1564 3791 0	1617 10101 0	Enter;Hole;28915					5088=1			2	
+1695 3865 0	1719 10101 0	Enter;Hole;28915					5088=1			2	
+1696 3866 0	1719 10101 0	Enter;Hole;28915					5088=1			2	
+1697 3865 0	1719 10101 0	Enter;Hole;28915					5088=1			2	
+1726 9994 0	1803 9968 0	Climb-up;Vine;28897								2	
+1725 9993 0	1803 9968 0	Climb-up;Vine;28897								2	
+1726 9992 0	1803 9968 0	Climb-up;Vine;28897								2	
+1649 9986 0	1469 3653 0	Climb-up;Vine;28896								2	
+1650 9985 0	1469 3653 0	Climb-up;Vine;28896								2	
+1651 9986 0	1469 3653 0	Climb-up;Vine;28896								2	
+1616 10102 0	1562 3791 0	Climb-up;Vine;28895								2	
+1617 10103 0	1562 3791 0	Climb-up;Vine;28895								2	
+1618 10102 0	1562 3791 0	Climb-up;Vine;28895								2	
+1718 10102 0	1696 3864 0	Climb-up;Vine;28898								2	
+1719 10103 0	1696 3864 0	Climb-up;Vine;28898								2	
+1720 10102 0	1696 3864 0	Climb-up;Vine;28898								2	
+1638 10047 0	1461 9879 0	Climb-up;Vine;42350								2	
+1639 10046 0	1461 9879 0	Climb-up;Vine;42350								2	
+1639 10048 0	1461 9879 0	Climb-up;Vine;42350								2	
+1640 10047 0	1461 9879 0	Climb-up;Vine;42350								2	
+1461 9879 0	1639 10046 0	Enter;Strange passage;42249					12341=1			2	
+1665 10051 0	1639 3673 0	Climb-up;Vine ladder;28894								2	
+1666 10052 0	1639 3673 0	Climb-up;Vine ladder;28894								2	
+1667 10051 0	1639 3673 0	Climb-up;Vine ladder;28894								2	
+1631 3570 0	1634 3570 0	Climb-over;Stile;7527								3	
+1634 3570 0	1631 3570 0	Climb-over;Stile;7527								3	
+1658 3505 0	1657 3505 0	Open;Gate;28851	60 Woodcutting							2	
+1657 3505 0	1658 3505 0	Open;Gate;28851								2	
+1658 3504 0	1657 3504 0	Open;Gate;28851	60 Woodcutting							2	
+1657 3504 0	1658 3504 0	Open;Gate;28851								2	
+1562 3488 0	1563 3488 0	Open;Gate;28852	60 Woodcutting							2	
+1563 3488 0	1562 3488 0	Open;Gate;28852								2	
+1562 3487 0	1563 3487 0	Open;Gate;28852	60 Woodcutting							2	
+1563 3487 0	1562 3487 0	Open;Gate;28852								2	
+2455 3049 0	2457 3049 0	Climb-over;Crushed barricade;6881					496=1			2	
+2457 3049 0	2455 3049 0	Climb-over;Crushed barricade;6881					496=1			2	
+2455 3048 0	2457 3048 0	Climb-over;Crushed barricade;6882					496=1			2	
+2485 3045 0	2477 9437 2	Climb-down;Stairs;6841					487>10			7	
+2486 3045 0	2477 9437 2	Climb-down;Stairs;6841					487>10			7	
+2477 9438 2	2485 3045 0	Climb-up;Stairs;6842								7	
+2762 2943 0	2762 2941 0	Chop-down;Jungle Bush;2892		975 6313 6315 6317				139>49		2	
+2762 2940 0	2762 2942 0	Chop-down;Jungle Bush;2892		975 6313 6315 6317				139>49		2	
+2762 2938 0	2762 2936 0	Chop-down;Jungle Bush;2892		975 6313 6315 6317				139>49		2	
+2762 2936 0	2762 2938 0	Chop-down;Jungle Bush;2892		975 6313 6315 6317				139>49		2	
+2762 2936 0	2762 2934 0	Chop-down;Jungle Bush;2892		975 6313 6315 6317				139>49		2	
+2762 2934 0	2762 2936 0	Chop-down;Jungle Bush;2892		975 6313 6315 6317				139>49		2	
+2791 2935 0	2791 2937 0	Chop-down;Jungle tree;2890		1351 1349 1353 1361 1355 1357 1359 6739 23673 23279 13241 20011				139>49		10	
+2791 2937 0	2791 2935 0	Chop-down;Jungle tree;2890		1351 1349 1353 1361 1355 1357 1359 6739 23673 23279 13241 20011				139>49		10	
+2791 2937 0	2791 2939 0	Chop-down;Jungle Bush;2893		975 6313 6315 6317				139>49		2	
+2791 2939 0	2791 2937 0	Chop-down;Jungle Bush;2893		975 6313 6315 6317				139>49		2	
+2791 2939 0	2791 2941 0	Chop-down;Jungle Bush;2893		975 6313 6315 6317				139>49		2	
+2791 2941 0	2791 2939 0	Chop-down;Jungle Bush;2893		975 6313 6315 6317				139>49		2	
+2791 2941 0	2791 2943 0	Chop-down;Jungle tree;2890		1351 1349 1353 1361 1355 1357 1359 6739 23673 23279 13241 20011				139>49		10	
+2791 2943 0	2791 2941 0	Chop-down;Jungle tree;2890		1351 1349 1353 1361 1355 1357 1359 6739 23673 23279 13241 20011				139>49		10	
+2793 2943 0	2793 2941 0	Chop-down;Jungle tree;2890		1351 1349 1353 1361 1355 1357 1359 6739 23673 23279 13241 20011				139>49		10	
+2793 2941 0	2793 2943 0	Chop-down;Jungle tree;2890		1351 1349 1353 1361 1355 1357 1359 6739 23673 23279 13241 20011				139>49		10	
+2793 2941 0	2793 2939 0	Chop-down;Jungle Bush;2893		975 6313 6315 6317				139>49		2	
+2793 2939 0	2793 2941 0	Chop-down;Jungle Bush;2893		975 6313 6315 6317				139>49		2	
+2793 2939 0	2793 2937 0	Chop-down;Jungle Bush;2893		975 6313 6315 6317				139>49		2	
+2793 2937 0	2793 2939 0	Chop-down;Jungle Bush;2893		975 6313 6315 6317				139>49		2	
+2795 2938 0	2795 2940 0	Chop-down;Jungle Bush;2893		975 6313 6315 6317				139>49		2	
+2795 2941 0	2795 2939 0	Chop-down;Jungle Bush;2892		975 6313 6315 6317				139>49		2	
+2795 2940 0	2795 2942 0	Chop-down;Jungle Bush;2892		975 6313 6315 6317				139>49		2	
+2795 2943 0	2795 2941 0	Chop-down;Jungle Bush;2893		975 6313 6315 6317				139>49		2	
+2798 2943 0	2798 2941 0	Chop-down;Jungle tree;2890		1351 1349 1353 1361 1355 1357 1359 6739 23673 23279 13241 20011				139>49		10	
+2798 2940 0	2798 2942 0	Chop-down;Jungle Bush;2892		975 6313 6315 6317				139>49		2	
+2798 2941 0	2798 2939 0	Chop-down;Jungle Bush;2892		975 6313 6315 6317				139>49		2	
+2798 2938 0	2798 2940 0	Chop-down;Jungle Bush;2893		975 6313 6315 6317				139>49		2	
+2799 2937 0	2799 2939 0	Chop-down;Jungle Bush;2893		975 6313 6315 6317				139>49		2	
+2799 2939 0	2799 2937 0	Chop-down;Jungle Bush;2893		975 6313 6315 6317				139>49		2	
+2799 2939 0	2799 2941 0	Chop-down;Jungle Bush;2893		975 6313 6315 6317				139>49		2	
+2799 2941 0	2799 2939 0	Chop-down;Jungle Bush;2893		975 6313 6315 6317				139>49		2	
+2799 2941 0	2799 2943 0	Chop-down;Jungle Bush;2892		975 6313 6315 6317				139>49		2	
+2799 2943 0	2799 2941 0	Chop-down;Jungle Bush;2892		975 6313 6315 6317				139>49		2	
+2800 2943 0	2800 2941 0	Chop-down;Jungle tree;2890		1351 1349 1353 1361 1355 1357 1359 6739 23673 23279 13241 20011				139>49		10	
+2800 2940 0	2800 2942 0	Chop-down;Jungle Bush;2893		975 6313 6315 6317				139>49		2	
+2800 2941 0	2800 2939 0	Chop-down;Jungle Bush;2893		975 6313 6315 6317				139>49		2	
+2800 2938 0	2800 2940 0	Chop-down;Jungle tree;2890		1351 1349 1353 1361 1355 1357 1359 6739 23673 23279 13241 20011				139>49		10	
+2800 2939 0	2800 2937 0	Chop-down;Jungle tree;2889		1351 1349 1353 1361 1355 1357 1359 6739 23673 23279 13241 20011				139>49		10	
+2800 2936 0	2800 2938 0	Chop-down;Jungle tree;2889		1351 1349 1353 1361 1355 1357 1359 6739 23673 23279 13241 20011				139>49		10	
+2816 2936 0	2816 2938 0	Chop-down;Jungle Bush;2892		975 6313 6315 6317				139>49		2	
+2816 2938 0	2816 2936 0	Chop-down;Jungle Bush;2892		975 6313 6315 6317				139>49		2	
+2816 2938 0	2816 2940 0	Chop-down;Jungle Bush;2893		975 6313 6315 6317				139>49		2	
+2816 2940 0	2816 2938 0	Chop-down;Jungle Bush;2893		975 6313 6315 6317				139>49		2	
+2819 2940 0	2819 2938 0	Chop-down;Jungle Bush;2893		975 6313 6315 6317				139>49		2	
+2819 2938 0	2819 2940 0	Chop-down;Jungle Bush;2893		975 6313 6315 6317				139>49		2	
+2819 2938 0	2819 2936 0	Chop-down;Jungle Bush;2893		975 6313 6315 6317				139>49		2	
+2819 2936 0	2819 2938 0	Chop-down;Jungle Bush;2893		975 6313 6315 6317				139>49		2	
+2820 2935 0	2820 2937 0	Chop-down;Jungle tree;2890		1351 1349 1353 1361 1355 1357 1359 6739 23673 23279 13241 20011				139>49		10	
+2820 2938 0	2820 2936 0	Chop-down;Jungle Bush;2892		975 6313 6315 6317				139>49		2	
+2820 2937 0	2820 2939 0	Chop-down;Jungle Bush;2893		975 6313 6315 6317				139>49		2	
+2820 2940 0	2820 2938 0	Chop-down;Jungle tree;2890		1351 1349 1353 1361 1355 1357 1359 6739 23673 23279 13241 20011				139>49		10	
+2864 2934 0	2864 2936 0	Chop-down;Jungle Bush;2892		975 6313 6315 6317				139>49		2	
+2864 2936 0	2864 2934 0	Chop-down;Jungle Bush;2892		975 6313 6315 6317				139>49		2	
+2864 2936 0	2864 2938 0	Chop-down;Jungle tree;2889		1351 1349 1353 1361 1355 1357 1359 6739 23673 23279 13241 20011				139>49		10	
+2864 2939 0	2864 2937 0	Chop-down;Jungle tree;2889		1351 1349 1353 1361 1355 1357 1359 6739 23673 23279 13241 20011				139>49		10	
+2864 2939 0	2864 2941 0	Chop-down;Jungle Bush;2893		975 6313 6315 6317				139>49		2	
+2864 2941 0	2864 2939 0	Chop-down;Jungle Bush;2893		975 6313 6315 6317				139>49		2	
+2866 2941 0	2866 2939 0	Chop-down;Jungle tree;2890		1351 1349 1353 1361 1355 1357 1359 6739 23673 23279 13241 20011				139>49		10	
+2866 2939 0	2866 2937 0	Chop-down;Jungle tree;2890		1351 1349 1353 1361 1355 1357 1359 6739 23673 23279 13241 20011				139>49		10	
+2866 2938 0	2866 2940 0	Chop-down;Jungle Bush;2893		975 6313 6315 6317				139>49		2	
+2866 2936 0	2866 2938 0	Chop-down;Jungle Bush;2892		975 6313 6315 6317				139>49		2	
+2866 2936 0	2866 2934 0	Chop-down;Jungle Bush;2892		975 6313 6315 6317				139>49		2	
+2866 2934 0	2866 2936 0	Chop-down;Jungle Bush;2892		975 6313 6315 6317				139>49		2	
+2868 2934 0	2868 2936 0	Chop-down;Jungle tree;2889		1351 1349 1353 1361 1355 1357 1359 6739 23673 23279 13241 20011				139>49		10	
+2868 2936 0	2868 2934 0	Chop-down;Jungle tree;2889		1351 1349 1353 1361 1355 1357 1359 6739 23673 23279 13241 20011				139>49		10	
+2868 2936 0	2868 2938 0	Chop-down;Jungle tree;2889		1351 1349 1353 1361 1355 1357 1359 6739 23673 23279 13241 20011				139>49		10	
+2868 2939 0	2868 2937 0	Chop-down;Jungle Bush;2892		975 6313 6315 6317				139>49		2	
+2868 2938 0	2868 2940 0	Chop-down;Jungle Bush;2892		975 6313 6315 6317				139>49		2	
+2868 2941 0	2868 2939 0	Chop-down;Jungle Bush;2893		975 6313 6315 6317				139>49		2	
+2872 2934 0	2872 2936 0	Chop-down;Jungle Bush;2892		975 6313 6315 6317				139>49		2	
+2872 2936 0	2872 2934 0	Chop-down;Jungle Bush;2892		975 6313 6315 6317				139>49		2	
+2872 2938 0	2872 2940 0	Chop-down;Jungle tree;2889		1351 1349 1353 1361 1355 1357 1359 6739 23673 23279 13241 20011				139>49		10	
+2872 2941 0	2872 2939 0	Chop-down;Jungle tree;2890		1351 1349 1353 1361 1355 1357 1359 6739 23673 23279 13241 20011				139>49		10	
+2932 2943 0	2932 2941 0	Chop-down;Jungle Bush;2893		975 6313 6315 6317				139>49		2	
+2932 2940 0	2932 2942 0	Chop-down;Jungle Bush;2892		975 6313 6315 6317				139>49		2	
+2932 2941 0	2932 2939 0	Chop-down;Jungle tree;2889		1351 1349 1353 1361 1355 1357 1359 6739 23673 23279 13241 20011				139>49		10	
+2932 2938 0	2932 2940 0	Chop-down;Jungle Bush;2892		975 6313 6315 6317				139>49		2	
+2932 2938 0	2932 2936 0	Chop-down;Jungle tree;2890		1351 1349 1353 1361 1355 1357 1359 6739 23673 23279 13241 20011				139>49		10	
+2932 2936 0	2932 2938 0	Chop-down;Jungle tree;2890		1351 1349 1353 1361 1355 1357 1359 6739 23673 23279 13241 20011				139>49		10	
+2933 2937 0	2933 2939 0	Chop-down;Jungle Bush;2893		975 6313 6315 6317				139>49		2	
+2933 2939 0	2933 2937 0	Chop-down;Jungle Bush;2893		975 6313 6315 6317				139>49		2	
+2933 2939 0	2933 2941 0	Chop-down;Jungle Bush;2893		975 6313 6315 6317				139>49		2	
+2933 2941 0	2933 2939 0	Chop-down;Jungle Bush;2893		975 6313 6315 6317				139>49		2	
+2933 2941 0	2933 2943 0	Chop-down;Jungle tree;2890		1351 1349 1353 1361 1355 1357 1359 6739 23673 23279 13241 20011				139>49		10	
+2933 2943 0	2933 2941 0	Chop-down;Jungle tree;2890		1351 1349 1353 1361 1355 1357 1359 6739 23673 23279 13241 20011				139>49		10	
+2936 2943 0	2936 2941 0	Chop-down;Jungle tree;2889		1351 1349 1353 1361 1355 1357 1359 6739 23673 23279 13241 20011				139>49		10	
+2936 2940 0	2936 2942 0	Chop-down;Jungle tree;2889		1351 1349 1353 1361 1355 1357 1359 6739 23673 23279 13241 20011				139>49		10	
+2936 2940 0	2936 2938 0	Chop-down;Jungle Bush;2893		975 6313 6315 6317				139>49		2	
+2936 2938 0	2936 2940 0	Chop-down;Jungle Bush;2893		975 6313 6315 6317				139>49		2	
+2936 2938 0	2936 2936 0	Chop-down;Jungle tree;2889		1351 1349 1353 1361 1355 1357 1359 6739 23673 23279 13241 20011				139>49		10	
+2936 2936 0	2936 2938 0	Chop-down;Jungle tree;2889		1351 1349 1353 1361 1355 1357 1359 6739 23673 23279 13241 20011				139>49		10	
+2521 3494 0	2521 3494 1	Climb-up;Ladder;16683								2	
+2522 3493 0	2522 3493 1	Climb-up;Ladder;16683								2	
+2521 3494 1	2521 3494 0	Climb-down;Ladder;16679								2	
+2522 3493 1	2522 3493 0	Climb-down;Ladder;16679								2	
+2511 3511 0	1768 5366 0	Jump-into;Whirlpool;25274					3759>1			2	
+2512 3511 0	1768 5366 0	Jump-into;Whirlpool;25274					3759>1			2	
+1742 5352 0	2531 3446 0	Ride;Aged log;25216								2	
+1761 5362 0	2531 3446 0	Ride;Aged log;25216								2	
+1559 3046 0	1556 3046 2	Climb-up;Rope;51647								2	
+1556 3046 2	1559 3046 0	Climb-down;Rope;51644								2	
+1557 3047 0	1557 9451 0	Climb-down;Stairs;51641								2	
+1557 9451 0	1557 3047 0	Climb-up;Stairs;51642								2	
+1533 3051 0	1533 9446 0	Enter;Cave;51761								2	
+1533 3050 0	1533 9446 0	Enter;Cave;51761								2	
+1533 9447 0	1533 3051 0	Exit;Cave;51760								2	
+1533 9446 0	1533 3051 0	Exit;Cave;51760								2	
+1533 9445 0	1533 3051 0	Exit;Cave;51760								2	
+1248 3722 0	1248 3723 0	Open;Door;34463	45 Farming							1	
+1248 3723 0	1248 3722 0	Open;Door;34463								1	
+1249 3722 0	1249 3723 0	Open;Door;34464	45 Farming							1	
+1249 3723 0	1249 3722 0	Open;Door;34464								1	
+1646 9848 0	1643 3450 0	Climb;Sand pile;31691					6027>6			2	
+1647 9848 0	1643 3450 0	Climb;Sand pile;31691					6027>6			2	
+1646 3449 0	1646 9848 0	Enter;Cave;31690					6027>6			2	
+1646 3450 0	1646 9848 0	Enter;Cave;31690					6027>6			2	
+1645 3451 0	1646 9848 0	Enter;Cave;31690					6027>6			2	
+1644 3451 0	1646 9848 0	Enter;Cave;31690					6027>6			2	
+1643 3450 0	1646 9848 0	Enter;Cave;31690					6027>6			2	
+1643 3449 0	1646 9848 0	Enter;Cave;31690					6027>6			2	
+1644 3448 0	1646 9848 0	Enter;Cave;31690					6027>6			2	
+1645 3448 0	1646 9848 0	Enter;Cave;31690					6027>6			2	
+1673 9800 0	1677 9747 0	Climb-down;Tunnel entrance;31692								2	
+1677 9747 0	1673 9800 0	Climb-down;Tunnel entrance;31692								2	
+2822 3745 0	2803 10187 0	Enter;Cave entrance;5007								1	
+2822 3744 0	2803 10187 0	Enter;Cave entrance;5007								1	
+2822 3743 0	2803 10187 0	Enter;Cave entrance;5007								1	
+2804 10187 0	2822 3745 0	Enter;Tunnel;5011								1	
+2803 10187 0	2822 3745 0	Enter;Tunnel;5011								1	
+2802 10187 0	2822 3745 0	Enter;Tunnel;5011								1	
+2772 10232 0	2778 3869 0	Enter;Crevasse;5025								1	
+2778 3869 0	2772 10232 0	Enter;Tunnel;5009								1	
+2778 3870 0	2772 10232 0	Enter;Tunnel;5009								1	
+2779 3871 0	2772 10232 0	Enter;Tunnel;5009								1	
+2780 3871 0	2772 10232 0	Enter;Tunnel;5009								1	
+2781 3871 0	2772 10232 0	Enter;Tunnel;5009								1	
+2782 3870 0	2772 10232 0	Enter;Tunnel;5009								1	
+2782 3869 0	2772 10232 0	Enter;Tunnel;5009								1	
+2782 3868 0	2772 10232 0	Enter;Tunnel;5009								1	
+2781 3867 0	2772 10232 0	Enter;Tunnel;5009								1	
+2780 3867 0	2772 10232 0	Enter;Tunnel;5009								1	
+2779 3867 0	2772 10232 0	Enter;Tunnel;5009								1	
+2772 3836 0	2790 3794 0	Slide;Slope;5015		4084						18	
+2773 3836 0	2790 3794 0	Slide;Slope;5015		4084						18	
+2786 3772 0	2794 3719 0	Slide;Slope;5015		4084						30	
+2785 3772 0	2794 3719 0	Slide;Slope;5015		4084						30	
+2484 3486 1	2649 4516 0	Travel;Daero;1445								6	
+2649 4518 0	2894 2726 0	Travel;Waydar;1446								4	
+2654 4495 0	2393 3466 0	Operate;Teleportation Device;4869								6	
+2896 2727 0	2393 3465 0	Travel;Waydar;1446								4	
+2762 2989 0	2760 9389 0	Search;Well stacked rocks;2234								15	
+2764 9376 0	2765 2976 0	Climb;Climbing rocks;2236								15	
+2840 3516 0	2836 3517 0	Mine;Rock slide;2634	50 Mining	1265 1267 1269 12297 1273 1271 1275 11920 23680 23276 13243 20014						10	
+2839 3516 0	2836 3517 0	Mine;Rock slide;2634	50 Mining	1265 1267 1269 12297 1273 1271 1275 11920 23680 23276 13243 20014						10	
+2837 3517 0	2840 3516 0	Mine;Rock slide;2634	50 Mining	1265 1267 1269 12297 1273 1271 1275 11920 23680 23276 13243 20014						10	
+2837 3518 0	2840 3517 0	Mine;Rock slide;2634	50 Mining	1265 1267 1269 12297 1273 1271 1275 11920 23680 23276 13243 20014						10	
+2840 3517 0	2837 3518 0	Mine;Rock slide;2634	50 Mining	1265 1267 1269 12297 1273 1271 1275 11920 23680 23276 13243 20014						10	
+2840 3518 0	2837 3519 0	Mine;Rock slide;2634	50 Mining	1265 1267 1269 12297 1273 1271 1275 11920 23680 23276 13243 20014						10	
+1475 3687 0	1470 3687 0	Climb;Handholds;27362								6	
+1470 3687 0	1475 3687 0	Climb;Handholds;42009								6	
+1460 3690 0	1456 3690 0	Climb;Handholds;27362								6	
+1456 3690 0	1460 3690 0	Climb;Handholds;42009								6	
+3008 9549 0	3008 3149 0	Climb-up;Ladder;17385								1	
+3008 9551 0	3008 3151 0	Climb-up;Ladder;17385								1	
+3055 9562 0	3055 9555 0	Enter;Ice Cavern;10596								1	
+3057 9562 0	3057 9555 0	Enter;Ice Cavern;10596								1	
+3055 9555 0	3055 9562 0	Enter;Ice Cavern;10595								1	
+3057 9555 0	3057 9562 0	Enter;Ice Cavern;10595								1	
+3106 3559 0	3035 4852 0	Teleport;Mage of Zamorak;2581				Enter the Abyss					
+3039 4805 0	3039 4800 0	Enter;Passage;27054									
+3039 4854 0	3039 4844 0	Go-through;Passage;26250									
+3029 4850 0	3033 4843 0	Go-through;Passage;26250									
+3021 4843 0	3039 4844 0	Go-through;Passage;26250									
+3018 4834 0	3039 4844 0	Go-through;Passage;26250									
+3018 4822 0	3039 4844 0	Go-through;Passage;26250									
+3030 4812 0	3039 4844 0	Go-through;Passage;26250									
+3042 4811 0	3039 4844 0	Go-through;Passage;26250									
+3050 4813 0	3039 4844 0	Go-through;Passage;26250									
+3058 4822 0	3039 4844 0	Go-through;Passage;26250									
+3061 4831 0	3052 4831 0	Go-through;Passage;26250									
+3059 4840 0	3039 4844 0	Go-through;Passage;26250									
+3050 4850 0	3039 4844 0	Go-through;Passage;26250									
+3034 4793 0	3221 3219 0	Operate;Appendage;27027								4	
+3044 4842 0	2269 4840 0	Exit-through;Chaos rift;25382									
+2259 4846 0	2259 4846 1	Climb-up;Ladder;16683								1	
+2259 4846 1	2259 4846 0	Climb-up;Ladder;16683								1	
+2275 4833 1	2275 4833 2	Climb-up;Ladder;16683								1	
+2275 4833 2	2275 4833 1	Climb-up;Ladder;16683								1	
+2255 4830 2	2255 4830 3	Climb-up;Ladder;16683								1	
+2255 4830 3	2255 4830 2	Climb-up;Ladder;16683								1	
+2281 4837 0	3056 3594 0	Use;Portal;34757								1	
+2275 4847 3	3060 3585 0	Use;Portal;34757								1	
+2273 4855 3	3066 3591 0	Use;Portal;34757								1	
+3049 4839 0	2464 4826 0	Exit-through;Law rift;25382				Troll Stronghold					
+2464 4818 0	2858 3378 0	Enter;Portal;34755								1	
+3050 4837 0	2209 4834 0	Exit-through;Death rift;25382				Mourning's End Part II					
+2208 4830 0	1860 4639 0	Enter;Portal;34758								1	
+3051 4833 0	2714 4838 0	Exit-through;Water rift;25382									
+3050 4829 0	1816 3856 0	Exit-through;Soul rift;25382									
+3047 4825 0	2846 4836 0	Exit-through;Air rift;25382									
+2842 4828 0	2983 3288 0	Enter;Portal;34748								1	
+3044 4822 0	2784 4843 0	Exit-through;Mind rift;25382									
+2792 4827 0	2980 3511 0	Enter;Portal;34749								1	
+3039 4821 0	2520 4848 0	Exit-through;Body rift;25382									
+2521 4834 0	3050 3442 0	Enter;Portal;34753								1	
+3031 4825 0	2660 4843 0	Exit-through;Earth rift;25382									
+3029 4830 0	2587 4836 0	Exit-through;Fire rift;25382									
+2575 4849 0	3310 3252 0	Use;Portal;34752								1	
+3027 4834 0	3229 4834 0	Exit-through;Blood rift;25382				Sins of the Father					
+3240 4832 0	3559 9779 0	Use;Portal;43478								1	
+3224 4832 0	3559 9779 0	Use;Portal;43478								1	
+3028 4837 0	2142 4836 0	Exit-through;Cosmic rift;25382				Lost City					
+2122 4833 0	2405 4381 0	Use;Portal;34754								1	
+2142 4853 0	2405 4381 0	Use;Portal;34754								1	
+2162 4833 0	2405 4381 0	Use;Portal;34754								1	
+2142 4813 0	2405 4381 0	Use;Portal;34754								1	
+3035 4842 0	2400 4844 0	Exit-through;Nature rift;25382									
+2400 4835 0	2865 3022 0	Use;Portal;34756								1	
+2824 10169 0	2615 4966 0	Talk-to;Dondakan the Dwarf;4891		4567		Between a Rock...				4	
+1633 4023 0	1631 4023 0	Jump;Gap;29326	60 Agility							2	
+1631 4023 0	1629 4023 0	Jump;Gap;29326	60 Agility							2	
+1629 4023 0	1627 4023 0	Jump;Gap;29326	60 Agility							2	
+1631 4023 0	1633 4023 0	Jump;Gap;29326	60 Agility							2	
+1629 4023 0	1631 4023 0	Jump;Gap;29326	60 Agility							2	
+1627 4023 0	1629 4023 0	Jump;Gap;29326	60 Agility							2	
+1627 3963 0	1630 3979 0	Enter;Door of Dinh;29322	50 Firemaking							1	
+1628 3963 0	1630 3979 0	Enter;Door of Dinh;29322	50 Firemaking							1	
+1629 3963 0	1630 3979 0	Enter;Door of Dinh;29322	50 Firemaking							1	
+1630 3963 0	1630 3979 0	Enter;Door of Dinh;29322	50 Firemaking							1	
+1631 3963 0	1630 3979 0	Enter;Door of Dinh;29322	50 Firemaking							1	
+1632 3963 0	1630 3979 0	Enter;Door of Dinh;29322	50 Firemaking							1	
+1633 3963 0	1630 3979 0	Enter;Door of Dinh;29322	50 Firemaking							1	
+1627 3963 0	1630 3958 0	Enter;Door of Dinh;29322								1	
+1628 3963 0	1630 3958 0	Enter;Door of Dinh;29322								1	
+1629 3963 0	1630 3958 0	Enter;Door of Dinh;29322								1	
+1630 3963 0	1630 3958 0	Enter;Door of Dinh;29322								1	
+1631 3963 0	1630 3958 0	Enter;Door of Dinh;29322								1	
+1632 3963 0	1630 3958 0	Enter;Door of Dinh;29322								1	
+1633 3963 0	1630 3958 0	Enter;Door of Dinh;29322								1	
+3633 9503 0	3637 9503 0	Climb;Rubble;43724								5	
+3637 9503 0	3633 9503 0	Climb;Rubble;43726								5	
+3613 9482 0	3613 9484 0	Quick-pass;Barrier;43700								5	
+3614 9482 0	3614 9484 0	Quick-pass;Barrier;43700								5	
+3615 9482 0	3615 9484 0	Quick-pass;Barrier;43700								5	
+3616 9482 0	3616 9484 0	Quick-pass;Barrier;43700								5	
+3617 9482 0	3617 9484 0	Quick-pass;Barrier;43700								5	
+3613 9484 0	3613 9482 0	Quick-pass;Barrier;43700								5	
+3614 9484 0	3614 9482 0	Quick-pass;Barrier;43700								5	
+3615 9484 0	3615 9482 0	Quick-pass;Barrier;43700								5	
+3616 9484 0	3616 9482 0	Quick-pass;Barrier;43700								5	
+3617 9484 0	3617 9482 0	Quick-pass;Barrier;43700								5	
+2775 10003 0	2773 10003 0	Jump-over;Strange floor;16544	43 Agility							10	
+2773 10003 0	2775 10003 0	Jump-over;Strange floor;16544	43 Agility							10	
+2770 10002 0	2768 10002 0	Jump-over;Strange floor;16544	43 Agility							10	
+2768 10002 0	2770 10002 0	Jump-over;Strange floor;16544	43 Agility							10	
+3230 9609 0	3313 9613 0	Mines;Kazgar;7301				The Lost Tribe				8	Mines
+3230 9609 0	3245 9648 0	Watermill;Kazgar;7301				Death to the Dorgeshuun				8	Watermill
+3317 9612 0	3232 9610 0	Cellar;Mistag;7299				The Lost Tribe				8	Cellar
+3317 9612 0	3245 9648 0	Watermill;Mistag;7299				Death to the Dorgeshuun				8	Watermill
+3246 9646 0	3313 9613 0	Mines;Dartog;7301				Death to the Dorgeshuun				8	Mines
+3246 9646 0	3232 9610 0	Cellar;Dartog;997				Death to the Dorgeshuun				8	Cellar
+2709 3498 0	2716 9888 0	Climb-down;Staircase;3415								1	
+2716 9888 0	2709 3497 0	Climb-up;Staircase;3416								1	
+2370 3621 0	2371 3620 0	Climb-over;Stile;19222								5	
+2372 3621 0	2371 3620 0	Climb-over;Stile;19222								5	
+2371 3619 0	2371 3621 0	Climb-over;Stile;19222								5	
+2370 3620 0	2371 3621 0	Climb-over;Stile;19222								5	
+2372 3620 0	2371 3621 0	Climb-over;Stile;19222								5	
+2547 3422 0	2630 5071 0	Climb-down;Ladder;6560		4657 28329 28327		Desert Treasure I					
+2546 3421 0	2630 5071 0	Climb-down;Ladder;6560		4657 28329 28327		Desert Treasure I					
+2548 3421 0	2630 5071 0	Climb-down;Ladder;6560		4657 28329 28327		Desert Treasure I					
+2547 3420 0	2630 5071 0	Climb-down;Ladder;6560		4657 28329 28327		Desert Treasure I					
+2629 5073 0	2547 3422 0	Climb-up;Ladder;6450				Desert Treasure I					
+2628 5072 0	2547 3422 0	Climb-up;Ladder;6450				Desert Treasure I					
+2630 5072 0	2547 3422 0	Climb-up;Ladder;6450				Desert Treasure I					
+2629 5071 0	2547 3422 0	Climb-up;Ladder;6450				Desert Treasure I					
+2701 3407 0	2701 3407 1	Climb-up;Ladder;16683									
+2700 3408 0	2701 3407 1	Climb-up;Ladder;16683									
+2702 3408 0	2701 3407 1	Climb-up;Ladder;16683									
+2701 3407 1	2701 3407 0	Climb-down;Ladder;16679									
+2700 3408 1	2701 3407 0	Climb-down;Ladder;16679									
+2702 3408 1	2701 3407 0	Climb-down;Ladder;16679									
+2704 3404 1	2704 3404 2	Climb-up;Ladder;16683									
+2703 3403 1	2704 3404 2	Climb-up;Ladder;16683									
+2705 3403 1	2704 3404 2	Climb-up;Ladder;16683									
+2704 3402 1	2704 3404 2	Climb-up;Ladder;16683									
+2704 3404 2	2704 3404 1	Climb-down;Ladder;16679									
+2703 3403 2	2704 3404 1	Climb-down;Ladder;16679									
+2705 3403 2	2704 3404 1	Climb-down;Ladder;16679									
+2704 3402 2	2704 3404 1	Climb-down;Ladder;16679									
+2700 3405 2	2700 3405 3	Climb-up;Ladder;16683									
+2699 3406 2	2700 3405 3	Climb-up;Ladder;16683									
+2699 3404 2	2700 3405 3	Climb-up;Ladder;16683									
+2700 3405 3	2700 3405 2	Climb-down;Ladder;16679									
+2699 3406 3	2700 3405 2	Climb-down;Ladder;16679									
+2699 3404 3	2700 3405 2	Climb-down;Ladder;16679									
+1435 3128 0	1439 9509 1	Pass-through;Entrance;51375				Perilous Moons					
+1436 3128 0	1439 9509 1	Pass-through;Entrance;51375				Perilous Moons					
+1439 9509 1	1435 3128 0	Pass-through;Entrance;51375				Perilous Moons					
+2457 3186 0	2355 9394 0	Climb-down;Stairs;25432									
+2458 3185 0	2355 9394 0	Climb-down;Stairs;25432									
+2355 9394 0	2458 3185 0	Climb-up;Stairs;25429									
+2335 9350 0	2439 3164 0	Climb-up;Stairs;25429									
+2439 3164 0	2335 9350 0	Climb-down;Stairs;25434									
+2438 3165 0	2335 9350 0	Climb-down;Stairs;25434									
+2438 3163 0	2335 9350 0	Climb-down;Stairs;25434									
+2444 3162 0	2442 3159 1	Climb-up;Stairs;25431									
+2442 3159 1	2444 3162 0	Climb-down;Stairs;25437									
+2443 3160 1	2444 3162 0	Climb-down;Stairs;25437									
+2443 3158 1	2444 3162 0	Climb-down;Stairs;25437									
+2826 2998 0	2838 9387 0	Climb-down;Ladder;23586					3598=1				
+2825 2999 0	2838 9387 0	Climb-down;Ladder;23586					3598=1				
+2824 2998 0	2838 9387 0	Climb-down;Ladder;23586					3598=1				
+2825 2997 0	2838 9387 0	Climb-down;Ladder;23586					3598=1				
+2838 9387 0	2826 2998 0	Climb-up;Ladder;23584					3598=1				
+2839 9388 0	2826 2998 0	Climb-up;Ladder;23584					3598=1				
+2484 2889 0	1971 9035 1	Enter;Cave;31766					6076=1				
+1969 8987 1	1967 8987 1	Pass;Magical Barrier;31617				Dragon Slayer II					
+1969 8986 1	1967 8986 1	Pass;Magical Barrier;31617				Dragon Slayer II					
+1967 8987 1	1969 8987 1	Pass;Magical Barrier;31617				Dragon Slayer II					
+1967 8986 1	1969 8986 1	Pass;Magical Barrier;31617				Dragon Slayer II					
+2457 2839 0	2458 2839 1	Climb-up;Stairs;31627				Dragon Slayer II					
+2455 2839 1	2457 2839 0	Climb-down;Stairs;32206				Dragon Slayer II					
+2456 2839 1	2457 2839 0	Climb-down;Stairs;32206				Dragon Slayer II					
+2458 2839 1	2457 2839 0	Climb-down;Stairs;32206				Dragon Slayer II					
+2459 2839 1	2457 2839 0	Climb-down;Stairs;32206				Dragon Slayer II					
+2449 2847 1	2452 2847 2	Climb-up;Stairs;31609				Dragon Slayer II					
+2452 2847 2	2449 2847 1	Climb-down;Stairs;31610				Dragon Slayer II					
+2809 3161 0	2808 3162 1	Climb-up;Ladder;16683									
+2809 3161 1	2808 3162 0	Climb-down;Ladder;16670									
+2238 3386 0	3262 6135 0	Enter;City Gate;36518				Song of the Elves				4	
+2241 3386 0	3265 6135 0	Enter;City Gate;36519				Song of the Elves				4	
+3262 6135 0	2238 3386 0	Exit;City Gate;36522				Song of the Elves				4	
+3265 6135 0	2241 3386 0	Exit;City Gate;36523				Song of the Elves				4	
+2238 3269 0	3262 6024 0	Enter;City Gate;36518				Song of the Elves				4	
+2241 3269 0	3265 6024 0	Enter;City Gate;36519				Song of the Elves				4	
+3262 6024 0	2238 3269 0	Exit;City Gate;36522				Song of the Elves				4	
+3265 6024 0	2241 3269 0	Exit;City Gate;36523				Song of the Elves				4	
+2181 3326 0	3208 6078 0	Enter;City Gate;36518				Song of the Elves				4	
+2181 3329 0	3208 6081 0	Enter;City Gate;36519				Song of the Elves				4	
+3208 6078 0	2181 3326 0	Exit;City Gate;36522				Song of the Elves				4	
+3208 6081 0	2181 3329 0	Exit;City Gate;36523				Song of the Elves				4	
+2298 3326 0	3319 6078 0	Enter;City Gate;36518				Song of the Elves				4	
+2298 3329 0	3319 6081 0	Enter;City Gate;36519				Song of the Elves				4	
+3319 6078 0	2298 3326 0	Exit;City Gate;36522				Song of the Elves				4	
+3319 6081 0	2298 3329 0	Exit;City Gate;36523				Song of the Elves				4	
+2763 9103 0	2763 2703 0	Climb-up;Bamboo Ladder;4781									
+2763 2703 0	2763 9103 0	Climb-down;Bamboo Ladder;4780									
+2591 2851 1	2589 2851 0	Cross;Gangplank;31756								3	
+2589 2851 0	2591 2851 1	Cross;Gangplank;31756								3	
+1811 3679 1	1808 3679 0	Cross;Gangplank;50064								3	
+1808 3679 0	1811 3679 1	Cross;Gangplank;50063								3	
+3060 3000 1	3063 3000 0	Cross;Gangplank;60523								3	
+3063 3000 0	3060 3000 1	Cross;Gangplank;60522								3	
+3308 3491 0	3308 3493 0	Climb-over;Broken fence;2618								6	
+3308 3493 0	3308 3491 0	Climb-over;Broken fence;2618								6	
+2893 3507 0	2893 9907 0	Climb-down;Ladder;17374								1	
+2893 9907 0	2893 3507 0	Climb-up;Ladder;17387								1	
