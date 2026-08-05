@@ -191,8 +191,16 @@ So the two schedules share the **same 100k per-unit threshold**; they differ onl
 stackable item under 100k each is free from both, regardless of stack size. An earlier note here claimed
 the office charges on cumulative value — that was wrong, and the test above disproves it.
 
-One half is still unobserved: that an item **over** 100k is billed at exactly 5% (office) or the flat tier
-(grave) is taken from the wiki, not yet seen in game.
+One half is still unobserved in game: that an item **over** 100k is billed at exactly 5% (office) or the
+flat tier (grave). The rates below are confirmed against the wiki's own tables, but a non-zero charge has
+never been watched happen here.
+
+**Documented exceptions exist, and they break the per-unit rule.** The wiki lists items "to which the
+above rules do not neatly apply" — notably *stacks of amulet of glory (6) worth over 100,000 are charged
+**10%** at Death's Office*: double the normal rate, and assessed on the **stack's** value rather than per
+unit. Such an item is charged where the per-unit rule predicts free, so `estimateReclaimFee()` reads
+**low** for it. The wiki's list is explicitly non-exhaustive, so treat the estimate as a guide rather than
+a bound whenever the office holds anything unusual.
 
 For reference, the tiers the interface already applies for you:
 

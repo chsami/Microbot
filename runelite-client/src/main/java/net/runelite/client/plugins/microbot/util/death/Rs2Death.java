@@ -571,12 +571,23 @@ public class Rs2Death {
      * total reported "Fee: None". The two schedules differ only in the fee: a grave charges flat coin
      * amounts per tier capped at 500,000, the office charges an uncapped 5%.
      * <p>
-     * <b>Still an estimate, not the fee.</b> It ignores the ironman half rate (so it reads high for them),
-     * and it works from RuneLite's wiki prices, which are periodically refreshed rather than tick-live
-     * and drift while you play — an 18× Earth rune stack was quoted at 90 gp and then 108 gp inside one
-     * session. Only the "charged" side of the rule is unverified: the free case is proven, but that
-     * items over 100k are billed at exactly 5% is inferred from the wiki, not observed. Leave headroom
-     * rather than comparing to a limit exactly.
+     * <b>Still an estimate, not the fee — and it can read low.</b> Sources of error, worst first:
+     * <ul>
+     *   <li><b>Documented exceptions to the per-unit rule.</b> The wiki lists items "to which the above
+     *       rules do not neatly apply", including: <i>stacks of amulet of glory (6) worth over 100,000
+     *       are charged 10% at Death's Office</i> — double the normal rate, and judged on the
+     *       <em>stack's</em> value rather than per unit. Such an item is charged where this estimate
+     *       predicts free. The list is explicitly non-exhaustive, so treat the estimate as a guide, not
+     *       a bound, whenever the office holds anything unusual.</li>
+     *   <li><b>Price drift.</b> RuneLite's wiki prices are periodically refreshed, not tick-live — an
+     *       18× Earth rune stack was quoted at 90 gp and then 108 gp inside one session — and need not
+     *       match the game's own valuation.</li>
+     *   <li><b>Ironman rates are ignored</b> (5% not 2.5%), so it reads high for them; likewise the
+     *       per-boss discounted deaths.</li>
+     *   <li>The 5% rate itself is from the wiki: the free case below 100k is proven in game, an actual
+     *       non-zero charge has never been observed here.</li>
+     * </ul>
+     * Leave real headroom rather than comparing to a limit exactly.
      *
      * @return the estimated fee in coins, or {@code 0} when the interface is closed or nothing is
      * chargeable.
@@ -644,9 +655,11 @@ public class Rs2Death {
      * Reclaims everything, but only if {@link #estimateReclaimFee()} comes in at or under the ceiling.
      * <p>
      * The guard is an <b>estimate</b>, not the fee — the office never publishes the real number before
-     * charging it, and wiki prices drift (an 18× Earth rune stack moved from 90 gp to 108 gp inside a
-     * single session). The estimate is biased high, so it should sit at or above the true charge, but
-     * treat the ceiling as a guard rail rather than a guarantee and leave headroom.
+     * charging it. It is usually conservative (it ignores ironman and boss discounts), but it <b>can
+     * read low</b>: wiki prices drift, and documented exceptions such as an amulet-of-glory stack are
+     * charged 10% on the stack's value rather than 5% per unit, so they are billed where the estimate
+     * predicts free. See {@link #estimateReclaimFee()} for the full list. Treat the ceiling as a guard
+     * rail, not a guarantee, and leave headroom — a reclaim can cost more than the number checked here.
      *
      * @param maxEstimatedFee the highest estimated fee to accept, in coins.
      * @return {@code false} when the estimate is over the ceiling and nothing was reclaimed.
