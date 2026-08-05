@@ -2,6 +2,7 @@ package net.runelite.client.plugins.microbot.util.death;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.MenuAction;
 import net.runelite.api.Player;
 import net.runelite.api.annotations.Component;
 import net.runelite.api.coords.WorldPoint;
@@ -13,6 +14,7 @@ import net.runelite.api.gameval.ObjectID1;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
 import net.runelite.client.plugins.microbot.api.npc.models.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.api.tileobject.models.Rs2TileObjectModel;
 import net.runelite.client.plugins.microbot.util.Global;
@@ -26,12 +28,14 @@ import net.runelite.client.plugins.microbot.util.settings.Rs2Settings;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
+import java.awt.Rectangle;
 import java.awt.event.KeyEvent;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -66,6 +70,21 @@ import java.util.regex.Pattern;
  * {@link #getGraveFee()}, {@link #lootGraveFreeItems()}, {@link #lootGravePaidItems(int)} — when the
  * script wants its own logic between them.
  * <p>
+ * {@code recoverItems} and the {@code lootGrave*} / {@code reclaimAll} methods take <b>everything</b>.
+ * To take only some of it, inspect first and filter:
+ * <pre>
+ * Rs2Death.openGrave();
+ * Rs2Death.lootGraveItems(i -&gt; i.getName().contains("rune"));   // leaves the rest
+ *
+ * Rs2Death.openDeathsOffice();
+ * Rs2Death.reclaimItems(i -&gt; i.getId() == ItemID.DRAGON_SCIMITAR);
+ * </pre>
+ * {@link #getGraveFreeItems()}, {@link #getGravePaidItems()} and {@link #getDeathsOfficeItems()} show
+ * what is waiting. Note the asymmetry: the office charges per item reclaimed, so taking less costs less,
+ * whereas a grave's fee covers its whole paid half at once. And anything left in a <b>grave</b> is only
+ * safe until the timer expires — it then moves to Death's Office at the higher fee — while anything left
+ * with Death keeps indefinitely.
+ * <p>
  * Items left behind are not destroyed; they keep in Death's Office indefinitely.
  * <p>
  * Fee schedules, for reference — this class never computes them, it reads what the game reports:
@@ -92,6 +111,12 @@ public class Rs2Death {
     private static final int GRAVE_NPC_ID_MAX = NpcID.GRAVESTONE_ANGEL_255;
 
     private static final String GRAVE_LOOT_ACTION = "Loot";
+
+    /** Per-slot action on a grave item, for selective looting. */
+    private static final String GRAVE_TAKE_ACTION = "Take";
+
+    /** Per-slot action in Death's Office — verified live; the office selects first, then takes. */
+    private static final String DEATH_OFFICE_SELECT_ACTION = "Select";
 
     /** Death's reclaim dialogue choice, verified in game. Matched as a substring, so it tolerates
      * reordering and the trailing punctuation ("Yes, have you got anything for me?"). */
@@ -314,6 +339,15 @@ public class Rs2Death {
      * caption as a plain child, so entries without an item id are skipped.
      */
     private static List<Rs2ItemModel> readDeathkeepItems(@Component int componentId) {
+        return readItemContainer(componentId);
+    }
+
+    /**
+     * Reads the item slots out of any of the death interfaces' item containers, in slot order. The
+     * slot index is preserved on each {@link Rs2ItemModel}, because it is the {@code param0} needed to
+     * click that specific slot.
+     */
+    private static List<Rs2ItemModel> readItemContainer(@Component int componentId) {
         Widget container = Rs2Widget.getWidget(componentId);
         if (container == null) return Collections.emptyList();
 
@@ -425,10 +459,100 @@ public class Rs2Death {
     /**
      * Claims the half of the grave that costs nothing. Items behind a fee are untouched and stay put.
      */
+    /**
+     * The items in the grave's free half — everything that costs nothing to reclaim. Requires the grave
+     * interface to be open ({@link #openGrave()}).
+     */
+    public static List<Rs2ItemModel> getGraveFreeItems() {
+        return readItemContainer(InterfaceID.GravestoneGeneric.FREEITEMS);
+    }
+
+    /**
+     * The items in the grave's paid half — those behind the retrieval fee. Requires the grave interface
+     * to be open ({@link #openGrave()}).
+     */
+    public static List<Rs2ItemModel> getGravePaidItems() {
+        return readItemContainer(InterfaceID.GravestoneGeneric.PAYITEMS);
+    }
+
+    /**
+     * Takes <b>everything</b> in the free half. Use {@link #lootGraveItems(Predicate)} to take only some
+     * of it.
+     */
     public static boolean lootGraveFreeItems() {
         if (!isGraveOpen()) return false;
         clickAndSettle(InterfaceID.GravestoneGeneric.FREEBUTTON);
         return true;
+    }
+
+    /**
+     * Takes only the grave items matching {@code filter}, one slot at a time, from both the free and the
+     * paid half. Anything not matched is left in the grave — and a grave is consumed once emptied, so
+     * whatever is left behind ends up at Death's Office rather than staying put.
+     * <p>
+     * Slots are clicked highest-index first: taking an item re-packs the container, so descending order
+     * keeps the remaining slot indices valid.
+     * <p>
+     * Paying is still all-or-nothing at the game's level — the fee covers the whole paid half — so a
+     * filter that matches anything in the paid half incurs the full fee. Check {@link #getGraveFee()}
+     * first if that matters.
+     *
+     * @param filter chooses which items to take.
+     * @return the number of slots successfully clicked.
+     */
+    public static int lootGraveItems(Predicate<Rs2ItemModel> filter) {
+        if (!isGraveOpen()) return 0;
+
+        int taken = takeMatchingSlots(InterfaceID.GravestoneGeneric.FREEITEMS, filter, GRAVE_TAKE_ACTION);
+        taken += takeMatchingSlots(InterfaceID.GravestoneGeneric.PAYITEMS, filter, GRAVE_TAKE_ACTION);
+        return taken;
+    }
+
+    /**
+     * Clicks each slot in {@code containerId} whose item matches {@code filter}, in descending slot
+     * order so earlier clicks cannot invalidate later indices.
+     */
+    private static int takeMatchingSlots(@Component int containerId, Predicate<Rs2ItemModel> filter,
+                                         String action) {
+        List<Rs2ItemModel> items = readItemContainer(containerId);
+        int taken = 0;
+        for (int i = items.size() - 1; i >= 0; i--) {
+            Rs2ItemModel item = items.get(i);
+            if (filter != null && !filter.test(item)) continue;
+            if (Rs2Inventory.isFull()) {
+                log.warn("Inventory full after taking {} item(s) — {} left in the interface",
+                        taken, i + 1);
+                break;
+            }
+            clickItemSlot(containerId, item, action);
+            taken++;
+        }
+        return taken;
+    }
+
+    /**
+     * Clicks one item slot in a death interface. {@code param0} is the slot index and {@code param1} the
+     * container component, matching how {@code Rs2Bank} drives bank slots.
+     */
+    private static void clickItemSlot(@Component int containerId, Rs2ItemModel item, String action) {
+        Rectangle bounds = Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            Widget container = Rs2Widget.getWidget(containerId);
+            if (container == null) return null;
+            Widget[] children = container.getDynamicChildren();
+            if (children == null || item.getSlot() >= children.length) return null;
+            return children[item.getSlot()].getBounds();
+        }).orElse(null);
+
+        Microbot.doInvoke(new NewMenuEntry()
+                        .param0(item.getSlot())
+                        .param1(containerId)
+                        .opcode(MenuAction.CC_OP.getId())
+                        .identifier(1)
+                        .itemId(item.getId())
+                        .option(action)
+                        .target(item.getName()),
+                bounds == null ? new Rectangle(1, 1) : bounds);
+        Global.sleepUntilNextTick();
     }
 
     /**
@@ -464,7 +588,15 @@ public class Rs2Death {
 
         // The varbit is the authoritative signal: the interface can linger open after the last item is
         // claimed, so closing is not proof the grave was emptied.
-        return Global.sleepUntil(() -> !hasGrave(), LOOT_TIMEOUT_MS);
+        boolean emptied = Global.sleepUntil(() -> !hasGrave(), LOOT_TIMEOUT_MS);
+        if (!emptied && Rs2Inventory.isFull()) {
+            // Unlike Death's Office, a grave expires — anything still in it when the timer runs out
+            // moves on and costs the (usually higher) office fee to get back.
+            log.warn("Grave not emptied and the inventory is full — {} free item(s) and {} paid item(s) "
+                            + "remain, with {} left on the grave timer",
+                    getGraveFreeItems().size(), getGravePaidItems().size(), getGraveTimeRemaining());
+        }
+        return emptied;
     }
 
     // endregion
@@ -565,6 +697,60 @@ public class Rs2Death {
      *
      * @return {@code true} once the retrieval interface has closed with nothing left to collect.
      */
+    /**
+     * The items Death is currently holding. Requires the retrieval interface to be open
+     * ({@link #openDeathsOffice()}) — the office cannot be inspected from afar, though walking there and
+     * declining costs nothing.
+     */
+    public static List<Rs2ItemModel> getDeathsOfficeItems() {
+        return readItemContainer(InterfaceID.DeathOffice.ITEMS);
+    }
+
+    /**
+     * Reclaims only the items matching {@code filter}, leaving the rest with Death — where they keep
+     * indefinitely, so anything skipped can be collected later.
+     * <p>
+     * Each slot is taken in two steps, mirroring the interface: click the item ({@code Select}), then the
+     * {@code All} quantity button that appears. Slots are processed highest-index first so taking one
+     * cannot shift the indices of those still to come.
+     * <p>
+     * The fee is charged per item reclaimed, so taking less costs less — unlike the grave, where paying
+     * covers the whole paid half at once.
+     *
+     * @param filter chooses which items to reclaim.
+     * @return the number of slots successfully taken.
+     */
+    public static int reclaimItems(Predicate<Rs2ItemModel> filter) {
+        if (!isDeathsOfficeOpen()) return 0;
+
+        List<Rs2ItemModel> items = getDeathsOfficeItems();
+        int taken = 0;
+        for (int i = items.size() - 1; i >= 0; i--) {
+            Rs2ItemModel item = items.get(i);
+            if (filter != null && !filter.test(item)) continue;
+            if (Rs2Inventory.isFull()) {
+                log.warn("Inventory full after reclaiming {} item(s) — {} left with Death", taken, i + 1);
+                break;
+            }
+
+            // Step 1: select the slot. Step 2: the quantity buttons only become visible once something
+            // is selected, so "All" is clicked after, not before.
+            clickItemSlot(InterfaceID.DeathOffice.ITEMS, item, DEATH_OFFICE_SELECT_ACTION);
+            if (!Global.sleepUntil(() -> Rs2Widget.isWidgetVisible(InterfaceID.DeathOffice.ALL),
+                    INTERFACE_TIMEOUT_MS)) {
+                log.warn("Quantity buttons did not appear after selecting {} — stopping", item.getName());
+                break;
+            }
+            clickAndSettle(InterfaceID.DeathOffice.ALL);
+            taken++;
+        }
+        return taken;
+    }
+
+    /**
+     * Reclaims <b>everything</b> Death is holding. Use {@link #reclaimItems(Predicate)} to take only
+     * some of it.
+     */
     public static boolean reclaimAll() {
         if (!isDeathsOfficeOpen()) return false;
 
@@ -576,7 +762,12 @@ public class Rs2Death {
         Global.sleepUntil(() -> !isDeathsOfficeOpen() || Rs2Inventory.isFull(), LOOT_TIMEOUT_MS);
 
         if (isDeathsOfficeOpen()) {
-            log.warn("Death's Office still holds items, most likely because the inventory filled up");
+            // The office holds up to 120 stacks against 28 inventory slots, so a full reclaim can simply
+            // not fit. Nothing is lost — Death keeps the remainder indefinitely — but the caller needs to
+            // know to bank and come back.
+            log.warn("Death's Office still holds {} item(s) — inventory has {} free slot(s). Bank and "
+                            + "call reclaimAll() again, or use reclaimItems(filter) to choose.",
+                    getDeathsOfficeItems().size(), Rs2Inventory.emptySlotCount());
             return false;
         }
         return true;
