@@ -66,6 +66,65 @@ public interface BreakHandlerV2Config extends Config {
         return 15;
     }
 
+    @ConfigItem(
+        keyName = "enableLongBreaks",
+        name = "Enable Long Breaks",
+        description = "Enable a second independent long-break timer",
+        position = 4,
+        section = breakTimingSettings
+    )
+    default boolean enableLongBreaks() {
+        return false;
+    }
+
+    @ConfigItem(
+        keyName = "minLongBreakInterval",
+        name = "Min Long Break Interval (minutes)",
+        description = "Minimum time to play before a long break can trigger",
+        position = 5,
+        section = breakTimingSettings
+    )
+    @Range(min = 1, max = 600)
+    default int minLongBreakInterval() {
+        return 20;
+    }
+
+    @ConfigItem(
+        keyName = "maxLongBreakInterval",
+        name = "Max Long Break Interval (minutes)",
+        description = "Maximum time to play before a long break can trigger",
+        position = 6,
+        section = breakTimingSettings
+    )
+    @Range(min = 1, max = 600)
+    default int maxLongBreakInterval() {
+        return 30;
+    }
+
+    @ConfigItem(
+        keyName = "minLongBreakDuration",
+        name = "Min Long Break Duration (minutes)",
+        description = "Minimum long-break duration",
+        position = 7,
+        section = breakTimingSettings
+    )
+    @Range(min = 1, max = 600)
+    default int minLongBreakDuration() {
+        return 8;
+    }
+
+    @ConfigItem(
+        keyName = "maxLongBreakDuration",
+        name = "Max Long Break Duration (minutes)",
+        description = "Maximum long-break duration",
+        position = 8,
+        section = breakTimingSettings
+    )
+    @Range(min = 1, max = 600)
+    default int maxLongBreakDuration() {
+        return 10;
+    }
+
     // ========== BREAK BEHAVIOR SECTION ==========
     @ConfigSection(
         name = "Break Behavior",

@@ -45,6 +45,7 @@ public class BreakHandlerV2Script extends Script {
 
     // Timing variables (volatile for thread visibility from overlay/UI threads)
     private volatile Instant nextBreakTime;
+    private volatile Instant nextLongBreakTime;
     private volatile Instant breakEndTime;
     private volatile Instant loginAttemptTime;
 
@@ -60,6 +61,8 @@ public class BreakHandlerV2Script extends Script {
     private String stoppedPluginClassName = PluginStopOption.NONE_VALUE;
     private Instant pluginStopEarliestTime = Instant.MIN;
     private Instant pluginRestartAllowedAt = Instant.MIN;
+    private volatile Instant scriptStartedAt;
+    private volatile int breaksActivatedCount = 0;
 
     // Persisted break keys
     private static final String PERSISTED_BREAK_END_KEY = "persistedBreakEnd";
@@ -68,6 +71,8 @@ public class BreakHandlerV2Script extends Script {
     // Break duration in milliseconds
     private long currentBreakDuration = 0;
     private boolean logoutBreakActive = false;
+    private boolean longBreakDue = false;
+    private boolean currentBreakIsLong = false;
 
     // Login retry backoff constants
     private static final int MAX_LOGIN_ATTEMPTS = 10;
@@ -78,17 +83,19 @@ public class BreakHandlerV2Script extends Script {
     private static final int MAX_SAFETY_CHECK_ATTEMPTS = 60;
     private static final int SAFETY_CHECK_DELAY_MS = 5000; // 5 seconds between checks
 
-    public static String version = "2.0.1";
+    public static String version = "2.0.5";
 
     /**
      * Run the break handler script
      */
     public boolean run(BreakHandlerV2Config config) {
         this.config = config;
+        scriptStartedAt = Instant.now();
+        breaksActivatedCount = 0;
         BreakHandlerV2State.setState(BreakHandlerV2State.WAITING_FOR_BREAK);
 
         // Initialize next break time immediately to prevent null values in overlay
-        scheduleNextBreak();
+        scheduleNextBreak(true);
         log.info("[BreakHandlerV2] Initial break scheduled for {}", nextBreakTime);
         // Load active profile
         loadActiveProfile();
@@ -107,6 +114,7 @@ public class BreakHandlerV2Script extends Script {
                 // Detect unexpected logout while waiting for break
                 detectUnexpectedLogout();
                 enforceLogoutDuringActiveBreak();
+                mergeLongBreakIntoActiveBreakIfDue();
                 updateWindowTitle();
 
                 // Main state machine
@@ -191,7 +199,15 @@ public class BreakHandlerV2Script extends Script {
         }
 
         // Check if it's time for a break (only when play schedule is disabled)
+        if (config.enableLongBreaks() && nextLongBreakTime != null && !Instant.now().isBefore(nextLongBreakTime)) {
+            longBreakDue = true;
+            log.info("[BreakHandlerV2] Long break time reached, requesting long break");
+            transitionToState(BreakHandlerV2State.BREAK_REQUESTED);
+            return;
+        }
+
         if (nextBreakTime != null && Instant.now().isAfter(nextBreakTime)) {
+            longBreakDue = false;
             log.info("[BreakHandlerV2] Break time reached, requesting break");
             transitionToState(BreakHandlerV2State.BREAK_REQUESTED);
         }
@@ -243,6 +259,7 @@ public class BreakHandlerV2Script extends Script {
         if (!Microbot.isLoggedIn()) {
             log.info("[BreakHandlerV2] Already logged out, transitioning to LOGGED_OUT");
             setBreakTimer(true);
+            recordBreakActivated();
             sendBreakStartedNotification(true);
             safetyCheckAttempts = 0; // Reset counter
             transitionToState(BreakHandlerV2State.LOGGED_OUT);
@@ -468,6 +485,8 @@ public class BreakHandlerV2Script extends Script {
 
         startConfiguredPluginIfNeeded();
 
+        boolean completedLongBreak = currentBreakIsLong || longBreakDue;
+
         // Reset variables
         breakEndTime = null;
         loginAttemptTime = null;
@@ -482,8 +501,8 @@ public class BreakHandlerV2Script extends Script {
         // Unpause scripts
         Microbot.pauseAllScripts.set(false);
 
-        // Schedule next break
-        scheduleNextBreak();
+        // Schedule next break. A normal break must not reset the pending long-break timer.
+        scheduleNextBreak(completedLongBreak);
 
         String breakMessage = nextBreakTime != null
                 ? "Next break scheduled for " + nextBreakTime
@@ -575,6 +594,36 @@ public class BreakHandlerV2Script extends Script {
                 breakRemainingSeconds);
             transitionToState(BreakHandlerV2State.LOGOUT_REQUESTED);
         }
+    }
+
+    /**
+     * If the long-break timer expires while a normal break is already active, fold it into the
+     * current break instead of dropping it or starting a second break cycle.
+     */
+    private void mergeLongBreakIntoActiveBreakIfDue() {
+        if (config == null || !config.enableLongBreaks() || nextLongBreakTime == null || breakEndTime == null) {
+            return;
+        }
+
+        if (!BreakHandlerV2State.isBreakActive() || currentBreakIsLong || Instant.now().isBefore(nextLongBreakTime)) {
+            return;
+        }
+
+        longBreakDue = true;
+        currentBreakIsLong = true;
+        long longBreakDuration = calculateLongBreakDuration();
+        Instant mergedBreakEndTime = Instant.now().plus(longBreakDuration, ChronoUnit.MILLIS);
+        if (mergedBreakEndTime.isAfter(breakEndTime)) {
+            breakEndTime = mergedBreakEndTime;
+            currentBreakDuration = Math.max(0, Instant.now().until(breakEndTime, ChronoUnit.MILLIS));
+            persistBreakState(logoutBreakActive);
+        }
+        nextLongBreakTime = null;
+
+        log.info("[BreakHandlerV2] Long break merged into active break; break now ends at {}", breakEndTime);
+        sendDiscordNotification("Long Break Merged",
+            "A long break became due during an active break.\nNew remaining duration: " +
+                Math.max(0, Instant.now().until(breakEndTime, ChronoUnit.MINUTES)) + " minutes");
     }
 
     /**
@@ -702,15 +751,19 @@ public class BreakHandlerV2Script extends Script {
 	/**
 	 * Schedule the next break
 	 */
-	private void scheduleNextBreak() {
+	private void scheduleNextBreak(boolean rescheduleLongBreak) {
+        longBreakDue = false;
+        currentBreakIsLong = false;
 		if (config.usePlaySchedule()) {
 			if (!config.playSchedule().isOutsideSchedule()) {
 				Duration timeUntilEnd = config.playSchedule().timeUntilScheduleEnds();
 				nextBreakTime = Instant.now().plus(timeUntilEnd);
+                nextLongBreakTime = null;
                 log.info("[BreakHandlerV2] Play schedule active ({}), break when schedule ends in {} minutes",
                         config.playSchedule().name(), timeUntilEnd.toMinutes());
             } else {
                 nextBreakTime = null;
+                nextLongBreakTime = null;
                 log.info("[BreakHandlerV2] Outside play schedule ({}), currently on break",
                         config.playSchedule().name());
             }
@@ -726,6 +779,21 @@ public class BreakHandlerV2Script extends Script {
 
 		log.info("[BreakHandlerV2] Next break in {} minutes", playtimeMinutes);
 
+        if (config.enableLongBreaks()) {
+            if (!rescheduleLongBreak && nextLongBreakTime != null) {
+                log.info("[BreakHandlerV2] Keeping pending long break for {}", nextLongBreakTime);
+                updatePluginStopLeadTime();
+                return;
+            }
+            int minLongMinutes = Math.min(config.minLongBreakInterval(), config.maxLongBreakInterval());
+            int maxLongMinutes = Math.max(config.minLongBreakInterval(), config.maxLongBreakInterval());
+            int longBreakMinutes = Rs2Random.between(minLongMinutes, maxLongMinutes);
+            nextLongBreakTime = Instant.now().plus(longBreakMinutes, ChronoUnit.MINUTES);
+            log.info("[BreakHandlerV2] Next long break in {} minutes", longBreakMinutes);
+        } else {
+            nextLongBreakTime = null;
+        }
+
         updatePluginStopLeadTime();
 	}
 
@@ -739,8 +807,9 @@ public class BreakHandlerV2Script extends Script {
         }
 
         int leadSeconds = Math.max(0, config.stopPluginLeadSeconds());
-        if (nextBreakTime != null && leadSeconds > 0) {
-            pluginStopEarliestTime = nextBreakTime.minusSeconds(leadSeconds);
+        Instant nextStopRelevantBreakTime = getNextScheduledBreakTime();
+        if (nextStopRelevantBreakTime != null && leadSeconds > 0) {
+            pluginStopEarliestTime = nextStopRelevantBreakTime.minusSeconds(leadSeconds);
         } else {
             pluginStopEarliestTime = Instant.MIN;
         }
@@ -771,6 +840,7 @@ public class BreakHandlerV2Script extends Script {
     private long calculateBreakDuration() {
         // If outside play schedule, break until next play time
         if (isOutsidePlaySchedule()) {
+            currentBreakIsLong = false;
             Duration timeUntilPlaySchedule = config.playSchedule().timeUntilNextSchedule();
             long durationMs = timeUntilPlaySchedule.toMillis();
 			log.info("[BreakHandlerV2] Play schedule break duration: {} minutes (until next scheduled play time)",
@@ -778,14 +848,31 @@ public class BreakHandlerV2Script extends Script {
 			return durationMs;
 		}
 
-		int minMinutes = config.minBreakDuration();
-		int maxMinutes = config.maxBreakDuration();
+        int minMinutes;
+        int maxMinutes;
+        if (longBreakDue && config.enableLongBreaks()) {
+            currentBreakIsLong = true;
+            minMinutes = Math.min(config.minLongBreakDuration(), config.maxLongBreakDuration());
+            maxMinutes = Math.max(config.minLongBreakDuration(), config.maxLongBreakDuration());
+        } else {
+            currentBreakIsLong = false;
+            minMinutes = Math.min(config.minBreakDuration(), config.maxBreakDuration());
+            maxMinutes = Math.max(config.minBreakDuration(), config.maxBreakDuration());
+        }
 
 		int breakMinutes = Rs2Random.between(minMinutes, maxMinutes);
-		log.info("[BreakHandlerV2] Break duration: {} minutes", breakMinutes);
+		log.info("[BreakHandlerV2] {} duration: {} minutes", currentBreakIsLong ? "Long break" : "Break", breakMinutes);
 
 		return breakMinutes * 60000L; // Convert to milliseconds
 	}
+
+    private long calculateLongBreakDuration() {
+        int minMinutes = Math.min(config.minLongBreakDuration(), config.maxLongBreakDuration());
+        int maxMinutes = Math.max(config.minLongBreakDuration(), config.maxLongBreakDuration());
+        int breakMinutes = Rs2Random.between(minMinutes, maxMinutes);
+        log.info("[BreakHandlerV2] Merged long break duration: {} minutes", breakMinutes);
+        return breakMinutes * 60000L;
+    }
 
     /**
      * Stops a configured Microbot plugin once per break cycle.
@@ -945,6 +1032,35 @@ public class BreakHandlerV2Script extends Script {
         return Instant.now().until(nextBreakTime, ChronoUnit.SECONDS);
     }
 
+    public long getTimeUntilLongBreak() {
+        if (nextLongBreakTime == null) {
+            return -1;
+        }
+        return Instant.now().until(nextLongBreakTime, ChronoUnit.SECONDS);
+    }
+
+    public long getTimeUntilNextScheduledBreak() {
+        Instant nextScheduledBreak = getNextScheduledBreakTime();
+        if (nextScheduledBreak == null) {
+            return -1;
+        }
+        return Instant.now().until(nextScheduledBreak, ChronoUnit.SECONDS);
+    }
+
+    public boolean isCurrentBreakLong() {
+        return currentBreakIsLong;
+    }
+
+    private Instant getNextScheduledBreakTime() {
+        if (nextBreakTime == null) {
+            return nextLongBreakTime;
+        }
+        if (nextLongBreakTime == null) {
+            return nextBreakTime;
+        }
+        return nextLongBreakTime.isBefore(nextBreakTime) ? nextLongBreakTime : nextBreakTime;
+    }
+
     /**
      * Get time remaining in break in seconds
      */
@@ -973,6 +1089,7 @@ public class BreakHandlerV2Script extends Script {
 
         // Clear timers
         nextBreakTime = null;
+        nextLongBreakTime = null;
         breakEndTime = null;
         loginAttemptTime = null;
 
@@ -981,6 +1098,8 @@ public class BreakHandlerV2Script extends Script {
         loginRetryCount = 0;
         safetyCheckAttempts = 0;
         logoutBreakActive = false;
+        longBreakDue = false;
+        currentBreakIsLong = false;
         pluginStopTriggered = false;
         pluginRestartPending = false;
         stoppedPluginClassName = PluginStopOption.NONE_VALUE;
@@ -1043,6 +1162,7 @@ public class BreakHandlerV2Script extends Script {
         }
 
         setBreakTimer(true);
+        recordBreakActivated();
         stopConfiguredPluginIfNeeded();
         sendBreakStartedNotification(true);
         log.info("[BreakHandlerV2] Outside play schedule on startup, enforcing break until {}", breakEndTime);
@@ -1079,12 +1199,14 @@ public class BreakHandlerV2Script extends Script {
 
     private void beginPauseBreak() {
         setBreakTimer(false);
+        recordBreakActivated();
         sendBreakStartedNotification(false);
         Microbot.pauseAllScripts.set(true);
     }
 
     private void beginLogoutBreak() {
         setBreakTimer(true);
+        recordBreakActivated();
         sendBreakStartedNotification(true);
         transitionToState(BreakHandlerV2State.LOGOUT_REQUESTED);
     }
@@ -1095,10 +1217,27 @@ public class BreakHandlerV2Script extends Script {
         persistBreakState(logoutBreak);
     }
 
+    private void recordBreakActivated() {
+        breaksActivatedCount++;
+        log.info("[BreakHandlerV2] Breaks activated this run: {}", breaksActivatedCount);
+    }
+
+    public long getScriptActiveSeconds() {
+        if (scriptStartedAt == null) {
+            return 0;
+        }
+        return Math.max(0, scriptStartedAt.until(Instant.now(), ChronoUnit.SECONDS));
+    }
+
+    public int getBreaksActivatedCount() {
+        return breaksActivatedCount;
+    }
+
     private void sendBreakStartedNotification(boolean logoutBreak) {
+        String breakType = currentBreakIsLong ? "Long break" : "Break";
         String message = logoutBreak
-            ? "Type: Logout break\nDuration: " + (currentBreakDuration / 60000) + " minutes"
-            : "Duration: " + (currentBreakDuration / 60000) + " minutes (no logout)";
+            ? "Type: " + breakType + " (logout)\nDuration: " + (currentBreakDuration / 60000) + " minutes"
+            : "Type: " + breakType + "\nDuration: " + (currentBreakDuration / 60000) + " minutes (no logout)";
         sendDiscordNotification("Break Started", message);
     }
 
