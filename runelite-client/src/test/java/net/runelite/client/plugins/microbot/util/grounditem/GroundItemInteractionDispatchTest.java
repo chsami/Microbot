@@ -66,21 +66,25 @@ public class GroundItemInteractionDispatchTest
                 public MethodVisitor visitMethod(int access, String name, String descriptor,
                                                  String signature, String[] exceptions)
                 {
-                    if (!name.equals(expectedName) || !descriptor.equals(expectedDescriptor))
+                    boolean expectedMethod = name.equals(expectedName)
+                            && descriptor.equals(expectedDescriptor);
+                    if (expectedMethod)
                     {
-                        return null;
+                        calls.matchedMethods++;
                     }
-                    calls.matchedMethods++;
                     return new MethodVisitor(Opcodes.ASM9)
                     {
                         @Override
                         public void visitMethodInsn(int opcode, String owner, String methodName,
                                                     String methodDescriptor, boolean isInterface)
                         {
-                            if (owner.equals(Type.getInternalName(Microbot.class)) && methodName.equals("doInvoke"))
+                            if (expectedMethod && owner.equals(Type.getInternalName(Microbot.class))
+                                    && methodName.equals("doInvoke"))
                             {
                                 calls.doInvoke++;
                             }
+                            // Scan the whole class so a lambda$... or same-class helper cannot hide a
+                            // reintroduced reflection dispatch from the expected interaction method.
                             if (owner.equals(Type.getInternalName(Rs2Reflection.class)) && methodName.equals("invokeMenu"))
                             {
                                 calls.reflectionInvokeMenu++;

@@ -5,7 +5,6 @@ import net.runelite.api.gameval.DBTableID;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.shortestpath.ShortestPathPlugin;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.TransportType;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
@@ -15,6 +14,8 @@ import net.runelite.client.plugins.microbot.util.npc.MonsterLocation;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcManager;
 import net.runelite.client.plugins.microbot.util.skills.slayer.enums.ProtectiveEquipment;
 import net.runelite.client.plugins.microbot.util.skills.slayer.enums.SlayerMaster;
+import net.runelite.client.plugins.microbot.util.walker.Rs2TransportEdge;
+import net.runelite.client.plugins.microbot.util.walker.Rs2TransportType;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.slayer.Task;
 import org.jetbrains.annotations.NotNull;
@@ -268,8 +269,7 @@ public class Rs2Slayer {
      * @return the list
      */
     public static List<Transport> prepareItemTransports(WorldPoint cachedMonsterLocation) {
-        ShortestPathPlugin.getPathfinderConfig().setUseBankItems(true);
-        List<Transport> transports = Rs2Walker.getTransportsForPath(Rs2Walker.getWalkPath(cachedMonsterLocation), 0)
+		List<Transport> transports = Rs2Walker.getTransportsForDestination(cachedMonsterLocation, true)
                 .stream()
                 .filter(t -> t.getType() == TransportType.TELEPORTATION_ITEM || t.getType() == TransportType.FAIRY_RING)
                 .peek(t -> {
@@ -278,13 +278,29 @@ public class Rs2Slayer {
                     }
                 })
                 .collect(Collectors.toList());
-        ShortestPathPlugin.getPathfinderConfig().setUseBankItems(false);
 
         transports
                 .forEach(t -> Microbot.log(Level.DEBUG,"Item required: " + t));
 
         return getMissingItemTransports(transports);
     }
+
+	/**
+	 * Planner-independent replacement for {@link #prepareItemTransports(WorldPoint)}.
+	 *
+	 * <p>The bank-item policy belongs to this one route request and the returned edges are the exact
+	 * selections made by the planner. No shared planner configuration or mutable catalog rematch is
+	 * exposed to the caller.</p>
+	 */
+	public static List<Rs2TransportEdge> prepareItemTransportEdges(WorldPoint cachedMonsterLocation) {
+		List<Rs2TransportEdge> selected = Rs2Walker
+				.getTransportEdgesForDestination(cachedMonsterLocation, true)
+				.stream()
+				.filter(edge -> edge.getType() == Rs2TransportType.TELEPORTATION_ITEM
+						|| edge.getType() == Rs2TransportType.FAIRY_RING)
+				.collect(Collectors.toUnmodifiableList());
+		return Rs2Walker.getMissingTransportEdges(selected);
+	}
 
     private static boolean hasRequiredTeleportItem(Transport transport) {
         if (transport.getType() == TransportType.FAIRY_RING) {
@@ -293,10 +309,8 @@ public class Rs2Slayer {
                     Rs2Inventory.hasItem(ItemID.LUNAR_MOONCLAN_LIMINAL_STAFF) ||
                     Rs2Equipment.isWearing(ItemID.LUNAR_MOONCLAN_LIMINAL_STAFF);
         } else if (transport.getType() == TransportType.TELEPORTATION_ITEM) {
-            return transport.getItemIdRequirements()
-                    .stream()
-                    .flatMap(Collection::stream)
-                    .anyMatch(itemId -> Rs2Equipment.isWearing(itemId) || Rs2Inventory.hasItem(itemId));
+            return transport.getItemRequirements().stream()
+                    .allMatch(requirement -> requirement.isSatisfiedBy(Rs2Slayer::carriedItemQuantity));
         }
         return false;
     }
@@ -316,12 +330,21 @@ public class Rs2Slayer {
      */
     public static List<Integer> getMissingItemIds(@NotNull List<Transport> transports) {
         return transports.stream()
-                .flatMap(transport -> transport.getItemIdRequirements()
-                        .stream()
-                        .flatMap(Collection::stream)
-                        .filter(Rs2Bank::hasItem)
+                .flatMap(transport -> transport.getItemRequirements().stream())
+                .flatMap(requirement -> requirement.getItemIds().stream()
+                        .filter(itemId -> Rs2Bank.count(itemId)
+                                >= requirement.getRequiredQuantity(itemId))
                         .findFirst().stream())
                 .collect(Collectors.toList());
+    }
+
+    private static int carriedItemQuantity(int itemId) {
+        int quantity = Rs2Inventory.itemQuantity(itemId);
+        net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel equipped = Rs2Equipment.get(itemId);
+        if (equipped != null) {
+            quantity += Math.max(1, equipped.getQuantity());
+        }
+        return quantity;
     }
 
 }

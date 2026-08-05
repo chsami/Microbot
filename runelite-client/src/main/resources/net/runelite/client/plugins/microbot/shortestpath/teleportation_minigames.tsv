@@ -21,7 +21,7 @@ Destination	Skills	Quests	isMembers	Varbits	Varplayers	Wilderness level	Duration
 3361 3149 0			Y		888@20	0	23	Giant's Foundry
 								
 # Guardians of the Rift - Temple of the Eye								
-3104 9573 0		Temple of the Eye	Y		888@20	0	23	Guardians of the Rift
+3614 9477 0		Temple of the Eye	Y		888@20	0	23	Guardians of the Rift
 								
 # Last Man Standing - Ferox Enclave								
 3150 3635 0					888@20	0	23	Last Man Standing
@@ -33,15 +33,13 @@ Destination	Skills	Quests	isMembers	Varbits	Varplayers	Wilderness level	Duration
 2609 3114 0			Y		888@20	0	23	Nightmare Zone
 								
 # Pest Control - Void Knights' Outpost (requires 40 combat)								
-2658 2663 0			Y		888@20	0	23	Pest Control
+2658 2663 0	40 Combat		Y		888@20	0	23	Pest Control
 								
 # Rat Pits - East Ardougne, Keldagrim, Port Sarim, Varrock								
 2561 3319 0		Ratcatchers	Y		888@20	0	23	Rat Pits: Ardougne
-## NEEDS FIXING
-# 2914 10193 0		Ratcatchers	Y		888@20	0	23	Rat Pits: Keldagrim
-#
+2914 10193 0		Ratcatchers	Y		888@20	0	23	Rat Pits: Keldagrim
 3018 3231 0		Ratcatchers	Y		888@20	0	23	Rat Pits: Port Sarim
-3267 3399 0		Ratcatchers	Y		888@20	0	23	Rat Pits: Varrock
+3262 3405 0		Ratcatchers	Y		888@20	0	23	Rat Pits: Varrock
 								
 # Shades of Mort'ton								
 3506 3304 0		Shades of Mort'ton	Y		888@20	0	23	Shades of Mort'ton

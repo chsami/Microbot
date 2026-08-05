@@ -73,6 +73,7 @@ Movement:
                                          Walk to coordinates (non-blocking by default;
                                          --wait blocks until arrival or timeout, default 30s;
                                          --distance defaults to 0 for exact coordinates)
+  walker shadow                         Planner shadow totals and route-class coverage
 
 Banking:
   bank                                   Bank status (open/closed, items)
@@ -366,6 +367,11 @@ case "$1" in
                 ;;
             *) usage ;;
         esac
+        ;;
+
+    walker)
+        [[ $# -eq 2 && "$2" == "shadow" ]] || { echo '{"error":"Usage: microbot-cli walker shadow"}'; exit 1; }
+        do_get "${BASE}/walker/shadow"
         ;;
 
     walk)

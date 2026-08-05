@@ -87,6 +87,9 @@ public class Rs2DoorGeometryTest {
         WorldPoint player = wp(3200, 3200);
         // probe one tile away, range 2 -> within.
         assertTrue(Rs2DoorGeometry.isDoorInteractionWithinRange(null, wp(3201, 3200), null, null, player, 2));
+        // probe out of range (10 away) but an endpoint (fromWp) within range -> true via the nearest candidate.
+        assertTrue(Rs2DoorGeometry.isDoorInteractionWithinRange(null, wp(3210, 3200), wp(3201, 3200),
+                wp(3211, 3200), player, 2));
         // everything 10 tiles away -> out of range.
         assertFalse(Rs2DoorGeometry.isDoorInteractionWithinRange(null, wp(3210, 3200), wp(3210, 3201),
                 wp(3211, 3200), player, 2));

@@ -695,6 +695,18 @@ public interface ShortestPathConfig extends Config {
     default boolean drawDebugPanel() {
         return false;
     }
+
+    @ConfigItem(
+            keyName = "verboseWalkerLogging",
+            name = "Verbose console logging",
+            description = "Log walker/shortest-path DEBUG detail to the console without restarting the client "
+                    + "in debug mode. Console only — never the game chat.",
+            position = 3,
+            section = sectionDebug
+    )
+    default boolean verboseWalkerLogging() {
+        return false;
+    }
     @ConfigSection(
             name = "Advanced Options",
             description = "Advanced pathfinding and transport settings",
@@ -740,17 +752,6 @@ public interface ShortestPathConfig extends Config {
         return 80;
     }
 
-    @ConfigItem(
-            keyName = "preferNonConsumableTeleportAndSpells",
-            name = "Prefer  non-consumable teleports and spells",
-            description = " Whether to prefer using non-consumable teleportation items and spells over consumable items.<br>" +
-                    "This will only apply when 'Walk with banked transports' is enabled",
-            position = 3,
-            section = sectionAdvanced
-    )
-    default boolean preferNonConsumableTeleportAndSpells() {
-        return false;
-    }
         @ConfigItem(
                 keyName = "preferTransportToTarget",
                 name = "Prefer transport to target",
@@ -762,6 +763,20 @@ public interface ShortestPathConfig extends Config {
         default boolean preferTransportToTarget() {
                 return false;
         }
+
+    @ConfigItem(
+            keyName = "interactWithRouteObstaclesAtRange",
+            name = "Interact with obstacles at range",
+            description = "Click stairs, ladders and door transports on the route as soon as they are in "
+                    + "range and let the game walk you there, instead of walking to a chosen approach tile "
+                    + "first. Only ever applies to the NEXT obstacle on the route, and falls back to the old "
+                    + "behaviour for any obstacle the server declines to path to.",
+            position = 3,
+            section = sectionAdvanced
+    )
+    default boolean interactWithRouteObstaclesAtRange() {
+        return true;
+    }
 
     @ConfigItem(
             keyName = "maxSimilarTransportDistance",
@@ -889,4 +904,17 @@ public interface ShortestPathConfig extends Config {
     default boolean resetLearnedCollision() {
         return false;
     }
+
+	@ConfigItem(
+			keyName = "plannerSelectionMode",
+			name = "Planner rollout mode",
+			description = "Local is the production default. Shadow compares the pinned upstream planner. "
+					+ "The F2P canary selects only semantically matching upstream routes and automatically "
+					+ "falls back to local; members routes remain local.",
+			position = 3,
+			section = sectionDeveloper
+	)
+	default PlannerSelectionMode plannerSelectionMode() {
+		return PlannerSelectionMode.LOCAL;
+	}
 }

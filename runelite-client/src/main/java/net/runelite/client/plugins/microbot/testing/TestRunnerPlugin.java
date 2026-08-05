@@ -1,8 +1,11 @@
 package net.runelite.client.plugins.microbot.testing;
 
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.Client;
 import net.runelite.api.GameState;
-import net.runelite.api.events.GameStateChanged;
+import net.runelite.api.events.GameTick;
+import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.widgets.Widget;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
@@ -19,7 +22,8 @@ import java.util.concurrent.TimeUnit;
 @PluginDescriptor(
         name = "Test Runner",
         hidden = true,
-        alwaysOn = true
+        alwaysOn = true,
+        priority = true
 )
 @Slf4j
 public class TestRunnerPlugin extends Plugin {
@@ -31,6 +35,9 @@ public class TestRunnerPlugin extends Plugin {
     @Inject
     private PluginManager pluginManager;
 
+    @Inject
+    private Client client;
+
     private ScheduledExecutorService executor;
     private boolean testStarted = false;
 
@@ -41,6 +48,7 @@ public class TestRunnerPlugin extends Plugin {
         log.info("[TestRunner] Test mode active. Target plugin: {}", getTargetPluginName());
         executor = Executors.newSingleThreadScheduledExecutor();
 
+        prepareTargetPlugin();
         enableAutoLogin();
 
         long timeout = getTimeout();
@@ -51,6 +59,24 @@ public class TestRunnerPlugin extends Plugin {
             TestResultWriter.write(result);
             System.exit(2);
         }, timeout, TimeUnit.MILLISECONDS);
+    }
+
+    private void prepareTargetPlugin() {
+        Plugin target = findTargetPlugin();
+        if (target == null) {
+            return;
+        }
+
+        try {
+            if (pluginManager.isActive(target)) {
+                pluginManager.stopPlugin(target);
+            }
+            // Test targets are process-scoped. Leaving this persisted as enabled makes them start
+            // before the runner can observe a playable client on the next JVM launch.
+            pluginManager.setPluginEnabled(target, false);
+        } catch (PluginInstantiationException e) {
+            throw new IllegalStateException("Unable to prepare target plugin " + getTargetPluginName(), e);
+        }
     }
 
     private void enableAutoLogin() {
@@ -90,49 +116,59 @@ public class TestRunnerPlugin extends Plugin {
     }
 
     @Subscribe
-    public void onGameStateChanged(GameStateChanged event) {
+    public void onGameTick(GameTick event) {
         if (!isTestMode()) return;
         if (testStarted) return;
-        if (event.getGameState() != GameState.LOGGED_IN) return;
+        if (!isClientReady()) return;
 
         testStarted = true;
-        log.info("[TestRunner] Logged in. Starting target plugin in 2s...");
+        log.info("[TestRunner] Client is playable. Starting target plugin...");
 
-        executor.schedule(this::enableTargetPlugin, 2, TimeUnit.SECONDS);
+        executor.execute(this::enableTargetPlugin);
+    }
+
+    private boolean isClientReady() {
+        Widget playWidget = client.getWidget(InterfaceID.WelcomeScreen.PLAY);
+        boolean welcomeScreenVisible = playWidget != null && !playWidget.isHidden();
+        return isClientReady(client.getGameState(), client.getLocalPlayer() != null, welcomeScreenVisible);
+    }
+
+    static boolean isClientReady(GameState gameState, boolean localPlayerAvailable, boolean welcomeScreenVisible) {
+        return gameState == GameState.LOGGED_IN && localPlayerAvailable && !welcomeScreenVisible;
     }
 
     private void enableTargetPlugin() {
         String targetName = getTargetPluginName();
         log.info("[TestRunner] Looking for plugin: '{}'", targetName);
 
-        for (Plugin plugin : pluginManager.getPlugins()) {
+        Plugin plugin = findTargetPlugin();
+        if (plugin != null) {
             PluginDescriptor descriptor = plugin.getClass().getAnnotation(PluginDescriptor.class);
-            if (descriptor == null) continue;
+            log.info("[TestRunner] Found plugin: {} ({})", descriptor.name(), plugin.getClass().getSimpleName());
+            pluginManager.setPluginEnabled(plugin, true);
 
-            if (descriptor.name().contains(targetName)) {
-                log.info("[TestRunner] Found plugin: {} ({})", descriptor.name(), plugin.getClass().getSimpleName());
-                pluginManager.setPluginEnabled(plugin, true);
-
-                SwingUtilities.invokeLater(() -> {
-                    try {
-                        pluginManager.startPlugin(plugin);
-                        log.info("[TestRunner] Started plugin: {}", descriptor.name());
-                    } catch (PluginInstantiationException e) {
-                        log.error("[TestRunner] Failed to start plugin", e);
-                        TestResult result = new TestResult(targetName);
-                        result.addError("Failed to start plugin: " + e.getMessage());
-                        result.complete("crash");
-                        TestResultWriter.write(result);
-                        System.exit(3);
-                    }
-                });
-                return;
-            }
+            SwingUtilities.invokeLater(() -> {
+                try {
+                    boolean started = pluginManager.startPlugin(plugin);
+                    log.info("[TestRunner] {} plugin: {}", started ? "Started" : "Target already active", descriptor.name());
+                } catch (PluginInstantiationException e) {
+                    log.error("[TestRunner] Failed to start plugin", e);
+                    TestResult result = new TestResult(targetName);
+                    result.addError("Failed to start plugin: " + e.getMessage());
+                    result.complete("crash");
+                    TestResultWriter.write(result);
+                    System.exit(3);
+                } finally {
+                    // Keep the target active for this process without auto-starting it on the next run.
+                    pluginManager.setPluginEnabled(plugin, false);
+                }
+            });
+            return;
         }
 
         log.error("[TestRunner] Plugin '{}' not found! Available plugins:", targetName);
-        for (Plugin plugin : pluginManager.getPlugins()) {
-            PluginDescriptor d = plugin.getClass().getAnnotation(PluginDescriptor.class);
+        for (Plugin availablePlugin : pluginManager.getPlugins()) {
+            PluginDescriptor d = availablePlugin.getClass().getAnnotation(PluginDescriptor.class);
             if (d != null) log.error("  - {}", d.name());
         }
 
@@ -141,6 +177,21 @@ public class TestRunnerPlugin extends Plugin {
         result.complete("crash");
         TestResultWriter.write(result);
         System.exit(3);
+    }
+
+    private Plugin findTargetPlugin() {
+        String targetName = getTargetPluginName();
+        if (targetName.isBlank()) {
+            return null;
+        }
+
+        for (Plugin plugin : pluginManager.getPlugins()) {
+            PluginDescriptor descriptor = plugin.getClass().getAnnotation(PluginDescriptor.class);
+            if (descriptor != null && descriptor.name().contains(targetName)) {
+                return plugin;
+            }
+        }
+        return null;
     }
 
     private static boolean isTestMode() {

@@ -190,6 +190,25 @@ public class Rs2Magic {
 		return quickCast(spell.getMagicAction());
 	}
 
+    /**
+     * Click a zero-rune spellbook action by its exact displayed name.
+     *
+     * <p>Home teleports exist on every spellbook but only the standard-book variant is represented by
+     * {@link MagicAction}. The active spellbook and cooldown are planner requirements; at execution time
+     * the exact visible widget is the authoritative capability check.</p>
+     */
+    public static boolean quickCast(String spellName) {
+        if (spellName == null || spellName.trim().isEmpty()) return false;
+
+        Microbot.status = "Casting " + spellName;
+        if (Rs2Tab.getCurrentTab() != InterfaceTab.MAGIC) {
+            Rs2Tab.switchToMagicTab();
+            if (!sleepUntil(() -> Rs2Tab.getCurrentTab() == InterfaceTab.MAGIC)) return false;
+        }
+
+        return Rs2Widget.clickWidget(spellName, Optional.of(218), 3, true);
+    }
+
     public static boolean quickCast(MagicAction magicSpell) {
         Microbot.status = "Casting " + magicSpell.getName();
 

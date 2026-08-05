@@ -1,5 +1,9 @@
 # Walker P2 — Unify the Obstacle Model
 
+> Historical design record. See [`walker-roadmap.md`](walker-roadmap.md) for the maintained plan and
+> the decision to evolve stateful door/transport behavior from pinned incidents instead of performing a
+> wholesale rewrite.
+
 _Plan date: 2026-07-26. Depends on P1 (docs/walker-audit.md): `state/WalkerRouteState`,
 `recovery/RouteRecovery` + harness, `geometry/WalkerPathGeometry`, and the pre-existing
 `door/` + `obstacle/` packages are in place._

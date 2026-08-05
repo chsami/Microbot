@@ -241,22 +241,25 @@
 3239 6077 0		13280;13342		2187=7		Y	F	19	4	Max cape: Home
 # 8 - Hosidius										
 1740 3517 0		13280;13342		2187=8		Y	F	19	4	Max cape: Home
-2952 3224 0		13280;13342				Y	F	19	4	Max cape: Rimmington
-2892 3465 0		13280;13342				Y	F	19	4	Max cape: Taverley
-3339 3001 0		13280;13342				Y	F	19	4	Max cape: Pollnivneach
-1743 3517 0		13280;13342				Y	F	19	4	Max cape: Hosidius
-2669 3629 0		13280;13342				Y	F	19	4	Max cape: Rellekka
-2756 3176 0		13280;13342				Y	F	19	4	Max cape: Brimhaven
-2545 3097 0		13280;13342				Y	F	19	4	Max cape: Yanille
-3239 6077 0		13280;13342				Y	F	19	4	Max cape: Prifddinas
-2865 3546 0		13280;13342				Y	F	19	4	Max cape: Warriors' Guild
-2604 3401 0		13280;13342				Y	F	19	4	Max cape: Fishing Guild
-2931 3286 0		13280;13342				Y	F	19	4	Max cape: Crafting Guild
-2556 2917 0		13280;13342				Y	F	19	4	Max cape: Feldip Hills
-3144 3772 0		13280;13342				Y	F	19	4	Max cape: Black chinchompa
-3144 3772 0		13280;13342				Y	F	19	4	Max cape: Black chinchompa
-# Quest point cape (instead of using the item name we use the action teleport, we use the itemids to verifiy the item)										
-2728 3347 0		9813;13068				Y	F	19	4	Quest point cape: Teleport
+2952 3224 0	2376 Total	13280=1||13342=1				Y	F	20	4	Max cape: POH Portals: Rimmington
+2892 3465 0	2376 Total	13280=1||13342=1				Y	F	20	4	Max cape: POH Portals: Taverley
+3339 3001 0	2376 Total	13280=1||13342=1				Y	F	20	4	Max cape: POH Portals: Pollnivneach
+1743 3517 0	2376 Total	13280=1||13342=1				Y	F	20	4	Max cape: POH Portals: Hosidius
+2669 3629 0	2376 Total	13280=1||13342=1				Y	F	20	4	Max cape: POH Portals: Rellekka
+2756 3176 0	2376 Total	13280=1||13342=1				Y	F	20	4	Max cape: POH Portals: Brimhaven
+2545 3097 0	2376 Total	13280=1||13342=1				Y	F	20	4	Max cape: POH Portals: Yanille
+3239 6077 0	2376 Total	13280=1||13342=1				Y	F	20	4	Max cape: POH Portals: Prifddinas
+2865 3546 0	2376 Total	13280=1||13342=1				Y	F	20	4	Max cape: Warriors' Guild
+2604 3401 0	2376 Total	13280=1||13342=1				Y	F	20	4	Max cape: Fishing Teleports: Fishing Guild
+2504 3484 0	2376 Total	13280=1||13342=1				Y	F	20	4	Max cape: Fishing Teleports: Otto's Grotto
+2931 3286 0	2376 Total	13280=1||13342=1				Y	F	20	4	Max cape: Crafting Guild
+2556 2917 0	2376 Total	13280=1||13342=1				Y	T	20	4	Max cape: Other Teleports: Feldip Hills
+3144 3772 0	2376 Total	13280=1||13342=1				Y	T	20	4	Max cape: Other Teleports: Black chinchompa
+1558 3046 0	2376 Total	13280=1||13342=1				Y	F	20	4	Max cape: Other Teleports: Hunter Guild
+1248 3725 0	2376 Total	13280=1||13342=1				Y	F	20	4	Max cape: Other Teleports: Farming Guild
+3048 2972 0	2376 Total	13280=1||13342=1				Y	F	20	4	Max cape: Other Teleports: The Pandemonium
+# Quest point cape (instead of using the item name we use the action teleport, we use the itemids to verifiy the item)
+2729 3348 0	327 Quest	9813=1||13068=1				Y	F	20	4	Quest point cape: Teleport
 2689 3547 0		13221;13222				Y	F	19	4	Music cape: Teleport
 2574 3323 0		13069;19476				Y	F	19	4	Achievement diary cape: Two-pints
 3302 3122 0		13069;19476				Y	F	19	4	Achievement diary cape: Jarr
@@ -351,21 +354,36 @@
 1367 3087 0		29893		16752=1		Y	T	19	4	Pendant of ates: Kastori
 1364 3275 0		29893		16757=1		Y	T	19	4	Pendant of ates: Nemus Retreat
 										
-#Quetzal Whistle — one row per map destination; quest Children of the Sun (item unlock). Varbit columns match quetzals.tsv for locked map pins.
-1389 2901 0		29271;29273;29275	Children of the Sun			Y	T	19	4	Quetzal whistle: Aldarin
-1697 3140 0		29271;29273;29275	Children of the Sun			Y	T	19	4	Quetzal whistle: Civitas illa Fortis
-1585 3053 0		29271;29273;29275	Children of the Sun			Y	T	19	4	Quetzal whistle: Hunter Guild
-1510 3221 0		29271;29273;29275	Children of the Sun			Y	T	19	4	Quetzal whistle: Quetzacalli Gorge
-1548 2995 0		29271;29273;29275	Children of the Sun			Y	T	19	4	Quetzal whistle: Sunset Coast
-1437 3171 0		29271;29273;29275	Children of the Sun			Y	T	19	4	Quetzal whistle: The Teomat
-1779 3111 0		29271;29273;29275	Children of the Sun	9958=1		Y	T	19	4	Quetzal whistle: Fortis Colosseum
-1700 3037 0		29271;29273;29275	Children of the Sun	9957=1		Y	T	19	4	Quetzal whistle: Outer Fortis
-1670 2933 0		29271;29273;29275	Children of the Sun	9956=1		Y	T	19	4	Quetzal whistle: Colossal Wyrm Remains
-1446 3108 0		29271;29273;29275	Children of the Sun	9955=1		Y	T	19	4	Quetzal whistle: Cam Torum Entrance
-1613 3300 0		29271;29273;29275	Children of the Sun	11379=1		Y	T	19	4	Quetzal whistle: Salvager Overlook
-1226 3091 0		29271;29273;29275	Children of the Sun			Y	T	19	4	Quetzal whistle: Tal Teklan
-1344 3022 0		29271;29273;29275	Children of the Sun	17757=1		Y	T	19	4	Quetzal whistle: Kastori
-1411 3361 0		29271;29273;29275	Children of the Sun			Y	T	19	4	Quetzal whistle: Auburnvale
+# Quetzal whistles — charged variants are consumable; the perfected infinite whistle is permanent.
+# Separate variants preserve Microbot's Inventory (perm) policy while retaining upstream destinations and unlocks.
+1389 2901 0		29271=1||29273=1||29275=1	Twilight's Promise			Y	T	20	4	Quetzal whistle: Aldarin
+1411 3361 0		29271=1||29273=1||29275=1	Twilight's Promise			Y	T	20	4	Quetzal whistle: Auburnvale
+1697 3140 0		29271=1||29273=1||29275=1	Twilight's Promise			Y	T	20	4	Quetzal whistle: Civitas illa Fortis
+1585 3053 0		29271=1||29273=1||29275=1	Twilight's Promise			Y	T	20	4	Quetzal whistle: Hunter Guild
+1510 3222 0		29271=1||29273=1||29275=1	Twilight's Promise			Y	T	20	4	Quetzal whistle: Quetzacalli Gorge
+1548 2995 0		29271=1||29273=1||29275=1	Twilight's Promise			Y	T	20	4	Quetzal whistle: Sunset Coast
+1226 3091 0		29271=1||29273=1||29275=1	Twilight's Promise			Y	T	20	4	Quetzal whistle: Tal Teklan
+1437 3171 0		29271=1||29273=1||29275=1	Twilight's Promise			Y	T	20	4	Quetzal whistle: The Teomat
+1779 3111 0		29271=1||29273=1||29275=1	Twilight's Promise		4182&256	Y	T	20	4	Quetzal whistle: Fortis Colosseum
+1344 3022 0		29271=1||29273=1||29275=1	Twilight's Promise		4182&16384	Y	T	20	4	Quetzal whistle: Kastori
+1700 3037 0		29271=1||29273=1||29275=1	Twilight's Promise		4182&128	Y	T	20	4	Quetzal whistle: Outer Fortis
+1670 2933 0		29271=1||29273=1||29275=1	Twilight's Promise		4182&64	Y	T	20	4	Quetzal whistle: Colossal Wyrm Remains
+1446 3108 0		29271=1||29273=1||29275=1	Twilight's Promise		4182&32	Y	T	20	4	Quetzal whistle: Cam Torum
+1613 3300 0		29271=1||29273=1||29275=1	Twilight's Promise		4182&2048	Y	T	20	4	Quetzal whistle: Salvager Overlook
+1389 2901 0		33120=1	Twilight's Promise			Y	F	20	4	Quetzal whistle: Aldarin
+1411 3361 0		33120=1	Twilight's Promise			Y	F	20	4	Quetzal whistle: Auburnvale
+1697 3140 0		33120=1	Twilight's Promise			Y	F	20	4	Quetzal whistle: Civitas illa Fortis
+1585 3053 0		33120=1	Twilight's Promise			Y	F	20	4	Quetzal whistle: Hunter Guild
+1510 3222 0		33120=1	Twilight's Promise			Y	F	20	4	Quetzal whistle: Quetzacalli Gorge
+1548 2995 0		33120=1	Twilight's Promise			Y	F	20	4	Quetzal whistle: Sunset Coast
+1226 3091 0		33120=1	Twilight's Promise			Y	F	20	4	Quetzal whistle: Tal Teklan
+1437 3171 0		33120=1	Twilight's Promise			Y	F	20	4	Quetzal whistle: The Teomat
+1779 3111 0		33120=1	Twilight's Promise		4182&256	Y	F	20	4	Quetzal whistle: Fortis Colosseum
+1344 3022 0		33120=1	Twilight's Promise		4182&16384	Y	F	20	4	Quetzal whistle: Kastori
+1700 3037 0		33120=1	Twilight's Promise		4182&128	Y	F	20	4	Quetzal whistle: Outer Fortis
+1670 2933 0		33120=1	Twilight's Promise		4182&64	Y	F	20	4	Quetzal whistle: Colossal Wyrm Remains
+1446 3108 0		33120=1	Twilight's Promise		4182&32	Y	F	20	4	Quetzal whistle: Cam Torum
+1613 3300 0		33120=1	Twilight's Promise		4182&2048	Y	F	20	4	Quetzal whistle: Salvager Overlook
 #Giantsoul Amulet										
 3174 9898 0		30638				Y	T	19	4	Giantsoul Amulet: Bryophyta
 6208 6336 0		30638				Y	T	19	4	Giantsoul Amulet: Obor

@@ -1,0 +1,438 @@
+{
+  "schemaVersion": 2,
+  "enabled": true,
+  "candidateEngineId": "shortest-path-upstream@ff8e961b32120175709df9630ece9468cc11347f",
+  "startedAtEpochMillis": 1785944549355,
+  "totals": {
+    "submitted": 14,
+    "completed": 14,
+    "matches": 14,
+    "divergences": 0,
+    "failures": 0,
+    "staleResults": 1,
+    "discarded": 0,
+    "pending": 0,
+    "routeShapeDifferences": 14
+  },
+  "coverage": {
+    "SYNCHRONOUS_QUERY": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "ACTIVE_ROUTE": {
+      "completed": 2,
+      "matches": 2,
+      "divergences": 0,
+      "failures": 0
+    },
+    "ACTIVE_REPLAN": {
+      "completed": 12,
+      "matches": 12,
+      "divergences": 0,
+      "failures": 0
+    },
+    "RECOVERY_REPLAN": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "SURFACE_COORDINATES_ONLY": {
+      "completed": 14,
+      "matches": 14,
+      "divergences": 0,
+      "failures": 0
+    },
+    "UNDERGROUND_COORDINATES": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "WALKING_ONLY_SELECTED": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "USES_TRANSPORT": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "SELECTS_ITEM_GATED_TRANSPORT": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "BANK_ITEMS_ENABLED": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "BANK_ROUTE_DIRECT": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "BANK_ROUTE_TO_BANK": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "BANK_ROUTE_FROM_BANK": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "BANK_ROUTE_FROM_BANK_SELECTS_ITEM_GATED_TRANSPORT": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "LIVE_COLLISION_ENABLED": {
+      "completed": 14,
+      "matches": 14,
+      "divergences": 0,
+      "failures": 0
+    },
+    "LIVE_COLLISION_CONSULTED": {
+      "completed": 14,
+      "matches": 14,
+      "divergences": 0,
+      "failures": 0
+    }
+  },
+  "transportExecutors": {
+    "BARROWS_DIG": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "CANOE": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "CHARTER_SHIP": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "FAIRY_RING": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "GNOME_GLIDER": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "HOT_AIR_BALLOON": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "ITEM_TELEPORT": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "MAGIC_CARPET": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "MAGIC_MUSHTREE": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "MINIGAME_TELEPORT": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "OBJECT": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "POH": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "QUETZAL": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "SEASONAL": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "SPELL_TELEPORT": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "SPIRIT_TREE": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "TERMINAL_TRAVEL": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "WILDERNESS_OBELISK": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "UNSUPPORTED": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    }
+  },
+  "transportTypes": {
+    "TRANSPORT": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "AGILITY_SHORTCUT": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "GRAPPLE_SHORTCUT": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "BOAT": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "CANOE": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "CHARTER_SHIP": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "SHIP": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "FAIRY_RING": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "QUETZAL": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "QUETZAL_WHISTLE": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "GNOME_GLIDER": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "MINECART": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "POH": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "SPIRIT_TREE": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "TELEPORTATION_BOX": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "TELEPORTATION_LEVER": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "TELEPORTATION_PORTAL": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "TELEPORTATION_PORTAL_POH": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "TELEPORTATION_MINIGAME": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "TELEPORTATION_ITEM": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "TELEPORTATION_SPELL": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "TELEPORTATION_SPELL_HOME": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "WILDERNESS_OBELISK": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "MAGIC_CARPET": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "HOT_AIR_BALLOON": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "MAGIC_MUSHTREE": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "SEASONAL_TRANSPORT": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "NPC": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    },
+    "UNKNOWN": {
+      "completed": 0,
+      "matches": 0,
+      "divergences": 0,
+      "failures": 0
+    }
+  },
+  "execution": {
+    "terminal": 2,
+    "arrived": 2,
+    "unreachable": 0,
+    "exited": 0,
+    "recoveryTerminal": 0,
+    "recoveryArrived": 0,
+    "recoveryUnreachable": 0,
+    "recoveryExited": 0
+  },
+  "latestRouteShapeDifference": {
+    "status": "MATCH",
+    "shadowEngineId": "shortest-path-upstream@ff8e961b32120175709df9630ece9468cc11347f",
+    "invocation": "ACTIVE_REPLAN",
+    "coverage": [
+      "ACTIVE_REPLAN",
+      "SURFACE_COORDINATES_ONLY",
+      "LIVE_COLLISION_ENABLED",
+      "LIVE_COLLISION_CONSULTED"
+    ],
+    "terminationMatches": true,
+    "endpointMatches": true,
+    "costComparable": true,
+    "costMatches": true,
+    "selectedTransportsMatch": true,
+    "pathMatches": false,
+    "transportExecutors": [],
+    "transportTypes": [],
+    "localSearchNanos": 162599395,
+    "shadowSearchNanos": 96122140
+  }
+}

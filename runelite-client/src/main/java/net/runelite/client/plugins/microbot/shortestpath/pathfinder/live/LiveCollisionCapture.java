@@ -41,21 +41,26 @@ import static net.runelite.api.Constants.SCENE_SIZE;
 public final class LiveCollisionCapture {
 
     /**
-     * Actions that mark a wall object as a door the walker opens at runtime. Mirrors the door-action set
-     * in {@code Rs2Walker.handleDoors}. Any edge touching such a door is left <em>unknown</em> in the
-     * snapshot so it falls back to the static map (which treats the doorway as passable) and the existing
-     * runtime door subsystem keeps owning it — otherwise a closed door's live-blocked edge would make the
-     * pathfinder route around an openable door.
-     */
-    /**
      * Version of the capture <em>semantics</em> — the flag→edge translation, the border margin, and the
      * exempted-obstacle set. Bump this whenever a change here would make previously persisted regions
      * disagree with what a fresh capture would now produce, so {@link LiveCollisionPersistence} rejects the
      * stale data on load instead of trusting it. This is what removes the manual "Reset learned collision"
      * step: e.g. adding the rockfall exemption changed what a rockfall tile records, so that data must not
      * survive the change. History: v1 = original translation; v2 = rockfall (26679/26680) exemption.
+     * (Door edges changing from unknown to known-passable did NOT need a bump: v2 stores hold no door
+     * edges at all — they were always unknown — so old data cannot disagree, it is merely less informed
+     * and gets filled in by the next capture.)
      */
     public static final int CAPTURE_VERSION = 2;
+
+    /**
+     * Actions that mark a wall object as a door the walker opens at runtime. Mirrors the door-action set
+     * in {@code Rs2Walker.handleDoors}. Edges touching such a door are recorded <em>known + passable</em>
+     * (the door's block flags are transient — the runtime door subsystem opens it on contact), which both
+     * matches the static map's doorway convention and makes doors the static map wrongly holds as walls
+     * routable once seen. Only when the door's own footprint blocks a tile is the edge left unknown for
+     * the static map to decide.
+     */
 
     private static final Set<String> DOOR_ACTIONS = new HashSet<>(Arrays.asList(
             "open", "go-through", "walk-through", "pass", "pick-lock", "pay-toll"));
@@ -253,31 +258,54 @@ public final class LiveCollisionCapture {
                     final boolean walkableHere = standable(data);
 
                     // North edge: known only when both endpoints are trusted interior tiles (away from
-                    // the unreliable scene border) and the runtime door handler does not own this edge.
-                    if (interior(sx, sy) && interior(sx, sy + 1)
-                            && (doorEdges == null || !doorEdges.exemptsNorth(z, sx, sy))) {
-                        northKnown.set(index);
+                    // the unreliable scene border).
+                    if (interior(sx, sy) && interior(sx, sy + 1)) {
                         final int north = flags[sx][sy + 1];
-                        final boolean open = walkableHere
-                                && standable(north)
-                                && (data & CollisionDataFlag.BLOCK_MOVEMENT_NORTH) == 0
-                                && (north & CollisionDataFlag.BLOCK_MOVEMENT_SOUTH) == 0;
-                        if (open) {
-                            northValue.set(index);
+                        if (doorEdges != null && doorEdges.exemptsNorth(z, sx, sy)) {
+                            // An edge owned by the runtime door handler. The door's movement-block flags
+                            // are TRANSIENT (closed now, open after the walker opens it on contact), so
+                            // ignore them and record the edge KNOWN + PASSABLE when both endpoint tiles
+                            // are standable — the live equivalent of the static map's doorway convention,
+                            // extended to doors the static map has as walls (the "won't route in there"
+                            // unmapped-door case). When either tile itself is blocked (an object-door
+                            // whose closed footprint occupies the tile), leave the edge UNKNOWN so the
+                            // static map keeps deciding — never record a door edge known-blocked, or the
+                            // pathfinder would route around an openable door until a lucky revisit.
+                            // Deliberate blocks are unaffected either way: blocked_edges.tsv and learned
+                            // blocked edges veto in neighbor generation, independent of collision flags.
+                            if (walkableHere && standable(north)) {
+                                northKnown.set(index);
+                                northValue.set(index);
+                            }
+                        } else {
+                            northKnown.set(index);
+                            final boolean open = walkableHere
+                                    && standable(north)
+                                    && (data & CollisionDataFlag.BLOCK_MOVEMENT_NORTH) == 0
+                                    && (north & CollisionDataFlag.BLOCK_MOVEMENT_SOUTH) == 0;
+                            if (open) {
+                                northValue.set(index);
+                            }
                         }
                     }
 
                     // East edge: same, for the east neighbour.
-                    if (interior(sx, sy) && interior(sx + 1, sy)
-                            && (doorEdges == null || !doorEdges.exemptsEast(z, sx, sy))) {
-                        eastKnown.set(index);
+                    if (interior(sx, sy) && interior(sx + 1, sy)) {
                         final int east = flags[sx + 1][sy];
-                        final boolean open = walkableHere
-                                && standable(east)
-                                && (data & CollisionDataFlag.BLOCK_MOVEMENT_EAST) == 0
-                                && (east & CollisionDataFlag.BLOCK_MOVEMENT_WEST) == 0;
-                        if (open) {
-                            eastValue.set(index);
+                        if (doorEdges != null && doorEdges.exemptsEast(z, sx, sy)) {
+                            if (walkableHere && standable(east)) {
+                                eastKnown.set(index);
+                                eastValue.set(index);
+                            }
+                        } else {
+                            eastKnown.set(index);
+                            final boolean open = walkableHere
+                                    && standable(east)
+                                    && (data & CollisionDataFlag.BLOCK_MOVEMENT_EAST) == 0
+                                    && (east & CollisionDataFlag.BLOCK_MOVEMENT_WEST) == 0;
+                            if (open) {
+                                eastValue.set(index);
+                            }
                         }
                     }
                 }

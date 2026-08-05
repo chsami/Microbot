@@ -1,0 +1,90 @@
+name: Shortest Path upstream drift
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/shortest-path-upstream-drift.yml"
+      - "scripts/check-shortest-path-upstream.py"
+      - "scripts/check-shortest-path-boundary.py"
+      - "scripts/check-shortest-path-vendored-core.py"
+      - "scripts/compare-shortest-path-transports.py"
+      - "scripts/compare-shortest-path-planners.py"
+      - "scripts/evaluate-walker-shadow-evidence.py"
+      - "scripts/evaluate-walker-rollout-evidence.py"
+      - "scripts/report-shortest-path-planner-performance.py"
+      - "scripts/shortest-path-planner-corpus.json"
+      - "scripts/shortest-path-planner-harness/**"
+      - "scripts/shortest-path-upstream-baseline.json"
+      - "scripts/shortest-path-vendored-core-baseline.json"
+      - "scripts/shortest-path-transport-baseline.json"
+      - "scripts/tests/test_compare_shortest_path_transports.py"
+      - "scripts/tests/test_compare_shortest_path_planners.py"
+      - "scripts/tests/test_evaluate_walker_shadow_evidence.py"
+      - "scripts/tests/test_evaluate_walker_rollout_evidence.py"
+      - "scripts/tests/test_report_shortest_path_planner_performance.py"
+      - "scripts/tests/test_check_shortest_path_boundary.py"
+      - "scripts/tests/test_check_shortest_path_vendored_core.py"
+      - "runelite-client/src/upstreamPlanner/**"
+      - "runelite-client/src/main/java/net/runelite/client/plugins/microbot/**"
+      - "runelite-client/src/main/resources/net/runelite/client/plugins/microbot/shortestpath/**"
+      - "docs/evidence/walker/**"
+
+permissions:
+  contents: read
+
+jobs:
+  check-upstream:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 11
+          cache: gradle
+      - name: Test semantic transport comparison
+        run: python3 -m unittest scripts/tests/test_compare_shortest_path_transports.py
+      - name: Test planner comparison orchestration
+        run: python3 -m unittest scripts/tests/test_compare_shortest_path_planners.py
+      - name: Test live planner shadow evidence evaluation
+        run: python3 -m unittest scripts/tests/test_evaluate_walker_shadow_evidence.py
+      - name: Test planner rollout evidence evaluation
+        run: python3 -m unittest scripts/tests/test_evaluate_walker_rollout_evidence.py
+      - name: Test planner performance evidence evaluation
+        run: python3 -m unittest scripts/tests/test_report_shortest_path_planner_performance.py
+      - name: Test vendored planner pin verification
+        run: python3 -m unittest scripts/tests/test_check_shortest_path_vendored_core.py
+      - name: Enforce vendored planner pin and patch surface
+        run: scripts/check-shortest-path-vendored-core.py
+      - name: Compare local and reviewed upstream planners
+        run: scripts/compare-shortest-path-planners.py --require-all
+      - name: Test shortest-path boundary check
+        run: python3 -m unittest scripts/tests/test_check_shortest_path_boundary.py
+      - name: Enforce shortest-path plugin-state boundary
+        run: python3 scripts/check-shortest-path-boundary.py
+      - name: Compare reviewed Shortest Path baseline with upstream
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: scripts/check-shortest-path-upstream.py
+      - name: Enforce reviewed semantic transport baseline
+        run: scripts/compare-shortest-path-transports.py --check-baseline --limit 20
+      - name: Verify tracked live-shadow evidence
+        run: |
+          scripts/evaluate-walker-shadow-evidence.py \
+            docs/evidence/walker/2026-08-05/shadow-input-*.json \
+            --json-output /tmp/walker-shadow-evidence.json \
+            --markdown-output /tmp/walker-shadow-evidence.md
+          cmp /tmp/walker-shadow-evidence.json \
+            docs/evidence/walker/2026-08-05/shadow-evidence.json
+      - name: Verify tracked F2P selection and rollback evidence
+        run: |
+          scripts/evaluate-walker-rollout-evidence.py \
+            docs/evidence/walker/2026-08-05/rollout-normal-input.json \
+            docs/evidence/walker/2026-08-05/rollout-rollback-input.json \
+            --json-output /tmp/walker-rollout-evidence.json \
+            --markdown-output /tmp/walker-rollout-evidence.md
+          cmp /tmp/walker-rollout-evidence.json \
+            docs/evidence/walker/2026-08-05/rollout-evidence.json

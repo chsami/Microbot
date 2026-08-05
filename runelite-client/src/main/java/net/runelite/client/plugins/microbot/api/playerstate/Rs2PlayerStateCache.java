@@ -16,7 +16,6 @@ import net.runelite.api.events.VarbitChanged;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
-import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.questhelper.questinfo.QuestHelperQuest;
 
 import net.runelite.api.coords.WorldPoint;
@@ -74,12 +73,25 @@ public final class Rs2PlayerStateCache {
 			localPlayerPosition = null;
 			localPlayerWorldView = null;
 		}
+		// The server only re-sends non-zero varps after a hop/reconnect, so a value that
+		// dropped to 0 while out of sync would never be corrected by onVarbitChanged.
+		if (e.getGameState() == GameState.HOPPING || e.getGameState() == GameState.CONNECTION_LOST) {
+			varbits.clear();
+			varps.clear();
+		}
 	}
 
 	@Subscribe
 	public void onVarbitChanged(VarbitChanged event) {
 		if (questsPopulated) {
 			updateQuest(event);
+		}
+		// Only cache while LOGGED_IN. onGameStateChanged clears both maps on HOPPING /
+		// CONNECTION_LOST because the server re-sends only non-zero varps afterwards, but an event
+		// arriving after that clear and before the next LOGGED_IN would repopulate the very value the
+		// clear existed to discard. Gating the writes closes that window instead of racing it.
+		if (client == null || client.getGameState() != GameState.LOGGED_IN) {
+			return;
 		}
 		if (event.getVarbitId() != -1) {
 			varbits.put(event.getVarbitId(), event.getValue());
@@ -94,10 +106,36 @@ public final class Rs2PlayerStateCache {
 	 *
 	 * @param event
 	 */
+	/**
+	 * Whether a quest tracked by {@code questVarbitId} / {@code questVarPlayerId} (either may be null)
+	 * is the one this VarbitChanged refers to.
+	 * <p>
+	 * Matching only varbits left every VARPLAYER-tracked quest frozen at whatever
+	 * {@link #populateQuests()} saw at login. Completing one mid-session never updated the cache, and
+	 * {@code TransportRequirementPolicy.completedQuests} fails closed on a stale or null state, so
+	 * quest-gated transports stayed invisible until relog — the White Wolf Mountain tunnel unlocked by
+	 * Fishing Contest (a varplayer quest) being the case that surfaced it. VarbitChanged carries both
+	 * ids; this cache already reads {@code getVarpId()} for its varp map a few lines below.
+	 */
+	static boolean questTrackedByChangedVar(Integer questVarbitId, Integer questVarPlayerId,
+			int eventVarbitId, int eventVarpId) {
+		if (questVarbitId != null && eventVarbitId != -1 && questVarbitId == eventVarbitId) {
+			return true;
+		}
+		return questVarPlayerId != null && eventVarpId != -1 && questVarPlayerId.equals(eventVarpId);
+	}
+
 	private void updateQuest(VarbitChanged event) {
+		// Read the event once: inside the filter these ran for every QuestHelperQuest value on every
+		// VarbitChanged, which is a few hundred redundant accessor calls per game tick.
+		final int changedVarbitId = event.getVarbitId();
+		final int changedVarpId = event.getVarpId();
 		QuestHelperQuest quest = Arrays.stream(QuestHelperQuest.values())
-				.filter(x -> x.getVarbit() != null)
-				.filter(x -> x.getVarbit().getId() == event.getVarbitId())
+				.filter(x -> questTrackedByChangedVar(
+						x.getVarbit() == null ? null : x.getVarbit().getId(),
+						x.getVarPlayer() == null ? null : x.getVarPlayer().getId(),
+						changedVarbitId,
+						changedVarpId))
 				.findFirst()
 				.orElse(null);
 
@@ -150,11 +188,16 @@ public final class Rs2PlayerStateCache {
 	}
 
 	private @Varbit int updateVarbitValue(@Varbit int varbitId) {
-		int value;
-		value = Microbot.getClientThread().runOnClientThreadOptional(() -> client.getVarbitValue(varbitId)).orElse(0);
-
-		varbits.put(varbitId, value);
-		return value;
+		return clientThread.runOnClientThreadOptional(() -> {
+			int value = client.getVarbitValue(varbitId);
+			// Only cache while logged in: before the initial varp sync completes the client
+			// returns default/stale values, and a wrong entry for a varp the server never
+			// re-sends (zero-valued ones) would stick until the next flush.
+			if (client.getGameState() == GameState.LOGGED_IN) {
+				varbits.put(varbitId, value);
+			}
+			return value;
+		}).orElse(0);
 	}
 
 	/**
@@ -176,14 +219,14 @@ public final class Rs2PlayerStateCache {
 	}
 
 	private @Varp int updateVarpValue(@Varp int varpId) {
-		int value;
-
-		value = Microbot.getClientThread().runOnClientThreadOptional(() -> client.getVarpValue(varpId)).orElse(0);
-
-		if (value > 0) {
-			varps.put(varpId, value);
-		}
-		return value;
+		return clientThread.runOnClientThreadOptional(() -> {
+			int value = client.getVarpValue(varpId);
+			// Zero is a legitimate value and must be cached too — see updateVarbitValue.
+			if (client.getGameState() == GameState.LOGGED_IN) {
+				varps.put(varpId, value);
+			}
+			return value;
+		}).orElse(0);
 	}
 
 	private void refreshLocalPlayer() {

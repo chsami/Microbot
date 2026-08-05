@@ -136,6 +136,7 @@ public class AgentServerPlugin extends Plugin {
 				new NpcHandler(gson, maxResults),
 				new ObjectHandler(gson, maxResults),
 				new WalkHandler(gson),
+				new WalkerShadowHandler(gson),
 				new BankHandler(gson),
 				new DialogueHandler(gson),
 				new GroundItemHandler(gson, maxResults),

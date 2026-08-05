@@ -12,17 +12,11 @@ public class Node {
     public final int packedPosition;
     public final Node previous;
     public final int cost;
-    public int heuristic;
     // Per-node random value used as a secondary priority-queue comparator. Breaks ties
-    // between equal-fCost nodes in random order so the pathfinder explores equivalent
+    // between equal-cost nodes in random order so the pathfinder explores equivalent
     // routes in a different sequence each run, producing distinct (but still optimal)
-    // tile sequences between the same start/target pair. Prevents the "identical route
-    // every trip" fingerprint a deterministic A* would leave.
+    // tile sequences between the same start/target pair.
     public final int tiebreaker;
-
-    public int fCost() {
-        return cost + heuristic;
-    }
 
     public Node(WorldPoint position, Node previous, int wait) {
         this.packedPosition = WorldPointUtil.packWorldPoint(position);
@@ -47,9 +41,18 @@ public class Node {
     }
 
     public List<WorldPoint> getPath() {
-        List<WorldPoint> path = new ArrayList<>();
-        for (Node n = this; n != null; n = n.previous) {
+        List<Node> nodes = getNodePath();
+        List<WorldPoint> path = new ArrayList<>(nodes.size());
+        for (Node n : nodes) {
             path.add(WorldPointUtil.unpackWorldPoint(n.packedPosition));
+        }
+        return path;
+    }
+
+    List<Node> getNodePath() {
+        List<Node> path = new ArrayList<>();
+        for (Node n = this; n != null; n = n.previous) {
+            path.add(n);
         }
         Collections.reverse(path);
         return path;

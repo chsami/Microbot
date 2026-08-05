@@ -12,8 +12,11 @@ import net.runelite.client.events.PluginMessage;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.agentserver.handler.WalkerShadowHandler;
 import net.runelite.client.plugins.microbot.testing.TestResult;
 import net.runelite.client.plugins.microbot.testing.TestResultWriter;
+import net.runelite.client.plugins.microbot.util.walker.Rs2PathApi;
+import net.runelite.client.plugins.microbot.util.walker.Rs2PlannerShadowStats;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.walker.WalkerState;
 
@@ -42,8 +45,11 @@ public class GeLumbridgeTeleportHarnessPlugin extends Plugin {
     private static final String SCRIPT_NAME = "GE Lumbridge Teleport Harness";
     private static final String ITERATIONS_PROPERTY = "microbot.test.geLumbridge.iterations";
     private static final String WALK_TIMEOUT_PROPERTY = "microbot.test.geLumbridge.walkTimeoutMs";
+    private static final String UPSTREAM_PLANNER_SHADOW_PROPERTY =
+            "microbot.test.geLumbridge.upstreamPlannerShadow";
     private static final int DEFAULT_ITERATIONS = 10;
     private static final int DEFAULT_WALK_TIMEOUT_MS = 300000;
+    private static final int SHADOW_SETTLE_TIMEOUT_MS = 120000;
     private static final WorldPoint LUMBRIDGE_CASTLE = new WorldPoint(3222, 3218, 0);
     private static final WorldPoint GRAND_EXCHANGE = new WorldPoint(3164, 3486, 0);
     private static final WorldPoint VARROCK_TELEPORT = new WorldPoint(3213, 3424, 0);
@@ -101,6 +107,8 @@ public class GeLumbridgeTeleportHarnessPlugin extends Plugin {
         GeLumbridgeTeleportResult result = new GeLumbridgeTeleportResult(SCRIPT_NAME);
         result.iterations = intProperty(ITERATIONS_PROPERTY, DEFAULT_ITERATIONS);
         result.walkTimeoutMs = intProperty(WALK_TIMEOUT_PROPERTY, DEFAULT_WALK_TIMEOUT_MS);
+        result.upstreamPlannerShadow = Boolean.parseBoolean(
+                System.getProperty(UPSTREAM_PLANNER_SHADOW_PROPERTY, "false"));
 
         int exitCode = 0;
         try {
@@ -111,7 +119,7 @@ public class GeLumbridgeTeleportHarnessPlugin extends Plugin {
                 return;
             }
 
-            applyTeleportSpellOverride();
+            applyShortestPathOverrides(result.upstreamPlannerShadow);
             log.info("[GeLumbridgeTeleportHarness] Starting {} iteration(s)", result.iterations);
 
             LegOutcome setup = runLeg("setup", 0, "setup-to-lumbridge-castle",
@@ -142,6 +150,10 @@ public class GeLumbridgeTeleportHarnessPlugin extends Plugin {
                     exitCode = 1;
                     break;
                 }
+            }
+
+            if (!captureShadowEvidence(result)) {
+                exitCode = 1;
             }
 
             result.complete("completed");
@@ -263,15 +275,44 @@ public class GeLumbridgeTeleportHarnessPlugin extends Plugin {
         }
     }
 
-    private void applyTeleportSpellOverride() {
+    private boolean captureShadowEvidence(GeLumbridgeTeleportResult result) {
+        if (!result.upstreamPlannerShadow) {
+            return true;
+        }
+
+        result.shadowSettled = sleepUntil(() -> Rs2PathApi.getShadowStats().getPending() == 0,
+                SHADOW_SETTLE_TIMEOUT_MS);
+        Rs2PlannerShadowStats stats = Rs2PathApi.getShadowStats();
+        result.shadowEvidence = WalkerShadowHandler.snapshot();
+
+        boolean passed = result.shadowSettled
+                && stats.getSubmitted() > 0
+                && stats.getCompleted() > 0
+                && stats.getPending() == 0
+                && stats.getDivergences() == 0
+                && stats.getFailures() == 0;
+        if (!passed) {
+            result.shadowError = "Planner shadow evidence failed: settled=" + result.shadowSettled
+                    + ", submitted=" + stats.getSubmitted()
+                    + ", completed=" + stats.getCompleted()
+                    + ", pending=" + stats.getPending()
+                    + ", divergences=" + stats.getDivergences()
+                    + ", failures=" + stats.getFailures();
+        }
+        result.addCheck("upstream planner shadow", passed, result.shadowError);
+        return passed;
+    }
+
+    private void applyShortestPathOverrides(boolean upstreamPlannerShadow) {
         Map<String, Object> config = new HashMap<>();
         config.put("useTeleportationSpells", true);
+        config.put("plannerSelectionMode", upstreamPlannerShadow ? "SHADOW" : "LOCAL");
 
         Map<String, Object> data = new HashMap<>();
         data.put("config", config);
 
         eventBus.post(new PluginMessage("shortestpath", "path", data));
-        log.info("[GeLumbridgeTeleportHarness] Applied shortest path override: useTeleportationSpells=true");
+        log.info("[GeLumbridgeTeleportHarness] Applied shortest path overrides: {}", config);
     }
 
     private WorldPoint safeLocation() {
@@ -328,6 +369,10 @@ public class GeLumbridgeTeleportHarnessPlugin extends Plugin {
     public static class GeLumbridgeTeleportResult extends TestResult {
         public int iterations;
         public int walkTimeoutMs;
+        public boolean upstreamPlannerShadow;
+        public boolean shadowSettled;
+        public String shadowError;
+        public Map<String, Object> shadowEvidence;
         public List<LegOutcome> legs = new ArrayList<>();
 
         public GeLumbridgeTeleportResult(String script) {

@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "repository": "Skretzo/shortest-path",
+  "revision": "ff8e961b32120175709df9630ece9468cc11347f",
+  "sourceFileCount": 50,
+  "sourceTreeSha256": "76c1a3949796ae2958fc9c22f7b7ec795a9334454974ecf23f22d8cc2686ddd8",
+  "patchSurfacePolicy": {
+    "maximumPatchedUpstreamFiles": 6,
+    "maximumAdapterAddedFiles": 1,
+    "growthRequiresAdrAmendment": true
+  },
+  "metadataSha256": {
+    "ADAPTER_PATCHES.md": "712537eed33a1e30c3d4d629c92abb1092b3d3a4d8352b566e7c1f9561a32904",
+    "LICENSE": "7fd99cacafef8e453c0e43aa9c07d34cabbd0048d32e237340a5868c2c554ff7",
+    "README.md": "7a6b7aa82e01da232368d577732f294b2eda3ec01c0661b34820e020de04bafd",
+    "UPSTREAM_REVISION": "5a092139a91ada4ab7647f5a56e35e961c8a4e9893fe617c29427af8ae32e5e6"
+  },
+  "patchedUpstreamFiles": [
+    "shortestpath/ShortestPathPlugin.java",
+    "shortestpath/pathfinder/CollisionMap.java",
+    "shortestpath/pathfinder/NodeGraph.java",
+    "shortestpath/pathfinder/PathStep.java",
+    "shortestpath/pathfinder/PathfinderConfig.java",
+    "shortestpath/pathfinder/TransportAvailability.java"
+  ],
+  "adapterAddedFiles": [
+    "shortestpath/pathfinder/EdgeOverride.java"
+  ]
+}

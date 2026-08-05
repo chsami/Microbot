@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "repository": "Skretzo/shortest-path",
+  "branch": "master",
+  "reviewedCommit": "ff8e961b32120175709df9630ece9468cc11347f",
+  "reviewedAt": "2026-08-05",
+  "trackedScopes": [
+    {
+      "upstreamPrefix": "src/main/resources/collision-map.zip",
+      "localPath": "runelite-client/src/main/resources/net/runelite/client/plugins/microbot/shortestpath/collision-map.zip",
+      "policy": "parity-test-before-import"
+    },
+    {
+      "upstreamPrefix": "src/main/resources/transports/",
+      "localPath": "runelite-client/src/main/resources/net/runelite/client/plugins/microbot/shortestpath/",
+      "policy": "semantic-baseline-selective-import"
+    },
+    {
+      "upstreamPrefix": "src/main/java/shortestpath/",
+      "localPath": "runelite-client/src/main/java/net/runelite/client/plugins/microbot/shortestpath/",
+      "policy": "selective-planner-backport"
+    }
+  ],
+  "reviewedArtifacts": [
+    {
+      "upstreamPath": "src/main/resources/collision-map.zip",
+      "gitBlob": "fbbfbcc5d2b3cdb7ad66cf12c7fc1cc93c51670c",
+      "sha256": "3a99d42fec10e12dbda96bbaae45b354d8e2270c4c1a453d033e95b7da2670d2",
+      "size": 1200360,
+      "decision": "imported-after-core-corpus-and-benchmark-parity"
+    },
+    {
+      "upstreamPath": "src/main/resources/transports/teleportation_spells_home.tsv",
+      "gitBlob": "fd9c231a8fd33d513d0fa4ade027611547b770b6",
+      "size": 1684,
+      "decision": "selectively-imported-without-animation-setting-variants"
+    },
+    {
+      "upstreamPath": "src/main/resources/transports/minecarts.tsv",
+      "gitBlob": "9fe4c3b4c417f8154492d4359bf19d27d283f24c",
+      "sha256": "1e0cc458a5797ee5407a82932cf8829a8d3fea8db8aed723f9a4a3e8f21bf870",
+      "size": 5970,
+      "decision": "semantic-parity-import-with-forsaken-tower-fare-gates"
+    },
+    {
+      "upstreamPath": "src/main/resources/transports/canoes.tsv",
+      "gitBlob": "0b14ed48cff12b3ba5181754e0ab36838c992eac",
+      "sha256": "4c59620fdcf6ac513b3d03159685f2b25a75aa657ae6b7e0421cda4cf5355bb8",
+      "size": 4731,
+      "decision": "full-semantic-parity-with-chain-specific-canoe-map-executor-selection"
+    },
+    {
+      "upstreamPath": "src/main/java/shortestpath/ItemVariations.java",
+      "gitBlob": "2e65770c2966d51186070645c13d1c5e33202824",
+      "sha256": "c0e5b683d000b42ac0ea64356a9060bab7afe76c73f5c44e9951ef0b25504ee5",
+      "size": 8675,
+      "decision": "selective-symbolic-collection-adapter-with-rune-substitutions-deferred"
+    },
+    {
+      "upstreamPath": "src/main/resources/transports/teleportation_minigames.tsv",
+      "gitBlob": "e66e9f8ac0968d5fc83bbfde48ce405d8411db82",
+      "sha256": "353fa831a27b5bcc99b9c46e60bbfc03fd5206ac54ca55839f60960dc7ad5257",
+      "size": 2446,
+      "decision": "route-identity-parity-with-special-level-gates"
+    },
+    {
+      "upstreamPath": "src/main/resources/transports/teleportation_items.tsv",
+      "gitBlob": "058f42c9585e441c0ec9d1c2168912d2dce864dd",
+      "sha256": "048dadce739c7b6e8b124d9a548c6150512afe9f1c5c90e02402b6f4f0d43455",
+      "size": 31266,
+      "decision": "direct-max-cape-and-quest-point-cape-family-import-with-behavior-compatible-item-requirements"
+    },
+    {
+      "upstreamPath": "src/main/resources/transports/quetzals.tsv",
+      "gitBlob": "073606bb11afdfd4ecbf24825137fbcfeaa59039",
+      "sha256": "d4dad0c889e133437dac97af2b89b27ff58d1a29d51112293f0cdc2dd2833540",
+      "size": 1643,
+      "decision": "semantic-parity-import-with-upstream-interaction-and-varplayer-schema"
+    },
+    {
+      "upstreamPath": "src/main/resources/transports/quetzal_whistle.tsv",
+      "gitBlob": "ef4cfddf2857cfc5a5227eb96e3a2d2562ef103e",
+      "sha256": "0024369a7cd4f11ed8a2fefb8e4c3c3dfd688b6e0f455faacdd572d90af8fcd9",
+      "size": 1912,
+      "decision": "behavior-compatible-inline-representation-with-charged-and-infinite-consumability-split"
+    }
+  ]
+}

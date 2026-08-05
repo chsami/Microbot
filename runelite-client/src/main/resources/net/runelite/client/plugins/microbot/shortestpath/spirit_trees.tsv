@@ -132,7 +132,7 @@
 1252 3748 0		Travel;Spirit Tree;33733		Tree Gnome Village;The Grand Tree
 # Player-owned house							
 #		Travel;Spirit Tree;29227
-# Poison Waste							
+# Poison Waste
 2337 3110 0		Travel;Spirit Tree;49595		The Path of Glouphrie			
 2337 3111 0		Travel;Spirit Tree;49595		The Path of Glouphrie			
 2337 3112 0		Travel;Spirit Tree;49595		The Path of Glouphrie			
@@ -145,7 +145,17 @@
 2338 3109 0		Travel;Spirit Tree;49595		The Path of Glouphrie			
 2339 3109 0		Travel;Spirit Tree;49595		The Path of Glouphrie			
 2340 3109 0		Travel;Spirit Tree;49595		The Path of Glouphrie			
-# Tree Gnome Village							
+# Laguna Aurorae
+1201 2788 0		Travel;Spirit Tree;26262
+1202 2788 0		Travel;Spirit Tree;26262
+1201 2787 0		Travel;Spirit Tree;26262
+1201 2786 0		Travel;Spirit Tree;26262
+1204 2786 0		Travel;Spirit Tree;26262
+1201 2785 0		Travel;Spirit Tree;26262
+1202 2785 0		Travel;Spirit Tree;26262
+1203 2785 0		Travel;Spirit Tree;26262
+1204 2785 0		Travel;Spirit Tree;26262
+# Tree Gnome Village
 	2542 3170 0			Tree Gnome Village		2	1: Tree Gnome Village
 # Gnome Stronghold							
 	2461 3444 0			The Grand Tree		2	2: Gnome Stronghold

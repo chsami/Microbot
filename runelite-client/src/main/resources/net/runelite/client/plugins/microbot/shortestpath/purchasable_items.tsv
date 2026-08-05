@@ -1,0 +1,9 @@
+# Item ID	Cost	Vendor NPC ID	Vendor action	Vendor location	Radius
+# Items a transport may require that can be bought from a vendor standing near the transport
+# itself. The walker's pre-transport step buys the item when it is missing and the vendor is
+# within Radius tiles of the transport origin; the banked planner withdraws the Cost instead
+# of an item the bank does not hold. Routing still uses the duplicate-row OR pattern in
+# transports.tsv (one row gated on the item, a twin gated on the Cost currency), so the
+# pathfinder plans through the transport for players holding either the item or the coins.
+# Cost uses the transport currency format: "<amount> <currency name>".
+1854	5 Coins	4642	Buy-pass	3304 3120 0	15

@@ -86,6 +86,22 @@ public final class WalkerPathGeometry {
     public static int rawPathForwardAnchorIndex(List<WorldPoint> rawPath, WorldPoint playerLoc,
                                                 int rawAnchorIndex, int forwardSearchTiles,
                                                 IntSupplier closestIndexFallback) {
+        return rawPathForwardAnchorIndex(rawPath, playerLoc, rawAnchorIndex, forwardSearchTiles,
+                closestIndexFallback, null);
+    }
+
+    /**
+     * Variant with fold-jump protection. When a {@code reachable} player-origin BFS is supplied, window
+     * tiles that are walk-connected to the player are preferred over merely Euclidean-near ones — so on a
+     * route whose tail folds back beside the start (e.g. a loop around a building to a door on the far
+     * side), the anchor cannot leap the wall onto the Euclidean-closest fold tile. The wall-separated tail
+     * is absent from the BFS; the player's true on-route position is present. Only when NO window tile is
+     * in the BFS (player far off-route) does selection fall back to the unreachable-tolerant behavior.
+     */
+    public static int rawPathForwardAnchorIndex(List<WorldPoint> rawPath, WorldPoint playerLoc,
+                                                int rawAnchorIndex, int forwardSearchTiles,
+                                                IntSupplier closestIndexFallback,
+                                                Map<WorldPoint, Integer> reachable) {
         if (rawPath == null || rawPath.isEmpty() || playerLoc == null) {
             return -1;
         }
@@ -93,10 +109,13 @@ public final class WalkerPathGeometry {
             return closestIndexFallback.getAsInt();
         }
 
+        boolean preferReachable = reachable != null && !reachable.isEmpty();
         int start = Math.max(0, Math.min(rawAnchorIndex, rawPath.size() - 1));
         int endExclusive = Math.min(rawPath.size(), start + forwardSearchTiles + 1);
         int bestIdx = -1;
         int bestDist = Integer.MAX_VALUE;
+        int bestReachableIdx = -1;
+        int bestReachableDist = Integer.MAX_VALUE;
         for (int i = start; i < endExclusive; i++) {
             WorldPoint point = rawPath.get(i);
             if (point == null) {
@@ -109,10 +128,20 @@ public final class WalkerPathGeometry {
             if (dist < bestDist) {
                 bestIdx = i;
                 bestDist = dist;
+            }
+            if (preferReachable && dist < bestReachableDist && reachable.containsKey(point)) {
+                bestReachableIdx = i;
+                bestReachableDist = dist;
                 if (dist == 0) {
                     break;
                 }
             }
+            if (!preferReachable && dist == 0) {
+                break;
+            }
+        }
+        if (bestReachableIdx >= 0) {
+            return bestReachableIdx;
         }
         return bestIdx >= 0 ? bestIdx : start;
     }
@@ -133,14 +162,47 @@ public final class WalkerPathGeometry {
                                                               Predicate<WorldPoint> isCandidate,
                                                               int forwardSearchTiles,
                                                               IntSupplier closestIndexFallback) {
+        return findFurthestRawPathPointMatching(rawPath, playerLoc, maxEuclidean, rawAnchorIndex, isCandidate,
+                forwardSearchTiles, closestIndexFallback, null, 0);
+    }
+
+    /**
+     * Variant with a route-blocked scan gate. {@code reachable} is a player-origin BFS (step-bounded by
+     * {@code reachableStepBudget}); when supplied non-empty and the scan anchor sits at the player, the scan
+     * STOPS at the first candidate that is within {@code reachableStepBudget - 2} along-route steps of the
+     * anchor yet absent from the BFS. Being route-connected within the budget guarantees BFS membership, so
+     * absence proves the route is blocked between anchor and candidate — a closed door or wall ON the route.
+     * Selection then returns the furthest tile BEFORE the blockage, so the walker walks up to the door
+     * instead of clicking the far side (which makes the server path the player around the building and drags
+     * the walk off-route). Along-route steps — not Euclidean distance — is the compared metric, which is why
+     * this gate is immune to the switch-back false negatives that historically justified having no
+     * reachability gate here. Candidates beyond the budget stay ungated (the BFS cannot vouch for them).
+     */
+    public static WorldPoint findFurthestRawPathPointMatching(List<WorldPoint> rawPath, WorldPoint playerLoc,
+                                                              int maxEuclidean, int rawAnchorIndex,
+                                                              Predicate<WorldPoint> isCandidate,
+                                                              int forwardSearchTiles,
+                                                              IntSupplier closestIndexFallback,
+                                                              Map<WorldPoint, Integer> reachable,
+                                                              int reachableStepBudget) {
         if (rawPath == null || rawPath.isEmpty() || playerLoc == null) {
             return null;
         }
+        // Anchor with fold-jump protection: prefer the walk-connected window tile so a route tail that
+        // folds back Euclidean-near (but wall-separated) can't capture the anchor — the Clock Tower
+        // "start is 3 tiles from the goal, click the goal through the wall" bug.
         int closestRawIndex = rawPathForwardAnchorIndex(rawPath, playerLoc, rawAnchorIndex, forwardSearchTiles,
-                closestIndexFallback);
+                closestIndexFallback, reachable);
         if (closestRawIndex < 0) {
             return null;
         }
+
+        // The gate is only sound when the BFS origin (the player) and the scan anchor coincide — then
+        // along-route steps from the anchor bound the true walking distance the BFS measured. An empty map
+        // (headless tests, collision-odd tiles) disables the gate rather than blocking everything.
+        WorldPoint anchorTile = rawPath.get(closestRawIndex);
+        boolean gateActive = reachable != null && !reachable.isEmpty() && anchorTile != null
+                && playerLoc.distanceTo2D(anchorTile) <= 1;
 
         int maxSq = maxEuclidean * maxEuclidean;
         int maxRouteSteps = maxEuclidean + 2;
@@ -157,6 +219,11 @@ public final class WalkerPathGeometry {
                 if (routeSteps > maxRouteSteps) {
                     break;
                 }
+            }
+            if (gateActive && routeSteps <= reachableStepBudget - 2 && !reachable.containsKey(candidate)) {
+                // Route-connected-within-budget would be in the BFS; absence = blocked edge (door/wall)
+                // between anchor and here. Stop — best so far is the near side of the blockage.
+                break;
             }
             if (euclideanSq(candidate, playerLoc) > maxSq) {
                 break;

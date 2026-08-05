@@ -678,6 +678,11 @@ public enum QuestHelperQuest
 	@Getter
 	private final QuestVarbits varbit;
 
+	// MICROBOT: expose varPlayer like varbit above. Rs2PlayerStateCache refreshes cached quest state
+	// from VarbitChanged and could only match varbit-tracked quests, so every VARPLAYER-tracked quest
+	// (Fishing Contest among them) stayed frozen at its login value and the transports it gates never
+	// unlocked mid-session. Annotation only — no behaviour change to the vendored package.
+	@Getter
 	private final QuestVarPlayer varPlayer;
 
 	private Skill skill;

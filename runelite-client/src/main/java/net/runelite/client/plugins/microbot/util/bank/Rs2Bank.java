@@ -18,8 +18,6 @@ import net.runelite.client.plugins.loottracker.LootTrackerItem;
 import net.runelite.client.plugins.loottracker.LootTrackerRecord;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.api.player.models.Rs2PlayerModel;
-import net.runelite.client.plugins.microbot.shortestpath.ShortestPathPlugin;
-import net.runelite.client.plugins.microbot.shortestpath.pathfinder.Pathfinder;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.coords.Rs2WorldPoint;
@@ -41,6 +39,9 @@ import net.runelite.client.plugins.microbot.util.security.LoginManager;
 import net.runelite.client.config.ConfigProfile;
 import net.runelite.client.plugins.microbot.util.settings.Rs2Settings;
 import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
+import net.runelite.client.plugins.microbot.util.walker.Rs2PathApi;
+import net.runelite.client.plugins.microbot.util.walker.Rs2RouteRequest;
+import net.runelite.client.plugins.microbot.util.walker.Rs2RouteResult;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
@@ -2327,15 +2328,8 @@ public class Rs2Bank {
                 .map(BankLocation::getWorldPoint)
                 .collect(Collectors.toSet());
 
-        if (ShortestPathPlugin.getPathfinderConfig().getTransports().isEmpty()) {
-            ShortestPathPlugin.getPathfinderConfig().refresh();
-        }
-
-        long originalStart = System.nanoTime();
-        Pathfinder pf = new Pathfinder(ShortestPathPlugin.getPathfinderConfig(), worldPoint, targets);
-        pf.run();
-        List<WorldPoint> path = pf.getPath();
-        long originalTime = System.nanoTime() - originalStart;
+        Rs2RouteResult route = Rs2PathApi.plan(Rs2RouteRequest.toAny(worldPoint, targets));
+        List<WorldPoint> path = route.getPath();
 
         if (path.isEmpty()) {
             Microbot.log("Unable to find path to nearest bank");
@@ -2350,14 +2344,21 @@ public class Rs2Bank {
                     return accessibleBankArea.intersectsWith2D(nearestTileArea);
                 })
                 .findFirst();
-        BankLocation returnBankLocation = null;
-        if (byPath.isPresent()) {
-            Microbot.log("Found nearest bank (shortest path): " + byPath.get());
-            returnBankLocation = byPath.get();
-        } else {
-            Microbot.log("Nearest bank point " + nearestTile + " did not match any BankLocation");
+        if (!byPath.isPresent()) {
+            // The pathfinder returns its BEST EFFORT, not only complete routes: with no reachable bank
+            // it hands back a partial path that stops short — sometimes one or two tiles from the start,
+            // e.g. when the player is mid-staircase and the start tile itself pathfinds poorly. Taking
+            // that endpoint as a result produced "did not match any BankLocation", which reads like a
+            // gap in the catalog and sent us looking for an entry that already existed (observed at
+            // (3025,3508): the endpoint was 2 tiles away while EDGEVILLE sat 69 tiles east). Report it
+            // as the unreachable/partial route it is, and return nothing so getPathToNearestBank
+            // honours its documented empty-list contract instead of handing callers a stub to walk.
+            Microbot.log("No bank reachable from " + worldPoint + ": pathfinding stopped at " + nearestTile
+                    + " after " + path.size() + " tiles (partial route)");
+            return null;
         }
-        return new AbstractMap.SimpleEntry<>(path, returnBankLocation);
+        Microbot.log("Found nearest bank (shortest path): " + byPath.get());
+        return new AbstractMap.SimpleEntry<>(path, byPath.get());
     }
 
     /**

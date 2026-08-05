@@ -5,14 +5,17 @@
 2556 3074 1	2556 3075 0	Jump;Wall;17048	4 Agility					
 2936 3355 0	2934 3355 0	Climb-over;Crumbling wall;24222	5 Agility					
 2934 3355 0	2936 3355 0	Climb-over;Crumbling wall;24222	5 Agility					
-3246 3179 0	3259 3179 0	Grapple;Broken Raft;17068	8 Agility;37 Ranged;19 Strength					
-3259 3179 0	3246 3179 0	Grapple;Broken Raft;17068	8 Agility;37 Ranged;19 Strength					
+3246 3179 0	3259 3179 0	Grapple;Broken Raft;17068	8 Agility;37 Ranged;19 Strength	CROSSBOW=1&MITH_GRAPPLE=1
+3259 3179 0	3246 3179 0	Grapple;Broken Raft;17068	8 Agility;37 Ranged;19 Strength	CROSSBOW=1&MITH_GRAPPLE=1
 2546 2873 0	2546 2871 0	Climb;Rocks;31757	10 Agility					
 2546 2871 0	2546 2873 0	Climb;Rocks;31757	10 Agility					
-2766 3665 0	2766 3663 0	Use;Rope -> Boulder;5842	10 Agility	237			10	260>=1
-3033 3390 0	3033 3389 1	Grapple;Wall;17049	11 Agility;19 Ranged;37 Strength	9419				
-3032 3388 0	3032 3389 1	Grapple;Wall;17050	11 Agility;19 Ranged;37 Strength	9419				
-2575 3107 0	2575 3112 0	Climb-under;Castle wall;16519	16 Agility					
+2766 3665 0	2766 3663 0	Use;Rope -> Boulder;5842	10 Agility	ROPE=1		260>0	10
+3033 3390 0	3033 3389 1	Grapple;Wall;17049	11 Agility;19 Ranged;37 Strength	CROSSBOW=1&MITH_GRAPPLE=1
+3032 3388 0	3032 3389 1	Grapple;Wall;17050	11 Agility;19 Ranged;37 Strength	CROSSBOW=1&MITH_GRAPPLE=1
+2820 3635 0	2822 3635 0	Climb;Rocks;3748	15 Agility	CLIMBING_BOOTS=1
+2857 3611 0	2857 3613 0	Climb;Rocks;3748	15 Agility	CLIMBING_BOOTS=1
+2856 3611 0	2856 3613 0	Climb;Rocks;3748	15 Agility	CLIMBING_BOOTS=1
+2575 3107 0	2575 3112 0	Climb-under;Castle wall;16519	16 Agility
 2575 3112 0	2575 3107 0	Climb-into;Hole;16520	16 Agility					
 2603 3477 0	2598 3477 0	Walk-across;Log balance;23274	20 Agility					
 2599 3478 0	2603 3477 0	Walk-across;Log balance;23274	20 Agility					
@@ -35,17 +38,17 @@
 3153 3363 0	3152 3363 0	Jump-onto;Stepping stone;16533	31 Agility				4	
 3152 3363 0	3151 3363 0	Jump-onto;Stepping stone;16533	31 Agility				4	
 3151 3363 0	3150 3363 0	Jump-onto;Stepping stone;16533	31 Agility				4	
-2866 3428 0	2869 3428 0	Grapple;Rocks;17042	32 Agility;35 Ranged;35 Strength	9419				
+2866 3428 0	2869 3428 0	Grapple;Rocks;17042	32 Agility;35 Ranged;35 Strength	CROSSBOW=1&MITH_GRAPPLE=1
 2602 3336 0	2598 3336 0	Walk-across;Log balance;16548	33 Agility					
 2598 3336 0	2602 3336 0	Walk-across;Log balance;16546	33 Agility					
 2599 3337 0	2602 3336 0	Walk-across;Log balance;16546	33 Agility					
-2841 3427 0	2841 3433 0	Grapple Crossbow;Tree;17062	36 Agility;39 Ranged;22 Strength	9419				
+2841 3427 0	2841 3433 0	Grapple Crossbow;Tree;17062	36 Agility;39 Ranged;22 Strength	CROSSBOW=1&MITH_GRAPPLE=1
 2486 3515 0	2489 3521 0	Climb;Rocks;16534	37 Agility		The Grand Tree		9	
 2489 3521 0	2486 3515 0	Climb;Rocks;16535	37 Agility		The Grand Tree		9	
 3306 3315 0	3302 3315 0	Climb;Rocks;16549	38 Agility					
 3302 3315 0	3306 3315 0	Climb;Rocks;16550	38 Agility					
-2556 3072 0	2556 3073 1	Grapple;Wall;17047	39 Agility;21 Ranged;38 Strength	9419				
-2556 3075 0	2556 3074 1	Grapple;Wall;17047	39 Agility;21 Ranged;38 Strength	9419				
+2556 3072 0	2556 3073 1	Grapple;Wall;17047	39 Agility;21 Ranged;38 Strength	CROSSBOW=1&MITH_GRAPPLE=1
+2556 3075 0	2556 3074 1	Grapple;Wall;17047	39 Agility;21 Ranged;38 Strength	CROSSBOW=1&MITH_GRAPPLE=1
 2872 3671 0	2869 3671 0	Climb;Rocks;16521	41 Agility					
 2869 3671 0	2872 3671 0	Climb;Rocks;16521	41 Agility					
 3070 3260 0	3064 3260 0	Climb-into;Underwall tunnel;19036	42 Agility
@@ -86,10 +89,10 @@
 1769 3849 0	1774 3849 0	Climb;Rocks;27988	52 Agility					
 1774 3849 0	1769 3849 0	Climb;Rocks;27987	52 Agility
 2998 3916 0	2998 3931 0	Open;Door;23555	52 Agility
-2874 3133 0	2874 3127 0	Grapple;Strong Tree;17074	53 Agility;42 Ranged;21 Strength	9419
-2874 3127 0	2874 3133 0	Grapple;Strong Tree;17074	53 Agility;42 Ranged;21 Strength	9419
-2874 3136 0	2874 3142 0	Grapple;Strong Tree;17074	53 Agility;42 Ranged;21 Strength	9419
-2874 3142 0	2874 3136 0	Grapple;Strong Tree;17074	53 Agility;42 Ranged;21 Strength	9419
+2874 3133 0	2874 3127 0	Grapple;Strong Tree;17074	53 Agility;42 Ranged;21 Strength	CROSSBOW=1&MITH_GRAPPLE=1
+2874 3127 0	2874 3133 0	Grapple;Strong Tree;17074	53 Agility;42 Ranged;21 Strength	CROSSBOW=1&MITH_GRAPPLE=1
+2874 3136 0	2874 3142 0	Grapple;Strong Tree;17074	53 Agility;42 Ranged;21 Strength	CROSSBOW=1&MITH_GRAPPLE=1
+2874 3142 0	2874 3136 0	Grapple;Strong Tree;17074	53 Agility;42 Ranged;21 Strength	CROSSBOW=1&MITH_GRAPPLE=1
 2573 3859 0	2575 3861 0	Cross;Stepping stone;11768	55 Agility
 2575 3861 0	2573 3859 0	Cross;Stepping stone;11768	55 Agility
 2688 3697 0	2691 3697 0	Jump;Broken Fence;544	57 Agility
@@ -173,9 +176,9 @@
 3713 3830 0	3715 3815 0	Climb through;Hole;31482	70 Agility
 3715 3815 0	3713 3830 0	Climb through;Hole;31481	70 Agility
 2946 3439 0	2943 3439 0	Climb-up;Climbing rocks;53255	66 Agility
-1324 3777 0	1324 3784 0	Climb;Rocks;34397	29 Agility				4
-1324 3787 0	1324 3795 0	Climb;Rocks;34396	62 Agility				4
-1324 3784 0	1324 3777 0	Climb;Rocks;34397	29 Agility				4
+1324 3777 0	1324 3785 0	Climb;Rocks;34397	29 Agility				8
+1324 3787 0	1324 3795 0	Climb;Rocks;34396	62 Agility				8
+1324 3785 0	1324 3777 0	Climb;Rocks;34397	29 Agility				8
 1324 3795 0	1324 3787 0	Climb;Rocks;34396	62 Agility				4
 2400 4402 0	2400 4404 0	Squeeze-past;Jutting Wall;17002	46 Agility				4
 2400 4404 0	2400 4402 0	Squeeze-past;Jutting Wall;17002	46 Agility				4
@@ -191,8 +194,8 @@
 3334 10118 0	3334 10122 0	Squeeze-through;Crevice;53259	77 Agility				4
 3371 2958 0	3373 2955 0	Cross;Stepping stone;53241	71 Agility				2
 3373 2955 0	3371 2958 0	Cross;Stepping stone;53241	71 Agility				2
-3240 3336 0	3240 3334 0	Jump-over;Fence;16518	13 Agility				3
-3240 3334 0	3240 3336 0	Jump-over;Fence;16518	13 Agility				3
+3240 3335 0	3240 3334 0	Jump-over;Fence;16518	13 Agility				2
+3240 3334 0	3240 3335 0	Jump-over;Fence;16518	13 Agility				2
 3222 12441 0	3216 12441 0	Pass;Tight Gap;36692	78 Agility	 			3
 3216 12441 0	3222 12441 0	Pass;Tight Gap;36693	78 Agility	 			3
 3232 12420 0	3242 12420 0	Pass;Tight Gap;36695	84 Agility	 			3
@@ -285,3 +288,131 @@
 1477 3309 0	1477 3305 0	Climb;Rocks;56986	76 Agility				3
 1477 3305 0	1477 3309 0	Climb;Rocks;56985	76 Agility				3
 3765 3883 1	3765 3898 0	Teeth-grip;Zip line;57667	76 Agility				6
+
+# Isafdar Forest shortcuts (reviewed from Skretzo/shortest-path)
+2220 3155 0	2220 3152 0	Step-over;Tripwire;3921	1 Agility				8
+2220 3152 0	2220 3155 0	Step-over;Tripwire;3921	1 Agility				8
+2215 3156 0	2215 3153 0	Step-over;Tripwire;3921	1 Agility				8
+2215 3153 0	2215 3156 0	Step-over;Tripwire;3921	1 Agility				8
+2250 3168 0	2253 3168 0	Step-over;Tripwire;3921	1 Agility				8
+2253 3168 0	2250 3168 0	Step-over;Tripwire;3921	1 Agility				8
+2284 3188 0	2287 3188 0	Step-over;Tripwire;3921	1 Agility				8
+2287 3188 0	2284 3188 0	Step-over;Tripwire;3921	1 Agility				8
+2294 3242 0	2294 3245 0	Step-over;Tripwire;3921	1 Agility				8
+2294 3245 0	2294 3242 0	Step-over;Tripwire;3921	1 Agility				8
+2199 3169 0	2202 3169 0	Pass;Sticks;3922	1 Agility				6
+2202 3169 0	2199 3169 0	Pass;Sticks;3922	1 Agility				6
+2234 3181 0	2238 3181 0	Pass;Sticks;3922	1 Agility				6
+2238 3181 0	2234 3181 0	Pass;Sticks;3922	1 Agility				6
+2181 3212 0	2181 3208 0	Pass;Sticks;3922	1 Agility				6
+2181 3208 0	2181 3212 0	Pass;Sticks;3922	1 Agility				6
+2256 3227 0	2260 3227 0	Pass;Sticks;3922	1 Agility				6
+2260 3227 0	2256 3227 0	Pass;Sticks;3922	1 Agility				6
+2274 3163 0	2277 3163 0	Pass;Sticks;3922	1 Agility				6
+2277 3163 0	2274 3163 0	Pass;Sticks;3922	1 Agility				6
+2295 3217 0	2295 3213 0	Pass;Sticks;3922	1 Agility				6
+2295 3213 0	2295 3217 0	Pass;Sticks;3922	1 Agility				6
+2209 3201 0	2209 3205 0	Jump;Leaves;3925	1 Agility				4
+2209 3205 0	2209 3201 0	Jump;Leaves;3925	1 Agility				4
+2275 3262 0	2279 3262 0	Jump;Leaves;3925	1 Agility				4
+2279 3262 0	2275 3262 0	Jump;Leaves;3925	1 Agility				4
+2267 3205 0	2267 3201 0	Jump;Leaves;3925	1 Agility				4
+2267 3201 0	2267 3205 0	Jump;Leaves;3925	1 Agility				4
+2274 3176 0	2274 3172 0	Jump;Leaves;3925	1 Agility				4
+2274 3172 0	2274 3176 0	Jump;Leaves;3925	1 Agility				4
+2202 3237 0	2196 3237 0	Cross;Log balance;3931	45 Agility				8
+2196 3237 0	2202 3237 0	Cross;Log balance;3931	45 Agility				8
+2258 3250 0	2264 3250 0	Cross;Log balance;3932	45 Agility				8
+2264 3250 0	2258 3250 0	Cross;Log balance;3932	45 Agility				8
+2290 3232 0	2290 3239 0	Cross;Log balance;3933	45 Agility				9
+2290 3239 0	2290 3232 0	Cross;Log balance;3933	45 Agility				9
+2188 3162 0	2188 3165 0	Enter;Dense forest;3999	56 Agility				4
+2188 3165 0	2188 3162 0	Enter;Dense forest;3999	56 Agility				4
+2188 3165 0	2188 3168 0	Enter;Dense forest;3939	56 Agility				4
+2188 3168 0	2188 3165 0	Enter;Dense forest;3939	56 Agility				4
+2188 3168 0	2188 3171 0	Enter;Dense forest;3998	56 Agility				4
+2188 3171 0	2188 3168 0	Enter;Dense forest;3998	56 Agility				4
+2217 3169 0	2217 3166 0	Enter;Dense forest;3939	56 Agility				4
+2217 3166 0	2217 3169 0	Enter;Dense forest;3939	56 Agility				4
+2217 3166 0	2217 3163 0	Enter;Dense forest;3938	56 Agility				4
+2217 3163 0	2217 3166 0	Enter;Dense forest;3938	56 Agility				4
+2217 3163 0	2217 3160 0	Enter;Dense forest;3939	56 Agility				4
+2217 3160 0	2217 3163 0	Enter;Dense forest;3939	56 Agility				4
+2231 3149 0	2234 3149 0	Enter;Dense forest;3937	56 Agility				4
+2234 3149 0	2231 3149 0	Enter;Dense forest;3937	56 Agility				4
+2234 3149 0	2237 3149 0	Enter;Dense forest;3938	56 Agility				4
+2237 3149 0	2234 3149 0	Enter;Dense forest;3938	56 Agility				4
+2237 3149 0	2240 3149 0	Enter;Dense forest;3939	56 Agility				4
+2240 3149 0	2237 3149 0	Enter;Dense forest;3939	56 Agility				4
+2226 3219 0	2229 3219 0	Enter;Dense forest;3938	56 Agility				4
+2229 3219 0	2226 3219 0	Enter;Dense forest;3938	56 Agility				4
+2229 3219 0	2232 3219 0	Enter;Dense forest;3939	56 Agility				4
+2232 3219 0	2229 3219 0	Enter;Dense forest;3939	56 Agility				4
+2232 3219 0	2235 3219 0	Enter;Dense forest;3937	56 Agility				4
+2235 3219 0	2232 3219 0	Enter;Dense forest;3937	56 Agility				4
+2235 3219 0	2238 3219 0	Enter;Dense forest;3939	56 Agility				4
+2238 3219 0	2235 3219 0	Enter;Dense forest;3939	56 Agility				4
+2230 3249 0	2233 3249 0	Enter;Dense forest;3938	56 Agility				4
+2233 3249 0	2230 3249 0	Enter;Dense forest;3938	56 Agility				4
+2233 3249 0	2236 3249 0	Enter;Dense forest;3939	56 Agility				4
+2236 3249 0	2233 3249 0	Enter;Dense forest;3939	56 Agility				4
+2236 3249 0	2239 3249 0	Enter;Dense forest;3937	56 Agility				4
+2239 3249 0	2236 3249 0	Enter;Dense forest;3937	56 Agility				4
+2279 3231 0	2279 3228 0	Enter;Dense forest;3939	56 Agility				4
+2279 3228 0	2279 3231 0	Enter;Dense forest;3939	56 Agility				4
+2279 3228 0	2279 3225 0	Enter;Dense forest;3937	56 Agility				4
+2279 3225 0	2279 3228 0	Enter;Dense forest;3937	56 Agility				4
+2279 3225 0	2279 3222 0	Enter;Dense forest;3938	56 Agility				4
+2279 3222 0	2279 3225 0	Enter;Dense forest;3938	56 Agility				4
+2265 3192 0	2268 3192 0	Enter;Dense forest;3938	56 Agility				4
+2268 3192 0	2265 3192 0	Enter;Dense forest;3938	56 Agility				4
+2268 3192 0	2271 3192 0	Enter;Dense forest;3939	56 Agility				4
+2271 3192 0	2268 3192 0	Enter;Dense forest;3939	56 Agility				4
+2271 3192 0	2274 3192 0	Enter;Dense forest;3937	56 Agility				4
+2274 3192 0	2271 3192 0	Enter;Dense forest;3937	56 Agility				4
+2303 3213 0	2303 3216 0	Enter;Dense forest;3937	56 Agility				4
+2303 3216 0	2303 3213 0	Enter;Dense forest;3937	56 Agility				4
+2303 3216 0	2303 3219 0	Enter;Dense forest;3938	56 Agility				4
+2303 3219 0	2303 3216 0	Enter;Dense forest;3938	56 Agility				4
+2303 3219 0	2303 3222 0	Enter;Dense forest;3939	56 Agility				4
+2303 3222 0	2303 3219 0	Enter;Dense forest;3939	56 Agility				4
+2303 3222 0	2303 3225 0	Enter;Dense forest;3938	56 Agility				4
+2303 3225 0	2303 3222 0	Enter;Dense forest;3938	56 Agility				4
+
+# Brimhaven Dungeon shortcuts (reviewed from Skretzo/shortest-path)
+2698 9492 0	2698 9500 0	Squeeze-through;Pipe;21727	1 Agility				13
+2698 9500 0	2698 9492 0	Squeeze-through;Pipe;21727	1 Agility				13
+2649 9562 0	2647 9557 0	Jump-from;Stepping stone;21738	1 Agility				7
+2647 9557 0	2649 9562 0	Jump-from;Stepping stone;21739	1 Agility				7
+2687 9506 0	2682 9506 0	Walk-across;Log balance;20884	1 Agility				7
+2682 9506 0	2687 9506 0	Walk-across;Log balance;20882	1 Agility				7
+
+# Lumbridge cellar shortcut (reviewed from Skretzo/shortest-path)
+3219 9618 0	3221 9618 0	Squeeze-through;Hole;6905	13 Agility			532>3	3
+3221 9618 0	3219 9618 0	Squeeze-through;Hole;6905	13 Agility			532>3	3
+
+# Karamja rock shortcut (reviewed from Skretzo/shortest-path)
+2795 2978 0	2791 2978 0	Climb;Rocks;2231	15 Agility				5
+2795 2979 0	2791 2979 0	Climb;Rocks;2231	15 Agility				5
+2795 2980 0	2791 2980 0	Climb;Rocks;2231	15 Agility				5
+2791 2978 0	2795 2978 0	Climb;Rocks;2231	15 Agility				5
+2791 2979 0	2795 2979 0	Climb;Rocks;2231	15 Agility				5
+2791 2980 0	2795 2980 0	Climb;Rocks;2231	15 Agility				5
+
+# Slayer Tower ground-floor shortcut (reviewed from Skretzo/shortest-path)
+3421 3550 0	3421 3550 1	Climb-up;Spikey chain;16537	61 Agility
+3422 3551 0	3422 3551 1	Climb-up;Spikey chain;16537	61 Agility
+3423 3550 0	3423 3550 1	Climb-up;Spikey chain;16537	61 Agility
+3422 3549 0	3422 3549 1	Climb-up;Spikey chain;16537	61 Agility
+3421 3550 1	3421 3550 0	Climb-down;Spikey chain;16538	61 Agility
+3422 3551 1	3422 3551 0	Climb-down;Spikey chain;16538	61 Agility
+3422 3549 1	3422 3549 0	Climb-down;Spikey chain;16538	61 Agility
+3423 3550 1	3423 3550 0	Climb-down;Spikey chain;16538	61 Agility
+
+# Darkmeyer wall shortcuts (reviewed from Skretzo/shortest-path)
+3667 3375 0	3670 3375 0	Climb;Wall;39542	63 Agility			10449=1
+3670 3375 0	3667 3375 0	Climb;Wall;39542	63 Agility			10449=1
+3670 3375 0	3673 3375 0	Climb;Wall;39541	63 Agility			10450=1
+3673 3375 0	3670 3375 0	Climb;Wall;39541	63 Agility			10450=1
+3672 3376 0	3670 3375 0	Climb;Wall;39541	63 Agility			10450=1
+3672 3374 0	3670 3375 0	Climb;Wall;39541	63 Agility			10450=1

@@ -143,6 +143,13 @@ public class NpcHandler extends AgentHandler {
 		map.put("healthScale", npc.getHealthScale());
 		map.put("interacting", npc.isInteracting());
 		map.put("distance", npc.getDistanceFromPlayer());
+		// Which way it faces and whether it is walking. Needed to diagnose follow/stealth steps, where
+		// the rule is literally "he turns round and looks" — without these the only signals available
+		// are position diffing and timers, which are proxies for both and tune badly.
+		map.put("orientation", npc.getOrientation());
+		map.put("currentOrientation", npc.getCurrentOrientation());
+		map.put("poseAnimation", npc.getPoseAnimation());
+		map.put("animation", npc.getAnimation());
 
 		WorldPoint loc = npc.getWorldLocation();
 		if (loc != null) {

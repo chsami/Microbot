@@ -1,35 +1,67 @@
-# Origin	Destination	menuOption menuTarget objectID	Skills	Item IDs	Quest	Duration	Display info
-# Edgeville							
-3132 3510 0	3109 3415 0	Paddle Canoe;Canoe Station;12166	12 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Barbarian Village
-3132 3510 0	3199 3344 0	Paddle Canoe;Canoe Station;12166	27 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Champions Guild
-3132 3510 0	3240 3242 0	Paddle Canoe;Canoe Station;12166	42 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Lumbridge
-3132 3510 0	3154 3638 0	Paddle Canoe;Canoe Station;12166	57 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Ferox Enclave
-3132 3510 0	3141 3796 0	Paddle Canoe;Canoe Station;12166	57 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Wilderness Pond
-							
-# Barbarian Village							
-3112 3411 0	3199 3344 0	Paddle Canoe;Canoe Station;12165	12 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Champions Guild
-3112 3411 0	3128 3503 0	Paddle Canoe;Canoe Station;12165	12 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Edgeville
-3112 3411 0	3240 3242 0	Paddle Canoe;Canoe Station;12165	27 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Lumbridge
-3112 3411 0	3154 3638 0	Paddle Canoe;Canoe Station;12165	57 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Ferox Enclave
-3112 3411 0	3141 3796 0	Paddle Canoe;Canoe Station;12165	57 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Wilderness Pond
-							
-# Champions' Guild							
-3202 3343 0	3240 3242 0	Paddle Canoe;Canoe Station;12164	12 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Lumbridge
-3202 3343 0	3109 3415 0	Paddle Canoe;Canoe Station;12164	12 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Barbarian Village
-3202 3343 0	3128 3503 0	Paddle Canoe;Canoe Station;12164	27 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Edgeville
-3202 3343 0	3154 3638 0	Paddle Canoe;Canoe Station;12164	57 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Ferox Enclave
-3202 3343 0	3141 3796 0	Paddle Canoe;Canoe Station;12164	57 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Wilderness Pond
-							
-# Lumbridge							
-3243 3237 0	3199 3344 0	Paddle Canoe;Canoe Station;12163	12 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Champions Guild
-3243 3237 0	3109 3415 0	Paddle Canoe;Canoe Station;12163	27 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Barbarian Village
-3243 3237 0	3128 3503 0	Paddle Canoe;Canoe Station;12163	42 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Edgeville
-3243 3237 0	3154 3638 0	Paddle Canoe;Canoe Station;12163	57 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Ferox Enclave
-3243 3237 0	3141 3796 0	Paddle Canoe;Canoe Station;12163	57 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Wilderness Pond
-							
-# Ferox Enclave							
-3154 3630 0	3128 3503 0	Paddle Canoe;Canoe Station;39638	12 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Edgeville
-3154 3630 0	3109 3415 0	Paddle Canoe;Canoe Station;39638	27 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Barbarian Village
-3154 3630 0	3199 3344 0	Paddle Canoe;Canoe Station;39638	42 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Champions Guild
-3154 3630 0	3240 3242 0	Paddle Canoe;Canoe Station;39638	57 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Lumbridge
-3154 3630 0	3141 3796 0	Paddle Canoe;Canoe Station;39638	57 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Wilderness Pond
+# Origin	Destination	menuOption menuTarget objectID	Skills	Items	Duration	Display info
+# River Lum chain
+# Edgeville
+3132 3510 0	3109 3415 0	Paddle Canoe;Canoe Station;12166	12 Woodcutting	AXE=1	30	Barbarian Village
+3132 3510 0	3199 3344 0	Paddle Canoe;Canoe Station;12166	27 Woodcutting	AXE=1	30	Champions Guild
+3132 3510 0	3240 3242 0	Paddle Canoe;Canoe Station;12166	42 Woodcutting	AXE=1	30	Lumbridge
+3132 3510 0	3154 3638 0	Paddle Canoe;Canoe Station;12166	57 Woodcutting	AXE=1	20	Ferox Enclave
+3132 3510 0	3141 3796 0	Paddle Canoe;Canoe Station;12166	57 Woodcutting	AXE=1	20	Wilderness Pond
+
+# Barbarian Village
+3112 3411 0	3199 3344 0	Paddle Canoe;Canoe Station;12165	12 Woodcutting	AXE=1	30	Champions Guild
+3112 3411 0	3128 3503 0	Paddle Canoe;Canoe Station;12165	12 Woodcutting	AXE=1	30	Edgeville
+3112 3411 0	3240 3242 0	Paddle Canoe;Canoe Station;12165	27 Woodcutting	AXE=1	30	Lumbridge
+3112 3411 0	3154 3638 0	Paddle Canoe;Canoe Station;12165	57 Woodcutting	AXE=1	20	Ferox Enclave
+3112 3411 0	3141 3796 0	Paddle Canoe;Canoe Station;12165	57 Woodcutting	AXE=1	20	Wilderness Pond
+
+# Champions' Guild
+3202 3343 0	3240 3242 0	Paddle Canoe;Canoe Station;12164	12 Woodcutting	AXE=1	30	Lumbridge
+3202 3343 0	3109 3415 0	Paddle Canoe;Canoe Station;12164	12 Woodcutting	AXE=1	30	Barbarian Village
+3202 3343 0	3128 3503 0	Paddle Canoe;Canoe Station;12164	27 Woodcutting	AXE=1	30	Edgeville
+3202 3343 0	3154 3638 0	Paddle Canoe;Canoe Station;12164	57 Woodcutting	AXE=1	20	Ferox Enclave
+3202 3343 0	3141 3796 0	Paddle Canoe;Canoe Station;12164	57 Woodcutting	AXE=1	20	Wilderness Pond
+
+# Lumbridge
+3243 3237 0	3199 3344 0	Paddle Canoe;Canoe Station;12163	12 Woodcutting	AXE=1	30	Champions Guild
+3243 3237 0	3109 3415 0	Paddle Canoe;Canoe Station;12163	27 Woodcutting	AXE=1	30	Barbarian Village
+3243 3237 0	3128 3503 0	Paddle Canoe;Canoe Station;12163	42 Woodcutting	AXE=1	30	Edgeville
+3243 3237 0	3154 3638 0	Paddle Canoe;Canoe Station;12163	57 Woodcutting	AXE=1	20	Ferox Enclave
+3243 3237 0	3141 3796 0	Paddle Canoe;Canoe Station;12163	57 Woodcutting	AXE=1	20	Wilderness Pond
+
+# Ferox Enclave
+3154 3630 0	3128 3503 0	Paddle Canoe;Canoe Station;39638	12 Woodcutting	AXE=1	20	Edgeville
+3154 3630 0	3109 3415 0	Paddle Canoe;Canoe Station;39638	27 Woodcutting	AXE=1	20	Barbarian Village
+3154 3630 0	3199 3344 0	Paddle Canoe;Canoe Station;39638	42 Woodcutting	AXE=1	20	Champions Guild
+3154 3630 0	3240 3242 0	Paddle Canoe;Canoe Station;39638	57 Woodcutting	AXE=1	20	Lumbridge
+3154 3630 0	3141 3796 0	Paddle Canoe;Canoe Station;39638	57 Woodcutting	AXE=1	20	Wilderness Pond
+
+# River Dougne chain
+# Castle Wars
+2439 3135 0	2483 3188 0	Paddle Canoe;Canoe Station;60845	12 Woodcutting	AXE=1	30	Tree Gnome Village
+2439 3135 0	2577 3261 0	Paddle Canoe;Canoe Station;60845	27 Woodcutting	AXE=1	30	The Clock Tower
+2439 3135 0	2571 3360 0	Paddle Canoe;Canoe Station;60845	42 Woodcutting	AXE=1	30	Chaos Druid Tower
+2439 3135 0	2523 3408 0	Paddle Canoe;Canoe Station;60845	57 Woodcutting	AXE=1	30	Tree Gnome Stronghold
+
+# Tree Gnome Village
+2485 3192 0	2436 3134 0	Paddle Canoe;Canoe Station;60846	12 Woodcutting	AXE=1	30	Castle Wars
+2485 3192 0	2577 3261 0	Paddle Canoe;Canoe Station;60846	12 Woodcutting	AXE=1	30	The Clock Tower
+2485 3192 0	2571 3360 0	Paddle Canoe;Canoe Station;60846	27 Woodcutting	AXE=1	30	Chaos Druid Tower
+2485 3192 0	2523 3408 0	Paddle Canoe;Canoe Station;60846	42 Woodcutting	AXE=1	30	Tree Gnome Stronghold
+
+# The Clock Tower
+2579 3260 0	2436 3134 0	Paddle Canoe;Canoe Station;60847	27 Woodcutting	AXE=1	30	Castle Wars
+2579 3260 0	2483 3188 0	Paddle Canoe;Canoe Station;60847	12 Woodcutting	AXE=1	30	Tree Gnome Village
+2579 3260 0	2571 3360 0	Paddle Canoe;Canoe Station;60847	12 Woodcutting	AXE=1	30	Chaos Druid Tower
+2579 3260 0	2523 3408 0	Paddle Canoe;Canoe Station;60847	27 Woodcutting	AXE=1	30	Tree Gnome Stronghold
+
+# Chaos Druid Tower
+2573 3358 0	2436 3134 0	Paddle Canoe;Canoe Station;60848	42 Woodcutting	AXE=1	30	Castle Wars
+2573 3358 0	2483 3188 0	Paddle Canoe;Canoe Station;60848	27 Woodcutting	AXE=1	30	Tree Gnome Village
+2573 3358 0	2577 3261 0	Paddle Canoe;Canoe Station;60848	12 Woodcutting	AXE=1	30	The Clock Tower
+2573 3358 0	2523 3408 0	Paddle Canoe;Canoe Station;60848	12 Woodcutting	AXE=1	30	Tree Gnome Stronghold
+
+# Tree Gnome Stronghold
+2525 3408 0	2436 3134 0	Paddle Canoe;Canoe Station;60849	57 Woodcutting	AXE=1	30	Castle Wars
+2525 3408 0	2483 3188 0	Paddle Canoe;Canoe Station;60849	42 Woodcutting	AXE=1	30	Tree Gnome Village
+2525 3408 0	2577 3261 0	Paddle Canoe;Canoe Station;60849	27 Woodcutting	AXE=1	30	The Clock Tower
+2525 3408 0	2571 3360 0	Paddle Canoe;Canoe Station;60849	12 Woodcutting	AXE=1	30	Chaos Druid Tower

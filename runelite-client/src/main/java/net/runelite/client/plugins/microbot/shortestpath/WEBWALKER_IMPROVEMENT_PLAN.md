@@ -9,9 +9,9 @@ Consolidated findings from a four-angle audit (pathfinder algorithm, Rs2Walker r
 
 **Rollup (2026-04-18 audit):** 22 DONE · 9 PARTIAL · 8 OPEN · total 39. (Tier 3 closed.)
 
-> **2026-07-20 Stage 4 audit — Tier 1–2 backlog is largely already implemented.** With the facade in place (Stages 1–3 done), a live-code sweep of the flagged "backport" items found most already landed since the 2026-04-18 audit: **#2 wilderness DONE** (boundaries match upstream), **#8 bidirectional BFS DONE**, **#31 currency filter DONE**, **#33/#34 transport-index perf DONE**, **#11 stale premise** (Node already packed-int). Genuinely still-open internal items: **#10** (transport reachability prune), **#12** (SplitFlagMap region LRU eviction), **#30** (one-way transport flag), and **#3** (POH coverage verify). These are correctness-/data-sensitive and want real upstream source to do accurately — **no upstream remote is configured yet** (comparison still pinned to `07fca57`). Recommended Stage 4 enabler: add the `Skretzo/shortest-path` remote and re-baseline before implementing #10/#12/#30.
+> **2026-07-20 Stage 4 audit — Tier 1–2 backlog is largely already implemented.** With the facade in place (Stages 1–3 done), a live-code sweep plus re-baseline against the configured `skretzo` remote found most flagged "backport" items already landed: **#2 wilderness DONE** (boundaries match upstream), **#3 POH DONE** (12 destinations backfilled), **#8 bidirectional BFS DONE**, **#31 currency filter DONE**, **#33/#34 transport-index perf DONE**, and **#11 closed as a stale premise** (Node already uses packed ints; the remaining `List<WorldPoint>` is the public output boundary). Genuinely open internal items are **#10** (transport reachability prune), **#12** (SplitFlagMap region LRU eviction), and **#30** (one-way transport flag); the re-baseline found no confirmed upstream implementation for those, so treat them as independent Microbot work rather than backports. The remaining confirmed upstream data gap is home-teleport coverage (`teleportation_spells_home.tsv` variants).
 >
-> **2026-07-20 reconciliation — direction set: FACADE-FIRST.** Spot-verified against the live tree on `So-I-dont-Fuck-The-Walker-KEK`. Confirmed: boat world-view is **DONE** (`WorldPointUtil.fromLocalInstance`, closes `UPSTREAM_COMPARISON.md` #6); `PrimitiveIntList` (#11) still **OPEN**; #3 **reclassified** (see row); #27 now **12/16** pairs (was 8). A full 39-item re-audit was **not** performed — only the items below were re-checked. **Decision:** before any further upstream backport, introduce a Microbot-owned path facade so `Rs2Walker` and the other consumers stop importing upstream internals directly. See the **"Facade migration (2026-07-20)"** section at the bottom for the frozen coupling contract and staged plan.
+> **2026-07-20 reconciliation — direction set: FACADE-FIRST.** Spot-verified against the live tree on `So-I-dont-Fuck-The-Walker-KEK`. Confirmed: boat world-view is **DONE** (`WorldPointUtil.fromLocalInstance`, closes `UPSTREAM_COMPARISON.md` #6); #11 is **CLOSED (stale premise)**; #3 POH coverage is **DONE** after the 12-destination backfill; and #27 is **12/16** pairs (was 8). A full 39-item re-audit was **not** performed — only the items below were re-checked. The facade-first decision has since been completed in Stages 1–3, so further selective backports can change internals without exposing them to `Rs2Walker` and other consumers. See the **"Facade migration (2026-07-20)"** section at the bottom for the frozen coupling contract and staged plan.
 
 ---
 
@@ -60,7 +60,7 @@ The "completeness of navigating the world" half.
 | 19 | DONE | After a door interact, if the player didn't move and `isQuestLockedDoorDialogue()` matches ("quest" / "you need to" / "you must" / "cannot enter" / "requires you" / …), log `warn` with door details + dialogue text, add the tile to `sessionBlacklistedDoors`, close the dialogue, refresh `PathfinderConfig` (re-read quest/varbit state) and `recalculatePath()`. Entry of `handleDoors` short-circuits on blacklisted tiles to break the retry loop. | `Rs2Walker.java:1256–1275, 1376–1396` | M |
 | 20 | DONE | POH `convertInstancedWorldPoint()` null-path diagnostics added: `handleDoors` null log now includes rawFrom/rawTo/fromWp/toWp and `idx/pathSize`; `setTarget` POH instance start now null-checks `WorldPoint.fromLocalInstance` (falls back to raw world location with a `warn` when it returns null) | `Rs2Walker.java:1206–1213, 1473–1486` | M |
 | 21 | DONE | Minimap click now scans forward from first past-threshold tile to the furthest same-plane, non-transport-origin tile within ~14-tile Chebyshev reach, then advances the loop index past the intermediate tiles. Cuts tick count on long diagonal runs by ~30-40% since Chebyshev reach is 1.4× the cardinal step count. | `Rs2Walker.java:476–531` | M |
-| 22 | DONE | `Telemetry.recordUnreachable(cause, player, target, pathEndpoint, pathSize, threshold, pathfinder)` logs at `warn` with pathfinder stats; wired into both UNREACHABLE exits (no-walkable-path and partial-retries-exhausted) with `unreachableCount` counter exposed to probes | `Rs2Walker.java:108, 128–141, 158, 306–308, 532–533` | S |
+| 22 | DONE | `Telemetry.recordUnreachable(cause, player, target, pathEndpoint, pathSize, threshold, routeMetrics)` logs at `warn` with planner-independent route metrics; wired into both UNREACHABLE exits (no-walkable-path and partial-retries-exhausted) with `unreachableCount` counter exposed to probes | `Rs2Walker.java` | S |
 
 ---
 
@@ -127,6 +127,14 @@ Items already catalogued in `UPSTREAM_COMPARISON.md` are surfaced here only wher
 ---
 
 ## Facade migration (2026-07-20)
+
+> **2026-08-05 boundary review:** direct `ShortestPathPlugin` state access has been migrated back behind
+> `Rs2PathApi` and is now CI-enforced by `scripts/check-shortest-path-boundary.py`. The class remains a
+> compatibility seam rather than the final stable API because it still exposes concrete `Pathfinder`,
+> mutable `PathfinderConfig` and `Transport` values. The canonical next steps are in
+> `docs/walker-roadmap.md` “Tighten the planner boundary.” The first operation-level slice now provides
+> immutable route requests/results and has migrated bank, deposit-box and banked-destination searches off
+> direct `Pathfinder` construction.
 
 **Goal:** decouple automation from the shortest-path *internals* so future upstream backports stop rippling into `Rs2Walker` and the other consumers. The fork stays a fork; this is a boundary, not a rewrite. Once the boundary exists, backporting an upstream fix means changing code behind the facade only.
 
@@ -204,8 +212,8 @@ Read-only sweep of all **26** consumer files (`grep` for `microbot.shortestpath`
    - `3b` (`6ee086b835`): walker helpers — `Rs2WalkerLifecycleRuntime`, `Rs2WalkerBankingPlanner`.
    - `3c` (`e6e7f0c1fc`): `Rs2Walker` itself (77 refs). Verified: `:client:compileJava` clean + 73 shortestpath tests green (Core 43, Tier1 regression 18, PathSmoother 6, TransportType 4, +2).
    - Remaining `ShortestPathPlugin` references repo-wide are plugin **identity** only (`MicrobotPluginChoice`'s `.class`, `Microbot`'s `getSimpleName()` string check) — intentionally not routed through the facade. **100% of plugin-state access now goes through `Rs2PathApi`.**
-4. ⬜ **NEXT** — **Backport behind the facade** — resume the Tier 1–5 items (wilderness widths #2, `PrimitiveIntList` #11, POH coverage #3, etc.) changing only internals; consumers untouched.
-5. ✅ **DONE (re-baseline)** — added the `skretzo` remote, fetched, and re-baselined against upstream HEAD `7e7e5bf94b` (122 commits + major refactor past `07fca57`). Findings in `UPSTREAM_COMPARISON.md` "Re-baseline 2026-07-20": #2 wilderness byte-identical to upstream `WildernessChecker` (DONE); **#3 POH is the one concrete real gap** (upstream ships `teleportation_portals_poh.tsv`, 137 rows; Microbot routes POH programmatically — verify `util/poh` coverage); #10/#12 have no upstream counterpart (Microbot-original). Upstream is now architecturally distinct — only selective feature/data backports are viable, which the facade enables.
+4. ⬜ **NEXT** — **Backport behind the facade** — close confirmed selective feature/data gaps (currently the missing home-teleport variants) while keeping consumers untouched; track #10/#12/#30 separately as Microbot-original work.
+5. ✅ **DONE (re-baseline)** — added the `skretzo` remote, fetched, and re-baselined against upstream HEAD `7e7e5bf94b` (122 commits + major refactor past `07fca57`). Findings in `UPSTREAM_COMPARISON.md` "Re-baseline 2026-07-20": #2 wilderness is byte-identical to upstream `WildernessChecker` (DONE); #3 exposed a concrete POH coverage gap that was subsequently backfilled (DONE); #11 is a stale premise; #10/#12 have no upstream counterpart (Microbot-original); and #30 has no confirmed upstream implementation. Upstream is now architecturally distinct — only selective feature/data backports are viable, which the facade enables.
 
 ### Guardrails
 - **No walker edits** until the facade exists and the contract is frozen.

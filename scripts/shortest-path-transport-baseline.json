@@ -1,0 +1,282 @@
+{
+  "comparisons": {
+    "agility_shortcuts.tsv -> agility_shortcuts.tsv": {
+      "comparableFieldDrift": 52,
+      "comparableFieldDriftDigest": "90d61f52d96d88fa47d7bd93b35477cedc90d5bca5c322798195cb7bef80144c",
+      "localOnlyDigest": "ae5782932d655dd2a3abe0e724ce01b563c51ba31d3b979323329cda96fbab82",
+      "localOnlyRoutes": 68,
+      "sharedRoutes": 337,
+      "upstreamOnlyClassifications": {
+        "knownAgilityCourseTraversal": {
+          "digest": "ceca7807389ce19663ff3e8b9aac16b6457a366cf9ae52a83bce7b5d009e0b19",
+          "routes": 114
+        },
+        "representedAsLocalGenericTransport": {
+          "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "routes": 0
+        }
+      },
+      "upstreamOnlyDigest": "3c8a5b30c8d7e373f457f84910b1c7063a55641128e6fcffbedcf812fa89abd7",
+      "upstreamOnlyRoutes": 231
+    },
+    "boats.tsv -> boats.tsv": {
+      "comparableFieldDrift": 22,
+      "comparableFieldDriftDigest": "e90371125a3c10322e4ca63de501230d3336df88a598f0cc70c0dfa43be17a86",
+      "localOnlyDigest": "5425eb486666e0d2f08b31401a487beeb63543a5d7c38eb5ff619a008c4973bf",
+      "localOnlyRoutes": 11,
+      "sharedRoutes": 94,
+      "upstreamOnlyDigest": "8f42485632d6c536e22f6271978809572294d84e27c47a362ddadc0fe030566d",
+      "upstreamOnlyRoutes": 32
+    },
+    "canoes.tsv -> canoes.tsv": {
+      "comparableFieldDrift": 0,
+      "comparableFieldDriftDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "localOnlyDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "localOnlyRoutes": 0,
+      "sharedRoutes": 45,
+      "upstreamOnlyDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "upstreamOnlyRoutes": 0
+    },
+    "charter_ships.tsv -> charter_ships.tsv": {
+      "comparableFieldDrift": 197,
+      "comparableFieldDriftDigest": "e850ef6af502bae6e4a8dac03a53ac121f37ad643846b889be14da9eff9d0998",
+      "localOnlyDigest": "fffeac99d0e09a8c8fdec05ce5c888e815c00c1826d34af373fd11cabfae9875",
+      "localOnlyRoutes": 1,
+      "sharedRoutes": 228,
+      "upstreamOnlyDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "upstreamOnlyRoutes": 0
+    },
+    "fairy_rings.tsv -> fairy_rings.tsv": {
+      "comparableFieldDrift": 4,
+      "comparableFieldDriftDigest": "36a6000d838c2cb551704b431dc7a7dc3564bad6994d7fb50b6c44fe380ec1f8",
+      "localOnlyDigest": "bb89cd98d0af55cd4c8879834934c2b782445c3c78310aa6abc8276d8c0c266c",
+      "localOnlyRoutes": 56,
+      "sharedRoutes": 53,
+      "upstreamOnlyDigest": "34f09156d3dbf6389b3b3f82b0f1d647abe97e890aae4524ddec39b228f3c05c",
+      "upstreamOnlyRoutes": 58
+    },
+    "gnome_gliders.tsv -> gnome_gliders.tsv": {
+      "comparableFieldDrift": 22,
+      "comparableFieldDriftDigest": "51655fce0c1194a1ffcceb2dd900739315c40ef8ab23698d969ef620981f768e",
+      "localOnlyDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "localOnlyRoutes": 0,
+      "sharedRoutes": 22,
+      "upstreamOnlyDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "upstreamOnlyRoutes": 0
+    },
+    "hot_air_balloons.tsv -> hot_air_balloons.tsv": {
+      "comparableFieldDrift": 0,
+      "comparableFieldDriftDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "localOnlyDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "localOnlyRoutes": 0,
+      "sharedRoutes": 51,
+      "upstreamOnlyDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "upstreamOnlyRoutes": 0
+    },
+    "magic_carpets.tsv -> magic_carpets.tsv": {
+      "comparableFieldDrift": 12,
+      "comparableFieldDriftDigest": "20f45064eac242981c611c102b4fa3893cb2d54617b1c399acd4711bf3036126",
+      "localOnlyDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "localOnlyRoutes": 0,
+      "sharedRoutes": 12,
+      "upstreamOnlyDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "upstreamOnlyRoutes": 0
+    },
+    "magic_mushtrees.tsv -> magic_mushtrees.tsv": {
+      "comparableFieldDrift": 0,
+      "comparableFieldDriftDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "localOnlyDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "localOnlyRoutes": 0,
+      "sharedRoutes": 12,
+      "upstreamOnlyDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "upstreamOnlyRoutes": 0
+    },
+    "minecarts.tsv -> minecarts.tsv": {
+      "comparableFieldDrift": 0,
+      "comparableFieldDriftDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "localOnlyDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "localOnlyRoutes": 0,
+      "sharedRoutes": 47,
+      "upstreamOnlyDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "upstreamOnlyRoutes": 0
+    },
+    "quetzal_whistle.tsv -> teleportation_items.tsv": {
+      "comparableFieldDrift": 14,
+      "comparableFieldDriftDigest": "1762f599fcf2c6fa9e8107f4441d7501e83bdded0e6dd2bebec19d5bab5e481b",
+      "localOnlyDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "localOnlyRoutes": 0,
+      "sharedRoutes": 14,
+      "upstreamOnlyDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "upstreamOnlyRoutes": 0
+    },
+    "quetzals.tsv -> quetzals.tsv": {
+      "comparableFieldDrift": 0,
+      "comparableFieldDriftDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "localOnlyDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "localOnlyRoutes": 0,
+      "sharedRoutes": 28,
+      "upstreamOnlyDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "upstreamOnlyRoutes": 0
+    },
+    "seasonal_transports.tsv -> seasonal_transports.tsv": {
+      "comparableFieldDrift": 1,
+      "comparableFieldDriftDigest": "4742eb8ebd8d79fe34bf3635a7b3e2213a38d8a585bdd2b7141a89bd27ce16fa",
+      "localOnlyDigest": "0313733dd83dfa0504b70c1efa3e02d67ddbb24130a1be56953baf265246a555",
+      "localOnlyRoutes": 168,
+      "sharedRoutes": 1,
+      "upstreamOnlyDigest": "fa0d0b8dc82a01ce784dead7520999e70cc2aaf6b2ff042cbc2b7ad9cc365d4c",
+      "upstreamOnlyRoutes": 437
+    },
+    "ships.tsv -> ships.tsv": {
+      "comparableFieldDrift": 8,
+      "comparableFieldDriftDigest": "22a9f7526dd718745f42ceb768c44ec3917bcb8efb98befe4707f3d9ba174df4",
+      "localOnlyDigest": "9431d024c9b96543bff9d082705e5a98e39c10076dbbdf2dc499ad60ee5a3026",
+      "localOnlyRoutes": 6,
+      "sharedRoutes": 31,
+      "upstreamOnlyClassifications": {
+        "representedByCurrentArdougneShipDeck": {
+          "digest": "aadd83a77c79e19095c938fcaa2e1cc39e1a26d3db17c84efd4826cbd81ef765",
+          "routes": 2
+        },
+        "representedByCurrentCorsairCoveLandings": {
+          "digest": "246008a786a80af8944de801dae72e2f49711978e5433858c05ab89069669d16",
+          "routes": 2
+        },
+        "representedByCurrentVoidOutpostShipDeck": {
+          "digest": "46492e1951a77289e64da18bae8a2e80311ff5e8101f9af15c154eb3bed71189",
+          "routes": 2
+        }
+      },
+      "upstreamOnlyDigest": "d03b34f8cb697736e43f0eaf3fc57f07776b15d8ec6b0a11dcc45a7212ea289c",
+      "upstreamOnlyRoutes": 6
+    },
+    "spirit_trees.tsv -> spirit_trees.tsv": {
+      "comparableFieldDrift": 144,
+      "comparableFieldDriftDigest": "b0e03c967ea821c5a968fd7c0de6df9684441e78bf42c0fa679dd374f9a50cdc",
+      "localOnlyDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "localOnlyRoutes": 0,
+      "sharedRoutes": 154,
+      "upstreamOnlyDigest": "4b1bda05a6c12fc11ad724e8430b94491b5ce88d2e33f18c3eb0379f161caa69",
+      "upstreamOnlyRoutes": 2
+    },
+    "teleportation_items.tsv -> teleportation_items.tsv": {
+      "comparableFieldDrift": 122,
+      "comparableFieldDriftDigest": "1d9f007cac1a27e13f74f27806a98abc6416f807ab18b487db443d01be2e4da8",
+      "localOnlyDigest": "f97e3461b80e9332b47d4c0f8f099829f0096fbb2469bf7faa7425d63e62af7d",
+      "localOnlyRoutes": 134,
+      "sharedRoutes": 140,
+      "upstreamOnlyDigest": "8328f0a369ecf6d088bd9fe85963e45485b2694cd7f8c21e2ec49e7f3aadbb97",
+      "upstreamOnlyRoutes": 160
+    },
+    "teleportation_levers.tsv -> teleportation_levers.tsv": {
+      "comparableFieldDrift": 0,
+      "comparableFieldDriftDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "localOnlyDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "localOnlyRoutes": 0,
+      "sharedRoutes": 7,
+      "upstreamOnlyDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "upstreamOnlyRoutes": 0
+    },
+    "teleportation_minigames.tsv -> teleportation_minigames.tsv": {
+      "comparableFieldDrift": 2,
+      "comparableFieldDriftDigest": "1a25255e41b9947db091a6b052f90805f5073c1ac3f5f966609bc564f21d18db",
+      "localOnlyDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "localOnlyRoutes": 0,
+      "sharedRoutes": 21,
+      "upstreamOnlyDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "upstreamOnlyRoutes": 0
+    },
+    "teleportation_portals.tsv -> teleportation_portals.tsv": {
+      "comparableFieldDrift": 4,
+      "comparableFieldDriftDigest": "55c5ddd51d1a475ed787e9898549b6ae38367d49621072612cee256d2125c2b0",
+      "localOnlyDigest": "5fabd1c8b91067d56a02c3fd52be0e664ebfd35fac6f9d7ca6670f94167b2a84",
+      "localOnlyRoutes": 2,
+      "sharedRoutes": 96,
+      "upstreamOnlyDigest": "7e9bf88aed74fe65ac61dd8120210fa41e29c4a24616926a131e312a5524014b",
+      "upstreamOnlyRoutes": 33
+    },
+    "teleportation_spells.tsv -> teleportation_spells.tsv": {
+      "comparableFieldDrift": 19,
+      "comparableFieldDriftDigest": "fdfc11e78c094f17ad7f8f890158ac9afdac14cde8aac167a9c756d8874c7fbd",
+      "localOnlyDigest": "90298ac98b16ae54ea3bf3dedf8256405db52f0cf11eac6157a1798c7c564062",
+      "localOnlyRoutes": 28,
+      "sharedRoutes": 19,
+      "upstreamOnlyDigest": "fc92ea877a3d06c7dc5e75d32d5a8aef560a0c60d4959d4815d2bc554b9f56da",
+      "upstreamOnlyRoutes": 41
+    },
+    "teleportation_spells_home.tsv -> teleportation_spells.tsv": {
+      "comparableFieldDrift": 4,
+      "comparableFieldDriftDigest": "dc5176068d72228054c92ed2a189097855326c9e710f545ca8d859c5ff27074a",
+      "localOnlyDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "localOnlyRoutes": 0,
+      "sharedRoutes": 4,
+      "upstreamOnlyDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "upstreamOnlyRoutes": 0
+    },
+    "transports.tsv -> transports.tsv": {
+      "comparableFieldDrift": 698,
+      "comparableFieldDriftClassifications": {
+        "concreteElementalWorkshopWallWithConservativeKeyRequirement": {
+          "digest": "ad53dec2c1f4b08a4615f465401a2224cf92c498875a3f046deb8dc2794e02f2",
+          "routes": 2
+        }
+      },
+      "comparableFieldDriftDigest": "5339089c8f3bd65c67a0b78f522fc43163de8b5abaf358ecafcbd0b1a4cbf663",
+      "localOnlyDigest": "0ed6b24dbc45afb60f2fa8059c9c81c48f70f842a4e03ef0d7d8690c3059f14e",
+      "localOnlyRoutes": 478,
+      "sharedRoutes": 5125,
+      "upstreamOnlyClassifications": {
+        "intentionalDisabledVarrockPalaceTrellis": {
+          "digest": "2bf4e997b38c2d2cbeda9ec0b49cab290b090b948acc5e915b297169653ac3de",
+          "routes": 2
+        },
+        "supersededPiscatorisGateAnchors": {
+          "digest": "24e6795f3d3ffb701289070223a3476ef43c40dfb5006ddd439830c5ef4693b7",
+          "routes": 4
+        },
+        "unsupportedIdlessMarimStaircases": {
+          "digest": "ea1ebf506b4513b8d83b7e8079424018469cb3541a49548e57ef517061f791f7",
+          "routes": 8
+        },
+        "unsupportedInteractionlessDaeroTransition": {
+          "digest": "df3bb3be7ddc5d05e1dbea9985ba9f3d6916ae8b57f7e72724773ffc8153fd2b",
+          "routes": 1
+        }
+      },
+      "upstreamOnlyDigest": "d0ff9af20d234b43bf04e2116b042a37d132b20038849a74908b8558cb98e3fd",
+      "upstreamOnlyRoutes": 15
+    },
+    "wilderness_obelisks.tsv -> wilderness_obelisks.tsv": {
+      "comparableFieldDrift": 54,
+      "comparableFieldDriftDigest": "831d0acad9a28cdac093f6d34220336440f2de79d6c862312eb51d70cf4c5b4e",
+      "localOnlyDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "localOnlyRoutes": 0,
+      "sharedRoutes": 60,
+      "upstreamOnlyDigest": "a719cd133d37193c509c9fc9a076652b477eab47a06f22947eccebfbf92426c9",
+      "upstreamOnlyRoutes": 1
+    }
+  },
+  "localOnlyFiles": [
+    "blocked_edges.tsv",
+    "dangerous_tiles.tsv",
+    "npcs.tsv",
+    "purchasable_items.tsv",
+    "restrictions.tsv"
+  ],
+  "reviewedCommit": "ff8e961b32120175709df9630ece9468cc11347f",
+  "reviewedDifferences": {
+    "quetzal_whistle.tsv -> teleportation_items.tsv": {
+      "comparableFieldDriftDigest": "1762f599fcf2c6fa9e8107f4441d7501e83bdded0e6dd2bebec19d5bab5e481b",
+      "rationale": "Microbot splits charged whistles from perfected-infinite item 33120 so Inventory (perm) retains the non-consumable alternative; upstream applies Consumable=T to the combined family."
+    },
+    "teleportation_minigames.tsv -> teleportation_minigames.tsv": {
+      "comparableFieldDriftDigest": "1a25255e41b9947db091a6b052f90805f5073c1ac3f5f966609bc564f21d18db",
+      "rationale": "Barbarian Assault tutorial access is enforced by shared varbit 3264=11 because it is not a RuneLite Quest enum; Microbot retains the Mage Training Arena unlock varbit because the in-game teleport requires first speaking to the Entrance Guardian."
+    }
+  },
+  "schemaVersion": 2,
+  "upstreamOnlyFiles": [
+    "teleportation_boxes.tsv",
+    "teleportation_portals_poh.tsv"
+  ]
+}

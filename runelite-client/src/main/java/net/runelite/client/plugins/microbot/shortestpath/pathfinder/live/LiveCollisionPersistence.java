@@ -22,10 +22,11 @@ import java.util.concurrent.TimeUnit;
  * Disk backing for the accumulating live-collision store, so what the bot learns while walking survives a
  * restart and keeps overriding the static map's reconstruction permanently (until a game update).
  * <p>
- * One binary file per region under {@code ~/.runelite/microbot/live-collision/<cacheRevision>/<regionId>.lcr}.
- * The cache-revision directory is the invalidation key: after a game update the client reports a new
- * revision, so the previous session's regions are simply never read (and can be pruned later) rather than
- * being trusted against changed geometry.
+ * One binary file per region under
+ * {@code ~/.runelite/microbot/live-collision/<cacheRevision>-c<captureVersion>/<regionId>.lcr}.
+ * The cache revision and {@link LiveCollisionCapture#CAPTURE_VERSION capture-semantics version} form the
+ * invalidation key: after either changes, previous regions are never read (and can be pruned later) rather
+ * than being trusted against changed geometry or capture rules.
  * <p>
  * All I/O runs on a single daemon thread; loads and stores never touch the client or pathfinder threads.
  * {@link LiveCollisionOverlay#putRegion} and {@link LiveCollisionOverlay#drainDirty} are the only
@@ -35,14 +36,6 @@ import java.util.concurrent.TimeUnit;
 public final class LiveCollisionPersistence {
     private static final int MAGIC = 0x4C435231; // "LCR1"
     private static final int VERSION = 1;
-    /**
-     * Capture/merge semantics version. Distinct from {@link #VERSION} (the byte format): bump this
-     * whenever what we *record* changes (e.g. the rockfall-exemption capture rules), even if the file
-     * layout is identical. It is part of the on-disk store key, so a bump auto-invalidates every
-     * previously-learned region — no manual "Reset learned collision" needed. History:
-     * 1 = original; 2 = runtime-handled-obstacle (rockfall) exemption in LiveCollisionCapture.
-     */
-    private static final int CAPTURE_VERSION = 2;
 
     private final File dir;
     /** Root removed by {@link #deleteAllNow()} — the whole {@code live-collision} tree (all revisions). */
@@ -57,7 +50,8 @@ public final class LiveCollisionPersistence {
         final File liveCollisionBase = new File(new File(RuneLite.RUNELITE_DIR, "microbot"), "live-collision");
         // Store key = game cache revision + capture-semantics version. A change to either sends the
         // store to a fresh directory; the old ones are inert and pruned by pruneStaleStores().
-        this.dir = new File(liveCollisionBase, cacheRevision + "-c" + CAPTURE_VERSION);
+        this.dir = new File(liveCollisionBase,
+                cacheRevision + "-c" + LiveCollisionCapture.CAPTURE_VERSION);
         this.deleteRoot = liveCollisionBase;
     }
 

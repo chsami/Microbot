@@ -1,0 +1,166 @@
+{
+  "candidateEngineId": "shortest-path-upstream@ff8e961b32120175709df9630ece9468cc11347f",
+  "evidenceShortfalls": [],
+  "failures": [],
+  "maximumCanaryNonSearchOverheadMillis": 250.0,
+  "maximumCanaryPlanningMillis": 2000.0,
+  "minimumArrivalsPerPhase": 10,
+  "minimumComparisonsPerPhase": 10,
+  "normal": {
+    "canaryPerformance": {
+      "localSearchNanosMax": 195612938,
+      "localSearchNanosTotal": 1306019743,
+      "nonSearchOverheadAverageMs": 172.0033795,
+      "planningAverageMs": 304.3032568,
+      "planningLocalRatio": 2.330005028109288,
+      "planningMaxMs": 645.703232,
+      "planningNanosMax": 645703232,
+      "planningNanosTotal": 3043032568,
+      "planningSamples": 10,
+      "upstreamSearchNanosMax": 3398986,
+      "upstreamSearchNanosTotal": 16979030,
+      "upstreamSearchSamples": 10
+    },
+    "coverage": {
+      "ACTIVE_ROUTE": {
+        "completed": 10,
+        "divergences": 0,
+        "failures": 0,
+        "matches": 10
+      },
+      "UNDERGROUND_COORDINATES": {
+        "completed": 10,
+        "divergences": 0,
+        "failures": 0,
+        "matches": 10
+      }
+    },
+    "execution": {
+      "arrived": 10,
+      "exited": 0,
+      "recoveryArrived": 0,
+      "recoveryExited": 0,
+      "recoveryTerminal": 0,
+      "recoveryUnreachable": 0,
+      "terminal": 10,
+      "unreachable": 0
+    },
+    "routes": [
+      {
+        "id": "F2P-17",
+        "repetitions": 5,
+        "status": "PASS",
+        "successfulAttempts": 5
+      }
+    ],
+    "selectedRoutes": [
+      "F2P-17"
+    ],
+    "startedAtEpochMillis": 1785954308178,
+    "status": "PASS",
+    "totals": {
+      "completed": 10,
+      "discarded": 0,
+      "divergences": 0,
+      "failures": 0,
+      "localFallbackDivergences": 0,
+      "localFallbackFailures": 0,
+      "matches": 10,
+      "pending": 0,
+      "routeShapeDifferences": 0,
+      "staleResults": 0,
+      "submitted": 10,
+      "upstreamCanarySelections": 10
+    },
+    "transportExecutors": {
+      "OBJECT": {
+        "completed": 10,
+        "divergences": 0,
+        "failures": 0,
+        "matches": 10
+      }
+    }
+  },
+  "requiredRoutes": [
+    "F2P-17"
+  ],
+  "reviewedCommit": "ff8e961b32120175709df9630ece9468cc11347f",
+  "rollback": {
+    "canaryPerformance": {
+      "localSearchNanosMax": 300513979,
+      "localSearchNanosTotal": 1373533694,
+      "nonSearchOverheadAverageMs": 123.42671,
+      "planningAverageMs": 260.78007940000003,
+      "planningLocalRatio": 1.8986070785097173,
+      "planningMaxMs": 675.124258,
+      "planningNanosMax": 675124258,
+      "planningNanosTotal": 2607800794,
+      "planningSamples": 10,
+      "upstreamSearchNanosMax": 0,
+      "upstreamSearchNanosTotal": 0,
+      "upstreamSearchSamples": 0
+    },
+    "coverage": {
+      "ACTIVE_ROUTE": {
+        "completed": 10,
+        "divergences": 0,
+        "failures": 10,
+        "matches": 0
+      },
+      "UNDERGROUND_COORDINATES": {
+        "completed": 10,
+        "divergences": 0,
+        "failures": 10,
+        "matches": 0
+      }
+    },
+    "execution": {
+      "arrived": 10,
+      "exited": 0,
+      "recoveryArrived": 0,
+      "recoveryExited": 0,
+      "recoveryTerminal": 0,
+      "recoveryUnreachable": 0,
+      "terminal": 10,
+      "unreachable": 0
+    },
+    "routes": [
+      {
+        "id": "F2P-17",
+        "repetitions": 5,
+        "status": "PASS",
+        "successfulAttempts": 5
+      }
+    ],
+    "selectedRoutes": [
+      "F2P-17"
+    ],
+    "startedAtEpochMillis": 1785954482113,
+    "status": "PASS",
+    "totals": {
+      "completed": 10,
+      "discarded": 0,
+      "divergences": 0,
+      "failures": 10,
+      "localFallbackDivergences": 0,
+      "localFallbackFailures": 10,
+      "matches": 0,
+      "pending": 0,
+      "routeShapeDifferences": 0,
+      "staleResults": 0,
+      "submitted": 10,
+      "upstreamCanarySelections": 0
+    },
+    "transportExecutors": {
+      "OBJECT": {
+        "completed": 10,
+        "divergences": 0,
+        "failures": 10,
+        "matches": 0
+      }
+    }
+  },
+  "schemaVersion": 1,
+  "verdict": "ACCEPTED",
+  "warnings": []
+}

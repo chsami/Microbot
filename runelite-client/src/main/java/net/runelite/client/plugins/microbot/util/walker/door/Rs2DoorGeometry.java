@@ -16,11 +16,17 @@ public final class Rs2DoorGeometry {
     }
 
     public static boolean isDoorOnSegment(TileObject object, WorldPoint fromWp, WorldPoint toWp) {
-        if (object == null || object.getWorldLocation() == null) return false;
+        return isDoorOnSegment(object, object == null ? null : object.getWorldLocation(), fromWp, toWp);
+    }
+
+    /** As above, with the object's location supplied (see {@link #wallDoorTouchesSegment}). */
+    public static boolean isDoorOnSegment(TileObject object, WorldPoint objectLocation,
+                                          WorldPoint fromWp, WorldPoint toWp) {
+        if (object == null || objectLocation == null) return false;
         if (object instanceof WallObject) {
-            return wallDoorTouchesSegment((WallObject) object, fromWp, toWp);
+            return wallDoorTouchesSegment((WallObject) object, objectLocation, fromWp, toWp);
         }
-        return isPointNearSegment(object.getWorldLocation(), fromWp, toWp, 1);
+        return isPointNearSegment(objectLocation, fromWp, toWp, 1);
     }
 
     public static boolean isDoorInteractionWithinRange(TileObject object, WorldPoint probe,
@@ -47,10 +53,22 @@ public final class Rs2DoorGeometry {
     }
 
     public static boolean wallDoorTouchesSegment(WallObject wall, WorldPoint fromWp, WorldPoint toWp) {
-        if (wall == null || wall.getWorldLocation() == null || fromWp == null || toWp == null) return false;
-        if (wall.getWorldLocation().getPlane() != fromWp.getPlane() || fromWp.getPlane() != toWp.getPlane()) return false;
+        return wallDoorTouchesSegment(wall, wall == null ? null : wall.getWorldLocation(), fromWp, toWp);
+    }
 
-        WorldPoint doorTile = wall.getWorldLocation();
+    /**
+     * As above, but with the wall's location supplied by the caller. The door probe runs this over
+     * every wall in the scene snapshot for every route segment, and the location-less form resolved
+     * {@code getWorldLocation()} three times per call — measured at 1219ms of {@code doorProbe} in a
+     * single scan even after the segment-independent predicates were memoised. The scan already
+     * captured every object's location on the client thread, so pass it in.
+     */
+    public static boolean wallDoorTouchesSegment(WallObject wall, WorldPoint wallLocation,
+                                                 WorldPoint fromWp, WorldPoint toWp) {
+        if (wall == null || wallLocation == null || fromWp == null || toWp == null) return false;
+        if (wallLocation.getPlane() != fromWp.getPlane() || fromWp.getPlane() != toWp.getPlane()) return false;
+
+        WorldPoint doorTile = wallLocation;
         // A door panel can advertise a blocked edge on either orientation; check both so a
         // legitimately-on-path door is never missed.
         WorldPoint blockedNeighborA = getWallDoorNeighborPoint(wall.getOrientationA(), doorTile);

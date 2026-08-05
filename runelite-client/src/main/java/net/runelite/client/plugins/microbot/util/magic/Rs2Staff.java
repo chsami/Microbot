@@ -6,8 +6,10 @@ import net.runelite.api.gameval.ItemID;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -40,7 +42,10 @@ public enum Rs2Staff {
     MYSTIC_MUD_STAFF(ItemID.MYSTIC_MUD_STAFF, List.of(Runes.WATER, Runes.EARTH)),
     MYSTIC_SMOKE_STAFF(ItemID.MYSTIC_SMOKE_BATTLESTAFF, List.of(Runes.AIR, Runes.FIRE)),
     MYSTIC_STEAM_STAFF(ItemID.MYSTIC_STEAM_BATTLESTAFF, List.of(Runes.WATER, Runes.FIRE)),
-    TWINFLAME_STAFF(ItemID.TWINFLAME_STAFF, List.of(Runes.FIRE, Runes.WATER));
+    TWINFLAME_STAFF(ItemID.TWINFLAME_STAFF, List.of(Runes.FIRE, Runes.WATER)),
+    BRYOPHYTAS_STAFF(ItemID.NATURE_STAFF_CHARGED, List.of(Runes.NATURE)),
+    SHADOWFLAME_QUADRANT(ItemID.SHADOWFLAME_QUADRANT,
+            List.of(Runes.AIR, Runes.WATER, Runes.EARTH, Runes.FIRE));
 
     private final int itemID;
     private final List<Runes> runes;
@@ -49,7 +54,22 @@ public enum Rs2Staff {
             .filter(s -> s != NONE)
             .collect(Collectors.toMap(Rs2Staff::getItemID, Function.identity()));
 
-    static Rs2Staff byItemId(int itemID) {
+    public boolean provides(Runes rune) {
+        if (rune == null) return false;
+        if (runes.contains(rune)) return true;
+        Runes[] baseRunes = rune.getBaseRunes();
+        return baseRunes.length > 0 && runes.containsAll(Arrays.asList(baseRunes));
+    }
+
+    public static Set<Integer> itemIdsProviding(Runes rune) {
+        LinkedHashSet<Integer> itemIds = Arrays.stream(values())
+                .filter(staff -> staff != NONE && staff.provides(rune))
+                .map(Rs2Staff::getItemID)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        return Collections.unmodifiableSet(itemIds);
+    }
+
+    public static Rs2Staff byItemId(int itemID) {
         return BY_ITEM_ID.getOrDefault(itemID, NONE);
     }
 }

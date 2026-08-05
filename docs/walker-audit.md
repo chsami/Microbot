@@ -2,6 +2,10 @@
 
 _Audit date: 2026-07-25. Scope: `shortestpath/` (pathfinding) and `util/walker/` (runtime execution)._
 
+> Historical audit. The maintained direction and current status are in
+> [`walker-roadmap.md`](walker-roadmap.md). In particular, live collision now defaults on and the
+> upstream collision baseline has moved since this snapshot.
+
 ## Verdict
 
 **Path *generation* is healthy. The runtime *executor* is the problem, and collision-map

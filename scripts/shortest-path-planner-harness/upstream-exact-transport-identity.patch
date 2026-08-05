@@ -1,0 +1,232 @@
+diff --git a/src/main/java/shortestpath/pathfinder/CollisionMap.java b/src/main/java/shortestpath/pathfinder/CollisionMap.java
+index c9a147d..f51c234 100644
+--- a/src/main/java/shortestpath/pathfinder/CollisionMap.java
++++ b/src/main/java/shortestpath/pathfinder/CollisionMap.java
+@@ -144,7 +144,8 @@ public class CollisionMap
+ 				config.getAdditionalTransportCost(transport) + chainPenalty,
+ 				pathBankVisited,
+ 				delayedVisit,
+-				delayedVisit ? config.getDifferentialCost(transport) : 0));
++				delayedVisit ? config.getDifferentialCost(transport) : 0,
++				transport));
+ 		}
+ 
+ 		// Global teleports are only considered from an abstract node, so each
+@@ -258,7 +259,8 @@ public class CollisionMap
+ 				config.getAdditionalTransportCost(transport),
+ 				bankVisited,
+ 				delayedVisit,
+-				differentialCost));
++				differentialCost,
++				transport));
+ 		}
+ 		return neighbors;
+ 	}
+diff --git a/src/main/java/shortestpath/pathfinder/NodeGraph.java b/src/main/java/shortestpath/pathfinder/NodeGraph.java
+index 2ec3c07..013334c 100644
+--- a/src/main/java/shortestpath/pathfinder/NodeGraph.java
++++ b/src/main/java/shortestpath/pathfinder/NodeGraph.java
+@@ -5,6 +5,7 @@ import java.util.Arrays;
+ import java.util.List;
+ 
+ import shortestpath.WorldPointUtil;
++import shortestpath.transport.Transport;
+ 
+ /**
+  * Structure-of-Arrays store for pathfinding nodes.
+@@ -57,6 +58,7 @@ public class NodeGraph
+ 	private int[] differentialCost;
+ 	private byte[] flags;
+ 	private byte[] abstractKind;
++	private Transport[] transport;
+ 	private int size;
+ 
+ 	public NodeGraph(int initialCapacity)
+@@ -68,6 +70,7 @@ public class NodeGraph
+ 		differentialCost = new int[capacity];
+ 		flags = new byte[capacity];
+ 		abstractKind = new byte[capacity];
++		transport = new Transport[capacity];
+ 	}
+ 
+ 	public int size()
+@@ -91,9 +94,11 @@ public class NodeGraph
+ 		differentialCost = Arrays.copyOf(differentialCost, newCapacity);
+ 		flags = Arrays.copyOf(flags, newCapacity);
+ 		abstractKind = Arrays.copyOf(abstractKind, newCapacity);
++		transport = Arrays.copyOf(transport, newCapacity);
+ 	}
+ 
+-	private int append(int packed, int prev, int nodeCost, int diffCost, byte flagBits, byte kind)
++	private int append(int packed, int prev, int nodeCost, int diffCost, byte flagBits, byte kind,
++		Transport selectedTransport)
+ 	{
+ 		ensureCapacity();
+ 		final int id = size;
+@@ -103,6 +108,7 @@ public class NodeGraph
+ 		differentialCost[id] = diffCost;
+ 		abstractKind[id] = kind;
+ 		flags[id] = flagBits;
++		transport[id] = selectedTransport;
+ 		size = id + 1;
+ 		return id;
+ 	}
+@@ -117,7 +123,7 @@ public class NodeGraph
+ 	 */
+ 	public int createStart(int packedPosition)
+ 	{
+-		return append(packedPosition, NO_NODE, 0, 0, (byte) 0, (byte) 0);
++		return append(packedPosition, NO_NODE, 0, 0, (byte) 0, (byte) 0, null);
+ 	}
+ 
+ 	/**
+@@ -131,7 +137,7 @@ public class NodeGraph
+ 			? WorldPointUtil.distanceBetween(this.packedPosition[previous], packedPosition)
+ 			: 0;
+ 		final byte flagBits = bankVisited ? FLAG_BANK_VISITED : 0;
+-		return append(packedPosition, previous, costOf(previous) + travelTime, 0, flagBits, (byte) 0);
++		return append(packedPosition, previous, costOf(previous) + travelTime, 0, flagBits, (byte) 0, null);
+ 	}
+ 
+ 	/**
+@@ -139,7 +145,7 @@ public class NodeGraph
+ 	 * any additional cost; there is no walking-distance term (mirrors the old {@code TransportNode}).
+ 	 */
+ 	public int createTransport(int packedPosition, int previous, int travelTime, int additionalCost,
+-		boolean bankVisited, boolean delayedVisit, int differentialCost)
++		boolean bankVisited, boolean delayedVisit, int differentialCost, Transport selectedTransport)
+ 	{
+ 		byte flagBits = FLAG_TRANSPORT;
+ 		if (bankVisited)
+@@ -151,7 +157,7 @@ public class NodeGraph
+ 			flagBits |= FLAG_DELAYED_VISIT;
+ 		}
+ 		return append(packedPosition, previous, costOf(previous) + travelTime + additionalCost,
+-			differentialCost, flagBits, (byte) 0);
++			differentialCost, flagBits, (byte) 0, selectedTransport);
+ 	}
+ 
+ 	/**
+@@ -166,7 +172,7 @@ public class NodeGraph
+ 			flagBits |= FLAG_BANK_VISITED;
+ 		}
+ 		return append(WorldPointUtil.UNDEFINED, previous, costOf(previous), 0, flagBits,
+-			(byte) abstractKind.ordinal());
++			(byte) abstractKind.ordinal(), null);
+ 	}
+ 
+ 	public int packedPosition(int id)
+@@ -240,7 +246,8 @@ public class NodeGraph
+ 		final int[] prev = previous;
+ 		final int[] packed = packedPosition;
+ 		final byte[] flg = flags;
+-		if (prev == null || packed == null || flg == null || id == NO_NODE)
++		final Transport[] selectedTransports = transport;
++		if (prev == null || packed == null || flg == null || selectedTransports == null || id == NO_NODE)
+ 		{
+ 			return new ArrayList<>();
+ 		}
+@@ -269,7 +276,8 @@ public class NodeGraph
+ 		{
+ 			if ((flg[node] & FLAG_ABSTRACT) == 0)
+ 			{
+-				pathSteps.set(--i, new PathStep(packed[node], (flg[node] & FLAG_BANK_VISITED) != 0));
++				pathSteps.set(--i, new PathStep(packed[node],
++					(flg[node] & FLAG_BANK_VISITED) != 0, selectedTransports[node]));
+ 			}
+ 			node = prev[node];
+ 		}
+@@ -315,6 +323,7 @@ public class NodeGraph
+ 		differentialCost = null;
+ 		flags = null;
+ 		abstractKind = null;
++		transport = null;
+ 		size = 0;
+ 	}
+ }
+diff --git a/src/main/java/shortestpath/pathfinder/PathStep.java b/src/main/java/shortestpath/pathfinder/PathStep.java
+index 896d67f..77d3af6 100644
+--- a/src/main/java/shortestpath/pathfinder/PathStep.java
++++ b/src/main/java/shortestpath/pathfinder/PathStep.java
+@@ -1,16 +1,24 @@
+ package shortestpath.pathfinder;
+ 
+ import lombok.Getter;
++import shortestpath.transport.Transport;
+ 
+ @Getter
+ public final class PathStep
+ {
+ 	private final int packedPosition;
+ 	private final boolean bankVisited;
++	private final Transport transport;
+ 
+ 	public PathStep(int packedPosition, boolean bankVisited)
++	{
++		this(packedPosition, bankVisited, null);
++	}
++
++	public PathStep(int packedPosition, boolean bankVisited, Transport transport)
+ 	{
+ 		this.packedPosition = packedPosition;
+ 		this.bankVisited = bankVisited;
++		this.transport = transport;
+ 	}
+ }
+diff --git a/src/test/java/shortestpath/pathfinder/NodeGraphTest.java b/src/test/java/shortestpath/pathfinder/NodeGraphTest.java
+index 1ac3580..1188251 100644
+--- a/src/test/java/shortestpath/pathfinder/NodeGraphTest.java
++++ b/src/test/java/shortestpath/pathfinder/NodeGraphTest.java
+@@ -6,6 +6,8 @@ import static org.junit.Assert.assertTrue;
+ 
+ import org.junit.Test;
+ import shortestpath.WorldPointUtil;
++import shortestpath.transport.Transport;
++import shortestpath.transport.TransportType;
+ 
+ /**
+  * Pins down the cost formulas and flag bookkeeping of the structure-of-arrays node store so a
+@@ -86,7 +88,7 @@ public class NodeGraphTest
+ 		int travelTime = 6;
+ 		int additionalCost = 50;
+ 		int differentialCost = 4;
+-		int transport = graph.createTransport(destination, prev, travelTime, additionalCost, false, true, differentialCost);
++		int transport = graph.createTransport(destination, prev, travelTime, additionalCost, false, true, differentialCost, null);
+ 
+ 		// No walking-distance term for transports, unlike a walked tile.
+ 		assertEquals(graph.cost(prev) + travelTime + additionalCost, graph.cost(transport));
+@@ -101,14 +103,23 @@ public class NodeGraphTest
+ 	public void nonDelayedTransportHasNoDelayedFlagAndZeroDifferential()
+ 	{
+ 		NodeGraph graph = new NodeGraph(16);
+-		int start = graph.createStart(WorldPointUtil.packWorldPoint(3200, 3200, 0));
+-		int transport = graph.createTransport(WorldPointUtil.packWorldPoint(2800, 3400, 0), start, 6, 0, true, false, 0);
++		int origin = WorldPointUtil.packWorldPoint(3200, 3200, 0);
++		int destination = WorldPointUtil.packWorldPoint(2800, 3400, 0);
++		int start = graph.createStart(origin);
++		Transport selected = new Transport.TransportBuilder()
++			.origin(origin)
++			.destination(destination)
++			.type(TransportType.TRANSPORT)
++			.duration(6)
++			.build();
++		int transport = graph.createTransport(destination, start, 6, 0, true, false, 0, selected);
+ 
+ 		assertTrue(graph.isTransport(transport));
+ 		assertFalse(graph.isDelayedVisit(transport));
+ 		assertEquals(0, graph.differentialCost(transport));
+ 		assertEquals(graph.cost(transport), graph.compareCost(transport));
+ 		assertTrue(graph.bankVisited(transport));
++		assertTrue(selected == graph.getPathSteps(transport).get(1).getTransport());
+ 	}
+ 
+ 	@Test
+@@ -121,7 +132,7 @@ public class NodeGraphTest
+ 		int start = graph.createStart(a);
+ 		int tile = graph.createTile(b, start, false);
+ 		int abstractNode = graph.createAbstract(AbstractNodeKind.GLOBAL_TELEPORTS_NORMAL, tile, false);
+-		int teleportDest = graph.createTransport(c, abstractNode, 6, 0, false, false, 0);
++		int teleportDest = graph.createTransport(c, abstractNode, 6, 0, false, false, 0, null);
+ 
+ 		var steps = graph.getPathSteps(teleportDest);
+ 		assertEquals(3, steps.size()); // start, tile, teleportDest (abstract is skipped)

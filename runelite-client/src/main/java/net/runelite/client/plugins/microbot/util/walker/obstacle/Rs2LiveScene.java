@@ -2,13 +2,10 @@ package net.runelite.client.plugins.microbot.util.walker.obstacle;
 
 import net.runelite.api.TileObject;
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.walker.Rs2PathApi;
 
-import java.util.Collections;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Live-client implementation of {@link LiveScene} — the read side of the P2 obstacle plumbing
@@ -39,14 +36,9 @@ public final class Rs2LiveScene implements LiveScene {
     }
 
     @Override
-    public Set<Transport> transportsAt(WorldPoint tile) {
-        final Map<WorldPoint, Set<Transport>> transports = Rs2PathApi.getTransports();
-        if (transports == null) {
-            return Collections.emptySet();
-        }
-        final Set<Transport> at = transports.get(tile);
-        return at == null ? Collections.emptySet() : at;
-    }
+	public boolean hasTransportAt(WorldPoint tile) {
+		return Rs2PathApi.hasCatalogTransportOrigin(tile);
+	}
 
     @Override
     public TileObject objectAt(WorldPoint tile) {

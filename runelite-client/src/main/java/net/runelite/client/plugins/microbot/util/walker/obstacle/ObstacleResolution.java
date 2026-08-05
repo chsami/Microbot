@@ -2,6 +2,8 @@ package net.runelite.client.plugins.microbot.util.walker.obstacle;
 
 import net.runelite.api.coords.WorldPoint;
 
+import java.util.Objects;
+
 /**
  * Outcome of an {@link ObstacleResolver} inspecting/handling a {@link PlannedEdge}. One result type for
  * every obstacle kind (door / rockfall / shortcut / transport), so the walker's recovery has a single
@@ -56,7 +58,8 @@ public final class ObstacleResolution {
     }
 
     public static ObstacleResolution walkToOrigin(WorldPoint target) {
-        return new ObstacleResolution(Kind.WALK_TO_ORIGIN, target, null);
+        return new ObstacleResolution(Kind.WALK_TO_ORIGIN,
+                Objects.requireNonNull(target, "target"), null);
     }
 
     public static ObstacleResolution abort(String reason) {

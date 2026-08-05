@@ -1,22 +1,21 @@
 package net.runelite.client.plugins.microbot.util.walker.lifecycle;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.Player;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.shortestpath.pathfinder.Pathfinder;
 import net.runelite.client.plugins.microbot.util.walker.Rs2PathApi;
+import net.runelite.client.plugins.microbot.util.walker.Rs2PlannerShadowContext;
+import net.runelite.client.plugins.microbot.util.walker.Rs2RouteRequest;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.ui.overlay.worldmap.WorldMapPoint;
 import net.runelite.client.ui.overlay.worldmap.WorldMapPointManager;
 
 import java.util.Set;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
+import java.util.Objects;
 
 @Slf4j
 public final class Rs2WalkerLifecycleRuntime {
@@ -25,6 +24,24 @@ public final class Rs2WalkerLifecycleRuntime {
     }
 
     public static void applyWalkerDestination(WorldPoint target) {
+        applyWalkerDestination(target, false);
+    }
+
+    /** Apply a destination while retaining whether the request was a recovery/replan. */
+    public static void applyWalkerDestination(WorldPoint target, boolean replan) {
+		applyWalkerDestination(target, replan
+				? Rs2PlannerShadowContext.Invocation.ACTIVE_REPLAN
+				: Rs2PlannerShadowContext.Invocation.ACTIVE_ROUTE);
+	}
+
+	/** Apply a destination with explicit, evidence-only invocation classification. */
+	public static void applyWalkerDestination(
+			WorldPoint target,
+			Rs2PlannerShadowContext.Invocation invocation) {
+        Objects.requireNonNull(invocation, "invocation");
+		if (invocation == Rs2PlannerShadowContext.Invocation.SYNCHRONOUS_QUERY) {
+			throw new IllegalArgumentException("active destination cannot be a synchronous query");
+		}
         if (target == null) {
             return;
         }
@@ -74,12 +91,12 @@ public final class Rs2WalkerLifecycleRuntime {
             }
             return Rs2Player.getWorldLocation();
         });
-        final Pathfinder pathfinder = Rs2PathApi.getPathfinder();
-        final WorldPoint effectiveStart = (Rs2PathApi.isStartPointSet() && pathfinder != null)
-                ? pathfinder.getStart()
+        final WorldPoint effectiveStart = Rs2PathApi.isStartPointSet()
+                ? Rs2PathApi.getActiveRouteStart().orElse(start)
                 : start;
         Rs2PathApi.setLastLocation(effectiveStart);
-        Microbot.getClientThread().runOnSeperateThread(() -> restartPathfinding(effectiveStart, target));
+        Microbot.getClientThread().runOnSeperateThread(
+                () -> restartPathfinding(effectiveStart, Set.of(target), invocation));
     }
 
     public static boolean restartPathfinding(WorldPoint start, WorldPoint end) {
@@ -87,53 +104,25 @@ public final class Rs2WalkerLifecycleRuntime {
     }
 
     public static boolean restartPathfinding(WorldPoint start, Set<WorldPoint> ends) {
-        Pathfinder pathfinder = Rs2PathApi.getPathfinder();
-        if (pathfinder != null) {
-            pathfinder.cancel();
-            if (Rs2PathApi.getPathfinderFuture() != null) {
-                Rs2PathApi.getPathfinderFuture().cancel(true);
-            }
-        }
+        return restartPathfinding(
+                start, ends, Rs2PlannerShadowContext.Invocation.ACTIVE_ROUTE);
+    }
 
-        if (Rs2PathApi.getPathfindingExecutor() == null) {
-            ThreadFactory shortestPathNaming = new ThreadFactoryBuilder().setNameFormat("shortest-path-%d").build();
-            Rs2PathApi.setPathfindingExecutor(Executors.newSingleThreadExecutor(shortestPathNaming));
+    private static boolean restartPathfinding(
+            WorldPoint start,
+            Set<WorldPoint> ends,
+            Rs2PlannerShadowContext.Invocation invocation) {
+        if (start == null || ends == null || ends.isEmpty()) {
+            return false;
         }
-
         WorldPoint refreshTarget = ends != null && !ends.isEmpty() ? ends.iterator().next() : null;
-        Rs2PathApi.getPathfinderConfig().refresh(refreshTarget);
-        if (Rs2Player.isInCave()) {
-            pathfinder = new Pathfinder(Rs2PathApi.getPathfinderConfig(), start, ends);
-            pathfinder.run();
-            try {
-                Rs2PathApi.getPathfinderConfig().setIgnoreTeleportAndItems(true);
-                Pathfinder pathfinderWithoutTeleports = new Pathfinder(Rs2PathApi.getPathfinderConfig(), start, ends);
-                pathfinderWithoutTeleports.run();
-
-                boolean noTeleportPathAvailable = !pathfinderWithoutTeleports.getPath().isEmpty();
-                boolean basePathAvailable = pathfinder != null && !pathfinder.getPath().isEmpty();
-                if (!noTeleportPathAvailable) {
-                    Rs2PathApi.setPathfinder(basePathAvailable ? pathfinder : pathfinderWithoutTeleports);
-                    return true;
-                }
-
-                WorldPoint lastPath = pathfinderWithoutTeleports.getPath().get(pathfinderWithoutTeleports.getPath().size() - 1);
-                int reachedDistance = Rs2Walker.config != null ? Rs2Walker.config.reachedDistance() : 10;
-                boolean pathWithoutTeleportsIsReachable = lastPath.distanceTo(ends.stream().findFirst().orElse(lastPath)) <= reachedDistance;
-                if (pathWithoutTeleportsIsReachable
-                        && basePathAvailable
-                        && pathfinder.getPath().size() >= pathfinderWithoutTeleports.getPath().size()) {
-                    Rs2PathApi.setPathfinder(pathfinderWithoutTeleports);
-                } else {
-                    Rs2PathApi.setPathfinder(basePathAvailable ? pathfinder : pathfinderWithoutTeleports);
-                }
-            } finally {
-                Rs2PathApi.getPathfinderConfig().setIgnoreTeleportAndItems(false);
-            }
-        } else {
-            Rs2PathApi.setPathfinder(new Pathfinder(Rs2PathApi.getPathfinderConfig(), start, ends));
-            Rs2PathApi.setPathfinderFuture(Rs2PathApi.getPathfindingExecutor().submit(Rs2PathApi.getPathfinder()));
-        }
-        return true;
+        int reachedDistance = Rs2Walker.config != null ? Rs2Walker.config.reachedDistance() : 10;
+        return Rs2PathApi.restartActiveRoute(
+                Rs2RouteRequest.toAny(start, ends)
+                        .withRefreshTarget(refreshTarget)
+                        .withRefreshPolicy(Rs2RouteRequest.RefreshPolicy.ALWAYS),
+                Rs2Player.isInCave(),
+                reachedDistance,
+                invocation);
     }
 }

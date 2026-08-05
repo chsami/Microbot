@@ -67,23 +67,28 @@ public final class Rs2ObstacleHandler {
 
     /** Mines a Motherlode rockfall blocking {@code path[index]}/{@code path[index + 1]} if present. */
     public static RockfallResult handleRockfall(List<WorldPoint> path, int index) {
-        if (Rs2PathApi.getPathfinder() == null) return RockfallResult.NOT_APPLICABLE;
+        if (path == null || path.isEmpty() || index < 0 || index >= path.size()) {
+            return RockfallResult.NOT_APPLICABLE;
+        }
+        if (!Rs2PathApi.getActiveRouteStatus().isPresent()) return RockfallResult.NOT_APPLICABLE;
 
         if (index == path.size() - 1) return RockfallResult.NOT_APPLICABLE;
-
-        // If we are in instance, ignore checking RegionID
-        if (Microbot.getClient().getTopLevelWorldView().isInstance()) return RockfallResult.NOT_APPLICABLE;
 
         WorldPoint playerLoc = Rs2Player.getWorldLocation();
         if (playerLoc == null) return RockfallResult.NOT_APPLICABLE;
 
+        // In an instance the region IDs are the instance template's, not MOTHERLODE_MINE_REGION, so the
+        // region gates below would reject every tile. Skip the region checks while instanced and rely on
+        // the rockfall object-id check to stay correct; outside instances keep the MLM region restriction.
+        final boolean inInstance = Microbot.getClient().getTopLevelWorldView().isInstance();
+
         final int lastCandidate = Math.min(index + 1, path.size() - 1);
-        if (!isMotherlodeRockfallCandidate(playerLoc, path, index)) return RockfallResult.NOT_APPLICABLE;
+        if (!inInstance && !isMotherlodeRockfallCandidate(playerLoc, path, index)) return RockfallResult.NOT_APPLICABLE;
 
         // Check current index & next index for rockfall
         for (int rockIndex = index; rockIndex <= lastCandidate; rockIndex++) {
             var point = path.get(rockIndex);
-            if (point == null || point.getRegionID() != MOTHERLODE_MINE_REGION) continue;
+            if (point == null || (!inInstance && point.getRegionID() != MOTHERLODE_MINE_REGION)) continue;
 
             TileObject object = null;
             var tile = Rs2GameObject.getTiles(3).stream()

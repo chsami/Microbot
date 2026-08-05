@@ -2,9 +2,6 @@ package net.runelite.client.plugins.microbot.util.walker.obstacle;
 
 import net.runelite.api.TileObject;
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.client.plugins.microbot.shortestpath.Transport;
-
-import java.util.Set;
 
 /**
  * Read-only snapshot of the live world an {@link ObstacleResolver} needs to classify a {@link PlannedEdge},
@@ -21,8 +18,8 @@ public interface LiveScene {
     /** Whether {@code tile} is walk-reachable from the player right now (live-scene collision BFS). */
     boolean isReachable(WorldPoint tile);
 
-    /** Transports whose origin is {@code tile} (stairs/ladders/shortcuts/teleports), or empty. */
-    Set<Transport> transportsAt(WorldPoint tile);
+	/** Whether a transport starts at {@code tile} (stairs/ladders/shortcuts/teleports). */
+	boolean hasTransportAt(WorldPoint tile);
 
     /** The top interactable object on {@code tile} (door/gate/rockfall/…), or {@code null} if none. */
     TileObject objectAt(WorldPoint tile);

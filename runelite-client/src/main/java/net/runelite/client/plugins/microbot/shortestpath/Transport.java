@@ -16,6 +16,11 @@ import java.util.*;
  */
 @Slf4j
 public class Transport {
+    public static final int TOTAL_LEVEL_INDEX = Skill.values().length;
+    public static final int COMBAT_LEVEL_INDEX = TOTAL_LEVEL_INDEX + 1;
+    public static final int QUEST_POINTS_INDEX = COMBAT_LEVEL_INDEX + 1;
+    public static final int REQUIREMENT_LEVEL_COUNT = QUEST_POINTS_INDEX + 1;
+
     //START microbot variables
     @Getter
 	@Setter
@@ -46,7 +51,7 @@ public class Transport {
      * The skill levels required to use this transport
      */
     @Getter
-    private final int[] skillLevels = new int[Skill.values().length];
+    private final int[] skillLevels = new int[REQUIREMENT_LEVEL_COUNT];
 
     /**
      * The quests required to use this transport
@@ -55,13 +60,18 @@ public class Transport {
     private Map<Quest, QuestState> quests = new HashMap<>();
 
     /**
-     * The ids of items required to use this transport.
-     * If the player has **any** of the matching list of items,
-     * this transport is valid
+     * Compatibility view of the item IDs required to use this transport. New code should use
+     * {@link #getItemRequirements()} so AND groups and quantities are not discarded.
      */
     @Getter
-    @Setter
     private Set<Set<Integer>> itemIdRequirements = new HashSet<>();
+
+    /**
+     * Lossless item requirements. Entries are AND-ed; alternatives within an entry are OR-ed.
+     * {@link #itemIdRequirements} remains as the compatibility view used by older callers.
+     */
+    @Getter
+    private List<TransportItemRequirement> itemRequirements = new ArrayList<>();
 
     /**
      * The type of transport
@@ -138,6 +148,8 @@ public class Transport {
 
         this.itemIdRequirements.addAll(origin.itemIdRequirements);
         this.itemIdRequirements.addAll(destination.itemIdRequirements);
+        this.itemRequirements.addAll(origin.itemRequirements);
+        this.itemRequirements.addAll(destination.itemRequirements);
 
         this.type = origin.type;
 
@@ -186,7 +198,13 @@ public class Transport {
      * Object interaction Transport constructor
      */
     public Transport(WorldPoint origin, WorldPoint destination, String displayInfo, TransportType transportType, boolean isMember, String action, String target, int objectId) {
-        this(origin, destination, displayInfo, transportType, isMember, 1);
+		this(origin, destination, displayInfo, transportType, isMember, action, target, objectId, 1);
+	}
+
+	/** Object interaction transport with an explicit planner cost in ticks. */
+	public Transport(WorldPoint origin, WorldPoint destination, String displayInfo, TransportType transportType,
+	                 boolean isMember, String action, String target, int objectId, int duration) {
+		this(origin, destination, displayInfo, transportType, isMember, duration);
         this.action = action;
         this.name = target;
         this.objectId = objectId;
@@ -198,7 +216,7 @@ public class Transport {
     public Transport(WorldPoint destination, String displayInfo, TransportType transportType, boolean isMember, int maxWildernessLevel, Set<Set<Integer>> itemIdRequirements) {
         this(null, destination, displayInfo, transportType, isMember, 1);
         this.maxWildernessLevel = maxWildernessLevel;
-        this.itemIdRequirements = itemIdRequirements != null ? new HashSet<>(itemIdRequirements) : new HashSet<>();
+        setItemIdRequirements(itemIdRequirements);
     }
 
     /**
@@ -244,10 +262,17 @@ public class Transport {
         if ((value = fieldMap.get("menuOption menuTarget objectID")) != null && !value.trim().isEmpty()) {
             value = value.trim(); // Remove leading/trailing spaces
 
-            // Regex pattern for semicolon-separated values
-            String regex = "^([^;]+);([^;]+);(\\d+)$";
-            java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(regex);
-            java.util.regex.Matcher matcher = pattern.matcher(value);
+            // Microbot historically used semicolons while upstream uses whitespace. In the
+            // whitespace form the option is one token, the object id is the final numeric token,
+            // and the target may contain spaces.
+            java.util.regex.Matcher matcher = java.util.regex.Pattern
+                    .compile("^([^;]+);([^;]+);(\\d+)$")
+                    .matcher(value);
+            if (!matcher.matches()) {
+                matcher = java.util.regex.Pattern
+                        .compile("^(\\S+)\\s+(.+?)\\s+(\\d+)$")
+                        .matcher(value);
+            }
 
             if (matcher.matches()) {
                 // Extract matched groups
@@ -276,14 +301,14 @@ public class Transport {
             String[] skillRequirements = value.split(DELIM_MULTI);
 
             for (String requirement : skillRequirements) {
-                String[] levelAndSkill = requirement.split(DELIM);
+                String[] levelAndSkill = requirement.trim().split("\\s+", 2);
 
                 if (levelAndSkill.length < 2) {
                     continue;
                 }
 
                 int level = Integer.parseInt(levelAndSkill[0]);
-                String skillName = levelAndSkill[1];
+                String skillName = levelAndSkill[1].trim();
 
                 Skill[] skills = Skill.values();
                 for (int i = 0; i < skills.length; i++) {
@@ -292,19 +317,36 @@ public class Transport {
                         break;
                     }
                 }
+                String normalizedSkillName = skillName.toLowerCase(Locale.ROOT);
+                if (normalizedSkillName.startsWith("total")) {
+                    skillLevels[TOTAL_LEVEL_INDEX] = level;
+                } else if (normalizedSkillName.startsWith("combat")) {
+                    skillLevels[COMBAT_LEVEL_INDEX] = level;
+                } else if (normalizedSkillName.startsWith("quest")) {
+                    skillLevels[QUEST_POINTS_INDEX] = level;
+                }
             }
         }
 
-        if ((value = fieldMap.get("Item IDs")) != null && !value.trim().isEmpty()) {
-            String[] itemIdsList = value.split(DELIM_MULTI);
-            for (String listIds : itemIdsList) {
-                Set<Integer> multiitemList = new HashSet<>();
-                String[] itemIds = listIds.split(DELIM);
-                for (String item : itemIds) {
-                    int itemId = Integer.parseInt(item);
-                    multiitemList.add(itemId);
+        if ((value = fieldMap.get("Items")) != null && !value.trim().isEmpty()) {
+            setItemRequirements(TransportItemRequirement.parseRequirements(value));
+        } else if ((value = fieldMap.get("Item IDs")) != null && !value.trim().isEmpty()) {
+            if (value.contains("=") || value.contains("&") || value.contains("|")) {
+                setItemRequirements(TransportItemRequirement.parseRequirements(value));
+            } else {
+                Set<Set<Integer>> legacyGroups = new LinkedHashSet<>();
+                for (String listIds : value.split(DELIM_MULTI)) {
+                    Set<Integer> group = new LinkedHashSet<>();
+                    for (String item : listIds.trim().split("\\s+")) {
+                        if (!item.isEmpty()) {
+                            group.add(Integer.parseInt(item));
+                        }
+                    }
+                    if (!group.isEmpty()) {
+                        legacyGroups.add(group);
+                    }
                 }
-                itemIdRequirements.add(multiitemList);
+                setItemIdRequirements(legacyGroups);
             }
         }
 
@@ -376,7 +418,11 @@ public class Transport {
             }
         }
 
-        if ((value = fieldMap.get("Varplayers")) != null && !value.trim().isEmpty()) {
+        value = fieldMap.get("Varplayers");
+        if ((value == null || value.trim().isEmpty())) {
+            value = fieldMap.get("VarPlayers");
+        }
+        if (value != null && !value.trim().isEmpty()) {
             for (String varplayerCheck : value.split(DELIM_MULTI)) {
                 if (varplayerCheck.isBlank()) {
                     continue;
@@ -426,6 +472,53 @@ public class Transport {
      */
     private int getRequiredLevel(Skill skill) {
         return skillLevels[skill.ordinal()];
+    }
+
+    public int getRequiredTotalLevel() {
+        return skillLevels[TOTAL_LEVEL_INDEX];
+    }
+
+    public int getRequiredCombatLevel() {
+        return skillLevels[COMBAT_LEVEL_INDEX];
+    }
+
+    public int getRequiredQuestPoints() {
+        return skillLevels[QUEST_POINTS_INDEX];
+    }
+
+    /**
+     * Updates the legacy compatibility view. Historically every ID in this structure was treated as
+     * an alternative, regardless of its nested set, so preserve that behavior as one OR requirement.
+     */
+    public void setItemIdRequirements(Set<Set<Integer>> requirements) {
+        Set<Set<Integer>> copied = new LinkedHashSet<>();
+        Set<Integer> alternatives = new LinkedHashSet<>();
+        if (requirements != null) {
+            for (Set<Integer> group : requirements) {
+                if (group == null || group.isEmpty()) {
+                    continue;
+                }
+                Set<Integer> copiedGroup = new LinkedHashSet<>(group);
+                copied.add(Collections.unmodifiableSet(copiedGroup));
+                alternatives.addAll(copiedGroup);
+            }
+        }
+        this.itemIdRequirements = copied;
+        this.itemRequirements = alternatives.isEmpty()
+                ? new ArrayList<>()
+                : new ArrayList<>(Collections.singletonList(
+                        TransportItemRequirement.legacyAlternatives(alternatives)));
+    }
+
+    private void setItemRequirements(List<TransportItemRequirement> requirements) {
+        this.itemRequirements = requirements == null
+                ? new ArrayList<>()
+                : new ArrayList<>(requirements);
+        Set<Set<Integer>> compatibility = new LinkedHashSet<>();
+        for (TransportItemRequirement requirement : this.itemRequirements) {
+            compatibility.add(Collections.unmodifiableSet(new LinkedHashSet<>(requirement.getAllItemIds())));
+        }
+        this.itemIdRequirements = compatibility;
     }
 
     /**
@@ -639,6 +732,7 @@ public class Transport {
                 ", skillLevels=" + Arrays.toString(skillLevels) +
                 ", quests=" + quests +
                 ", itemIdRequirements=" + itemIdRequirements +
+                ", itemRequirements=" + itemRequirements +
                 ", type=" + type +
                 ", duration=" + duration +
                 ", displayInfo='" + displayInfo + '\'' +

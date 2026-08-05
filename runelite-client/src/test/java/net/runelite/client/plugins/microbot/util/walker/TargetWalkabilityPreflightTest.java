@@ -44,15 +44,15 @@ public class TargetWalkabilityPreflightTest {
                 map.isBlocked(BURIED_IN_ROCK.getX(), BURIED_IN_ROCK.getY(), 0));
         assertFalse("a goal with no walkable tile within the arrival distance must be rejected "
                         + "before the walk starts",
-                Rs2Walker.hasWalkableTileWithin(map, BURIED_IN_ROCK, 5));
+                Rs2PathApi.hasWalkableTileWithin(map, BURIED_IN_ROCK, 5));
     }
 
     @Test
     public void legitimateUndergroundTargetsAreAccepted() {
         assertTrue("the last walkable tile in the corridor must still be accepted",
-                Rs2Walker.hasWalkableTileWithin(map, LAST_WALKABLE, 5));
+                Rs2PathApi.hasWalkableTileWithin(map, LAST_WALKABLE, 5));
         assertTrue("the Motherlode cave mouth is a valid destination and must not be rejected",
-                Rs2Walker.hasWalkableTileWithin(map, MLM_CAVE_MOUTH, 5));
+                Rs2PathApi.hasWalkableTileWithin(map, MLM_CAVE_MOUTH, 5));
     }
 
     /**
@@ -65,22 +65,22 @@ public class TargetWalkabilityPreflightTest {
         assertFalse("precondition: this region genuinely has no collision data",
                 map.hasRegion(offMap.getX(), offMap.getY()));
         assertTrue("no collision data must mean 'let the pathfinder try', not 'unreachable'",
-                Rs2Walker.hasWalkableTileWithin(map, offMap, 5));
+                Rs2PathApi.hasWalkableTileWithin(map, offMap, 5));
         assertTrue("a null map must never block a walk",
-                Rs2Walker.hasWalkableTileWithin(null, BURIED_IN_ROCK, 5));
+                Rs2PathApi.hasWalkableTileWithin(null, BURIED_IN_ROCK, 5));
     }
 
     /** A generous arrival distance reaches real ground, so the same goal becomes acceptable. */
     @Test
     public void aLargeArrivalDistanceReachesWalkableGround() {
-        assertFalse(Rs2Walker.hasWalkableTileWithin(map, BURIED_IN_ROCK, 5));
+        assertFalse(Rs2PathApi.hasWalkableTileWithin(map, BURIED_IN_ROCK, 5));
         assertTrue("with a 40 tile tolerance the corridor is inside the search box",
-                Rs2Walker.hasWalkableTileWithin(map, BURIED_IN_ROCK, 40));
+                Rs2PathApi.hasWalkableTileWithin(map, BURIED_IN_ROCK, 40));
     }
 
     @Test
     public void theRejectionPointsAtTheNearestRealTile() {
-        WorldPoint nearest = Rs2Walker.nearestWalkableTile(map, BURIED_IN_ROCK, 48);
+        WorldPoint nearest = Rs2PathApi.nearestWalkableTile(map, BURIED_IN_ROCK, 48);
         assertNotNull("the warning must name a concrete tile so the coordinate can be corrected",
                 nearest);
         assertFalse("the suggested tile must itself be walkable",

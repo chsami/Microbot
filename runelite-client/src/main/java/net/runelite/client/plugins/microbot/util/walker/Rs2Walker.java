@@ -19,9 +19,6 @@ import net.runelite.client.plugins.devtools.MovementFlag;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
 import net.runelite.client.plugins.microbot.shortestpath.*;
-import net.runelite.client.plugins.microbot.shortestpath.pathfinder.CollisionMap;
-import net.runelite.client.plugins.microbot.shortestpath.pathfinder.Pathfinder;
-import net.runelite.client.plugins.microbot.shortestpath.pathfinder.PathfinderConfig;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
@@ -50,6 +47,7 @@ import net.runelite.client.plugins.microbot.util.leaguetransport.SeasonalTranspo
 import net.runelite.client.plugins.microbot.util.logging.Rs2LogRateLimit;
 import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import org.slf4j.event.Level;
 import net.runelite.client.plugins.microbot.util.poh.PohTeleports;
 import net.runelite.client.plugins.microbot.util.poh.PohTransport;
@@ -88,7 +86,7 @@ import java.awt.*;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Future;
+import java.util.concurrent.TimeoutException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.concurrent.TimeUnit;
@@ -112,11 +110,7 @@ import static net.runelite.client.plugins.microbot.util.Global.*;
 public class Rs2Walker {
     @Setter
     public static ShortestPathConfig config;
-    static int stuckCount = 0;
-    static WorldPoint lastPosition;
-    static long lastMovedTimeMs = 0;
-    /** Rising-edge detection for {@link #checkIfStuck()} animation progress without tile delta. */
-    private static boolean prevAnimatingForStuckCheck = false;
+    // stuck/movement tracking state migrated to WalkerRouteState (see routeState)
     static volatile WorldPoint currentTarget;
     static int nextWalkingDistance = 10;
 
@@ -136,9 +130,9 @@ public class Rs2Walker {
 	 */
 	// interim-target state migrated to WalkerRouteState (see routeState)
 
-	/** Cooldown so partial-segment in-transit {@link #recalculatePath()} does not spam. */
-	private static volatile long lastPartialTransRecalcMs = 0L;
 	private static final long PARTIAL_TRANS_RECAL_COOLDOWN_MS = 3500L;
+	/** A single delayed client tick must not turn an otherwise healthy blocking walk into EXIT. */
+	private static final int CLIENT_THREAD_TIMEOUT_RETRIES = 2;
 
 	private static final int INTERIM_CLOSE_TILES = 5;
 
@@ -152,18 +146,36 @@ public class Rs2Walker {
 	private static final int INTERIM_RUN_PRECLICK_TILES = 8;
 	private static final int INTERIM_MOVING_POLL_MS = 450;
 	private static final long INTERIM_PROGRESS_TIMEOUT_MS = 2500L;
+	/**
+	 * How much further than its closest approach the player may get from an interim checkpoint before
+	 * it counts as abandoned. Wide enough to tolerate rounding a wall or a corner on the way to it.
+	 */
+	private static final int INTERIM_ABANDON_MARGIN_TILES = 4;
 	private static final long INTERIM_MAX_AGE_MS = 10_000L;
 	private static final long INTERIM_RETARGET_COOLDOWN_MS = 900L;
     private static final long ROUTE_PROGRESS_STALL_GRACE_MS = 4_000L;
     private static final long OFF_PATH_RECALC_RECENT_MOVEMENT_MS = 2_000L;
     private static final long OFF_PATH_RECALC_ROUTE_PROGRESS_GRACE_MS = 3_500L;
     private static final long OFF_PATH_RECALC_MINIMAP_CLICK_GRACE_MS = 2_500L;
+    // Busy state (moving/animating/interacting) only defers the off-path recalc and only
+    // preempts recovery clicks while the walker plausibly CAUSED it — within this window of
+    // the walker's last issued click or interaction. A single minimap click moves the player
+    // for at most ~8s (13 tiles, walking), so anything past 10s is external movement: combat
+    // retaliation, aggro pathing, another script. Unbounded "moving" deferral let ogre combat
+    // drag a player a tile per second for 27s while the walker stayed fully passive.
+    private static final long WALKER_MOVEMENT_OWNERSHIP_WINDOW_MS = 10_000L;
     private static final int OFF_PATH_RECALC_DEFER_WAIT_MIN_MS = 250;
     private static final int OFF_PATH_RECALC_DEFER_WAIT_MAX_MS = 1_200;
     private static final long RAW_SCAN_DOOR_FOCUS_MAX_MS = 2200L;
     private static final int RAW_SCAN_DOOR_FOCUS_MAX_ATTEMPTS = 3;
     private static final long DOOR_POST_INTERACT_SETTLE_MS = 900L;
     private static final long DOOR_EDGE_SKIP_COOLDOWN_MS = 700L;
+    /** Longest the walker will hold off re-clicking a door while an unanswered option menu is up. */
+    private static final long DOOR_DIALOGUE_DEFER_MAX_MS = 5_000L;
+    /** Above this, a single transport object scan is worth naming in the log. */
+    private static final long TRANSPORT_OBJECT_SCAN_SLOW_MS = 400L;
+    /** Furthest a door may be and still be opened while the player is mid-walk toward it. */
+    private static final int DOOR_APPROACH_INTERACT_MAX_TILES = 4;
     private static final long RECOVERY_MOVEMENT_IN_FLIGHT_MS = 3_500L;
     private static final long DOOR_TRAVERSAL_RECOVERY_BLOCK_MS = 2_200L;
     private static final long POST_DOOR_NUDGE_RECENT_ATTEMPT_MS = 6_000L;
@@ -209,11 +221,20 @@ public class Rs2Walker {
      */
     private static final long ACTIVE_ROUTE_IDLE_NUDGE_MS = 1_200L;
 	private static final long ACTIVE_ROUTE_IDLE_NUDGE_COOLDOWN_MS = 2_000L;
+    /**
+     * How long after a door-recovery-suppressed tick the idle nudge stays disabled. Rolling — the suppress
+     * branch re-stamps it every tick the door stays unresolved, so the nudge is held off for the whole
+     * suppression episode plus this tail. Long enough to cover the door cooldowns that cause suppression;
+     * short enough that a genuinely abandoned door (player walked away, route replanned) frees the nudge.
+     */
+    private static final long DOOR_SUPPRESS_NUDGE_HOLDOFF_MS = 6_000L;
 	private static final long POST_TRANSPORT_PATH_TMARK_WINDOW_MS = 15_000L;
+	/** Floor for the post-plane-change settle sleep, so an unbounded Gaussian draw cannot go negative. */
+	private static final int MIN_PLANE_CHANGE_SETTLE_MS = 60;
 	private static final int ROUTE_PROGRESS_FORWARD_SEARCH_TILES = 40;
 
 	/**
-	 * How long to wait for {@code Rs2PathApi.getPathfinder()} to become non-null at route start.
+	 * How long to wait for an active route to be published at route start.
 	 * <p>
 	 * The pathfinder is only published <em>after</em> {@code PathfinderConfig.refresh()} completes
 	 * (see {@code Rs2WalkerLifecycleRuntime.restartPathfinding}), and a cache-missing refresh has been
@@ -231,11 +252,16 @@ public class Rs2Walker {
     private static final int POST_TRANSPORT_RAW_SCAN_TRANSPORT_MAX_DIST = 15;
     private static final long TRANSPORT_POST_INTERACT_SETTLE_MS = 900L;
     private static final long RECENT_TRANSPORT_EDGE_SUPPRESS_MS = 8_000L;
-    private static volatile Integer rawScanFocusedDoorIdx = null;
-    private static volatile long rawScanFocusedDoorSetAtMs = 0L;
-    private static volatile int rawScanFocusedDoorAttempts = 0;
-    private static volatile long doorInteractionSettleUntilMs = 0L;
-    private static volatile long lastDoorEdgePassSkipAtMs = 0L;
+    // door-interaction state migrated to WalkerRouteState (see routeState)
+    /**
+     * Minimum settle after a door/transport interaction before the early exit may fire: one game tick of
+     * post-action state flux (position sync, object state update). The 900ms constants above remain the
+     * CEILING for when the early-exit signal never confirms — previously they were the fixed cost of every
+     * single door and transport, because the transport early-exit compared against where the player stood
+     * when the transport was marked handled (always true while standing at the destination) and the door
+     * settle had no early exit at all.
+     */
+    private static final long POST_INTERACT_SETTLE_MIN_MS = 300L;
     // misc route-timer state migrated to WalkerRouteState (see routeState)
     /**
      * Consolidated route state (P1 walker decomposition, enabling step). Fields are migrated here in
@@ -282,6 +308,7 @@ public class Rs2Walker {
     /** After scene-object transport {@link #handleObject} — landing poll timeout + matching warn (cf. {@link #SHIP_NPC_BOAT_LANDING_WAIT_MS}). */
     private static final int POST_HANDLE_OBJECT_LANDING_WAIT_MS = 5_000;
     private static final int POST_HANDLE_OBJECT_FAILED_SETTLE_MS = 800;
+    private static final int AL_KHARID_TOLL_INTERACTION_START_WAIT_MS = 2_500;
 
     /** Teleport “already near destination” skip in path loop — same semantics as prior {@code distanceTo2D &lt; 3}. */
     private static final int TELEPORT_NEAR_SKIP_CHEBYSHEV = 3;
@@ -319,12 +346,23 @@ public class Rs2Walker {
     }
 
     private static void markWalkSessionStart(WorldPoint target) {
+		testRecoveryReplanRequests.set(0);
+		WalkEvidenceContext evidence = walkEvidenceContext.get();
+		if (evidence != null)
+		{
+			evidence.started = true;
+		}
         routeState.walkSessionStartedAtMs = System.currentTimeMillis();
         routeState.firstMovementClickMarked = false;
         startupPhasesLogged.clear();
+        TERMINAL_TRAVEL_ATTEMPTED_EDGES.clear();
         routeState.lastTransportHandledAtLocation = null;
         routeState.lastTransportOriginLocation = null;
         routeState.lastTransportDestinationLocation = null;
+        // The interim target belongs to the PREVIOUS route's click; letting it survive into a fresh walk
+        // makes the new walk yield to (and report progress against) a stale objective — repeatedly seen as
+        // interim=<old goal> camping at Clock Tower when the script restarts walks every ~40s.
+        clearInterimTarget("walk-start");
         resetRouteProgress();
         synchronized (expectedTransportDestinations) {
             expectedTransportDestinations.clear();
@@ -371,7 +409,10 @@ public class Rs2Walker {
         if (elapsed < 0L || elapsed > POST_TRANSPORT_PATH_TMARK_WINDOW_MS) {
             return;
         }
-        WebWalkLog.tmark(phase, elapsed, target, Rs2Player.getWorldLocation(), detail);
+        // These exist to explain a post-transport pass, not to report an outcome, and they fire several
+        // times per pass for the whole 15s window. At INFO they were the bulk of the walker's console
+        // output; the verbose toggle brings them back when someone is actually reading them.
+        WebWalkLog.tmarkDebug(phase, elapsed, target, Rs2Player.getWorldLocation(), detail);
     }
 
     private enum WalkerPhase {
@@ -488,6 +529,17 @@ public class Rs2Walker {
         if (routeState.firstMovementClickMarked) {
             return WalkerPhase.STEADY;
         }
+        // Taking a transport IS the walker acting. The startup phase holds the broad handlers back
+        // until the walker has committed to the route, but it only ever advanced on a MOVEMENT CLICK
+        // — so a walk that begins standing on a staircase origin never clicks, never leaves STARTUP,
+        // and keeps the broad handlers suppressed through every FURTHER transport. Measured: at
+        // (2958,3337,p2), two tiles from the next staircase origin, the raw scan reported
+        // why=policy-startup three passes running until the idle nudge walked onto the origin.
+        // Scoped to this walk session, since lastTransportHandledAtMs deliberately outlives it.
+        long sessionStartedAtMs = routeState.walkSessionStartedAtMs;
+        if (sessionStartedAtMs > 0L && routeState.lastTransportHandledAtMs >= sessionStartedAtMs) {
+            return WalkerPhase.STEADY;
+        }
         return WalkerPhase.STARTUP;
     }
 
@@ -591,6 +643,12 @@ public class Rs2Walker {
      */
     // routeState.suppressTryDirectShortWalkUntilMs migrated to WalkerRouteState (see routeState)
     private static final long POST_DOOR_NUDGE_SUPPRESS_TRY_DIRECT_MS = 2200L;
+    /**
+     * Hold-off when the door opened but no canvas nudge was issued (the mid-route case). Long enough that
+     * the next beat is not on the door interaction's own tick, short enough that the walk does not stall
+     * waiting for a scene click that was never made.
+     */
+    private static final long POST_DOOR_NO_NUDGE_SUPPRESS_TRY_DIRECT_MS = 500L;
 
     /** Max wait after scene canvas / recovery clicks until movement stops (avoids minimap churn while in-flight). */
     private static final int POST_SCENE_WALK_IDLE_WAIT_MS_MAX = 10_000;
@@ -648,54 +706,22 @@ public class Rs2Walker {
      * the nearest reachable tile and then reported {@code partial-retries-exhausted}, which reads
      * as a walker fault rather than a bad coordinate.
      *
-     * <p><b>Permissive by design.</b> An unmapped region reads as fully blocked (see
-     * {@link CollisionMap#hasRegion}), so every ambiguous case returns {@code true} and lets the
+     * <p><b>Permissive by design.</b> An unmapped collision region reads as fully blocked, so every
+     * ambiguous case returns {@code true} and lets the
      * pathfinder decide. Only a target sitting in mapped, wholly blocked terrain is rejected —
      * otherwise this would refuse instances and any region missing from the collision map.
      */
-    static boolean hasWalkableTileWithin(CollisionMap map, WorldPoint target, int distance) {
-        if (map == null || target == null) {
-            return true;
-        }
-        if (!map.hasRegion(target.getX(), target.getY())) {
-            return true;
-        }
-        int radius = Math.max(0, distance);
-        for (int dx = -radius; dx <= radius; dx++) {
-            for (int dy = -radius; dy <= radius; dy++) {
-                int x = target.getX() + dx;
-                int y = target.getY() + dy;
-                if (!map.hasRegion(x, y)) {
-                    return true;
-                }
-                if (!map.isBlocked(x, y, target.getPlane())) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    /** Nearest walkable tile to {@code target} within {@code maxRadius}, or null. Diagnostics only. */
-    static WorldPoint nearestWalkableTile(CollisionMap map, WorldPoint target, int maxRadius) {
-        if (map == null || target == null) {
-            return null;
-        }
-        for (int r = 1; r <= maxRadius; r++) {
-            for (int dx = -r; dx <= r; dx++) {
-                for (int dy = -r; dy <= r; dy++) {
-                    if (Math.max(Math.abs(dx), Math.abs(dy)) != r) {
-                        continue; // ring only; inner rings already scanned
-                    }
-                    int x = target.getX() + dx;
-                    int y = target.getY() + dy;
-                    if (map.hasRegion(x, y) && !map.isBlocked(x, y, target.getPlane())) {
-                        return new WorldPoint(x, y, target.getPlane());
-                    }
-                }
-            }
-        }
-        return null;
+    /**
+     * Whether the pathfinder's collision map considers this tile standable.
+     *
+     * <p>Anyone <em>choosing</em> a destination should filter candidates through this. {@link #walkTo}
+     * pre-flights the target and rejects it outright when nothing walkable lies within the arrival
+     * distance, so picking an unwalkable tile fails the entire walk rather than degrading to something
+     * close by. The scene's own notion of walkability and this map do not always agree — the Corsair
+     * Cove staircase approach at (2531,2834) reads walkable in the scene and blocked here.
+     */
+    public static boolean isWalkableInCollisionMap(WorldPoint tile) {
+        return Rs2PathApi.hasWalkableTileWithin(tile, 0);
     }
 
     /** Door / gate from main path loop vs {@link #handleNearbyRawPathSceneObjects} raw-path scan (same nudge UX). */
@@ -746,38 +772,39 @@ public class Rs2Walker {
         }
     }
 
-    private static void maybeCanvasNudgeAfterDoor(WorldPoint goal, int configuredDistance, List<WorldPoint> path) {
+    /** @return true only when a canvas click was actually issued, so the caller can size its minimap hold-off. */
+    private static boolean maybeCanvasNudgeAfterDoor(WorldPoint goal, int configuredDistance, List<WorldPoint> path) {
         if (goal == null || path == null || path.isEmpty()) {
-            return;
+            return false;
         }
         WorldPoint p = Rs2Player.getWorldLocation();
         if (p == null || goal.getPlane() != p.getPlane()) {
-            return;
+            return false;
         }
         if (isWalkCancelled(goal)) {
-            return;
+            return false;
         }
         WorldPoint pathLast = path.get(path.size() - 1);
         int finishTh = tightFinishThreshold(goal, pathLast, configuredDistance);
         int dGoal = p.distanceTo2D(goal);
         if (dGoal <= finishTh) {
-            return;
+            return false;
         }
         // Only nudge with fast-canvas when we are effectively on the final approach.
         // This avoids immediate scene-click jumps after ordinary mid-route door opens.
         if (dGoal > finishTh + FINAL_ADJACENT_CANVAS_NUDGE_CHEBYSHEV) {
-            return;
+            return false;
         }
         if (dGoal > DOOR_OPEN_CANVAS_NUDGE_MAX_GOAL_DIST) {
-            return;
+            return false;
         }
         LocalPoint goalLocal = LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), goal);
         if (goalLocal == null || !Rs2Camera.isTileOnScreen(goalLocal)) {
-            return;
+            return false;
         }
         Map<WorldPoint, Integer> around = Rs2Tile.getReachableTilesFromTile(goal, DOOR_OPEN_CANVAS_NUDGE_GOAL_SAMPLE_RADIUS);
         if (around == null || around.isEmpty()) {
-            return;
+            return false;
         }
         List<WorldPoint> candidates = new ArrayList<>();
         for (WorldPoint t : around.keySet()) {
@@ -790,16 +817,18 @@ public class Rs2Walker {
             candidates.add(t);
         }
         if (candidates.isEmpty()) {
-            return;
+            return false;
         }
         // candidates non-empty: index range [0, size-1] is valid for betweenInclusive.
         WorldPoint pick = candidates.get(Rs2Random.betweenInclusive(0, candidates.size() - 1));
         if (walkFastCanvas(pick)) {
             log.debug("[Walker] door nudge: canvas -> {} (goal={} dGoal={})", pick, goal, dGoal);
             waitUntilIdleAfterSceneWalk(goal, POST_SCENE_WALK_IDLE_WAIT_MS_MAX, goal, finishTh);
-            lastMovedTimeMs = System.currentTimeMillis();
-            stuckCount = 0;
+            routeState.lastMovedTimeMs = System.currentTimeMillis();
+            routeState.stuckCount = 0;
+            return true;
         }
+        return false;
     }
 
     private static void traceProcessWalkExit(String reason, WorldPoint target, int processWalkTail) {
@@ -810,7 +839,7 @@ public class Rs2Walker {
                 target,
                 activeTarget,
                 routeState.interimTargetWp,
-                stuckCount,
+                routeState.stuckCount,
                 processWalkTail,
                 MAX_PROCESS_WALK_TAIL_ITERATIONS,
                 Thread.currentThread().isInterrupted(),
@@ -875,7 +904,7 @@ public class Rs2Walker {
     public static boolean disableTeleports = false;
 
     // Serializes stateful walker entry points so concurrent scripts don't corrupt
-    // stuckCount / lastPosition / lastMovedTimeMs / currentTarget / nextWalkingDistance.
+    // routeState.stuckCount / routeState.lastPosition / routeState.lastMovedTimeMs / currentTarget / nextWalkingDistance.
     // Reentrant: same-thread dispatch (walkWithState -> walkWithBankedTransportsAndState
     // -> walkWithStateInternal -> recursive processWalk) reacquires freely.
     // setTarget() stays unlocked — cross-thread cancel; volatile currentTarget read in the loop
@@ -890,6 +919,51 @@ public class Rs2Walker {
      * context and therefore retain their exact behaviour.</p>
      */
     private static final ThreadLocal<WalkCompletionContext> walkCompletionContext = new ThreadLocal<>();
+	private static final ThreadLocal<WalkEvidenceContext> walkEvidenceContext = new ThreadLocal<>();
+	private static final AtomicInteger testRecoveryReplanRequests = new AtomicInteger();
+
+	private static final class WalkEvidenceContext
+	{
+		private boolean started;
+		private boolean comparisonEligible;
+		private boolean recoveryTriggered;
+	}
+
+	private static void captureActiveRouteComparisonEligibility(long routeGeneration)
+	{
+		WalkEvidenceContext evidence = walkEvidenceContext.get();
+		if (evidence != null && !evidence.comparisonEligible
+			&& Rs2PathApi.isActiveRouteComparisonEligible(routeGeneration))
+		{
+			evidence.comparisonEligible = true;
+		}
+	}
+
+	private static WalkerState withShadowExecutionEvidence(Supplier<WalkerState> action)
+	{
+		WalkEvidenceContext existing = walkEvidenceContext.get();
+		if (existing != null)
+		{
+			return action.get();
+		}
+		WalkEvidenceContext evidence = new WalkEvidenceContext();
+		walkEvidenceContext.set(evidence);
+		try
+		{
+			WalkerState result = Objects.requireNonNull(action.get(), "walker result");
+			if (evidence.started)
+			{
+				Rs2PathApi.recordShadowWalkerOutcome(
+					result, evidence.recoveryTriggered, evidence.comparisonEligible);
+			}
+			return result;
+		}
+		finally
+		{
+			testRecoveryReplanRequests.set(0);
+			walkEvidenceContext.remove();
+		}
+	}
 
     private static final class WalkCompletionContext {
         private final WorldPoint target;
@@ -911,6 +985,8 @@ public class Rs2Walker {
     private static final Set<String> SEASONAL_HANDLER_MISS_LOGGED = ConcurrentHashMap.newKeySet();
     private static final AtomicInteger SEASONAL_HANDLER_MISS_LOGGED_COUNT = new AtomicInteger(0);
     private static final int SEASONAL_HANDLER_MISS_LOG_CAP = 128;
+    /** Terminal NPC edges already clicked during the current top-level walk invocation. */
+    private static final Set<String> TERMINAL_TRAVEL_ATTEMPTED_EDGES = ConcurrentHashMap.newKeySet();
     /**
      * One-shot DEBUG when {@link WorldMapPointManager} is null during route clear (shutdown race).
      * Later races same JVM stay silent — intentional noise cap.
@@ -923,7 +999,9 @@ public class Rs2Walker {
         SEASONAL_HANDLER_MISS_LOGGED.clear();
         SEASONAL_HANDLER_MISS_LOGGED_COUNT.set(0);
         WORLD_MAP_REMOVE_NULL_LOGGED.set(false);
+        testRecoveryReplanRequests.set(0);
         recentCurrentTileTransportByEdge.clear();
+        TERMINAL_TRAVEL_ATTEMPTED_EDGES.clear();
         clearRecentTransportContext();
         resetRouteProgress();
     }
@@ -1054,14 +1132,18 @@ public class Rs2Walker {
 
         public static void recordUnreachable(String cause, WorldPoint player, WorldPoint target,
                                              WorldPoint pathEndpoint, int pathSize, int distanceThreshold,
-                                             Pathfinder pathfinder) {
+                                             Rs2RouteMetrics routeMetrics) {
             unreachableCount.incrementAndGet();
             lastReason = "unreachable:" + cause;
             lastEventAtMs.set(System.currentTimeMillis());
             int distToTarget = (pathEndpoint != null && target != null) ? pathEndpoint.distanceTo(target) : -1;
-            Pathfinder.PathfinderStats pfStats = (pathfinder != null) ? pathfinder.getStats() : null;
-            String stats = (pfStats != null) ? pfStats.toString() : "null";
-            log.warn("[WalkerTelemetry] UNREACHABLE cause={} player={} target={} pathEndpoint={} pathSize={} endpointToTarget={} threshold={} pathfinderStats={} totalUnreachable={}",
+            String stats = routeMetrics == null ? "null" : String.format(
+                    "RouteMetrics(nodes=%d,transports=%d,time=%dms,cost=%d)",
+                    routeMetrics.getNodesChecked(),
+                    routeMetrics.getTransportsChecked(),
+                    routeMetrics.hasSearchNanos() ? routeMetrics.getSearchNanos() / 1_000_000L : -1L,
+                    routeMetrics.getPathCost());
+            log.warn("[WalkerTelemetry] UNREACHABLE cause={} player={} target={} pathEndpoint={} pathSize={} endpointToTarget={} threshold={} routeMetrics={} totalUnreachable={}",
                     cause, player, target, pathEndpoint, pathSize, distToTarget, distanceThreshold, stats, unreachableCount.get());
         }
 
@@ -1233,11 +1315,9 @@ public class Rs2Walker {
             }
         }
         try {
-            if (config.walkWithBankedTransports()) {
-                return walkWithBankedTransportsAndState(target, distance, false);
-            } else {
-                return walkWithStateInternal(target, distance);
-            }
+			return withShadowExecutionEvidence(() -> config.walkWithBankedTransports()
+					? walkWithBankedTransportsAndStateLocked(target, distance, false)
+					: walkWithStateInternal(target, distance));
         } finally {
             walkerLock.unlock();
         }
@@ -1296,11 +1376,9 @@ public class Rs2Walker {
         }
         try
         {
-            if (config.walkWithBankedTransports())
-            {
-                return walkWithBankedTransportsAndStateLocked(target, distance, false);
-            }
-            return walkWithStateInternal(target, distance);
+			return withShadowExecutionEvidence(() -> config.walkWithBankedTransports()
+					? walkWithBankedTransportsAndStateLocked(target, distance, false)
+					: walkWithStateInternal(target, distance));
         }
         finally
         {
@@ -1333,21 +1411,20 @@ public class Rs2Walker {
             return WalkerState.ARRIVED;
         }
 
-        final Pathfinder pathfinder = Rs2PathApi.getPathfinder();
-        if (pathfinder != null && !pathfinder.isDone()) {
+        final Rs2ActiveRouteStatus routeStatus = Rs2PathApi.getActiveRouteStatus();
+        if (routeStatus.isCalculating()) {
             return WalkerState.MOVING;
         }
-        boolean hasCurrentPath = pathfinder != null
-                && pathfinder.isDone()
-                && pathfinder.getTargets().contains(target);
+        boolean hasCurrentPath = routeStatus.isReady()
+                && routeStatus.getTargets().contains(target);
         if (!hasCurrentPath) {
             setTarget(target);
         } else {
             currentTarget = target;
         }
         Rs2PathApi.setReachedDistance(distance);
-        stuckCount = 0;
-        lastMovedTimeMs = System.currentTimeMillis();
+        routeState.stuckCount = 0;
+        routeState.lastMovedTimeMs = System.currentTimeMillis();
 		routeState.interimTargetWp = null;
 		routeState.interimTargetIdx = -1;
 		routeState.interimSetAtMs = 0L;
@@ -1355,7 +1432,7 @@ public class Rs2Walker {
         routeState.interimLastBestPathIdx = -1;
         routeState.interimLastDistanceToTarget = Integer.MAX_VALUE;
         routeState.interimLastRetargetAtMs = 0L;
-        lastPartialTransRecalcMs = 0L;
+        routeState.lastPartialTransRecalcMs = 0L;
         routeState.idleNudgeLastObservedLocation = playerLocWalk;
         routeState.idleNudgeStationarySinceMs = System.currentTimeMillis();
         routeState.lastActiveRouteIdleNudgeAtMs = 0L;
@@ -1374,6 +1451,140 @@ public class Rs2Walker {
      */
     public static WalkerState walkWithState(WorldPoint target) {
         return walkWithState(target, reachedDistanceOrDefault());
+    }
+
+    /**
+     * Non-blocking single-step walk. Unlike {@link #walkWithState(WorldPoint, int)} — which owns the
+     * loop and blocks (via {@link #processWalk}) until it arrives or gives up — this advances the walk by
+     * at most one action and returns immediately. The caller owns the loop: call it every tick and it
+     * paths toward {@code target}, one minimap click at a time, so between calls the caller can re-check
+     * its own condition (e.g. "is the NPC in range yet?") and act the instant it is.
+     *
+     * <p>Return values: {@link WalkerState#ARRIVED} when within {@code distance} of {@code target};
+     * {@link WalkerState#MOVING} while still approaching (path computing, in transit, or a click issued);
+     * {@link WalkerState#UNREACHABLE} when no walkable path reaches within {@code distance};
+     * {@link WalkerState#EXIT} on a bad call (null target / client thread / no config).
+     *
+     * <p>Scope: plain approach-walking. It reuses the shared pathfinder + minimap machinery but NOT the
+     * full {@link #processWalk} transport/door/stuck-recovery pipeline, so a route that needs a transport
+     * or a door won't be driven here — use the blocking {@link #walkTo} for those. Clear the goal with
+     * {@link #setTarget(WorldPoint, String) setTarget(null, reason)} when you stop (e.g. once you interact).
+     */
+    public static WalkerState walkStep(WorldPoint target, int distance) {
+        if (config == null) {
+            return WalkerState.EXIT;
+        }
+        if (target == null) {
+            log.warn("[Walker] walkStep rejected: null target");
+            return WalkerState.EXIT;
+        }
+        if (isClientThread()) {
+            log.warn("Please do not call the walker from the main thread");
+            return WalkerState.EXIT;
+        }
+
+        WorldPoint playerLoc = Rs2Player.getWorldLocation();
+        if (playerLoc == null) {
+            return WalkerState.MOVING;
+        }
+
+        // Arrived? (mirrors walkWithStateInternal's arrival test)
+        int distToTarget = playerLoc.distanceTo(target);
+        LocalPoint localTarget = LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), target);
+        boolean walkableCheck = localTarget != null && Rs2Tile.isWalkable(localTarget);
+        boolean reachableTileCheck = distToTarget <= distance
+                && Rs2Tile.getReachableTilesFromTile(playerLoc, distance).containsKey(target);
+        if (reachableTileCheck || (!walkableCheck && distToTarget <= distance)) {
+            return WalkerState.ARRIVED;
+        }
+
+        // (Re)start pathfinding ONLY when the caller's goal changes. Do NOT re-target while the path is
+        // still computing — setTarget() restarts pathfinding, so re-calling it every tick would reset the
+        // pathfinder forever (path drawn, but never finished, so we never click).
+        if (currentTarget == null || !currentTarget.equals(target)) {
+            setTarget(target);
+            return WalkerState.MOVING;
+        }
+        Rs2ActiveRouteStatus routeStatus = Rs2PathApi.getActiveRouteStatus();
+        if (!routeStatus.isReady()) {
+            return WalkerState.MOVING; // path still computing — wait, don't reset it
+        }
+
+        // Already in transit toward the last click — let it resolve instead of spamming clicks.
+        if (Rs2Player.isMoving()) {
+            return WalkerState.MOVING;
+        }
+
+        final List<WorldPoint> rawPath = routeStatus.getRawPath();
+        final List<WorldPoint> path = routeStatus.getWalkablePath();
+        if (!walkStepPathReachesTarget(path, target, distance)) {
+            setTarget(null, "rs2walker:walkStep:no-walkable-path");
+            return WalkerState.UNREACHABLE;
+        }
+
+        // One minimap click toward the target (falls back to the furthest visible path point off-clip).
+        // Click the target on the minimap, else fall back to the furthest visible planned-path point.
+        // The geometric directional fallback (a straight-line b-line toward the target) is gated to NEAR
+        // targets only: for a far target it's never right and produces off-route drift. When neither the
+        // target nor a planned-path point is clickable (e.g. the route needs a transport walkStep can't
+        // cross), no click is issued and we hold on the line rather than wander off it — walkStep is not
+        // built for transport routes; use the blocking walkTo/walkUntil for those.
+        boolean allowDirectionalFallback = playerLoc.distanceTo(target) <= NORMAL_MINIMAP_REACH_EUCLIDEAN;
+        clickMiniMapOrFallback(rawPath, target, playerLoc, NORMAL_MINIMAP_REACH_EUCLIDEAN - 1, allowDirectionalFallback, -1);
+        return WalkerState.MOVING;
+    }
+
+    /** Wall-clock ms of the last walker heartbeat line. */
+    private static volatile long lastHeartbeatAtMs = 0L;
+    /** Minimum gap between heartbeat lines — one per second is enough to size a stall. */
+    private static final long WALKER_HEARTBEAT_INTERVAL_MS = 1_000L;
+
+    /**
+     * One throttled line per processWalk pass, so a silent stretch in the log can be told apart from a
+     * stalled one.
+     * <p>
+     * Two ten-second freezes before the same ladder were diagnosed twice from the log alone and both
+     * diagnoses were wrong — the scene-walk idle wait (its instrumentation never fired) and the interim
+     * target (it clears at 5 tiles and the player was 2 away). The reason both were guesses is that
+     * nothing logs in that window at all: the post_transport_* tmarks stop 15s after a transport, and
+     * everything else in the walk is event-driven. A heartbeat settles the question outright — if these
+     * lines appear across the gap the loop is spinning without acting and the state here says why, and
+     * if they stop the thread is blocked inside a wait and the last line says which pass entered it.
+     */
+    private static void walkerHeartbeat(WorldPoint target, int processWalkTail) {
+        long now = System.currentTimeMillis();
+        if (now - lastHeartbeatAtMs < WALKER_HEARTBEAT_INTERVAL_MS) {
+            return;
+        }
+        lastHeartbeatAtMs = now;
+        WorldPoint playerLoc = Rs2Player.getWorldLocation();
+        // DEBUG, not INFO: this fires every second for the whole of every walk, and it exists to
+        // diagnose stalls, not to narrate healthy ones. Behind the verbose toggle it costs nothing
+        // until someone is actually chasing a silent stretch in the log.
+        WebWalkLog.spDebug("walker_heartbeat | tail={} at={} goal={} moving={} animating={} interim={} interimAgeMs={} sinceMovedMs={} sinceDoorSettleMs={}",
+                processWalkTail,
+                compactWorldPoint(playerLoc), compactWorldPoint(target),
+                Rs2Player.isMoving(), Rs2Player.isAnimating(),
+                compactWorldPoint(routeState.interimTargetWp),
+                routeState.interimSetAtMs > 0L ? now - routeState.interimSetAtMs : -1L,
+                routeState.lastMovedTimeMs > 0L ? now - routeState.lastMovedTimeMs : -1L,
+                routeState.doorInteractionSettleStartedAtMs > 0L
+                        ? now - routeState.doorInteractionSettleStartedAtMs : -1L);
+    }
+
+    /**
+     * A completed pathfinder result is usable by {@link #walkStep(WorldPoint, int)} only when its
+     * endpoint reaches the requested arrival radius. A multi-tile partial path is still terminal for
+     * this non-blocking API: unlike {@link #processWalk}, walkStep has no partial-path retry loop, so
+     * accepting it would repeatedly click the same endpoint and report {@link WalkerState#MOVING}
+     * forever.
+     */
+    static boolean walkStepPathReachesTarget(List<WorldPoint> path, WorldPoint target, int distance) {
+        if (path == null || path.isEmpty() || target == null) {
+            return false;
+        }
+        WorldPoint endpoint = path.get(path.size() - 1);
+        return endpoint != null && endpoint.distanceTo(target) <= Math.max(0, distance);
     }
 
     /**
@@ -1405,10 +1616,8 @@ public class Rs2Walker {
         }
         // Pre-flight: a destination with no walkable tile within the arrival distance can never be
         // reached, so reject it here rather than after a full route ending at the nearest wall.
-        PathfinderConfig preflightConfig = Rs2PathApi.getPathfinderConfig();
-        CollisionMap preflightMap = preflightConfig != null ? preflightConfig.getMap() : null;
-        if (!hasWalkableTileWithin(preflightMap, target, distance)) {
-            WorldPoint nearestWalkable = nearestWalkableTile(preflightMap, target, 48);
+        if (!Rs2PathApi.hasWalkableTileWithin(target, distance)) {
+            WorldPoint nearestWalkable = Rs2PathApi.nearestWalkableTile(target, 48);
             log.warn("[Walker] walk rejected: target {} has no walkable tile within {} in the collision map"
                             + " (nearest walkable {}); check the destination coordinate",
                     target, distance,
@@ -1419,6 +1628,7 @@ public class Rs2Walker {
             return WalkerState.UNREACHABLE;
         }
         int partialRetriesWorking = partialRetries;
+        int clientThreadTimeoutRetries = 0;
         // When the last partial retry was spent, so route progress made after it can refill the
         // budget. Without this the counter is monotonic for the entire walk.
         long lastPartialRetryAtMs = 0L;
@@ -1431,6 +1641,7 @@ public class Rs2Walker {
         Map<WorldPoint, Integer> reachableTilesCache = null;
         WorldPoint reachableTilesCacheOrigin = null;
         for (int processWalkTail = 0; processWalkTail < MAX_PROCESS_WALK_TAIL_ITERATIONS; processWalkTail++) {
+        walkerHeartbeat(target, processWalkTail);
         try {
             walkerDiag("tail iteration begin idx=%d/%d target=%s current=%s interim=%s partialRetries=%d",
                     processWalkTail,
@@ -1448,15 +1659,19 @@ public class Rs2Walker {
                 return WalkerState.EXIT;
             }
 
-            Pathfinder pathfinder = Rs2PathApi.getPathfinder();
-            if (pathfinder == null) {
+            Rs2ActiveRouteStatus routeStatus = Rs2PathApi.getActiveRouteStatus();
+            if (!routeStatus.isPresent()) {
                 markStartupPhase("pf_wait_enter", target, "reason=pathfinder_null");
                 walkerDiag("pathfinder null; waiting up to %dms", PATHFINDER_NULL_WAIT_MS);
-                pathfinder = sleepUntilNotNull(Rs2PathApi::getPathfinder, PATHFINDER_NULL_WAIT_MS);
+                Rs2WalkerRuntimeAwaits.awaitCondition(
+                        () -> Rs2PathApi.getActiveRouteStatus().isPresent(),
+                        100,
+                        PATHFINDER_NULL_WAIT_MS);
+                routeStatus = Rs2PathApi.getActiveRouteStatus();
                 if (walkCancelledDiag(target, "processWalk:after-wait-pathfinder", processWalkTail)) {
                     return WalkerState.EXIT;
                 }
-                if (pathfinder == null) {
+                if (!routeStatus.isPresent()) {
                     if (currentTarget != null && currentTarget.equals(target)) {
                         walkerDiag("pathfinder null but target still set; recalculating");
                         recalculatePath();
@@ -1469,17 +1684,24 @@ public class Rs2Walker {
                 markStartupPhase("pf_ready", target, "source=pathfinder_not_null");
             }
 
-            if (!pathfinder.isDone()) {
+            if (routeStatus.isCalculating()) {
+                long observedGeneration = routeStatus.getGeneration();
                 markStartupPhase("pf_wait_retry", target, "slice=" + PATHFINDER_DONE_POLL_WAIT_MS);
                 if (pathfinderPendingSinceMs == 0L) {
                     pathfinderPendingSinceMs = System.currentTimeMillis();
                 }
                 walkerDiag("pathfinder not done; short-poll max %dms", PATHFINDER_DONE_POLL_WAIT_MS);
-                boolean isDone = Rs2WalkerRuntimeAwaits.awaitPathfinderDone(pathfinder, PATHFINDER_DONE_POLL_WAIT_MS);
+                Rs2WalkerRuntimeAwaits.awaitCondition(() -> {
+                    Rs2ActiveRouteStatus current = Rs2PathApi.getActiveRouteStatus();
+                    return !current.isPresent()
+                            || current.getGeneration() != observedGeneration
+                            || current.isReady();
+                }, 100, PATHFINDER_DONE_POLL_WAIT_MS);
+                routeStatus = Rs2PathApi.getActiveRouteStatus();
                 if (walkCancelledDiag(target, "processWalk:after-wait-done", processWalkTail)) {
                     return WalkerState.EXIT;
                 }
-                if (!isDone) {
+                if (!routeStatus.isReady()) {
                     if (System.currentTimeMillis() - pathfinderPendingSinceMs > 10_000L) {
                         traceProcessWalkExit("pathfinder-timeout-not-done", target, processWalkTail);
                         setTarget(null, "rs2walker:processWalk:pathfinder-timeout-not-done");
@@ -1494,13 +1716,21 @@ public class Rs2Walker {
                 markStartupPhase("pf_ready", target, "source=pathfinder_done");
             }
             pathfinderPendingSinceMs = 0L;
+			captureActiveRouteComparisonEligibility(routeStatus.getGeneration());
+
+			if (consumeRecoveryReplanForTest())
+			{
+				WebWalkLog.spDebug("test_recovery_replan | target={}", target);
+				recalculatePathForRecovery();
+				continue;
+			}
 
             if (Rs2PathApi.getMarker() == null) {
                 restoreTargetMarker(target);
             }
 
-            final List<WorldPoint> rawPath = pathfinder.getPath();
-            final List<WorldPoint> path = pathfinder.getWalkablePath();
+            final List<WorldPoint> rawPath = routeStatus.getRawPath();
+            final List<WorldPoint> path = routeStatus.getWalkablePath();
             final int[] smoothedToRaw = mapSmoothedToRaw(path, rawPath);
             int rawSize = rawPath == null ? -1 : rawPath.size();
             int walkSize = path == null ? -1 : path.size();
@@ -1520,7 +1750,8 @@ public class Rs2Walker {
                     partialPath = true;
                 } else {
                     Telemetry.recordUnreachable("no-walkable-path", walkLoop.playerLoc,
-                            target, dst, path == null ? 0 : path.size(), distance, pathfinder);
+                            target, dst, path == null ? 0 : path.size(), distance,
+                            routeStatus.getMetrics().orElse(null));
                     setTarget(null, "rs2walker:processWalk:no-walkable-path");
                     return WalkerState.UNREACHABLE;
                 }
@@ -1545,8 +1776,8 @@ public class Rs2Walker {
                             || (remainingSteps != Integer.MAX_VALUE && remainingSteps <= nearSegmentEndSteps);
                     if (approachingSegmentEnd && distToGoal > distance) {
                         long now = System.currentTimeMillis();
-                        if (now - lastPartialTransRecalcMs >= PARTIAL_TRANS_RECAL_COOLDOWN_MS) {
-                            lastPartialTransRecalcMs = now;
+                        if (now - routeState.lastPartialTransRecalcMs >= PARTIAL_TRANS_RECAL_COOLDOWN_MS) {
+                            routeState.lastPartialTransRecalcMs = now;
                             WebWalkLog.partialRecalc(
                                     remainingSteps == Integer.MAX_VALUE ? -1 : remainingSteps,
                                     distToDstSeg,
@@ -1576,7 +1807,7 @@ public class Rs2Walker {
             if (lastAttemptedMinimapClickOk && lastAttemptedMinimapClickAtMs > 0L
                     && !shouldIssueActiveRouteIdleNudge
                     && nowTickGraceMs - lastAttemptedMinimapClickAtMs < MINIMAP_CLICK_STALL_GRACE_MS) {
-                lastMovedTimeMs = nowTickGraceMs;
+                routeState.lastMovedTimeMs = nowTickGraceMs;
             }
 
             checkIfStuck();
@@ -1591,7 +1822,7 @@ public class Rs2Walker {
 				{
 					return WalkerState.MOVING;
 				}
-                long sinceMoved = System.currentTimeMillis() - lastMovedTimeMs;
+                long sinceMoved = System.currentTimeMillis() - routeState.lastMovedTimeMs;
                 long threshold = stallThresholdMs();
                 Telemetry.recordStallRecalc(sinceMoved, Rs2Player.getWorldLocation());
                 WebWalkLog.stallRecalc(sinceMoved, threshold,
@@ -1603,17 +1834,17 @@ public class Rs2Walker {
                             Math.max(0L, System.currentTimeMillis() - lastAttemptedMinimapClickAtMs),
                             routeState.interimTargetWp);
                 }
-                lastMovedTimeMs = System.currentTimeMillis();
-                stuckCount = 0;
+                routeState.lastMovedTimeMs = System.currentTimeMillis();
+                routeState.stuckCount = 0;
                 clearInterimTarget("stall-recalc");
                 if (immediateRouteTransportPending) {
                     WebWalkLog.spDebug("stall_recovery_suppressed | reason=immediate-route-transport idx={}", earlyRouteStartIdx);
                 } else if (!Rs2Player.isMoving() && !Rs2Player.isAnimating() && !Rs2Player.isInteracting()) {
-                    setTarget(target);
+					recalculatePathForRecovery();
                     tryIssueRouteRecoveryClick(rawPath, path, target, distance, "stall recovery click");
                     continue;
                 } else {
-                    setTarget(target);
+					recalculatePathForRecovery();
                     continue;
                 }
             }
@@ -1626,7 +1857,7 @@ public class Rs2Walker {
                 }
                 routeState.lastActiveRouteIdleNudgeAtMs = System.currentTimeMillis();
             }
-            if (stuckCount > 10) {
+            if (routeState.stuckCount > 10) {
                 var reachable = Rs2Tile.getReachableTilesFromTile(Rs2Player.getWorldLocation(), 5).keySet();
                 if (!reachable.isEmpty()) {
                     // Rank sidestep candidates by distance-toward-target so recovery
@@ -1635,9 +1866,12 @@ public class Rs2Walker {
                     // same blocked tile.
                     List<WorldPoint> ranked = rankSidestepTilesToward(reachable, target);
                     int poolSize = Math.min(3, ranked.size());
-                    walkMiniMap(ranked.get(Rs2Random.between(0, poolSize)));
+                    WorldPoint sidestep = ranked.get(Rs2Random.between(0, poolSize));
+                    log.info("[Walker] stuck sidestep: clicked to={} player={} routeState.stuckCount={}",
+                            sidestep, Rs2Player.getWorldLocation(), routeState.stuckCount);
+                    walkMiniMap(sidestep);
                     sleepGaussian(1000, 300);
-                    stuckCount = 0;
+                    routeState.stuckCount = 0;
                 }
             }
 
@@ -1656,9 +1890,9 @@ public class Rs2Walker {
             }
             primeExpectedTransportDestinations(path, indexOfStartPoint);
 
-            lastPosition = playerLocForIndex;
-            boolean clearedInterimTarget = clearInterimTargetIfReachedOrExpired(lastPosition, path, System.currentTimeMillis());
-            WorldPoint plImmediate = lastPosition;
+            routeState.lastPosition = playerLocForIndex;
+            boolean clearedInterimTarget = clearInterimTargetIfReachedOrExpired(routeState.lastPosition, path, System.currentTimeMillis());
+            WorldPoint plImmediate = routeState.lastPosition;
 
             WorldPoint pathLastForImmediate = path.isEmpty() ? null : path.get(path.size() - 1);
             int immediateFinishTh = tightFinishThreshold(target, pathLastForImmediate, distance);
@@ -1671,7 +1905,13 @@ public class Rs2Walker {
                     return WalkerState.ARRIVED;
                 }
             }
+            // Continuation clicks are for flowing ALONG the route after an interim clears. Off-path they
+            // are actively harmful: the click keeps the player moving, movement defers the off-path
+            // recalc, the interim goes stale, and the next continuation click sustains the spiral — the
+            // walker can run minutes in the wrong corridor without ever replanning. Off-path, do nothing
+            // here: the player stops, the "moving" deferral ends, and OFFPATH_RECALC replans properly.
             if (clearedInterimTarget
+                    && isNearPath()
                     && !Rs2Player.isInteracting()
                     && !Rs2Player.isAnimating()
                     && !isDoorInteractionSettling()
@@ -1753,7 +1993,9 @@ public class Rs2Walker {
 
             boolean postTransportWindow = routeState.lastTransportHandledAtMs > 0
                     && System.currentTimeMillis() - routeState.lastTransportHandledAtMs <= POST_TRANSPORT_PATH_TMARK_WINDOW_MS;
-            boolean allowRawSceneScan = startupPolicy.allowBroadRawHandlers() && rawPath != null && path != null;
+            boolean allowRawSceneScan = rawPath != null && path != null
+                    && (startupPolicy.allowBroadRawHandlers()
+                    || hasImmediateRawTransportStepNearPlayer(rawPath));
             int rawScanTransportLookaheadStartIdx = postTransportWindow
                     ? Math.min(path.size() - 1, Math.max(0, indexOfStartPoint + 1))
                     : indexOfStartPoint;
@@ -1770,10 +2012,25 @@ public class Rs2Walker {
                         "reason=no_nearby_planned_transport");
             }
             long rawSceneStartAt = System.currentTimeMillis();
-            // After a handled transport, let the main path loop dispatch the next planned transport.
-            // Broad raw transport scans can enter long false-negative waits before returning handled=false.
+            // Transports stay enabled here even inside the post-transport window. The gate above has
+            // already skipped the whole scan unless a planned transport is nearby, so reaching this
+            // line during the window MEANS one is — and disabling transport handling anyway is what
+            // made the walker take one staircase and then ignore the next one two tiles away, until
+            // the idle nudge minimap-clicked onto its origin and the current-tile handler picked it
+            // up. Observed at Falador castle: nudge to (2959,3339) instead of clicking the stairs.
+            //
+            // The original reason for suppressing — "broad raw transport scans can enter long
+            // false-negative waits" — was the 10s object scan (composition lookup per nearby object
+            // on Climb-down), fixed separately. Ranged dispatch also carries a no-progress fallback
+            // and a per-edge cooldown, so a transport that does not respond degrades instead of
+            // looping.
+            lastRawScanEarlyReturn = allowRawSceneScan
+                    ? "not-attempted"
+                    : (startupPolicy.allowBroadRawHandlers() ? "gated-outer" : "policy-startup");
             boolean rawSceneHandled = allowRawSceneScan
-                    && handleNearbyRawPathSceneObjects(rawPath, HANDLER_RANGE, target, !postTransportWindow);
+                    && handleNearbyRawPathSceneObjects(rawPath, HANDLER_RANGE, target, true);
+            tmarkPostTransport("post_transport_raw_scene_scan_why", target,
+                    "why=" + lastRawScanEarlyReturn + " handled=" + rawSceneHandled);
             tmarkPostTransport("post_transport_raw_scene_scan", target,
                     "handled=" + rawSceneHandled + " ms=" + (System.currentTimeMillis() - rawSceneStartAt));
             if (rawSceneHandled) {
@@ -1804,6 +2061,16 @@ public class Rs2Walker {
             reachableTilesCacheOrigin = currentPlayerLoc;
             final int currentPlayerPlane = currentPlayerLoc != null ? currentPlayerLoc.getPlane() : -1;
 
+            // Route order for interact-at-range: the loop walks segments outward from the player, so
+            // the first one to reach the obstacle handlers is the nearest. Only that one may act while
+            // we are still moving; anything further waits until it becomes the nearest.
+            boolean segmentHandlersRanThisPass = false;
+            /**
+             * Whether any EARLIER segment was skipped this pass. A skipped segment was never examined,
+             * so a door on it is neither resolved nor ruled out, and the first segment that actually
+             * runs is not the nearest unresolved obstacle just because it is the first one handled.
+             */
+            boolean segmentSkippedThisPass = false;
             for (int i = indexOfStartPoint; !doorOrTransportResult && i < path.size(); i++) {
                 WorldPoint currentWorldPoint = path.get(i);
                 if (currentWorldPoint.getPlane() != currentPlayerPlane) {
@@ -1857,11 +2124,14 @@ public class Rs2Walker {
                         break;
                     }
                     Telemetry.recordOffPathRecalc(Rs2Player.getWorldLocation(), path.size());
-                    WebWalkLog.recalc("no_longer_near_path");
+                    // Distinguish the drift signature in logs: off-path while still moving with no
+                    // walker action in flight = something external is steering the player.
+                    WebWalkLog.recalc(Rs2Player.isMoving()
+                            ? "off_path_unowned_movement" : "no_longer_near_path");
                     if (config.cancelInstead()) {
                         setTarget(null, "rs2walker:processWalk:off-path-cancel-instead");
                     } else {
-                        recalculatePath();
+						recalculatePathForRecovery();
                     }
                     exitReason = "not-near-path";
                     break;
@@ -1904,6 +2174,7 @@ public class Rs2Walker {
                             isDoorInteractionSettling(),
                             isRecoveryMovementInFlight());
                     if (skipPostTransportSegmentHandlers || skipStartupPreclickSegmentHandlers) {
+                        segmentSkippedThisPass = true;
                         if (skipStartupPreclickSegmentHandlers) {
                             markStartupPhase("preclick_segment_handler_skip", target,
                                     "i=" + i + " reason=startup_before_first_click");
@@ -1918,8 +2189,32 @@ public class Rs2Walker {
                     int rawI = (i < smoothedToRaw.length) ? smoothedToRaw[i] : 0;
                     int rawEnd = rawEndForSmoothedIndex(i, smoothedToRaw, rawPath, path);
                     boolean startupImmediateTransportOnly = startupBeforeFirstClick && immediateSegmentTransportStep;
+                    // The stationary requirement is why doors only ever opened AFTER the approach walk
+                    // finished: the handler was skipped for the whole journey and ran on arrival. For the
+                    // NEXT segment on the route the door click should simply supersede our own walk —
+                    // interrupting it is the point, and the server walks us to the door either way.
+                    // Everything further along still waits until it is the nearest segment, so route
+                    // order holds. Settle windows and in-flight recovery still block, unchanged.
+                    // "First handler to run this pass" is NOT the same as "nearest unresolved obstacle
+                    // on the route", and only the latter may be clicked at range. When an earlier
+                    // segment was SKIPPED — post-transport window, startup pre-click — it was never
+                    // examined, so a door on it is neither resolved nor ruled out, and reaching past it
+                    // is exactly the failure the interact-at-range rule exists to prevent.
+                    //
+                    // Measured at Falador: segments 11 and 12 skipped with no_nearby_planned_transport,
+                    // then the door at (2985,3341) clicked from range while the door at (2981,3340) was
+                    // still shut between us and it. The server began routing AROUND the building — the
+                    // player was dragged south to (2960,3330) — and the traversal wait it could never
+                    // satisfy timed out at 2275ms. Roughly ten seconds and a U-turn.
+                    //
+                    // With an earlier segment skipped, doors fall back to the stationary requirement,
+                    // which is the behaviour from before ranged door dispatch existed.
+                    boolean nearestSegmentDoor = !segmentHandlersRanThisPass && !segmentSkippedThisPass;
+                    segmentHandlersRanThisPass = true;
+                    boolean doorMovementGateOk = !Rs2Player.isMoving()
+                            || (nearestSegmentDoor && doorInteractionWhileApproachingEnabled());
                     if (!startupImmediateTransportOnly
-                            && !Rs2Player.isMoving() && !isDoorInteractionSettling() && !isRecoveryMovementInFlight()) {
+                            && doorMovementGateOk && !isDoorInteractionSettling() && !isRecoveryMovementInFlight()) {
                         doorOrTransportResult = handleDoorsInRawSegment(rawPath, rawI, rawEnd,
                                 obstaclePolicy.segmentDoorTimeoutMs(), doorEdgesAttemptedThisTail,
                                 reachableTilesCache);
@@ -1968,7 +2263,10 @@ public class Rs2Walker {
                             || upcomingNearbyTransport
                             || immediateSegmentTransportStep;
                     if ((PohTeleports.isInHouse() || !inInstance) && allowSegmentTransportScan) {
-                        doorOrTransportResult = handleTransportsInRawSegment(rawPath, rawI, rawEnd);
+                        // Nearest segment may take its transport from range; anything further along
+                        // waits until it becomes nearest, so route order holds.
+                        doorOrTransportResult = handleTransportsInRawSegment(rawPath, rawI, rawEnd,
+                                nearestSegmentDoor);
                     }
 
                     if (doorOrTransportResult) {
@@ -2019,8 +2317,29 @@ public class Rs2Walker {
                                 }
                                 break;
                             }
-                            log.info("[Walker] local reachability miss near player; checking blockers/recovery: tile={} idx={}/{} player={} target={}",
+                            log.debug("[Walker] local reachability miss near player; checking blockers/recovery: tile={} idx={}/{} player={} target={}",
                                     currentWorldPoint, i, path.size(), playerLoc, target);
+
+                            // Anti-end-camping frontier rewind. The near-player reachability check skips
+                            // far-away route tiles, so on a route whose tail folds back beside the player
+                            // (Clock Tower) the miss can fire on the GOAL (Euclidean-near, idx end) while the
+                            // REAL blocked frontier — the door tiles at mid-route — was silently skipped.
+                            // Recovery then camps on the end: door scans probe the wrong raw segment and the
+                            // recovery target anchors at the goal. Rewind to the EARLIEST unreachable route
+                            // tile: that is the first edge the walk actually cannot cross, which is where the
+                            // door (or other obstacle) really is. Every recovery path below exits the loop,
+                            // so rebinding i/currentWorldPoint here is contained.
+                            for (int fi = Math.max(0, indexOfStartPoint); fi < i; fi++) {
+                                WorldPoint ft = path.get(fi);
+                                if (ft != null && ft.getPlane() == currentPlayerPlane
+                                        && reachableTilesCache != null && !reachableTilesCache.containsKey(ft)) {
+                                    log.info("[Walker] frontier rewind: earliest blocked route tile idx={} tile={} (miss was idx={})",
+                                            fi, ft, i);
+                                    i = fi;
+                                    currentWorldPoint = ft;
+                                    break;
+                                }
+                            }
 
                             int edgeIdx = Math.max(indexOfStartPoint, i - 1);
                             int rawEdgeStart = (edgeIdx < smoothedToRaw.length) ? smoothedToRaw[edgeIdx] : 0;
@@ -2036,9 +2355,11 @@ public class Rs2Walker {
                             // through; a transport origin is applied as the recovery target further down. The
                             // scan is MLM-/proximity-gated inside the resolver, so it is a no-op elsewhere.
                             ObstacleResolution frontierObstacle = resolveRecoveryObstacle(rawPath, rawEdgeStart,
-                                    rawEdgeEnd, playerLoc, STALL_RECOVERY_MINIMAP_REACH_EUCLIDEAN, reachableTilesCache);
+                                    rawEdgeEnd, playerLoc, STALL_RECOVERY_MINIMAP_REACH_EUCLIDEAN, reachableTilesCache,
+                                    inInstance);
                             if (frontierObstacle.kind() == ObstacleResolution.Kind.INTERACTED) {
-                                exitReason = "rockfall-handled-local-reachability";
+                                // A rockfall was mined or an on-origin transport/shortcut was taken.
+                                exitReason = "frontier-obstacle-handled";
                                 break;
                             }
                             if (frontierObstacle.kind() == ObstacleResolution.Kind.ABORT) {
@@ -2138,14 +2459,44 @@ public class Rs2Walker {
                             if (!gateDoorInteraction
                                     && unresolvedDoorNearRawPath
                                     && obstaclePolicy.allowNearbyFallback()
-                                    && nowMs - lastDoorPathAdjAttemptAtMs > 1200) {
-                                lastDoorPathAdjAttemptAtMs = nowMs;
+                                    && nowMs - routeState.lastDoorPathAdjAttemptAtMs > 1200) {
+                                routeState.lastDoorPathAdjAttemptAtMs = nowMs;
                                 if (tryResolvePathAdjacentBlocker(playerLoc, rawPath, rawEdgeStart, 3, 10)) {
                                     exitReason = "door-handled-path-adj-scan";
                                     break;
                                 }
                             }
                             if (unresolvedDoorNearRawPath) {
+                                // An unresolved door sits on/near the blocked edge but every door handler above
+                                // declined (settling / recent-attempt cooldowns). Do NOT fall through to the
+                                // generic recovery click: it selects statically-walkable tiles PAST the closed
+                                // door (they are walkable on the map — the door is the only blocker), and the
+                                // server then paths the player AROUND the building, pulling the walk off-route
+                                // (Clock Tower: nudge past the door -> player circles outside -> recovery clicks
+                                // the unreachable end tile). Instead, close the distance to the door: walk to the
+                                // furthest REACHABLE route tile at/before the blocked edge — the reachability
+                                // gate means the target can never be beyond the closed door — so the player is
+                                // standing at the door when the cooldown expires and the handlers engage.
+                                routeState.doorRecoverySuppressedAtMs = System.currentTimeMillis();
+                                WorldPoint doorApproach = null;
+                                if (rawPath != null && !rawPath.isEmpty() && reachableTilesCache != null) {
+                                    int hi = Math.min(rawEdgeEnd, rawPath.size()) - 1;
+                                    for (int ri = hi; ri >= Math.max(0, rawEdgeStart); ri--) {
+                                        WorldPoint rt = rawPath.get(ri);
+                                        if (rt != null && reachableTilesCache.containsKey(rt)
+                                                && !rt.equals(playerLoc) && playerLoc.distanceTo2D(rt) > 1) {
+                                            doorApproach = rt;
+                                            break;
+                                        }
+                                    }
+                                }
+                                if (doorApproach != null && !Rs2Player.isMoving() && walkMiniMap(doorApproach)) {
+                                    routeState.lastUnreachableRecoveryClickAtMs = System.currentTimeMillis();
+                                    WebWalkLog.spInfo("door_suppressed_approach | to={} idx={} tile={}",
+                                            compactWorldPoint(doorApproach), rawEdgeStart, compactWorldPoint(currentWorldPoint));
+                                    exitReason = "door-suppressed-approach-click";
+                                    break;
+                                }
                                 WebWalkLog.spInfo("door_recovery_suppressed | reason=nearby-route-door idx={} tile={}",
                                         rawEdgeStart, compactWorldPoint(currentWorldPoint));
                                 exitReason = "door-recovery-suppressed";
@@ -2159,8 +2510,10 @@ public class Rs2Walker {
                             // server walk the long way around the gap it should have crossed. Taking the
                             // transport first mirrors the segment-handler transport scan (which can be
                             // skipped in the post-transport window) and the door/rockfall handling above.
+                            // Recovery acts on the edge blocking us RIGHT NOW, so it is the nearest
+                            // obstacle by construction and may dispatch from range.
                             if ((PohTeleports.isInHouse() || !inInstance)
-                                    && handleTransportsInRawSegment(rawPath, rawEdgeStart, rawEdgeEnd)) {
+                                    && handleTransportsInRawSegment(rawPath, rawEdgeStart, rawEdgeEnd, true)) {
                                 exitReason = "transport-handled-local-reachability";
                                 break;
                             }
@@ -2174,15 +2527,31 @@ public class Rs2Walker {
                             // like a human clicking the furthest visible tile. We trust the server path
                             // (no reachability gate on the click); isKnownWalkableOrUnloaded only keeps
                             // us from clicking into a known wall, it is NOT the bounded BFS check.
+                            // Everything below decides recovery against playerLoc, which was read at the
+                            // TOP of this pass — before the door/transport cascade above, which blocks for
+                            // seconds inside interaction awaits. Measured at Falador castle: recovery
+                            // reported player=(2974,3339) while the player actually stood at (2985,3340),
+                            // eleven tiles and eight seconds later, declared the target walled, and threw
+                            // the route away with a full recalculatePath().
+                            //
+                            // Refreshing playerLoc alone would be worse than leaving it: the unreachability
+                            // verdict for currentWorldPoint, the route index i and the reachable-tile cache
+                            // were all derived from the OLD position, so a fresh position here would pair
+                            // with stale analysis. Abandon the pass and re-derive from where we actually are
+                            // — the loop re-enters immediately, exactly as every other break here does.
+                            WorldPoint playerLocNow = Rs2Player.getWorldLocation();
+                            if (playerLocNow != null && !playerLocNow.equals(playerLoc)) {
+                                WebWalkLog.spInfo("recovery_position_stale | was={} now={} idx={} re-evaluating",
+                                        compactWorldPoint(playerLoc), compactWorldPoint(playerLocNow), i);
+                                exitReason = "recovery-position-stale";
+                                break;
+                            }
                             final int recoveryMinimapReach = STALL_RECOVERY_MINIMAP_REACH_EUCLIDEAN;
                             int recoverIdx = findForwardReachableRecoveryIndex(path, i, playerLoc,
                                     recoveryMinimapReach);
                             if (recoverIdx < 0) {
-                                recoverIdx = RouteRecovery.findFurthestClickableIndex(path, i, playerLoc,
-                                        wp -> {
-                                            Set<Transport> ts = Rs2PathApi.getTransports().get(wp);
-                                            return ts != null && !ts.isEmpty();
-                                        },
+								recoverIdx = RouteRecovery.findFurthestClickableIndex(path, i, playerLoc,
+										Rs2PathApi::hasCatalogTransportOrigin,
                                         recoveryMinimapReach);
                             }
                             int minRecoveryIdx = Math.max(indexOfStartPoint, i);
@@ -2201,19 +2570,17 @@ public class Rs2Walker {
                             // (e.g. an undead tree). The planner avoids those via avoidDangerousNpcs,
                             // but this runtime fallback would otherwise strand us in melee. Step the
                             // target back along the path to the nearest non-hazard tile.
-                            PathfinderConfig dangerCfg = Rs2PathApi.getPathfinderConfig();
-                            if (dangerCfg != null && dangerCfg.isAvoidDangerousNpcs() && recoverTarget != null
-                                    && dangerCfg.isDangerousAdjacentTile(WorldPointUtil.packWorldPoint(recoverTarget))) {
+                            if (Rs2PathApi.shouldAvoidDangerousTile(recoverTarget)) {
                                 int safeIdx = recoverIdx;
                                 while (safeIdx > minRecoveryIdx
-                                        && dangerCfg.isDangerousAdjacentTile(WorldPointUtil.packWorldPoint(path.get(safeIdx)))) {
+                                        && Rs2PathApi.shouldAvoidDangerousTile(path.get(safeIdx))) {
                                     safeIdx--;
                                 }
                                 recoverIdx = safeIdx;
                                 recoverTarget = path.get(safeIdx);
                             }
                             int rawAnchorIndex = rawIndexForSmoothedIndex(recoverIdx, smoothedToRaw, rawPath);
-                            WorldPoint rawRecoveryTarget = inInstance ? null : findFurthestRawPathPointMatching(
+                            WorldPoint rawRecoveryTarget = inInstance ? null : findFurthestRawPathPointMatchingGated(
                                     rawPath,
                                     playerLoc,
                                     recoveryMinimapReach - 1,
@@ -2221,9 +2588,7 @@ public class Rs2Walker {
                                     Rs2Walker::isKnownWalkableOrUnloaded);
                             if (rawRecoveryTarget != null
                                     && !rawRecoveryTarget.equals(playerLoc)
-                                    && (dangerCfg == null
-                                    || !dangerCfg.isAvoidDangerousNpcs()
-                                    || !dangerCfg.isDangerousAdjacentTile(WorldPointUtil.packWorldPoint(rawRecoveryTarget)))) {
+                                    && !Rs2PathApi.shouldAvoidDangerousTile(rawRecoveryTarget)) {
                                 recoverTarget = rawRecoveryTarget;
                             }
                             // Prefer walking onto the reachable transport / agility-shortcut origin the unified
@@ -2236,8 +2601,42 @@ public class Rs2Walker {
                                     && !frontierObstacle.walkTarget().equals(playerLoc)) {
                                 recoverTarget = frontierObstacle.walkTarget();
                             }
+                            // The click decision (preemption vs walled vs cooldown vs click) is PURE and
+                            // decision-table-tested in RouteRecovery — this shell only carries out the
+                            // chosen action. Guard rationale (long recovery pass, walled end-snap, cooldown
+                            // that throttles the replan but never re-enables the click) lives with the
+                            // decision, where the interactions are pinned by tests instead of re-discovered
+                            // live (Clock Tower backtrack; Port Sarim wall-click during cooldown).
+                            // Movement only preempts the recovery click while the walker owns it
+                            // (protecting our own in-flight click/door-open). External movement —
+                            // combat dragging the player — must NOT block the corrective click.
+                            RouteRecovery.RecoveryClickAction clickAction = RouteRecovery.decideRecoveryClick(
+                                    recoverTarget, playerLoc,
+                                    isDoorInteractionSettling(),
+                                    Rs2Player.isMoving()
+                                            && isMovementWalkerOwned(System.currentTimeMillis(), lastAttemptedMinimapClickAtMs),
+                                    reachableTilesCache != null ? reachableTilesCache.keySet() : null,
+                                    WALLED_RECOVERY_TARGET_EUCLIDEAN,
+                                    System.currentTimeMillis(), routeState.lastWalledRecoveryReplanAtMs,
+                                    WALLED_RECOVERY_REPLAN_COOLDOWN_MS);
+                            if (clickAction == RouteRecovery.RecoveryClickAction.YIELD_ACTION_IN_FLIGHT) {
+                                exitReason = "recovery-click-preempted-by-action";
+                                break;
+                            }
+                            if (clickAction == RouteRecovery.RecoveryClickAction.REPLAN_WALLED) {
+                                routeState.lastWalledRecoveryReplanAtMs = System.currentTimeMillis();
+                                WebWalkLog.spInfo("recovery_target_walled | to={} player={} replanning",
+                                        compactWorldPoint(recoverTarget), compactWorldPoint(playerLoc));
+								recalculatePathForRecovery();
+                                exitReason = "recovery-target-walled-replan";
+                                break;
+                            }
+                            if (clickAction == RouteRecovery.RecoveryClickAction.WAIT_WALLED) {
+                                exitReason = "recovery-target-walled-waiting";
+                                break;
+                            }
                             WorldPoint clickedRecoveryTarget = null;
-                            if (recoverTarget != null && !recoverTarget.equals(playerLoc)) {
+                            if (clickAction == RouteRecovery.RecoveryClickAction.CLICK) {
                                 recoverTarget = RouteRecovery.clampToEuclideanRadius(playerLoc, recoverTarget,
                                         recoveryMinimapReach - 1);
                                 clickedRecoveryTarget = clickMiniMapOrFallback(rawPath, recoverTarget, playerLoc,
@@ -2282,8 +2681,8 @@ public class Rs2Walker {
                                         finishThRecovery);
                                 // Next outer iteration runs checkIfStuck/isStuckTooLong before tile delta — avoid
                                 // spurious stall-recalc right after issuing recovery movement.
-                                lastMovedTimeMs = System.currentTimeMillis();
-                                stuckCount = 0;
+                                routeState.lastMovedTimeMs = System.currentTimeMillis();
+                                routeState.stuckCount = 0;
                                 exitReason = "local-recovery-click";
                                 break;
                             }
@@ -2354,8 +2753,8 @@ public class Rs2Walker {
                                 recordInterimDistanceProgress(interimFinal, posAfterWait, System.currentTimeMillis());
 								if ((posAfterWait != null && posBeforeWait.distanceTo2D(posAfterWait) > 0)
                                         || Rs2Player.isMoving()) {
-									lastMovedTimeMs = System.currentTimeMillis();
-									stuckCount = 0;
+									routeState.lastMovedTimeMs = System.currentTimeMillis();
+									routeState.stuckCount = 0;
 								}
                                 boolean closeEnoughForNextClick = posAfterWait != null
                                         && interimFinal.distanceTo2D(posAfterWait) <= INTERIM_CLOSE_TILES;
@@ -2390,11 +2789,8 @@ public class Rs2Walker {
 						routeState.interimLastRetargetAtMs = 0L;
 					}
 
-                    int targetIdx = RouteRecovery.findFurthestForwardClickableIndex(path, i, playerLoc,
-                            wp -> {
-                                Set<Transport> ts = Rs2PathApi.getTransports().get(wp);
-                                return ts != null && !ts.isEmpty();
-                            },
+					int targetIdx = RouteRecovery.findFurthestForwardClickableIndex(path, i, playerLoc,
+							Rs2PathApi::hasCatalogTransportOrigin,
                             MINIMAP_REACH_EUCLIDEAN);
                     WorldPoint targetWp = path.get(targetIdx);
                     // If the forward waypoint is outside minimap reach, interpolate a
@@ -2435,7 +2831,7 @@ public class Rs2Walker {
 								routeState.interimLastProgressAtMs = nowMs;
 							}
 							boolean movingOrRecentlyMoved = Rs2Player.isMoving()
-									|| (lastMovedTimeMs > 0 && nowMs - lastMovedTimeMs < 1500);
+									|| (routeState.lastMovedTimeMs > 0 && nowMs - routeState.lastMovedTimeMs < 1500);
 							boolean makingRecentProgress = routeState.interimLastProgressAtMs > 0
 									&& nowMs - routeState.interimLastProgressAtMs < INTERIM_PROGRESS_TIMEOUT_MS;
 							boolean retargetCoolingDown = routeState.interimLastRetargetAtMs > 0
@@ -2593,10 +2989,10 @@ public class Rs2Walker {
                     }
                     // Keep stuck-detection honest: observed movement resets the movement timer.
                     // Without this, isStuckTooLong() fires after long successful walks because
-                    // lastMovedTimeMs is only refreshed at processWalk entry (not during the loop).
+                    // routeState.lastMovedTimeMs is only refreshed at processWalk entry (not during the loop).
                     if (posBefore.distanceTo2D(Rs2Player.getWorldLocation()) > 0) {
-                        lastMovedTimeMs = System.currentTimeMillis();
-                        stuckCount = 0;
+                        routeState.lastMovedTimeMs = System.currentTimeMillis();
+                        routeState.stuckCount = 0;
                     }
                     // If the minimap click failed (target outside minimap radius), subsequent
                     // path tiles are further away and will also fail — break and let the outer
@@ -2624,10 +3020,17 @@ public class Rs2Walker {
             }
 
             if (doorOrTransportResult && shouldCanvasNudgeAfterDoorLikeExit(exitReason)) {
-                maybeCanvasNudgeAfterDoor(target, distance, path);
-                // Arm after nudge returns so the window does not expire during in-nudge waits; covers path-adj
-                // door opens even when canvas nudge had no candidates / failed (still defer tryDirectShortWalk minimap).
-                routeState.suppressTryDirectShortWalkUntilMs = System.currentTimeMillis() + POST_DOOR_NUDGE_SUPPRESS_TRY_DIRECT_MS;
+                boolean canvasNudged = maybeCanvasNudgeAfterDoor(target, distance, path);
+                // Arm after nudge returns so the window does not expire during in-nudge waits. The long
+                // window exists to stop a minimap click landing on the heels of a CANVAS click, so it is
+                // only owed when a canvas click actually happened — and the nudge deliberately declines
+                // mid-route (see its final-approach guard), which is every ordinary door. Arming it
+                // regardless froze movement for 2.2s after each one, and the idle nudge then supplied a
+                // minimap click anyway: slower AND still minimap. Measured at Falador castle, door done
+                // 15:25:46, idle nudge 15:25:48. The short window still keeps the next beat off the same
+                // tick as the door interaction itself.
+                routeState.suppressTryDirectShortWalkUntilMs = System.currentTimeMillis()
+                        + (canvasNudged ? POST_DOOR_NUDGE_SUPPRESS_TRY_DIRECT_MS : POST_DOOR_NO_NUDGE_SUPPRESS_TRY_DIRECT_MS);
                 WorldPoint plAfterDoor = Rs2Player.getWorldLocation();
                 if (!path.isEmpty() && plAfterDoor != null && target != null) {
                     WorldPoint pathLastDoor = path.get(path.size() - 1);
@@ -2757,7 +3160,8 @@ public class Rs2Walker {
                 // than the actual shortfall.
                 WorldPoint unreachableEndpoint = path.isEmpty() ? null : path.get(path.size() - 1);
                 Telemetry.recordUnreachable("partial-retries-exhausted", Rs2Player.getWorldLocation(),
-                        target, unreachableEndpoint, path.size(), distance, Rs2PathApi.getPathfinder());
+                        target, unreachableEndpoint, path.size(), distance,
+                        Rs2PathApi.getActiveRouteStatus().getMetrics().orElse(null));
                 setTarget(null, "rs2walker:processWalk:partial-retries-exhausted");
                 return WalkerState.UNREACHABLE;
             } else {
@@ -2767,7 +3171,7 @@ public class Rs2Walker {
                     String deferReason = offPathDeferredReasonFromExit(exitReason);
                     long offPathWaitMs = offPathRecalcDeferredWaitMs(deferReason,
                             System.currentTimeMillis(),
-                            lastMovedTimeMs,
+                            routeState.lastMovedTimeMs,
                             routeState.routeProgressAdvancedAtMs,
                             lastAttemptedMinimapClickAtMs,
                             routeState.interimLastProgressAtMs);
@@ -2825,6 +3229,16 @@ public class Rs2Walker {
                 setTarget(null, "rs2walker:processWalk:interrupted-exception");
                 return WalkerState.EXIT;
             }
+            if (isClientThreadReadTimeout(ex)
+                    && clientThreadTimeoutRetries < CLIENT_THREAD_TIMEOUT_RETRIES
+                    && Objects.equals(currentTarget, target)
+                    && !Thread.currentThread().isInterrupted()) {
+                int nextRetry = ++clientThreadTimeoutRetries;
+                WebWalkLog.spInfo("client_thread_timeout_retry | attempt={}/{} target={}",
+                        nextRetry, CLIENT_THREAD_TIMEOUT_RETRIES, target);
+                processWalkTail--;
+                continue;
+            }
             log.error("Exception in Rs2Walker:", ex);
             WebWalkLog.interruptedExit("walker exception exit (403)");
             traceProcessWalkExit("exception-" + ex.getClass().getSimpleName(), target, MAX_PROCESS_WALK_TAIL_ITERATIONS - 1);
@@ -2837,9 +3251,9 @@ public class Rs2Walker {
                 target,
                 currentTarget,
                 routeState.interimTargetWp,
-                stuckCount,
+                routeState.stuckCount,
                 Rs2Player.getWorldLocation());
-        WebWalkLog.tailExceeded(MAX_PROCESS_WALK_TAIL_ITERATIONS, target, currentTarget, routeState.interimTargetWp, stuckCount,
+        WebWalkLog.tailExceeded(MAX_PROCESS_WALK_TAIL_ITERATIONS, target, currentTarget, routeState.interimTargetWp, routeState.stuckCount,
                 Rs2Player.getWorldLocation());
         return WalkerState.EXIT;
     }
@@ -3063,10 +3477,18 @@ public class Rs2Walker {
     private static volatile String staminaSeedName = null;
     private static volatile int staminaThresholdCached = STAMINA_THRESHOLD_FALLBACK;
 
-	// Cooldown to avoid spamming expensive door fallback scans on unreachable tiles.
-	private static long lastDoorFallbackAttemptAtMs = 0L;
-	private static long lastDoorLosAttemptAtMs = 0L;
-	private static long lastDoorPathAdjAttemptAtMs = 0L;
+	// Door-scan cooldown state migrated to WalkerRouteState; the fallback/LOS timestamps that
+	// used to sit here were dead (written by nothing, read by nothing) and are simply gone.
+    /**
+     * End-snap guard bounds: a recovery target within this Euclidean radius that is absent from the
+     * player-origin reachability BFS is walled/doored off (the recovery BFS's 18-step budget comfortably
+     * covers the full ~9-tile recovery click radius; a connected tile needing more steps than that inside
+     * this radius is a pathological fold where replanning is also the right answer), so recovery replans
+     * instead of clicking through the wall; the cooldown stops replans looping while the fresh path
+     * computes. Covers the whole recovery click range — Clock Tower showed goal-clicks from 9 tiles out.
+     */
+    private static final int WALLED_RECOVERY_TARGET_EUCLIDEAN = 9;
+    private static final long WALLED_RECOVERY_REPLAN_COOLDOWN_MS = 5_000L;
 
     static int computeStaminaThreshold(String playerName, long installSeed) {
         if (playerName == null || playerName.isEmpty()) {
@@ -3284,7 +3706,8 @@ public class Rs2Walker {
     }
 
     // findFurthestRawPathPointMatching (pure) moved to geometry/WalkerPathGeometry (P1); this game-coupled
-    // wrapper supplies the constant forward-search window and the lazy reachable-closest fallback.
+    // wrapper supplies the constant forward-search window and the lazy reachable-closest fallback. UNGATED —
+    // it is the pure-selection unit the tests exercise; live click paths use the gated variant below.
     static WorldPoint findFurthestRawPathPointMatching(List<WorldPoint> rawPath,
                                                        WorldPoint playerLoc,
                                                        int maxEuclidean,
@@ -3293,6 +3716,42 @@ public class Rs2Walker {
         return WalkerPathGeometry.findFurthestRawPathPointMatching(rawPath, playerLoc, maxEuclidean,
                 rawAnchorIndex, isCandidate, ROUTE_PROGRESS_FORWARD_SEARCH_TILES,
                 () -> getClosestTileIndex(rawPath, playerLoc));
+    }
+
+    /**
+     * Live-click variant of {@link #findFurthestRawPathPointMatching} with the route-blocked scan gate: it
+     * additionally supplies the player-origin reachability BFS so forward click selection stops at the near
+     * side of a closed door / wall ON the route instead of selecting statically-walkable tiles beyond it
+     * (which made the server path the player AROUND buildings — the Clock Tower off-route bug). Kept
+     * separate from the ungated wrapper because the gate reads live game state (the BFS), which the
+     * pure-selection unit tests must not depend on.
+     */
+    private static WorldPoint findFurthestRawPathPointMatchingGated(List<WorldPoint> rawPath,
+                                                                    WorldPoint playerLoc,
+                                                                    int maxEuclidean,
+                                                                    int rawAnchorIndex,
+                                                                    Predicate<WorldPoint> isCandidate) {
+        Map<WorldPoint, Integer> reachable = getClosestIndexReachableTiles(playerLoc);
+        WorldPoint selected = WalkerPathGeometry.findFurthestRawPathPointMatching(rawPath, playerLoc, maxEuclidean,
+                rawAnchorIndex, isCandidate, ROUTE_PROGRESS_FORWARD_SEARCH_TILES,
+                () -> getClosestTileIndex(rawPath, playerLoc),
+                reachable, CLOSEST_INDEX_REACHABLE_STEP_BUDGET);
+        // Output-side net: whatever path the scan took (stale anchor, player-anchored retry, a fold the
+        // along-route gate could not vouch for), a selected tile that is Euclidean-NEAR the player yet
+        // absent from the player-origin BFS is on the far side of a wall/door — clicking it walks the
+        // player into the wall (Wydin's shop: first click chose the goal 2 tiles away through the
+        // back-room wall and the walk unravelled from there). Refuse it; every caller has a
+        // reachability-aware fallback (wall-nudge clamp, rejoin, recovery). The log carries the anchor
+        // context so a recurrence is diagnosable from a single line.
+        if (selected != null && reachable != null && !reachable.isEmpty()
+                && !reachable.containsKey(selected)
+                && playerLoc != null
+                && playerLoc.distanceTo2D(selected) <= CLOSEST_INDEX_REACHABLE_STEP_BUDGET - 2) {
+            WebWalkLog.spInfo("route_click_walled | to={} player={} anchorIdx={} — refused, falling back",
+                    compactWorldPoint(selected), compactWorldPoint(playerLoc), rawAnchorIndex);
+            return null;
+        }
+        return selected;
     }
 
     /**
@@ -3381,7 +3840,7 @@ public class Rs2Walker {
         // smoothed-waypoint Euclidean clamp after selection returned null on a stale anchor — not
         // from a lack of line of sight. Pending doors/gates are handled by
         // handlePendingDoorBeforeRouteClick, not by shortening the click.
-        WorldPoint forward = findFurthestRawPathPointMatching(rawPath, playerLoc, maxEuclidean,
+        WorldPoint forward = findFurthestRawPathPointMatchingGated(rawPath, playerLoc, maxEuclidean,
                 rawAnchorIndex, Rs2Walker::isKnownWalkableOrUnloaded);
         if (forward != null && !forward.equals(playerLoc)) {
             routeState.lastRouteClickTier = "route";
@@ -3449,7 +3908,7 @@ public class Rs2Walker {
             return null;
         }
 
-        return findFurthestRawPathPointMatching(rawPath, playerLoc, maxEuclidean, rawAnchorIndex,
+        return findFurthestRawPathPointMatchingGated(rawPath, playerLoc, maxEuclidean, rawAnchorIndex,
                 candidate -> !candidate.equals(playerLoc)
                         && isKnownWalkableOrUnloaded(candidate)
                         && isMiniMapClickable(candidate, 5));
@@ -3473,6 +3932,16 @@ public class Rs2Walker {
         if (playerLoc == null || Rs2Player.isMoving() || Rs2Player.isAnimating() || Rs2Player.isInteracting()
                 || Rs2LeaguesTransport.isTeleportInProgress()
                 || Rs2LeaguesTransport.isLeaguesAreaTeleportPending(LEAGUES_AREA_PENDING_STALL_MAX_AGE_MS)) {
+            routeState.idleNudgeLastObservedLocation = playerLoc;
+            routeState.idleNudgeStationarySinceMs = now;
+            return false;
+        }
+        // While door recovery is actively suppressed (unresolved door on the blocked edge, handlers cooling
+        // down), the nudge MUST NOT fire: its forward click is not door-aware and can select a tile on the
+        // far side of the closed door, which routes the player around the building and off the route. The
+        // suppress branch itself walks the player to the door's near side; standing there waiting for the
+        // cooldown is the correct behavior, not idleness to nudge out of.
+        if (now - routeState.doorRecoverySuppressedAtMs < DOOR_SUPPRESS_NUDGE_HOLDOFF_MS) {
             routeState.idleNudgeLastObservedLocation = playerLoc;
             routeState.idleNudgeStationarySinceMs = now;
             return false;
@@ -3553,11 +4022,8 @@ public class Rs2Walker {
         // pathfinder makes the idle nudge issue the first click instead of the main loop).
         WorldPoint clickTarget = selectRouteClickTarget(rawPath, playerLoc, maxEuclidean, rawAnchorIndex);
         if (clickTarget == null) {
-            int clickableIdx = RouteRecovery.findFurthestForwardClickableIndex(path, startIdx, playerLoc,
-                    wp -> {
-                        Set<Transport> ts = Rs2PathApi.getTransports().get(wp);
-                        return ts != null && !ts.isEmpty();
-                    },
+			int clickableIdx = RouteRecovery.findFurthestForwardClickableIndex(path, startIdx, playerLoc,
+					Rs2PathApi::hasCatalogTransportOrigin,
                     maxEuclidean);
             clickableIdx = Math.max(startIdx, Math.min(clickableIdx, path.size() - 1));
             clickTarget = path.get(clickableIdx);
@@ -3582,13 +4048,12 @@ public class Rs2Walker {
                     maxEuclidean - 1, rawPath == null || rawPath.isEmpty(), rawAnchorIndex);
             clicked = clickedTarget != null;
         }
-        if (clicked && "interim close route click".equals(logLabel)) {
-            log.debug("[Walker] {}: clicked={} to={} player={} idx={}",
-                    logLabel, true, clickedTarget, playerLoc, targetIdx);
-        } else {
-            log.info("[Walker] {}: clicked={} to={} player={} idx={}",
-                    logLabel, clicked, clicked ? clickedTarget : clickTarget, playerLoc, targetIdx);
-        }
+        // EVERY movement click logs at info. The interim-continuation label used to log at debug only,
+        // which made its clicks invisible: the walker appeared to "randomly click far from the path"
+        // and ran for minutes with no clicks in the log while continuation clicks silently chained
+        // (interim expires -> unlogged click -> player moving -> off-path recalc deferred -> repeat).
+        log.info("[Walker] {}: clicked={} to={} player={} idx={}",
+                logLabel, clicked, clicked ? clickedTarget : clickTarget, playerLoc, targetIdx);
         if (!clicked) {
             return false;
         }
@@ -3613,11 +4078,11 @@ public class Rs2Walker {
         if ("active route idle nudge".equals(logLabel)) {
             routeState.lastActiveRouteIdleNudgeAtMs = routeState.interimSetAtMs;
         } else {
-            lastMovedTimeMs = routeState.interimSetAtMs;
+            routeState.lastMovedTimeMs = routeState.interimSetAtMs;
         }
         routeState.idleNudgeStationarySinceMs = routeState.interimSetAtMs;
         routeState.idleNudgeLastObservedLocation = playerLoc;
-        stuckCount = 0;
+        routeState.stuckCount = 0;
         return true;
     }
 
@@ -3789,12 +4254,8 @@ public class Rs2Walker {
      * @return total amount of tiles
      */
     public static int getTotalTiles(WorldPoint start, WorldPoint destination) {
-        if (Rs2PathApi.getPathfinderConfig().getTransports().isEmpty()) {
-            Rs2PathApi.getPathfinderConfig().refresh();
-        }
-        Pathfinder pathfinder = new Pathfinder(Rs2PathApi.getPathfinderConfig(), start, destination);
-        pathfinder.run();
-        List<WorldPoint> path = pathfinder.getPath();
+        Rs2RouteResult route = Rs2PathApi.plan(Rs2RouteRequest.to(start, destination));
+        List<WorldPoint> path = route.getPath();
         if (path.isEmpty() || path.get(path.size() - 1).getPlane() != destination.getPlane()) return Integer.MAX_VALUE;
         // Create a WorldArea centered on the worldPoint by calculating the south-west corner
         WorldPoint pathPoint_SW = new WorldPoint(
@@ -3864,7 +4325,6 @@ public class Rs2Walker {
     // takes an avg 200-300 ms
     // Used mainly for agility, might have to tweak this for other stuff
     public static boolean canReach(WorldPoint worldPoint, int sizeX, int sizeY, int pathSizeX, int pathSizeY,boolean useBankedItems) {
-        boolean originalUseBankItems = Rs2PathApi.getPathfinderConfig().isUseBankItems();
         WorldArea pathArea = null;
 
         // Create centered WorldArea for the object instead of corner-based
@@ -3876,16 +4336,14 @@ public class Rs2Walker {
         WorldArea objectArea = new WorldArea(objectSouthWest, sizeX + 2, sizeY + 2);
 
         try {
-            Rs2PathApi.getPathfinderConfig().setUseBankItems(useBankedItems);
-            Rs2PathApi.getPathfinderConfig().refresh(worldPoint);
-            if (Rs2PathApi.getPathfinderConfig().getTransports().isEmpty()) {
-                Rs2PathApi.getPathfinderConfig().refresh(worldPoint);
-            }
-            Pathfinder pathfinder = new Pathfinder(Rs2PathApi.getPathfinderConfig(), Rs2Player.getWorldLocation(), worldPoint);
-            pathfinder.run();
+            Rs2RouteResult route = Rs2PathApi.plan(
+                    Rs2RouteRequest.to(Rs2Player.getWorldLocation(), worldPoint)
+                            .withRefreshTarget(worldPoint)
+                            .withBankItems(useBankedItems));
 
             // Create centered WorldArea for the path endpoint instead of corner-based
-            WorldPoint pathEndpoint = pathfinder.getPath().get(pathfinder.getPath().size() - 1);
+            WorldPoint pathEndpoint = route.getEndpoint().orElseThrow(
+                    () -> new IllegalStateException("planner returned no endpoint"));
             WorldPoint pathSouthWest = new WorldPoint(
                     pathEndpoint.getX() - pathSizeX / 2,
                     pathEndpoint.getY() - pathSizeY / 2,
@@ -3895,9 +4353,6 @@ public class Rs2Walker {
         } catch (Exception e) {
             log.trace("Exception in canReach: {} - ", e.getMessage(), e);
             return false;
-        } finally {
-            Rs2PathApi.getPathfinderConfig().setUseBankItems(originalUseBankItems);
-            Rs2PathApi.getPathfinderConfig().refresh(worldPoint);
         }
         return pathArea != null ? pathArea.intersectsWith2D(objectArea) : false;
     }
@@ -3939,16 +4394,17 @@ public class Rs2Walker {
      */
     public static List<WorldPoint> getWalkPath(WorldPoint start, WorldPoint target) {
         long startTime = System.nanoTime();
-        Rs2PathApi.getPathfinderConfig().refresh(target);
-        long pathfinderStartTime = System.nanoTime();
-        Pathfinder pathfinderLocal = new Pathfinder(Rs2PathApi.getPathfinderConfig(), start, target);
-        pathfinderLocal.run();
-        List<WorldPoint> path = pathfinderLocal.getPath();
-        long pathfinderEndTime = System.nanoTime();
+        Rs2RouteResult route = Rs2PathApi.plan(
+                Rs2RouteRequest.to(start, target)
+                        .withRefreshTarget(target)
+                        .withRefreshPolicy(Rs2RouteRequest.RefreshPolicy.ALWAYS));
+        List<WorldPoint> path = route.getPath();
         long totalEndTime = System.nanoTime();
-        double configTimeMs = (pathfinderStartTime - startTime) / 1_000_000.0;
-        double pathfinderTimeMs = (pathfinderEndTime - pathfinderStartTime) / 1_000_000.0;
+        double pathfinderTimeMs = route.hasSearchNanos()
+                ? route.getSearchNanos() / 1_000_000.0
+                : 0.0;
         double totalTimeMs = (totalEndTime - startTime) / 1_000_000.0;
+        double configTimeMs = Math.max(0.0, totalTimeMs - pathfinderTimeMs);
 
         StringBuilder performanceLog = new StringBuilder();
         performanceLog.append("getWalkPath Performance: ")
@@ -4148,40 +4604,7 @@ public class Rs2Walker {
      * @return The filtered and processed list of transports
      */
     private static List<Transport> applyTransportFiltering(List<Transport> transports) {
-        return transports.stream()
-                .filter(t -> t.getType() == TransportType.TELEPORTATION_ITEM || t.getType() == TransportType.FAIRY_RING ||
-                        t.getType() == TransportType.TELEPORTATION_SPELL || t.getType() == TransportType.CANOE ||
-                        t.getType() == TransportType.BOAT || t.getType() == TransportType.CHARTER_SHIP ||
-                        t.getType() == TransportType.SHIP || t.getType() == TransportType.MINECART ||
-                        t.getType() == TransportType.MAGIC_CARPET || t.getType() == TransportType.SPIRIT_TREE ||
-                        (t.getType() == TransportType.TRANSPORT && t.getCurrencyAmount() > 0) ||
-						(t.getType() == TransportType.SEASONAL_TRANSPORT
-								&& Rs2LeaguesTransport.isLeaguesActive()
-								&& t.getDisplayInfo() != null
-								&& t.getDisplayInfo().toLowerCase().startsWith("leagues area:")))
-                .peek(t -> {
-                    // Set fairy ring requirements if not already set
-                    if (t.getType() == TransportType.FAIRY_RING &&
-                            ((t.getItemIdRequirements() == null || t.getItemIdRequirements().isEmpty()) ) &&  Microbot.getVarbitValue(VarbitID.LUMBRIDGE_DIARY_ELITE_COMPLETE)  != 1) {
-                        t.setItemIdRequirements(Set.of(Set.of(
-                                ItemID.DRAMEN_STAFF,
-                                ItemID.LUNAR_MOONCLAN_LIMINAL_STAFF
-                        )));
-                    }
-
-                    // Set currency requirements for currency-based transports
-                    if (isCurrencyBasedTransport(t.getType()) &&
-                            (t.getItemIdRequirements() == null || t.getItemIdRequirements().isEmpty()) &&
-                            t.getCurrencyName() != null && !t.getCurrencyName().isEmpty() && t.getCurrencyAmount() > 0) {
-                        int currencyItemId = getCurrencyItemId(t.getCurrencyName());
-                        if (currencyItemId != -1) {
-                            t.setItemIdRequirements(Set.of(Set.of(currencyItemId)));
-                            log.debug("Set currency requirement for {}: {} x{} (ID: {})",
-                                    t.getType(), t.getCurrencyName(), t.getCurrencyAmount(), currencyItemId);
-                        }
-                    }
-                })
-                .collect(Collectors.toList());
+        return Rs2WalkerBankingPlanner.applyTransportFiltering(transports);
     }
 
 
@@ -4273,7 +4696,8 @@ public class Rs2Walker {
     private static ObstacleResolution resolveRecoveryObstacle(List<WorldPoint> rawPath, int rawEdgeStart,
                                                               int rawEdgeEnd, WorldPoint playerLoc,
                                                               int recoveryMinimapReach,
-                                                              Map<WorldPoint, Integer> reachableTilesCache) {
+                                                              Map<WorldPoint, Integer> reachableTilesCache,
+                                                              boolean inInstance) {
         if (rawPath == null || rawPath.isEmpty() || playerLoc == null) {
             return ObstacleResolution.notApplicable();
         }
@@ -4283,11 +4707,39 @@ public class Rs2Walker {
         if (rockfall.kind() != ObstacleResolution.Kind.NOT_APPLICABLE) {
             return rockfall;
         }
+        if (reachableTilesCache == null) {
+            return ObstacleResolution.notApplicable();
+        }
 
-        // (2) Reachable transport / agility-shortcut origin ahead: wide forward-window scan.
-        WorldPoint shortcutOrigin = RouteRecovery.findReachableTransportOriginAhead(
-                rawPath, getClosestTileIndex(rawPath, playerLoc), playerLoc,
-                reachableTilesCache.keySet(), Rs2PathApi.getTransports(),
+        int playerRawIdx = getClosestTileIndex(rawPath, playerLoc);
+
+        // (2) A transport/agility shortcut whose ORIGIN the player is already standing on/beside.
+        // TransportResolver declines this case by design ("the normal loop owns it") — but when the
+        // blocked frontier IS the shortcut's far side, the normal loop never reaches its transport
+        // dispatch: the reachability miss sends every tick into recovery, whose frontier-derived segment
+        // window can miss the transport step entirely, and the player oscillates on the origin forever
+        // (Falador crumbling wall). Dispatch the transport right here, scanning a small window around the
+        // player's TRUE raw index rather than the smoothed-derived edge window.
+        boolean allowTransportDispatch = PohTeleports.isInHouse() || !inInstance;
+        if (playerRawIdx >= 0 && allowTransportDispatch) {
+            int scanFrom = Math.max(0, playerRawIdx - RAW_TRANSPORT_DISPATCH_MAX_DISTANCE);
+            int scanTo = Math.min(rawPath.size() - 1, playerRawIdx + ROUTE_PROGRESS_FORWARD_SEARCH_TILES);
+            for (int ri = scanFrom; ri < scanTo; ri++) {
+                if (hasExplicitTransportStep(rawPath, ri)
+                        && isRawTransportOriginNearPlayer(rawPath, ri, playerLoc, RAW_TRANSPORT_DISPATCH_MAX_DISTANCE)) {
+                    WebWalkLog.spInfo("recovery_on_origin_transport | origin={} player={} rawIdx={}",
+                            compactWorldPoint(rawPath.get(ri)), compactWorldPoint(playerLoc), ri);
+                    if (handleTransports(rawPath, ri)) {
+                        return ObstacleResolution.interacted();
+                    }
+                }
+            }
+        }
+
+        // (3) Reachable transport / agility-shortcut origin ahead: wide forward-window scan.
+		WorldPoint shortcutOrigin = RouteRecovery.findReachableTransportOriginAhead(
+				rawPath, playerRawIdx, playerLoc,
+				reachableTilesCache.keySet(), Rs2PathApi::hasCatalogTransportOrigin,
                 recoveryMinimapReach - 1, ROUTE_PROGRESS_FORWARD_SEARCH_TILES);
         if (shortcutOrigin != null && !shortcutOrigin.equals(playerLoc)) {
             return ObstacleResolution.walkToOrigin(shortcutOrigin);
@@ -4563,7 +5015,7 @@ public class Rs2Walker {
             if (from.distanceTo2D(playerLoc) > radius && to.distanceTo2D(playerLoc) > radius) {
                 break;
             }
-            if (isCatalogBackedTransportSegment(route, i) && !isDoorLikeCatalogTransportSegment(route, i)) {
+            if (shouldDeferDoorHandlingToTransport(route, i)) {
                 continue;
             }
             if (hasDoorLikeSceneObjectOnSegment(from, to, playerLoc, radius)) {
@@ -4609,7 +5061,7 @@ public class Rs2Walker {
             if (a.distanceTo2D(playerLoc) > HANDLER_RANGE && b.distanceTo2D(playerLoc) > HANDLER_RANGE) {
                 continue;
             }
-            if (isCatalogBackedTransportSegment(rawPath, ri) && !isDoorLikeCatalogTransportSegment(rawPath, ri)) {
+            if (shouldDeferDoorHandlingToTransport(rawPath, ri)) {
                 continue;
             }
             if (!hasDoorLikeSceneObjectOnSegment(a, b, playerLoc, HANDLER_RANGE)) {
@@ -4667,7 +5119,7 @@ public class Rs2Walker {
             if (a.distanceTo2D(playerLoc) > HANDLER_RANGE && b.distanceTo2D(playerLoc) > HANDLER_RANGE) {
                 continue;
             }
-            if (isCatalogBackedTransportSegment(rawPath, ri) && !isDoorLikeCatalogTransportSegment(rawPath, ri)) {
+            if (shouldDeferDoorHandlingToTransport(rawPath, ri)) {
                 continue;
             }
             if (!hasDoorLikeSceneObjectOnSegment(a, b, playerLoc, HANDLER_RANGE)) {
@@ -4706,7 +5158,7 @@ public class Rs2Walker {
             if (from.distanceTo2D(playerLoc) > radiusTiles && to.distanceTo2D(playerLoc) > radiusTiles) {
                 continue;
             }
-            if (isCatalogBackedTransportSegment(rawPath, ri) && !isDoorLikeCatalogTransportSegment(rawPath, ri)) {
+            if (shouldDeferDoorHandlingToTransport(rawPath, ri)) {
                 continue;
             }
             if (!hasUnresolvedDoorLikeSceneObjectOnSegment(from, to, playerLoc, radiusTiles)) {
@@ -4726,6 +5178,14 @@ public class Rs2Walker {
                 () -> getClosestTileIndex(rawPath));
     }
 
+    /**
+     * Why the last raw scene scan returned without scanning. The scan bails at several guards before
+     * it captures its snapshot, so a {@code handled=false ms=0} tmark says nothing about WHICH guard
+     * stopped it — and that is exactly the gap that left the second staircase unhandled while the
+     * idle nudge walked onto its origin instead.
+     */
+    private static volatile String lastRawScanEarlyReturn = "none";
+
     private static boolean handleNearbyRawPathSceneObjects(List<WorldPoint> rawPath, int handlerRange, WorldPoint target) {
         return handleNearbyRawPathSceneObjects(rawPath, handlerRange, target, true);
     }
@@ -4739,32 +5199,37 @@ public class Rs2Walker {
         }
 
         if (isRecoveryMovementInFlight()) {
+            lastRawScanEarlyReturn = "recovery-move-in-flight";
             return false;
         }
 
         if (routeState.interimTargetWp != null) {
             clearRawScanDoorFocus("interim-active");
+            lastRawScanEarlyReturn = "interim-active";
             return false;
         }
 
         if (Rs2Player.isMoving()) {
+            lastRawScanEarlyReturn = "moving";
             return false;
         }
 
         WorldPoint playerLoc = Rs2Player.getWorldLocation();
         if (playerLoc == null) {
+            lastRawScanEarlyReturn = "player-null";
             return false;
         }
 
         int rawStart = getClosestTileIndex(rawPath, playerLoc);
         if (rawStart < 0) {
             clearRawScanDoorFocus("raw-start-missing");
+            lastRawScanEarlyReturn = "raw-start-missing";
             return false;
         }
 
         if (shouldUseFocusedRawDoorIndex(rawPath, rawStart)) {
-            int idx = rawScanFocusedDoorIdx;
-            rawScanFocusedDoorAttempts++;
+            int idx = routeState.rawScanFocusedDoorIdx;
+            routeState.rawScanFocusedDoorAttempts++;
             if (handleDoors(rawPath, idx, true)) {
                 log.info("[Walker] Raw path focused door handler resolved obstacle near {}", playerLoc);
                 return true;
@@ -4782,8 +5247,10 @@ public class Rs2Walker {
         if (lastEmptyRawScanAtMs > 0L
                 && rawScanNowMs - lastEmptyRawScanAtMs < EMPTY_RAW_SCAN_COOLDOWN_MS
                 && playerLoc.equals(lastEmptyRawScanPlayerLoc)) {
+            lastRawScanEarlyReturn = "empty-scan-cooldown";
             return false;
         }
+        lastRawScanEarlyReturn = "ran";
 
         int start = Math.max(0, rawStart - 2);
         int endExclusive = Math.min(rawPath.size() - 1, rawStart + 12);
@@ -4810,7 +5277,16 @@ public class Rs2Walker {
         snapshotMs = System.currentTimeMillis() - snapshotStartedAt;
         rawScanDoorCompositionCache = new IdentityHashMap<>();
         rawScanDoorSegmentCache = new HashMap<>();
+        rawScanDoorEligibilityCache = new IdentityHashMap<>();
         rawScanDoorInteractionWaitMs = 0L;
+        rawScanDoorEdgeWaitMs = 0L;
+        rawScanDoorFindMs = 0L;
+        // Route order guard for ranged transport dispatch: set once a transport step is passed over,
+        // so nothing further along the route can be actioned ahead of the obstacle in front of us.
+        boolean sawUndispatchedTransportStep = false;
+        final boolean inInstanceScan = Microbot.getClientThread()
+                .runOnClientThreadOptional(() -> Microbot.getClient().getTopLevelWorldView().isInstance())
+                .orElse(Boolean.TRUE);
         try {
             for (int i = start; i < endExclusive; i++) {
                 WorldPoint currentWorldPoint = rawPath.get(i);
@@ -4821,13 +5297,36 @@ public class Rs2Walker {
                 }
                 scannedIdx++;
 
-                if (allowTransportHandlers
-                        && hasExplicitTransportStep(rawPath, i)
-                        && isRawTransportOriginNearPlayer(
-                        rawPath, i, playerLoc, RAW_TRANSPORT_DISPATCH_MAX_DISTANCE)) {
+                if (allowTransportHandlers && hasExplicitTransportStep(rawPath, i)) {
+                    WorldPoint routeOrigin = rawPath.get(i);
+                    WorldPoint expectedDest = i + 1 < rawPath.size() ? rawPath.get(i + 1) : null;
+                    int originDistance = routeOrigin != null && routeOrigin.getPlane() == playerLoc.getPlane()
+                            ? routeOrigin.distanceTo2D(playerLoc)
+                            : -1;
+                    boolean rangedAllowed = shouldDispatchTransportAtRange(
+                            originDistance,
+                            RAW_TRANSPORT_DISPATCH_MAX_DISTANCE,
+                            handlerRange,
+                            !sawUndispatchedTransportStep,
+                            isObjectInteractionTransportStep(rawPath, i),
+                            inInstanceScan,
+                            isDoorInteractionSettling() || isTransportInteractionSettling(),
+                            rangedTransportEdgeFailedRecently(routeOrigin, expectedDest),
+                            rangedTransportDispatchEnabled());
+                    if (!rangedAllowed) {
+                        // Declining here must not let a FURTHER transport be actioned first, or the
+                        // walker skips the obstacle in front of it. Later indices lose the ranged branch.
+                        sawUndispatchedTransportStep = true;
+                    }
+                    if (rangedAllowed) {
+                    boolean ranged = originDistance > RAW_TRANSPORT_DISPATCH_MAX_DISTANCE;
                     WorldPoint before = Rs2Player.getWorldLocation();
-                    WorldPoint expectedDestination = i + 1 < rawPath.size() ? rawPath.get(i + 1) : null;
+                    WorldPoint expectedDestination = expectedDest;
                     long t = System.currentTimeMillis();
+                    if (ranged) {
+                        WebWalkLog.spInfo("ranged_transport_dispatch | origin={} dist={} — clicking from range, server walks us",
+                                compactWorldPoint(routeOrigin), originDistance);
+                    }
                     boolean handledTransport = handleTransports(rawPath, i);
                     transportMs += System.currentTimeMillis() - t;
                     if (handledTransport) {
@@ -4835,11 +5334,21 @@ public class Rs2Walker {
                             WebWalkLog.spInfo("raw_path_transport_no_progress",
                                     "at=%s expected=%s target=%s",
                                     before, expectedDestination, target);
+                            if (ranged) {
+                                markRangedTransportEdgeFailed(routeOrigin, expectedDestination);
+                            }
                         } else {
                             log.info("[Walker] Raw path transport handler resolved obstacle near {}", playerLoc);
                             resolved = true;
                             return true;
                         }
+                    }
+                    // Reaching here means the attempt did NOT resolve — handleTransports declined, or
+                    // it reported success without moving us. Either way this transport is still in the
+                    // way, so it must block a ranged dispatch at a later index for exactly the same
+                    // reason a declined one does; otherwise the walker reaches past the obstacle in
+                    // front of it and the server paths around.
+                    sawUndispatchedTransportStep = true;
                     }
                 }
 
@@ -4886,15 +5395,22 @@ public class Rs2Walker {
             rawScanDoorLocationSnapshot = null;
             rawScanDoorCompositionCache = null;
             rawScanDoorSegmentCache = null;
+            rawScanDoorEligibilityCache = null;
             long totalMs = System.currentTimeMillis() - scanStartMs;
             if (totalMs >= SLOW_RAW_SCENE_SCAN_LOG_MS) {
                 long doorWaitMs = rawScanDoorInteractionWaitMs;
-                long doorProbeMs = Math.max(0L, doorMs - doorWaitMs);
-                log.info("[Walker] slow raw scene scan: total={}ms idx={} snapshot={}ms doorProbe={}ms doorWait={}ms doorCand={}ms rockfall={}ms transports={}ms resolved={} allowTransports={}",
-                        totalMs, scannedIdx, snapshotMs, doorProbeMs, doorWaitMs, doorCandidateMs, rockfallMs, transportMs,
+                long doorEdgeWaitMs = rawScanDoorEdgeWaitMs;
+                long doorFindMs = rawScanDoorFindMs;
+                // What is left after the probe and both waits: the menu interaction and the
+                // post-interaction verification. Previously all of this was reported as "doorProbe".
+                long doorOtherMs = Math.max(0L, doorMs - doorWaitMs - doorEdgeWaitMs - doorFindMs);
+                log.info("[Walker] slow raw scene scan: total={}ms idx={} snapshot={}ms doorFind={}ms doorEdgeWait={}ms doorOther={}ms doorWait={}ms doorCand={}ms rockfall={}ms transports={}ms resolved={} allowTransports={}",
+                        totalMs, scannedIdx, snapshotMs, doorFindMs, doorEdgeWaitMs, doorOtherMs, doorWaitMs, doorCandidateMs, rockfallMs, transportMs,
                         resolved, allowTransportHandlers);
             }
             rawScanDoorInteractionWaitMs = 0L;
+            rawScanDoorEdgeWaitMs = 0L;
+            rawScanDoorFindMs = 0L;
         }
     }
 
@@ -4924,14 +5440,39 @@ public class Rs2Walker {
     /** Object definitions and segment matches are stable for one immutable scene snapshot. */
     private static Map<TileObject, Optional<ObjectComposition>> rawScanDoorCompositionCache = null;
     private static Map<String, Optional<TileObject>> rawScanDoorSegmentCache = null;
+    /** Scan-scoped memo for the segment-independent door-candidate test (see DoorProbeContext). */
+    private static Map<TileObject, Boolean> rawScanDoorEligibilityCache = null;
 
     /** Wraps the current scan-scoped probe caches for the extracted door-probe logic. */
     private static DoorProbeContext doorProbeContext() {
         return new DoorProbeContext(rawScanWallSnapshot, rawScanGameObjectSnapshot,
-                rawScanDoorLocationSnapshot, rawScanDoorCompositionCache, rawScanDoorSegmentCache);
+                rawScanDoorLocationSnapshot, rawScanDoorCompositionCache, rawScanDoorSegmentCache,
+                rawScanDoorEligibilityCache);
     }
     /** Interaction/edge-resolution wait contained inside {@link #handleDoors}; excluded from probe cost. */
     private static volatile long rawScanDoorInteractionWaitMs = 0L;
+    /** Time inside {@link #waitForDoorEdgeResolution} during a raw scan (a wait, not probe work). */
+    private static volatile long rawScanDoorEdgeWaitMs = 0L;
+    /** Time inside the door segment probe during a raw scan (the actual geometry/snapshot work). */
+    private static volatile long rawScanDoorFindMs = 0L;
+
+    /**
+     * The door segment probe, timed. "doorProbe" in the slow-scan line is a RESIDUAL — the whole
+     * handleDoors call minus the interaction wait — so it silently absorbed the edge-resolution wait,
+     * the menu interaction and the post-interaction verification too. Attributing the probe itself is
+     * the only way to tell an expensive scan from an expensive wait, and they want opposite fixes.
+     */
+    private static TileObject findDoorNearSegmentTimed(WorldPoint fromWp, WorldPoint toWp, List<String> doorActions) {
+        long startedAt = System.currentTimeMillis();
+        try {
+            return Rs2DoorProbe.findDoorNearSegment(doorProbeContext(), sessionBlacklistedDoors,
+                    recentlyOpenedStationaryDoors, STATIONARY_DOOR_SUPPRESS_MS, fromWp, toWp, doorActions);
+        } finally {
+            if (rawScanWallSnapshot != null || rawScanGameObjectSnapshot != null) {
+                rawScanDoorFindMs += System.currentTimeMillis() - startedAt;
+            }
+        }
+    }
 
     private static Map<TileObject, WorldPoint> captureRawScanDoorLocationsOnClientThread() {
         Map<TileObject, WorldPoint> locations = new IdentityHashMap<>();
@@ -5017,7 +5558,7 @@ public class Rs2Walker {
         if (rawPath == null || index < 0 || index >= rawPath.size() - 1) {
             return false;
         }
-        if (isCatalogBackedTransportSegment(rawPath, index) && !isDoorLikeCatalogTransportSegment(rawPath, index)) {
+        if (shouldDeferDoorHandlingToTransport(rawPath, index)) {
             return false;
         }
         boolean isInstance = Microbot.getClient()
@@ -5032,27 +5573,27 @@ public class Rs2Walker {
             return false;
         }
         List<String> doorActions = List.of("pay-toll", "pick-lock", "walk-through", "go-through", "open", "pass");
-        return Rs2DoorProbe.findDoorNearSegment(doorProbeContext(), sessionBlacklistedDoors, recentlyOpenedStationaryDoors, STATIONARY_DOOR_SUPPRESS_MS, fromWp, toWp, doorActions) != null;
+        return findDoorNearSegmentTimed(fromWp, toWp, doorActions) != null;
     }
 
     private static void setRawScanDoorFocus(int index) {
-        rawScanFocusedDoorIdx = index;
-        rawScanFocusedDoorSetAtMs = System.currentTimeMillis();
-        rawScanFocusedDoorAttempts = 0;
+        routeState.rawScanFocusedDoorIdx = index;
+        routeState.rawScanFocusedDoorSetAtMs = System.currentTimeMillis();
+        routeState.rawScanFocusedDoorAttempts = 0;
     }
 
     private static boolean shouldUseFocusedRawDoorIndex(List<WorldPoint> rawPath, int rawStartIdx) {
-        Integer idx = rawScanFocusedDoorIdx;
+        Integer idx = routeState.rawScanFocusedDoorIdx;
         if (idx == null) {
             return false;
         }
         if (routeState.interimTargetWp != null) {
             return false;
         }
-        if (System.currentTimeMillis() - rawScanFocusedDoorSetAtMs > RAW_SCAN_DOOR_FOCUS_MAX_MS) {
+        if (System.currentTimeMillis() - routeState.rawScanFocusedDoorSetAtMs > RAW_SCAN_DOOR_FOCUS_MAX_MS) {
             return false;
         }
-        if (rawScanFocusedDoorAttempts >= RAW_SCAN_DOOR_FOCUS_MAX_ATTEMPTS) {
+        if (routeState.rawScanFocusedDoorAttempts >= RAW_SCAN_DOOR_FOCUS_MAX_ATTEMPTS) {
             return false;
         }
         if (idx < 0 || idx >= rawPath.size() - 1) {
@@ -5065,12 +5606,12 @@ public class Rs2Walker {
     }
 
     private static void clearRawScanDoorFocus(String reason) {
-        if (rawScanFocusedDoorIdx != null && debug) {
+        if (routeState.rawScanFocusedDoorIdx != null && debug) {
             walkerDiag("clear raw door focus: %s", reason);
         }
-        rawScanFocusedDoorIdx = null;
-        rawScanFocusedDoorSetAtMs = 0L;
-        rawScanFocusedDoorAttempts = 0;
+        routeState.rawScanFocusedDoorIdx = null;
+        routeState.rawScanFocusedDoorSetAtMs = 0L;
+        routeState.rawScanFocusedDoorAttempts = 0;
     }
 
     private static boolean handleCurrentTileTransportTowardPath(List<WorldPoint> rawPath, List<WorldPoint> path, WorldPoint target) {
@@ -5086,32 +5627,26 @@ public class Rs2Walker {
             return false;
         }
 
-        // Snappy proximity: consider usable transports whose origin is reachable within a few tiles
-        // of the player, not just the one on the exact player tile. NPC/"Follow" transports (e.g. Elkoy
-        // in the Tree Gnome Village maze) roam and sit a tile off the planned path, so exact-tile
-        // matching never sees them. The destination-on-forward-route gate below keeps this safe against
-        // off-path loops, and getTransports() is already the usable (config/quest/level-filtered) set,
-        // so we never grab a transport the pathfinder excluded.
+        // Snappy proximity: consider exact planned transports whose origin is reachable within a few
+        // tiles of the player, not just one on the exact player tile. NPC/"Follow" transports (e.g.
+        // Elkoy in the Tree Gnome Village maze) roam and sit a tile off the planned path. The old code
+        // rescanned every usable catalog row and inferred selection from destination membership; that is
+        // ambiguous when multiple transports share an edge. The completed route now supplies both order
+        // and exact identity.
         final int NEARBY_TRANSPORT_REACH = 5;
-        Map<WorldPoint, Set<Transport>> transportsByOrigin = Rs2PathApi.getTransports();
-        Set<Transport> transports = new HashSet<>();
-        Set<Transport> transportsOnPlayerTile = transportsByOrigin.get(playerLoc);
-        if (transportsOnPlayerTile != null) {
-            transports.addAll(transportsOnPlayerTile);
-        }
-        for (WorldPoint reachableTile : Rs2Tile.getReachableTilesFromTile(playerLoc, NEARBY_TRANSPORT_REACH).keySet()) {
-            Set<Transport> ts = transportsByOrigin.get(reachableTile);
-            if (ts != null) {
-                transports.addAll(ts);
-            }
-        }
-        if (transports.isEmpty()) {
+        Set<WorldPoint> reachableOrigins = new HashSet<>(
+                Rs2Tile.getReachableTilesFromTile(playerLoc, NEARBY_TRANSPORT_REACH).keySet());
+        reachableOrigins.add(playerLoc);
+        List<Rs2PathApi.ActiveTransportSelection> plannedSelections =
+                Rs2PathApi.getActiveTransportSelections(rawPath);
+        if (plannedSelections.isEmpty()) {
             return false;
         }
 
         Map<WorldPoint, Integer> forwardIndex = new HashMap<>();
         addForwardPathIndices(forwardIndex, rawPath, playerLoc);
         addForwardPathIndices(forwardIndex, path, playerLoc);
+        int rawClosestIndex = Math.max(0, getClosestTileIndex(rawPath, playerLoc));
 
         WorldPoint priorOrigin = routeState.lastTransportOriginLocation;
         // Trust the pathfinder: only take a nearby transport whose destination is on the
@@ -5122,21 +5657,29 @@ public class Rs2Walker {
         // the pathfinder never chose: it looped forever on the Mor Ul Rek cave entrance/exit and
         // stalled clicking the Fossil Island rowboat. The pathfinder already routed every transport
         // it wants onto the path, so on-route membership is the correct, region-safe admission test.
-        List<Transport> candidates = transports.stream()
-                .filter(t -> t.getDestination() != null)
+        List<Rs2PathApi.ActiveTransportSelection> candidates = plannedSelections.stream()
+                // One-edge backtrack permits standing just past an interaction origin while preventing
+                // a repeated destination later in the route from reviving an already-passed transport.
+                .filter(selection -> selection.getPathIndex() >= Math.max(0, rawClosestIndex - 1))
+                .filter(selection -> {
+                    Transport transport = selection.getLocalExecutionTransport();
+                    WorldPoint origin = transport.getOrigin();
+                    return origin == null || reachableOrigins.contains(origin);
+                })
                 // Local adjacent same-plane edges (doors/gates) are handled by segment door/object
                 // logic; current-tile transport probing can bounce on these and create loops.
-                .filter(t -> !isAdjacentSamePlaneTransport(t))
-                .filter(t -> priorOrigin == null
-                        || !t.getDestination().equals(priorOrigin))
-                .filter(t -> target == null
+                .filter(selection -> !isAdjacentSamePlaneTransport(selection.getLocalExecutionTransport()))
+                .filter(selection -> priorOrigin == null
+                        || !selection.getEdge().getDestination().equals(priorOrigin))
+                .filter(selection -> target == null
                         || playerLoc.getPlane() != target.getPlane()
-                        || t.getDestination().getPlane() == target.getPlane())
-                .filter(t -> forwardIndex.containsKey(t.getDestination()))
-                .sorted(Comparator.comparingInt(t -> forwardIndex.get(t.getDestination())))
+                        || selection.getEdge().getDestination().getPlane() == target.getPlane())
+                .filter(selection -> forwardIndex.containsKey(selection.getEdge().getDestination()))
+                .sorted(Comparator.comparingInt(Rs2PathApi.ActiveTransportSelection::getPathIndex))
                 .collect(Collectors.toList());
 
-        for (Transport transport : candidates) {
+        for (Rs2PathApi.ActiveTransportSelection selection : candidates) {
+            Transport transport = selection.getLocalExecutionTransport();
             WorldPoint origin = transport.getOrigin() != null ? transport.getOrigin() : playerLoc;
             if (shouldThrottleCurrentTileTransportAttempt(origin, transport.getDestination())) {
                 continue;
@@ -5146,7 +5689,7 @@ public class Rs2Walker {
             // Pass the transport's own origin so handleTransports walks the short hop to it before
             // interacting (NPC dispatch already auto-walks via canWalkTo + interact); object/door
             // interactions that can't be reached from here simply return false and we fall through.
-            if (handleTransports(Arrays.asList(origin, transport.getDestination()), 0)) {
+            if (handleSelectedTransport(Arrays.asList(origin, transport.getDestination()), 0, selection)) {
                 if (didCurrentTileTransportProgress(before, transport.getDestination(), target)) {
                     log.info("[Walker] Nearby transport handler resolved obstacle: origin={} dest={} (player {})",
                             origin, transport.getDestination(), playerLoc);
@@ -5203,13 +5746,9 @@ public class Rs2Walker {
     private static final long STATIONARY_DOOR_SUPPRESS_MS = 10_000;
     private static final Map<String, Long> recentDoorAttemptByEdge = new ConcurrentHashMap<>();
     private static final long DOOR_ATTEMPT_EDGE_COOLDOWN_MS = 2_500;
-    private static volatile WorldPoint lastDoorAttemptFrom = null;
-    private static volatile WorldPoint lastDoorAttemptTo = null;
-    private static volatile long lastDoorAttemptAtMs = 0L;
     private static final Map<String, Long> recentCurrentTileTransportByEdge = new ConcurrentHashMap<>();
     private static final long CURRENT_TILE_TRANSPORT_EDGE_COOLDOWN_MS = 2_200;
     private static final long DOOR_INTERACTION_GLOBAL_COOLDOWN_MS = 1_800;
-    private static volatile long nextDoorInteractionAllowedAtMs = 0L;
 
     static boolean hasQuestLockKeywords(String text) {
         if (text == null || text.isEmpty()) return false;
@@ -5299,7 +5838,7 @@ public class Rs2Walker {
     }
 
     private static boolean handleDoors(List<WorldPoint> path, int index, boolean allowSegmentProbe) {
-        if (Rs2PathApi.getPathfinder() == null || index >= path.size() - 1) return false;
+        if (!Rs2PathApi.getActiveRouteStatus().isPresent() || index >= path.size() - 1) return false;
 
         // Skip any door whose tile was blacklisted after a prior quest-lock detection —
         // avoid re-triggering the same failed interact loop this session.
@@ -5343,7 +5882,7 @@ public class Rs2Walker {
             return false;
         }
 
-        if (isCatalogBackedTransportSegment(path, index) && !isDoorLikeCatalogTransportSegment(path, index)) {
+        if (shouldDeferDoorHandlingToTransport(path, index)) {
             return false;
         }
 
@@ -5356,7 +5895,7 @@ public class Rs2Walker {
         // requested the same object definitions on the client thread for adjacent raw edges.
         if (allowSegmentProbe
                 && (rawScanWallSnapshot != null || rawScanGameObjectSnapshot != null)) {
-            TileObject snapshotDoor = Rs2DoorProbe.findDoorNearSegment(doorProbeContext(), sessionBlacklistedDoors, recentlyOpenedStationaryDoors, STATIONARY_DOOR_SUPPRESS_MS, fromWp, toWp, doorActions);
+            TileObject snapshotDoor = findDoorNearSegmentTimed(fromWp, toWp, doorActions);
             if (snapshotDoor == null) {
                 return false;
             }
@@ -5444,14 +5983,14 @@ public class Rs2Walker {
                     // merely beside the path. isDoorOnSegment walks the segment against the wall's
                     // real edge, matching the GameObject branch and findDoorNearSegment.
                     if (Rs2DoorGeometry.isDoorOnSegment(object, fromWp, toWp)) {
-                        log.info("Found WallObject door - name {} with action {} at {} - from {} to {}", name, action, probe, fromWp, toWp);
+                        log.debug("Found WallObject door - name {} with action {} at {} - from {} to {}", name, action, probe, fromWp, toWp);
                         found = true;
                     } else {
                         Telemetry.recordDoorReject("orient-mismatch");
                     }
                 } else {
                     if (Rs2DoorGeometry.isDoorOnSegment(object, fromWp, toWp)) {
-                        log.info("Found GameObject door - name {} with action {} at {} - from {} to {}", name, action, probe, fromWp, toWp);
+                        log.debug("Found GameObject door - name {} with action {} at {} - from {} to {}", name, action, probe, fromWp, toWp);
                         found = true;
                     } else {
                         Telemetry.recordDoorReject("gameobject-segment-mismatch");
@@ -5470,7 +6009,7 @@ public class Rs2Walker {
                                     compactWorldPoint(probe), compactWorldPoint(fromWp), compactWorldPoint(toWp));
                             return false;
                         }
-                        if (Rs2Player.isMoving()) {
+                        if (doorInteractionDeferredForMovement(probe)) {
                             WebWalkLog.spInfo("door_interact_deferred | reason=moving mode=segment-door probe={} from={} to={}",
                                     compactWorldPoint(probe), compactWorldPoint(fromWp), compactWorldPoint(toWp));
                             return false;
@@ -5491,7 +6030,7 @@ public class Rs2Walker {
                                     compactWorldPoint(probe), compactWorldPoint(fromWp), compactWorldPoint(toWp));
                             return false;
                         }
-                        markDoorInteractionSettling();
+                        markDoorInteractionSettling(toWp);
                         waitForDoorInteractionProgress(fromWp, toWp);
                         WorldPoint posAfter = Rs2Player.getWorldLocation();
                         boolean traversed = didTraverseInteractedDoor(posBefore, posAfter, probe, fromWp, toWp);
@@ -5501,13 +6040,15 @@ public class Rs2Walker {
                                     probe, name, action, dialogue);
                             sessionBlacklistedDoors.add(probe);
                             Rs2Dialogue.clickContinue();
-                            if (Rs2PathApi.getPathfinderConfig() != null) {
-                                Rs2PathApi.getPathfinderConfig().refresh();
-                            }
+                            Rs2PathApi.refreshPlanningConfiguration();
                             recalculatePath();
+                            // Resolved by rerouting; return before the wrong-traversal branch so a
+                            // quest/skill-locked door is never learned as a blocked edge (it unlocks when the
+                            // requirement is met). Matches the tryHandleDoorObject quest-locked path.
+                            return true;
                         }
                         if (!traversed) {
-                            if (shouldBlacklistDoorAfterWrongTraversal(posBefore, posAfter, fromWp, toWp)) {
+                            if (shouldBlacklistDoorAfterWrongTraversal(posBefore, posAfter, fromWp, toWp, Rs2Player.isMoving())) {
                                 sessionBlacklistedDoors.add(probe);
                                 log.warn("[Walker] Blacklisting door after wrong traversal: door={} from={} to={} before={} after={}",
                                         probe, fromWp, toWp, posBefore, posAfter);
@@ -5515,10 +6056,8 @@ public class Rs2Walker {
                                 // so persist it as a learned block that survives restarts and reroutes future paths.
                                 // (Quest/skill-locked doors take the isQuestLockedDoorDialogue() branch above and are
                                 // deliberately NOT learned — they unlock when the requirement is met.)
-                                if (Rs2PathApi.getPathfinderConfig() != null) {
-                                    Rs2PathApi.getPathfinderConfig().learnBlockedEdge(fromWp, toWp,
-                                            "wrong-traversal door @ " + compactWorldPoint(probe));
-                                }
+                                Rs2PathApi.learnBlockedEdge(fromWp, toWp,
+                                        "wrong-traversal door @ " + compactWorldPoint(probe));
                             }
                             if (doorStillHasAction(probe, fromWp, toWp, doorActions, action)) {
                                 log.debug("[Walker] Door interaction did not traverse; action still present at {} ({} -> {})",
@@ -5540,7 +6079,7 @@ public class Rs2Walker {
             }
         }
 
-        TileObject nearbyDoor = allowSegmentProbe ? Rs2DoorProbe.findDoorNearSegment(doorProbeContext(), sessionBlacklistedDoors, recentlyOpenedStationaryDoors, STATIONARY_DOOR_SUPPRESS_MS, fromWp, toWp, doorActions) : null;
+        TileObject nearbyDoor = allowSegmentProbe ? findDoorNearSegmentTimed(fromWp, toWp, doorActions) : null;
         if (nearbyDoor != null && tryHandleDoorObject(nearbyDoor, nearbyDoor.getWorldLocation(), fromWp, toWp, doorActions, true)) {
             return true;
         }
@@ -5577,12 +6116,12 @@ public class Rs2Walker {
             if (searchNeighborPoint(orientation, probe, fromWp)
                     || searchNeighborPoint(orientation, probe, toWp)
                     || (allowSegmentProbe && Rs2DoorGeometry.wallDoorTouchesSegment((WallObject) object, fromWp, toWp))) {
-                log.info("Found WallObject door - name {} with action {} at {} - from {} to {}", name, action, probe, fromWp, toWp);
+                log.debug("Found WallObject door - name {} with action {} at {} - from {} to {}", name, action, probe, fromWp, toWp);
                 found = true;
             }
         } else if (name != null && name.toLowerCase().contains("door")) {
             if (Rs2DoorGeometry.isDoorOnSegment(object, fromWp, toWp)) {
-                log.info("Found GameObject door - name {} with action {} at {} - from {} to {}", name, action, probe, fromWp, toWp);
+                log.debug("Found GameObject door - name {} with action {} at {} - from {} to {}", name, action, probe, fromWp, toWp);
                 found = true;
             }
         }
@@ -5603,7 +6142,7 @@ public class Rs2Walker {
                     compactWorldPoint(probe), compactWorldPoint(fromWp), compactWorldPoint(toWp));
             return false;
         }
-        if (Rs2Player.isMoving()) {
+        if (doorInteractionDeferredForMovement(probe)) {
             WebWalkLog.spInfo("door_interact_deferred | reason=moving mode=segment-probe probe={} from={} to={}",
                     compactWorldPoint(probe), compactWorldPoint(fromWp), compactWorldPoint(toWp));
             return false;
@@ -5624,7 +6163,7 @@ public class Rs2Walker {
                     compactWorldPoint(probe), compactWorldPoint(fromWp), compactWorldPoint(toWp));
             return false;
         }
-        markDoorInteractionSettling();
+        markDoorInteractionSettling(toWp);
         waitForDoorInteractionProgress(fromWp, toWp);
         WorldPoint posAfter = Rs2Player.getWorldLocation();
         boolean traversed = didTraverseInteractedDoor(posBefore, posAfter, probe, fromWp, toWp);
@@ -5633,7 +6172,7 @@ public class Rs2Walker {
             markNearbyDoorFamilyOpened(object, probe, action, SEGMENT_DOOR_FAMILY_MARK_RADIUS);
             return true;
         }
-        if (shouldBlacklistDoorAfterWrongTraversal(posBefore, posAfter, fromWp, toWp)) {
+        if (shouldBlacklistDoorAfterWrongTraversal(posBefore, posAfter, fromWp, toWp, Rs2Player.isMoving())) {
             sessionBlacklistedDoors.add(probe);
             log.warn("[Walker] Blacklisting door after wrong traversal: door={} from={} to={} before={} after={}",
                     probe, fromWp, toWp, posBefore, posAfter);
@@ -5644,9 +6183,7 @@ public class Rs2Walker {
                     probe, name, action, dialogue);
             sessionBlacklistedDoors.add(probe);
             Rs2Dialogue.clickContinue();
-            if (Rs2PathApi.getPathfinderConfig() != null) {
-                Rs2PathApi.getPathfinderConfig().refresh();
-            }
+            Rs2PathApi.refreshPlanningConfiguration();
             recalculatePath();
             return true;
         }
@@ -5882,8 +6419,8 @@ public class Rs2Walker {
         if (progressed) {
             WebWalkLog.tmark("door_edge_nudge", System.currentTimeMillis() - routeState.walkSessionStartedAtMs,
                     target, before, "from=" + compactWorldPoint(fromWp) + " to=" + compactWorldPoint(toWp));
-            lastMovedTimeMs = System.currentTimeMillis();
-            stuckCount = 0;
+            routeState.lastMovedTimeMs = System.currentTimeMillis();
+            routeState.stuckCount = 0;
         } else {
             WebWalkLog.spInfo("door_edge_nudge_unresolved | from={} to={} before={} after={}",
                     compactWorldPoint(fromWp), compactWorldPoint(toWp), compactWorldPoint(before), compactWorldPoint(after));
@@ -5892,9 +6429,9 @@ public class Rs2Walker {
     }
 
     private static boolean tryRecentDoorAttemptEdgeNudge(WorldPoint playerLoc, WorldPoint target) {
-        WorldPoint from = lastDoorAttemptFrom;
-        WorldPoint to = lastDoorAttemptTo;
-        long attemptedAt = lastDoorAttemptAtMs;
+        WorldPoint from = routeState.lastDoorAttemptFrom;
+        WorldPoint to = routeState.lastDoorAttemptTo;
+        long attemptedAt = routeState.lastDoorAttemptAtMs;
         if (playerLoc == null || from == null || to == null || attemptedAt <= 0L) {
             return false;
         }
@@ -5953,6 +6490,19 @@ public class Rs2Walker {
                                             long setAtMs,
                                             long lastProgressAtMs,
                                             long nowMs) {
+        return shouldClearInterimTarget(interim, playerLoc, setAtMs, lastProgressAtMs, nowMs, Integer.MAX_VALUE);
+    }
+
+    /**
+     * @param bestDistanceSeen closest the player has been to {@code interim} while holding it, or
+     *                         {@link Integer#MAX_VALUE} when unknown (then the abandon check is inert).
+     */
+    static boolean shouldClearInterimTarget(WorldPoint interim,
+                                            WorldPoint playerLoc,
+                                            long setAtMs,
+                                            long lastProgressAtMs,
+                                            long nowMs,
+                                            int bestDistanceSeen) {
         if (interim == null) {
             return false;
         }
@@ -5960,6 +6510,17 @@ public class Rs2Walker {
             return true;
         }
         if (playerLoc.distanceTo2D(interim) <= INTERIM_CLOSE_TILES) {
+            return true;
+        }
+        // An interim the player is walking AWAY from is dead, and nothing else here notices.
+        // interimLastProgressAtMs is renewed whenever the ROUTE INDEX advances, so a player making
+        // honest progress along the route — in the opposite direction to a checkpoint the route has
+        // since moved past — renews the interim every pass and the stale-progress escape can never
+        // fire. Measured: interim held at (2973,3350) while the player walked 2961,3349 -> 2960,3343,
+        // moving=true throughout, renewed until interimAgeMs=9999 and only then "expired" — with a
+        // transport dispatch waiting behind it the whole time.
+        if (bestDistanceSeen != Integer.MAX_VALUE
+                && playerLoc.distanceTo2D(interim) > bestDistanceSeen + INTERIM_ABANDON_MARGIN_TILES) {
             return true;
         }
         if (lastProgressAtMs > 0L && nowMs - lastProgressAtMs > INTERIM_PROGRESS_TIMEOUT_MS) {
@@ -6026,7 +6587,8 @@ public class Rs2Walker {
                 routeState.interimLastProgressAtMs = nowMs;
             }
         }
-        if (!shouldClearInterimTarget(interim, playerLoc, routeState.interimSetAtMs, routeState.interimLastProgressAtMs, nowMs)) {
+        if (!shouldClearInterimTarget(interim, playerLoc, routeState.interimSetAtMs,
+                routeState.interimLastProgressAtMs, nowMs, routeState.interimLastDistanceToTarget)) {
             return false;
         }
         String reason;
@@ -6034,6 +6596,10 @@ public class Rs2Walker {
             reason = "invalid";
         } else if (playerLoc.distanceTo2D(interim) <= INTERIM_CLOSE_TILES) {
             reason = "close";
+        } else if (routeState.interimLastDistanceToTarget != Integer.MAX_VALUE
+                && playerLoc.distanceTo2D(interim)
+                > routeState.interimLastDistanceToTarget + INTERIM_ABANDON_MARGIN_TILES) {
+            reason = "moving-away";
         } else if (routeState.interimLastProgressAtMs > 0L && nowMs - routeState.interimLastProgressAtMs > INTERIM_PROGRESS_TIMEOUT_MS) {
             reason = "stale-progress";
         } else {
@@ -6063,7 +6629,7 @@ public class Rs2Walker {
                 routeState.interimSetAtMs,
                 routeState.interimLastProgressAtMs,
                 nowMs,
-                lastMovedTimeMs,
+                routeState.lastMovedTimeMs,
                 routeState.lastUnreachableRecoveryClickAtMs,
                 Rs2Player.isMoving());
     }
@@ -6088,7 +6654,7 @@ public class Rs2Walker {
                 routeState.interimSetAtMs,
                 routeState.interimLastProgressAtMs,
                 nowMs,
-                lastMovedTimeMs,
+                routeState.lastMovedTimeMs,
                 Rs2Player.isMoving(),
                 INTERIM_CLOSE_TILES);
     }
@@ -6168,11 +6734,61 @@ public class Rs2Walker {
     }
 
     private static boolean shouldThrottleGlobalDoorInteraction() {
-        return Rs2DoorHandler.shouldThrottleGlobalDoorInteraction(nextDoorInteractionAllowedAtMs);
+        return Rs2DoorHandler.shouldThrottleGlobalDoorInteraction(routeState.nextDoorInteractionAllowedAtMs)
+                || shouldDeferDoorInteractionForDialogue();
+    }
+
+    /**
+     * A guarded door answers with a conversation instead of opening ("you can't go in there"). The
+     * walker reads the lack of movement as "no progress, retry" and clicks again — and that click
+     * CANCELS the menu the previous click just opened, destroying the only thing that can get us
+     * through. Whatever answers dialogue (the questing layer) then never sees a menu that survives
+     * long enough to act on, so the walk livelocks at the door.
+     *
+     * <p>Deferring is BOUNDED: if nothing answers within {@link #DOOR_DIALOGUE_DEFER_MAX_MS} the
+     * walker resumes clicking, so a stray conversation with no handler cannot stall a plain walk
+     * that has no dialogue logic behind it.
+     */
+    private static boolean shouldDeferDoorInteractionForDialogue() {
+        if (!Rs2Dialogue.hasSelectAnOption()) {
+            routeState.doorDialogueDeferSinceMs = 0L;
+            return false;
+        }
+        long now = System.currentTimeMillis();
+        if (routeState.doorDialogueDeferSinceMs == 0L) {
+            routeState.doorDialogueDeferSinceMs = now;
+            WebWalkLog.spInfo("door_dialogue_defer | an option menu is open — not re-clicking the door");
+        }
+        return doorDialogueDeferActive(routeState.doorDialogueDeferSinceMs, now, DOOR_DIALOGUE_DEFER_MAX_MS);
+    }
+
+    /**
+     * Pure half of the dialogue hold-off: defer only while the menu has been up for less than
+     * {@code maxDeferMs}. Split out because an unbounded version of this gate would trade a livelock
+     * at a guarded door for a permanent stall at any unanswered conversation.
+     */
+    static boolean doorDialogueDeferActive(long deferSinceMs, long nowMs, long maxDeferMs) {
+        return deferSinceMs > 0L && nowMs - deferSinceMs < maxDeferMs;
     }
 
     private static boolean isDoorInteractionSettling() {
-        return System.currentTimeMillis() < doorInteractionSettleUntilMs;
+        long now = System.currentTimeMillis();
+        if (now >= routeState.doorInteractionSettleUntilMs) {
+            return false;
+        }
+        // Early exit: the interaction's purpose was opening the door — once its far side is reachable,
+        // the edge is open and there is nothing left to settle (previously this was a flat 900ms freeze
+        // after every door). One-tick floor for object-state flux; the window is cleared on success so
+        // repeated checks this tick don't re-run the reachability probe.
+        WorldPoint farSide = routeState.doorSettleFarSideWp;
+        if (farSide != null
+                && now - routeState.doorInteractionSettleStartedAtMs >= POST_INTERACT_SETTLE_MIN_MS
+                && Rs2Tile.isTileReachable(farSide)) {
+            routeState.doorInteractionSettleUntilMs = 0L;
+            routeState.doorSettleFarSideWp = null;
+            return false;
+        }
+        return true;
     }
 
     private static boolean isTransportInteractionSettling() {
@@ -6180,42 +6796,65 @@ public class Rs2Walker {
         if (handledAt <= 0L) {
             return false;
         }
-        long ageMs = System.currentTimeMillis() - handledAt;
+        return transportSettlePending(System.currentTimeMillis() - handledAt,
+                Rs2Player.getWorldLocation(),
+                routeState.lastTransportDestinationLocation,
+                Rs2Player.isMoving(),
+                Rs2Player.isAnimating());
+    }
+
+    /**
+     * Pure settle decision after a handled transport. Settling ends as soon as the player is confirmed
+     * ARRIVED — standing at/next to the transport's planned destination, neither moving nor animating —
+     * after a one-tick floor for post-action state flux; {@link #TRANSPORT_POST_INTERACT_SETTLE_MS} is
+     * only the ceiling for when arrival never confirms (unknown destination, drawn-out travel). The old
+     * check compared against where the player stood when the transport was MARKED handled, which after
+     * landing is always true while standing still — so the settle could only ever end by timeout, a fixed
+     * ~900ms freeze after every single transport.
+     */
+    static boolean transportSettlePending(long ageMs, WorldPoint now, WorldPoint plannedDestination,
+                                          boolean moving, boolean animating) {
         if (ageMs < 0L || ageMs > TRANSPORT_POST_INTERACT_SETTLE_MS) {
             return false;
         }
-        WorldPoint now = Rs2Player.getWorldLocation();
-        WorldPoint landedAt = routeState.lastTransportHandledAtLocation;
-        if (now == null || landedAt == null) {
+        if (ageMs < POST_INTERACT_SETTLE_MIN_MS) {
+            return true;
+        }
+        if (now == null || plannedDestination == null) {
             return ageMs <= TRANSPORT_POST_INTERACT_SETTLE_MS / 2;
         }
-        return now.getPlane() == landedAt.getPlane()
-                && now.distanceTo2D(landedAt) <= 1
-                && !Rs2Player.isMoving();
+        boolean arrivedIdle = now.getPlane() == plannedDestination.getPlane()
+                && now.distanceTo2D(plannedDestination) <= 1
+                && !moving && !animating;
+        return !arrivedIdle;
     }
 
     private static boolean isDoorEdgePassSkipCoolingDown() {
-        return System.currentTimeMillis() - lastDoorEdgePassSkipAtMs < DOOR_EDGE_SKIP_COOLDOWN_MS;
+        return System.currentTimeMillis() - routeState.lastDoorEdgePassSkipAtMs < DOOR_EDGE_SKIP_COOLDOWN_MS;
     }
 
     private static boolean isRecoveryMovementInFlight() {
         return System.currentTimeMillis() - routeState.lastUnreachableRecoveryClickAtMs < RECOVERY_MOVEMENT_IN_FLIGHT_MS;
     }
 
-    private static void markDoorInteractionSettling() {
-        doorInteractionSettleUntilMs = System.currentTimeMillis() + DOOR_POST_INTERACT_SETTLE_MS;
+    /** Starts the door settle window, remembering the far-side tile so it can end when the edge opens. */
+    private static void markDoorInteractionSettling(WorldPoint farSideWp) {
+        long now = System.currentTimeMillis();
+        routeState.doorInteractionSettleStartedAtMs = now;
+        routeState.doorInteractionSettleUntilMs = now + DOOR_POST_INTERACT_SETTLE_MS;
+        routeState.doorSettleFarSideWp = farSideWp;
     }
 
     private static void markGlobalDoorInteractionCooldown() {
-        nextDoorInteractionAllowedAtMs = Rs2DoorHandler.markGlobalDoorInteractionCooldown(DOOR_INTERACTION_GLOBAL_COOLDOWN_MS);
+        routeState.nextDoorInteractionAllowedAtMs = Rs2DoorHandler.markGlobalDoorInteractionCooldown(DOOR_INTERACTION_GLOBAL_COOLDOWN_MS);
     }
 
     private static void markDoorAttempt(WorldPoint doorTile, WorldPoint fromWp, WorldPoint toWp) {
         Rs2DoorHandler.markDoorAttempt(recentDoorAttemptByEdge, doorTile, fromWp, toWp);
         if (fromWp != null && toWp != null) {
-            lastDoorAttemptFrom = fromWp;
-            lastDoorAttemptTo = toWp;
-            lastDoorAttemptAtMs = System.currentTimeMillis();
+            routeState.lastDoorAttemptFrom = fromWp;
+            routeState.lastDoorAttemptTo = toWp;
+            routeState.lastDoorAttemptAtMs = System.currentTimeMillis();
         }
     }
 
@@ -6264,16 +6903,41 @@ public class Rs2Walker {
         return true;
     }
 
-    /**
-     * Strict catalog step: path tile equals transport origin in {@link Rs2PathApi#getTransports()}
-     * and next tile equals that row's destination. Used where the walker must dispatch {@code handleTransports}
-     * from the path index (origin keyed in the TSV-fed multimap).
-     */
+    /** Exact selected transport step retained by the completed active route. */
     private static boolean hasExplicitTransportStep(List<WorldPoint> path, int index) {
         if (path == null || index < 0 || index >= path.size() - 1) {
             return false;
         }
-        return matchesDirectedTransportCatalogEdge(path.get(index), path.get(index + 1));
+        return Rs2PathApi.getActiveTransportEdge(path.get(index), path.get(index + 1)).isPresent();
+    }
+
+    /**
+     * Whether a planned transport origin sits essentially under the player's feet on the RAW path.
+     * <p>
+     * The startup phase suppresses broad raw handlers until the first movement click — but the first
+     * transport of a walk is routinely taken with no click at all (the player already stands on its
+     * origin), so the phase stays STARTUP straight through the NEXT transport. With the raw scan
+     * disabled, nothing dispatches it: the walker idles until the idle nudge minimap-clicks onto the
+     * origin, which is the "runs the four tiles instead of clicking the stairs" report. The segment
+     * loop already carves out exactly this case; this is the raw scan's equivalent, and it is
+     * deliberately as narrow — an origin within the near band, nothing else.
+     */
+    private static boolean hasImmediateRawTransportStepNearPlayer(List<WorldPoint> rawPath) {
+        WorldPoint playerLoc = Rs2Player.getWorldLocation();
+        if (rawPath == null || rawPath.size() < 2 || playerLoc == null) {
+            return false;
+        }
+        int rawIdx = getClosestTileIndex(rawPath, playerLoc);
+        if (rawIdx < 0) {
+            return false;
+        }
+        int lastIdx = Math.min(rawPath.size() - 2, rawIdx + RAW_TRANSPORT_DISPATCH_MAX_DISTANCE);
+        for (int ri = Math.max(0, rawIdx); ri <= lastIdx; ri++) {
+            if (hasImmediatePlannedTransportStep(rawPath, ri, playerLoc)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean hasImmediatePlannedTransportStep(List<WorldPoint> path,
@@ -6349,27 +7013,41 @@ public class Rs2Walker {
                 || hasDoorLikeAdjacentOriginShortTransportHop(to, from);
     }
 
-    private static boolean matchesDirectedTransportCatalogEdge(WorldPoint origin, WorldPoint dest) {
-        if (origin == null || dest == null) {
+    /**
+     * Catalog transports normally bypass generic door probing so the exact selected edge keeps
+     * execution ownership. Door-like rows are the compatibility exception because many ordinary
+     * Open/Pass rows still rely on the door cascade. The Al Kharid toll gate has an explicit
+     * executor with dialogue and exact-landing semantics, so allowing the generic scanner to take
+     * it first creates two conflicting completion contracts.
+     */
+    private static boolean shouldDeferDoorHandlingToTransport(List<WorldPoint> path, int index) {
+        if (!isCatalogBackedTransportSegment(path, index)) {
             return false;
         }
-        Set<Transport> transports = Rs2PathApi.getTransports().get(origin);
-        if (transports == null || transports.isEmpty()) {
-            return false;
-        }
-        return transports.stream().anyMatch(t -> Objects.equals(t.getDestination(), dest));
+        return !isDoorLikeCatalogTransportSegment(path, index)
+                || isAlKharidTollGateSegment(path.get(index), path.get(index + 1));
     }
+
+    static boolean isAlKharidTollGateSegment(WorldPoint from, WorldPoint to) {
+        return from != null
+                && to != null
+                && AL_KHARID_TOLL_GATE_POINTS.contains(from)
+                && AL_KHARID_TOLL_GATE_POINTS.contains(to)
+                && from.getPlane() == to.getPlane()
+                && Math.abs(from.getX() - to.getX()) == 1
+                && from.getY() == to.getY();
+    }
+
+	private static boolean matchesDirectedTransportCatalogEdge(WorldPoint origin, WorldPoint dest) {
+		return Rs2PathApi.hasCatalogTransportEdge(origin, dest);
+	}
 
     private static boolean hasDoorLikeDirectedCatalogTransport(WorldPoint origin, WorldPoint dest) {
         if (origin == null || dest == null) {
             return false;
         }
-        Set<Transport> transports = Rs2PathApi.getTransports().get(origin);
-        if (transports == null || transports.isEmpty()) {
-            return false;
-        }
-        return transports.stream()
-                .anyMatch(t -> Objects.equals(t.getDestination(), dest) && Rs2DoorProbe.isDoorLikeCatalogTransport(t));
+		return Rs2PathApi.getCatalogTransportEdges(origin).stream()
+				.anyMatch(t -> Objects.equals(t.getDestination(), dest) && Rs2DoorProbe.isDoorLikeCatalogTransport(t));
     }
 
     /**
@@ -6386,12 +7064,8 @@ public class Rs2Walker {
                     continue;
                 }
                 WorldPoint catalogOrigin = new WorldPoint(from.getX() + dx, from.getY() + dy, from.getPlane());
-                Set<Transport> transports = Rs2PathApi.getTransports().get(catalogOrigin);
-                if (transports == null || transports.isEmpty()) {
-                    continue;
-                }
-                for (Transport t : transports) {
-                    if (Objects.equals(t.getDestination(), to) && isAdjacentSamePlaneTransport(t)) {
+				for (Rs2TransportEdge t : Rs2PathApi.getCatalogTransportEdges(catalogOrigin)) {
+					if (Objects.equals(t.getDestination(), to) && isAdjacentSamePlaneTransport(t)) {
                         return true;
                     }
                 }
@@ -6410,11 +7084,7 @@ public class Rs2Walker {
                     continue;
                 }
                 WorldPoint catalogOrigin = new WorldPoint(from.getX() + dx, from.getY() + dy, from.getPlane());
-                Set<Transport> transports = Rs2PathApi.getTransports().get(catalogOrigin);
-                if (transports == null || transports.isEmpty()) {
-                    continue;
-                }
-                for (Transport t : transports) {
+				for (Rs2TransportEdge t : Rs2PathApi.getCatalogTransportEdges(catalogOrigin)) {
                     if (Objects.equals(t.getDestination(), to)
                             && isAdjacentSamePlaneTransport(t)
                             && Rs2DoorProbe.isDoorLikeCatalogTransport(t)) {
@@ -6449,7 +7119,13 @@ public class Rs2Walker {
     private static boolean waitForDoorEdgeResolution(WorldPoint fromWp, WorldPoint toWp, int timeoutMs) {
         long startedAt = System.currentTimeMillis();
         DoorResolution resolution = Rs2WalkerAwaits.awaitDoorEdgeResolution(fromWp, toWp, timeoutMs);
-        WebWalkLog.tmark("door_edge_wait_done", System.currentTimeMillis() - startedAt, currentTarget,
+        long elapsed = System.currentTimeMillis() - startedAt;
+        // Counted separately or it lands in the scan's doorProbe residual and reads as probe cost —
+        // this wait alone has been measured at 1897ms (FAILED_TIMEOUT).
+        if (rawScanWallSnapshot != null || rawScanGameObjectSnapshot != null) {
+            rawScanDoorEdgeWaitMs += elapsed;
+        }
+        WebWalkLog.tmark("door_edge_wait_done", elapsed, currentTarget,
                 Rs2Player.getWorldLocation(),
                 "result=" + resolution + " from=" + compactWorldPoint(fromWp) + " to=" + compactWorldPoint(toWp));
         return resolution == DoorResolution.RESOLVED;
@@ -6483,6 +7159,20 @@ public class Rs2Walker {
     }
 
     static boolean shouldBlacklistDoorAfterWrongTraversal(WorldPoint start, WorldPoint end, WorldPoint fromWp, WorldPoint toWp) {
+        return shouldBlacklistDoorAfterWrongTraversal(start, end, fromWp, toWp, false);
+    }
+
+    /**
+     * As {@link #shouldBlacklistDoorAfterWrongTraversal(WorldPoint, WorldPoint, WorldPoint, WorldPoint)}
+     * but aware of whether the {@code end} position was sampled while the player was STILL WALKING. The
+     * interact walks the player to the door first and the progress wait can time out en route, so a
+     * moving sample is just a point along the path — not a traversal verdict. Deciding from one poisoned
+     * Wydin's shop door: before=3008,3207 (en route), after=3012,3211 (seven tiles from the edge, mid
+     * walk) was blacklisted AND learn-persisted as a blocked edge. A same-plane moving sample must never
+     * blacklist; a plane change is still trusted (the door acted — walking cannot change plane).
+     */
+    static boolean shouldBlacklistDoorAfterWrongTraversal(WorldPoint start, WorldPoint end, WorldPoint fromWp,
+                                                          WorldPoint toWp, boolean sampledWhileMoving) {
         if (start == null || end == null || toWp == null) {
             return false;
         }
@@ -6491,6 +7181,9 @@ public class Rs2Walker {
         }
         if (start.getPlane() != end.getPlane()) {
             return true;
+        }
+        if (sampledWhileMoving) {
+            return false;
         }
         if (!startedNearDoorEdge(start, fromWp, toWp)) {
             return false;
@@ -6583,7 +7276,7 @@ public class Rs2Walker {
             if (from.distanceTo2D(playerLoc) > radiusTiles && to.distanceTo2D(playerLoc) > radiusTiles) {
                 continue;
             }
-            if (isCatalogBackedTransportSegment(rawPath, ri) && !isDoorLikeCatalogTransportSegment(rawPath, ri)) {
+            if (shouldDeferDoorHandlingToTransport(rawPath, ri)) {
                 continue;
             }
             if (hasUnresolvedDoorLikeSceneObjectOnSegment(from, to, playerLoc, radiusTiles)) {
@@ -6689,7 +7382,7 @@ public class Rs2Walker {
                 : null;
         WorldPoint playerBeforeAttempt = Rs2Player.getWorldLocation();
         if (!markDoorEdgeAttemptThisPass(attemptedDoorEdgesThisPass, segment, playerBeforeAttempt)) {
-            lastDoorEdgePassSkipAtMs = System.currentTimeMillis();
+            routeState.lastDoorEdgePassSkipAtMs = System.currentTimeMillis();
             WebWalkLog.spInfo("door_edge_pass_skip | idx={}", index);
             return false;
         }
@@ -7078,20 +7771,20 @@ public class Rs2Walker {
 			}
 		}
         if (byIdentity.isEmpty()) {
-			log.info("[Walker] path-adj blocker-scan: no candidates (radius={} idx={}/{})", radiusTiles, startIdx, path.size());
+			log.debug("[Walker] path-adj blocker-scan: no candidates (radius={} idx={}/{})", radiusTiles, startIdx, path.size());
 			return false;
 		}
 
         List<PathAdjDoorComponent> components = buildPathAdjDoorComponents(byIdentity.values(), startIdx, playerLoc);
         if (components.isEmpty()) {
-            log.info("[Walker] path-adj blocker-scan: no components (radius={} idx={}/{})", radiusTiles, startIdx, path.size());
+            log.debug("[Walker] path-adj blocker-scan: no components (radius={} idx={}/{})", radiusTiles, startIdx, path.size());
             return false;
         }
         PathAdjDoorComponent bestComponent = components.stream()
                 .min(Comparator.comparingInt(c -> c.score))
                 .orElse(null);
         if (bestComponent == null || bestComponent.best == null) {
-            log.info("[Walker] path-adj blocker-scan: no component winner (radius={} idx={}/{})", radiusTiles, startIdx, path.size());
+            log.debug("[Walker] path-adj blocker-scan: no component winner (radius={} idx={}/{})", radiusTiles, startIdx, path.size());
             return false;
         }
         PathAdjDoorCandidate chosen = bestComponent.best;
@@ -7156,7 +7849,7 @@ public class Rs2Walker {
             }
 			return false;
 		}
-        markDoorInteractionSettling();
+        markDoorInteractionSettling(bestTo);
 		waitForDoorInteractionProgress(bestFrom, bestTo);
 		WorldPoint posAfter = Rs2Player.getWorldLocation();
 		boolean traversed = didTraverseInteractedDoor(posBefore, posAfter, bestLoc, bestFrom, bestTo);
@@ -7168,7 +7861,7 @@ public class Rs2Walker {
             }
 			return true;
 		}
-        boolean wrongTraversal = bestLoc != null && shouldBlacklistDoorAfterWrongTraversal(posBefore, posAfter, bestFrom, bestTo);
+        boolean wrongTraversal = bestLoc != null && shouldBlacklistDoorAfterWrongTraversal(posBefore, posAfter, bestFrom, bestTo, Rs2Player.isMoving());
         if (wrongTraversal) {
             log.warn("[Walker] Path-adj door traversed wrong way; not session-blacklisting fallback candidate: door={} from={} to={} before={} after={}",
                     bestLoc, bestFrom, bestTo, posBefore, posAfter);
@@ -7641,18 +8334,65 @@ public class Rs2Walker {
 
     // 3-arg getClosestTileIndex (pure) moved to geometry/WalkerPathGeometry (P1)
 
+    /** Step budget of {@link #getClosestIndexReachableTiles}'s BFS; also the route-blocked scan gate's bound. */
+    private static final int CLOSEST_INDEX_REACHABLE_STEP_BUDGET = 20;
+
     private static HashMap<WorldPoint, Integer> getClosestIndexReachableTiles(WorldPoint playerLoc) {
         if (playerLoc == null) {
             return new HashMap<>();
         }
-        HashMap<WorldPoint, Integer> tiles = Rs2Tile.getReachableTilesFromTile(playerLoc, 20);
+        HashMap<WorldPoint, Integer> tiles;
+        try {
+            tiles = Rs2Tile.getReachableTilesFromTile(
+                    playerLoc, CLOSEST_INDEX_REACHABLE_STEP_BUDGET);
+        } catch (RuntimeException failure) {
+            if (!isClientThreadReadTimeout(failure)) {
+                throw failure;
+            }
+            WebWalkLog.spInfo("client_thread_timeout_fallback | op=closest_route_index");
+            return nearbyTilesIgnoringCollision(
+                    playerLoc, CLOSEST_INDEX_REACHABLE_STEP_BUDGET);
+        }
 
         // If an animation/shortcut puts the player on a collision-odd tile, keep route progress
         // anchored by distance instead of repeatedly recalculating an empty reachable set.
         if (tiles.isEmpty()) {
-            tiles = Rs2Tile.getReachableTilesFromTileIgnoreCollision(playerLoc, 20);
+            tiles = nearbyTilesIgnoringCollision(
+                    playerLoc, CLOSEST_INDEX_REACHABLE_STEP_BUDGET);
         }
         return tiles;
+    }
+
+    static boolean isClientThreadReadTimeout(Throwable failure) {
+        Throwable current = failure;
+        while (current != null) {
+            if (current instanceof TimeoutException) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
+    }
+
+    static HashMap<WorldPoint, Integer> nearbyTilesIgnoringCollision(
+            WorldPoint origin, int radius) {
+        HashMap<WorldPoint, Integer> result = new HashMap<>();
+        if (origin == null || radius < 0) {
+            return result;
+        }
+        int boundedRadius = Math.min(radius, CLOSEST_INDEX_REACHABLE_STEP_BUDGET);
+        for (int dx = -boundedRadius; dx <= boundedRadius; dx++) {
+            for (int dy = -boundedRadius; dy <= boundedRadius; dy++) {
+                int distance = Math.max(Math.abs(dx), Math.abs(dy));
+                if (distance <= boundedRadius) {
+                    result.put(new WorldPoint(
+                            origin.getX() + dx,
+                            origin.getY() + dy,
+                            origin.getPlane()), distance);
+                }
+            }
+        }
+        return result;
     }
 
     static int stabilizeRouteProgressIndex(List<WorldPoint> path, int closestIdx, WorldPoint target, WorldPoint playerLoc) {
@@ -7786,8 +8526,8 @@ public class Rs2Walker {
     private static void recordRouteProgressAdvanced() {
         long now = System.currentTimeMillis();
         routeState.routeProgressAdvancedAtMs = now;
-        lastMovedTimeMs = now;
-        stuckCount = 0;
+        routeState.lastMovedTimeMs = now;
+        routeState.stuckCount = 0;
     }
 
     private static boolean isRecentTransportEdgeWindow() {
@@ -7831,13 +8571,53 @@ public class Rs2Walker {
      * Force the walker to recalculate path
      */
     public static void recalculatePath() {
+		recalculatePath(Rs2PlannerShadowContext.Invocation.ACTIVE_REPLAN);
+	}
+
+	/**
+	 * Queue one deterministic recovery replan for the active live-test walk.
+	 *
+	 * <p>The request is consumed by {@code processWalk} on the walker thread so the normal recovery evidence
+	 * context is updated. Production callers cannot enable this hook: it is inert unless the test runner set
+	 * {@code microbot.test.mode=true} and an active target exists.</p>
+	 */
+	public static boolean requestRecoveryReplanForTest()
+	{
+		if (!Boolean.getBoolean("microbot.test.mode") || currentTarget == null)
+		{
+			return false;
+		}
+		testRecoveryReplanRequests.incrementAndGet();
+		return true;
+	}
+
+	static boolean consumeRecoveryReplanForTest()
+	{
+		if (!Boolean.getBoolean("microbot.test.mode"))
+		{
+			testRecoveryReplanRequests.set(0);
+			return false;
+		}
+		return testRecoveryReplanRequests.getAndUpdate(value -> Math.max(0, value - 1)) > 0;
+	}
+
+    private static void recalculatePathForRecovery() {
+		WalkEvidenceContext evidence = walkEvidenceContext.get();
+		if (evidence != null)
+		{
+			evidence.recoveryTriggered = true;
+		}
+		recalculatePath(Rs2PlannerShadowContext.Invocation.RECOVERY_REPLAN);
+	}
+
+	private static void recalculatePath(Rs2PlannerShadowContext.Invocation invocation) {
         WorldPoint goal = currentTarget;
         if (goal == null) {
             return;
         }
         // Must not call setTarget(null)+setTarget(goal): that briefly clears {@link #currentTarget},
         // and processWalk on another thread treats null as cancel (isWalkCancelled).
-        Rs2WalkerLifecycleRuntime.applyWalkerDestination(goal);
+		Rs2WalkerLifecycleRuntime.applyWalkerDestination(goal, invocation);
     }
 
     /**
@@ -7887,18 +8667,7 @@ public class Rs2Walker {
             clearRecentTransportContext();
             resetRouteProgress();
             logRouteClear(clearReasonWhenNull);
-            synchronized (Rs2PathApi.getPathfinderMutex()) {
-                final Pathfinder pathfinder = Rs2PathApi.getPathfinder();
-                if (pathfinder != null) {
-                    pathfinder.cancel();
-                }
-                Future<?> pathfinderFuture = Rs2PathApi.getPathfinderFuture();
-                if (pathfinderFuture != null && !pathfinderFuture.isDone()) {
-                    pathfinderFuture.cancel(true);
-                }
-                Rs2PathApi.setPathfinderFuture(null);
-                Rs2PathApi.setPathfinder(null);
-            }
+            Rs2PathApi.cancelAndClearActiveRoute();
 
             WorldMapPointManager wmm = Microbot.getWorldMapPointManager();
             if (wmm != null) {
@@ -7975,18 +8744,45 @@ public class Rs2Walker {
      * @return
      */
     private static boolean handleTransports(List<WorldPoint> path, int indexOfStartPoint) {
+        Optional<Rs2PathApi.ActiveTransportSelection> selection =
+                Rs2PathApi.getActiveTransportSelection(path, indexOfStartPoint);
+        if (selection.isEmpty()) {
+            return false;
+        }
+        return handleSelectedTransport(path, indexOfStartPoint, selection.get());
+    }
+
+    /**
+     * Executes the exact transport retained by the active route through its registered Microbot executor.
+     * Candidate discovery must happen through immutable route steps, never by rescanning the mutable
+     * transport catalog. The local transport payload is isolated here because POH execution still carries
+     * subtype behavior that is not part of the planner-independent edge value.
+     */
+    private static boolean handleSelectedTransport(List<WorldPoint> path,
+                                                   int indexOfStartPoint,
+                                                   Rs2PathApi.ActiveTransportSelection selection) {
+        if (selection == null || !selection.isExecutable()) {
+            if (selection != null) {
+                WebWalkLog.spWarn("selected transport has no executor | type={} origin={} dest={}",
+                        selection.getEdge().getType(),
+                        compactWorldPoint(selection.getEdge().getOrigin()),
+                        compactWorldPoint(selection.getEdge().getDestination()));
+            }
+            return false;
+        }
+        Transport selectedTransport = selection.getLocalExecutionTransport();
+        Rs2TerminalTravelMode terminalTravelMode = selection.getEdge().getTerminalTravelMode();
+        if (path == null || selectedTransport == null
+                || indexOfStartPoint < 0 || indexOfStartPoint >= path.size()) {
+            return false;
+        }
         if (path != null && indexOfStartPoint >= 0 && indexOfStartPoint < path.size() - 1
                 && recentlyOpenedStationaryDoorOnSegment(path.get(indexOfStartPoint), path.get(indexOfStartPoint + 1))) {
             return false;
         }
-        Set<Transport> transports = Rs2PathApi.getTransports().get(path.get(indexOfStartPoint));
-        if (transports == null || transports.isEmpty()) {
-            return false;
-        }
         if (log.isDebugEnabled()) {
-            log.debug("[Walker] handleTransports at {}: {} candidates — {}", path.get(indexOfStartPoint),
-                    transports.size(),
-                    transports.stream().map(Transport::getDisplayInfo).collect(Collectors.joining(", ")));
+            log.debug("[Walker] handleTransports at {}: exact planned candidate — {} executor={}",
+                    path.get(indexOfStartPoint), selectedTransport.getDisplayInfo(), selection.getExecutor());
         }
         // When the player is inside a POH instance, the player's raw world-location plane is
         // the instance-template plane and has no relationship to the POH-transport origin plane.
@@ -8000,10 +8796,7 @@ public class Rs2Walker {
             pathFirstIndex.putIfAbsent(path.get(idx), idx);
         }
 
-        List<Transport> orderedTransports = new ArrayList<>(transports);
-        orderedTransports.sort(Comparator.comparingInt(Rs2Walker::transportHandlingPreference));
-
-        for (Transport transport : orderedTransports) {
+        for (Transport transport : Collections.singletonList(selectedTransport)) {
             Collection<WorldPoint> worldPointCollections;
             //in some cases the getOrigin is null, for teleports that start the player location
             if (transport.getOrigin() == null) {
@@ -8019,6 +8812,7 @@ public class Rs2Walker {
             }
             log.debug("[Walker] Considering transport: {} (type={}, origin={}, wpCount={})",
                     transport.getDisplayInfo(), transport.getType(), transport.getOrigin(), worldPointCollections.size());
+            originLoop:
             for (WorldPoint origin : worldPointCollections) {
                 WorldPoint plOriginLoop = Rs2Player.getWorldLocation();
                 if (!inPohInstance && transport.getOrigin() != null && plOriginLoop != null
@@ -8082,68 +8876,155 @@ public class Rs2Walker {
                     }
 
                     if (path.get(i).equals(origin)) {
-                        if (transport.getType() == TransportType.SHIP || transport.getType() == TransportType.NPC || transport.getType() == TransportType.BOAT) {
+                        if (selection.getExecutor() == Rs2TransportExecutor.BARROWS_DIG) {
+                            WorldPoint digOrigin = transport.getOrigin();
+                            WorldPoint playerAtMound = Rs2Player.getWorldLocation();
+                            if (digOrigin == null || playerAtMound == null || !playerAtMound.equals(digOrigin)) {
+                                // Digging is tile-sensitive. Let the ordinary path click finish the
+                                // approach instead of firing the spade from an adjacent mound tile.
+                                return false;
+                            }
+                            boolean dug = attemptObserved(transport,
+                                    () -> Rs2Inventory.interact(ItemID.SPADE, "Dig"));
+                            if (!dug) {
+                                return false;
+                            }
+                            boolean enteredCrypt = Rs2WalkerRuntimeAwaits.awaitCondition(
+                                    () -> isPlayerWithinChebyshevOf(
+                                            transport.getDestination(), TRANSPORT_NEAR_LANDING_CHEBYSHEV),
+                                    TRANSPORT_LANDING_WAIT_POLL_MS,
+                                    TRANSPORT_LANDING_WAIT_TIMEOUT_MS);
+                            if (enteredCrypt) {
+                                return finishHandledTransport(transport);
+                            }
+                            WebWalkLog.spWarn(
+                                    "Barrows dig post-travel wait timed out ({}ms) dest={} at={}",
+                                    TRANSPORT_LANDING_WAIT_TIMEOUT_MS,
+                                    compactWorldPoint(transport.getDestination()),
+                                    compactWorldPoint(Rs2Player.getWorldLocation()));
+                            return false;
+                        }
+
+                        if (isTerminalTravelTransport(transport.getType())) {
+                            if (terminalTravelMode == Rs2TerminalTravelMode.UNSUPPORTED) {
+                                WebWalkLog.spWarn(
+                                        "selected terminal travel has no supported interaction mode | type={} origin={} dest={}",
+                                        transport.getType(), compactWorldPoint(transport.getOrigin()),
+                                        compactWorldPoint(transport.getDestination()));
+                                break originLoop;
+                            }
 
                             Rs2NpcModel npc = Rs2Npc.getNpc(transport.getName());
-
-                            // Wrap with observation so Leagues blocked-region chat can attribute this attempt.
-                            if (attemptObserved(transport, () -> npc != null && Rs2Npc.canWalkTo(npc, 20) && Rs2Npc.interact(npc, transport.getAction()))) {
-                                Rs2Player.waitForWalking();
-                                sleepUntil(Rs2Dialogue::isInDialogue,600*2);
-
-                                if (Objects.equals(transport.getName(), "Veos") && Objects.equals(transport.getAction(), "Talk-to")) {
-                                    sleepUntil(() -> !Rs2Dialogue.hasContinue(), Rs2Dialogue::clickContinue, 5000, Rs2Random.between(600, 800));
-                                    Rs2Dialogue.clickOption("Can you take me somewhere?");
-                                    sleepUntil(() -> !Rs2Dialogue.hasContinue() && !Rs2Dialogue.hasSelectAnOption(), Rs2Dialogue::clickContinue, 5000, Rs2Random.between(600, 800));
-                                    Rs2Dialogue.clickOption(transport.getDisplayInfo());
-                                    sleepUntil(() -> !Rs2Dialogue.hasContinue() && !Rs2Dialogue.hasSelectAnOption(), Rs2Dialogue::clickContinue, 5000, Rs2Random.between(600, 800));
-                                }
-
-                                if (Objects.equals(transport.getName(), "Captain Magoro") && Objects.equals(transport.getAction(), "Talk-to")) {
-                                    sleepUntil(() -> !Rs2Dialogue.hasContinue(), Rs2Dialogue::clickContinue, 5000, Rs2Random.between(600, 800));
-                                    Rs2Dialogue.clickOption(transport.getDisplayInfo());
-                                    sleepUntil(() -> !Rs2Dialogue.hasContinue() && !Rs2Dialogue.hasSelectAnOption(), Rs2Dialogue::clickContinue, 5000, Rs2Random.between(600, 800));
-                                }
-
-                                if (Rs2Dialogue.clickOption("I'm just going to Pirates' cove")){
-                                    sleepTickJitter(2);
-                                    Rs2Dialogue.clickContinue();
-                                } else if (Objects.equals(transport.getName(), "Mountain Guide")) {
-                                    Rs2Dialogue.clickOption(transport.getDisplayInfo());
-                                }
-                                sleepUntil(() -> !Rs2Player.isAnimating());
-                                boolean shipNearDest = sleepUntil(
-                                        () -> isPlayerWithinChebyshevOf(transport.getDestination(), TRANSPORT_NEAR_LANDING_CHEBYSHEV),
-                                        SHIP_NPC_BOAT_LANDING_WAIT_MS);
-                                if (!shipNearDest) {
+                            if (npc != null && Rs2Npc.canWalkTo(npc, 20)) {
+                                String npcAction = resolveTerminalNpcInteractionAction(
+                                        npc, transport);
+                                if (npcAction.isEmpty()) {
                                     WebWalkLog.spWarn(
-                                            "ship/npc/boat post-travel wait timed out ({}ms) dest={} at={}",
-                                            SHIP_NPC_BOAT_LANDING_WAIT_MS,
-                                            compactWorldPoint(transport.getDestination()),
-                                            compactWorldPoint(Rs2Player.getWorldLocation()));
+                                            "terminal NPC has no supported interaction action name={} configured={} dest={}",
+                                            transport.getName(), transport.getAction(), transport.getDisplayInfo());
+                                    break originLoop;
                                 }
-                                boolean reachedDestination = shipNearDest;
-                                sleepTickJitter(6);
-                                if (reachedDestination) {
-                                    return finishHandledTransport(transport);
+                                if (!markTerminalTravelAttempt(transport)) {
+                                    log.debug("[Walker] terminal travel edge already attempted this walk: {}",
+                                            transport.getDisplayInfo());
+                                    break originLoop;
                                 }
-                            } else {
-                                WorldPoint originTile = path.get(i);
-                                boolean clicked = Rs2Walker.walkFastCanvas(originTile);
-                                if (!clicked) {
-                                    WorldPoint playerLoc = Rs2Player.getWorldLocation();
-                                    if (playerLoc != null) {
-                                        clicked = walkMiniMapToward(originTile, playerLoc, 13);
+                                if (!npcAction.equalsIgnoreCase(transport.getAction())) {
+                                    WebWalkLog.spInfo(
+                                            "terminal NPC action fallback name={} configured={} selected={} dest={}",
+                                            transport.getName(), transport.getAction(), npcAction,
+                                            transport.getDisplayInfo());
+                                }
+
+                                // Wrap with observation so Leagues blocked-region chat can attribute this attempt.
+                                if (attemptObserved(transport, () -> Rs2Npc.interact(npc, npcAction))) {
+                                    Rs2Player.waitForWalking();
+                                    sleepUntil(Rs2Dialogue::isInDialogue, 600 * 2);
+
+                                    if (Objects.equals(transport.getName(), "Veos") && Objects.equals(transport.getAction(), "Talk-to")) {
+                                        sleepUntil(() -> !Rs2Dialogue.hasContinue(), Rs2Dialogue::clickContinue, 5000, Rs2Random.between(600, 800));
+                                        Rs2Dialogue.clickOption("Can you take me somewhere?");
+                                        sleepUntil(() -> !Rs2Dialogue.hasContinue() && !Rs2Dialogue.hasSelectAnOption(), Rs2Dialogue::clickContinue, 5000, Rs2Random.between(600, 800));
+                                        Rs2Dialogue.clickOption(transport.getDisplayInfo());
+                                        sleepUntil(() -> !Rs2Dialogue.hasContinue() && !Rs2Dialogue.hasSelectAnOption(), Rs2Dialogue::clickContinue, 5000, Rs2Random.between(600, 800));
+                                    }
+
+                                    if (Objects.equals(transport.getName(), "Captain Magoro") && Objects.equals(transport.getAction(), "Talk-to")) {
+                                        sleepUntil(() -> !Rs2Dialogue.hasContinue(), Rs2Dialogue::clickContinue, 5000, Rs2Random.between(600, 800));
+                                        Rs2Dialogue.clickOption(transport.getDisplayInfo());
+                                        sleepUntil(() -> !Rs2Dialogue.hasContinue() && !Rs2Dialogue.hasSelectAnOption(), Rs2Dialogue::clickContinue, 5000, Rs2Random.between(600, 800));
+                                    }
+
+                                    if (Rs2Dialogue.clickOption("I'm just going to Pirates' cove")) {
+                                        sleepTickJitter(2);
+                                        Rs2Dialogue.clickContinue();
+                                    }
+                                    if (!selectTerminalTravelDialogueDestination(
+                                            transport, terminalTravelMode)) {
+                                        break originLoop;
+                                    }
+                                    final int terminalDestinationIndex = precomputedIndexOfDest;
+                                    if (awaitTerminalTravelLanding(
+                                            transport, path, terminalDestinationIndex)) {
+                                        return finishHandledTransport(transport);
                                     }
                                 }
-                                if (!clicked) {
-                                    clicked = Rs2Walker.walkMiniMap(originTile);
+                            } else {
+                                TileObject terminalObject = findTerminalTravelObject(transport);
+                                if (terminalObject != null) {
+                                    String objectAction = resolveTransportObjectAction(
+                                            terminalObject,
+                                            Collections.singletonList(transport.getAction()))
+                                            .orElse("");
+                                    if (objectAction.isEmpty()) {
+                                        WebWalkLog.spWarn(
+                                            "terminal object has no supported interaction action name={} configured={} dest={}",
+                                            transport.getName(), transport.getAction(), transport.getDisplayInfo());
+                                        break originLoop;
+                                    }
+                                    if (!markTerminalTravelAttempt(transport)) {
+                                        log.debug("[Walker] terminal travel edge already attempted this walk: {}",
+                                            transport.getDisplayInfo());
+                                        break originLoop;
+                                    }
+                                    prepareTransportObjectForInteraction(terminalObject);
+                                    final TileObject selectedTerminalObject = terminalObject;
+                                    if (attemptObserved(transport, () -> Rs2GameObject.interact(
+                                        selectedTerminalObject, objectAction))) {
+                                        if (!selectTerminalTravelDialogueDestination(
+                                                transport, terminalTravelMode)) {
+                                            break originLoop;
+                                        }
+                                        final int terminalDestinationIndex = precomputedIndexOfDest;
+                                        if (awaitTerminalTravelLanding(
+                                            transport, path, terminalDestinationIndex)) {
+                                            return finishHandledTransport(transport);
+                                        }
+                                    }
+                                } else {
+                                    WorldPoint originTile = path.get(i);
+                                    boolean clicked = Rs2Walker.walkFastCanvas(originTile);
+                                    if (!clicked) {
+                                        WorldPoint playerLoc = Rs2Player.getWorldLocation();
+                                        if (playerLoc != null) {
+                                            clicked = walkMiniMapToward(originTile, playerLoc, 13);
+                                        }
+                                    }
+                                    if (!clicked) {
+                                        clicked = Rs2Walker.walkMiniMap(originTile);
+                                    }
+                                    if (!clicked) {
+                                        log.debug("[Walker] terminal travel fallback click failed for {}", originTile);
+                                    }
+                                    sleep(1200, 1600);
                                 }
-                                if (!clicked) {
-                                    log.debug("[Walker] ship/npc/boat fallback click failed for {}", originTile);
-                                }
-                                sleep(1200, 1600);
                             }
+
+                            // Terminal travel is terminal for this transport scan. The exact edge can be
+                            // clicked at most once in one top-level walk invocation; callers can start
+                            // a fresh walk after a surfaced failure, but this invocation never spams the
+                            // target for later path indices or another local-instance copy of the origin.
+                            break originLoop;
                         }
 
                         if (transport.getType() == TransportType.CHARTER_SHIP) {
@@ -8196,8 +9077,29 @@ public class Rs2Walker {
                         }
                     }
 
+					if (transport.getType() == TransportType.HOT_AIR_BALLOON) {
+						if (attemptObserved(transport, () -> Rs2HotAirBalloon.handle(selection.getEdge()))) {
+                            boolean balloonLanded = Rs2WalkerRuntimeAwaits.awaitCondition(
+                                    () -> isPlayerWithinChebyshevOf(transport.getDestination(), OFFSET),
+                                    TRANSPORT_LANDING_WAIT_POLL_MS,
+                                    TRANSPORT_LANDING_WAIT_TIMEOUT_MS);
+                            if (balloonLanded) {
+                                sleepTickJitter(2);
+                                return finishHandledTransport(transport);
+                            }
+                            WebWalkLog.spWarn(
+                                    "hot-air balloon post-travel wait timed out ({}ms) dest={} at={}",
+                                    TRANSPORT_LANDING_WAIT_TIMEOUT_MS,
+                                    compactWorldPoint(transport.getDestination()),
+                                    compactWorldPoint(Rs2Player.getWorldLocation()));
+                        }
+                        // This is a specialized map interaction. Do not fall through to the generic
+                        // object handler and click the same basket again during this walker tick.
+                        return false;
+                    }
+
                     if (transport.getType() == TransportType.SPIRIT_TREE) {
-                        if (!Rs2PathApi.getPathfinderConfig().isUseSpiritTrees()) {
+                        if (!Rs2PathApi.isSpiritTreeTravelEnabled()) {
                             log.debug("[Walker] skip spirit tree transport — setting is off");
                             continue;
                         }
@@ -8328,26 +9230,62 @@ public class Rs2Walker {
                             || "Climb down".equalsIgnoreCase(transportAction);
 
                     final boolean allowAlKharidTollGateVariant = isAlKharidTollGateObjectId(transportObjectId);
-                    List<TileObject> objects = Rs2GameObject.getAll(o -> {
-                        if (o.getId() == transportObjectId) return true;
-                        if (allowAlKharidTollGateVariant && isAlKharidTollGateObjectId(o.getId())) return true;
-                        Integer legacyClosed = OPEN_TO_CLOSED_MAPPINGS.get(transportObjectId);
-                        if (legacyClosed != null && o.getId() == legacyClosed) return true;
-                        if (!allowClosedVariant) return false;
-                        ObjectComposition comp = Rs2GameObject.convertToObjectComposition(o);
-                        if (comp == null || comp.getActions() == null) return false;
-                        String nm = comp.getName() == null ? "" : comp.getName().toLowerCase();
-                        boolean nameMatches = nm.contains("trapdoor") || nm.contains("manhole")
-                                || nm.contains("grate") || nm.contains("hatch");
-                        if (!nameMatches) return false;
-                        return Arrays.stream(comp.getActions()).filter(Objects::nonNull)
-                                .anyMatch(a -> a.equalsIgnoreCase("Open"));
-                    }, transport.getOrigin(), 10).stream()
+                    // The FIRST transport of a walk costs ~12.7s in the segment handler while the same
+                    // transport mid-route costs ~1.8s, and the plane-change waits account for only
+                    // ~1.5s of it (measured over three Falador castle runs). This scan runs once per
+                    // CANDIDATE transport at the tile, and a staircase tile carries several rows, so
+                    // the suspicion is N scans rather than one. Time it and say how many candidates
+                    // were queued, so the next run distinguishes "one slow scan" from "many scans".
+                    long objectScanStartedAt = System.currentTimeMillis();
+                    final Integer legacyClosedId = OPEN_TO_CLOSED_MAPPINGS.get(transportObjectId);
+                    // Most catalog transports can use their stable object id. The Al Kharid gate cannot:
+                    // its historical catalog ids collide with unrelated live objects in newer injected-client
+                    // revisions. Select that edge by its transformed live composition and route geometry instead.
+                    // This deliberately has no id fallback: clicking an unrelated object is worse than failing
+                    // closed and replanning.
+                    List<TileObject> matched;
+                    if (allowAlKharidTollGateVariant) {
+                        matched = Rs2GameObject.getAll(
+                                o -> isAlKharidTollGateSceneCandidate(transport, o),
+                                transport.getOrigin(), 3);
+                    } else {
+                        // Id-only first: these are plain field reads, no composition resolution.
+                        matched = Rs2GameObject.getAll(o -> {
+                            int id = o.getId();
+                            if (id == transportObjectId) return true;
+                            return legacyClosedId != null && id == legacyClosedId;
+                        }, transport.getOrigin(), 10);
+                    }
+                    if (matched.isEmpty() && allowClosedVariant) {
+                        // Only now pay for compositions, and only on the transport's own tile: a closed
+                        // variant (trapdoor/manhole/grate/hatch) sits where the transport is, never ten
+                        // tiles away. Previously this ran for EVERY object within 10 tiles whenever the
+                        // action was Climb-down, one client-thread hop each — measured at 5.5-10.9
+                        // SECONDS for a single scan inside Falador castle, and the reason descending
+                        // stairs was slow while ascending was not.
+                        matched = Rs2GameObject.getAll(o -> {
+                            ObjectComposition comp = Rs2GameObject.convertToObjectComposition(o);
+                            if (comp == null || comp.getActions() == null) return false;
+                            String nm = comp.getName() == null ? "" : comp.getName().toLowerCase();
+                            boolean nameMatches = nm.contains("trapdoor") || nm.contains("manhole")
+                                    || nm.contains("grate") || nm.contains("hatch");
+                            if (!nameMatches) return false;
+                            return Arrays.stream(comp.getActions()).filter(Objects::nonNull)
+                                    .anyMatch(a -> a.equalsIgnoreCase("Open"));
+                        }, transport.getOrigin(), 2);
+                    }
+                    List<TileObject> objects = matched.stream()
                             .sorted(Comparator
                                     .comparingInt((TileObject o) -> resolveTransportObjectAction(o, transportActions).isPresent() ? 0 : 1)
                                     .thenComparingInt(o -> o.getWorldLocation().distanceTo(transport.getOrigin())))
                             .collect(Collectors.toList());
 
+                    long objectScanMs = System.currentTimeMillis() - objectScanStartedAt;
+                    if (objectScanMs >= TRANSPORT_OBJECT_SCAN_SLOW_MS) {
+                        WebWalkLog.spInfo("transport_object_scan | slow scanMs={} objectId={} candidatesAtTile={} matches={} origin={}",
+                                objectScanMs, transportObjectId, 1, objects.size(),
+                                compactWorldPoint(transport.getOrigin()));
+                    }
                     TileObject object = objects.stream().findFirst().orElse(null);
                     if (object instanceof GroundObject) {
                         object = objects.stream()
@@ -8558,11 +9496,13 @@ public class Rs2Walker {
     }
 
     private static Optional<String> resolveTransportObjectAction(TileObject object, List<String> actionOptions) {
-        ObjectComposition comp = Rs2GameObject.convertToObjectComposition(object);
-        if (comp == null || comp.getActions() == null) {
-            return Optional.empty();
-        }
-        return resolveTransportObjectAction(comp.getActions(), actionOptions);
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            ObjectComposition comp = Rs2DoorDetection.resolveCompositionForDoorProbe(object);
+            if (comp == null || comp.getActions() == null) {
+                return Optional.<String>empty();
+            }
+            return resolveTransportObjectAction(comp.getActions(), actionOptions);
+        }).orElse(Optional.empty());
     }
 
     private static Optional<String> resolveTransportObjectAction(String[] objectActions, List<String> actionOptions) {
@@ -8594,9 +9534,46 @@ public class Rs2Walker {
         return handleObject(transport, tileObject, transport.getAction());
     }
 
+    /**
+     * A transport may be gated on an item that its own vendor sells on the spot (the Shantay pass
+     * pattern: the gate wants a ticket, Shantay sells tickets two tiles away). The catalog rows in
+     * {@code purchasable_items.tsv} say which item, which vendor, and how close the vendor must be
+     * to the transport origin; the transports.tsv duplicate-row OR (item row + currency-twin row)
+     * already made the planner route through such transports for players holding only the coins.
+     * This pre-step completes the currency variant: buy the item before interacting. Free rows
+     * (e.g. a gate's exit direction) carry neither item nor currency requirements and never match.
+     *
+     * <p>Vendor interaction is by NPC id — a name lookup once partial-matched the nearer
+     * "Shantay Guard" (Actions=[Talk-to, null, Pass]) and the buy silently failed.
+     */
+    private static void ensureRequiredItemBeforeTransport(Transport transport) {
+        PurchasableItemCatalog.PurchasableItem purchasable = PurchasableItemCatalog.forTransport(transport);
+        if (purchasable == null || Rs2Inventory.hasItem(purchasable.itemId)) {
+            return;
+        }
+        WebWalkLog.spInfo("purchasable_buy | item={} vendor={} action={} at={}",
+                purchasable.itemId, purchasable.vendorNpcId, purchasable.vendorAction,
+                compactWorldPoint(Rs2Player.getWorldLocation()));
+        if (Rs2Npc.interact(purchasable.vendorNpcId, purchasable.vendorAction)) {
+            sleepUntil(() -> Rs2Inventory.hasItem(purchasable.itemId), 4000);
+        }
+        if (!Rs2Inventory.hasItem(purchasable.itemId)) {
+            WebWalkLog.spWarn("purchasable_buy failed | item={} vendor={} action={} — no item acquired",
+                    purchasable.itemId, purchasable.vendorNpcId, purchasable.vendorAction);
+        }
+    }
+
     private static boolean handleObject(Transport transport, TileObject tileObject, String action) {
+        ensureRequiredItemBeforeTransport(transport);
         WorldPoint before = Rs2Player.getWorldLocation();
         Rs2GameObject.interact(tileObject, action);
+        // Unlike the other exception handlers, a toll-gate interaction is not complete merely
+        // because the menu action was issued: it may first server-walk from several tiles away and
+        // then present a confirmation dialogue. Bubble an unobserved crossing back to the caller so
+        // it cannot emit a transport handoff for a player who is still west/east of the gate.
+        if (isAlKharidTollGateTransport(transport) && isPayTollAction(transport.getAction())) {
+            return handleAlKharidTollGate(transport);
+        }
         if (handleObjectExceptions(transport, tileObject)) return true;
         WorldPoint tdObj = transport.getDestination();
         WorldPoint plObj = Rs2Player.getWorldLocation();
@@ -8653,13 +9630,20 @@ public class Rs2Walker {
                 return false;
             }
             int z = plZ.getPlane();
+            // Instrumentation: the FIRST plane-change transport of a walk consistently costs ~9.5s
+            // while the same kind mid-route costs ~2.2s (measured across two Falador castle runs).
+            // The waits below bound at 1800 + 5000 + jitter, and a failed start returns false and is
+            // retried, so two attempts would explain it — but that is inference. These timings say
+            // which of start-detection, plane-detection or retry actually burns the seconds.
+            long planeChangeStartedAt = System.currentTimeMillis();
             boolean started = sleepUntil(() -> {
                 WorldPoint p = Rs2Player.getWorldLocation();
                 return p != null && (p.getPlane() != z || Rs2Player.isMoving() || Rs2Player.isAnimating());
             }, 1800);
+            long startWaitMs = System.currentTimeMillis() - planeChangeStartedAt;
             if (!started) {
-                log.debug("[Walker] {} transport click on {} produced no movement/animation; retrying",
-                        transport.getAction(), tileObject.getId());
+                WebWalkLog.spInfo("transport_plane_change | no_start startWaitMs={} obj={} action={} — returning for retry",
+                        startWaitMs, tileObject.getId(), transport.getAction());
                 return false;
             }
             WorldPoint plAfterStart = Rs2Player.getWorldLocation();
@@ -8668,20 +9652,37 @@ public class Rs2Walker {
                         WorldPoint p = Rs2Player.getWorldLocation();
                         return p != null && p.getPlane() != z;
                     }, 5000);
+            long planeWaitMs = System.currentTimeMillis() - planeChangeStartedAt - startWaitMs;
             if (planeChanged) {
-                sleep((int) Rs2Random.gaussRand(300.0, 120.0));
+                // gaussRand is an unbounded Box-Muller draw, so mean 300 / dev 120 goes negative past
+                // ~2.5 sigma (about one call in 160) and Thread.sleep throws IllegalArgumentException,
+                // killing the whole walk. Seen live: "timeout value is negative" here aborted a
+                // Falador castle run into ShortestPathScript auto-retry 1/3. Clamping only removes the
+                // impossible tail — the jitter this sleep exists to provide is untouched.
+                sleep(Math.max(MIN_PLANE_CHANGE_SETTLE_MS, (int) Rs2Random.gaussRand(300.0, 120.0)));
             }
+            WebWalkLog.spInfo("transport_plane_change | changed={} startWaitMs={} planeWaitMs={} totalMs={} obj={}",
+                    planeChanged, startWaitMs, planeWaitMs,
+                    System.currentTimeMillis() - planeChangeStartedAt, tileObject.getId());
             return planeChanged;
         }
     }
 
-    private static boolean isAdjacentSamePlaneTransport(Transport transport) {
-        return transport != null
+	private static boolean isAdjacentSamePlaneTransport(Transport transport) {
+		return transport != null
                 && transport.getOrigin() != null
                 && transport.getDestination() != null
                 && transport.getOrigin().getPlane() == transport.getDestination().getPlane()
-                && transport.getOrigin().distanceTo(transport.getDestination()) <= 1;
-    }
+				&& transport.getOrigin().distanceTo(transport.getDestination()) <= 1;
+	}
+
+	private static boolean isAdjacentSamePlaneTransport(Rs2TransportEdge transport) {
+		return transport != null
+				&& transport.getOrigin() != null
+				&& transport.getDestination() != null
+				&& transport.getOrigin().getPlane() == transport.getDestination().getPlane()
+				&& transport.getOrigin().distanceTo(transport.getDestination()) <= 1;
+	}
 
     private static int[] mapSmoothedToRaw(List<WorldPoint> smoothed, List<WorldPoint> raw) {
         if (smoothed == null || raw == null || smoothed.isEmpty() || raw.isEmpty()) {
@@ -8736,17 +9737,130 @@ public class Rs2Walker {
 
 
     private static boolean handleTransportsInRawSegment(List<WorldPoint> rawPath, int rawFrom, int rawTo) {
+        return handleTransportsInRawSegment(rawPath, rawFrom, rawTo, false);
+    }
+
+    /**
+     * Dispatches a planned transport on this raw segment.
+     * <p>
+     * This is the path that actually takes stairs and ladders on a normal walk — the raw scene scan's
+     * ranged branch rarely gets there first, because the route click puts the player on the origin
+     * before the scan runs. So gating only the scan left the walker still walking its four tiles to
+     * the foot of the stairs before clicking, which is exactly what interact-at-range was meant to
+     * stop. {@code allowRangedDispatch} lets the caller say "this is the nearest obstacle", and route
+     * order is then held inside the loop: a transport passed over denies the ranged branch to
+     * everything behind it.
+     */
+    private static boolean handleTransportsInRawSegment(List<WorldPoint> rawPath, int rawFrom, int rawTo,
+                                                        boolean allowRangedDispatch) {
+        Boolean inInstance = null;
+        boolean sawUndispatchedTransportStep = false;
         for (int ri = rawFrom; ri < rawTo && ri < rawPath.size() - 1; ri++) {
             WorldPoint playerLoc = Rs2Player.getWorldLocation();
-            if (!isRawTransportOriginNearPlayer(
+            if (isRawTransportOriginNearPlayer(
                     rawPath, ri, playerLoc, RAW_TRANSPORT_DISPATCH_MAX_DISTANCE)) {
+                if (handleTransports(rawPath, ri)) {
+                    return true;
+                }
+                if (hasExplicitTransportStep(rawPath, ri)) {
+                    sawUndispatchedTransportStep = true;
+                }
                 continue;
             }
-            if (handleTransports(rawPath, ri)) {
-                return true;
+            if (!hasExplicitTransportStep(rawPath, ri)) {
+                continue;
             }
+            if (!allowRangedDispatch || sawUndispatchedTransportStep) {
+                sawUndispatchedTransportStep = true;
+                continue;
+            }
+            WorldPoint origin = rawPath.get(ri);
+            WorldPoint dest = rawPath.get(ri + 1);
+            int originDistance = playerLoc != null && origin != null
+                    && origin.getPlane() == playerLoc.getPlane()
+                    ? origin.distanceTo2D(playerLoc)
+                    : -1;
+            if (inInstance == null) {
+                inInstance = Microbot.getClientThread()
+                        .runOnClientThreadOptional(() -> Microbot.getClient().getTopLevelWorldView().isInstance())
+                        .orElse(Boolean.TRUE);
+            }
+            boolean allowed = shouldDispatchTransportAtRange(
+                    originDistance,
+                    RAW_TRANSPORT_DISPATCH_MAX_DISTANCE,
+                    HANDLER_RANGE,
+                    true,
+                    isObjectInteractionTransportStep(rawPath, ri),
+                    inInstance,
+                    isDoorInteractionSettling() || isTransportInteractionSettling(),
+                    rangedTransportEdgeFailedRecently(origin, dest),
+                    rangedTransportDispatchEnabled());
+            if (!allowed) {
+                sawUndispatchedTransportStep = true;
+                continue;
+            }
+            WebWalkLog.spInfo("ranged_transport_dispatch | origin={} dist={} — clicking from range, server walks us",
+                    compactWorldPoint(origin), originDistance);
+            WorldPoint before = Rs2Player.getWorldLocation();
+            if (handleTransports(rawPath, ri)) {
+                if (didCurrentTileTransportProgress(before, dest, currentTarget)) {
+                    return true;
+                }
+                markRangedTransportEdgeFailed(origin, dest);
+            }
+            sawUndispatchedTransportStep = true;
         }
         return false;
+    }
+
+    /**
+     * Whether a planned transport may be interacted with from RANGE instead of stepping onto its
+     * origin tile first.
+     * <p>
+     * Clicking an object makes the SERVER path the player to a valid interaction tile and perform the
+     * action; it owns the collision data, so it is strictly better at choosing that tile than any
+     * approach heuristic of ours. The walker already spots obstacles {@code HANDLER_RANGE} tiles out
+     * but would only act within {@link #RAW_TRANSPORT_DISPATCH_MAX_DISTANCE}, so it walked to a tile
+     * it had guessed at and only then clicked — and the guess is what failed at the Black Knights'
+     * ladder, the Falador castle staircase and the guarded door, never the interaction itself.
+     * <p>
+     * ROUTE ORDER is the one thing this must not break: clicking a door twelve tiles ahead when a
+     * closed gate sits between walks the player into the gate. Only the FIRST unresolved obstacle on
+     * the route may be actioned at range, which {@code firstObstacleOnRoute} carries.
+     *
+     * @param originDistance          tiles from the player to the transport origin
+     * @param maxNearDistance         the legacy on-the-origin band; always dispatchable, unchanged
+     * @param maxRangedDistance       furthest the ranged branch may reach (the scan's handler range)
+     * @param firstObstacleOnRoute    no earlier unresolved obstacle sits between player and origin
+     * @param objectInteractionTransport the row is handled by the generic object click, not a
+     *                                dialogue/widget flow that gains nothing from this
+     * @param inInstance              instances keep the legacy band: raw coords make "on route" unreliable
+     * @param settling                a door/transport settle window is still open
+     * @param rangedAttemptFailedRecently a previous ranged attempt on this edge produced no movement
+     * @param enabled                 config kill switch
+     */
+    static boolean shouldDispatchTransportAtRange(int originDistance,
+                                                  int maxNearDistance,
+                                                  int maxRangedDistance,
+                                                  boolean firstObstacleOnRoute,
+                                                  boolean objectInteractionTransport,
+                                                  boolean inInstance,
+                                                  boolean settling,
+                                                  boolean rangedAttemptFailedRecently,
+                                                  boolean enabled) {
+        if (originDistance < 0) {
+            return false;
+        }
+        if (originDistance <= maxNearDistance) {
+            return true; // legacy behaviour, untouched
+        }
+        return enabled
+                && !inInstance
+                && !settling
+                && !rangedAttemptFailedRecently
+                && objectInteractionTransport
+                && firstObstacleOnRoute
+                && originDistance <= maxRangedDistance;
     }
 
     static boolean isRawTransportOriginNearPlayer(List<WorldPoint> rawPath,
@@ -8759,6 +9873,91 @@ public class Rs2Walker {
         }
         WorldPoint routeOrigin = rawPath.get(transportIndex);
         return isTransportOriginNearPlayer(routeOrigin, playerLoc, maxDistance);
+    }
+
+    /**
+     * True when every transport planned at {@code rawPath[index]} is one the generic object click
+     * handles (doors, stairs, ladders, gates). Dialogue and widget flows — boats, canoes, gliders,
+     * fairy rings, minecarts, teleports — are excluded: the server will not walk the player into a
+     * conversation, so ranged dispatch buys them nothing and risks firing them early. Agility
+     * shortcuts are excluded too; they need the exact origin tile (the stepping-stone case).
+     */
+    private static boolean isObjectInteractionTransportStep(List<WorldPoint> rawPath, int index) {
+        if (rawPath == null || index < 0 || index >= rawPath.size() - 1) {
+            return false;
+        }
+        return Rs2PathApi.getActiveTransportEdge(rawPath.get(index), rawPath.get(index + 1))
+                .map(edge -> edge.getType() == Rs2TransportType.TRANSPORT)
+                .orElse(false);
+    }
+
+    /** Config kill switch for ranged transport dispatch; on when the config is unavailable. */
+    private static boolean rangedTransportDispatchEnabled() {
+        return config == null || config.interactWithRouteObstaclesAtRange();
+    }
+
+    /** Same switch, for opening the nearest route door without waiting out the approach walk. */
+    private static boolean doorInteractionWhileApproachingEnabled() {
+        return rangedTransportDispatchEnabled();
+    }
+
+    /**
+     * Whether a door interaction must wait because the player is moving.
+     * <p>
+     * Relaxing only the caller-side gate was not enough: the interaction sites carry their own
+     * {@code isMoving()} checks, so the handler ran during the approach and then declined anyway.
+     * <p>
+     * Scoping the permission to the segment loop was ALSO not enough — door handling is reached from
+     * the recovery path and the raw scene scan as well, and a Falador castle run on the fixed build
+     * still logged {@code door_interact_deferred | reason=moving mode=segment-door} from the
+     * reachability-miss recovery. Those entry points each act on the door blocking the route RIGHT
+     * NOW, so there is no ordering left to protect at this level: the only question here is whether
+     * the walker is allowed to interrupt its own walk, which is exactly what the feature is for.
+     * Route ordering is enforced where it belongs — the segment loop, which iterates many segments
+     * and still only lets the nearest one act while moving.
+     */
+    private static boolean doorInteractionDeferredForMovement(WorldPoint doorTile) {
+        if (!Rs2Player.isMoving()) {
+            return false;
+        }
+        if (!doorInteractionWhileApproachingEnabled()) {
+            return true;
+        }
+        // While MOVING, only act on a door we are practically standing at. The probe searches ten
+        // tiles, which was harmless while interaction required standing still — arriving implied
+        // proximity. Acting mid-walk removed that implication, and the walker opened the door at
+        // (2985,3341) from nine tiles out while (2981,3340) was still shut in front of it: the
+        // interaction timed out against the closed near door, the player drifted backwards, and the
+        // walk lost ~15s to recovery clicks before the real blocker was handled.
+        WorldPoint playerLoc = Rs2Player.getWorldLocation();
+        return playerLoc == null
+                || doorTile == null
+                || doorTile.getPlane() != playerLoc.getPlane()
+                || doorTile.distanceTo2D(playerLoc) > DOOR_APPROACH_INTERACT_MAX_TILES;
+    }
+
+    /** Ranged dispatch attempts that produced no movement, keyed by origin→destination edge. */
+    private static final Map<String, Long> failedRangedTransportEdges = new ConcurrentHashMap<>();
+    private static final long RANGED_TRANSPORT_RETRY_COOLDOWN_MS = 30_000L;
+
+    private static String rangedTransportEdgeKey(WorldPoint from, WorldPoint to) {
+        return compactWorldPoint(from) + ">" + compactWorldPoint(to);
+    }
+
+    private static boolean rangedTransportEdgeFailedRecently(WorldPoint from, WorldPoint to) {
+        Long at = failedRangedTransportEdges.get(rangedTransportEdgeKey(from, to));
+        return at != null && System.currentTimeMillis() - at < RANGED_TRANSPORT_RETRY_COOLDOWN_MS;
+    }
+
+    /**
+     * Records that a ranged attempt on this edge produced nothing, so the walker falls back to
+     * walking onto the origin for it. That is the unreachable case — the server declined to path —
+     * and it must degrade to the legacy behaviour rather than re-click from range forever.
+     */
+    private static void markRangedTransportEdgeFailed(WorldPoint from, WorldPoint to) {
+        failedRangedTransportEdges.put(rangedTransportEdgeKey(from, to), System.currentTimeMillis());
+        WebWalkLog.spInfo("ranged_transport_no_progress | {} -> {} — falling back to walking onto the origin",
+                compactWorldPoint(from), compactWorldPoint(to));
     }
 
     private static boolean isTransportOriginNearPlayer(WorldPoint routeOrigin,
@@ -8886,11 +10085,11 @@ public class Rs2Walker {
         if (transport == null || transport.getDestination() == null) {
             return false;
         }
-        Pathfinder pathfinder = Rs2PathApi.getPathfinder();
-        if (pathfinder == null || !pathfinder.isDone()) {
+        Rs2ActiveRouteStatus routeStatus = Rs2PathApi.getActiveRouteStatus();
+        if (!routeStatus.isReady()) {
             return false;
         }
-        List<WorldPoint> walkPath = pathfinder.getWalkablePath();
+        List<WorldPoint> walkPath = routeStatus.getWalkablePath();
         if (walkPath == null || walkPath.size() < 2) {
             return false;
         }
@@ -8943,11 +10142,196 @@ public class Rs2Walker {
         return points;
     }
 
-    private static int transportHandlingPreference(Transport transport) {
-        if (isAlKharidTollGateTransport(transport) && transport.getCurrencyAmount() > 0) {
-            return 1;
+    static boolean isTerminalTravelTransport(TransportType transportType) {
+        return transportType == TransportType.SHIP
+                || transportType == TransportType.NPC
+                || transportType == TransportType.BOAT;
+    }
+
+    private static boolean selectTerminalTravelDialogueDestination(
+            Transport transport, Rs2TerminalTravelMode mode) {
+        if (mode == Rs2TerminalTravelMode.DIRECT) {
+            return true;
         }
-        return 0;
+        if (mode != Rs2TerminalTravelMode.DIALOGUE_DESTINATION
+                || transport == null
+                || transport.getDisplayInfo() == null
+                || transport.getDisplayInfo().isBlank()) {
+            return false;
+        }
+        if (!sleepUntil(Rs2Dialogue::hasSelectAnOption, 5000)) {
+            WebWalkLog.spWarn(
+                    "terminal travel destination dialogue did not appear name={} dest={}",
+                    transport.getName(), transport.getDisplayInfo());
+            return false;
+        }
+        if (!Rs2Dialogue.clickOption(transport.getDisplayInfo())) {
+            WebWalkLog.spWarn(
+                    "terminal travel destination option missing name={} dest={}",
+                    transport.getName(), transport.getDisplayInfo());
+            return false;
+        }
+        return true;
+    }
+
+    private static TileObject findTerminalTravelObject(Transport transport) {
+        if (transport == null || transport.getOrigin() == null) {
+            return null;
+        }
+        TileObject object = Rs2GameObject.getAll(
+                candidate -> isTerminalTravelObjectSceneCandidate(transport, candidate),
+                transport.getOrigin(), 3).stream().findFirst().orElse(null);
+        if (object != null) {
+            WebWalkLog.spInfo(
+                    "terminal travel object selected type={} name={} action={} origin={} dest={}",
+                    transport.getType(), transport.getName(), transport.getAction(),
+                    compactWorldPoint(transport.getOrigin()),
+                    compactWorldPoint(transport.getDestination()));
+        }
+        return object;
+    }
+
+    private static boolean isTerminalTravelObjectSceneCandidate(Transport transport,
+                                                                 TileObject object) {
+        if (object == null) {
+            return false;
+        }
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            ObjectComposition composition = Rs2DoorDetection.resolveCompositionForDoorProbe(object);
+            return composition != null
+                    && isTerminalTravelObjectCompositionCandidate(
+                    transport,
+                    object.getWorldLocation(),
+                    composition.getName(),
+                    composition.getActions());
+        }).orElse(false);
+    }
+
+    static boolean isTerminalTravelObjectCompositionCandidate(Transport transport,
+                                                               WorldPoint objectLocation,
+                                                               String objectName,
+                                                               String[] objectActions) {
+        if (transport == null
+                || !isTerminalTravelTransport(transport.getType())
+                || transport.getOrigin() == null
+                || objectLocation == null
+                || objectName == null
+                || transport.getName() == null
+                || transport.getAction() == null
+                || objectLocation.getPlane() != transport.getOrigin().getPlane()
+                || objectLocation.distanceTo2D(transport.getOrigin()) > 3
+                || !Rs2UiHelper.stripColTags(objectName).trim().equalsIgnoreCase(
+                Rs2UiHelper.stripColTags(transport.getName()).trim())) {
+            return false;
+        }
+        return resolveTransportObjectAction(
+                objectActions,
+                Collections.singletonList(transport.getAction())).isPresent();
+    }
+
+    private static boolean awaitTerminalTravelLanding(Transport transport,
+                                                      List<WorldPoint> path,
+                                                      int destinationIndex) {
+        boolean landed = sleepUntil(
+                () -> hasReachedTerminalTravelLanding(
+                        transport, path, destinationIndex, Rs2Player.getWorldLocation()),
+                SHIP_NPC_BOAT_LANDING_WAIT_MS);
+        if (!landed) {
+            WebWalkLog.spWarn(
+                    "ship/npc/boat post-travel wait timed out ({}ms) dest={} at={}",
+                    SHIP_NPC_BOAT_LANDING_WAIT_MS,
+                    compactWorldPoint(transport.getDestination()),
+                    compactWorldPoint(Rs2Player.getWorldLocation()));
+        }
+        return landed;
+    }
+
+    /**
+     * Returns interaction actions in executor preference order. Some legacy ship rows encode their
+     * destination label as the direct NPC menu action. The current Port Sarim NPCs instead expose
+     * {@code Travel}; keep the configured label first for compatible clients, then use that observed
+     * live fallback. Explicit dialogue and quick-travel actions must never be replaced implicitly.
+     */
+    static List<String> terminalNpcInteractionCandidates(TransportType transportType,
+                                                         String configuredAction) {
+        LinkedHashSet<String> candidates = new LinkedHashSet<>();
+        if (configuredAction != null && !configuredAction.isBlank()) {
+            candidates.add(configuredAction);
+        }
+        if (transportType == TransportType.SHIP
+                && !isExplicitShipMenuAction(configuredAction)) {
+            candidates.add("Travel");
+        }
+        return List.copyOf(candidates);
+    }
+
+    private static boolean isExplicitShipMenuAction(String action) {
+        return action != null
+                && (action.equalsIgnoreCase("Travel")
+                || action.equalsIgnoreCase("Talk-to")
+                || action.equalsIgnoreCase("Quick-Travel")
+                || action.equalsIgnoreCase("Take-boat"));
+    }
+
+    private static String resolveTerminalNpcInteractionAction(Rs2NpcModel npc, Transport transport) {
+        if (npc == null || transport == null) {
+            return "";
+        }
+        for (String candidate : terminalNpcInteractionCandidates(
+                transport.getType(), transport.getAction())) {
+            // Query one candidate at a time: Rs2Npc#getAvailableAction otherwise returns NPC-menu
+            // order, which commonly places Talk-to before the exact configured action.
+            String available = Rs2Npc.getAvailableAction(npc, Collections.singletonList(candidate));
+            if (!available.isEmpty()) {
+                return available;
+            }
+        }
+        return "";
+    }
+
+    static boolean markTerminalTravelAttempt(Transport transport) {
+        if (transport == null || transport.getOrigin() == null || transport.getDestination() == null) {
+            return false;
+        }
+        String key = transport.getType()
+                + "|" + rangedTransportEdgeKey(transport.getOrigin(), transport.getDestination())
+                + "|" + transport.getObjectId()
+                + "|" + Objects.toString(transport.getName(), "")
+                + "|" + Objects.toString(transport.getAction(), "");
+        return TERMINAL_TRAVEL_ATTEMPTED_EDGES.add(key);
+    }
+
+    /**
+     * Accepts the exact catalogued landing or the immediately following path point. The latter covers
+     * modern ship travel that skips an obsolete deck tile and completes the next gangplank step in one
+     * server action. It deliberately does not scan arbitrary later route points, which could report a
+     * false landing when a route loops near its origin.
+     */
+    static boolean hasReachedTerminalTravelLanding(Transport transport,
+                                                   List<WorldPoint> path,
+                                                   int destinationIndex,
+                                                   WorldPoint playerLocation) {
+        if (transport == null || playerLocation == null || transport.getDestination() == null) {
+            return false;
+        }
+        WorldPoint origin = transport.getOrigin();
+        if (origin != null
+                && origin.getPlane() == playerLocation.getPlane()
+                && origin.distanceTo2D(playerLocation) <= 1) {
+            return false;
+        }
+        if (isNearSamePlane(playerLocation, transport.getDestination(),
+                TRANSPORT_NEAR_LANDING_CHEBYSHEV)) {
+            return true;
+        }
+        if (path == null || destinationIndex < 0 || destinationIndex + 1 >= path.size()) {
+            return false;
+        }
+        WorldPoint immediateContinuation = path.get(destinationIndex + 1);
+        return immediateContinuation != null
+                && !immediateContinuation.equals(transport.getDestination())
+                && isNearSamePlane(playerLocation, immediateContinuation,
+                TRANSPORT_NEAR_LANDING_CHEBYSHEV);
     }
 
     private static boolean isAlKharidTollGateTransport(Transport transport) {
@@ -8965,31 +10349,75 @@ public class Rs2Walker {
         return action != null && action.toLowerCase(Locale.ROOT).startsWith("pay-toll");
     }
 
+    private static boolean isAlKharidTollGateSceneCandidate(Transport transport, TileObject object) {
+        if (!(object instanceof WallObject) && !(object instanceof GameObject)) {
+            return false;
+        }
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            ObjectComposition comp = Rs2DoorDetection.resolveCompositionForDoorProbe(object);
+            return comp != null
+                    && isAlKharidTollGateCompositionCandidate(
+                    transport, object.getWorldLocation(), comp.getName(), comp.getActions())
+                    && Rs2DoorGeometry.isDoorOnSegment(
+                    object, transport.getOrigin(), transport.getDestination());
+        }).orElse(false);
+    }
+
+    static boolean isAlKharidTollGateCompositionCandidate(Transport transport,
+                                                           WorldPoint objectLocation,
+                                                           String objectName,
+                                                           String[] objectActions) {
+        if (!isAlKharidTollGateTransport(transport)
+                || objectLocation == null
+                || !AL_KHARID_TOLL_GATE_POINTS.contains(objectLocation)
+                || objectName == null
+                || !objectName.toLowerCase(Locale.ROOT).contains("gate")) {
+            return false;
+        }
+        return resolveTransportObjectAction(
+                objectActions, getTransportActionOptions(transport.getAction())).isPresent();
+    }
+
+    static boolean hasReachedAlKharidTollDestination(Transport transport, WorldPoint playerLocation) {
+        return isAlKharidTollGateTransport(transport)
+                && playerLocation != null
+                && playerLocation.equals(transport.getDestination());
+    }
+
     private static boolean handleAlKharidTollGate(Transport transport) {
-        if (Rs2Player.isMoving()) {
+        // Object interaction can begin out of range. Wait for server-walking, the confirmation
+        // dialogue, or the crossing itself instead of sampling isMoving() immediately after click.
+        sleepUntil(() -> Rs2Player.isMoving()
+                        || Rs2Dialogue.hasSelectAnOption()
+                        || hasReachedAlKharidTollDestination(transport, Rs2Player.getWorldLocation()),
+                AL_KHARID_TOLL_INTERACTION_START_WAIT_MS);
+
+        if (Rs2Player.isMoving()
+                && !hasReachedAlKharidTollDestination(transport, Rs2Player.getWorldLocation())) {
             Rs2Player.waitForWalking();
         }
 
         boolean confirmed = false;
-        if (sleepUntil(Rs2Dialogue::hasSelectAnOption, 2500)) {
+        if (!hasReachedAlKharidTollDestination(transport, Rs2Player.getWorldLocation())
+                && (Rs2Dialogue.hasSelectAnOption()
+                || sleepUntil(Rs2Dialogue::hasSelectAnOption,
+                AL_KHARID_TOLL_INTERACTION_START_WAIT_MS))) {
             confirmed = Rs2Dialogue.clickOption("Yes, okay", "Yes");
         }
 
-        boolean reachedDestination = sleepUntil(() -> {
-            WorldPoint now = Rs2Player.getWorldLocation();
-            WorldPoint destination = transport.getDestination();
-            return now != null
-                    && destination != null
-                    && now.getPlane() == destination.getPlane()
-                    && now.distanceTo2D(destination) <= 1;
-        }, POST_HANDLE_OBJECT_LANDING_WAIT_MS);
-        if (!confirmed && !reachedDestination) {
+        boolean reachedDestination = hasReachedAlKharidTollDestination(
+                transport, Rs2Player.getWorldLocation())
+                || sleepUntil(() -> hasReachedAlKharidTollDestination(
+                        transport, Rs2Player.getWorldLocation()),
+                POST_HANDLE_OBJECT_LANDING_WAIT_MS);
+        if (!reachedDestination) {
             WebWalkLog.spWarn(
-                    "Al Kharid toll gate confirmation unresolved dest={} at={}",
+                    "Al Kharid toll gate crossing unresolved confirmed={} dest={} at={}",
+                    confirmed,
                     compactWorldPoint(transport.getDestination()),
                     compactWorldPoint(Rs2Player.getWorldLocation()));
         }
-        return true;
+        return reachedDestination;
     }
 
     private static boolean handleObjectExceptions(Transport transport, TileObject tileObject) {
@@ -9021,10 +10449,6 @@ public class Rs2Walker {
                 }
                 return true;
             }
-        }
-
-        if (isAlKharidTollGateTransport(transport) && isPayTollAction(transport.getAction())) {
-            return handleAlKharidTollGate(transport);
         }
 
         //Al kharid broken wall will animate once and then stop and then animate again
@@ -9192,7 +10616,9 @@ public class Rs2Walker {
     }
 
     private static boolean handleTeleportSpell(Transport transport) {
-        if (Rs2Pvp.isInWilderness() && (Rs2Pvp.getWildernessLevelFrom(Rs2Player.getWorldLocation()) > (transport.getMaxWildernessLevel() + 1))) return false;
+        if (Rs2Pvp.isInWilderness() && !isTeleportAllowedAtWildernessLevel(
+                Rs2Pvp.getWildernessLevelFrom(Rs2Player.getWorldLocation()), transport.getMaxWildernessLevel())) return false;
+        if (!prepareTeleportSpellProviders(transport)) return false;
         boolean hasMultipleDestination = transport.getDisplayInfo().contains(":");
 
         String spellName = hasMultipleDestination
@@ -9207,14 +10633,82 @@ public class Rs2Walker {
                 ? 2
                 : 1;
 
+        Optional<TransportExecutionRegistry.HomeTeleport> homeTeleport =
+                TransportExecutionRegistry.homeTeleportFor(transport.getDisplayInfo());
+        if (homeTeleport.isPresent()) {
+            return Rs2Magic.quickCast(homeTeleport.get().getDisplayName());
+        }
+
         MagicAction magicSpell = Arrays.stream(MagicAction.values()).filter(x -> x.getName().toLowerCase().contains(spellName)).findFirst().orElse(null);
         if (magicSpell != null) {
-            if (magicSpell == MagicAction.LUMBRIDGE_HOME_TELEPORT) {
-                return Rs2Magic.quickCast(magicSpell);
-            }
             return Rs2Magic.cast(magicSpell, option, identifier);
         }
         return false;
+    }
+
+    /**
+     * Equip any inventory staff/tome selected by a source-aware upstream spell requirement before
+     * casting. An item merely present in the inventory never acts as an infinite rune provider.
+     */
+    private static boolean prepareTeleportSpellProviders(Transport transport) {
+        List<TransportItemRequirement> requirements = transport.getItemRequirements();
+        if (requirements == null || requirements.isEmpty()) {
+            return true;
+        }
+
+        Map<Integer, Integer> runeQuantities = new HashMap<>();
+        Rs2Magic.getRunes().forEach((rune, quantity) ->
+                runeQuantities.put(rune.getItemId(), quantity));
+        java.util.function.IntUnaryOperator currentQuantity = itemId -> {
+            Runes rune = Runes.byItemId(itemId);
+            if (rune != null) {
+                return runeQuantities.getOrDefault(itemId, 0);
+            }
+            int quantity = Rs2Inventory.itemQuantity(itemId);
+            Rs2ItemModel equipped = Rs2Equipment.get(itemId);
+            return equipped == null ? quantity : quantity + Math.max(1, equipped.getQuantity());
+        };
+
+        TransportItemRequirement.ProviderSelection providers =
+                TransportItemRequirement.selectProviders(
+                        requirements,
+                        currentQuantity,
+                        itemId -> Rs2Equipment.isWearing(itemId) || Rs2Inventory.hasItem(itemId),
+                        itemId -> Rs2Equipment.isWearing(itemId) || Rs2Inventory.hasItem(itemId))
+                        .orElse(null);
+        if (providers == null) {
+            return false;
+        }
+        if (!equipTransportProvider(providers.getStaffItemId())
+                || !equipTransportProvider(providers.getOffhandItemId())) {
+            return false;
+        }
+
+        Map<Integer, Integer> verifiedRuneQuantities = new HashMap<>();
+        Rs2Magic.getRunes().forEach((rune, quantity) ->
+                verifiedRuneQuantities.put(rune.getItemId(), quantity));
+        return TransportItemRequirement.selectProviders(
+                requirements,
+                itemId -> {
+                    Runes rune = Runes.byItemId(itemId);
+                    if (rune != null) {
+                        return verifiedRuneQuantities.getOrDefault(itemId, 0);
+                    }
+                    int quantity = Rs2Inventory.itemQuantity(itemId);
+                    Rs2ItemModel equipped = Rs2Equipment.get(itemId);
+                    return equipped == null ? quantity : quantity + Math.max(1, equipped.getQuantity());
+                },
+                Rs2Equipment::isWearing,
+                Rs2Equipment::isWearing).isPresent();
+    }
+
+    private static boolean equipTransportProvider(int itemId) {
+        if (itemId <= 0 || Rs2Equipment.isWearing(itemId)) {
+            return true;
+        }
+        return Rs2Inventory.hasItem(itemId)
+                && Rs2Inventory.wield(itemId)
+                && sleepUntil(() -> Rs2Equipment.isWearing(itemId), 3000);
     }
 
     private static boolean isLumbridgeHomeTeleport(Transport transport) {
@@ -9225,7 +10719,8 @@ public class Rs2Walker {
     private static boolean handleTeleportItem(Transport transport) {
         WorldPoint plWild = Rs2Player.getWorldLocation();
         if (Rs2Pvp.isInWilderness() && plWild != null
-                && Rs2Pvp.getWildernessLevelFrom(plWild) > (transport.getMaxWildernessLevel() + 1)) {
+                && !isTeleportAllowedAtWildernessLevel(
+                        Rs2Pvp.getWildernessLevelFrom(plWild), transport.getMaxWildernessLevel())) {
             return false;
         }
         boolean succesfullAction = false;
@@ -9259,11 +10754,9 @@ public class Rs2Walker {
 
         // Return true when the item does not use a generic keyword to teleport to its destination
         boolean hasParsableDestination = transport.getDisplayInfo().contains(":");
-        String destination = hasParsableDestination
-                ? transport.getDisplayInfo().split(":")[1].trim().toLowerCase()
-                : transport.getDisplayInfo().trim().toLowerCase();
+        String destination = teleportItemLeafAction(transport.getDisplayInfo());
 
-        boolean wildernessTransport = PathfinderConfig.isInWilderness(WorldPointUtil.packWorldPoint(transport.getDestination()));
+        boolean wildernessTransport = Rs2PathApi.isInWilderness(transport.getDestination());
 
         log.debug("Trying to find action for destination={}", destination);
         // Check if item has destination as direct action
@@ -9335,8 +10828,7 @@ public class Rs2Walker {
         Rs2ItemModel rs2Item = Rs2Equipment.get(itemId);
         if (rs2Item == null) return false;
         if (transport.getDisplayInfo().contains(":")) {
-            String[] values = transport.getDisplayInfo().split(":");
-            String destination = values[1].trim().toLowerCase();
+            String destination = teleportItemLeafAction(transport.getDisplayInfo());
 
             if (transport.getDisplayInfo().toLowerCase().contains("slayer ring")) {
                 Rs2Equipment.invokeMenu(rs2Item, "teleport");
@@ -9353,6 +10845,23 @@ public class Rs2Walker {
             return true;
         }
         return false;
+    }
+
+    /**
+     * Returns the executable leaf from a display hierarchy. Upstream labels may describe nested
+     * categories (for example {@code Max cape: POH Portals: Rimmington}); RuneLite item sub-ops are
+     * looked up by their leaf action, not by the intermediate display category.
+     */
+    static String teleportItemLeafAction(String displayInfo) {
+        if (displayInfo == null) {
+            return "";
+        }
+        String[] segments = displayInfo.split(":");
+        return segments[segments.length - 1].trim().toLowerCase(Locale.ROOT);
+    }
+
+    static boolean isTeleportAllowedAtWildernessLevel(int currentLevel, int maximumLevel) {
+        return currentLevel <= maximumLevel;
     }
 
     /**
@@ -9419,10 +10928,9 @@ public class Rs2Walker {
     }
 
     public static boolean isNear() {
-        final Pathfinder pathfinder = Rs2PathApi.getPathfinder();
-        if (pathfinder == null) return false; // idk are we near if we don't have a path?
-        final List<WorldPoint> path = pathfinder.getPath();
-        if (path == null) return false;
+        final Rs2ActiveRouteStatus routeStatus = Rs2PathApi.getActiveRouteStatus();
+        if (!routeStatus.isPresent()) return false; // idk are we near if we don't have a path?
+        final List<WorldPoint> path = routeStatus.getRawPath();
 
         WorldPoint playerLocation = Rs2Player.getWorldLocation();
         if (playerLocation == null) {
@@ -9448,16 +10956,16 @@ public class Rs2Walker {
     }
 
     public static boolean isNearPath() {
-        final Pathfinder pathfinder = Rs2PathApi.getPathfinder();
-        if (pathfinder == null) return true;
+        final Rs2ActiveRouteStatus routeStatus = Rs2PathApi.getActiveRouteStatus();
+        if (!routeStatus.isPresent()) return true;
 
-        final List<WorldPoint> path = pathfinder.getWalkablePath();
-        if (path == null || path.isEmpty()) return true;
+        final List<WorldPoint> path = routeStatus.getWalkablePath();
+        if (path.isEmpty()) return true;
 
         final WorldPoint loc = Rs2Player.getWorldLocation();
         if (loc == null) return true;
 
-        if (config.recalculateDistance() < 0 || lastPosition.equals(lastPosition = loc)) {
+        if (config.recalculateDistance() < 0 || routeState.lastPosition.equals(routeState.lastPosition = loc)) {
             return true;
         }
 
@@ -9493,6 +11001,7 @@ public class Rs2Walker {
     static String offPathRecalcDeferralReason(boolean playerMoving,
                                               boolean playerAnimating,
                                               boolean playerInteracting,
+                                              boolean movementOwned,
                                               boolean doorSettling,
                                               boolean transportSettling,
                                               boolean interimActive,
@@ -9507,14 +11016,19 @@ public class Rs2Walker {
         if (transportSettling) {
             return "transport-settling";
         }
-        if (playerMoving) {
-            return "moving";
-        }
-        if (playerAnimating) {
-            return "animating";
-        }
-        if (playerInteracting) {
-            return "interacting";
+        // Busy state defers only while the walker owns the movement. Combat retaliation and
+        // aggro pathing keep moving/animating/interacting true indefinitely, and an unbounded
+        // defer here paralyzes the walker while something else drags the player off the route.
+        if (movementOwned) {
+            if (playerMoving) {
+                return "moving";
+            }
+            if (playerAnimating) {
+                return "animating";
+            }
+            if (playerInteracting) {
+                return "interacting";
+            }
         }
         if (isRecentEvent(nowMs, routeProgressAtMs, OFF_PATH_RECALC_ROUTE_PROGRESS_GRACE_MS)) {
             return "route-progress";
@@ -9525,22 +11039,38 @@ public class Rs2Walker {
         if (interimActive && isRecentEvent(nowMs, interimProgressAtMs, INTERIM_PROGRESS_TIMEOUT_MS)) {
             return "interim-progress";
         }
-        if (isRecentEvent(nowMs, lastMovedAtMs, OFF_PATH_RECALC_RECENT_MOVEMENT_MS)) {
+        if (movementOwned && isRecentEvent(nowMs, lastMovedAtMs, OFF_PATH_RECALC_RECENT_MOVEMENT_MS)) {
             return "recent-movement";
         }
         return null;
     }
 
+    /**
+     * Whether current player movement is plausibly the result of a walker-issued action —
+     * a route/recovery click, a door interaction, or a transport handoff — rather than an
+     * external force (combat retaliation, aggro, another script). Only owned movement may
+     * defer the off-path recalc or preempt a recovery click.
+     */
+    private static boolean isMovementWalkerOwned(long nowMs, long minimapClickAtMs) {
+        long lastOwnedActionAtMs = Math.max(
+                Math.max(minimapClickAtMs, routeState.doorInteractionSettleStartedAtMs),
+                Math.max(routeState.lastTransportHandledAtMs,
+                        Math.max(routeState.lastUnreachableRecoveryClickAtMs, routeState.interimSetAtMs)));
+        return isRecentEvent(nowMs, lastOwnedActionAtMs, WALKER_MOVEMENT_OWNERSHIP_WINDOW_MS);
+    }
+
     private static String currentOffPathRecalcDeferralReason(long minimapClickAtMs) {
+        long nowMs = System.currentTimeMillis();
         return offPathRecalcDeferralReason(
                 Rs2Player.isMoving(),
                 Rs2Player.isAnimating(),
                 Rs2Player.isInteracting(),
+                isMovementWalkerOwned(nowMs, minimapClickAtMs),
                 isDoorInteractionSettling(),
                 isTransportInteractionSettling(),
                 routeState.interimTargetWp != null,
-                System.currentTimeMillis(),
-                lastMovedTimeMs,
+                nowMs,
+                routeState.lastMovedTimeMs,
                 routeState.routeProgressAdvancedAtMs,
                 minimapClickAtMs,
                 routeState.interimLastProgressAtMs);
@@ -9618,29 +11148,29 @@ public class Rs2Walker {
     private static void checkIfStuck() {
         // Leagues pending teleports, dialogue, and fairy ring widget should not burn stall budget.
         if (Rs2WalkerStallPolicy.shouldSkipStallAccounting(LEAGUES_AREA_PENDING_STALL_MAX_AGE_MS)) {
-            lastMovedTimeMs = System.currentTimeMillis();
-            stuckCount = 0;
-            prevAnimatingForStuckCheck = Rs2Player.isAnimating();
+            routeState.lastMovedTimeMs = System.currentTimeMillis();
+            routeState.stuckCount = 0;
+            routeState.prevAnimatingForStuckCheck = Rs2Player.isAnimating();
             return;
         }
 
         WorldPoint now = Rs2Player.getWorldLocation();
         boolean anim = Rs2Player.isAnimating();
-        if (now != null && now.equals(lastPosition)) {
+        if (now != null && now.equals(routeState.lastPosition)) {
             boolean nearPath = isNearPath();
             boolean poseWalkingNearPath = Rs2Player.isMoving() && nearPath;
-            boolean animProgressNearPath = anim && !prevAnimatingForStuckCheck && nearPath;
+            boolean animProgressNearPath = anim && !routeState.prevAnimatingForStuckCheck && nearPath;
             if (animProgressNearPath || poseWalkingNearPath) {
-                lastMovedTimeMs = System.currentTimeMillis();
-                stuckCount = 0;
+                routeState.lastMovedTimeMs = System.currentTimeMillis();
+                routeState.stuckCount = 0;
             } else {
-                stuckCount++;
+                routeState.stuckCount++;
             }
         } else {
-            stuckCount = 0;
-            lastMovedTimeMs = System.currentTimeMillis();
+            routeState.stuckCount = 0;
+            routeState.lastMovedTimeMs = System.currentTimeMillis();
         }
-        prevAnimatingForStuckCheck = anim;
+        routeState.prevAnimatingForStuckCheck = anim;
     }
 
     // Base stall threshold. See stallThresholdMs() for activity-aware scaling.
@@ -9660,12 +11190,12 @@ public class Rs2Walker {
     private static final long MINIMAP_CLICK_STALL_GRACE_MS = 12_000L;
 
     private static boolean interactingActorNearWalkablePath() {
-        Pathfinder pf = Rs2PathApi.getPathfinder();
-        if (pf == null) {
+        Rs2ActiveRouteStatus routeStatus = Rs2PathApi.getActiveRouteStatus();
+        if (!routeStatus.isPresent()) {
             return false;
         }
-        List<WorldPoint> path = pf.getWalkablePath();
-        if (path == null || path.isEmpty()) {
+        List<WorldPoint> path = routeStatus.getWalkablePath();
+        if (path.isEmpty()) {
             return false;
         }
         Actor actor = Rs2Player.getInteracting();
@@ -9712,24 +11242,56 @@ public class Rs2Walker {
             return false;
         }
 
-        return lastMovedTimeMs > 0 && System.currentTimeMillis() - lastMovedTimeMs > stallThresholdMs();
+        return routeState.lastMovedTimeMs > 0 && System.currentTimeMillis() - routeState.lastMovedTimeMs > stallThresholdMs();
     }
 
     /**
      * @param start
      */
     public void setStart(WorldPoint start) {
-        Pathfinder pathfinder = Rs2PathApi.getPathfinder();
-        if (pathfinder == null) {
+        Set<WorldPoint> targets = Rs2PathApi.getActiveRouteTargets();
+        if (targets.isEmpty()) {
             return;
         }
-        Set<WorldPoint> targets = pathfinder.getTargets();
         Rs2PathApi.setStartPointSet(true);
         if (isClientThread()) {
             Microbot.getClientThread().runOnSeperateThread(() -> restartPathfinding(start, targets));
         } else {
             restartPathfinding(start, targets);
         }
+    }
+
+    /**
+     * Of these candidate tiles, the one the pathfinder can actually reach most cheaply — or null when
+     * none of them is reachable.
+     *
+     * <p>Choosing somewhere to stand by proximity is wrong whenever a wall or a closed door separates
+     * the nearest tile from the player. A local reachability BFS does not rescue it either: the BFS
+     * stops at the door, so the tile on the far side — often the only usable one — is invisible to it.
+     * The pathfinder is the component that knows doors and transports, and it takes a whole set of
+     * targets natively, so asking it once answers the question that actually matters: <em>which of
+     * these can I get to?</em>
+     *
+     * <p>Worked case: approaching the Black Knights' Fortress ladder from (3024,3512), the tiles beside
+     * it are walkable and adjacent but walled off, while the usable approach is east through a Sturdy
+     * door. Proximity picks a walled tile every time; this picks the one with a route.
+     *
+     * @param start      where we are pathing from
+     * @param candidates tiles worth standing on, in no particular order
+     * @return the reachable candidate, or null if the pathfinder cannot reach any of them
+     */
+    public static WorldPoint nearestReachable(WorldPoint start, Collection<WorldPoint> candidates) {
+        if (start == null || candidates == null || candidates.isEmpty()) {
+            return null;
+        }
+        Set<WorldPoint> targets = new HashSet<>(candidates);
+        if (targets.contains(start)) {
+            return start;
+        }
+        // A partial path ends somewhere that is NOT a target; only trust an endpoint we asked for.
+        return Rs2PathApi.plan(Rs2RouteRequest.toAny(start, targets))
+                .getReachedTarget(0)
+                .orElse(null);
     }
 
     /**
@@ -9740,10 +11302,7 @@ public class Rs2Walker {
      * @return distance
      */
     public static int getDistanceBetween(WorldPoint startpoint, WorldPoint endpoint) {
-        Set<WorldPoint> ends = Set.of(endpoint);
-        Pathfinder pathfinder = new Pathfinder(Rs2PathApi.getPathfinderConfig(), startpoint, ends);
-        pathfinder.run();
-        return pathfinder.getPath().size();
+        return Rs2PathApi.plan(Rs2RouteRequest.to(startpoint, endpoint)).getPath().size();
     }
 
     /**
@@ -10024,6 +11583,26 @@ public class Rs2Walker {
         return sleepUntilTrue(() -> !Rs2Player.isAnimating() && teleportGraphics.stream().noneMatch(Rs2Player::hasSpotAnimation), 100, 20000);
     }
 
+    static int canoeMapMainComponentId(int stationObjectId) {
+        if (stationObjectId >= 60845 && stationObjectId <= 60849) {
+            return InterfaceID.CanoeMapDougne.MAIN_MAP;
+        }
+        if ((stationObjectId >= 12163 && stationObjectId <= 12166) || stationObjectId == 39638) {
+            return InterfaceID.CanoeMapLum.MAIN_MAP;
+        }
+        return -1;
+    }
+
+    static int canoeMapDestinationsComponentId(int stationObjectId) {
+        if (stationObjectId >= 60845 && stationObjectId <= 60849) {
+            return InterfaceID.CanoeMapDougne.DESTINATIONS;
+        }
+        if ((stationObjectId >= 12163 && stationObjectId <= 12166) || stationObjectId == 39638) {
+            return InterfaceID.CanoeMapLum.DESTINATIONS;
+        }
+        return -1;
+    }
+
     private static boolean handleCanoe(Transport transport) {
         String displayInfo = transport.getDisplayInfo();
         if (displayInfo == null || displayInfo.isEmpty()) return false;
@@ -10097,6 +11676,12 @@ public class Rs2Walker {
                     return Arrays.stream(composition.getActions()).filter(Objects::nonNull).noneMatch(currentAction::equals) && !Rs2Player.isAnimating();
                 }, 300, 10000);
             case "Paddle Canoe":
+                int canoeMapMain = canoeMapMainComponentId(transport.getObjectId());
+                int canoeMapDestinations = canoeMapDestinationsComponentId(transport.getObjectId());
+                if (canoeMapMain < 0 || canoeMapDestinations < 0) {
+                    log.error("Unsupported canoe station object id: {}", transport.getObjectId());
+                    return false;
+                }
                 if (!Rs2GameObject.interact(transport.getObjectId(), "Paddle Canoe")) {
                     log.error("Failed to interact with canoe station");
                     return false;
@@ -10108,18 +11693,17 @@ public class Rs2Walker {
                 sleepUntil(Rs2Player::isMoving, 2000);
                 sleepUntilTrue(() -> !Rs2Player.isMoving(), 100, 30000);
 
-                // OSRS update moved the canoe destination map from group 647 to
-                // CanoeMapLum (953) for the river Lum chain. CanoeMapDougne (952)
-                // is for a different chain not currently used by canoes.tsv.
+                // OSRS uses separate interfaces for the River Lum and River Dougne chains.
                 boolean isDestinationMapVisible = sleepUntilTrue(
-                        () -> Rs2Widget.isWidgetVisible(InterfaceID.CanoeMapLum.MAIN_MAP),
+                        () -> Rs2Widget.isWidgetVisible(canoeMapMain),
                         100, 10000);
                 if (!isDestinationMapVisible) {
-                    log.error("Canoe destination map (CanoeMapLum) not visible within timeout period");
+                    log.error("Canoe destination map not visible within timeout period for station {}",
+                            transport.getObjectId());
                     return false;
                 }
 
-                Widget destinationListWidget = Rs2Widget.getWidget(InterfaceID.CanoeMapLum.DESTINATIONS);
+                Widget destinationListWidget = Rs2Widget.getWidget(canoeMapDestinations);
                 if (destinationListWidget == null) return false;
                 Widget destination = Rs2Widget.findWidget("Travel to " + displayInfo, List.of(destinationListWidget), false);
                 if (destination == null) {
@@ -10161,16 +11745,16 @@ public class Rs2Walker {
     /**
      * Labels match {@code quetzals.tsv} destination rows (map icon text).
      */
-    private static String quetzalMapLabelForDestination(WorldPoint dest) {
+    static String quetzalMapLabelForDestination(WorldPoint dest) {
         assert dest != null;
         final int[][] coords = {
-                {1389, 2901, 0}, {1697, 3140, 0}, {1585, 3053, 0}, {1510, 3221, 0}, {1548, 2995, 0},
+                {1389, 2901, 0}, {1697, 3140, 0}, {1585, 3053, 0}, {1510, 3222, 0}, {1548, 2995, 0},
                 {1437, 3171, 0}, {1779, 3111, 0}, {1700, 3037, 0}, {1670, 2933, 0}, {1446, 3108, 0},
                 {1613, 3300, 0}, {1226, 3091, 0}, {1344, 3022, 0}, {1411, 3361, 0},
         };
         final String[] labels = {
                 "Aldarin", "Civitas illa Fortis", "Hunter Guild", "Quetzacalli Gorge", "Sunset Coast",
-                "The Teomat", "Fortis Colosseum", "Outer Fortis", "Colossal Wyrm Remains", "Cam Torum Entrance",
+                "The Teomat", "Fortis Colosseum", "Outer Fortis", "Colossal Wyrm Remains", "Cam Torum",
                 "Salvager Overlook", "Tal Teklan", "Kastori", "Auburnvale",
         };
         assert coords.length == labels.length;
@@ -10810,24 +12394,10 @@ public class Rs2Walker {
      * @return true if the item is a teleportation item, false otherwise
      */
     public static boolean isTeleportItem(int itemId) {
-        if (Rs2PathApi.getPathfinderConfig().getAllTransports().isEmpty()) {
-            Rs2PathApi.getPathfinderConfig().refresh();
-        }
-
-        Set<Integer> teleportItemIds = Rs2PathApi.getPathfinderConfig().getAllTransports().values()
-                .stream()
-                .flatMap(Set::stream)
-                .filter(t -> TransportType.isTeleport(t.getType(), t.getOrigin()))
-                .map(Transport::getItemIdRequirements)
-                .flatMap(Set::stream)
-                .flatMap(Set::stream)
-                .collect(Collectors.toSet());
-
-        // Items that are not included in transports
-        teleportItemIds.add(ItemID.DRAMEN_STAFF);
-        teleportItemIds.add(ItemID.LUNAR_MOONCLAN_LIMINAL_STAFF);
-
-        return teleportItemIds.contains(itemId);
+        return Rs2PathApi.isTeleportItem(
+                itemId,
+                ItemID.DRAMEN_STAFF,
+                ItemID.LUNAR_MOONCLAN_LIMINAL_STAFF);
     }
 
 
@@ -10854,47 +12424,28 @@ public class Rs2Walker {
             return -1;
         }
 
-        // Convert list to set for pathfinder
+        // Convert the list to one immutable multi-target planner request.
         Set<WorldPoint> targetSet = new HashSet<>(targets);
-
-        // Store original configuration to restore later
-        boolean originalUseBankItems =  Rs2PathApi.getPathfinderConfig().isUseBankItems();
-        try {
-            Rs2PathApi.getPathfinderConfig().setUseBankItems(useBankItems);
-            // Configure pathfinder
-            Rs2PathApi.getPathfinderConfig().refresh();
-            // Run pathfinder
-            Pathfinder pf = new Pathfinder(Rs2PathApi.getPathfinderConfig(), startPoint, targetSet);
-            pf.run();
-
-            List<WorldPoint> path = pf.getPath();
-            if (path.isEmpty()) {
-                log.debug("Unable to find path to any target from starting point: " + startPoint);
-                return -1;
-            }
-
-            // Find which target corresponds to the end of the path
-            WorldPoint nearestTile = path.get(path.size() - 1);
-            WorldArea nearestTileArea = new WorldArea(nearestTile, tolerance, tolerance);
-
-            // Find the target that matches the final path destination
-            for (int i = 0; i < targets.size(); i++) {
-                WorldPoint target = targets.get(i);
-                WorldArea targetArea = new WorldArea(target, tolerance, tolerance);
-                if (targetArea.intersectsWith2D(nearestTileArea)) {
-                    log.debug("Found nearest accessible target at index " + i + ": " + target + " (path ended at: " + nearestTile + ")");
-                    return i;
-                }
-            }
-
-            log.debug("Path found but no target matched the destination: " + nearestTile);
+        Rs2RouteResult route = Rs2PathApi.plan(
+                Rs2RouteRequest.toAny(startPoint, targetSet).withBankItems(useBankItems));
+        WorldPoint nearestTile = route.getEndpoint().orElse(null);
+        if (nearestTile == null) {
+            log.debug("Unable to find path to any target from starting point: " + startPoint);
             return -1;
-
-        } finally {
-            // Always restore original configuration
-            Rs2PathApi.getPathfinderConfig().setUseBankItems(originalUseBankItems);
-            Rs2PathApi.getPathfinderConfig().refresh();
         }
+
+        WorldArea nearestTileArea = new WorldArea(nearestTile, tolerance, tolerance);
+        for (int i = 0; i < targets.size(); i++) {
+            WorldPoint target = targets.get(i);
+            WorldArea targetArea = new WorldArea(target, tolerance, tolerance);
+            if (targetArea.intersectsWith2D(nearestTileArea)) {
+                log.debug("Found nearest accessible target at index " + i + ": " + target + " (path ended at: " + nearestTile + ")");
+                return i;
+            }
+        }
+
+        log.debug("Path found but no target matched the destination: " + nearestTile);
+        return -1;
     }
 
     /**
@@ -10944,6 +12495,16 @@ public class Rs2Walker {
         return getTransportsForDestination(destination, useBankItems, TransportType.TELEPORTATION_ITEM);
     }
 
+	/**
+	 * Planner-independent counterpart to {@link #getTransportsForDestination(WorldPoint, boolean)}.
+	 * New banking and execution code must use this exact selected-edge view.
+	 */
+	public static List<Rs2TransportEdge> getTransportEdgesForDestination(
+		WorldPoint destination, boolean useBankItems)
+	{
+		return Rs2WalkerBankingPlanner.getTransportEdgesForDestination(destination, useBankItems);
+	}
+
     /**
      * Prepares and analyzes required transport items for reaching a destination.
      * Similar but improved to Rs2Slayer.prepareItemTransports()
@@ -10990,6 +12551,12 @@ public class Rs2Walker {
         return Rs2WalkerBankingPlanner.getMissingTransports(transports);
     }
 
+	public static List<Rs2TransportEdge> getMissingTransportEdges(
+		List<Rs2TransportEdge> transports)
+	{
+		return Rs2WalkerBankingPlanner.getMissingTransportEdges(transports);
+	}
+
     /**
      * Extracts item IDs and their required quantities for the given transports that are missing and available in bank.
      * Enhanced version that uses Rs2Magic and Rs2Spells systems for actual rune quantities on teleportation spells.
@@ -11000,6 +12567,18 @@ public class Rs2Walker {
     public static Map<Integer, Integer> getMissingTransportItemIdsWithQuantities(List<Transport> transports) {
         return Rs2WalkerBankingPlanner.getMissingTransportItemIdsWithQuantities(transports);
     }
+
+	public static Map<Integer, Integer> getMissingTransportEdgeItemIdsWithQuantities(
+		List<Rs2TransportEdge> transports)
+	{
+		return Rs2WalkerBankingPlanner.getMissingTransportEdgeItemIdsWithQuantities(transports);
+	}
+
+	public static Rs2TransportLoadout getMissingTransportEdgeLoadout(
+		List<Rs2TransportEdge> transports)
+	{
+		return Rs2WalkerBankingPlanner.getMissingTransportEdgeLoadout(transports);
+	}
 
     /**
      * Extracts item IDs that are missing for the given transports and available in bank.
@@ -11105,7 +12684,9 @@ public class Rs2Walker {
             }
         }
         try {
-            return walkWithBankedTransportsAndStateLocked(target, distance, forceBanking);
+			return withShadowExecutionEvidence(
+					() -> walkWithBankedTransportsAndStateLocked(
+							target, distance, forceBanking));
         } finally {
             walkerLock.unlock();
         }
@@ -11126,12 +12707,13 @@ public class Rs2Walker {
         if (Rs2Tile.getReachableTilesFromTile(pl, distance).containsKey(target) || nearUnwalkableGoal) {
             return WalkerState.ARRIVED;
         }
-        final Pathfinder pathfinder = Rs2PathApi.getPathfinder();
-        if (pathfinder != null && !pathfinder.isDone())
+        final Rs2ActiveRouteStatus routeStatus = Rs2PathApi.getActiveRouteStatus();
+        if (routeStatus.isCalculating())
             return WalkerState.MOVING;
 
         boolean bankTripWhenCacheUnavailable = config == null || config.bankTripWhenCacheUnavailable();
-        if (!forceBanking && bankTripWhenCacheUnavailable && Rs2Bank.getBankLiveEpoch() <= 0) {
+        if (!forceBanking && bankTripWhenCacheUnavailable && Rs2Bank.getBankLiveEpoch() <= 0
+                && System.currentTimeMillis() - routeState.lastBankBootstrapMissAtMs > BANK_BOOTSTRAP_MISS_COOLDOWN_MS) {
             WalkerState bootstrapState = bootstrapBankMirrorForBankedPathing(distance);
             if (bootstrapState == WalkerState.EXIT || bootstrapState == WalkerState.UNREACHABLE) {
                 return bootstrapState;
@@ -11139,8 +12721,24 @@ public class Rs2Walker {
         }
         int chebyshevToTarget = pl.distanceTo(target);
         if (!forceBanking && chebyshevToTarget <= 100) {
-            WebWalkLog.bankWalkDebug("skip_compare_short_distance dist={} goal={}", chebyshevToTarget, target);
-            return walkWithStateInternal(target, distance);
+            // Straight-line proximity says nothing about the walkable route: the Shantay gate is
+            // ~30 tiles away and ~700 by inventory-only path without a pass. Skipping the compare
+            // here meant no missing-item check, so gold for a purchasable gate was never withdrawn
+            // and the walker silently took the detour. One direct pathfind (cheap for a close,
+            // reachable target) decides whether the short-circuit is safe; a partial path counts
+            // as a detour too, since banking may be exactly what unlocks the blocked transport.
+            List<WorldPoint> directProbePath = getWalkPath(pl, target);
+            int directProbeTiles = getTotalTilesFromPath(directProbePath, target);
+            int directPathCeiling = shortWalkDirectPathCeiling(chebyshevToTarget);
+            if (directProbeTiles <= directPathCeiling) {
+                WebWalkLog.spInfo("bank_walk | skip_compare_short_distance dist={} directTiles={} goal={}",
+                        chebyshevToTarget, directProbeTiles, target);
+                return walkWithStateInternal(target, distance);
+            }
+            WebWalkLog.spInfo("bank_walk | short_distance_detour dist={} directTiles={} ceiling={} goal={} — running bank compare",
+                    chebyshevToTarget,
+                    directProbeTiles == Integer.MAX_VALUE ? "partial" : String.valueOf(directProbeTiles),
+                    directPathCeiling, target);
         }
         // Check what transport items are needed
         long compareStartedAt = System.currentTimeMillis();
@@ -11149,16 +12747,23 @@ public class Rs2Walker {
         TransportRouteAnalysis comparison = compareRoutes(target);
         WebWalkLog.tmark("compare_done", System.currentTimeMillis() - compareStartedAt, target, pl,
                 "direct=" + comparison.getDirectDistance() + " bank=" + comparison.getBankingRouteDistance());
-        List<Transport> missingTransports = getMissingTransports(getTransportsForDestination(target, true, TransportType.TELEPORTATION_SPELL));
+        List<Rs2TransportEdge> missingTransports = getMissingTransportEdges(
+                Rs2WalkerBankingPlanner.getRequiredTransportEdgesFromBank(comparison));
 
-        Map<Integer, Integer> missingItemsWithQuantities = getMissingTransportItemIdsWithQuantities(missingTransports);
+        Rs2TransportLoadout transportLoadout = getMissingTransportEdgeLoadout(missingTransports);
+        Map<Integer, Integer> missingItemsWithQuantities = transportLoadout.getWithdrawals();
         if (!missingTransports.isEmpty()) {
-            WebWalkLog.bankWalkDebug("missing_items nTrans={} to={} missingKinds={}",
-                    missingTransports.size(), target, missingItemsWithQuantities.size());
+            WebWalkLog.bankWalkDebug("missing_items nTrans={} to={} missingKinds={} equipKinds={} satisfiable={}",
+                    missingTransports.size(), target, missingItemsWithQuantities.size(),
+                    transportLoadout.getEquipmentItemIds().size(), transportLoadout.isSatisfiable());
+        }
+        if (!transportLoadout.isSatisfiable()) {
+            WebWalkLog.spWarn("bank_walk | selected bank route has no executable loadout goal={}", target);
+            return forceBanking ? WalkerState.EXIT : walkWithStateInternal(target, distance);
         }
         // If no missing transport items, go directly
-        if (missingItemsWithQuantities.isEmpty() && !forceBanking) {
-            WebWalkLog.bankWalkDebug("direct_no_missing_items goal={}", target);
+        if (transportLoadout.isEmpty() && !forceBanking) {
+            WebWalkLog.spInfo("bank_walk | direct_no_missing_items goal={}", target);
             WalkerState state = walkWithStateInternal(target, distance);
             if (state == WalkerState.ARRIVED) {
                 WebWalkLog.bankWalkDebug("arrived goal={}", target);
@@ -11184,7 +12789,8 @@ public class Rs2Walker {
                     log.info("\n\tUsing banking route: \n\t\tStart: {} -> Bank: {} -> Target: {}",
                             Rs2Player.getWorldLocation(), comparison.getBankLocation(), target);
                     // Handle the complete banking workflow using legacy walkTo approach
-                    return walkWithBankingState(comparison.getBankLocation(), missingItemsWithQuantities, target, distance);
+                    return walkWithBankingState(
+                            comparison.getBankLocation(), transportLoadout, target, distance);
                 } else {
                     log.warn("\n\tBanking route requested but no accessible bank found, trying direct route");
                     return walkWithStateInternal(target, distance);
@@ -11198,6 +12804,24 @@ public class Rs2Walker {
 
     }
 
+    /**
+     * Ceiling for how long the inventory-only path may be before a "close" target (&le;100
+     * chebyshev) loses its right to skip the bank compare. 3x straight-line absorbs honest
+     * wall-hugging and indoor zigzags; the 60-tile floor keeps tiny distances from tripping
+     * on ordinary detours around buildings. Anything above this is a real detour — a gate the
+     * player lacks the item/fare for — and the banked flow must get its chance to fetch it.
+     */
+    static int shortWalkDirectPathCeiling(int chebyshevDistance) {
+        return Math.max(60, chebyshevDistance * 3);
+    }
+
+    /**
+     * When the last bootstrap attempt found no bank it is pointless — and expensive, it runs a
+     * pathfind — to retry on the very next walk. Back off instead of doing it every tick. The
+     * timestamp itself lives in {@link WalkerRouteState} with the rest of the mutable route state.
+     */
+    private static final long BANK_BOOTSTRAP_MISS_COOLDOWN_MS = 60_000;
+
     private static WalkerState bootstrapBankMirrorForBankedPathing(int distance) {
         WorldPoint start = Rs2Player.getWorldLocation();
         if (start == null) {
@@ -11205,8 +12829,14 @@ public class Rs2Walker {
         }
         BankLocation nearestBank = Rs2Bank.getNearestBank(start);
         if (nearestBank == null || nearestBank.getWorldPoint() == null) {
-            WebWalkLog.spWarn("bank_cache_bootstrap | no_nearest_bank start={}", start);
-            return WalkerState.EXIT;
+            // No bank we recognise from here. That is a gap in BankLocation coverage, not a reason to
+            // refuse to walk: the bank mirror only unlocks transports that need banked items, and the
+            // ordinary route is usually fine without it. Returning EXIT aborted the whole walk, so the
+            // caller re-ran this every tick and the character never went anywhere — observed near
+            // (3025,3508), where the nearest-bank search returns a point matching no BankLocation.
+            routeState.lastBankBootstrapMissAtMs = System.currentTimeMillis();
+            WebWalkLog.spWarn("bank_cache_bootstrap | no_nearest_bank start={} — continuing unbanked", start);
+            return WalkerState.MOVING;
         }
 
         WorldPoint bankLocation = nearestBank.getWorldPoint();
@@ -11241,31 +12871,20 @@ public class Rs2Walker {
 
 
     /**
-     * Handles the complete banking workflow using legacy walkTo: walk to bank, open, withdraw items, close, continue to target.
-     * Enhanced version that accepts a map of item IDs with their required quantities and returns boolean.
+     * Handles the complete banking workflow using the immutable preparation selected for the exact
+     * bank-to-target route: walk to bank, withdraw, equip, close, refresh inventory-only policy and
+     * continue to the target.
      *
-     * @param bankLocation The bank location to visit
-     * @param missingItemsWithQuantities Map of item IDs and their required quantities
-     * @param finalTarget The final destination after banking
-     * @return true if the banking workflow was successful, false otherwise
-     */
-    private static boolean walkWithBanking(WorldPoint bankLocation, Map<Integer, Integer> missingItemsWithQuantities, WorldPoint finalTarget) {
-        return walkWithBankingState(bankLocation, missingItemsWithQuantities, finalTarget, 10)== WalkerState.ARRIVED;
-    }
-
-    /**
-     * Handles the complete banking workflow using walkWithState: walk to bank, open, withdraw items, close, continue to target.
-     * Enhanced version that accepts a map of item IDs with their required quantities and returns WalkerState.
-     *
-     * @param missingItemsWithQuantities Map of item IDs and their required quantities
+     * @param transportLoadout Withdrawals and equipment changes required by the selected route
      * @param finalTarget The final destination after banking
      * @return WalkerState indicating the result of the banking workflow
      */
     private static WalkerState walkWithBankingState(WorldPoint bankLocation,
-                                                    Map<Integer, Integer> missingItemsWithQuantities,
+                                                    Rs2TransportLoadout transportLoadout,
                                                     WorldPoint finalTarget,int distance) {
         try {
-            if (bankLocation == null || finalTarget == null) {
+            if (bankLocation == null || finalTarget == null || transportLoadout == null
+                    || !transportLoadout.isSatisfiable()) {
                 log.warn("Cannot perform banking workflow with null locations");
                 return WalkerState.EXIT;
             }
@@ -11288,6 +12907,7 @@ public class Rs2Walker {
             }
 
             // Step 3: Withdraw missing transport items
+            Map<Integer, Integer> missingItemsWithQuantities = transportLoadout.getWithdrawals();
             if (!missingItemsWithQuantities.isEmpty()) {
                 log.debug("Withdrawing transport items with quantities: " + missingItemsWithQuantities);
 
@@ -11301,11 +12921,17 @@ public class Rs2Walker {
                     if (amountToWithdraw > 0) {
                         if (Rs2Bank.hasBankItem(itemId, amountToWithdraw)) {
                             log.debug("Withdrawing {} x {} (item ID: {})", amountToWithdraw, itemId, itemId);
-                            Rs2Bank.withdrawX(itemId, amountToWithdraw);
-                            sleepUntil(() -> Rs2Inventory.count(itemId) >= currentCount + amountToWithdraw, 3000);
+                            if (!Rs2Bank.withdrawX(itemId, amountToWithdraw)
+                                    || !sleepUntil(() -> Rs2Inventory.count(itemId)
+                                            >= currentCount + amountToWithdraw, 3000)) {
+                                log.warn("Failed to withdraw required transport item {} x{}",
+                                        itemId, amountToWithdraw);
+                                return WalkerState.EXIT;
+                            }
                         } else {
                             log.warn("Required transport item {} not found in bank (need {} but bank has less)",
                                     itemId, amountToWithdraw);
+                            return WalkerState.EXIT;
                         }
                     } else {
                         log.debug("Already have enough of item {}: {} (need {})", itemId, currentCount, amountNeeded);
@@ -11316,6 +12942,18 @@ public class Rs2Walker {
                 sleepTickJitter(1);
             }
 
+            for (Integer equipmentItemId : transportLoadout.getEquipmentItemIds()) {
+                if (Rs2Equipment.isWearing(equipmentItemId)) {
+                    continue;
+                }
+                if (!Rs2Inventory.hasItem(equipmentItemId)
+                        || !Rs2Bank.wearItem(equipmentItemId)
+                        || !sleepUntil(() -> Rs2Equipment.isWearing(equipmentItemId), 3000)) {
+                    log.warn("Failed to equip required transport provider {}", equipmentItemId);
+                    return WalkerState.EXIT;
+                }
+            }
+
             // Step 4: Close bank
             Rs2Bank.closeBank();
             sleepUntil(() -> !Rs2Bank.isOpen(), 3000);
@@ -11323,8 +12961,10 @@ public class Rs2Walker {
                 log.warn("Failed to close bank after withdrawals");
                 return WalkerState.EXIT;
             }
-            Rs2PathApi.getPathfinderConfig().setUseBankItems(false);
-            Rs2PathApi.getPathfinderConfig().refresh(finalTarget);
+            if (!Rs2PathApi.prepareInventoryOnlyRoute(finalTarget)) {
+                log.warn("Shortest-path configuration unavailable after bank withdrawals");
+                return WalkerState.EXIT;
+            }
             // Step 5: Continue to final target
             log.debug("Banking complete, continuing to final target: " + finalTarget);
             return walkWithStateInternal(finalTarget, distance);
@@ -11354,4 +12994,3 @@ public class Rs2Walker {
         return sleepUntil(() -> !Rs2Widget.isWidgetVisible(InterfaceID.Worldmap.CLOSE), 3000);
     }
 }
-

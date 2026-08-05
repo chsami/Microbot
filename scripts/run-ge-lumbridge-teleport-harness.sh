@@ -6,6 +6,7 @@ TIMEOUT_MS="${MICROBOT_GE_LUMBRIDGE_TIMEOUT_MS:-5400000}"
 LEG_TIMEOUT_MS="${MICROBOT_GE_LUMBRIDGE_LEG_TIMEOUT_MS:-300000}"
 OUTPUT_DIR="${MICROBOT_GE_LUMBRIDGE_OUTPUT_DIR:-$HOME/.runelite/test-results/ge-lumbridge-teleport}"
 MONITOR_INTERVAL="${MICROBOT_GE_LUMBRIDGE_MONITOR_INTERVAL:-0.2}"
+UPSTREAM_PLANNER_SHADOW="${MICROBOT_GE_LUMBRIDGE_UPSTREAM_PLANNER_SHADOW:-false}"
 
 cd "$(dirname "$0")/.."
 
@@ -25,6 +26,7 @@ CMD=(
   "-Dmicrobot.test.output=$OUTPUT_DIR"
   "-Dmicrobot.test.geLumbridge.iterations=$ITERATIONS"
   "-Dmicrobot.test.geLumbridge.walkTimeoutMs=$LEG_TIMEOUT_MS"
+  "-Dmicrobot.test.geLumbridge.upstreamPlannerShadow=$UPSTREAM_PLANNER_SHADOW"
 )
 
 set +e

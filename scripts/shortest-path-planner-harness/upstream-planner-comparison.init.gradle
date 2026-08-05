@@ -1,0 +1,45 @@
+allprojects {
+    configurations.configureEach {
+        resolutionStrategy.eachDependency { details ->
+            if (details.requested.group != null
+                    && details.requested.group.startsWith('net.runelite')
+                    && details.requested.version == 'latest.release') {
+                def pinned = gradle.startParameter.projectProperties['plannerRuneliteVersion']
+                if (pinned != null && !pinned.isBlank()) {
+                    details.useVersion(pinned)
+                    details.because('Microbot planner comparison pins the RuneLite API revision')
+                }
+            }
+        }
+    }
+
+    afterEvaluate { project ->
+        if (project == rootProject) {
+            tasks.register('exportPlannerComparison', JavaExec) {
+                group = 'verification'
+                description = 'Export upstream planner results for Microbot comparison'
+                dependsOn tasks.named('testClasses')
+                // The normal runtime classpath pulls every RuneLite LWJGL native classifier. The
+                // headless planner uses none of them, and some classifiers are intentionally absent
+                // from Maven local. Test compile classpath contains the Java API, Gson and Mockito.
+                classpath = sourceSets.test.output + sourceSets.main.output \
+                    + configurations.testCompileClasspath
+                mainClass = 'shortestpath.pathfinder.UpstreamPlannerComparisonMain'
+
+                doFirst {
+                    def corpus = project.findProperty('plannerCorpus')
+                    def output = project.findProperty('plannerOutput')
+                    if (corpus == null || output == null) {
+                        throw new GradleException(
+                            'exportPlannerComparison requires -PplannerCorpus and -PplannerOutput')
+                    }
+                    args corpus, output
+                    systemProperty 'microbot.planner.revision',
+                        project.findProperty('plannerRevision') ?: 'unknown'
+                }
+
+                outputs.upToDateWhen { false }
+            }
+        }
+    }
+}

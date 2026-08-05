@@ -28,6 +28,8 @@ import java.util.Arrays;
 @Slf4j
 public final class MenuActionAsmResolver {
 
+    static final String MENU_ACTION_DESCRIPTOR_RUNELITE =
+            "(IILnet/runelite/api/MenuAction;IILjava/lang/String;Ljava/lang/String;)V";
     public static final class Resolution {
         public final Method method;
         public final Object garbageValue;
@@ -42,9 +44,6 @@ public final class MenuActionAsmResolver {
     }
 
     public static Resolution resolve(Class<?> clientClazz) throws Exception {
-        final String MENU_ACTION_DESCRIPTOR_VANILLA = "(IIIIIILjava/lang/String;Ljava/lang/String;III)V";
-        final String MENU_ACTION_DESCRIPTOR_RUNELITE = "(IILnet/runelite/api/MenuAction;IILjava/lang/String;Ljava/lang/String;)V";
-
         ClassReader classReader = new ClassReader(clientClazz.getName());
         ClassNode classNode = new ClassNode(Opcodes.ASM9);
         classReader.accept(classNode, ClassReader.SKIP_FRAMES);
@@ -74,20 +73,22 @@ public final class MenuActionAsmResolver {
             }
 
             MethodInsnNode methodInsn = (MethodInsnNode) insnNode.getNext();
-            if (!methodInsn.desc.equals(MENU_ACTION_DESCRIPTOR_VANILLA)) {
-                throw new RuntimeException("Menu action descriptor vanilla has changed from: "
-                        + MENU_ACTION_DESCRIPTOR_VANILLA + " to: " + methodInsn.desc);
-            }
+            if (!MenuActionDescriptor.isVanilla(methodInsn.desc)) continue;
+
+            garbage = MenuActionDescriptor.normalizeGarbage(garbage, methodInsn.desc);
+            if (garbage == null) return null;
 
             Method method = Arrays.stream(Class.forName(methodInsn.owner).getDeclaredMethods())
-                    .filter(m -> m.getName().equals(methodInsn.name))
+                    .filter(m -> m.getName().equals(methodInsn.name)
+                            && org.objectweb.asm.Type.getMethodDescriptor(m).equals(methodInsn.desc))
                     .findFirst()
                     .orElse(null);
 
-            if (method == null || garbage == null) return null;
+            if (method == null) return null;
             return new Resolution(method, garbage);
         }
 
         return null;
     }
+
 }

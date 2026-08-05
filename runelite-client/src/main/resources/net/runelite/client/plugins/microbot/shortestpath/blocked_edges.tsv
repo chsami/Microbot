@@ -30,3 +30,105 @@
 2935 3450 0	2935 3449 0	true	Taverley wall
 2937 3450 0	2937 3449 0	true	Taverley wall
 2938 3450 0	2938 3449 0	true	Taverley wall
+# Elemental Workshop odd-looking wall. The collision artifact exposes this cardinal edge; the
+# item-gated object transport in transports.tsv is the only valid crossing.
+2709 3495 0	2709 3496 0	true	Elemental Workshop odd-looking wall
+2649 3469 0	2649 3470 0	true	Hemenster enclosure north gate - never opens
+2650 3469 0	2650 3470 0	true	Hemenster enclosure north gate - never opens
+# Al Kharid mine - block routing through open pit (collision data gap)
+3281 3151 0	3281 3150 0	true	Al Kharid mine south edge
+3282 3151 0	3282 3150 0	true	Al Kharid mine south edge
+3283 3151 0	3283 3150 0	true	Al Kharid mine south edge
+3284 3151 0	3284 3150 0	true	Al Kharid mine south edge
+3285 3151 0	3285 3150 0	true	Al Kharid mine south edge
+3286 3151 0	3286 3150 0	true	Al Kharid mine south edge
+3287 3151 0	3287 3150 0	true	Al Kharid mine south edge
+3288 3151 0	3288 3150 0	true	Al Kharid mine south edge
+3289 3151 0	3289 3150 0	true	Al Kharid mine south edge
+3290 3151 0	3290 3150 0	true	Al Kharid mine south edge
+3291 3151 0	3291 3150 0	true	Al Kharid mine south edge
+3292 3151 0	3292 3150 0	true	Al Kharid mine south edge
+3293 3151 0	3293 3150 0	true	Al Kharid mine south edge
+3294 3151 0	3294 3150 0	true	Al Kharid mine south edge
+3295 3151 0	3295 3150 0	true	Al Kharid mine south edge
+3296 3151 0	3296 3150 0	true	Al Kharid mine south edge
+3297 3151 0	3297 3150 0	true	Al Kharid mine south edge
+3298 3151 0	3298 3150 0	true	Al Kharid mine south edge
+3299 3151 0	3299 3150 0	true	Al Kharid mine south edge
+3300 3151 0	3300 3150 0	true	Al Kharid mine south edge
+3281 3151 0	3280 3151 0	true	Al Kharid mine west edge
+3281 3152 0	3280 3152 0	true	Al Kharid mine west edge
+3281 3153 0	3280 3153 0	true	Al Kharid mine west edge
+3281 3154 0	3280 3154 0	true	Al Kharid mine west edge
+3281 3155 0	3280 3155 0	true	Al Kharid mine west edge
+3281 3156 0	3280 3156 0	true	Al Kharid mine west edge
+3281 3157 0	3280 3157 0	true	Al Kharid mine west edge
+3281 3158 0	3280 3158 0	true	Al Kharid mine west edge
+3281 3159 0	3280 3159 0	true	Al Kharid mine west edge
+3281 3160 0	3280 3160 0	true	Al Kharid mine west edge
+3281 3161 0	3280 3161 0	true	Al Kharid mine west edge
+3281 3162 0	3280 3162 0	true	Al Kharid mine west edge
+3281 3163 0	3280 3163 0	true	Al Kharid mine west edge
+3281 3164 0	3280 3164 0	true	Al Kharid mine west edge
+3281 3165 0	3280 3165 0	true	Al Kharid mine west edge
+3281 3166 0	3280 3166 0	true	Al Kharid mine west edge
+3281 3167 0	3280 3167 0	true	Al Kharid mine west edge
+3281 3168 0	3280 3168 0	true	Al Kharid mine west edge
+3281 3169 0	3280 3169 0	true	Al Kharid mine west edge
+3281 3170 0	3280 3170 0	true	Al Kharid mine west edge
+3281 3171 0	3280 3171 0	true	Al Kharid mine west edge
+3281 3172 0	3280 3172 0	true	Al Kharid mine west edge
+3281 3173 0	3280 3173 0	true	Al Kharid mine west edge
+3281 3174 0	3280 3174 0	true	Al Kharid mine west edge
+3281 3175 0	3280 3175 0	true	Al Kharid mine west edge
+3281 3176 0	3280 3176 0	true	Al Kharid mine west edge
+3281 3177 0	3280 3177 0	true	Al Kharid mine west edge
+3281 3178 0	3280 3178 0	true	Al Kharid mine west edge
+3300 3151 0	3301 3151 0	true	Al Kharid mine east edge
+3300 3152 0	3301 3152 0	true	Al Kharid mine east edge
+3300 3153 0	3301 3153 0	true	Al Kharid mine east edge
+3300 3154 0	3301 3154 0	true	Al Kharid mine east edge
+3300 3155 0	3301 3155 0	true	Al Kharid mine east edge
+3300 3156 0	3301 3156 0	true	Al Kharid mine east edge
+3300 3157 0	3301 3157 0	true	Al Kharid mine east edge
+3300 3158 0	3301 3158 0	true	Al Kharid mine east edge
+3300 3159 0	3301 3159 0	true	Al Kharid mine east edge
+3300 3160 0	3301 3160 0	true	Al Kharid mine east edge
+3300 3161 0	3301 3161 0	true	Al Kharid mine east edge
+3300 3162 0	3301 3162 0	true	Al Kharid mine east edge
+3300 3163 0	3301 3163 0	true	Al Kharid mine east edge
+3300 3164 0	3301 3164 0	true	Al Kharid mine east edge
+3300 3165 0	3301 3165 0	true	Al Kharid mine east edge
+3300 3166 0	3301 3166 0	true	Al Kharid mine east edge
+3300 3167 0	3301 3167 0	true	Al Kharid mine east edge
+3300 3168 0	3301 3168 0	true	Al Kharid mine east edge
+3300 3169 0	3301 3169 0	true	Al Kharid mine east edge
+3300 3170 0	3301 3170 0	true	Al Kharid mine east edge
+3300 3171 0	3301 3171 0	true	Al Kharid mine east edge
+3300 3172 0	3301 3172 0	true	Al Kharid mine east edge
+3300 3173 0	3301 3173 0	true	Al Kharid mine east edge
+3300 3174 0	3301 3174 0	true	Al Kharid mine east edge
+3300 3175 0	3301 3175 0	true	Al Kharid mine east edge
+3300 3176 0	3301 3176 0	true	Al Kharid mine east edge
+3300 3177 0	3301 3177 0	true	Al Kharid mine east edge
+3300 3178 0	3301 3178 0	true	Al Kharid mine east edge
+3281 3178 0	3281 3179 0	true	Al Kharid mine north edge
+3282 3178 0	3282 3179 0	true	Al Kharid mine north edge
+3283 3178 0	3283 3179 0	true	Al Kharid mine north edge
+3284 3178 0	3284 3179 0	true	Al Kharid mine north edge
+3285 3178 0	3285 3179 0	true	Al Kharid mine north edge
+3286 3178 0	3286 3179 0	true	Al Kharid mine north edge
+3287 3178 0	3287 3179 0	true	Al Kharid mine north edge
+3288 3178 0	3288 3179 0	true	Al Kharid mine north edge
+3289 3178 0	3289 3179 0	true	Al Kharid mine north edge
+3290 3178 0	3290 3179 0	true	Al Kharid mine north edge
+3291 3178 0	3291 3179 0	true	Al Kharid mine north edge
+3292 3178 0	3292 3179 0	true	Al Kharid mine north edge
+3293 3178 0	3293 3179 0	true	Al Kharid mine north edge
+3294 3178 0	3294 3179 0	true	Al Kharid mine north edge
+3295 3178 0	3295 3179 0	true	Al Kharid mine north edge
+3296 3178 0	3296 3179 0	true	Al Kharid mine north edge
+3297 3178 0	3297 3179 0	true	Al Kharid mine north edge
+3298 3178 0	3298 3179 0	true	Al Kharid mine north edge
+3299 3178 0	3299 3179 0	true	Al Kharid mine north edge
+3300 3178 0	3300 3179 0	true	Al Kharid mine north edge

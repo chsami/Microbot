@@ -1,0 +1,422 @@
+{
+  "schemaVersion": 3,
+  "policyContract": {
+    "transportModes": ["STATIC_COLLISION_ONLY", "EXPLICIT_CATALOG", "BANK_AWARE_EXPLICIT_CATALOG"],
+    "liveCollision": false,
+    "restrictions": [],
+    "avoidDangerousNpcs": false,
+    "description": "Engine-neutral static, explicit-catalog, source-aware item-provider, start-at-bank, and separate-bank workflow slices. Every selected catalog edge must retain its exact immutable corpus identity."
+  },
+  "cases": [
+    {
+      "id": "lumbridge-short-overland",
+      "category": "overland",
+      "start": { "x": 3222, "y": 3218, "plane": 0 },
+      "target": { "x": 3232, "y": 3218, "plane": 0 },
+      "policy": {
+        "transportMode": "STATIC_COLLISION_ONLY",
+        "avoidWilderness": true,
+        "cutoffMillis": 12000
+      },
+      "expectedReached": true
+    },
+    {
+      "id": "lumbridge-grand-exchange-overland",
+      "category": "overland",
+      "start": { "x": 3222, "y": 3218, "plane": 0 },
+      "target": { "x": 3164, "y": 3485, "plane": 0 },
+      "policy": {
+        "transportMode": "STATIC_COLLISION_ONLY",
+        "avoidWilderness": true,
+        "cutoffMillis": 12000
+      },
+      "expectedReached": true
+    },
+    {
+      "id": "ambiguous-network-transport",
+      "category": "network",
+      "start": { "x": 3222, "y": 3218, "plane": 0 },
+      "target": { "x": 3164, "y": 3485, "plane": 0 },
+      "policy": {
+        "transportMode": "EXPLICIT_CATALOG",
+        "avoidWilderness": true,
+        "cutoffMillis": 12000
+      },
+      "transports": [
+        {
+          "id": "slow-gnome-glider",
+          "origin": { "x": 3222, "y": 3218, "plane": 0 },
+          "destination": { "x": 3164, "y": 3485, "plane": 0 },
+          "type": "GNOME_GLIDER",
+          "duration": 9,
+          "displayInfo": "Synthetic slow network alternative"
+        },
+        {
+          "id": "fast-spirit-tree",
+          "origin": { "x": 3222, "y": 3218, "plane": 0 },
+          "destination": { "x": 3164, "y": 3485, "plane": 0 },
+          "type": "SPIRIT_TREE",
+          "duration": 5,
+          "displayInfo": "Synthetic selected network alternative"
+        }
+      ],
+      "expectedReached": true,
+      "expectedTransportIds": ["fast-spirit-tree"]
+    },
+    {
+      "id": "bank-required-network-without-bank",
+      "category": "bank",
+      "start": { "x": 3222, "y": 3218, "plane": 0 },
+      "target": { "x": 3164, "y": 3485, "plane": 0 },
+      "policy": {
+        "transportMode": "EXPLICIT_CATALOG",
+        "avoidWilderness": true,
+        "cutoffMillis": 12000
+      },
+      "transports": [
+        {
+          "id": "banked-slow-gnome-glider",
+          "origin": { "x": 3222, "y": 3218, "plane": 0 },
+          "destination": { "x": 3164, "y": 3485, "plane": 0 },
+          "type": "GNOME_GLIDER",
+          "duration": 9,
+          "displayInfo": "Synthetic bank-gated slow alternative",
+          "availability": "AFTER_BANK"
+        },
+        {
+          "id": "banked-fast-spirit-tree",
+          "origin": { "x": 3222, "y": 3218, "plane": 0 },
+          "destination": { "x": 3164, "y": 3485, "plane": 0 },
+          "type": "SPIRIT_TREE",
+          "duration": 5,
+          "displayInfo": "Synthetic bank-gated selected alternative",
+          "availability": "AFTER_BANK"
+        }
+      ],
+      "expectedReached": true,
+      "expectedTransportIds": [],
+      "expectedBankVisited": false
+    },
+    {
+      "id": "hot-air-balloon-network",
+      "category": "network-executor",
+      "start": { "x": 2461, "y": 3111, "plane": 0 },
+      "target": { "x": 3299, "y": 3482, "plane": 0 },
+      "policy": {
+        "transportMode": "EXPLICIT_CATALOG",
+        "avoidWilderness": true,
+        "cutoffMillis": 12000
+      },
+      "transports": [
+        {
+          "id": "castle-wars-to-varrock-balloon",
+          "origin": { "x": 2461, "y": 3111, "plane": 0 },
+          "destination": { "x": 3299, "y": 3482, "plane": 0 },
+          "type": "HOT_AIR_BALLOON",
+          "duration": 7,
+          "displayInfo": "Varrock"
+        }
+      ],
+      "expectedReached": true,
+      "expectedTransportIds": ["castle-wars-to-varrock-balloon"]
+    },
+    {
+      "id": "bank-required-network-from-bank",
+      "category": "bank",
+      "start": { "x": 3222, "y": 3218, "plane": 0 },
+      "target": { "x": 3164, "y": 3485, "plane": 0 },
+      "policy": {
+        "transportMode": "BANK_AWARE_EXPLICIT_CATALOG",
+        "avoidWilderness": true,
+        "cutoffMillis": 12000
+      },
+      "bankLocations": [
+        { "x": 3222, "y": 3218, "plane": 0 }
+      ],
+      "transports": [
+        {
+          "id": "banked-slow-gnome-glider",
+          "origin": { "x": 3222, "y": 3218, "plane": 0 },
+          "destination": { "x": 3164, "y": 3485, "plane": 0 },
+          "type": "GNOME_GLIDER",
+          "duration": 9,
+          "displayInfo": "Synthetic bank-gated slow alternative",
+          "availability": "AFTER_BANK"
+        },
+        {
+          "id": "banked-fast-spirit-tree",
+          "origin": { "x": 3222, "y": 3218, "plane": 0 },
+          "destination": { "x": 3164, "y": 3485, "plane": 0 },
+          "type": "SPIRIT_TREE",
+          "duration": 5,
+          "displayInfo": "Synthetic bank-gated selected alternative",
+          "availability": "AFTER_BANK"
+        }
+      ],
+      "expectedReached": true,
+      "expectedTransportIds": ["banked-fast-spirit-tree"],
+      "expectedBankVisited": true
+    },
+    {
+      "id": "bank-required-network-via-detour",
+      "category": "bank",
+      "start": { "x": 3200, "y": 3200, "plane": 0 },
+      "target": { "x": 3164, "y": 3485, "plane": 0 },
+      "policy": {
+        "transportMode": "BANK_AWARE_EXPLICIT_CATALOG",
+        "avoidWilderness": true,
+        "cutoffMillis": 12000
+      },
+      "bankLocations": [
+        { "x": 3222, "y": 3218, "plane": 0 }
+      ],
+      "transports": [
+        {
+          "id": "detour-banked-slow-gnome-glider",
+          "origin": { "x": 3222, "y": 3218, "plane": 0 },
+          "destination": { "x": 3164, "y": 3485, "plane": 0 },
+          "type": "GNOME_GLIDER",
+          "duration": 9,
+          "displayInfo": "Synthetic detour bank-gated slow alternative",
+          "availability": "AFTER_BANK"
+        },
+        {
+          "id": "detour-banked-fast-spirit-tree",
+          "origin": { "x": 3222, "y": 3218, "plane": 0 },
+          "destination": { "x": 3164, "y": 3485, "plane": 0 },
+          "type": "SPIRIT_TREE",
+          "duration": 5,
+          "displayInfo": "Synthetic detour bank-gated selected alternative",
+          "availability": "AFTER_BANK"
+        }
+      ],
+      "expectedReached": true,
+      "expectedTransportIds": ["detour-banked-fast-spirit-tree"],
+      "expectedBankVisited": true
+    },
+    {
+      "id": "spell-with-raw-runes",
+      "category": "spell-provider",
+      "start": { "x": 3222, "y": 3218, "plane": 0 },
+      "target": { "x": 3164, "y": 3485, "plane": 0 },
+      "policy": {
+        "transportMode": "EXPLICIT_CATALOG",
+        "avoidWilderness": true,
+        "cutoffMillis": 12000
+      },
+      "inventoryItems": [
+        { "id": 554, "quantity": 2 },
+        { "id": 555, "quantity": 2 },
+        { "id": 563, "quantity": 2 },
+        { "id": 1963, "quantity": 1 }
+      ],
+      "transports": [
+        {
+          "id": "ape-atoll-spell-raw-runes",
+          "origin": { "x": 3222, "y": 3218, "plane": 0 },
+          "destination": { "x": 3164, "y": 3485, "plane": 0 },
+          "type": "TELEPORTATION_SPELL",
+          "duration": 4,
+          "displayInfo": "Synthetic Ape Atoll spell requirement",
+          "items": "FIRE_RUNE=2&&WATER_RUNE=2&&LAW_RUNE=2&&BANANA=1"
+        }
+      ],
+      "expectedReached": true,
+      "expectedTransportIds": ["ape-atoll-spell-raw-runes"]
+    },
+    {
+      "id": "spell-with-staff-and-tome",
+      "category": "spell-provider",
+      "start": { "x": 3222, "y": 3218, "plane": 0 },
+      "target": { "x": 3164, "y": 3485, "plane": 0 },
+      "policy": {
+        "transportMode": "EXPLICIT_CATALOG",
+        "avoidWilderness": true,
+        "cutoffMillis": 12000
+      },
+      "inventoryItems": [
+        { "id": 1383, "quantity": 1 },
+        { "id": 20714, "quantity": 1 },
+        { "id": 563, "quantity": 2 },
+        { "id": 1963, "quantity": 1 }
+      ],
+      "transports": [
+        {
+          "id": "ape-atoll-spell-staff-and-tome",
+          "origin": { "x": 3222, "y": 3218, "plane": 0 },
+          "destination": { "x": 3164, "y": 3485, "plane": 0 },
+          "type": "TELEPORTATION_SPELL",
+          "duration": 4,
+          "displayInfo": "Synthetic Ape Atoll spell requirement",
+          "items": "FIRE_RUNE=2&&WATER_RUNE=2&&LAW_RUNE=2&&BANANA=1"
+        }
+      ],
+      "expectedReached": true,
+      "expectedTransportIds": ["ape-atoll-spell-staff-and-tome"]
+    },
+    {
+      "id": "spell-with-banked-raw-runes",
+      "category": "spell-provider-bank",
+      "start": { "x": 3222, "y": 3218, "plane": 0 },
+      "target": { "x": 3164, "y": 3485, "plane": 0 },
+      "policy": {
+        "transportMode": "BANK_AWARE_EXPLICIT_CATALOG",
+        "avoidWilderness": true,
+        "cutoffMillis": 12000
+      },
+      "bankLocations": [
+        { "x": 3222, "y": 3218, "plane": 0 }
+      ],
+      "bankItems": [
+        { "id": 554, "quantity": 2 },
+        { "id": 555, "quantity": 2 },
+        { "id": 563, "quantity": 2 },
+        { "id": 1963, "quantity": 1 }
+      ],
+      "transports": [
+        {
+          "id": "ape-atoll-spell-banked-raw-runes",
+          "origin": { "x": 3222, "y": 3218, "plane": 0 },
+          "destination": { "x": 3164, "y": 3485, "plane": 0 },
+          "type": "TELEPORTATION_SPELL",
+          "duration": 4,
+          "displayInfo": "Synthetic banked Ape Atoll spell requirement",
+          "items": "FIRE_RUNE=2&&WATER_RUNE=2&&LAW_RUNE=2&&BANANA=1"
+        }
+      ],
+      "expectedReached": true,
+      "expectedTransportIds": ["ape-atoll-spell-banked-raw-runes"],
+      "expectedBankVisited": true
+    },
+    {
+      "id": "spell-with-combination-staff",
+      "category": "spell-provider-divergence",
+      "start": { "x": 3222, "y": 3218, "plane": 0 },
+      "target": { "x": 3164, "y": 3485, "plane": 0 },
+      "policy": {
+        "transportMode": "EXPLICIT_CATALOG",
+        "avoidWilderness": true,
+        "cutoffMillis": 12000
+      },
+      "inventoryItems": [
+        { "id": 30634, "quantity": 1 },
+        { "id": 563, "quantity": 2 },
+        { "id": 1963, "quantity": 1 }
+      ],
+      "transports": [
+        {
+          "id": "ape-atoll-spell-twinflame",
+          "origin": { "x": 3222, "y": 3218, "plane": 0 },
+          "destination": { "x": 3164, "y": 3485, "plane": 0 },
+          "type": "TELEPORTATION_SPELL",
+          "duration": 4,
+          "displayInfo": "Synthetic Ape Atoll spell requirement",
+          "items": "FIRE_RUNE=2&&WATER_RUNE=2&&LAW_RUNE=2&&BANANA=1"
+        }
+      ],
+      "expectedReached": true,
+      "expectedLocalTransportIds": ["ape-atoll-spell-twinflame"],
+      "expectedUpstreamTransportIds": [],
+      "expectedParity": false,
+      "expectedDivergenceReason": "The reviewed upstream consumes a staff substitution once per requirement set, so it rejects one Twinflame staff for both FIRE_RUNE and WATER_RUNE clauses; Microbot intentionally selects one equipment loadout and reuses the same combination staff for every clause it provides."
+    },
+    {
+      "id": "spell-missing-ordinary-item",
+      "category": "spell-provider",
+      "start": { "x": 3222, "y": 3218, "plane": 0 },
+      "target": { "x": 3164, "y": 3485, "plane": 0 },
+      "policy": {
+        "transportMode": "EXPLICIT_CATALOG",
+        "avoidWilderness": true,
+        "cutoffMillis": 12000
+      },
+      "inventoryItems": [
+        { "id": 30634, "quantity": 1 },
+        { "id": 563, "quantity": 2 }
+      ],
+      "transports": [
+        {
+          "id": "ape-atoll-spell-missing-banana",
+          "origin": { "x": 3222, "y": 3218, "plane": 0 },
+          "destination": { "x": 3164, "y": 3485, "plane": 0 },
+          "type": "TELEPORTATION_SPELL",
+          "duration": 4,
+          "displayInfo": "Synthetic Ape Atoll spell requirement",
+          "items": "FIRE_RUNE=2&&WATER_RUNE=2&&LAW_RUNE=2&&BANANA=1"
+        }
+      ],
+      "expectedReached": true,
+      "expectedTransportIds": []
+    },
+    {
+      "id": "white-wolf-tunnel-underground",
+      "category": "underground",
+      "start": { "x": 2876, "y": 9878, "plane": 0 },
+      "target": { "x": 2820, "y": 9882, "plane": 0 },
+      "policy": {
+        "transportMode": "STATIC_COLLISION_ONLY",
+        "avoidWilderness": true,
+        "cutoffMillis": 12000
+      },
+      "expectedReached": true
+    },
+    {
+      "id": "white-wolf-surface-tunnel-surface",
+      "category": "surface-underground-surface",
+      "start": { "x": 2878, "y": 3482, "plane": 0 },
+      "target": { "x": 2819, "y": 3486, "plane": 0 },
+      "policy": {
+        "transportMode": "EXPLICIT_CATALOG",
+        "avoidWilderness": true,
+        "cutoffMillis": 12000
+      },
+      "transports": [
+        {
+          "id": "white-wolf-east-stairs-down",
+          "origin": { "x": 2877, "y": 3482, "plane": 0 },
+          "destination": { "x": 2876, "y": 9878, "plane": 0 },
+          "type": "TRANSPORT",
+          "duration": 1,
+          "displayInfo": "Fishing Contest tunnel east entrance"
+        },
+        {
+          "id": "white-wolf-west-stairs-up",
+          "origin": { "x": 2820, "y": 9882, "plane": 0 },
+          "destination": { "x": 2820, "y": 3486, "plane": 0 },
+          "type": "TRANSPORT",
+          "duration": 1,
+          "displayInfo": "Fishing Contest tunnel west exit"
+        }
+      ],
+      "expectedReached": true,
+      "expectedTransportIds": [
+        "white-wolf-east-stairs-down",
+        "white-wolf-west-stairs-up"
+      ]
+    },
+    {
+      "id": "tempoross-cove-unreachable",
+      "category": "unreachable",
+      "start": { "x": 3222, "y": 3218, "plane": 0 },
+      "target": { "x": 3044, "y": 2870, "plane": 0 },
+      "policy": {
+        "transportMode": "STATIC_COLLISION_ONLY",
+        "avoidWilderness": true,
+        "cutoffMillis": 12000
+      },
+      "expectedReached": false
+    },
+    {
+      "id": "wilderness-interior",
+      "category": "wilderness",
+      "start": { "x": 3094, "y": 3550, "plane": 0 },
+      "target": { "x": 3094, "y": 3599, "plane": 0 },
+      "policy": {
+        "transportMode": "STATIC_COLLISION_ONLY",
+        "avoidWilderness": true,
+        "cutoffMillis": 12000
+      },
+      "expectedReached": true
+    }
+  ]
+}

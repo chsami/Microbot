@@ -1,0 +1,340 @@
+{
+  "candidateEngineId": "shortest-path-upstream@ff8e961b32120175709df9630ece9468cc11347f",
+  "coverage": [
+    {
+      "completed": 75,
+      "divergences": 0,
+      "failures": 0,
+      "matches": 75,
+      "required": 75,
+      "status": "PASS",
+      "tag": "ACTIVE_ROUTE"
+    },
+    {
+      "completed": 15,
+      "divergences": 0,
+      "failures": 0,
+      "matches": 15,
+      "required": 15,
+      "status": "PASS",
+      "tag": "ACTIVE_REPLAN"
+    },
+    {
+      "completed": 11,
+      "divergences": 0,
+      "failures": 0,
+      "matches": 11,
+      "required": 10,
+      "status": "PASS",
+      "tag": "RECOVERY_REPLAN"
+    },
+    {
+      "completed": 102,
+      "divergences": 0,
+      "failures": 0,
+      "matches": 102,
+      "required": 60,
+      "status": "PASS",
+      "tag": "SURFACE_COORDINATES_ONLY"
+    },
+    {
+      "completed": 39,
+      "divergences": 0,
+      "failures": 0,
+      "matches": 39,
+      "required": 20,
+      "status": "PASS",
+      "tag": "UNDERGROUND_COORDINATES"
+    },
+    {
+      "completed": 18,
+      "divergences": 0,
+      "failures": 0,
+      "matches": 18,
+      "required": 10,
+      "status": "PASS",
+      "tag": "WALKING_ONLY_SELECTED"
+    },
+    {
+      "completed": 97,
+      "divergences": 0,
+      "failures": 0,
+      "matches": 97,
+      "required": 20,
+      "status": "PASS",
+      "tag": "USES_TRANSPORT"
+    },
+    {
+      "completed": 59,
+      "divergences": 0,
+      "failures": 0,
+      "matches": 59,
+      "required": 5,
+      "status": "PASS",
+      "tag": "SELECTS_ITEM_GATED_TRANSPORT"
+    },
+    {
+      "completed": 10,
+      "divergences": 0,
+      "failures": 0,
+      "matches": 10,
+      "required": 10,
+      "status": "PASS",
+      "tag": "BANK_ROUTE_FROM_BANK"
+    },
+    {
+      "completed": 10,
+      "divergences": 0,
+      "failures": 0,
+      "matches": 10,
+      "required": 5,
+      "status": "PASS",
+      "tag": "BANK_ROUTE_FROM_BANK_SELECTS_ITEM_GATED_TRANSPORT"
+    },
+    {
+      "completed": 137,
+      "divergences": 0,
+      "failures": 0,
+      "matches": 137,
+      "required": 25,
+      "status": "PASS",
+      "tag": "LIVE_COLLISION_CONSULTED"
+    }
+  ],
+  "evidenceProfile": "f2p",
+  "evidenceShortfalls": [],
+  "execution": {
+    "arrived": 71,
+    "exited": 0,
+    "recoveryArrived": 6,
+    "recoveryExited": 0,
+    "recoveryTerminal": 6,
+    "recoveryUnreachable": 0,
+    "terminal": 71,
+    "unreachable": 0
+  },
+  "failures": [],
+  "latestDivergence": null,
+  "latestFailure": null,
+  "latestRouteShapeDifference": {
+    "costComparable": true,
+    "costMatches": true,
+    "coverage": [
+      "ACTIVE_ROUTE",
+      "SURFACE_COORDINATES_ONLY",
+      "LIVE_COLLISION_ENABLED",
+      "LIVE_COLLISION_CONSULTED"
+    ],
+    "endpointMatches": true,
+    "invocation": "ACTIVE_ROUTE",
+    "localSearchNanos": 457838171,
+    "pathMatches": false,
+    "selectedTransportsMatch": true,
+    "shadowEngineId": "shortest-path-upstream@ff8e961b32120175709df9630ece9468cc11347f",
+    "shadowSearchNanos": 289589123,
+    "status": "MATCH",
+    "terminationMatches": true,
+    "transportExecutors": [],
+    "transportTypes": []
+  },
+  "minimumCompleted": 100,
+  "minimumDistinctTransportExecutors": 4,
+  "minimumRecoveryArrivals": 5,
+  "minimumSessions": 1,
+  "minimumWalkerArrivals": 50,
+  "observedTransportExecutors": [
+    "CANOE",
+    "OBJECT",
+    "SPELL_TELEPORT",
+    "TERMINAL_TRAVEL"
+  ],
+  "plannerMode": null,
+  "reviewedCommit": "ff8e961b32120175709df9630ece9468cc11347f",
+  "schemaVersion": 1,
+  "sessionCount": 12,
+  "startedAtEpochMillis": 1785934189237,
+  "totals": {
+    "completed": 141,
+    "discarded": 0,
+    "divergences": 0,
+    "failures": 0,
+    "matches": 141,
+    "pending": 0,
+    "routeShapeDifferences": 76,
+    "staleResults": 2,
+    "submitted": 141
+  },
+  "transportExecutorGroups": [
+    {
+      "completed": 42,
+      "executors": [
+        "OBJECT",
+        "BARROWS_DIG"
+      ],
+      "group": "LOCAL_TRANSITION",
+      "required": 5,
+      "status": "PASS"
+    },
+    {
+      "completed": 5,
+      "executors": [
+        "ITEM_TELEPORT",
+        "MINIGAME_TELEPORT",
+        "SPELL_TELEPORT",
+        "POH",
+        "SEASONAL"
+      ],
+      "group": "TELEPORT",
+      "required": 5,
+      "status": "PASS"
+    },
+    {
+      "completed": 50,
+      "executors": [
+        "CANOE",
+        "FAIRY_RING",
+        "GNOME_GLIDER",
+        "HOT_AIR_BALLOON",
+        "MAGIC_CARPET",
+        "MAGIC_MUSHTREE",
+        "QUETZAL",
+        "SPIRIT_TREE",
+        "WILDERNESS_OBELISK"
+      ],
+      "group": "NETWORK",
+      "required": 5,
+      "status": "PASS"
+    },
+    {
+      "completed": 4,
+      "executors": [
+        "CHARTER_SHIP",
+        "TERMINAL_TRAVEL"
+      ],
+      "group": "TERMINAL_TRAVEL",
+      "required": 3,
+      "status": "PASS"
+    }
+  ],
+  "transportExecutors": {
+    "BARROWS_DIG": {
+      "completed": 0,
+      "divergences": 0,
+      "failures": 0,
+      "matches": 0
+    },
+    "CANOE": {
+      "completed": 50,
+      "divergences": 0,
+      "failures": 0,
+      "matches": 50
+    },
+    "CHARTER_SHIP": {
+      "completed": 0,
+      "divergences": 0,
+      "failures": 0,
+      "matches": 0
+    },
+    "FAIRY_RING": {
+      "completed": 0,
+      "divergences": 0,
+      "failures": 0,
+      "matches": 0
+    },
+    "GNOME_GLIDER": {
+      "completed": 0,
+      "divergences": 0,
+      "failures": 0,
+      "matches": 0
+    },
+    "HOT_AIR_BALLOON": {
+      "completed": 0,
+      "divergences": 0,
+      "failures": 0,
+      "matches": 0
+    },
+    "ITEM_TELEPORT": {
+      "completed": 0,
+      "divergences": 0,
+      "failures": 0,
+      "matches": 0
+    },
+    "MAGIC_CARPET": {
+      "completed": 0,
+      "divergences": 0,
+      "failures": 0,
+      "matches": 0
+    },
+    "MAGIC_MUSHTREE": {
+      "completed": 0,
+      "divergences": 0,
+      "failures": 0,
+      "matches": 0
+    },
+    "MINIGAME_TELEPORT": {
+      "completed": 0,
+      "divergences": 0,
+      "failures": 0,
+      "matches": 0
+    },
+    "OBJECT": {
+      "completed": 42,
+      "divergences": 0,
+      "failures": 0,
+      "matches": 42
+    },
+    "POH": {
+      "completed": 0,
+      "divergences": 0,
+      "failures": 0,
+      "matches": 0
+    },
+    "QUETZAL": {
+      "completed": 0,
+      "divergences": 0,
+      "failures": 0,
+      "matches": 0
+    },
+    "SEASONAL": {
+      "completed": 0,
+      "divergences": 0,
+      "failures": 0,
+      "matches": 0
+    },
+    "SPELL_TELEPORT": {
+      "completed": 5,
+      "divergences": 0,
+      "failures": 0,
+      "matches": 5
+    },
+    "SPIRIT_TREE": {
+      "completed": 0,
+      "divergences": 0,
+      "failures": 0,
+      "matches": 0
+    },
+    "TERMINAL_TRAVEL": {
+      "completed": 4,
+      "divergences": 0,
+      "failures": 0,
+      "matches": 4
+    },
+    "UNSUPPORTED": {
+      "completed": 0,
+      "divergences": 0,
+      "failures": 0,
+      "matches": 0
+    },
+    "WILDERNESS_OBELISK": {
+      "completed": 0,
+      "divergences": 0,
+      "failures": 0,
+      "matches": 0
+    }
+  },
+  "verdict": "ACCEPTED",
+  "warnings": [
+    "2 completed result(s) belonged to superseded route generations",
+    "76 completed comparison(s) used a different exact route shape"
+  ]
+}

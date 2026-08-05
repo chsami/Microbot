@@ -952,7 +952,6 @@
 3267 3379 0	3269 3379 1	Climb-up;Ladder;11794									
 3267 3379 1	3267 3379 0	Climb-down;Ladder;11795									
 3237 9858 0	3236 3458 0	Climb-up;Ladder;11806									
-3236 3458 0	3237 9858 0	Open;Manhole;881								2	
 3236 3458 0	3237 9858 0	Climb-down;Manhole;882								2	
 3210 9899 0	3210 9898 0	Slash;Web;733								8	
 3210 9898 0	3210 9899 0	Slash;Web;733								8	
@@ -1030,6 +1029,8 @@
 3297 3124 0	3298 3124 0	Open;Prison door;2692									
 3303 3117 0	3304 3115 0	Go-through;Shantay pass;4031		1854						2	
 3304 3117 0	3304 3115 0	Go-through;Shantay pass;4031		1854						2	
+3303 3117 0	3304 3115 0	Go-through;Shantay pass;4031			5 Coins					2	
+3304 3117 0	3304 3115 0	Go-through;Shantay pass;4031			5 Coins					2	
 3304 3115 0	3304 3117 0	Go-through;Shantay pass;4031								2	
 3303 3115 0	3304 3117 0	Go-through;Shantay pass;4031								2	
 3193 2843 0	3196 2843 0	Go-through;Shantay pass;41326		1854						3	
@@ -1124,6 +1125,8 @@
 3014 3203 1	3014 3203 0	Climb-down;Ladder;16679									
 3012 3203 0	3012 3203 1	Climb-up;Ladder;16683									
 3012 3203 1	3012 3203 0	Climb-down;Ladder;16679									
+3012 3204 0	3011 3204 0	Open;Door;2069									
+3011 3204 0	3012 3204 0	Open;Door;2069									
 3011 3184 0	3011 3184 1	Climb-up;Ladder;9558									
 3011 3184 1	3011 3184 0	Climb-down;Ladder;9559									
 3012 3235 0	3012 3235 1	Climb-up;Ladder;16683									
@@ -1602,18 +1605,12 @@
 2636 9517 0	2636 9510 2	Walk-up;Stairs;21725
 2636 9510 2	2636 9517 0	Walk-down;Stairs;21726
 # Stepping Stones
-2647 9557 0	2649 9562 0	Jump-from;Stepping stone;21739
-2649 9562 0	2647 9557 0	Jump-from;Stepping stone;21738
 2695 9533 0	2697 9525 0	Cross;Stepping stone;19040
 2697 9525 0	2695 9533 0	Cross;Stepping stone;19040
 2690 9547 0	2682 9548 0	Cross;Stepping stone;19040
 2682 9548 0	2690 9547 0	Cross;Stepping stone;19040
 # Log Balance
-2682 9506 0	2687 9506 0	Walk-across;Log balance;20882
-2687 9506 0	2682 9506 0	Walk-across;Log balance;20884
 # Pipes
-2698 9500 0	2698 9492 0	Squeeze-through;Pipe;21727
-2698 9492 0	2698 9500 0	Squeeze-through;Pipe;21727
 2655 9573 0	2655 9566 0	Squeeze-through;Pipe;21728
 2655 9566 0	2655 9573 0	Squeeze-through;Pipe;21728
 # Crevice
@@ -2174,12 +2171,8 @@
 3611 3323 1	3611 3327 0	Climb-down;Staircase;39492									
 3599 3317 0	3603 3317 1	Climb-up;Staircase;39491									
 3603 3317 1	3599 3317 0	Climb-down;Staircase;39492									
-3667 3375 0	3670 3375 0	Climb;Wall;39542									
-3670 3375 0	3667 3375 0	Climb;Wall;39542									
-3670 3375 0	3673 3375 0	Climb;Wall;39541									
-3673 3375 0	3670 3375 0	Climb;Wall;39541									
-3672 3376 0	3670 3375 0	Climb;Wall;39541									
-3672 3374 0	3670 3375 0	Climb;Wall;39541									
+3672 3376 0	3670 3375 0	Climb;Wall;39541
+3672 3374 0	3670 3375 0	Climb;Wall;39541
 											
 # The Hollows											
 3480 9837 0	3480 9836 0	Search;Wall;5052									
@@ -2255,8 +2248,6 @@
 3809 9801 1	3809 9797 2	Climb-up;Stairs;37835									
 											
 # Ectofunctus											
-3672 3376 0	3670 3375 0	Climb;Wall;39541									
-3672 3374 0	3670 3375 0	Climb;Wall;39541									
 3666 3517 0	3666 3522 1	Climb-up;Staircase;16646									
 3666 3522 1	3666 3517 0	Climb-down;Staircase;16647									
 3667 3517 0	3667 3522 1	Climb-up;Staircase;16646									
@@ -2362,14 +2353,6 @@
 # Slayer Tower											
 3417 3536 0	3412 9932 3	Climb-down;Ladder;30191									
 3412 9932 3	3417 3536 0	Climb-up;Ladder;30192									
-3421 3550 0	3421 3550 1	Climb-up;Spikey chain;16537									
-3422 3551 0	3422 3551 1	Climb-up;Spikey chain;16537									
-3423 3550 0	3423 3550 1	Climb-up;Spikey chain;16537									
-3422 3549 0	3422 3549 1	Climb-up;Spikey chain;16537									
-3421 3550 1	3421 3550 0	Climb-down;Spikey chain;16538									
-3422 3551 1	3422 3551 0	Climb-down;Spikey chain;16538									
-3422 3549 1	3422 3549 0	Climb-down;Spikey chain;16538									
-3423 3550 1	3423 3550 0	Climb-down;Spikey chain;16538									
 3427 3555 1	3427 3556 1	Open;Door;2104									
 3427 3556 1	3427 3555 1	Open;Door;2104									
 3426 3555 1	3426 3556 1	Open;Door;2102									
@@ -4370,9 +4353,7 @@
 2880 3593 0	2880 3596 0	Climb;Rocks;3723									
 2881 3596 0	2881 3593 0	Climb;Rocks;3722									
 2881 3593 0	2881 3596 0	Climb;Rocks;3723									
-2857 3611 0	2857 3613 0	Climb;Rocks;3748	15 Agility	3105
 2857 3613 0	2857 3611 0	Climb;Rocks;3748	15 Agility
-2856 3611 0	2856 3613 0	Climb;Rocks;3748	15 Agility	3105
 2856 3613 0	2856 3611 0	Climb;Rocks;3748	15 Agility
 2858 3627 0	2861 3627 0	Climb;Rocks;3790	15 Agility			Troll Stronghold
 2861 3627 0	2858 3627 0	Climb;Rocks;3791	15 Agility			Troll Stronghold
@@ -4406,8 +4387,7 @@
 2834 3629 0	2834 3627 0	Climb;Rocks;3748									
 2833 3627 0	2833 3629 0	Climb;Rocks;3748									
 2833 3629 0	2833 3627 0	Climb;Rocks;3748									
-2822 3635 0	2820 3635 0	Climb;Rocks;3748									
-2820 3635 0	2822 3635 0	Climb;Rocks;3748									
+2822 3635 0	2820 3635 0	Climb;Rocks;3748
 2827 3646 0	2823 10050 0	Open;Secret Door;3762									
 2823 10050 0	2827 3646 0	Open;Exit;3761									
 2828 3646 0	2823 10050 0	Open;Secret Door;3762									
@@ -4630,12 +4610,6 @@
 2836 3257 0	2833 9658 0	Enter;Hole;25154								1	
 2998 3032 1	3001 3032 0	Cross;Gangplank;17397									
 3001 3032 0	2998 3032 1	Cross;Gangplank;17396									
-2795 2978 0	2791 2978 0	Climb;Rocks;2231								3	
-2791 2978 0	2795 2978 0	Climb;Rocks;2231								3	
-2795 2979 0	2791 2979 0	Climb;Rocks;2231								3	
-2791 2979 0	2795 2979 0	Climb;Rocks;2231								3	
-2795 2980 0	2791 2980 0	Climb;Rocks;2231								3	
-2791 2980 0	2795 2980 0	Climb;Rocks;2231								3	
 2871 2970 0	2871 2970 1	Climb-up;Ladder;16683									
 2871 2970 1	2871 2970 0	Climb-down;Ladder;16679									
 2871 2972 0	2871 2972 1	Climb-up;Ladder;16683									
@@ -4697,8 +4671,6 @@
 2736 3580 0	2736 3580 1	Climb-up;Staircase;25682									
 											
 # Lumbridge basement / cavern											
-3219 9618 0	3221 9618 0	Squeeze-through;Hole;6898				The Lost Tribe
-3221 9618 0	3219 9618 0	Squeeze-through;Hole;6899				The Lost Tribe
 3224 9604 0	3224 9600 0	Squeeze-through;Hole;6912									
 3224 9600 0	3224 9604 0	Squeeze-through;Hole;6912									
 3226 9542 0	3219 9532 2	Enter;Tunnel;6659									
@@ -4835,6 +4807,14 @@
 # Corsair Cove											
 2578 2840 0	2578 2837 1	Cross;Gangplank;31756								1	
 2578 2837 1	2578 2840 0	Cross;Gangplank;31756								1	
+2529 2835 1	2532 2833 0	Climb;Stairs;31735									
+2532 2833 0	2529 2835 1	Climb;Stairs;31735									
+2550 2862 0	2547 2862 1	Climb-up;Stairs;31733									
+2547 2862 1	2550 2862 0	Climb-down;Stairs;31734									
+2555 2857 0	2555 2854 1	Climb-up;Stairs;31733									
+2555 2854 1	2555 2857 0	Climb-down;Stairs;31734									
+2561 2865 0	2561 2868 1	Climb-up;Stairs;31733									
+2561 2868 1	2561 2865 0	Climb-down;Stairs;31734									
 2523 2860 0	2012 9004 1	Enter;Hole;31791								2	
 2012 9004 1	2523 2860 0	Climb;Vine ladder;31790								2	
 2483 2889 0	1971 9035 1	Enter;Cave;31766								2	
@@ -4907,80 +4887,10 @@
 2142 3122 0	2142 3125 1	Cross;Gangplank;17408									
 											
 # Isafdar Forest											
-2188 3162 0	2188 3165 0	Enter;Dense forest;3999									
-2188 3165 0	2188 3168 0	Enter;Dense forest;3939									
-2188 3168 0	2188 3171 0	Enter;Dense forest;3998									
-2188 3165 0	2188 3162 0	Enter;Dense forest;3999									
-2188 3168 0	2188 3165 0	Enter;Dense forest;3939									
-2188 3171 0	2188 3168 0	Enter;Dense forest;3998									
-2199 3169 0	2202 3169 0	Pass;Sticks;3922									
-2202 3169 0	2199 3169 0	Pass;Sticks;3922									
-2217 3169 0	2217 3166 0	Enter;Dense forest;3939									
-2217 3166 0	2217 3163 0	Enter;Dense forest;3938									
-2217 3163 0	2217 3160 0	Enter;Dense forest;3939									
-2217 3166 0	2217 3169 0	Enter;Dense forest;3939									
-2217 3163 0	2217 3166 0	Enter;Dense forest;3938									
-2217 3160 0	2217 3163 0	Enter;Dense forest;3939									
-2215 3156 0	2215 3153 0	Step-over;Tripwire;3921									
-2220 3155 0	2220 3152 0	Step-over;Tripwire;3921									
-2215 3153 0	2215 3156 0	Step-over;Tripwire;3921									
-2220 3152 0	2220 3155 0	Step-over;Tripwire;3921									
-2231 3149 0	2234 3149 0	Enter;Dense forest;3937									
-2234 3149 0	2237 3149 0	Enter;Dense forest;3938									
-2237 3149 0	2240 3149 0	Enter;Dense forest;3939									
-2234 3149 0	2231 3149 0	Enter;Dense forest;3937									
-2237 3149 0	2234 3149 0	Enter;Dense forest;3938									
-2240 3149 0	2237 3149 0	Enter;Dense forest;3939									
-2274 3172 0	2274 3176 0	Jump;Leaves;3925									
-2274 3176 0	2274 3172 0	Jump;Leaves;3925									
-2234 3181 0	2238 3181 0	Pass;Sticks;3922									
-2238 3181 0	2234 3181 0	Pass;Sticks;3922									
-2238 3219 0	2235 3219 0	Enter;Dense forest;3939									
-2235 3219 0	2232 3219 0	Enter;Dense forest;3937									
-2232 3219 0	2229 3219 0	Enter;Dense forest;3939									
-2229 3219 0	2226 3219 0	Enter;Dense forest;3938									
-2235 3219 0	2238 3219 0	Enter;Dense forest;3939									
-2232 3219 0	2235 3219 0	Enter;Dense forest;3937									
-2229 3219 0	2232 3219 0	Enter;Dense forest;3939									
-2226 3219 0	2229 3219 0	Enter;Dense forest;3938									
-2274 3192 0	2271 3192 0	Enter;Dense forest;3937									
-2271 3192 0	2268 3192 0	Enter;Dense forest;3939									
-2268 3192 0	2265 3192 0	Enter;Dense forest;3938									
-2271 3192 0	2274 3192 0	Enter;Dense forest;3937									
-2268 3192 0	2271 3192 0	Enter;Dense forest;3939									
-2265 3192 0	2268 3192 0	Enter;Dense forest;3938									
-2267 3201 0	2267 3205 0	Jump;Leaves;3925									
-2267 3205 0	2267 3201 0	Jump;Leaves;3925									
-2284 3188 0	2287 3188 0	Step-over;Tripwire;3921									
-2287 3188 0	2284 3188 0	Step-over;Tripwire;3921									
 2306 3194 0	2304 3194 0	Pass;Tree;8742									
 2306 3195 0	2304 3195 0	Pass;Tree;8742									
 2304 3194 0	2306 3195 0	Pass;Tree;8742									
 2304 3195 0	2306 3195 0	Pass;Tree;8742									
-2202 3237 0	2196 3237 0	Cross;Log balance;3931									
-2196 3237 0	2202 3237 0	Cross;Log balance;3931									
-2303 3213 0	2303 3216 0	Enter;Dense forest;3937									
-2303 3216 0	2303 3219 0	Enter;Dense forest;3938									
-2303 3219 0	2303 3222 0	Enter;Dense forest;3939									
-2303 3222 0	2303 3225 0	Enter;Dense forest;3938									
-2303 3216 0	2303 3213 0	Enter;Dense forest;3937									
-2303 3219 0	2303 3216 0	Enter;Dense forest;3938									
-2303 3222 0	2303 3219 0	Enter;Dense forest;3939									
-2303 3225 0	2303 3222 0	Enter;Dense forest;3938									
-2290 3232 0	2290 3239 0	Cross;Log balance;3933									
-2290 3239 0	2290 3232 0	Cross;Log balance;3933									
-2294 3242 0	2294 3245 0	Step-over;Tripwire;3921									
-2294 3245 0	2294 3242 0	Step-over;Tripwire;3921									
-2295 3215 0	2295 3217 0	Pass;Sticks;3922									
-2295 3217 0	2295 3215 0	Pass;Sticks;3922									
-2279 3221 0	2279 3225 0	Enter;Dense forest;3938									
-2279 3225 0	2279 3228 0	Enter;Dense forest;3937									
-2279 3228 0	2279 3231 0	Enter;Dense forest;3939									
-2279 3225 0	2279 3221 0	Enter;Dense forest;3938									
-2279 3228 0	2279 3225 0	Enter;Dense forest;3937									
-2279 3231 0	2279 3228 0	Enter;Dense forest;3939									
-2264 3250 0	2258 3250 0	Cross;Log balance;3932									
-2258 3250 0	2264 3250 0	Cross;Log balance;3932									
 2312 3216 0	2314 9624 0	Enter;Cave entrance;4006									
 2314 9624 0	2312 3216 0	Leave;Cave exit;4007									
 2385 3335 0	2385 3333 0	Enter;Huge Gate;3945									
@@ -5964,6 +5874,12 @@
 3317 9612 0	3245 9648 0	Watermill;Mistag;7299				Death to the Dorgeshuun				8	Watermill
 3246 9646 0	3313 9613 0	Mines;Dartog;7301				Death to the Dorgeshuun				8	Mines
 3246 9646 0	3232 9610 0	Cellar;Dartog;997				Death to the Dorgeshuun				8	Cellar
+
+# Elemental Workshop odd-looking wall. The steel key ring is not sufficient evidence that the
+# battered key is stored on it, so these rows deliberately accept only the concrete key item.
+2709 3495 0	2709 3496 0	Open;Odd-looking wall;26115		2887=1						2
+2709 3496 0	2709 3495 0	Open;Odd-looking wall;26115		2887=1						2
+
 2709 3498 0	2716 9888 0	Climb-down;Staircase;3415								1	
 2716 9888 0	2709 3497 0	Climb-up;Staircase;3416								1	
 2370 3621 0	2371 3620 0	Climb-over;Stile;19222								5	
@@ -6061,3 +5977,19 @@
 3308 3493 0	3308 3491 0	Climb-over;Broken fence;2618								6	
 2893 3507 0	2893 9907 0	Climb-down;Ladder;17374								1	
 2893 9907 0	2893 3507 0	Climb-up;Ladder;17387								1	
+3026 3511 1	3025 3511 1	Open;Sturdy door;2339									
+3025 3511 1	3026 3511 1	Open;Sturdy door;2339									
+
+# Barrows mounds and individual crypt exits (surface destinations are representative mound anchors)
+3564 3291 0	3559 9703 3	Dig;Barrow;0		952=1					Y	3	Ahrim's Barrow
+3575 3299 0	3558 9718 3	Dig;Barrow;0		952=1					Y	3	Dharok's Barrow
+3578 3281 0	3534 9706 3	Dig;Barrow;0		952=1					Y	3	Guthan's Barrow
+3567 3274 0	3546 9686 3	Dig;Barrow;0		952=1					Y	3	Karil's Barrow
+3553 3281 0	3566 9683 3	Dig;Barrow;0		952=1					Y	3	Torag's Barrow
+3556 3297 0	3578 9704 3	Dig;Barrow;0		952=1					Y	3	Verac's Barrow
+3559 9703 3	3564 3291 0	Climb-up;Staircase;20667							Y	1	Ahrim's Barrow exit
+3558 9718 3	3575 3299 0	Climb-up;Staircase;20668							Y	1	Dharok's Barrow exit
+3534 9706 3	3578 3281 0	Climb-up;Staircase;20669							Y	1	Guthan's Barrow exit
+3546 9686 3	3567 3274 0	Climb-up;Staircase;20670							Y	1	Karil's Barrow exit
+3566 9683 3	3553 3281 0	Climb-up;Staircase;20671							Y	1	Torag's Barrow exit
+3578 9704 3	3556 3297 0	Climb-up;Staircase;20672							Y	1	Verac's Barrow exit

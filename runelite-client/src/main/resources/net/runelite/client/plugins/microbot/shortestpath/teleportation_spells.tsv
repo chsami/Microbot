@@ -1,147 +1,156 @@
-# Destination	Skills	Quests	Wilderness level	Varbits	Varplayers	isMembers	Duration	Display info
+# Destination	Skills	Quests	Wilderness level	Varbits	Varplayers	isMembers	Duration	Display info	Items
 # Standard Spellbook - Varbit 4070=0								
 # Lumbridge Home Teleport. Varplayer 892 is LAST_HOME_TELEPORT in epoch minutes.
 3221 3218 0			19	4070=0	892@30		20	Lumbridge Home Teleport
+
+# Ancient Magicks - Desert Treasure I
+3087 3504 0		Desert Treasure I	19	4070=1	892@30	Y	20	Edgeville Home Teleport
+
+# Lunar spellbook - Lunar Diplomacy
+2113 3915 0		Lunar Diplomacy	19	4070=2	892@30	Y	20	Lunar Home Teleport
+
+# Arceuus spellbook
+1700 3882 0			19	4070=3	892@30	Y	20	Arceuus Home Teleport
 								
 # Varrock Teleport								
-3213 3424 0	25 Magic		19	4070=0;4585=0			4	Varrock Teleport
+3213 3424 0	25 Magic		19	4070=0;4585=0			4	Varrock Teleport	AIR_RUNE=3&&FIRE_RUNE=1&&LAW_RUNE=1
 # Varbit 4480 is DIARY_VARROCK_MEDIUM								
-3164 3478 0	25 Magic		19	4070=0;4480=1;4585=1			4	Varrock Teleport: Grand Exchange
+3164 3478 0	25 Magic		19	4070=0;4480=1;4585=1			4	Varrock Teleport: Grand Exchange	AIR_RUNE=3&&FIRE_RUNE=1&&LAW_RUNE=1
 								
 # Lumbridge Teleport								
-3221 3218 0	31 Magic		19	4070=0			4	Lumbridge Teleport
+3221 3218 0	31 Magic		19	4070=0			4	Lumbridge Teleport	AIR_RUNE=3&&EARTH_RUNE=1&&LAW_RUNE=1
 								
 # Falador Teleport								
-2965 3378 0	37 Magic		19	4070=0			4	Falador Teleport
+2965 3378 0	37 Magic		19	4070=0			4	Falador Teleport	AIR_RUNE=3&&WATER_RUNE=1&&LAW_RUNE=1
 								
 # Teleport to House - These depend on the current player's home location  determined by varbit 2187								
 # 1 - Rimmington								
-2952 3224 0	40 Magic		19	4070=0;2187=1		Y	4	Teleport to House: Outside
+2952 3224 0	40 Magic		19	4070=0;2187=1		Y	4	Teleport to House: Outside	AIR_RUNE=1&&EARTH_RUNE=1&&LAW_RUNE=1
 # 2 - Taverly								
-2892 3465 0	40 Magic		19	4070=0;2187=2		Y	4	Teleport to House: Outside
+2892 3465 0	40 Magic		19	4070=0;2187=2		Y	4	Teleport to House: Outside	AIR_RUNE=1&&EARTH_RUNE=1&&LAW_RUNE=1
 # 3 - Pollnivneach								
-3339 3001 0	40 Magic		19	4070=0;2187=3		Y	4	Teleport to House: Outside
+3339 3001 0	40 Magic		19	4070=0;2187=3		Y	4	Teleport to House: Outside	AIR_RUNE=1&&EARTH_RUNE=1&&LAW_RUNE=1
 # 4 - Rellekka								
-2669 3629 0	40 Magic		19	4070=0;2187=4		Y	4	Teleport to House: Outside
+2669 3629 0	40 Magic		19	4070=0;2187=4		Y	4	Teleport to House: Outside	AIR_RUNE=1&&EARTH_RUNE=1&&LAW_RUNE=1
 # 5 - Brimhaven								
-2756 3176 0	40 Magic		19	4070=0;2187=5		Y	4	Teleport to House: Outside
+2756 3176 0	40 Magic		19	4070=0;2187=5		Y	4	Teleport to House: Outside	AIR_RUNE=1&&EARTH_RUNE=1&&LAW_RUNE=1
 # 6 - Yanille								
-2545 3097 0	40 Magic		19	4070=0;2187=6		Y	4	Teleport to House: Outside
+2545 3097 0	40 Magic		19	4070=0;2187=6		Y	4	Teleport to House: Outside	AIR_RUNE=1&&EARTH_RUNE=1&&LAW_RUNE=1
 # 7 - Prifddinas								
-3239 6077 0	40 Magic		19	4070=0;2187=7		Y	4	Teleport to House: Outside
+3239 6077 0	40 Magic		19	4070=0;2187=7		Y	4	Teleport to House: Outside	AIR_RUNE=1&&EARTH_RUNE=1&&LAW_RUNE=1
 # 8 - Hosidius								
-1740 3517 0	40 Magic		19	4070=0;2187=8		Y	4	Teleport to House: Outside
+1740 3517 0	40 Magic		19	4070=0;2187=8		Y	4	Teleport to House: Outside	AIR_RUNE=1&&EARTH_RUNE=1&&LAW_RUNE=1
 								
 # Camelot Teleport								
-2757 3478 0	45 Magic		19	4070=0		Y	10	Camelot Teleport
+2757 3478 0	45 Magic		19	4070=0		Y	10	Camelot Teleport	AIR_RUNE=5&&LAW_RUNE=1
 								
 # Kourend Castle Teleport								
-1641 3673 0	48 Magic	Client of Kourend	19	4070=0		Y	4	Kourend Castle Teleport
+1641 3673 0	48 Magic	Client of Kourend	19	4070=0		Y	4	Kourend Castle Teleport	FIRE_RUNE=1&&WATER_RUNE=1&&LAW_RUNE=2
 								
 # Ardougne Teleport								
-2661 3302 0	51 Magic	Plague City	19	4070=0	165=30	Y	10	Ardougne Teleport
+2661 3302 0	51 Magic	Plague City	19	4070=0	165=30	Y	10	Ardougne Teleport	WATER_RUNE=2&&LAW_RUNE=2
 								
 # Civitas illa Fortis Teleport								
-1680 3134 0	54 Magic	Twilight's Promise	19	4070=0		Y	4	Civitas illa Fortis Teleport
+1680 3134 0	54 Magic	Twilight's Promise	19	4070=0		Y	4	Civitas illa Fortis Teleport	EARTH_RUNE=1&&FIRE_RUNE=1&&LAW_RUNE=2
 								
 # Watchtower Teleport								
-2932 4711 2	58 Magic	Watchtower	19	4070=0;4548=0	212=14	Y	10	Watchtower Teleport
+2932 4711 2	58 Magic	Watchtower	19	4070=0;4548=0	212=14	Y	10	Watchtower Teleport	EARTH_RUNE=2&&LAW_RUNE=2
 # Varbit 4460 is DIARY_ARDOUGNE_HARD								
-2584 3097 0	58 Magic	Watchtower	19	4070=0;4460=1;4548=1	212=14	Y	10	Watchtower Teleport: Yanille
+2584 3097 0	58 Magic	Watchtower	19	4070=0;4460=1;4548=1	212=14	Y	10	Watchtower Teleport: Yanille	EARTH_RUNE=2&&LAW_RUNE=2
 								
 # Trollheim Teleport								
-2890 3679 0	61 Magic	Eadgar's Ruse	19	4070=0		Y	10	Trollheim Teleport
+2890 3679 0	61 Magic	Eadgar's Ruse	19	4070=0		Y	10	Trollheim Teleport	FIRE_RUNE=2&&LAW_RUNE=2
 								
 # Ape Atoll Teleport								
-2797 2798 1	64 Magic	Freeing King Awowogei	19	4070=0		Y	10	Ape Atoll Teleport
+2797 2798 1	64 Magic	Freeing King Awowogei	19	4070=0		Y	10	Ape Atoll Teleport	FIRE_RUNE=2&&WATER_RUNE=2&&LAW_RUNE=2&&BANANA=1
 								
 # Ancient Spellbook - Varbit 4070=1								
 # Paddewwa Teleport								
-3100 9883 0	54 Magic	Desert Treasure I	19	4070=1		Y	10	Paddewwa Teleport
+3100 9883 0	54 Magic	Desert Treasure I	19	4070=1		Y	10	Paddewwa Teleport	AIR_RUNE=1&&FIRE_RUNE=1&&LAW_RUNE=2
 								
 # Senntisten Teleport								
-3320 3337 0	60 Magic	Desert Treasure I	19	4070=1		Y	10	Senntisten Teleport
+3320 3337 0	60 Magic	Desert Treasure I	19	4070=1		Y	10	Senntisten Teleport	LAW_RUNE=2&&SOUL_RUNE=1
 								
 # Kharyrll Teleport								
-3494 3473 0	66 Magic	Desert Treasure I	19	4070=1		Y	10	Kharyrll Teleport
+3494 3473 0	66 Magic	Desert Treasure I	19	4070=1		Y	10	Kharyrll Teleport	LAW_RUNE=2&&BLOOD_RUNE=1
 								
 # Lassar Teleport								
-3002 3470 0	72 Magic	Desert Treasure I	19	4070=1		Y	10	Lassar Teleport
+3002 3470 0	72 Magic	Desert Treasure I	19	4070=1		Y	10	Lassar Teleport	LAW_RUNE=2&&WATER_RUNE=4
 								
 # Dareeyak Teleport								
-2968 3696 0	78 Magic	Desert Treasure I	19	4070=1		Y	10	Dareeyak Teleport
+2968 3696 0	78 Magic	Desert Treasure I	19	4070=1		Y	10	Dareeyak Teleport	AIR_RUNE=2&&FIRE_RUNE=3&&LAW_RUNE=2
 								
 # Carrallanger Teleport								
-3158 3666 0	84 Magic	Desert Treasure I	19	4070=1		Y	10	Carrallanger Teleport
+3158 3666 0	84 Magic	Desert Treasure I	19	4070=1		Y	10	Carrallanger Teleport	LAW_RUNE=2&&SOUL_RUNE=2
 								
 # Teleport to Target								
 #	85 Magic	Desert Treasure I	19	4070=1		Y	10	Teleport to Target
 								
 # Annakarl Teleport								
-3287 3888 0	90 Magic	Desert Treasure I	19	4070=1		Y	10	Annakarl Teleport
+3287 3888 0	90 Magic	Desert Treasure I	19	4070=1		Y	10	Annakarl Teleport	LAW_RUNE=2&&BLOOD_RUNE=2
 								
 # Ghorrock Teleport								
-2974 3873 0	96 Magic	Desert Treasure I	19	4070=1		Y	10	Ghorrock Teleport
+2974 3873 0	96 Magic	Desert Treasure I	19	4070=1		Y	10	Ghorrock Teleport	LAW_RUNE=2&&WATER_RUNE=8
 								
 # Lunar Spellbook - Varbit 4070=2								
 # Moonclan Teleport								
-2113 3915 0	69 Magic	Lunar Diplomacy	19	4070=2		Y	10	Moonclan Teleport
+2113 3915 0	69 Magic	Lunar Diplomacy	19	4070=2		Y	10	Moonclan Teleport	EARTH_RUNE=2&&ASTRAL_RUNE=2&&LAW_RUNE=1
 								
 # Ourania Teleport								
-2468 3246 0	71 Magic	Lunar Diplomacy	19	4070=2;5376=1		Y	10	Ourania Teleport
+2468 3246 0	71 Magic	Lunar Diplomacy	19	4070=2;5376=1		Y	10	Ourania Teleport	EARTH_RUNE=6&&ASTRAL_RUNE=2&&LAW_RUNE=1
 								
 # Waterbirth Teleport								
-2546 3756 0	72 Magic	Lunar Diplomacy	19	4070=2		Y	10	Waterbirth Teleport
+2546 3756 0	72 Magic	Lunar Diplomacy	19	4070=2		Y	10	Waterbirth Teleport	WATER_RUNE=1&&ASTRAL_RUNE=2&&LAW_RUNE=1
 								
 # Barbarian Teleport								
-2543 3569 0	75 Magic	Lunar Diplomacy	19	4070=2		Y	10	Barbarian Teleport
+2543 3569 0	75 Magic	Lunar Diplomacy	19	4070=2		Y	10	Barbarian Teleport	FIRE_RUNE=3&&ASTRAL_RUNE=2&&LAW_RUNE=2
 								
 # Khazard Teleport								
-2636 3167 0	78 Magic	Lunar Diplomacy	19	4070=2		Y	10	Khazard Teleport
+2636 3167 0	78 Magic	Lunar Diplomacy	19	4070=2		Y	10	Khazard Teleport	WATER_RUNE=4&&ASTRAL_RUNE=2&&LAW_RUNE=2
 								
 # Fishing Guild Teleport								
-2613 3391 0	85 Magic	Lunar Diplomacy	19	4070=2		Y	10	Fishing Guild Teleport
+2613 3391 0	85 Magic	Lunar Diplomacy	19	4070=2		Y	10	Fishing Guild Teleport	WATER_RUNE=10&&ASTRAL_RUNE=3&&LAW_RUNE=3
 								
 # Catherby Teleport								
-2801 3449 0	87 Magic	Lunar Diplomacy	19	4070=2		Y	10	Catherby Teleport
+2801 3449 0	87 Magic	Lunar Diplomacy	19	4070=2		Y	10	Catherby Teleport	WATER_RUNE=10&&ASTRAL_RUNE=3&&LAW_RUNE=3
 								
 # Ice Plateau Teleport								
-2975 3938 0	89 Magic	Lunar Diplomacy	19	4070=2		Y	10	Ice Plateau Teleport
+2975 3938 0	89 Magic	Lunar Diplomacy	19	4070=2		Y	10	Ice Plateau Teleport	WATER_RUNE=8&&ASTRAL_RUNE=3&&LAW_RUNE=3
 								
 # Arceuus Spellbook - Varbit 4070=3								
 # Arceuus Library Teleport								
-1632 3834 0	6 Magic		19	4070=3		Y	10	Arceuus Library Teleport
+1632 3834 0	6 Magic		19	4070=3		Y	10	Arceuus Library Teleport	EARTH_RUNE=2&&LAW_RUNE=1
 								
 # Draynor Manor Teleport								
-3108 3351 0	17 Magic		19	4070=3		Y	4	Draynor Manor Teleport
+3108 3351 0	17 Magic		19	4070=3		Y	4	Draynor Manor Teleport	EARTH_RUNE=1&&WATER_RUNE=1&&LAW_RUNE=1
 								
 # Battlefront Teleport								
-1347 3741 0	23 Magic		19	4070=3		Y	4	Battlefront Teleport
+1347 3741 0	23 Magic		19	4070=3		Y	4	Battlefront Teleport	EARTH_RUNE=1&&FIRE_RUNE=1&&LAW_RUNE=1
 								
 # Mind Altar Teleport								
-2976 3509 0	28 Magic		19	4070=3		Y	10	Mind Altar Teleport
+2976 3509 0	28 Magic		19	4070=3		Y	10	Mind Altar Teleport	LAW_RUNE=1&&MIND_RUNE=2
 								
 # Respawn Teleport								
 # TODO: Figure out values of Varbit 668								
 #	34 Magic		19	4070=3		Y	10	Respawn Teleport
 								
 # Salve Graveyard Teleport								
-3432 3459 0	40 Magic	Priest in Peril	19	4070=3		Y	10	Salve Graveyard Teleport
+3432 3459 0	40 Magic	Priest in Peril	19	4070=3		Y	10	Salve Graveyard Teleport	LAW_RUNE=1&&SOUL_RUNE=2
 								
 # Fenkenstrain's Castle Teleport								
-3548 3529 0	48 Magic	Priest in Peril	19	4070=3		Y	10	Fenkenstrain's Castle Teleport
+3548 3529 0	48 Magic	Priest in Peril	19	4070=3		Y	10	Fenkenstrain's Castle Teleport	EARTH_RUNE=1&&LAW_RUNE=1&&SOUL_RUNE=1
 								
 # West Ardougne Teleport								
-2500 3290 0	61 Magic	Biohazard	19	4070=3		Y	10	West Ardougne Teleport
+2500 3290 0	61 Magic	Biohazard	19	4070=3		Y	10	West Ardougne Teleport	LAW_RUNE=2&&SOUL_RUNE=2
 								
 # Harmony Island Teleport								
-3796 2866 0	65 Magic	The Great Brain Robbery	19	4070=3		Y	10	Harmony Island Teleport
+3796 2866 0	65 Magic	The Great Brain Robbery	19	4070=3		Y	10	Harmony Island Teleport	LAW_RUNE=1&&NATURE_RUNE=1&&SOUL_RUNE=1
 								
 # Cemetery Teleport								
-2980 3762 0	71 Magic		20	4070=3		Y	10	Cemetery Teleport
+2980 3762 0	71 Magic		20	4070=3		Y	10	Cemetery Teleport	BLOOD_RUNE=1&&LAW_RUNE=1&&SOUL_RUNE=1
 								
 # Barrows Teleport								
-3563 3314 0	83 Magic		20	4070=3		Y	10	Barrows Teleport
+3563 3314 0	83 Magic		20	4070=3		Y	10	Barrows Teleport	BLOOD_RUNE=1&&LAW_RUNE=2&&SOUL_RUNE=2
 								
 # Ape Atoll Teleport								
-2768 2702 0	90 Magic	Monkey Madness I	20	4070=3		Y	10	Ape Atoll Teleport
+2768 2702 0	90 Magic	Monkey Madness I	20	4070=3		Y	10	Ape Atoll Teleport	BLOOD_RUNE=2&&LAW_RUNE=2&&SOUL_RUNE=2

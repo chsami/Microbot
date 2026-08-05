@@ -43,6 +43,42 @@ public class LearnedBlockedEdgesTest {
     }
 
     @Test
+    public void strikeColumnsRoundTripAndSaveRewrites() throws Exception {
+        File file = Files.createTempFile("learned-edges-strikes", ".tsv").toFile();
+        file.deleteOnExit();
+        Files.delete(file.toPath());
+
+        LearnedBlockedEdges.append(file, new LearnedBlockedEdges.Edge(FROM, TO, false, "probation", 1, 123456789L));
+        List<LearnedBlockedEdges.Edge> loaded = LearnedBlockedEdges.load(file);
+        assertEquals(1, loaded.size());
+        assertEquals(1, loaded.get(0).strikes);
+        assertEquals(123456789L, loaded.get(0).lastStrikeAtMs);
+
+        LearnedBlockedEdges.save(file, List.of(loaded.get(0).withStrikeAt(987654321L)));
+        loaded = LearnedBlockedEdges.load(file);
+        assertEquals("save must rewrite, not append", 1, loaded.size());
+        assertEquals(2, loaded.get(0).strikes);
+        assertEquals(987654321L, loaded.get(0).lastStrikeAtMs);
+        assertEquals("row identity survives the rewrite", FROM, loaded.get(0).origin);
+    }
+
+    @Test
+    public void legacyRowsWithoutStrikeColumnsParseAsConfirmed() throws Exception {
+        File file = Files.createTempFile("learned-edges-legacy", ".tsv").toFile();
+        file.deleteOnExit();
+        String content = String.join(System.lineSeparator(),
+                "# Origin\tDestination\tBidirectional\tDisplay info",
+                "3200 3200 0\t3201 3200 0\tfalse\tlegacy row");
+        Files.write(file.toPath(), content.getBytes(StandardCharsets.UTF_8));
+
+        List<LearnedBlockedEdges.Edge> loaded = LearnedBlockedEdges.load(file);
+        assertEquals(1, loaded.size());
+        assertEquals("rows predating strike tracking stay unconditionally trusted",
+                LearnedBlockedEdges.LEGACY_STRIKES, loaded.get(0).strikes);
+        assertEquals(0L, loaded.get(0).lastStrikeAtMs);
+    }
+
+    @Test
     public void loadMissingFileYieldsEmpty() {
         File missing = new File(System.getProperty("java.io.tmpdir"), "learned-edges-does-not-exist-" + System.nanoTime() + ".tsv");
         assertTrue(LearnedBlockedEdges.load(missing).isEmpty());

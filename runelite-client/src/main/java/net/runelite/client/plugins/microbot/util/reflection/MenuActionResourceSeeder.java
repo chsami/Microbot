@@ -35,9 +35,6 @@ import java.util.Properties;
  */
 public final class MenuActionResourceSeeder {
 
-    private static final String MENU_ACTION_DESCRIPTOR_VANILLA = "(IIIIIILjava/lang/String;Ljava/lang/String;III)V";
-    private static final String MENU_ACTION_DESCRIPTOR_RUNELITE = "(IILnet/runelite/api/MenuAction;IILjava/lang/String;Ljava/lang/String;)V";
-
     public static void main(String[] args) throws Exception {
         if (args.length != 1) {
             throw new IllegalArgumentException("Usage: MenuActionResourceSeeder <output properties file>");
@@ -53,7 +50,7 @@ public final class MenuActionResourceSeeder {
         Properties props = new Properties();
         props.setProperty(MenuActionInfoCache.KEY_OWNER, raw.ownerClassName);
         props.setProperty(MenuActionInfoCache.KEY_METHOD, raw.methodName);
-        props.setProperty(MenuActionInfoCache.KEY_DESCRIPTOR, MENU_ACTION_DESCRIPTOR_VANILLA);
+        props.setProperty(MenuActionInfoCache.KEY_DESCRIPTOR, raw.descriptor);
         props.setProperty(MenuActionInfoCache.KEY_GARBAGE_KIND, raw.garbage.getClass().getSimpleName());
         props.setProperty(MenuActionInfoCache.KEY_GARBAGE_VALUE, raw.garbage.toString());
 
@@ -79,7 +76,7 @@ public final class MenuActionResourceSeeder {
 
             MethodNode wrapper = node.methods.stream()
                     .filter(m -> m.access == Opcodes.ACC_PUBLIC
-                            && ((m.name.equals("menuAction") && m.desc.equals(MENU_ACTION_DESCRIPTOR_RUNELITE))
+                            && ((m.name.equals("menuAction") && m.desc.equals(MenuActionAsmResolver.MENU_ACTION_DESCRIPTOR_RUNELITE))
                             || (m.name.equals("openWorldHopper") && m.desc.equals("()V"))
                             || (m.name.equals("hopToWorld") && m.desc.equals("(Lnet/runelite/api/World;)V"))))
                     .findFirst()
@@ -101,10 +98,13 @@ public final class MenuActionResourceSeeder {
                 }
 
                 MethodInsnNode mi = (MethodInsnNode) insn.getNext();
-                if (!mi.desc.equals(MENU_ACTION_DESCRIPTOR_VANILLA)) continue;
+                if (!MenuActionDescriptor.isVanilla(mi.desc)) continue;
+
+                garbage = MenuActionDescriptor.normalizeGarbage(garbage, mi.desc);
+                if (garbage == null) return null;
 
                 String owner = mi.owner.replace('/', '.');
-                return new Raw(owner, mi.name, garbage);
+                return new Raw(owner, mi.name, mi.desc, garbage);
             }
             return null;
         }
@@ -113,11 +113,13 @@ public final class MenuActionResourceSeeder {
     private static final class Raw {
         final String ownerClassName;
         final String methodName;
+        final String descriptor;
         final Object garbage;
 
-        Raw(String ownerClassName, String methodName, Object garbage) {
+        Raw(String ownerClassName, String methodName, String descriptor, Object garbage) {
             this.ownerClassName = ownerClassName;
             this.methodName = methodName;
+            this.descriptor = descriptor;
             this.garbage = garbage;
         }
     }

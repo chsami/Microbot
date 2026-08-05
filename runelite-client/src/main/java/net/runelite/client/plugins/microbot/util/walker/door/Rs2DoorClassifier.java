@@ -114,7 +114,7 @@ public final class Rs2DoorClassifier {
 
     /** Whether a (real, non-impostor) composition exposes one of {@code doorActions}. */
     public static boolean isDoorComposition(ObjectComposition comp, List<String> doorActions) {
-        if (comp == null || comp.getImpostorIds() != null || comp.getName().equals("null") || comp.getActions() == null) {
+        if (comp == null || comp.getImpostorIds() != null || isNullOrPlaceholderObjectName(comp.getName()) || comp.getActions() == null) {
             return false;
         }
         return getDoorAction(comp, doorActions) != null;
@@ -129,7 +129,7 @@ public final class Rs2DoorClassifier {
                 .filter(Objects::nonNull)
                 .filter(act -> doorActions.stream().anyMatch(dact -> act.toLowerCase().startsWith(dact.toLowerCase())))
                 .min(Comparator.comparing(act -> doorActions.indexOf(doorActions.stream()
-                        .filter(dact -> act.toLowerCase().startsWith(dact))
+                        .filter(dact -> act.toLowerCase().startsWith(dact.toLowerCase()))
                         .findFirst()
                         .orElse(""))))
                 .orElse(null);

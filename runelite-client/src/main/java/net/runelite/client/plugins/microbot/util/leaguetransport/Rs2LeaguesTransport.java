@@ -2,18 +2,18 @@ package net.runelite.client.plugins.microbot.util.leaguetransport;
 
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.client.plugins.microbot.shortestpath.ShortestPathPlugin;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.TransportType;
-import net.runelite.client.plugins.microbot.shortestpath.pathfinder.PathfinderConfig;
 import net.runelite.client.plugins.microbot.shortestpath.PrimitiveIntHashMap;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.text.Rs2TextSanitizer;
+import net.runelite.client.plugins.microbot.util.walker.Rs2PathApi;
 
 import java.util.EnumSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 
 /**
@@ -198,11 +198,7 @@ public final class Rs2LeaguesTransport
 
 	public static void invalidateContext()
 	{
-		PathfinderConfig cfg = ShortestPathPlugin.pathfinderConfig;
-		if (cfg != null)
-		{
-			cfg.invalidateTransportRefreshCache();
-		}
+		Rs2PathApi.invalidateTransportRefreshCache();
 	}
 
 	public static boolean isDestinationBlacklisted(int packedWorldPoint)
@@ -250,7 +246,7 @@ public final class Rs2LeaguesTransport
 	}
 
 	public static void injectLeaguesTransports(
-			PathfinderConfig pathfinderConfig,
+			Predicate<Transport> transportUsable,
 			LeaguesContext ctx,
 			Set<Transport> usableTeleports,
 			Map<WorldPoint, Set<Transport>> transports,
@@ -258,7 +254,7 @@ public final class Rs2LeaguesTransport
 			Map<TransportType, int[]> typeStats)
 	{
 		LeaguesTransportInjection.injectLeaguesTransports(
-				pathfinderConfig, ctx, usableTeleports, transports, transportsPacked, typeStats);
+				transportUsable, ctx, usableTeleports, transports, transportsPacked, typeStats);
 	}
 
 	public static LeaguesRegion parseRegionName(String regionNameRaw)

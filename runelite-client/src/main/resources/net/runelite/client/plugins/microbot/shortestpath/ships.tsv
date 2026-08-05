@@ -2,6 +2,11 @@
 # Port Sarim, Musa Point								
 3029 3217 0	2956 3143 1	Musa Point;Captain Tobias;3644		30 Coins			10	Musa Point
 2956 3146 0	3032 3217 1	Port Sarim;Customs officer;3648		30 Coins			10	Port Sarim
+# Port Sarim, Musa Point, Pandemonium
+3029 3217 0	3064 3003 0	The Pandemonium;Captain Tobias;14979		30 Coins	Pandemonium	Y	10	Pandemonium
+3064 3003 0	3029 3217 0	Port Sarim;Seaman Morris;8631		30 Coins	Pandemonium	Y	10	Port Sarim
+2956 3146 0	3064 3003 0	The Pandemonium;Customs officer;14985		30 Coins	Pandemonium	Y	10	Pandemonium
+3064 3003 0	2956 3146 0	Musa Point;Seaman Morris;8631		30 Coins	Pandemonium	Y	10	Musa Point
 # Ardougne, Brimhaven, Rimmington								
 2673 3275 0	2775 3233 1	Brimhaven;Captain Barnaby;9250		30 Coins		Y	6	Brimhaven
 2673 3275 0	2915 3221 1	Rimmington;Captain Barnaby;9250		30 Coins		Y	6	Rimmington

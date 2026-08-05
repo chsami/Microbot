@@ -4,12 +4,12 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.invoke.MethodType;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.PosixFilePermissions;
-import java.util.Arrays;
 import java.util.Properties;
 
 /**
@@ -35,8 +35,6 @@ public final class MenuActionInfoCache {
     static final String KEY_GARBAGE_VALUE = "menuAction.garbageValue";
 
     static final String BUNDLED_RESOURCE = "menu-action-info.properties";
-
-    private static final String VANILLA_DESCRIPTOR = "(IIIIIILjava/lang/String;Ljava/lang/String;III)V";
 
     private MenuActionInfoCache() {
     }
@@ -94,8 +92,8 @@ public final class MenuActionInfoCache {
             return null;
         }
 
-        if (!VANILLA_DESCRIPTOR.equals(descriptor)) {
-            log.info("menu-action cache ignored ({}): stored descriptor '{}' differs from expected", source, descriptor);
+        if (!MenuActionDescriptor.isVanilla(descriptor)) {
+            log.info("menu-action cache ignored ({}): stored descriptor '{}' is not a supported menu action", source, descriptor);
             return null;
         }
 
@@ -105,19 +103,24 @@ public final class MenuActionInfoCache {
             return null;
         }
 
+        garbage = MenuActionDescriptor.normalizeGarbage(garbage, descriptor);
+        if (garbage == null) {
+            log.info("menu-action cache ignored ({}): garbage value '{}' is invalid for descriptor '{}'",
+                    source, garbageValueRaw, descriptor);
+            return null;
+        }
+
         try {
             Class<?> ownerClass = Class.forName(owner);
-            Method method = Arrays.stream(ownerClass.getDeclaredMethods())
-                    .filter(m -> m.getName().equals(methodName))
-                    .findFirst()
-                    .orElse(null);
-            if (method == null) {
-                log.info("menu-action cache busted ({}): {}#{} no longer resolves", source, owner, methodName);
-                return null;
-            }
+            Class<?>[] parameterTypes = MethodType.fromMethodDescriptorString(
+                    descriptor, ownerClass.getClassLoader()).parameterArray();
+            Method method = ownerClass.getDeclaredMethod(methodName, parameterTypes);
             return new MenuActionAsmResolver.Resolution(method, garbage);
         } catch (ClassNotFoundException e) {
             log.info("menu-action cache busted ({}): owner class '{}' not on classpath", source, owner);
+            return null;
+        } catch (IllegalArgumentException | TypeNotPresentException | NoSuchMethodException e) {
+            log.info("menu-action cache busted ({}): {}#{}{} no longer resolves", source, owner, methodName, descriptor);
             return null;
         }
     }
@@ -131,7 +134,8 @@ public final class MenuActionInfoCache {
         Properties props = new Properties();
         props.setProperty(KEY_OWNER, resolution.method.getDeclaringClass().getName());
         props.setProperty(KEY_METHOD, resolution.method.getName());
-        props.setProperty(KEY_DESCRIPTOR, VANILLA_DESCRIPTOR);
+        props.setProperty(KEY_DESCRIPTOR, MethodType.methodType(
+                resolution.method.getReturnType(), resolution.method.getParameterTypes()).toMethodDescriptorString());
         props.setProperty(KEY_GARBAGE_KIND, resolution.garbageValue.getClass().getSimpleName());
         props.setProperty(KEY_GARBAGE_VALUE, resolution.garbageValue.toString());
 

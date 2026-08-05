@@ -1,25 +1,22 @@
 package net.runelite.client.plugins.microbot.util.walker.recovery;
 
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import org.junit.Test;
 
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
+import java.util.function.Predicate;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
-import static org.mockito.Mockito.mock;
 
 /**
  * Headless scenario tests for {@link RouteRecovery} decisions — the foundation of the walker test harness.
  * <p>
  * Each test constructs a stuck situation entirely in memory — a raw path, the set of tiles reachable from
- * the player, and the transports map — with no live client, and asserts the recovery decision. This is what
+ * the player, and a transport-origin predicate — with no live client, and asserts the recovery decision. This is what
  * turns "verify a recovery change with a 5-minute live walk" into "verify it in milliseconds", which is the
  * prerequisite for safely rewriting the walker's recovery/executor rather than patching it live. New
  * recovery decisions are extracted into {@code RouteRecovery} as pure functions and exercised here.
@@ -38,10 +35,8 @@ public class RouteRecoveryTest {
                 wp(3153, 3363), wp(3152, 3363), wp(3151, 3363), wp(3150, 3363), wp(3149, 3363));
     }
 
-    private static Map<WorldPoint, Set<Transport>> transportAt(WorldPoint origin) {
-        Map<WorldPoint, Set<Transport>> t = new HashMap<>();
-        t.put(origin, new HashSet<>(Arrays.asList(mock(Transport.class))));
-        return t;
+	private static Predicate<WorldPoint> transportAt(WorldPoint origin) {
+		return origin::equals;
     }
 
     @Test
@@ -67,7 +62,7 @@ public class RouteRecoveryTest {
         reachable.add(player);
 
         assertNull(RouteRecovery.findReachableTransportOriginAhead(
-                path, 0, player, reachable, new HashMap<>(), 15, 40));
+				path, 0, player, reachable, ignored -> false, 15, 40));
     }
 
     @Test
@@ -92,5 +87,16 @@ public class RouteRecoveryTest {
         assertNull("origin beyond the minimap reach must not be targeted",
                 RouteRecovery.findReachableTransportOriginAhead(
                         path, 0, player, reachable, transportAt(origin), 1, 40));
+    }
+
+    @Test
+    public void interpolationKeepsFallbackAlreadyInsideTargetRadius() {
+        WorldPoint player = wp(3200, 3200);
+        WorldPoint fallback = wp(3203, 3200);
+        List<WorldPoint> path = Arrays.asList(player, fallback, wp(3220, 3200));
+
+        assertEquals("an already-clickable fallback must not be pushed farther away",
+                fallback,
+                RouteRecovery.interpolateClickableTarget(path, 2, player, fallback, 5, point -> true));
     }
 }

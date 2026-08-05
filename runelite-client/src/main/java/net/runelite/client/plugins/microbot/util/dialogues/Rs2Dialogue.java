@@ -302,8 +302,11 @@ public class Rs2Dialogue {
         Widget dialogueOption = getDialogueOption(text, exact);
         if (dialogueOption == null) return false;
 
-        Rs2Keyboard.keyPress(dialogueOption.getOnKeyListener()[7].toString().charAt(0));
-        return true;
+        // Delegate rather than repeat the raw getOnKeyListener()[7] access. Unguarded it throws
+        // (null listener array, fewer than 8 entries, null or empty token) where the shared helper
+        // reports false — and this overload is what clickOption(String...) calls, so an unreadable
+        // binding took the caller's whole retry path down with an exception instead of failing over.
+        return pressDialogueOptionWidget(dialogueOption);
     }
 
     /**
@@ -322,6 +325,19 @@ public class Rs2Dialogue {
      */
     public static boolean keyPressForDialogueOption(int index) {
         if (!hasSelectAnOption()) return false;
+
+        // Prefer the option's own key binding: typing the position assumes the game maps number keys to
+        // the visible order, which is not something the widget guarantees. Falls back to the digit when
+        // the binding can't be read, preserving the previous behaviour.
+        List<Widget> options = getDialogueOptions();
+        if (index < 1 || index > options.size()) {
+            // Nothing to select — the digit fallback below would press a key for an option that is
+            // not on screen and then report success, so callers never retried.
+            return false;
+        }
+        if (pressDialogueOptionWidget(options.get(index - 1))) {
+            return true;
+        }
 
         Rs2Keyboard.keyPress(String.valueOf(index).charAt(0));
         return true;
@@ -708,11 +724,38 @@ public class Rs2Dialogue {
         var options = Rs2Dialogue.getDialogueOptions();
         // if there are options, and any option starts with [ , select it because it is a option highlighted from quest helper
         for (Widget option : options) {
-            if (option.getText().startsWith("[")) {
-                return Rs2Dialogue.keyPressForDialogueOption(option.getIndex());
+            if (option.getText() != null && option.getText().startsWith("[")) {
+                // Press the option's OWN key binding rather than a digit derived from getIndex(), which
+                // is a widget child index and not the option number the game listens for. Returning the
+                // press result matters as much as the press: this used to hand back true unconditionally,
+                // so a keystroke that selected nothing was never retried by the caller's fallback —
+                // the menu simply sat there with Quest Helper's "[2]" highlight showing and nothing
+                // happening, and no log line to say why.
+                return pressDialogueOptionWidget(option);
             }
         }
         return false;
+    }
+
+    /**
+     * Presses the key the game itself binds to this option, read from the widget's key listener.
+     *
+     * @return false when the binding cannot be read, so callers can fall through to another strategy
+     */
+    private static boolean pressDialogueOptionWidget(Widget option) {
+        if (option == null) {
+            return false;
+        }
+        Object[] keyListener = option.getOnKeyListener();
+        if (keyListener == null || keyListener.length <= 7 || keyListener[7] == null) {
+            return false;
+        }
+        String keyToken = keyListener[7].toString();
+        if (keyToken.isEmpty()) {
+            return false;
+        }
+        Rs2Keyboard.keyPress(keyToken.charAt(0));
+        return true;
     }
 
     /**

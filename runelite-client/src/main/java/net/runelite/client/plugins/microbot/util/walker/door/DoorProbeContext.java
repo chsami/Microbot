@@ -21,24 +21,39 @@ import net.runelite.api.coords.WorldPoint;
 public final class DoorProbeContext {
 
     /** No snapshot — consumers fall back to live scene queries. */
-    public static final DoorProbeContext EMPTY = new DoorProbeContext(null, null, null, null, null);
+    public static final DoorProbeContext EMPTY = new DoorProbeContext(null, null, null, null, null, null);
 
     private final List<WallObject> wallSnapshot;
     private final List<GameObject> gameObjectSnapshot;
     private final Map<TileObject, WorldPoint> locationSnapshot;
     private final Map<TileObject, Optional<ObjectComposition>> compositionCache;
     private final Map<String, Optional<TileObject>> segmentCache;
+    private final Map<TileObject, Boolean> objectEligibilityCache;
 
     public DoorProbeContext(List<WallObject> wallSnapshot,
                             List<GameObject> gameObjectSnapshot,
                             Map<TileObject, WorldPoint> locationSnapshot,
                             Map<TileObject, Optional<ObjectComposition>> compositionCache,
-                            Map<String, Optional<TileObject>> segmentCache) {
+                            Map<String, Optional<TileObject>> segmentCache,
+                            Map<TileObject, Boolean> objectEligibilityCache) {
         this.wallSnapshot = wallSnapshot;
         this.gameObjectSnapshot = gameObjectSnapshot;
         this.locationSnapshot = locationSnapshot;
         this.compositionCache = compositionCache;
         this.segmentCache = segmentCache;
+        this.objectEligibilityCache = objectEligibilityCache;
+    }
+
+    /**
+     * Memoises the SEGMENT-INDEPENDENT half of the door-candidate test — "is this object a catalog
+     * transport that is not itself door-like" — which costs a {@code getWorldLocation()}, nine
+     * transport-map lookups and an uncached composition resolve per call. The probe runs the whole
+     * snapshot through that test once per route segment, so without this it repeats hundreds of
+     * times per scan for an answer that cannot change (it depends only on the object's id, location
+     * and composition). Measured at 0.6-1.3s of {@code doorProbe} time per scan.
+     */
+    public Map<TileObject, Boolean> objectEligibilityCache() {
+        return objectEligibilityCache;
     }
 
     public List<WallObject> wallSnapshot() {

@@ -50,7 +50,7 @@ import static org.lwjgl.opengl.GL33C.*;
 class Zone
 {
 	// Zone vertex format
-	// index 0: short vec3(x, y, z)
+	// index 0: short vec4(x, y, z, w)
 	// index 1: int abhsl
 	// index 2: short vec4(id, u, v, 0)
 	static final int VERT_SIZE = 20;
@@ -156,7 +156,7 @@ class Zone
 		glBindBuffer(GL_ARRAY_BUFFER, buffer);
 
 		glEnableVertexAttribArray(0);
-		glVertexAttribPointer(0, 3, GL_SHORT, false, VERT_SIZE, 0);
+		glVertexAttribPointer(0, 4, GL_SHORT, false, VERT_SIZE, 0);
 
 		glEnableVertexAttribArray(1);
 		glVertexAttribIPointer(1, 1, GL_INT, VERT_SIZE, 8);
