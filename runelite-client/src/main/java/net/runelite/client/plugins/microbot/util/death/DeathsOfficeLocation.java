@@ -16,14 +16,16 @@ import java.util.Comparator;
  * ({@link net.runelite.api.gameval.ObjectID1#DEATH_OFFICE_ACCESS_GRAVE}, id 38426) with the action
  * {@code Enter Death's Domain} — see {@link Rs2Death#enterDeathsOffice()}.
  * <p>
- * {@link #LUMBRIDGE} is verified in-game. The other seven come from the wiki's map pins, which the
- * Lumbridge entry calibrates as accurate to about two tiles — the pin there reads (3238, 3194) against
- * an actual object at (3238, 3192).
+ * {@link #LUMBRIDGE} is verified in-game against the actual object. The other seven come from the wiki's
+ * map data, cross-checked against it: every x matches the wiki exactly, and every y sits a constant two
+ * tiles south of the wiki's figure (four at Lumbridge). A uniform offset across all eight, on the one
+ * entry with a known ground truth, says the wiki centres its map slightly north of the object rather than
+ * on it — so these values are the better estimate of the object tile, not a worse one.
  * <p>
- * That margin does not matter in practice: {@link Rs2Death#walkToDeathsOffice()} only has to get close
- * enough for the entrance object to load into the scene, and
- * {@link Rs2Death#enterDeathsOffice()} then finds it by id rather than by coordinate. The
- * {@code landmark} field records what each point is meant to sit beside.
+ * Either way the margin is irrelevant: {@link Rs2Death#walkToDeathsOffice()} only has to get close enough
+ * for the entrance object to load into the scene, and {@link Rs2Death#enterDeathsOffice()} then finds it
+ * by <b>id</b>, never by coordinate. A few tiles of drift costs nothing. The {@code landmark} field
+ * records what each point is meant to sit beside.
  */
 @Getter
 @RequiredArgsConstructor

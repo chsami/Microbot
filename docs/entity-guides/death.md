@@ -19,8 +19,8 @@ Rs2Death.recoverItems(config.deathBudget(), config.useDeathsOffice());
 
 // or price the office yourself before committing — the trip is free, only the reclaim costs
 if (Rs2Death.walkToDeathsOffice() && Rs2Death.enterDeathsOffice() && Rs2Death.openDeathsOffice()) {
-    Rs2Death.reclaimAll(config.maxOfficeFee());   // ceiling checked against estimateReclaimFee()
-    Rs2Death.closeInterfaces();                   // reclaimAll() with no argument = no ceiling
+    Rs2Death.reclaimAll();        // no cap is possible — see rule 11
+    Rs2Death.closeInterfaces();   // or inspect first and close to decline without paying
 }
 ```
 
@@ -63,8 +63,8 @@ tab) publishes what the game has already calculated. Read it instead of computin
 
 `getPredictedGraveFee()` and `getRiskValue()` read these directly, so they are **authoritative** — the
 per-unit valuation, ironman rate, and any discounted-death allowance are already applied. That beats any
-GE-price arithmetic, which is why `estimateReclaimFee()` exists only for Death's Office, where the game
-publishes nothing.
+GE-price arithmetic. Death's Office publishes nothing equivalent, and the API deliberately does not
+estimate one — see rule 11.
 
 Two things to watch:
 
@@ -198,9 +198,8 @@ never been watched happen here.
 **Documented exceptions exist, and they break the per-unit rule.** The wiki lists items "to which the
 above rules do not neatly apply" — notably *stacks of amulet of glory (6) worth over 100,000 are charged
 **10%** at Death's Office*: double the normal rate, and assessed on the **stack's** value rather than per
-unit. Such an item is charged where the per-unit rule predicts free, so `estimateReclaimFee()` reads
-**low** for it. The wiki's list is explicitly non-exhaustive, so treat the estimate as a guide rather than
-a bound whenever the office holds anything unusual.
+unit. Such an item is charged where the per-unit rule predicts free. The wiki's list is explicitly
+non-exhaustive, which is the main reason this API does not try to predict an office fee at all.
 
 For reference, the tiers the interface already applies for you:
 
@@ -340,30 +339,21 @@ carries over.
 **Contrast:** at a grave the worst case is the 500k cap. At the office it is an uncapped 5% of value, so
 a 10M-gear death costs 500k there with nothing to stop it.
 
-`estimateReclaimFee()` exists for scripts that want a ceiling. It reads the open interface and charges 5%
-on each item whose **unit** price is 100,000 or more, and nothing on the rest — the office's actual rule,
-confirmed by the free ~307k reclaim above. So a resource-stack death now estimates near zero, matching the
-game, instead of the wild overestimate the old cumulative version produced.
+**There is deliberately no fee estimator.** An earlier version priced the office contents from GE data
+and offered `reclaimAll(maxEstimatedFee)` as a ceiling. It was removed: the office never publishes the fee
+before charging, so any such number is a guess, and it guessed **low** on documented exceptions (a glory
+stack is charged 10% on the stack, not 5% per unit — see rule 7). A ceiling that can be exceeded is worse
+than no ceiling, because callers trust it.
 
-Prices come from `getItemPriceWithSource(id, true)`, **not** `getItemPrice(id)`. The latter follows the
-player's "Use wiki item prices" RuneLite setting, so with that toggle off it silently returns the
-once-a-day Jagex guide price instead of the wiki feed that tracks the market. No separate HTTP client is
-needed — RuneLite already maintains this data.
+What to use instead:
 
-It is still an estimate, for two reasons: it ignores the ironman half rate (reads high for them), and the
-5% rate on items **over** 100k is taken from the wiki, not yet observed in game — only the free case below
-100k is proven. Three more limits to respect:
+- `getPredictedGraveFee()` for a real number — the game computes it, the API just reads it (rule 0).
+- `reclaimAll()` when the script accepts whatever it costs.
+- Walk in, inspect what Death is holding, and `closeInterfaces()` to decline. The trip is free; only the
+  reclaim costs. A script that insists on its own cap can price the contents itself and owns that
+  assumption.
 
-1. The interface must already be open, so you cannot price the office before travelling. The trip is
-   free, so estimate on arrival and walk away if it is too dear.
-2. Wiki prices are periodically refreshed, not tick-live, and drift while you play — an 18x Earth rune
-   stack was quoted at 90 gp and then 108 gp within one session, a 20% move on a trivial item.
-3. The feed need not match the game's own valuation.
-
-So `reclaimAll(maxEstimatedFee)` is a guard rail, not a guarantee. Leave headroom, and use the
-no-argument `reclaimAll()` when the script genuinely does not care.
-
-**Where this applies:** `Rs2Death.reclaimAll`, `Rs2Death.recoverItems`, `Rs2Death.estimateReclaimFee`.
+**Where this applies:** `Rs2Death.reclaimAll`, `Rs2Death.recoverItems`.
 
 ## 12. Death's Office needs the entrance object, then a dialogue — not an NPC click
 

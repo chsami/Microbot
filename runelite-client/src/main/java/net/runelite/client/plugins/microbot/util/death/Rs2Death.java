@@ -50,23 +50,31 @@ import java.util.regex.Pattern;
  * <pre>
  * Rs2Death.recoverItems(config.deathBudget(), true);
  * </pre>
- * A script that wants a ceiling there can price the office on arrival — the trip costs nothing, only the
- * reclaim does:
+ * The office charges an uncapped fee that it never shows before charging it, so there is deliberately no
+ * spending cap here — one would be fiction. A script that wants to decide for itself can walk there,
+ * inspect the contents, and back out without paying; only the reclaim costs anything:
  * <pre>
  * if (Rs2Death.walkToDeathsOffice() &amp;&amp; Rs2Death.enterDeathsOffice() &amp;&amp; Rs2Death.openDeathsOffice()) {
- *     Rs2Death.reclaimAll(config.maxOfficeFee());   // or reclaimAll() for no ceiling
+ *     Rs2Death.reclaimAll();          // or inspect first and call closeInterfaces() to decline
  *     Rs2Death.closeInterfaces();
  * }
  * </pre>
- * The ceiling is checked against {@link #estimateReclaimFee()}, since the office never shows the real
- * fee before charging it.
+ * Use {@link #getPredictedGraveFee()} when you want a real number: it reads the figure the game itself
+ * computed on the Items Kept on Death panel, rather than estimating one.
  * <p>
  * Or drive the steps directly — {@link #walkToGrave()}, {@link #openGrave()},
  * {@link #getGraveFee()}, {@link #lootGraveFreeItems()}, {@link #lootGravePaidItems(int)} — when the
  * script wants its own logic between them.
  * <p>
- * Items left behind are not destroyed; they keep in Death's Office and can be reclaimed later at 5% of
- * value (2.5% for ironmen).
+ * Items left behind are not destroyed; they keep in Death's Office indefinitely.
+ * <p>
+ * Fee schedules, for reference — this class never computes them, it reads what the game reports:
+ * a <b>grave</b> charges flat coin amounts per item by tier (1,000 / 10,000 / 100,000 for 100k–1m /
+ * 1m–10m / 10m+), total capped at 500,000; <b>Death's Office</b> charges an uncapped 5%. Both test the
+ * item's <i>unit</i> price against 100,000, so a large stack of cheap items is free from either —
+ * confirmed in game with 862 coal at 146 each. Ironmen pay half. Documented exceptions exist and do not
+ * follow the unit-price rule (a stack of amulet of glory (6) over 100,000 is charged 10% at the office),
+ * which is why nothing here estimates a fee.
  * <p>
  * The first-death Death's Domain tutorial is <b>not</b> handled here — that stays with
  * {@link net.runelite.client.plugins.microbot.util.events.DeathEvent}, which normally only fires once
@@ -99,20 +107,6 @@ public class Rs2Death {
 
     /** {@code GRAVESTONE_DURATION} is measured in game ticks, so convert before reporting a Duration. */
     private static final long GAME_TICK_MS = 600L;
-
-    /**
-     * Death's Office charges 5% of each qualifying item's value, halved for ironmen. Estimates use the
-     * full rate.
-     * <p>
-     * Same 100k <i>unit</i>-price threshold as a grave (confirmed in game), but a different fee: a grave
-     * charges flat coin amounts by tier (1,000 / 10,000 / 100,000 for 100k–1m / 1m–10m / 10m+) capped at
-     * 500,000, whereas the office charges an uncapped 5%. Do not reuse one fee for the other.
-     */
-    private static final long DEATHS_OFFICE_FEE_PERCENT = 5L;
-
-    /** Items whose <b>unit</b> price is below this reclaim free — confirmed in game, grave and office. */
-    private static final long DEATHS_OFFICE_FREE_THRESHOLD = 100_000L;
-
 
     /** Graves are lootable from up to 7 tiles with line of sight. */
     private static final int GRAVE_INTERACT_DISTANCE = 7;
@@ -557,86 +551,6 @@ public class Rs2Death {
     }
 
     /**
-     * Estimate of what a {@link #reclaimAll()} would cost, read from the open Death's Office interface.
-     * Requires the interface to already be open — the office cannot be inspected from afar — but the
-     * journey itself is free, so estimating on arrival and walking away still costs nothing.
-     * <p>
-     * Charges 5% on every item whose <b>unit</b> price is 100,000 or more, and nothing on the rest.
-     * Confirmed in game: an office holding 862 coal (146 each), 875 iron ore, and 142 steel bars — about
-     * 307,000 in total but nothing worth 100k each — reclaimed for <i>zero</i>. That rules out a
-     * cumulative charge, and rules out testing the stack's total value; the threshold is strictly
-     * per unit.
-     * <p>
-     * This is the same threshold a <b>grave</b> uses — also confirmed, 740 noted coal worth 111,000 in
-     * total reported "Fee: None". The two schedules differ only in the fee: a grave charges flat coin
-     * amounts per tier capped at 500,000, the office charges an uncapped 5%.
-     * <p>
-     * <b>Still an estimate, not the fee — and it can read low.</b> Sources of error, worst first:
-     * <ul>
-     *   <li><b>Documented exceptions to the per-unit rule.</b> The wiki lists items "to which the above
-     *       rules do not neatly apply", including: <i>stacks of amulet of glory (6) worth over 100,000
-     *       are charged 10% at Death's Office</i> — double the normal rate, and judged on the
-     *       <em>stack's</em> value rather than per unit. Such an item is charged where this estimate
-     *       predicts free. The list is explicitly non-exhaustive, so treat the estimate as a guide, not
-     *       a bound, whenever the office holds anything unusual.</li>
-     *   <li><b>Price drift.</b> RuneLite's wiki prices are periodically refreshed, not tick-live — an
-     *       18× Earth rune stack was quoted at 90 gp and then 108 gp inside one session — and need not
-     *       match the game's own valuation.</li>
-     *   <li><b>Ironman rates are ignored</b> (5% not 2.5%), so it reads high for them; likewise the
-     *       per-boss discounted deaths.</li>
-     *   <li>The 5% rate itself is from the wiki: the free case below 100k is proven in game, an actual
-     *       non-zero charge has never been observed here.</li>
-     * </ul>
-     * Leave real headroom rather than comparing to a limit exactly.
-     *
-     * @return the estimated fee in coins, or {@code 0} when the interface is closed or nothing is
-     * chargeable.
-     */
-    public static int estimateReclaimFee() {
-        Widget container = Rs2Widget.getWidget(InterfaceID.DeathOffice.ITEMS);
-        if (container == null) return 0;
-
-        // Snapshot ids and quantities on the client thread, then price them off it. Widget item reads
-        // are client-thread only, while the price lookup is a plain cache hit that does not need to
-        // occupy the game loop.
-        // Kept per slot on purpose. Merging identical ids across slots first would let two separately
-        // free 60k stacks combine into one chargeable 120k entry.
-        List<int[]> contents = Microbot.getClientThread().runOnClientThreadOptional(() -> {
-            List<int[]> snapshot = new ArrayList<>();
-            Widget[] slots = container.getDynamicChildren();
-            if (slots == null) return snapshot;
-
-            for (Widget slot : slots) {
-                int itemId = slot.getItemId();
-                if (itemId <= 0) continue;
-                snapshot.add(new int[]{itemId, Math.max(1, slot.getItemQuantity())});
-            }
-            return snapshot;
-        }).orElseGet(ArrayList::new);
-
-        long chargeable = 0;
-        for (int[] slot : contents) {
-            // Force the wiki price rather than getItemPrice(), which follows the player's
-            // "useWikiItemPrices" RuneLite setting. Death values items at market rate, and the wiki
-            // feed is the one that tracks it; the alternative is the once-a-day Jagex guide price.
-            int unitPrice = Microbot.getItemManager().getItemPriceWithSource(slot[0], true);
-            if (unitPrice <= 0) continue;
-
-            // Per-unit threshold, confirmed in game: an office holding 862 coal (146 each), 875 iron ore,
-            // and 142 steel bars — ~307k in total, but nothing worth 100k each — reclaimed for zero.
-            // Only items whose single-unit price clears 100k are charged. This is the grave's rule too;
-            // the office differs only in charging 5% rather than the grave's flat tiers.
-            if (unitPrice < DEATHS_OFFICE_FREE_THRESHOLD) continue;
-
-            chargeable += (long) unitPrice * slot[1];
-        }
-
-        long estimate = chargeable * DEATHS_OFFICE_FEE_PERCENT / 100L;
-        log.debug("Death's Office holds {} gp of chargeable items — estimated fee {} gp", chargeable, estimate);
-        return (int) Math.min(estimate, Integer.MAX_VALUE);
-    }
-
-    /**
      * Reclaims everything Death is holding, into the inventory. Death's Office keeps items
      * indefinitely, so a partial reclaim caused by a full inventory is safe to resume later.
      * <p>
@@ -651,31 +565,6 @@ public class Rs2Death {
      *
      * @return {@code true} once the retrieval interface has closed with nothing left to collect.
      */
-    /**
-     * Reclaims everything, but only if {@link #estimateReclaimFee()} comes in at or under the ceiling.
-     * <p>
-     * The guard is an <b>estimate</b>, not the fee — the office never publishes the real number before
-     * charging it. It is usually conservative (it ignores ironman and boss discounts), but it <b>can
-     * read low</b>: wiki prices drift, and documented exceptions such as an amulet-of-glory stack are
-     * charged 10% on the stack's value rather than 5% per unit, so they are billed where the estimate
-     * predicts free. See {@link #estimateReclaimFee()} for the full list. Treat the ceiling as a guard
-     * rail, not a guarantee, and leave headroom — a reclaim can cost more than the number checked here.
-     *
-     * @param maxEstimatedFee the highest estimated fee to accept, in coins.
-     * @return {@code false} when the estimate is over the ceiling and nothing was reclaimed.
-     */
-    public static boolean reclaimAll(int maxEstimatedFee) {
-        if (!isDeathsOfficeOpen()) return false;
-
-        int estimate = estimateReclaimFee();
-        if (estimate > maxEstimatedFee) {
-            log.info("Estimated Death's Office fee {} is over the {} ceiling — leaving the items with "
-                    + "Death, where they keep indefinitely", estimate, maxEstimatedFee);
-            return false;
-        }
-        return reclaimAll();
-    }
-
     public static boolean reclaimAll() {
         if (!isDeathsOfficeOpen()) return false;
 
@@ -802,8 +691,8 @@ public class Rs2Death {
      * Closes whichever retrieval interface is still up. A refused paid half or a fee over budget leaves
      * it open, and the grave timer stays paused while it is, so it must not be left hanging.
      * <p>
-     * Public so a script that opened the office purely to call {@link #estimateReclaimFee()} can decline
-     * and walk away cleanly.
+     * Public so a script that opened the office only to inspect what Death is holding can decline and
+     * walk away cleanly without reclaiming.
      */
     public static void closeInterfaces() {
         if (isGraveOpen()) {
