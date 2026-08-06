@@ -146,6 +146,11 @@ net.runelite.client.plugins.microbot.util.coords.Rs2WorldPoint#pathTo(WorldPoint
 net.runelite.client.plugins.microbot.util.coords.Rs2WorldPoint#pathTo(WorldPoint, boolean): List  ->  net.runelite.api.Tile#getWorldLocation(): WorldPoint
 net.runelite.client.plugins.microbot.util.coords.Rs2WorldPoint#pathTo(WorldPoint, boolean): List  ->  net.runelite.api.WorldView#getScene(): Scene
 net.runelite.client.plugins.microbot.util.coords.Rs2WorldPoint#toLocalInstance(WorldPoint): WorldPoint  ->  net.runelite.api.Client#getTopLevelWorldView(): WorldView
+net.runelite.client.plugins.microbot.util.death.Rs2Death#handleActorDeath(ActorDeath): void  ->  net.runelite.api.Client#getLocalPlayer(): Player
+net.runelite.client.plugins.microbot.util.death.Rs2Death#handleActorDeath(ActorDeath): void  ->  net.runelite.api.Player#getWorldLocation(): WorldPoint
+net.runelite.client.plugins.microbot.util.death.Rs2Death#handleActorDeath(ActorDeath): void  ->  net.runelite.api.events.ActorDeath#getActor(): Actor
+net.runelite.client.plugins.microbot.util.death.Rs2Death#onVarbitChanged(VarbitChanged): void  ->  net.runelite.api.events.VarbitChanged#getValue(): int
+net.runelite.client.plugins.microbot.util.death.Rs2Death#onVarbitChanged(VarbitChanged): void  ->  net.runelite.api.events.VarbitChanged#getVarbitId(): int
 net.runelite.client.plugins.microbot.util.depositbox.Rs2DepositBox#getDepositBoxBounds(): Rectangle  ->  net.runelite.api.widgets.Widget#getBounds(): Rectangle
 net.runelite.client.plugins.microbot.util.depositbox.Rs2DepositBox#getItems(): List  ->  net.runelite.api.widgets.Widget#getDynamicChildren(): Widget[]
 net.runelite.client.plugins.microbot.util.depositbox.Rs2DepositBox#itemBounds(Rs2ItemModel): Rectangle  ->  net.runelite.api.widgets.Widget#getBounds(): Rectangle

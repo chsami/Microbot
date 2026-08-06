@@ -21,6 +21,7 @@ import net.runelite.client.plugins.microbot.ui.MicrobotPluginConfigurationDescri
 import net.runelite.client.plugins.microbot.ui.MicrobotPluginListPanel;
 import net.runelite.client.plugins.microbot.ui.MicrobotTopLevelConfigPanel;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
+import net.runelite.client.plugins.microbot.util.death.Rs2Death;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.huntkit.Rs2HuntKit;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Gembag;
@@ -366,12 +367,19 @@ public class MicrobotPlugin extends Plugin
 		Rs2Player.handlePotionTimers(event);
 		Rs2Player.handleTeleblockTimer(event);
 		Rs2RunePouch.onVarbitChanged(event);
+		Rs2Death.onVarbitChanged(event);
 	}
 
 	@Subscribe
 	public void onAnimationChanged(AnimationChanged event)
 	{
 		Rs2Player.handleAnimationChanged(event);
+	}
+
+	@Subscribe
+	public void onActorDeath(ActorDeath event)
+	{
+		Rs2Death.handleActorDeath(event);
 	}
 
 	@Subscribe(priority = 999)
