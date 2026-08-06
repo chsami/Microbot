@@ -17,10 +17,15 @@ if (Rs2Death.hasDeathToHandle()) {
 // opt in to the Death's Office trip as well, if the script wants expired items back
 Rs2Death.recoverItems(config.deathBudget(), config.useDeathsOffice());
 
-// or price the office yourself before committing — the trip is free, only the reclaim costs
+// or inspect before committing — walking there is free, only the reclaim costs
 if (Rs2Death.walkToDeathsOffice() && Rs2Death.enterDeathsOffice() && Rs2Death.openDeathsOffice()) {
-    Rs2Death.reclaimAll();        // no cap is possible — see rule 11
-    Rs2Death.closeInterfaces();   // or inspect first and close to decline without paying
+    List<Rs2ItemModel> waiting = Rs2Death.getDeathsOfficeItems();
+
+    if (worthReclaiming(waiting)) {          // the script's own call — see rule 11, no cap is possible
+        Rs2Death.reclaimAll();               // takes everything, at whatever it costs
+        // or: Rs2Death.reclaimItems(i -> i.getName().contains("rune"));
+    }
+    Rs2Death.closeInterfaces();              // declining is free; Death keeps them indefinitely
 }
 ```
 
@@ -352,6 +357,18 @@ What to use instead:
 - Walk in, inspect what Death is holding, and `closeInterfaces()` to decline. The trip is free; only the
   reclaim costs. A script that insists on its own cap can price the contents itself and owns that
   assumption.
+
+**Two different retrieval interfaces exist, and only one supports selective taking.** Confirmed against
+the game cache (`iftypes`):
+
+| Group | Components | Selective? |
+|---|---|---|
+| `death_office` (669) | `items`, **`1` `5` `x` `all`**, `takeall`, `info` | yes — select a slot, then a quantity |
+| `gravestone_retrieval` (602) | `items`, `button`, `button_bank`, `discard`, `fee`, `info` | **no quantity controls at all** |
+
+`isDeathsOfficeOpen()` accepts either, so `reclaimItems(filter)` checks which one is actually up and
+refuses on 602 rather than reading the wrong container and reporting "took nothing". `reclaimAll()`
+handles both, clicking `takeall` or `button` as appropriate.
 
 **Where this applies:** `Rs2Death.reclaimAll`, `Rs2Death.recoverItems`.
 

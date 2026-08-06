@@ -457,9 +457,6 @@ public class Rs2Death {
     }
 
     /**
-     * Claims the half of the grave that costs nothing. Items behind a fee are untouched and stay put.
-     */
-    /**
      * The items in the grave's free half — everything that costs nothing to reclaim. Requires the grave
      * interface to be open ({@link #openGrave()}).
      */
@@ -476,8 +473,8 @@ public class Rs2Death {
     }
 
     /**
-     * Takes <b>everything</b> in the free half. Use {@link #lootGraveItems(Predicate)} to take only some
-     * of it.
+     * Takes <b>everything</b> in the free half; items behind the fee are untouched and stay put. Use
+     * {@link #lootGraveItems(Predicate)} to take only some of it.
      */
     public static boolean lootGraveFreeItems() {
         if (!isGraveOpen()) return false;
@@ -683,21 +680,6 @@ public class Rs2Death {
     }
 
     /**
-     * Reclaims everything Death is holding, into the inventory. Death's Office keeps items
-     * indefinitely, so a partial reclaim caused by a full inventory is safe to resume later.
-     * <p>
-     * <b>There is deliberately no spending limit, because one is not possible.</b> The fee is never on
-     * screen before it is charged — verified live, {@code INFO} reads "Select an item to retrieve."
-     * whether the office is empty or holding items, the {@code 1}/{@code 5}/{@code X}/{@code All}
-     * buttons stay hidden until an item is selected, and {@code Take-All} never selects. Any cap here
-     * would be fiction.
-     * <p>
-     * Calling this authorises an unbounded charge against Death's Coffer, and the bank after that.
-     * Death's Office holds items indefinitely, so declining to call it is always a safe alternative.
-     *
-     * @return {@code true} once the retrieval interface has closed with nothing left to collect.
-     */
-    /**
      * The items Death is currently holding. Requires the retrieval interface to be open
      * ({@link #openDeathsOffice()}) — the office cannot be inspected from afar, though walking there and
      * declining costs nothing.
@@ -722,6 +704,17 @@ public class Rs2Death {
      */
     public static int reclaimItems(Predicate<Rs2ItemModel> filter) {
         if (!isDeathsOfficeOpen()) return 0;
+
+        // Selective reclaim is DeathOffice-only. isDeathsOfficeOpen also accepts the
+        // GravestoneRetrieval variant, but that interface has no per-quantity controls at all — its
+        // components are BUTTON / BUTTON_BANK / DISCARD, with no 1/5/X/All — so the select-then-take
+        // flow below has nothing to click there. Fail loudly rather than reading the wrong container
+        // and silently reporting "took nothing".
+        if (!Rs2Widget.isWidgetVisible(InterfaceID.DeathOffice.ITEMS_CONTAINER)) {
+            log.warn("Selective reclaim needs the Death's Office interface; the retrieval-service "
+                    + "variant has no quantity controls. Use reclaimAll() instead.");
+            return 0;
+        }
 
         List<Rs2ItemModel> items = getDeathsOfficeItems();
         int taken = 0;
@@ -748,9 +741,21 @@ public class Rs2Death {
     }
 
     /**
-     * Reclaims <b>everything</b> Death is holding. Use {@link #reclaimItems(Predicate)} to take only
-     * some of it.
+     * Reclaims everything Death is holding, into the inventory. Death's Office keeps items
+     * indefinitely, so a partial reclaim caused by a full inventory is safe to resume later.
+     * <p>
+     * <b>There is deliberately no spending limit, because one is not possible.</b> The fee is never on
+     * screen before it is charged — verified live, {@code INFO} reads "Select an item to retrieve."
+     * whether the office is empty or holding items, the {@code 1}/{@code 5}/{@code X}/{@code All}
+     * buttons stay hidden until an item is selected, and {@code Take-All} never selects. Any cap here
+     * would be fiction.
+     * <p>
+     * Calling this authorises an unbounded charge against Death's Coffer, and the bank after that.
+     * Death's Office holds items indefinitely, so declining to call it is always a safe alternative.
+     *
+     * @return {@code true} once the retrieval interface has closed with nothing left to collect.
      */
+
     public static boolean reclaimAll() {
         if (!isDeathsOfficeOpen()) return false;
 

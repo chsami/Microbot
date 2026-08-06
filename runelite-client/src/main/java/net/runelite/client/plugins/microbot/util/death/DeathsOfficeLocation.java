@@ -55,8 +55,11 @@ public enum DeathsOfficeLocation {
 
     public static DeathsOfficeLocation getNearest(WorldPoint from) {
         if (from == null) return null;
+        // distanceTo2D, not distanceTo: the latter returns Integer.MAX_VALUE across planes, and every
+        // entrance is on plane 0. A player upstairs would score MAX_VALUE for all of them, so min()
+        // would silently return the first constant (Lumbridge) however far away it is.
         return Arrays.stream(values())
-                .min(Comparator.comparingInt(location -> location.entrance.distanceTo(from)))
+                .min(Comparator.comparingInt(location -> location.entrance.distanceTo2D(from)))
                 .orElse(null);
     }
 }
