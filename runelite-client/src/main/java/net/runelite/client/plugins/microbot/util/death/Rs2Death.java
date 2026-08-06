@@ -685,7 +685,20 @@ public class Rs2Death {
      * declining costs nothing.
      */
     public static List<Rs2ItemModel> getDeathsOfficeItems() {
-        return readItemContainer(InterfaceID.DeathOffice.ITEMS);
+        return readItemContainer(activeRetrievalItemsContainer());
+    }
+
+    /**
+     * The item container of whichever retrieval interface is actually open. {@link #isDeathsOfficeOpen()}
+     * accepts either variant, so reading {@code DeathOffice.ITEMS} unconditionally would return an empty
+     * list whenever the retrieval-service variant is the one up — making an office that still holds items
+     * look empty, both to callers and to {@link #reclaimAll()}'s inventory-full warning.
+     */
+    @Component
+    private static int activeRetrievalItemsContainer() {
+        return Rs2Widget.isWidgetVisible(InterfaceID.DeathOffice.ITEMS_CONTAINER)
+                ? InterfaceID.DeathOffice.ITEMS
+                : InterfaceID.GravestoneRetrieval.ITEMS;
     }
 
     /**
