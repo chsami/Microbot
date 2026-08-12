@@ -222,12 +222,8 @@ public class VirtualMouse extends Mouse {
 
     public Mouse move(Point point) {
         if (point == null) return this;
-        if (shouldMoveNaturally(point)) {
-            Microbot.naturalMouse.moveTo(point.getX(), point.getY());
-        } else {
-            setLastMove(point);
-            dispatchMouseMove(MouseEvent.MOUSE_MOVED, point);
-        }
+        setLastMove(point);
+        dispatchMouseMove(MouseEvent.MOUSE_MOVED, point);
         return this;
     }
 
