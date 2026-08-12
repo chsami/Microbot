@@ -3576,8 +3576,8 @@ public class Rs2Walker {
             return null;
         }
 
-        // For short-distance targets (<= 10 tiles) on the same plane and visible on screen, prefer clicking the 3D game canvas
-        final int shortCanvasMaxDistance = 10;
+        // For short-distance final steps (<= 4 tiles) on the same plane and visible on screen, prefer clicking the 3D game canvas
+        final int shortCanvasMaxDistance = 4;
         if (target.getPlane() == playerLoc.getPlane()
                 && playerLoc.distanceTo2D(target) <= shortCanvasMaxDistance
                 && Rs2Tile.isTileReachable(target)
