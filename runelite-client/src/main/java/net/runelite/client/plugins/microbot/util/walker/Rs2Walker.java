@@ -6029,6 +6029,7 @@ public class Rs2Walker {
                         }
                         markDoorAttempt(probe, fromWp, toWp);
                         markGlobalDoorInteractionCooldown();
+                        prepareTransportObjectForInteraction(object);
                         WorldPoint posBefore = Rs2Player.getWorldLocation();
                         boolean interacted;
                         try {
@@ -6166,6 +6167,7 @@ public class Rs2Walker {
         }
         markDoorAttempt(probe, fromWp, toWp);
         markGlobalDoorInteractionCooldown();
+        prepareTransportObjectForInteraction(object);
         WorldPoint posBefore = Rs2Player.getWorldLocation();
         boolean interacted;
         try {
@@ -12226,11 +12228,10 @@ public class Rs2Walker {
             WalkerState state = walkWithStateInternal(target, distance);
             if (state == WalkerState.ARRIVED) {
                 WebWalkLog.bankWalkDebug("arrived goal={}", target);
-            } else {
+            } else if (state == WalkerState.UNREACHABLE || state == WalkerState.EXIT) {
                 WebWalkLog.bankWalkFailed(target, state);
                 setTarget(null, "rs2walker:walkWithBankedTransports:direct-walk-failed");
                 return state;
-
             }
             return state;
         } else {

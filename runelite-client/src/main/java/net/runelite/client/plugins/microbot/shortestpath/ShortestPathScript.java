@@ -89,27 +89,36 @@ public class ShortestPathScript extends Script {
 
         walkTaskFuture = scheduledExecutorService.submit(() -> {
             try {
-                WorldPoint target = getTriggerWalker();
-                if (target == null || config == null || !Microbot.isLoggedIn()) {
-                    return;
-                }
-
-                WalkerState state;
-                if (config.walkWithBankedTransports()) {
-                    state = Rs2Walker.walkWithBankedTransportsAndState(target, 10, false);
-                } else {
-                    state = Rs2Walker.walkWithState(target);
-                }
-
-                if (target.equals(getTriggerWalker())) {
-                    if (state == WalkerState.EXIT && shouldRetryAfterExit(target)) {
-                        return;
+                while (Microbot.isLoggedIn()) {
+                    WorldPoint target = getTriggerWalker();
+                    if (target == null || config == null) {
+                        break;
                     }
+
+                    WalkerState state;
+                    if (config.walkWithBankedTransports()) {
+                        state = Rs2Walker.walkWithBankedTransportsAndState(target, 10, false);
+                    } else {
+                        state = Rs2Walker.walkWithState(target);
+                    }
+
+                    if (!target.equals(getTriggerWalker())) {
+                        break;
+                    }
+
+                    if (state == WalkerState.EXIT && shouldRetryAfterExit(target)) {
+                        continue;
+                    }
+
                     if (state == WalkerState.ARRIVED || state == WalkerState.UNREACHABLE || state == WalkerState.EXIT) {
                         resetExitRetryState();
                         triggerWalker = null;
                         Rs2Walker.clearWalkingRoute("shortest-path-script:walk-task-terminal-state");
+                        break;
                     }
+
+                    // Keep driving movement on the same task thread while MOVING
+                    sleep(100, 200);
                 }
             } catch (Exception ex) {
                 log.error("Exception in ShortestPathScript walk task: {} - ", ex.getMessage(), ex);
