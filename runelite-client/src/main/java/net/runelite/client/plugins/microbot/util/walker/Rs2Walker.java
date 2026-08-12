@@ -3575,6 +3575,16 @@ public class Rs2Walker {
         if (target == null || playerLoc == null || target.equals(playerLoc)) {
             return null;
         }
+
+        // For short-distance targets (<= 10 tiles) on the same plane and visible on screen, prefer clicking the 3D game canvas
+        final int shortCanvasMaxDistance = 10;
+        if (target.getPlane() == playerLoc.getPlane()
+                && playerLoc.distanceTo2D(target) <= shortCanvasMaxDistance
+                && Rs2Tile.isTileReachable(target)
+                && walkFastCanvasOnScreenOnly(target, true)) {
+            return target;
+        }
+
         if (walkMiniMap(target)) {
             return target;
         }
@@ -9327,6 +9337,7 @@ public class Rs2Walker {
         if (!Rs2Camera.isTileOnScreen(tileObject)) {
             Rs2Camera.turnTo(tileObject);
             sleepUntil(() -> Rs2Camera.isTileOnScreen(tileObject), 1200);
+            sleep(100, 200);
         }
     }
 
