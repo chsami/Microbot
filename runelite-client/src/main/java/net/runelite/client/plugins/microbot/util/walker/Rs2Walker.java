@@ -196,7 +196,7 @@ public class Rs2Walker {
     private static final int PATH_ADJ_COMPONENT_LINK_MAX_TILE_GAP = 6;
     private static final int PATH_ADJ_COMPONENT_LINK_MAX_EDGE_GAP = 6;
     private static final int SEGMENT_DOOR_FAMILY_MARK_RADIUS = 2;
-    private static final int UNREACHABLE_DOOR_RECOVERY_BACKTRACK_EDGES = 2;
+    private static final int UNREACHABLE_DOOR_RECOVERY_BACKTRACK_EDGES = 0;
     private static final int UNREACHABLE_DOOR_RECOVERY_LOOKAHEAD_EDGES = 10;
     private static final int STALL_RECOVERY_MINIMAP_REACH_EUCLIDEAN = 10;
     /**
@@ -2394,7 +2394,7 @@ public class Rs2Walker {
                                 break;
                             }
                             if (handlePendingDoorNearRawPath(rawPath, obstaclePolicy.unreachableDoorTimeoutMs(),
-                                    doorEdgesAttemptedThisTail, playerLoc, 2, 14)) {
+                                    doorEdgesAttemptedThisTail, playerLoc, 0, 14)) {
                                 exitReason = "door-handled-local-reachability-raw-scan";
                                 break;
                             }
@@ -5130,7 +5130,7 @@ public class Rs2Walker {
             return false;
         }
 
-        int start = Math.max(0, rawStart - Math.max(0, backtrackEdges));
+        int start = rawStart;
         int endExclusive = Math.min(rawPath.size() - 1, rawStart + Math.max(1, lookaheadEdges));
         for (int ri = start; ri < endExclusive && ri < rawPath.size() - 1; ri++) {
             WorldPoint a = rawPath.get(ri);
@@ -5277,7 +5277,7 @@ public class Rs2Walker {
         }
         lastRawScanEarlyReturn = "ran";
 
-        int start = Math.max(0, rawStart - 2);
+        int start = rawStart;
         int endExclusive = Math.min(rawPath.size() - 1, rawStart + 12);
         // Per-stage timing: this scan has been measured at 5.6s returning handled=false after a
         // transport (each probe does several client-thread scene lookups). Attribute the cost so a
@@ -5624,7 +5624,8 @@ public class Rs2Walker {
         if (idx < 0 || idx >= rawPath.size() - 1) {
             return false;
         }
-        if (rawStartIdx > idx + 1) {
+        if (rawStartIdx >= idx + 1) {
+            clearRawScanDoorFocus("passed-door");
             return false;
         }
         return Math.abs(rawStartIdx - idx) <= 2;
@@ -8261,17 +8262,30 @@ public class Rs2Walker {
     }
 
     private static boolean handleStrongholdOfSecurityAnswer(TileObject object, String action) {
+        if (object == null) return false;
+        WorldPoint doorTile = object.getWorldLocation();
+        WorldPoint posBefore = Rs2Player.getWorldLocation();
+
+        markStationaryDoorOpened(doorTile);
+        markGlobalDoorInteractionCooldown();
+
         Rs2GameObject.interact(object, action);
         boolean isInDialogue = Rs2Dialogue.sleepUntilInDialogue();
 
         // Not all the doors ask questions, so only if dialogue is shown we will attempt to get the answer
-        if (!isInDialogue) return true;
+        if (!isInDialogue) {
+            Rs2Player.waitForWalking();
+            return true;
+        }
 
         // Skip over first door dialogue & don't forget to set up two-factor warning
         if (Rs2Dialogue.getDialogueText().toLowerCase().contains("two-factor authentication options") || Rs2Dialogue.getDialogueText().toLowerCase().contains("hopefully you will learn<br>much from us.")) {
             Rs2Dialogue.sleepUntilHasContinue();
             sleepUntil(() -> !Rs2Dialogue.hasContinue() || Rs2Dialogue.getDialogueText().toLowerCase().contains("to pass you must answer me"), Rs2Dialogue::clickContinue, 5000, Rs2Random.between(600, 800));
-            if (!Rs2Dialogue.isInDialogue()) return true;
+            if (!Rs2Dialogue.isInDialogue()) {
+                markStationaryDoorOpened(doorTile);
+                return true;
+            }
         }
 
         String dialogueAnswer = null;
@@ -8295,7 +8309,17 @@ public class Rs2Walker {
             Rs2Dialogue.clickOption(dialogueAnswer);
             Rs2Dialogue.sleepUntilHasContinue();
             sleepUntil(() -> !Rs2Dialogue.hasContinue(), Rs2Dialogue::clickContinue, 5000, Rs2Random.between(600, 800));
-            Rs2Player.waitForAnimation(1200);
+
+            // Wait until player completes movement to the other side of the door
+            sleepUntil(() -> {
+                WorldPoint now = Rs2Player.getWorldLocation();
+                return now != null && !now.equals(posBefore) && !Rs2Player.isMoving() && !Rs2Player.isAnimating();
+            }, 4000);
+
+            markStationaryDoorOpened(doorTile);
+            if (doorTile != null) {
+                sessionBlacklistedDoors.remove(doorTile);
+            }
             return true;
         }
 

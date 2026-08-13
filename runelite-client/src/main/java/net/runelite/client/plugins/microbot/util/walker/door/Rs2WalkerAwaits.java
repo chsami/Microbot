@@ -12,10 +12,10 @@ import net.runelite.client.plugins.microbot.util.walker.shared.Rs2WalkerProgress
 import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 
 public final class Rs2WalkerAwaits {
-    private static final int DOOR_INTERACTION_START_WAIT_MS = 600;
-    private static final int DOOR_TRAVERSAL_PROGRESS_WAIT_MS = 1200;
+    private static final int DOOR_INTERACTION_START_WAIT_MS = 700;
+    private static final int DOOR_TRAVERSAL_PROGRESS_WAIT_MS = 2200;
     /** Stationary and not animating for longer than this, with the edge unresolved, means the click didn't land. */
-    private static final long DOOR_IDLE_ACCEPT_MIN_MS = 600L;
+    private static final long DOOR_IDLE_ACCEPT_MIN_MS = 1_200L;
     /** Above this combined wait, say which condition released the door await. */
     private static final long DOOR_AWAIT_SLOW_LOG_MS = 900L;
 
