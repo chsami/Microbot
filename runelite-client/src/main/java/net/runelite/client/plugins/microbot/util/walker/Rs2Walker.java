@@ -1610,14 +1610,18 @@ public class Rs2Walker {
         CollisionMap preflightMap = preflightConfig != null ? preflightConfig.getMap() : null;
         if (!hasWalkableTileWithin(preflightMap, target, distance)) {
             WorldPoint nearestWalkable = nearestWalkableTile(preflightMap, target, 48);
-            log.warn("[Walker] walk rejected: target {} has no walkable tile within {} in the collision map"
-                            + " (nearest walkable {}); check the destination coordinate",
-                    target, distance,
-                    nearestWalkable != null ? nearestWalkable : "none within 48");
-            Telemetry.recordUnreachable("target-not-walkable", Rs2Player.getWorldLocation(),
-                    target, nearestWalkable, 0, distance, null);
-            setTarget(null, "rs2walker:processWalk:target-not-walkable");
-            return WalkerState.UNREACHABLE;
+            if (nearestWalkable != null) {
+                log.info("[Walker] Target {} has no walkable tile within {}; automatically redirecting to nearest walkable tile {}",
+                        target, distance, nearestWalkable);
+                target = nearestWalkable;
+                currentTarget = target;
+            } else {
+                log.warn("[Walker] walk rejected: target {} has no walkable tile within 48 in the collision map", target);
+                Telemetry.recordUnreachable("target-not-walkable", Rs2Player.getWorldLocation(),
+                        target, null, 0, distance, null);
+                setTarget(null, "rs2walker:processWalk:target-not-walkable");
+                return WalkerState.UNREACHABLE;
+            }
         }
         int partialRetriesWorking = partialRetries;
         // When the last partial retry was spent, so route progress made after it can refill the
@@ -1632,6 +1636,7 @@ public class Rs2Walker {
         Map<WorldPoint, Integer> reachableTilesCache = null;
         WorldPoint reachableTilesCacheOrigin = null;
         for (int processWalkTail = 0; processWalkTail < MAX_PROCESS_WALK_TAIL_ITERATIONS; processWalkTail++) {
+        final WorldPoint cancelTargetGoal = target;
         walkerHeartbeat(target, processWalkTail);
         try {
             walkerDiag("tail iteration begin idx=%d/%d target=%s current=%s interim=%s partialRetries=%d",
@@ -2916,7 +2921,7 @@ public class Rs2Walker {
                         final int progressCap = 16;
                         final long clickedAt = System.currentTimeMillis();
                         sleepUntil(() -> {
-                            if (isWalkCancelled(target)) return true;
+                            if (isWalkCancelled(cancelTargetGoal)) return true;
                             long elapsed = System.currentTimeMillis() - clickedAt;
                             if (elapsed < 600) return false;
                             if (!Rs2Player.isMoving()) return true;
@@ -2946,7 +2951,7 @@ public class Rs2Walker {
                         if (afterClickWait != null && afterClickWait.equals(before) && !Rs2Player.isMoving()
                                 && routeRetryClicked) {
                             sleepUntil(() -> {
-                                if (isWalkCancelled(target)) return true;
+                                if (isWalkCancelled(cancelTargetGoal)) return true;
                                 WorldPoint now = Rs2Player.getWorldLocation();
                                 return now != null && (b.distanceTo2D(now) <= proximityWake || !now.equals(before) || Rs2Player.isMoving());
                             }, 1200);
@@ -2987,7 +2992,7 @@ public class Rs2Walker {
                         routeState.interimLastBestPathIdx = -1;
                         routeState.interimLastDistanceToTarget = Integer.MAX_VALUE;
                         routeState.interimLastRetargetAtMs = 0L;
-                        sleepUntil(() -> isWalkCancelled(target) || !Rs2Player.isMoving(), 1200);
+                        sleepUntil(() -> isWalkCancelled(cancelTargetGoal) || !Rs2Player.isMoving(), 1200);
                         if (walkCancelledDiag(target, "processWalk:after-click-failed-wait", processWalkTail)) {
                             return WalkerState.EXIT;
                         }
@@ -3176,7 +3181,7 @@ public class Rs2Walker {
                                     Rs2Player.getWorldLocation(),
                                     "ms=" + offPathWaitMs);
                         }
-                        sleepUntil(() -> isWalkCancelled(target)
+                        sleepUntil(() -> isWalkCancelled(cancelTargetGoal)
                                         || isNearPath()
                                         || currentOffPathRecalcDeferralReason(deferredLastClickAtMs) == null,
                                 (int) offPathWaitMs);

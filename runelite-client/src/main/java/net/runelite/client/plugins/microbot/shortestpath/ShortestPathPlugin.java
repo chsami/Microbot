@@ -1048,18 +1048,40 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
         } else {
             WorldPoint mapPoint = calculateMapPoint(client.isMenuOpen() ? lastMenuOpenedPoint : client.getMouseCanvasPosition());
             if (mapPoint != null) {
+                WorldPoint converted = convertDungeonDisplayCoordinate(mapPoint);
+                if (!converted.equals(mapPoint)) {
+                    log.info("[ShortestPath] Converted world map dungeon display coordinate {} -> {}", mapPoint, converted);
+                    return converted;
+                }
                 WorldMapData worldMapData = client.getWorldMap().getWorldMapData();
                 if (worldMapData != null && !worldMapData.surfaceContainsPosition(mapPoint.getX(), mapPoint.getY())) {
-                    log.warn("[ShortestPath] World map target {} is a dungeon display coordinate (not on surface map). " +
-                            "The actual game tiles may be at different coordinates. " +
-                            "For accurate dungeon navigation, close the world map and right-click a tile in the game view instead.",
-                            mapPoint);
-                    return null;
+                    log.warn("[ShortestPath] World map target {} is a dungeon display coordinate (not on surface map).", mapPoint);
+                    return mapPoint;
                 }
             }
             return mapPoint;
         }
         return null;
+    }
+
+    public static WorldPoint convertDungeonDisplayCoordinate(WorldPoint mapPoint) {
+        if (mapPoint == null) return null;
+        int x = mapPoint.getX();
+        int y = mapPoint.getY();
+
+        // Motherlode Mine Lower Level World Map Inset
+        if ((x >= 3070 && x <= 3100 && y >= 9710 && y <= 9735) ||
+            (x >= 3260 && x <= 3295 && y >= 9820 && y <= 9850)) {
+            return new WorldPoint(3748, 5673, 0);
+        }
+
+        // Motherlode Mine Upper Level World Map Inset
+        if ((x >= 3070 && x <= 3100 && y >= 9736 && y <= 9760) ||
+            (x >= 3260 && x <= 3295 && y >= 9851 && y <= 9880)) {
+            return new WorldPoint(3755, 5673, 1);
+        }
+
+        return mapPoint;
     }
 
     public void setTarget(WorldPoint target) {
