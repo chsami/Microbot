@@ -239,11 +239,13 @@ public class Pathfinder implements Runnable {
     private int baseHeuristicToNearestTarget(int packedPos) {
         int posX = WorldPointUtil.unpackWorldX(packedPos);
         int posY = WorldPointUtil.unpackWorldY(packedPos);
+        int posZ = WorldPointUtil.unpackWorldPlane(packedPos);
         int best = Integer.MAX_VALUE;
         for (int target : targetsPacked) {
             int tx = WorldPointUtil.unpackWorldX(target);
             int ty = WorldPointUtil.unpackWorldY(target);
-            int h = WorldPointUtil.undergroundAwareDistance(posX, posY, tx, ty);
+            int tz = WorldPointUtil.unpackWorldPlane(target);
+            int h = WorldPointUtil.planeAwareDistance(posX, posY, posZ, tx, ty, tz);
             if (h < best) {
                 best = h;
             }
@@ -259,9 +261,11 @@ public class Pathfinder implements Runnable {
     private int baseHeuristicFromStart(int packedPos) {
         int posX = WorldPointUtil.unpackWorldX(packedPos);
         int posY = WorldPointUtil.unpackWorldY(packedPos);
+        int posZ = WorldPointUtil.unpackWorldPlane(packedPos);
         int sx = WorldPointUtil.unpackWorldX(start);
         int sy = WorldPointUtil.unpackWorldY(start);
-        return WorldPointUtil.undergroundAwareDistance(posX, posY, sx, sy);
+        int sz = WorldPointUtil.unpackWorldPlane(start);
+        return WorldPointUtil.planeAwareDistance(posX, posY, posZ, sx, sy, sz);
     }
 
     // --- Network-transport-aware heuristic ---------------------------------------------------

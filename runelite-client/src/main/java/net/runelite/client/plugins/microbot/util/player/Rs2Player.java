@@ -408,22 +408,38 @@ public class Rs2Player {
         return false;
     }
 
+    private static int nextRunEnergyThreshold = Rs2Random.between(15, 35);
+
     /**
      * Toggles the player's run energy on or off.
      *
      * @param toggle {@code true} to enable running, {@code false} to disable it.
-     * @return {@code true} if the toggle action was performed successfully or was already in the desired state,
-     *         {@code false} if the run energy toggle widget was not found.
+     * @return {@code true} if the toggle action was performed successfully or was already in the desired state;
+     *         {@code false} if the run energy is below the randomized enable threshold or the toggle widget was not found.
      */
     public static boolean toggleRunEnergy(boolean toggle) {
-        if (Microbot.getVarbitPlayerValue(173) == 0 && !toggle) return true;
-        if (Microbot.getVarbitPlayerValue(173) == 1 && toggle) return true;
+        if (!toggle) {
+            if (isRunEnabled()) {
+                Widget widget = Rs2Widget.getWidget(WidgetInfo.MINIMAP_TOGGLE_RUN_ORB.getId());
+                if (widget == null) return false;
+                Microbot.getMouse().click(widget.getCanvasLocation());
+                sleep(150, 300);
+            }
+            return true;
+        }
+
+        if (isRunEnabled()) return true;
+
+        if (getRunEnergy() < nextRunEnergyThreshold) {
+            return false;
+        }
 
         Widget widget = Rs2Widget.getWidget(WidgetInfo.MINIMAP_TOGGLE_RUN_ORB.getId());
         if (widget == null) return false;
 
         Microbot.getMouse().click(widget.getCanvasLocation());
         sleep(150, 300);
+        nextRunEnergyThreshold = Rs2Random.between(15, 35);
 
         return true;
     }

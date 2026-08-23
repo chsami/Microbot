@@ -75,15 +75,28 @@ public enum StrongholdAnswer {
     private final String question;
     private final String answer;
 
-    public static String findAnswer(String question) {
-        StrongholdAnswer strongholdAnswer = Arrays.stream(StrongholdAnswer.values())
-                .filter(txt -> question.toLowerCase().contains(txt.getQuestion().toLowerCase()))
-                .findFirst()
-                .orElse(null);
-        
-        String answer = strongholdAnswer != null ? strongholdAnswer.getAnswer() : null;
-        Microbot.log("Question: " + question, Level.DEBUG);
-        Microbot.log("Answer: " + answer, Level.DEBUG);
-        return answer;
+    private static String cleanString(String text) {
+        if (text == null) return "";
+        return text.replaceAll("(?i)<br\\s*/?>", " ")
+                   .replaceAll("[^a-zA-Z0-9 ]", " ")
+                   .replaceAll("\\s+", " ")
+                   .toLowerCase()
+                   .trim();
+    }
+
+    public static String findAnswer(String rawQuestion) {
+        if (rawQuestion == null || rawQuestion.isEmpty()) return null;
+        String cleanQ = cleanString(rawQuestion);
+
+        for (StrongholdAnswer ans : StrongholdAnswer.values()) {
+            String cleanEnumQ = cleanString(ans.getQuestion());
+            if (!cleanEnumQ.isEmpty() && (cleanQ.contains(cleanEnumQ) || cleanEnumQ.contains(cleanQ))) {
+                Microbot.log("Stronghold question matched: " + ans.name(), Level.DEBUG);
+                Microbot.log("Answer: " + ans.getAnswer(), Level.DEBUG);
+                return ans.getAnswer();
+            }
+        }
+        Microbot.log("Stronghold question un-matched: " + rawQuestion, Level.DEBUG);
+        return null;
     }
 }

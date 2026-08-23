@@ -114,9 +114,11 @@ public class VirtualMouse extends Mouse {
         entered(point);
         exited(point);
         moved(point);
-        pressed(point, rightClick ? MouseEvent.BUTTON3 : MouseEvent.BUTTON1);
-        released(point, rightClick ? MouseEvent.BUTTON3 : MouseEvent.BUTTON1);
-        clicked(point, rightClick ? MouseEvent.BUTTON3 : MouseEvent.BUTTON1);
+        int button = rightClick ? MouseEvent.BUTTON3 : MouseEvent.BUTTON1;
+        pressed(point, button);
+        sleep(Rs2Random.logNormalBounded(40, 90));
+        released(point, button);
+        clicked(point, button);
         setLastClick(point);
     }
 
@@ -219,23 +221,23 @@ public class VirtualMouse extends Mouse {
     }
 
     public Mouse move(Point point) {
+        if (point == null) return this;
         setLastMove(point);
         dispatchMouseMove(MouseEvent.MOUSE_MOVED, point);
         return this;
     }
 
     public Mouse move(Rectangle rect) {
-        Point pt = new Point((int) rect.getCenterX(), (int) rect.getCenterY());
-        setLastMove(pt);
-        dispatchMouseMove(MouseEvent.MOUSE_MOVED, pt);
-        return this;
+        if (rect == null) return this;
+        Point pt = Rs2UiHelper.getClickingPoint(rect, true);
+        return move(pt);
     }
 
     public Mouse move(Polygon polygon) {
-        Point point = new Point((int) polygon.getBounds().getCenterX(), (int) polygon.getBounds().getCenterY());
-        setLastMove(point);
-        dispatchMouseMove(MouseEvent.MOUSE_MOVED, point);
-        return this;
+        if (polygon == null) return this;
+        Rectangle rect = polygon.getBounds();
+        Point pt = Rs2UiHelper.getClickingPoint(rect, true);
+        return move(pt);
     }
 
     public Mouse scrollDown(Point point) {

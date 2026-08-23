@@ -125,6 +125,17 @@ public class WorldPointUtil {
         return Math.min(direct, wrapped);
     }
 
+    public static int planeAwareDistance(int x1, int y1, int z1, int x2, int y2, int z2) {
+        int h2d = undergroundAwareDistance(x1, y1, x2, y2);
+        int planeDiff = Math.abs(z1 - z2);
+        return h2d + (planeDiff * 20);
+    }
+
+    public static int planeAwareDistance(WorldPoint a, WorldPoint b) {
+        if (a == null || b == null) return Integer.MAX_VALUE;
+        return planeAwareDistance(a.getX(), a.getY(), a.getPlane(), b.getX(), b.getY(), b.getPlane());
+    }
+
     public static int undergroundAwareDistance(WorldPoint a, WorldPoint b) {
         return undergroundAwareDistance(a.getX(), a.getY(), b.getX(), b.getY());
     }
