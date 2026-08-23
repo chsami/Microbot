@@ -97,7 +97,7 @@ public class ShortestPathScript extends Script {
 
                     WalkerState state;
                     if (config.walkWithBankedTransports()) {
-                        state = Rs2Walker.walkWithBankedTransportsAndState(target, 10, false);
+                        state = Rs2Walker.walkWithBankedTransportsAndState(target, config.reachedDistance(), false);
                     } else {
                         state = Rs2Walker.walkWithState(target);
                     }

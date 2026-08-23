@@ -414,8 +414,8 @@ public class Rs2Player {
      * Toggles the player's run energy on or off.
      *
      * @param toggle {@code true} to enable running, {@code false} to disable it.
-     * @return {@code true} if the toggle action was performed successfully or was already in the desired state,
-     *         {@code false} if the run energy toggle widget was not found.
+     * @return {@code true} if the toggle action was performed successfully or was already in the desired state;
+     *         {@code false} if the run energy is below the randomized enable threshold or the toggle widget was not found.
      */
     public static boolean toggleRunEnergy(boolean toggle) {
         if (!toggle) {

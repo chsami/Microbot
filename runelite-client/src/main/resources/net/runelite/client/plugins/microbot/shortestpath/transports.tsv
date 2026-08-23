@@ -2413,9 +2413,9 @@
 3061 3377 0	3058 9777 0	Climb-down;Staircase;16664									
 3058 9776 0	3061 3376 0	Climb-up;Staircase;23969									
 3061 3376 0	3058 9776 0	Climb-down;Staircase;16664									
-3728 5692 0	3060 9764 0	Exit;Tunnel;26655									
-3060 9764 0	3728 5692 0	Enter;Cave;26654									
-3060 9765 0	3728 5692 0	Enter;Cave;26654									
+3728 5692 0	3060 9764 0	Exit;Tunnel;26655
+3060 9764 0	3728 5692 0	Enter;Cave;26654
+3060 9765 0	3728 5692 0	Enter;Cave;26654
 3060 9766 0	3728 5692 0	Enter;Cave;26654									
 											
 # Rimmington											
