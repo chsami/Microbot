@@ -209,14 +209,15 @@ public class MisthalinMystery extends BasicQuestHelper
 		talkToAbigale = new NpcStep(this, NpcID.MISTMYST_ABIGALE_LUM_VIS, new WorldPoint(3237, 3155, 0), "Talk to Abigale in the south east corner of Lumbridge Swamp.");
 		talkToAbigale.addDialogStep("Yes.");
 		takeTheBoat = new ObjectStep(this, ObjectID.MISTMYST_BOAT_LUMBRIDGE, new WorldPoint(3240, 3140, 0), "Board the rowboat south of Abigale.");
-		takeTheBucket = new ObjectStep(this, ObjectID.MISTMYST_EMPTY_BUCKET, new WorldPoint(1619, 4816, 0), "Pick up the bucket near the fountain.", bucket);
+		// Pickup steps provide these items; requiring them here sends automation to the bank.
+		takeTheBucket = new ObjectStep(this, ObjectID.MISTMYST_EMPTY_BUCKET, new WorldPoint(1619, 4816, 0), "Pick up the bucket near the fountain.");
 		searchTheBarrel = new ObjectStep(this, ObjectID.MISTMYST_BARREL, new WorldPoint(1615, 4829, 0), "Search the barrel of rainwater north of the fountain to trigger a cutscene.", bucket);
 		useBucketOnBarrel = new ObjectStep(this, ObjectID.MISTMYST_BARREL, new WorldPoint(1615, 4829, 0), "Use the bucket on the barrel of rainwater.", bucket);
 		searchTheBarrelForKey = new ObjectStep(this, ObjectID.MISTMYST_BARREL, new WorldPoint(1615, 4829, 0), "Search the barrel of rainwater for the manor key.");
 		useBucketOnBarrel.addIcon(ItemID.BUCKET_EMPTY);
 		openManorDoor = new ObjectStep(this, ObjectID.MISTMYST_FRONT_DOORL, new WorldPoint(1636, 4824, 0), "Enter the manor.", true);
 		openManorDoor.addAlternateObjects(ObjectID.MISTMYST_FRONT_DOORR);
-		takeKnife = new ObjectStep(this, ObjectID.MISTMYST_TABLE_KNIFE, new WorldPoint(1639, 4831, 0), "Take the knife from the table.", knife);
+		takeKnife = new ObjectStep(this, ObjectID.MISTMYST_TABLE_KNIFE, new WorldPoint(1639, 4831, 0), "Take the knife from the table.");
 		tryToOpenPinkKnobDoor = new ObjectStep(this, ObjectID.MISTMYST_DOOR_REDTOPAZ, new WorldPoint(1635, 4838, 0), "Try to open the door with the pink handle.");
 		takeNote1 = new ObjectStep(this, ObjectID.MISTMYST_CLUE_LIBRARY, new WorldPoint(1635, 4839, 0), "Pick up the note that appeared.");
 		readNotes1 = new DetailedQuestStep(this, "Read the notes.", notes1.highlighted());
