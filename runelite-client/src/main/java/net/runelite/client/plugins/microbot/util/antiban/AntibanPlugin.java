@@ -77,6 +77,7 @@ import java.util.TimerTask;
 @PluginDescriptor(
         name = PluginDescriptor.See1Duck + "Antiban",
         description = "Antiban for microbot",
+        version = "1.0.1",
         tags = {"main", "microbot", "antiban parent"},
         alwaysOn = true,
         hidden = true
@@ -163,7 +164,7 @@ public class AntibanPlugin extends Plugin {
 
     @Override
     protected void startUp() throws AWTException {
-        Rs2Antiban.setActivityIntensity(ActivityIntensity.EXTREME);
+        Rs2Antiban.setActivityIntensity(Rs2Antiban.DEFAULT_ACTIVITY_INTENSITY);
         final MasterPanel panel = injector.getInstance(MasterPanel.class);
         final BufferedImage icon = ImageUtil.loadImageResource(getClass(), "antiban.png");
         navButton = NavigationButton.builder()

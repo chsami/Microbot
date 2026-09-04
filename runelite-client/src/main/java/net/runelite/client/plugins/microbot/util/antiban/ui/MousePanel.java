@@ -23,7 +23,7 @@ public class MousePanel extends JPanel
 
     // 1) Add new components for Activity Intensity
     private final JLabel mouseSpeedLabel = new JLabel();
-    private final JSlider mouseSpeedSlider = new JSlider(0, 4, 2); // default to index=2 (MODERATE)
+    private final JSlider mouseSpeedSlider = new JSlider(0, 4, 1); // default to index=1 (LOW)
 
     public MousePanel()
     {
@@ -154,7 +154,7 @@ public class MousePanel extends JPanel
             case MODERATE: return 2;
             case HIGH: return 3;
             case EXTREME: return 4;
-            default: return 2;
+            default: return 1;
         }
     }
 
@@ -168,7 +168,7 @@ public class MousePanel extends JPanel
             case 2: return ActivityIntensity.MODERATE;
             case 3: return ActivityIntensity.HIGH;
             case 4: return ActivityIntensity.EXTREME;
-            default: return ActivityIntensity.MODERATE;
+            default: return ActivityIntensity.LOW;
         }
     }
 }

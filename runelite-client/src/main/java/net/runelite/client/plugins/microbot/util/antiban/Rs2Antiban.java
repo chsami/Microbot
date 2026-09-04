@@ -90,6 +90,7 @@ import static net.runelite.api.AnimationID.*;
 @Getter
 @Setter
 public class Rs2Antiban {
+    static final ActivityIntensity DEFAULT_ACTIVITY_INTENSITY = ActivityIntensity.LOW;
     public static final ImmutableSet<Integer> MINING_ANIMATION_IDS = ImmutableSet.of(
             MINING_BRONZE_PICKAXE, MINING_MOTHERLODE_BRONZE, MINING_CRASHEDSTAR_BRONZE,
             MINING_IRON_PICKAXE, MINING_MOTHERLODE_IRON, MINING_CRASHEDSTAR_IRON,
@@ -129,7 +130,7 @@ public class Rs2Antiban {
     @Getter
     private static Activity activity;
     @Getter
-    private static ActivityIntensity activityIntensity;
+    private static ActivityIntensity activityIntensity = DEFAULT_ACTIVITY_INTENSITY;
     @Getter
     @Setter
     private static Category category;
@@ -559,7 +560,7 @@ public class Rs2Antiban {
         Rs2AntibanSettings.reset();
         Rs2Antiban.playStyle = null;
         Rs2Antiban.activity = null;
-        Rs2Antiban.activityIntensity = ActivityIntensity.EXTREME;
+        Rs2Antiban.activityIntensity = DEFAULT_ACTIVITY_INTENSITY;
         Rs2Antiban.category = null;
     }
 }
