@@ -96,30 +96,17 @@ public class WalkSessionStateResetTest
 			ledger.shouldThrottleAttempt(null, from, to, 2_500, now + 100));
 	}
 
-	/**
-	 * The partial-regression baseline measures partial endpoints against the previous walk's goal;
-	 * carried into a new walk it would read the new walk's honest first partial as a regression and
-	 * burn the replan budget on it.
-	 */
 	@Test
-	public void startingAWalkResetsThePartialRegressionBaseline()
+	public void startingAWalkResetsDoorClaimAndEffectiveGoalState()
 	{
-		routeState.bestPartialDGoal = 124;
-		routeState.partialRegressReplans = 2;
-		routeState.recoveryGateEnteredAtMs = 123L;
-		routeState.walledDoorEdgeFrom = new net.runelite.api.coords.WorldPoint(2907, 3544, 0);
-		routeState.walledDoorEdgeTo = new net.runelite.api.coords.WorldPoint(2907, 3543, 0);
+		routeState.walledDoorEdgeFrom = new WorldPoint(2907, 3544, 0);
+		routeState.walledDoorEdgeTo = new WorldPoint(2907, 3543, 0);
 		routeState.walledDoorEdgeAtMs = 456L;
-		routeState.requestedGoal = new net.runelite.api.coords.WorldPoint(2907, 3539, 0);
+		routeState.requestedGoal = new WorldPoint(2907, 3539, 0);
 		routeState.sealedRimRetargets = 2;
 
 		Rs2Walker.resetWalkSessionState();
 
-		assertEquals("the baseline belongs to the previous walk's goal",
-			Integer.MAX_VALUE, routeState.bestPartialDGoal);
-		assertEquals(0, routeState.partialRegressReplans);
-		assertEquals("a stale recovery-gate entry would misattribute the new walk's first pass",
-			0L, routeState.recoveryGateEnteredAtMs);
 		assertNull("a previous walk's door edge must not steer this walk's recovery",
 			routeState.walledDoorEdgeFrom);
 		assertNull(routeState.walledDoorEdgeTo);

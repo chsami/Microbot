@@ -688,6 +688,11 @@ final class Rs2WalkerMovement {
             routeState.idleNudgeStationarySinceMs = now;
             return false;
         }
+        if (hasFreshActiveDoorClaim(now)) {
+            routeState.idleNudgeLastObservedLocation = playerLoc;
+            routeState.idleNudgeStationarySinceMs = now;
+            return false;
+        }
         if (!playerLoc.equals(routeState.idleNudgeLastObservedLocation)) {
             routeState.idleNudgeLastObservedLocation = playerLoc;
             routeState.idleNudgeStationarySinceMs = now;
@@ -706,6 +711,9 @@ final class Rs2WalkerMovement {
                                                       WorldPoint target,
                                                       int configuredDistance,
                                                       String logLabel) {
+        if (hasFreshActiveDoorClaim(System.currentTimeMillis())) {
+            return false;
+        }
         return tryIssueRouteMovementClick(rawPath, path, target, configuredDistance, logLabel,
                 STALL_RECOVERY_MINIMAP_REACH_EUCLIDEAN, true);
     }

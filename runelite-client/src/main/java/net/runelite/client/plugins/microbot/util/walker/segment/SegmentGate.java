@@ -30,7 +30,7 @@ public final class SegmentGate
 		SKIP_POST_TRANSPORT_WINDOW("no_nearby_planned_transport"),
 		/**
 		 * Startup, before the first movement click. Broad handlers here delay the first click for
-		 * every segment on the route; the walk should start moving and examine obstacles en route.
+		 * every ordinary segment; a visible first object transport is an explicit exception.
 		 */
 		SKIP_STARTUP_PRECLICK("startup_before_first_click");
 
@@ -68,7 +68,7 @@ public final class SegmentGate
 									   boolean recoveryInFlight,
 									   boolean tileReachable,
 									   boolean startupBeforeFirstClick,
-									   boolean immediateSegmentTransportStep,
+									   boolean startupTransportStep,
 									   int segmentIdx,
 									   int routeStartIdx)
 	{
@@ -81,7 +81,7 @@ public final class SegmentGate
 		{
 			return SegmentAction.SKIP_POST_TRANSPORT_WINDOW;
 		}
-		if (!immediateSegmentTransportStep
+		if (!startupTransportStep
 			&& skipStartupPreclick(startupBeforeFirstClick, segmentIdx, routeStartIdx,
 			recentDoorAttemptNearSegment, doorSettling, recoveryInFlight))
 		{

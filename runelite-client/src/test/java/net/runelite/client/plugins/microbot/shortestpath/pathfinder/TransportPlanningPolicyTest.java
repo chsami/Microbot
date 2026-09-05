@@ -62,10 +62,11 @@ public class TransportPlanningPolicyTest
 	{
 		PathfinderConfig config = new PathfinderConfig(
 			SplitFlagMap.fromResources(), new HashMap<>(), Collections.emptyList(), null, null);
-		Method useTransport = PathfinderConfig.class.getDeclaredMethod("useTransport", Transport.class);
+		Method useTransport = PathfinderConfig.class.getDeclaredMethod(
+			"useTransport", Transport.class, boolean.class);
 		useTransport.setAccessible(true);
 
-		assertFalse((Boolean) useTransport.invoke(config, new Object[] {null}));
+		assertFalse((Boolean) useTransport.invoke(config, null, false));
 	}
 
 	@Test

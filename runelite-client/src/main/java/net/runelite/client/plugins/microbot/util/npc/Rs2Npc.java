@@ -642,26 +642,35 @@ public class Rs2Npc {
         Microbot.status = action + " " + npc.getName();
         try {
             if (Microbot.isCantReachTargetDetectionEnabled && Microbot.cantReachTarget) {
-                if (!hasLineOfSight(npc)) {
-                    if (Microbot.cantReachTargetRetries >= Rs2Random.between(3, 5)) {
-						Microbot.pauseAllScripts.compareAndSet(false, true);
-                        Microbot.showMessage("Your bot tried to interact with an NPC for "
-                                + Microbot.cantReachTargetRetries + " times but failed. Please take a look at what is happening.");
-                        return false;
-                    }
-                    final WorldPoint npcWorldPoint = npc.getWorldLocation();
-                    if (npcWorldPoint == null) {
-                        log.error("Error interacting with NPC '{}' for action '{}': WorldPoint is null", npc.getName(), action);
-                        return false;
-                    }
-                    Rs2Walker.walkTo(Rs2Tile.getNearestWalkableTileWithLineOfSight(npcWorldPoint), 0);
-                    Microbot.pauseAllScripts.compareAndSet(true, false);
-                    Microbot.cantReachTargetRetries++;
+                // The game itself said "I can't reach that!" on the previous interaction — a shut
+                // door or wall sits between us and the target. The walker is the only recovery that
+                // OPENS doors, so walk to the NPC (doors handled en route) and re-click on arrival.
+                // The old branch selected a line-of-sight tile instead, which for an NPC behind a
+                // door picks tiles on the unreachable side — and its LOS "all clear" path cleared
+                // the flag without ever walking, so a through-window NPC clicked forever without
+                // escalating. LOS is deliberately not consulted: a ranged attack through a fence
+                // never prints can't-reach, so every trigger here genuinely needs adjacency.
+                if (Microbot.cantReachTargetRetries >= Rs2Random.between(3, 5)) {
+                    Microbot.pauseAllScripts.compareAndSet(false, true);
+                    Microbot.showMessage("Your bot tried to interact with an NPC for "
+                            + Microbot.cantReachTargetRetries + " times but failed. Please take a look at what is happening.");
                     return false;
-                } else {
-					Microbot.pauseAllScripts.compareAndSet(true, false);
+                }
+                final WorldPoint npcWorldPoint = npc.getWorldLocation();
+                if (npcWorldPoint == null) {
+                    log.error("Error interacting with NPC '{}' for action '{}': WorldPoint is null", npc.getName(), action);
+                    return false;
+                }
+                Microbot.cantReachTargetRetries++;
+                log.info("[Interact] can't-reach recovery: walking to NPC '{}' at {} (attempt {})",
+                        npc.getName(), npcWorldPoint, Microbot.cantReachTargetRetries);
+                if (Rs2Walker.walkTo(npcWorldPoint, 2)) {
+                    Microbot.pauseAllScripts.compareAndSet(true, false);
                     Microbot.cantReachTarget = false;
                     Microbot.cantReachTargetRetries = 0;
+                    // fall through and click from beside it
+                } else {
+                    return false;
                 }
             }
 

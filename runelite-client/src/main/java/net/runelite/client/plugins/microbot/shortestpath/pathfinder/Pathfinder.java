@@ -329,25 +329,11 @@ public class Pathfinder implements Runnable {
      * walks the partial path, replans closer, and the next probe answers from nearer.
      */
     private static final long SEALED_SUBSTITUTE_NODE_BUDGET = 50_000L;
-    /**
-     * Budget when {@link SealedVerdictMemo} already holds a fresh rim-unreachable proof for this
-     * goal. The best partial node is found in the first few thousand nodes of a substitute search
-     * (the rest of the full budget is undirected flood); repeats keep nearly all partial quality.
-     */
-    private static final long SEALED_REPEAT_NODE_BUDGET = 5_000L;
 
     /** The targets the search LOOPS actually chase; equals {@link #targetsPacked} except in sealed mode. */
     private volatile int[] searchTargetsPacked;
     private volatile boolean sealedTargetMode;
-    private long sealedSubstituteNodeBudget = SEALED_SUBSTITUTE_NODE_BUDGET;
-    /** Test seam: when > 0, replaces {@link #SEALED_SUBSTITUTE_NODE_BUDGET} for this instance's runs. */
-    private long sealedSubstituteNodeBudgetOverride = -1L;
-    private int sealedMemoKey;
     private long cutoffOverrideMillis = -1L;
-
-    void setSealedSubstituteNodeBudgetForTest(long budget) {
-        sealedSubstituteNodeBudgetOverride = budget;
-    }
     /** See {@link #getReachedSealedSubstitute()}. Volatile: written by the search thread, read by the walker. */
     private volatile int reachedSealedSubstitutePacked = -1;
 
@@ -371,20 +357,15 @@ public class Pathfinder implements Runnable {
     }
 
     /**
-     * The nearest walkable rim tile of a PROVEN-sealed destination, or {@code null} when this run
-     * was not a sealed-target run. Available even when the substitute search never REACHED the rim:
-     * the substitute node budget covers a ~125-tile flood radius, so a sealed goal further away
-     * than that exhausts every search en route and the whole journey degrades to a partial crawl —
-     * measured Falador->Burthorpe against a clicked hatch tile, one truncated 50k-node search per
-     * pass, ending outside the pub's south wall. The rim tiles themselves are ORDINARY reachable
-     * tiles; the walker retargets to this one and plans it as a normal full-budget search instead.
+     * The nearest normalized walkable rim tile of a proven-sealed destination, even when the
+     * bounded substitute search did not reach it. The walker can plan this ordinary tile with its
+     * normal full budget instead of chaining partial sealed-target searches.
      */
     public WorldPoint getNearestSealedRimSubstitute() {
         int[] chased = searchTargetsPacked;
         if (!sealedTargetMode || chased == null || chased.length == 0) {
             return null;
         }
-        // Nearest to the search start by construction (see sealedTargetSubstitutes' sort).
         return WorldPointUtil.unpackWorldPoint(chased[0]);
     }
 
@@ -674,7 +655,7 @@ public class Pathfinder implements Runnable {
             }
 
             if (System.currentTimeMillis() > cutoffTimeMillis
-                    || (sealedTargetMode && stats.getNodesChecked() > sealedSubstituteNodeBudget)) {
+                    || (sealedTargetMode && stats.getNodesChecked() > SEALED_SUBSTITUTE_NODE_BUDGET)) {
                 timedOut = true;
                 WebWalkLog.pf("cutoff bestDist={} nodes={} sealedMode={}", bestDistance, stats.getNodesChecked(), sealedTargetMode);
                 break;
@@ -818,7 +799,7 @@ public class Pathfinder implements Runnable {
             }
 
             if (System.currentTimeMillis() > cutoffTimeMillis
-                    || (sealedTargetMode && stats.getNodesChecked() > sealedSubstituteNodeBudget)) {
+                    || (sealedTargetMode && stats.getNodesChecked() > SEALED_SUBSTITUTE_NODE_BUDGET)) {
                 timedOut = true;
                 WebWalkLog.pf("bidir_cutoff nodes={} sealedMode={}", stats.getNodesChecked(), sealedTargetMode);
                 break;
@@ -877,9 +858,6 @@ public class Pathfinder implements Runnable {
 
             searchTargetsPacked = targetsPacked;
             sealedTargetMode = false;
-            sealedSubstituteNodeBudget = sealedSubstituteNodeBudgetOverride > 0
-                    ? sealedSubstituteNodeBudgetOverride
-                    : SEALED_SUBSTITUTE_NODE_BUDGET;
             cutoffOverrideMillis = -1L;
             reachedSealedSubstitutePacked = -1;
             if (targetsPacked.length == 1 && targetsPacked[0] != start) {
@@ -910,13 +888,6 @@ public class Pathfinder implements Runnable {
                     // same best-effort the old full flood produced — at a thousandth of the cost.
                     searchTargetsPacked = rim;
                     cutoffOverrideMillis = SEALED_SUBSTITUTE_CUTOFF_MS;
-                    sealedMemoKey = config.getLastTransportRefreshKeyHash();
-                    if (SealedVerdictMemo.isRimUnreachable(targetsPacked[0], sealedMemoKey,
-                            System.currentTimeMillis())) {
-                        sealedSubstituteNodeBudget = SEALED_REPEAT_NODE_BUDGET;
-                        WebWalkLog.pf("sealed_memo repeat dst={} budget={}",
-                                WorldPointUtil.toString(targetsPacked[0]), SEALED_REPEAT_NODE_BUDGET);
-                    }
                 }
             }
 
@@ -942,32 +913,17 @@ public class Pathfinder implements Runnable {
             // already PROVEN, and callers keying decisions off the termination must hear exactly that.
             // A genuinely REACHED rim is remembered before the remap, though — it is the walker's
             // signal to retarget the walk to the rim once instead of replaying this search forever.
-            if (sealedTargetMode) {
-                int reachedPacked = -1;
+            if (sealedTargetMode && (terminationReason == PathTerminationReason.TARGET_REACHED
+                    || terminationReason == PathTerminationReason.CUTOFF_REACHED)) {
                 if (terminationReason == PathTerminationReason.TARGET_REACHED) {
                     if (bestLastNode != null) {
-                        reachedPacked = bestLastNode.packedPosition;
+                        reachedSealedSubstitutePacked = bestLastNode.packedPosition;
                     } else if (joinedPath != null && !joinedPath.isEmpty()) {
-                        reachedPacked = WorldPointUtil.packWorldPoint(joinedPath.get(joinedPath.size() - 1));
+                        reachedSealedSubstitutePacked = WorldPointUtil.packWorldPoint(
+                                joinedPath.get(joinedPath.size() - 1));
                     }
                 }
-                if (reachedPacked != -1) {
-                    reachedSealedSubstitutePacked = reachedPacked;
-                    SealedVerdictMemo.clear(targetsPacked[0]);
-                } else if (terminationReason == PathTerminationReason.SEARCH_EXHAUSTED) {
-                    // The frontier genuinely drained without touching the rim: proven unreachable,
-                    // remember it so the partial crawl's replans and script reachability polls stop
-                    // re-proving the same verdict at full price. CUTOFF_REACHED (time leash or node
-                    // budget) proves nothing — a long route can exhaust the budget with the rim
-                    // perfectly reachable, and memoing that dropped every replan to the repeat
-                    // budget, guaranteeing none could ever finish (observed Varlamore→Burthorpe:
-                    // 50k nodes spent at bestDist=112, then 5k-node replans flip-flopping).
-                    SealedVerdictMemo.record(targetsPacked[0], sealedMemoKey, System.currentTimeMillis());
-                }
-                if (terminationReason == PathTerminationReason.TARGET_REACHED
-                        || terminationReason == PathTerminationReason.CUTOFF_REACHED) {
-                    terminationReason = PathTerminationReason.SEARCH_EXHAUSTED;
-                }
+                terminationReason = PathTerminationReason.SEARCH_EXHAUSTED;
             }
         } catch (Exception e) {
             terminationReason = PathTerminationReason.FAILED;

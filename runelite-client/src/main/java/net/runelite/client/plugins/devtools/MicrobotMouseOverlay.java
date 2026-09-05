@@ -54,10 +54,8 @@ public class MicrobotMouseOverlay extends Overlay {
 
     @Override
     public Dimension render(Graphics2D g) {
-        // Nothing to draw while the pointer is off the canvas: the client believes none is there,
-        // so a crosshair where the user left it is a phantom. Falls through to the branch that
-        // clears the trail, so returning rebuilds it from wherever the pointer comes back.
-        if (plugin.getMouseMovement().isActive() && !PointerState.isOutside()) {
+        Point cursor = botCursorPosition();
+        if (plugin.getMouseMovement().isActive() && cursor != null) {
             if (!Microbot.getMouse().getTimer().isRunning()) {
                 Microbot.getMouse().getPoints().clear();
                 Microbot.getMouse().getTimer().start();
@@ -130,8 +128,6 @@ public class MicrobotMouseOverlay extends Overlay {
 
 
             g2d.dispose();
-            // Mouse position
-            Point cursor = PointerState.get();
             int x = cursor.getX();
             int y = cursor.getY();
 
@@ -205,5 +201,9 @@ public class MicrobotMouseOverlay extends Overlay {
         }
 
         return null;
+    }
+
+    static Point botCursorPosition() {
+        return PointerState.hasBotPoint() ? PointerState.lastBotPoint() : null;
     }
 }

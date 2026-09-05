@@ -20,7 +20,7 @@ public final class ObstacleResolution {
         INTERACTED,
         /** Still settling from a prior interaction — yield without re-issuing. */
         WAITING,
-        /** The player must first step onto {@link #walkTarget} (e.g. a stepping-stone origin) to proceed. */
+        /** The player must step onto {@link #walkTarget}, an origin or its reachable approach, to proceed. */
         WALK_TO_ORIGIN,
         /** Cannot resolve; the caller should record the real blocked edge and recalculate. */
         ABORT
@@ -70,7 +70,7 @@ public final class ObstacleResolution {
         return kind;
     }
 
-    /** The tile to step onto, when {@link #kind()} is {@link Kind#WALK_TO_ORIGIN}; otherwise {@code null}. */
+    /** The transport origin or reachable approach tile to step onto for {@link Kind#WALK_TO_ORIGIN}. */
     public WorldPoint walkTarget() {
         return walkTarget;
     }

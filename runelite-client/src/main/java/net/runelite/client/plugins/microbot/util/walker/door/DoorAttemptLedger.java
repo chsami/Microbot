@@ -90,6 +90,18 @@ public final class DoorAttemptLedger {
     }
 
     /**
+     * Transfers an exact detected route edge to the door transaction without starting the
+     * anti-hammer cooldown. Detection may happen while the player is still approaching; delaying
+     * the first real interaction because the approach itself counted as a click would add a full
+     * cooldown at every door.
+     */
+    public void claimDetectedEdge(WorldPoint fromWp, WorldPoint toWp, long nowMs) {
+        if (fromWp != null && toWp != null) {
+            latest = new Attempt(fromWp, toWp, nowMs);
+        }
+    }
+
+    /**
      * The anti-hammer gate: true while the edge's last attempt is younger than the cooldown.
      * Purges every expired entry as a side effect, as the map-based version always did.
      */
@@ -164,33 +176,8 @@ public final class DoorAttemptLedger {
     /** A successful crossing forgives the edge's strikes (transient refusals should not accumulate). */
     public void clearCrossFailures(WorldPoint fromWp, WorldPoint toWp) {
         if (fromWp != null && toWp != null) {
-            String edgeKey = Rs2DoorHandler.doorAttemptKey(null, fromWp, toWp);
-            crossFailuresByEdgeKey.remove(edgeKey);
-            refusedOpenAtMsByEdgeKey.remove(edgeKey);
+            crossFailuresByEdgeKey.remove(Rs2DoorHandler.doorAttemptKey(null, fromWp, toWp));
         }
-    }
-
-    /**
-     * When the most recent attempt on an edge ended REFUSED — clicked Open, never traversed, action
-     * still present — waiting for that edge to "resolve" is waiting for a shut door to open by
-     * itself. Recorded unconditionally (unlike strikes, which demand a stationary conclusive
-     * sample): this timestamp only shortens a WAIT, so the evidence bar is deliberately lower.
-     * Cleared by a successful crossing ({@link #clearCrossFailures}).
-     */
-    private final Map<String, Long> refusedOpenAtMsByEdgeKey = new ConcurrentHashMap<>();
-
-    public void markRefusedOpen(WorldPoint fromWp, WorldPoint toWp, long nowMs) {
-        if (fromWp != null && toWp != null) {
-            refusedOpenAtMsByEdgeKey.put(Rs2DoorHandler.doorAttemptKey(null, fromWp, toWp), nowMs);
-        }
-    }
-
-    public boolean hasFreshRefusedOpen(WorldPoint fromWp, WorldPoint toWp, long nowMs, long freshMs) {
-        if (fromWp == null || toWp == null) {
-            return false;
-        }
-        Long at = refusedOpenAtMsByEdgeKey.get(Rs2DoorHandler.doorAttemptKey(null, fromWp, toWp));
-        return at != null && nowMs - at <= freshMs;
     }
 
     /**

@@ -48,8 +48,9 @@ import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
  * unlocked door" — to find the lever-pull sequence, then walks to each lever and pulls it. The
  * walker (via the transports) handles the door crossings.
  *
- * <p>Hook: call {@link #solveIfNeeded(WorldPoint)} at the top of the walk loop. It is a no-op
- * unless the target and the player are both inside the basement.
+ * <p>Hook: call {@link #solveIfNeeded(WorldPoint)} at the top of the walk loop. For a basement
+ * target it first stages an outside player at the surface-side Manor ladder, descends into the
+ * entrance room, then solves the lever state needed to reach the target room.
  */
 @Slf4j
 public final class DraynorBasementSolver
@@ -105,6 +106,11 @@ public final class DraynorBasementSolver
 	};
 
 	private static final int LEVER_PULL_TIMEOUT_MS = 4000;
+	private static final int RANGED_APPROACH_MS_PER_TILE = 600;
+	private static final int MAX_RANGED_APPROACH_BUDGET_MS = 8000;
+	private static final int BASEMENT_ENTRY_DISTANCE = 1;
+	private static final int BASEMENT_ENTRY_TIMEOUT_MS = 6000;
+	static final WorldPoint BASEMENT_ENTRY_STAGING_TILE = new WorldPoint(3092, 3361, 0);
 
 	public static boolean isBasementTarget(WorldPoint p)
 	{
@@ -128,6 +134,11 @@ public final class DraynorBasementSolver
 			}
 		}
 		return -1;
+	}
+
+	static boolean requiresBasementEntry(WorldPoint player, WorldPoint target)
+	{
+		return isBasementTarget(target) && !isBasementTarget(player);
 	}
 
 	private static int readCombo()
@@ -203,8 +214,9 @@ public final class DraynorBasementSolver
 	}
 
 	/**
-	 * If {@code target} is inside the Draynor basement and the player is too, set the levers so the
-	 * target's room is reachable. Blocking; safe to call every walk iteration (re-entrant guard).
+	 * If {@code target} is inside the Draynor basement, enter through the Manor ladder when needed,
+	 * then set the levers so the target's room is reachable. Blocking; safe to call every walk
+	 * iteration (re-entrant guard).
 	 */
 	public static void solveIfNeeded(WorldPoint target)
 	{
@@ -212,19 +224,31 @@ public final class DraynorBasementSolver
 		{
 			return;
 		}
-		WorldPoint me = Rs2Player.getWorldLocation();
-		if (!isBasementTarget(me))
-		{
-			return; // not in the basement yet; let the walk descend first
-		}
 		int targetRoom = roomOf(target);
-		if (targetRoom < 0 || roomOf(me) == targetRoom)
+		if (targetRoom < 0)
 		{
 			return;
 		}
 		active = true;
 		try
 		{
+			WorldPoint me = Rs2Player.getWorldLocation();
+			if (requiresBasementEntry(me, target))
+			{
+				log.info("[DraynorBasement] entering basement before solving toward room {}", targetRoom);
+				if (!Rs2Walker.walkTo(BASEMENT_ENTRY_STAGING_TILE, BASEMENT_ENTRY_DISTANCE)
+					|| !Rs2GameObject.interact(ObjectID.PUZZLE_LADDER_TOP, "Climb-down")
+					|| !sleepUntil(() -> isBasementTarget(Rs2Player.getWorldLocation()),
+						BASEMENT_ENTRY_TIMEOUT_MS))
+				{
+					log.warn("[DraynorBasement] could not reach basement entrance room");
+					return;
+				}
+			}
+			if (roomOf(Rs2Player.getWorldLocation()) == targetRoom)
+			{
+				return;
+			}
 			log.info("[DraynorBasement] solving toward room {}", targetRoom);
 			// Re-plan after every step: read the current room + lever combo, take the first action
 			// on a shortest path, execute it. A fixed up-front plan strands the player because a
@@ -247,15 +271,7 @@ public final class DraynorBasementSolver
 					// pull a lever in the current room; bail if the walk, click, or toggle fails so
 					// we don't re-plan the same (unchanged) action until the step cap.
 					int li = act[1];
-					if (!Rs2Walker.walkTo(LEVER_TILE[li], 1))
-					{
-						log.warn("[DraynorBasement] could not reach lever {}", (char) ('A' + li));
-						return;
-					}
-					final int vb = LEVER_VARBIT[li];
-					final int before = Microbot.getVarbitValue(vb);
-					if (!Rs2GameObject.interact(LEVER_OBJ[li], "Pull")
-						|| !sleepUntil(() -> Microbot.getVarbitValue(vb) != before, LEVER_PULL_TIMEOUT_MS))
+					if (!pullLeverWithApproachFallback(li))
 					{
 						log.warn("[DraynorBasement] lever {} pull did not register", (char) ('A' + li));
 						return;
@@ -287,5 +303,40 @@ public final class DraynorBasementSolver
 		{
 			active = false;
 		}
+	}
+
+	/** Click first and let the server choose the approach tile; walk beside the lever only on failure. */
+	private static boolean pullLeverWithApproachFallback(int leverIndex)
+	{
+		final int varbit = LEVER_VARBIT[leverIndex];
+		final int before = Microbot.getVarbitValue(varbit);
+		WorldPoint player = Rs2Player.getWorldLocation();
+		WorldPoint lever = LEVER_TILE[leverIndex];
+		int distance = player != null && player.getPlane() == lever.getPlane()
+			? player.distanceTo2D(lever)
+			: 0;
+		int rangedTimeout = LEVER_PULL_TIMEOUT_MS
+			+ Math.min(MAX_RANGED_APPROACH_BUDGET_MS, distance * RANGED_APPROACH_MS_PER_TILE);
+
+		if (Rs2GameObject.interact(LEVER_OBJ[leverIndex], "Pull")
+			&& sleepUntil(() -> Microbot.getVarbitValue(varbit) != before, rangedTimeout))
+		{
+			return true;
+		}
+		if (Microbot.getVarbitValue(varbit) != before)
+		{
+			return true;
+		}
+
+		log.debug("[DraynorBasement] ranged lever {} interaction made no progress; approaching",
+			(char) ('A' + leverIndex));
+		if (!Rs2Walker.walkTo(lever, 1))
+		{
+			return false;
+		}
+		final int afterApproach = Microbot.getVarbitValue(varbit);
+		return afterApproach != before
+			|| (Rs2GameObject.interact(LEVER_OBJ[leverIndex], "Pull")
+			&& sleepUntil(() -> Microbot.getVarbitValue(varbit) != afterApproach, LEVER_PULL_TIMEOUT_MS));
 	}
 }

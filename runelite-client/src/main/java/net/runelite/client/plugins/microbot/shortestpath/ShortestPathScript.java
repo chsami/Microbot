@@ -7,6 +7,7 @@ import net.runelite.api.Player;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
+import net.runelite.client.plugins.microbot.util.input.InputArbiter;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.walker.WalkerState;
 
@@ -83,7 +84,7 @@ public class ShortestPathScript extends Script {
 	}
 
     private void startWalkTask() {
-        if (!walkTaskRunning.compareAndSet(false, true)) {
+        if (InputArbiter.isHuman() || !walkTaskRunning.compareAndSet(false, true)) {
             return;
         }
 
@@ -102,6 +103,9 @@ public class ShortestPathScript extends Script {
                 }
 
                 if (target.equals(getTriggerWalker())) {
+                    if (shouldPreserveTargetAfterExit(state, InputArbiter.isHuman())) {
+                        return;
+                    }
                     if (state == WalkerState.EXIT && shouldRetryAfterExit(target)) {
                         return;
                     }
@@ -117,6 +121,10 @@ public class ShortestPathScript extends Script {
                 walkTaskRunning.set(false);
             }
         });
+    }
+
+    static boolean shouldPreserveTargetAfterExit(WalkerState state, boolean humanOwnsInput) {
+        return state == WalkerState.EXIT && humanOwnsInput;
     }
 
     private boolean shouldRetryAfterExit(WorldPoint target) {

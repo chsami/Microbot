@@ -119,23 +119,6 @@ public final class WalkerRouteState {
     /** Cooldown so partial-segment in-transit path recalculation does not spam. */
     public volatile long lastPartialTransRecalcMs = 0L;
     /**
-     * Best (smallest) partial-segment endpoint distance-to-goal accepted this walk session;
-     * MAX_VALUE until the first partial. Baseline for the partial-regression guard in
-     * processWalk: a fresh partial ending drastically farther from the goal than an earlier
-     * one is a budget/tiebreak artifact of an exhausted search, not a road, and following it
-     * flips the travel direction.
-     */
-    public volatile int bestPartialDGoal = Integer.MAX_VALUE;
-    /** Consecutive regressed partials replanned instead of walked; bounds the guard's retry loop. */
-    public volatile int partialRegressReplans = 0;
-    /**
-     * Set when a pass enters the local-reachability recovery gate; consumed at pass exit into a
-     * {@code recovery_gate_done} tmark. The gate's cascade (door scans, edge waits, recovery-target
-     * probes — each a client-thread hop) was the unattributed bulk of 9-12s pass_slow residuals at
-     * the Rogues' Den doorstep; this names it.
-     */
-    public volatile long recoveryGateEnteredAtMs = 0L;
-    /**
      * The route edge the walled-click net most recently refused BECAUSE a scene door sits on it
      * ({@code walled_edge_not_learned}). Replanning cannot help there — the planner's graph crosses
      * that door, so it returns the same route and the refusal loops (three identical replans over

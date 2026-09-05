@@ -20,6 +20,7 @@ import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
 import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
+import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import org.apache.commons.lang3.tuple.Triple;
 
@@ -141,11 +142,14 @@ public class Rs2GameObject {
         if (tileObject == null) return false;
         if (!checkCanReach) return clickObject(tileObject, action);
 
-        if (checkCanReach && Rs2GameObject.hasLineOfSight(tileObject))
+        // Proactive variant: prove we can stand beside the object BEFORE clicking. The old gate was
+        // line-of-sight — which solid objects fail from everywhere (docs/entity-guides), so callers
+        // deadlocked — and its fallback was a raw canvas click at the object's tile, which opens no
+        // door either. The walker's arrival semantics require a standable adjacent tile and open
+        // any doors on the way, and it returns immediately when already beside the target.
+        if (Rs2Walker.walkTo(tileObject.getWorldLocation(), 2)) {
             return clickObject(tileObject, action);
-
-        Rs2Walker.walkFastCanvas(tileObject.getWorldLocation());
-
+        }
         return false;
     }
 
@@ -1773,6 +1777,33 @@ public class Rs2GameObject {
 
     public static boolean clickObject(TileObject object, String action) {
         if (object == null) return false;
+        if (Microbot.isCantReachTargetDetectionEnabled && Microbot.cantReachTarget) {
+            // The game said "I can't reach that!" on the previous interaction — something solid sits
+            // between us and the target, most often a shut door. The walker is the only recovery
+            // that opens doors; its arrival check requires a standable tile BESIDE an unwalkable
+            // target, which is exactly the reachability proof a follow-up click needs. LOS is
+            // deliberately not consulted: solid objects fail line-of-sight from everywhere
+            // (docs/entity-guides), which is how the old opt-in checkCanReach path deadlocked.
+            if (Microbot.cantReachTargetRetries >= Rs2Random.between(3, 5)) {
+                Microbot.pauseAllScripts.compareAndSet(false, true);
+                Microbot.showMessage("Your bot tried to interact with an object for "
+                        + Microbot.cantReachTargetRetries + " times but failed. Please take a look at what is happening.");
+                return false;
+            }
+            WorldPoint objectLocation = object.getWorldLocation();
+            if (objectLocation == null) return false;
+            Microbot.cantReachTargetRetries++;
+            Microbot.log("[Interact] can't-reach recovery: walking to object " + object.getId()
+                    + " at " + objectLocation + " (attempt " + Microbot.cantReachTargetRetries + ")");
+            if (Rs2Walker.walkTo(objectLocation, 2)) {
+                Microbot.pauseAllScripts.compareAndSet(true, false);
+                Microbot.cantReachTarget = false;
+                Microbot.cantReachTargetRetries = 0;
+                // fall through and click from beside it
+            } else {
+                return false;
+            }
+        }
         // Use LocalPoint-based distance when the object is in the current scene (e.g. inside a
         // POH instance, where Rs2Player.getWorldLocation() returns the overworld-template tile
         // and distanceTo() against an instance world point yields Integer.MAX_VALUE, falsely

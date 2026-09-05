@@ -31,6 +31,14 @@ public class WalledDoorClaimPolicyTest {
     }
 
     @Test
+    public void attemptedDoorCanOwnRecoveryLongerThanAnUndispatchedWalledClaim() {
+        assertEquals(WalledDoorClaimPolicy.Decision.HANDLE_AT_EDGE,
+                WalledDoorClaimPolicy.decide(FROM, TO,
+                        NOW - WalledDoorClaimPolicy.FRESH_MS - 1, NOW,
+                        new WorldPoint(1771, 3589, 0), false, true, 10_000L));
+    }
+
+    @Test
     public void crossedAndExpiredClaimsReleaseOwnership() {
         assertEquals(WalledDoorClaimPolicy.Decision.CROSSED,
                 decide(new WorldPoint(1770, 3590, 0), false, true));
@@ -69,6 +77,19 @@ public class WalledDoorClaimPolicyTest {
                 new WorldPoint(2906, 3544, 0), new WorldPoint(2906, 3543, 0)));
         assertFalse(WalledDoorClaimPolicy.ownsTraversalEdge(doorFrom, doorTo,
                 new WorldPoint(2907, 3543, 1), new WorldPoint(2906, 3542, 1)));
+    }
+
+    @Test
+    public void exactIdleClaimMayTraverseWhenLiveEdgeIsOpen() {
+        assertTrue(WalledDoorClaimPolicy.shouldTraverseOpenEdge(true, true, false, false));
+    }
+
+    @Test
+    public void openEdgeTraversalRequiresExactClaimAndNoActionInFlight() {
+        assertFalse(WalledDoorClaimPolicy.shouldTraverseOpenEdge(false, true, false, false));
+        assertFalse(WalledDoorClaimPolicy.shouldTraverseOpenEdge(true, false, false, false));
+        assertFalse(WalledDoorClaimPolicy.shouldTraverseOpenEdge(true, true, true, false));
+        assertFalse(WalledDoorClaimPolicy.shouldTraverseOpenEdge(true, true, false, true));
     }
 
     private static WalledDoorClaimPolicy.Decision decide(WorldPoint player,

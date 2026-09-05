@@ -236,13 +236,13 @@ public interface MicrobotConfig extends Config
 		keyName = keyDisableInputYielding,
 		name = "Disable input yielding",
 		description = "Stop scripts pausing when you use the real mouse or keyboard on the game canvas. " +
-				"Leave this off unless yielding misfires; with it on, your input and the bot's compete for the cursor.",
+				"Enabled by default; turn this off to opt into human-input yielding.",
 		position = 7,
 		section = generalSection
 	)
 	default boolean disableInputYielding()
 	{
-		return false;
+		return true;
 	}
 
 	String keyInputMotionThresholdPx = "inputMotionThresholdPx";

@@ -44,6 +44,14 @@ public class DoorAttemptLedgerTest
 	}
 
 	@Test
+	public void detectionClaimsTheEdgeWithoutDelayingTheFirstInteraction()
+	{
+		ledger.claimDetectedEdge(near, far, T0);
+		assertNotNull(ledger.latestAttempt(COOLDOWN_MS, T0 + 1));
+		assertFalse(ledger.shouldThrottleAttempt(null, near, far, COOLDOWN_MS, T0 + 1));
+	}
+
+	@Test
 	public void theCooldownIsDirectionBlind()
 	{
 		// The edge key normalizes direction: clicking the gate from the far side one second after

@@ -103,7 +103,15 @@ public class Microbot {
     public static boolean enableAutoRunOn = true;
     public static boolean useStaminaPotsIfNeeded = true;
     public static int runEnergyThreshold = 1000;
-    public static boolean isCantReachTargetDetectionEnabled = false;
+    /**
+     * Reactive unreachable-interaction recovery. When the game prints "I can't reach that!"
+     * (a shut door or wall between the player and a clicked NPC/object), the next interact call
+     * routes through the walker — which opens doors — before re-clicking. ON by default since
+     * 2026-08-08: it was off, nothing in the repo enabled it, and the only recovery path in the
+     * interaction layer was dead code — every script clicking through a wall stalled silently.
+     * Left as a flag so a plugin with its own recovery can opt out.
+     */
+    public static boolean isCantReachTargetDetectionEnabled = true;
 
     @Getter
     @Inject
