@@ -35,4 +35,36 @@ public class BreakHandlerV2DeferralTest {
 
         assertFalse(BreakHandlerV2Script.shouldDeferRequestedBreak(Instant.now()));
     }
+
+    @Test
+    public void continuesActiveBreakWhenGlobalPauseBlocksScripts() {
+        assertTrue(BreakHandlerV2Script.shouldContinueWhenScriptGuardBlocks(
+                true,
+                BreakHandlerV2State.BREAK_REQUESTED,
+                false));
+    }
+
+    @Test
+    public void doesNotContinueNormalWaitingStateWhenGlobalPauseBlocksScripts() {
+        assertFalse(BreakHandlerV2Script.shouldContinueWhenScriptGuardBlocks(
+                true,
+                BreakHandlerV2State.WAITING_FOR_BREAK,
+                false));
+    }
+
+    @Test
+    public void continuesWaitingStateAfterPreBreakPluginStopPausedScripts() {
+        assertTrue(BreakHandlerV2Script.shouldContinueWhenScriptGuardBlocks(
+                true,
+                BreakHandlerV2State.WAITING_FOR_BREAK,
+                true));
+    }
+
+    @Test
+    public void doesNotBypassScriptGuardWhenScriptsAreNotPaused() {
+        assertFalse(BreakHandlerV2Script.shouldContinueWhenScriptGuardBlocks(
+                false,
+                BreakHandlerV2State.BREAK_REQUESTED,
+                false));
+    }
 }
