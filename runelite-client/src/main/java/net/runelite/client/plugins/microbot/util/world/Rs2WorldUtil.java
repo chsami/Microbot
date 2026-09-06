@@ -12,6 +12,7 @@ import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.security.LoginManager;
 import net.runelite.client.plugins.microbot.util.shop.Rs2Shop;
+import net.runelite.client.plugins.worldhopper.ping.Ping;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -608,42 +609,23 @@ public class Rs2WorldUtil {
     
     
     /**
-     * Measures the ping to a specific world server by attempting a connection.
+     * Measures the ping to a specific world server using the same TCP endpoints as World Hopper.
      * This provides network latency measurement for intelligent world selection.
      * 
      * @param world The world to measure ping to
      * @return The ping in milliseconds, or -1 if measurement failed
      */
     public static long measureWorldPing(World world) {
+        if (world == null || world.getAddress() == null) {
+            return -1;
+        }
+
         try {
-            if (world == null || world.getAddress() == null) {
-                return -1;
-            }
-            
-            String address = world.getAddress();
-            // Extract hostname from full address if needed
-            if (address.contains(":")) {
-                address = address.substring(0, address.indexOf(":"));
-            }
-            
-            long startTime = System.currentTimeMillis();
-            
-            // Attempt a TCP connection to measure latency
-            try (java.net.Socket socket = new java.net.Socket()) {
-                socket.connect(new java.net.InetSocketAddress(address, 43594), 3000); // 3 second timeout
-                long endTime = System.currentTimeMillis();
-                long ping = endTime - startTime;
-                
-                log.debug("Measured ping to world {} ({}): {}ms", world.getId(), address, ping);
-                return ping;
-                
-            } catch (java.io.IOException e) {
-                log.debug("Failed to measure ping to world {} ({}): {}", world.getId(), address, e.getMessage());
-                return -1;
-            }
-            
-        } catch (Exception e) {
-            log.warn("Error measuring ping to world {}: {}", world.getId(), e.getMessage());
+            int ping = Ping.tcpPing(java.net.InetAddress.getByName(world.getAddress()));
+            log.debug("Measured ping to world {} ({}): {}ms", world.getId(), world.getAddress(), ping);
+            return ping;
+        } catch (java.io.IOException e) {
+            log.debug("Failed to measure ping to world {} ({}): {}", world.getId(), world.getAddress(), e.getMessage());
             return -1;
         }
     }

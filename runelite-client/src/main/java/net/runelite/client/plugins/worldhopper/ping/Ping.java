@@ -50,7 +50,7 @@ public class Ping
 {
 	private static final byte[] RUNELITE_PING = "RuneLitePing".getBytes(Charsets.UTF_8);
 	private static final int TIMEOUT = 2000; // ms
-	private static final int PORT = 43594;
+	private static final int[] PORTS = {43594, 443};
 	private static final int MAX_IPV4_HEADER_SIZE = 60;
 
 	private static short seq;
@@ -280,16 +280,42 @@ public class Ping
 		return (short) (~a & 0xffff);
 	}
 
-	private static int tcpPing(InetAddress inetAddress) throws IOException
+	/**
+	 * Ping an address through the TCP endpoints used by the game worlds.
+	 *
+	 * @param inetAddress world address
+	 * @return connection latency in milliseconds
+	 * @throws IOException when none of the TCP endpoints can be reached
+	 */
+	public static int tcpPing(InetAddress inetAddress) throws IOException
 	{
-		try (Socket socket = new Socket())
+		return tcpPing(inetAddress, PORTS);
+	}
+
+	static int tcpPing(InetAddress inetAddress, int... ports) throws IOException
+	{
+		if (ports.length == 0)
 		{
-			socket.setSoTimeout(TIMEOUT);
-			long start = System.nanoTime();
-			socket.connect(new InetSocketAddress(inetAddress, PORT));
-			long end = System.nanoTime();
-			return (int) ((end - start) / 1000000L);
+			throw new IOException("No TCP ports configured");
 		}
+
+		IOException lastException = null;
+		for (int port : ports)
+		{
+			try (Socket socket = new Socket())
+			{
+				long start = System.nanoTime();
+				socket.connect(new InetSocketAddress(inetAddress, port), TIMEOUT);
+				long end = System.nanoTime();
+				return (int) ((end - start) / 1000000L);
+			}
+			catch (IOException ex)
+			{
+				lastException = ex;
+			}
+		}
+
+		throw lastException;
 	}
 
 	@Nullable
