@@ -89,7 +89,7 @@ public class BreakHandlerV2Script extends Script {
     private static final int MAX_SAFETY_CHECK_ATTEMPTS = 60;
     private static final int SAFETY_CHECK_DELAY_MS = 5000; // 5 seconds between checks
 
-    public static String version = "2.0.6";
+    public static String version = "2.0.7";
 
     /**
      * Run the break handler script
@@ -110,7 +110,13 @@ public class BreakHandlerV2Script extends Script {
         originalWindowTitle = ClientUI.getFrame().getTitle();
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
-                if (!super.run() && !config.autoLogin() && BreakHandlerV2State.getCurrentState() != BreakHandlerV2State.LOGIN_REQUESTED) return;
+                BreakHandlerV2State stateBeforeRun = BreakHandlerV2State.getCurrentState();
+                boolean continueWhilePaused = shouldContinueWhenScriptGuardBlocks(
+                        Microbot.pauseAllScripts.get(),
+                        stateBeforeRun,
+                        pluginStopTriggered);
+                boolean continueForLogin = config.autoLogin() || stateBeforeRun == BreakHandlerV2State.LOGIN_REQUESTED;
+                if (!super.run() && !continueWhilePaused && !continueForLogin) return;
 
                 // Ensure previously stopped plugin is restarted once we're logged back in, even if the state machine
                 // hasn't reached BREAK_ENDING yet (e.g., manual login after extended sleep).
@@ -286,6 +292,23 @@ public class BreakHandlerV2Script extends Script {
      */
     static boolean shouldDeferRequestedBreak(Instant activeBreakEndTime) {
         return activeBreakEndTime == null && BreakHandlerScript.isLockState();
+    }
+
+    static boolean shouldContinueWhenScriptGuardBlocks(boolean scriptsPaused, BreakHandlerV2State state, boolean pluginStopTriggered) {
+        if (!scriptsPaused) {
+            return false;
+        }
+
+        return state == BreakHandlerV2State.BREAK_REQUESTED ||
+               state == BreakHandlerV2State.INITIATING_BREAK ||
+               state == BreakHandlerV2State.LOGOUT_REQUESTED ||
+               state == BreakHandlerV2State.LOGGED_OUT ||
+               state == BreakHandlerV2State.LOGIN_REQUESTED ||
+               state == BreakHandlerV2State.LOGGING_IN ||
+               state == BreakHandlerV2State.LOGIN_EXTENDED_SLEEP ||
+               state == BreakHandlerV2State.BREAK_ENDING ||
+               state == BreakHandlerV2State.PROFILE_SWITCHING ||
+               (state == BreakHandlerV2State.WAITING_FOR_BREAK && pluginStopTriggered);
     }
 
     /**
