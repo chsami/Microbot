@@ -259,8 +259,8 @@ public class Rs2Walker {
      * genuinely still (not moving/animating/interacting) on the same tile, and
      * {@link #ACTIVE_ROUTE_IDLE_NUDGE_COOLDOWN_MS} still prevents click spam.
      */
-    static final long ACTIVE_ROUTE_IDLE_NUDGE_MS = 1_200L;
-	static final long ACTIVE_ROUTE_IDLE_NUDGE_COOLDOWN_MS = 2_000L;
+    static final long ACTIVE_ROUTE_IDLE_NUDGE_MS = 750L;
+	static final long ACTIVE_ROUTE_IDLE_NUDGE_COOLDOWN_MS = 1_200L;
     /**
      * How long after a door-recovery-suppressed tick the idle nudge stays disabled. Rolling — the suppress
      * branch re-stamps it every tick the door stays unresolved, so the nudge is held off for the whole
@@ -3041,7 +3041,7 @@ public class Rs2Walker {
                     lastAttemptedMinimapClickOk = clicked;
                     lastAttemptedMinimapClickAtMs = nowMs;
                     if (clicked) {
-                        markFirstMovementClick("first_minimap_click", target, posBefore,
+                        markFirstMovementClick("first_route_click", target, posBefore,
                                 "to=" + compactWorldPoint(clickedTarget));
                         hintRouteProgressIndex(path,
                                 Math.min(targetIdx, i + INTERIM_CLOSE_TILES),
