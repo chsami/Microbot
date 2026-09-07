@@ -313,6 +313,16 @@ final class Rs2WalkerMovement {
         if (target == null || playerLoc == null || target.equals(playerLoc)) {
             return null;
         }
+        if (walkFastCanvasOnScreenOnly(target, true)) {
+            WebWalkLog.spDebug("route_scene_click | to={} player={}",
+                    compactWorldPoint(target), compactWorldPoint(playerLoc));
+            return target;
+        }
+        WorldPoint sceneFallback = walkRawPathSceneTargetToward(rawPath, target, playerLoc,
+                maxEuclidean, rawAnchorIndex);
+        if (sceneFallback != null) {
+            return sceneFallback;
+        }
         if (walkMiniMap(target)) {
             return target;
         }
@@ -323,6 +333,24 @@ final class Rs2WalkerMovement {
         }
         if (allowDirectionalFallback && walkMiniMapToward(target, playerLoc, maxEuclidean)) {
             return target;
+        }
+        return null;
+    }
+
+    static WorldPoint walkRawPathSceneTargetToward(List<WorldPoint> rawPath,
+                                                           WorldPoint target,
+                                                           WorldPoint playerLoc,
+                                                           int maxEuclidean,
+                                                           int rawAnchorIndex) {
+        WorldPoint fallback = findFurthestSceneKnownRawPathPoint(rawPath, playerLoc,
+                maxEuclidean, rawAnchorIndex);
+        if (fallback == null || fallback.equals(playerLoc) || fallback.equals(target)) {
+            return null;
+        }
+        if (walkFastCanvasOnScreenOnly(fallback, true)) {
+            WebWalkLog.spDebug("route_scene_click_fallback | to={} requested={} player={}",
+                    compactWorldPoint(fallback), compactWorldPoint(target), compactWorldPoint(playerLoc));
+            return fallback;
         }
         return null;
     }
@@ -668,6 +696,20 @@ final class Rs2WalkerMovement {
                         && isMiniMapClickable(candidate));
     }
 
+    static WorldPoint findFurthestSceneKnownRawPathPoint(List<WorldPoint> rawPath,
+                                                         WorldPoint playerLoc,
+                                                         int maxEuclidean,
+                                                         int rawAnchorIndex) {
+        if (rawPath == null || rawPath.isEmpty() || playerLoc == null) {
+            return null;
+        }
+
+        return findFurthestRawPathPointMatchingGated(rawPath, playerLoc, maxEuclidean, rawAnchorIndex,
+                candidate -> !candidate.equals(playerLoc)
+                        && isKnownWalkableOrUnloaded(candidate)
+                        && isSceneCanvasClickable(candidate));
+    }
+
     static boolean shouldIssueActiveRouteIdleNudge() {
         WorldPoint playerLoc = Rs2Player.getWorldLocation();
         long now = System.currentTimeMillis();
@@ -785,6 +827,18 @@ final class Rs2WalkerMovement {
         return true;
     }
 
+    static boolean isSceneCanvasClickable(WorldPoint worldPoint) {
+        LocalPoint localPoint = localPointForWorld(worldPoint);
+        if (localPoint == null || !Rs2Camera.isTileOnScreen(localPoint)) {
+            return false;
+        }
+        Point canvasPoint = Perspective.localToCanvas(
+                Microbot.getClient(),
+                localPoint,
+                Microbot.getClient().getTopLevelWorldView().getPlane());
+        return canvasPoint != null && canvasPoint.getX() >= 0 && canvasPoint.getY() >= 0;
+    }
+
     static LocalPoint localPointForWorld(WorldPoint worldPoint) {
         if (worldPoint == null) {
             return null;
@@ -857,12 +911,12 @@ final class Rs2WalkerMovement {
             clicked = clickRouteBackedShortWalk(rawPath, end, playerLoc,
                     directClickMaxDistance - 1, rawAnchorIndex);
         } else {
-            clicked = walkMiniMap(end);
+            clicked = walkFastCanvasOnScreenOnly(end, true);
             if (!clicked) {
-                clicked = walkMiniMapToward(end, playerLoc, directClickMaxDistance - 1);
+                clicked = walkMiniMap(end);
             }
             if (!clicked) {
-                clicked = walkFastCanvas(end);
+                clicked = walkMiniMapToward(end, playerLoc, directClickMaxDistance - 1);
             }
         }
         if (!clicked) {
@@ -919,6 +973,9 @@ final class Rs2WalkerMovement {
                                                      int maxEuclidean,
                                                      int rawAnchorIndex) {
         boolean directTargetInRange = shouldAttemptDirectMinimapTarget(end, playerLoc, maxEuclidean);
+        if (directTargetInRange && walkFastCanvasOnScreenOnly(end, true)) {
+            return true;
+        }
         if (directTargetInRange && walkMiniMap(end)) {
             return true;
         }
@@ -931,13 +988,17 @@ final class Rs2WalkerMovement {
                 rawPath, playerLoc, maxEuclidean, rawAnchorIndex);
         if (routeTarget != null
                 && !routeTarget.equals(playerLoc)
-                && !routeTarget.equals(end)
-                && walkMiniMap(routeTarget)) {
+                && !routeTarget.equals(end)) {
             if (directTargetInRange) {
                 log.debug("[Walker] Direct short-walk target {} was outside the minimap clip; continuing via route {}",
                         end, routeTarget);
             }
-            return true;
+            if (walkFastCanvasOnScreenOnly(routeTarget, true)) {
+                return true;
+            }
+            if (walkMiniMap(routeTarget)) {
+                return true;
+            }
         }
         return walkFastCanvasOnScreenOnly(end, true);
     }
