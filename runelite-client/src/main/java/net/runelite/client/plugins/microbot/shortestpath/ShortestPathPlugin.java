@@ -43,7 +43,6 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.events.PluginMessage;
 import net.runelite.client.game.SpriteManager;
-import net.runelite.client.input.KeyListener;
 import net.runelite.client.input.KeyManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
@@ -76,7 +75,6 @@ import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.Text;
 
 import java.awt.*;
-import java.awt.event.KeyEvent;
 import java.awt.geom.Ellipse2D;
 import java.awt.image.BufferedImage;
 import java.util.List;
@@ -94,9 +92,16 @@ import java.util.regex.Pattern;
         description = "Draws the shortest path to a chosen destination on the map (right click a spot on the world map to use)",
         tags = {"pathfinder", "map", "waypoint", "navigation", "microbot"},
         enabledByDefault = false,
+        version = "1.0.2",
         alwaysOn = true
 )
-public class ShortestPathPlugin extends Plugin implements KeyListener {
+public class ShortestPathPlugin extends Plugin {
+    private static final java.util.concurrent.atomic.AtomicLong pathRequestRevision = new java.util.concurrent.atomic.AtomicLong();
+
+    static void invalidatePendingPathfinding() {
+        pathRequestRevision.incrementAndGet();
+    }
+
     public static final String CONFIG_GROUP = "shortestpath";
     private static final String PLUGIN_MESSAGE_PATH = "path";
     private static final String PLUGIN_MESSAGE_CLEAR = "clear";
@@ -146,6 +151,9 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
 
     @Inject
     private ETAOverlayPanel etaOverlayPanel;
+
+    @Inject
+    private WalkingNoticeOverlay walkingNoticeOverlay;
 
     @Inject
     private SpriteManager spriteManager;
@@ -254,9 +262,10 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
         clientToolbar.addNavigation(pohNavButton);
 
         Rs2Walker.setConfig(config);
-        shortestPathScript = new ShortestPathScript();
+        shortestPathScript = new ShortestPathScript(this::setTarget, this::showWalkingNotice);
         shortestPathScript.run(config);
 
+        overlayManager.add(walkingNoticeOverlay);
         overlayManager.add(pathOverlay);
         overlayManager.add(pathMinimapOverlay);
         overlayManager.add(pathMapOverlay);
@@ -268,7 +277,8 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
         if (config.drawDebugPanel()) {
             overlayManager.add(debugOverlayPanel);
         }
-        keyManager.registerKeyListener(this);
+        keyManager.registerKeyListener(toggleWalkingHotkeyListener);
+        keyManager.registerKeyListener(clearCurrentPathHotkeyListener);
         keyManager.registerKeyListener(customLocationHotkeyListener);
         keyManager.registerKeyListener(bankHotkeyListener);
         keyManager.registerKeyListener(nearestBankHotkeyListener);
@@ -295,7 +305,8 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
         keyManager.unregisterKeyListener(nearestBankHotkeyListener);
         keyManager.unregisterKeyListener(bankHotkeyListener);
         keyManager.unregisterKeyListener(customLocationHotkeyListener);
-        keyManager.unregisterKeyListener(this);
+        keyManager.unregisterKeyListener(toggleWalkingHotkeyListener);
+        keyManager.unregisterKeyListener(clearCurrentPathHotkeyListener);
 
         // Flush any live-collision the last capture learned and stop the I/O thread.
         if (liveCollisionPersistence != null) {
@@ -306,6 +317,8 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
             liveCollisionPersistence = null;
         }
 
+        overlayManager.remove(walkingNoticeOverlay);
+        walkingNoticeOverlay.clear();
         overlayManager.remove(pathOverlay);
         overlayManager.remove(pathMinimapOverlay);
         overlayManager.remove(pathMapOverlay);
@@ -329,6 +342,7 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
 
     //Method from microbot
     public static void exit() {
+        invalidatePendingPathfinding();
         if (pathfindingExecutor != null) {
             Rs2Walker.clearWalkingRoute("shortest-path-plugin:exit");
             pathfindingExecutor.shutdownNow();
@@ -337,11 +351,14 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
     }
 
     public void restartPathfinding(WorldPoint start, Set<WorldPoint> ends, boolean canReviveFiltered) {
+        final long requestRevision = pathRequestRevision.incrementAndGet();
         ExecutorService executor;
         synchronized (pathfinderMutex) {
             if (pathfinder != null) {
                 pathfinder.cancel();
-                pathfinderFuture.cancel(true);
+                if (pathfinderFuture != null) {
+                    pathfinderFuture.cancel(true);
+                }
             }
 
             if ((executor = pathfindingExecutor) == null) {
@@ -354,12 +371,18 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
         final ExecutorService finalExecutor = executor;
         final long scheduleTime = System.currentTimeMillis();
         getClientThread().invokeLater(() -> {
+            if (pathRequestRevision.get() != requestRevision || finalExecutor.isShutdown()) {
+                return;
+            }
             long invokeLaterDelay = System.currentTimeMillis() - scheduleTime;
             long refreshStart = System.currentTimeMillis();
             pathfinderConfig.refresh();
             long refreshTime = System.currentTimeMillis() - refreshStart;
             pathfinderConfig.filterLocations(ends, canReviveFiltered);
             synchronized (pathfinderMutex) {
+                if (pathRequestRevision.get() != requestRevision || finalExecutor.isShutdown()) {
+                    return;
+                }
                 if (ends.isEmpty()) {
                     setTarget(null);
                 } else {
@@ -881,7 +904,8 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
         handlePendingLoginRefresh();
         refreshLiveCollision();
 
-        if (Rs2Walker.getCurrentTarget() != null) {
+        if ((shortestPathScript != null && !shortestPathScript.isWalkingEnabled())
+                || Rs2Walker.getCurrentTarget() != null) {
             return;
         }
 
@@ -1118,6 +1142,7 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
 
     private void setTargets(Set<WorldPoint> targets, boolean append) {
         if (targets == null || targets.isEmpty()) {
+            invalidatePendingPathfinding();
             synchronized (pathfinderMutex) {
                 if (pathfinder != null) {
                     pathfinder.cancel();
@@ -1372,32 +1397,45 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
         }
     }
 
-    @Override
-    public void keyTyped(KeyEvent e) {
-
+    private void showWalkingNotice(ShortestPathScript.ManualWalkingNotice notice) {
+        final ShortestPathScript source = shortestPathScript;
+        getClientThread().invokeLater(() -> {
+            if (source != shortestPathScript || panel == null || !Microbot.isLoggedIn()) {
+                return;
+            }
+            String message = WalkingNoticeOverlay.messageFor(notice, config.toggleWalkingHotkey());
+            client.addChatMessage(net.runelite.api.ChatMessageType.GAMEMESSAGE, "", message, "");
+            walkingNoticeOverlay.show(message);
+        });
     }
 
-    @Override
-    public void keyPressed(KeyEvent e) {
-        if (client == null || !Microbot.isLoggedIn())
-        {
-            return;
+    public void toggleManualWalking() {
+        if (shortestPathScript != null) {
+            shortestPathScript.toggleWalking();
+            final boolean enabled = shortestPathScript.isWalkingEnabled();
+            javax.swing.SwingUtilities.invokeLater(() -> {
+                if (panel != null) {
+                    panel.updateWalkingState(enabled);
+                }
+            });
         }
-        /**
-         * We took decided to avoid "ESC" as this conflicts with the
-         * osrs keybindings and closing the world map
-         * Therefor CTRL + X seemed a bit more robust and userfriendly
-         */
-        if (e.getKeyCode() == KeyEvent.VK_X && e.isControlDown()) {
-			shortestPathScript.setTriggerWalker(null, "hotkey:ctrl+x");
-            e.consume();
+    }
+
+    private final HotkeyListener toggleWalkingHotkeyListener = new HotkeyListener(() -> config.toggleWalkingHotkey()) {
+        @Override
+        public void hotkeyPressed() {
+            toggleManualWalking();
         }
-    }
+    };
 
-    @Override
-    public void keyReleased(KeyEvent e) {
-
-    }
+    private final HotkeyListener clearCurrentPathHotkeyListener = new HotkeyListener(() -> config.clearCurrentPathHotkey()) {
+        @Override
+        public void hotkeyPressed() {
+            if (shortestPathScript != null) {
+                shortestPathScript.setTriggerWalker(null, "hotkey:clear-current-path");
+            }
+        }
+    };
 
     private final HotkeyListener customLocationHotkeyListener = new HotkeyListener(() -> config.customLocationToggleHotkey()) {
         @Override

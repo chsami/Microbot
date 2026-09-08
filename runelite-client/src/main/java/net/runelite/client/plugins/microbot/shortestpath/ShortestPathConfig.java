@@ -3,10 +3,24 @@ package net.runelite.client.plugins.microbot.shortestpath;
 import net.runelite.client.config.*;
 
 import java.awt.*;
+import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
 
 @ConfigGroup(ShortestPathPlugin.CONFIG_GROUP)
-@ConfigInformation("Press 'CTRL + X' to stop the webwalker automatically.")
+@ConfigInformation("Toggle walking pauses/resumes manual walking. Clear current path removes the destination (default: Ctrl + X).")
 public interface ShortestPathConfig extends Config {
+    @ConfigItem(keyName = "toggleWalkingHotkey", name = "Toggle walking",
+            description = "Enable or disable manual automatic walking, keeping the destination and route.", position = -2)
+    default Keybind toggleWalkingHotkey() {
+        return Keybind.NOT_SET;
+    }
+
+    @ConfigItem(keyName = "clearCurrentPathHotkey", name = "Clear current path",
+            description = "Cancel walking and remove the current route and destination.", position = -1)
+    default Keybind clearCurrentPathHotkey() {
+        return new Keybind(KeyEvent.VK_X, InputEvent.CTRL_DOWN_MASK);
+    }
+
     /* ------------------------------------------------------------------
      * Hotkeys — stored as config values but bound/displayed inline on
      * each side-panel category card (see ShortestPathPanel). Marked

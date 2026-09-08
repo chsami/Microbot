@@ -69,6 +69,7 @@ public class ShortestPathPanel extends PluginPanel
 	private final ShortestPathConfig config;
 	private final ConfigManager configManager;
 
+	private final JButton walkingToggleButton = new JButton("Automatic walking: ON");
 	private JTextField xField, yField, zField;
 	private JComboBox<BankLocation> bankComboBox;
 	private JComboBox<DepositBoxLocation> depositBoxComboBox;
@@ -102,6 +103,16 @@ public class ShortestPathPanel extends PluginPanel
 		setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
 		setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
+        walkingToggleButton.addActionListener(e -> plugin.toggleManualWalking());
+        walkingToggleButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        add(walkingToggleButton);
+        add(createHotkeyRow("toggleWalkingHotkey", config.toggleWalkingHotkey(), "Toggle automatic walking; keep the route."));
+        JButton clearPathButton = new JButton("Clear current path");
+        clearPathButton.addActionListener(e -> stopWalking());
+        clearPathButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        add(clearPathButton);
+        add(createHotkeyRow("clearCurrentPathHotkey", config.clearCurrentPathHotkey(), "Clear the destination and route."));
+        add(Box.createRigidArea(new Dimension(0, 10)));
 		add(createCustomLocationPanel());
 		add(Box.createRigidArea(new Dimension(0, 10)));
 		add(createBankPanel());
@@ -118,6 +129,11 @@ public class ShortestPathPanel extends PluginPanel
 		add(Box.createRigidArea(new Dimension(0, 10)));
 		add(createHunterCreaturePanel());
 	}
+
+    void updateWalkingState(boolean enabled)
+    {
+        walkingToggleButton.setText("Automatic walking: " + (enabled ? "ON" : "OFF"));
+    }
 
 	private Border createCenteredTitledBorder(String title, String iconPath)
 	{
