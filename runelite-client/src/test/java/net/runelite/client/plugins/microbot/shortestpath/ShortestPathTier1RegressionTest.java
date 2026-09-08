@@ -223,7 +223,7 @@ public class ShortestPathTier1RegressionTest {
 
     @Test
     public void bug5_loggedInSetsPendingRefresh() {
-        ShortestPathPlugin plugin = new ShortestPathPlugin();
+        ShortestPathPlugin plugin = new ShortestPathPlugin(mock(WalkingNoticeOverlay.class));
         assertFalse("new plugin starts without pending refresh", plugin.pendingLoginRefresh);
 
         plugin.onGameStateChanged(gameStateEvent(GameState.LOGGED_IN));
@@ -233,7 +233,7 @@ public class ShortestPathTier1RegressionTest {
 
     @Test
     public void bug5_nonLoggedInStatesDoNotSetFlag() {
-        ShortestPathPlugin plugin = new ShortestPathPlugin();
+        ShortestPathPlugin plugin = new ShortestPathPlugin(mock(WalkingNoticeOverlay.class));
 
         for (GameState s : new GameState[]{
                 GameState.LOGIN_SCREEN,
@@ -249,7 +249,7 @@ public class ShortestPathTier1RegressionTest {
 
     @Test
     public void bug5_pendingRefreshConsumedExactlyOncePerLogin() {
-        ShortestPathPlugin plugin = new ShortestPathPlugin();
+        ShortestPathPlugin plugin = new ShortestPathPlugin(mock(WalkingNoticeOverlay.class));
         PathfinderConfig cfg = mock(PathfinderConfig.class);
         ShortestPathPlugin.pathfinderConfig = cfg;
 
@@ -264,7 +264,7 @@ public class ShortestPathTier1RegressionTest {
 
     @Test
     public void bug5_nullConfigLeavesFlagSoRefreshHappensWhenConfigArrives() {
-        ShortestPathPlugin plugin = new ShortestPathPlugin();
+        ShortestPathPlugin plugin = new ShortestPathPlugin(mock(WalkingNoticeOverlay.class));
         ShortestPathPlugin.pathfinderConfig = null;
         plugin.pendingLoginRefresh = true;
 
@@ -276,7 +276,7 @@ public class ShortestPathTier1RegressionTest {
 
     @Test
     public void bug5_refreshExceptionLeavesFlagSetForNextTickRetry() {
-        ShortestPathPlugin plugin = new ShortestPathPlugin();
+        ShortestPathPlugin plugin = new ShortestPathPlugin(mock(WalkingNoticeOverlay.class));
         PathfinderConfig cfg = mock(PathfinderConfig.class);
         org.mockito.Mockito.doThrow(new RuntimeException("boom")).when(cfg).refresh();
         ShortestPathPlugin.pathfinderConfig = cfg;
@@ -291,7 +291,7 @@ public class ShortestPathTier1RegressionTest {
 
     @Test
     public void bug5_multipleLoginTransitionsEachRefreshOnce() {
-        ShortestPathPlugin plugin = new ShortestPathPlugin();
+        ShortestPathPlugin plugin = new ShortestPathPlugin(mock(WalkingNoticeOverlay.class));
         PathfinderConfig cfg = mock(PathfinderConfig.class);
         ShortestPathPlugin.pathfinderConfig = cfg;
 
@@ -309,7 +309,7 @@ public class ShortestPathTier1RegressionTest {
 
     @Test
     public void bug5_handleRefreshWhenFlagClearDoesNothing() {
-        ShortestPathPlugin plugin = new ShortestPathPlugin();
+        ShortestPathPlugin plugin = new ShortestPathPlugin(mock(WalkingNoticeOverlay.class));
         PathfinderConfig cfg = mock(PathfinderConfig.class);
         ShortestPathPlugin.pathfinderConfig = cfg;
         plugin.pendingLoginRefresh = false;
