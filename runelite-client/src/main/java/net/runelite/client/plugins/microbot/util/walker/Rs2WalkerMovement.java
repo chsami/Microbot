@@ -118,9 +118,7 @@ import static net.runelite.client.plugins.microbot.util.walker.Rs2WalkerTranspor
 @lombok.extern.slf4j.Slf4j
 final class Rs2WalkerMovement {
 
-    private static WorldPoint routeClickSessionTarget;
-    private static int routeClicksSinceMinimap;
-    private static int nextMinimapClickAt = ThreadLocalRandom.current().nextInt(4, 8);
+    private static final int ROUTE_MINIMAP_CLICK_CHANCE_PERCENT = 30;
 
     private Rs2WalkerMovement() {
     }
@@ -318,18 +316,12 @@ final class Rs2WalkerMovement {
         if (target == null || playerLoc == null || target.equals(playerLoc)) {
             return null;
         }
-        if (!Objects.equals(routeClickSessionTarget, Rs2Walker.getCurrentTarget())) {
-            routeClickSessionTarget = Rs2Walker.getCurrentTarget();
-            routeClicksSinceMinimap = 0;
-            nextMinimapClickAt = ThreadLocalRandom.current().nextInt(4, 8);
-        }
-        routeClicksSinceMinimap++;
-        boolean occasionalMinimap = routeClicksSinceMinimap >= nextMinimapClickAt;
-        if (occasionalMinimap && walkMiniMap(target)) {
-            routeClicksSinceMinimap = 0;
-            nextMinimapClickAt = ThreadLocalRandom.current().nextInt(4, 8);
-            WebWalkLog.spDebug("route_minimap_click | to={} player={} cadence={}",
-                    compactWorldPoint(target), compactWorldPoint(playerLoc), nextMinimapClickAt);
+        boolean tryMinimapFirst = ThreadLocalRandom.current().nextInt(100)
+                < ROUTE_MINIMAP_CLICK_CHANCE_PERCENT;
+        if (tryMinimapFirst && walkMiniMap(target)) {
+            WebWalkLog.spDebug("route_minimap_click | to={} player={} chance={}%",
+                    compactWorldPoint(target), compactWorldPoint(playerLoc),
+                    ROUTE_MINIMAP_CLICK_CHANCE_PERCENT);
             return target;
         }
         WorldPoint sceneFallback = walkRawPathSceneTargetToward(rawPath, target, playerLoc,
