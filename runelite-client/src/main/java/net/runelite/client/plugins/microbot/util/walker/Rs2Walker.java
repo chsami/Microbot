@@ -124,7 +124,7 @@ public class Rs2Walker {
     private static long routeCameraTurnGeneration;
     private static long nextRouteCameraVariationAtNanos;
     private static int routeCameraYawOffsetDegrees;
-    private static int routeCameraPitch = 280;
+    private static int routeCameraPitch = 300;
     private static int routeCameraYawKey;
     private static int routeCameraPitchKey;
 
@@ -7964,22 +7964,23 @@ public class Rs2Walker {
             }
             int worldAngle = Math.floorMod((int) Math.round(Math.toDegrees(Math.atan2(
                     walkTarget.getY() - playerLoc.getY(), walkTarget.getX() - playerLoc.getX()))), 360);
+            // Rs2Camera returns legacy pitch units (128-383), not degrees.
             int startPitch = Rs2Camera.getPitch();
             boolean varyView = nextRouteCameraVariationAtNanos == 0L || now >= nextRouteCameraVariationAtNanos;
             if (varyView) {
                 java.util.concurrent.ThreadLocalRandom random = java.util.concurrent.ThreadLocalRandom.current();
-                routeCameraYawOffsetDegrees = random.nextInt(-8, 9);
-                int pitchStep = random.nextInt(12, 29) * (random.nextBoolean() ? 1 : -1);
-                int pitchBase = Math.max(245, Math.min(335, startPitch));
-                if (pitchBase + pitchStep < 245 || pitchBase + pitchStep > 335) {
-                    pitchStep = -pitchStep;
-                }
-                routeCameraPitch = pitchBase + pitchStep;
-                nextRouteCameraVariationAtNanos = now + random.nextLong(10_000_000_000L, 18_000_000_001L);
+                routeCameraYawOffsetDegrees = random.nextInt(-12, 13);
+                // Use intermediate inclinations without returning to the overhead view.
+                do {
+                    routeCameraPitch = random.nextInt(210, 326);
+                } while (Math.abs(routeCameraPitch - startPitch) < 24);
+                WebWalkLog.spDebug("route_camera_pitch | from={} target={}", startPitch, routeCameraPitch);
+                nextRouteCameraVariationAtNanos = now + random.nextLong(5_000_000_000L, 10_000_000_001L);
             }
             int viewAngle = Math.floorMod(worldAngle + routeCameraYawOffsetDegrees, 360);
             int cameraAngle = Math.floorMod(viewAngle - 90, 360);
-            if (!varyView && Math.abs(Rs2Camera.getAngleTo(cameraAngle)) < 20) {
+            if (!varyView && Math.abs(Rs2Camera.getAngleTo(cameraAngle)) < 20
+                    && Math.abs(routeCameraPitch - startPitch) <= 4) {
                 return;
             }
             releaseRouteCameraKeys();
@@ -8019,6 +8020,8 @@ public class Rs2Walker {
                     }
                     int pitchRemaining = pitchTarget - Rs2Camera.getPitch();
                     if (routeCameraPitchKey != 0 && (Math.abs(pitchRemaining) <= 4 || Integer.signum(pitchRemaining) != pitchDirection)) {
+                        WebWalkLog.spDebug("route_camera_pitch_reached | actual={} target={}",
+                                Rs2Camera.getPitch(), pitchTarget);
                         Rs2Keyboard.keyRelease(routeCameraPitchKey);
                         routeCameraPitchKey = 0;
                     }

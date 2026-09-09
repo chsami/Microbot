@@ -120,7 +120,7 @@ final class Rs2WalkerMovement {
 
     private static WorldPoint routeClickSessionTarget;
     private static int routeClicksSinceMinimap;
-    private static int nextMinimapClickAt = ThreadLocalRandom.current().nextInt(4, 8);
+    private static int nextMinimapClickAt = ThreadLocalRandom.current().nextInt(2, 8);
 
     private Rs2WalkerMovement() {
     }
@@ -321,13 +321,12 @@ final class Rs2WalkerMovement {
         if (!Objects.equals(routeClickSessionTarget, Rs2Walker.getCurrentTarget())) {
             routeClickSessionTarget = Rs2Walker.getCurrentTarget();
             routeClicksSinceMinimap = 0;
-            nextMinimapClickAt = ThreadLocalRandom.current().nextInt(4, 8);
+            nextMinimapClickAt = ThreadLocalRandom.current().nextInt(2, 8);
         }
-        routeClicksSinceMinimap++;
         boolean tryMinimapFirst = routeClicksSinceMinimap >= nextMinimapClickAt;
         if (tryMinimapFirst && walkMiniMap(target)) {
             routeClicksSinceMinimap = 0;
-            nextMinimapClickAt = ThreadLocalRandom.current().nextInt(4, 8);
+            nextMinimapClickAt = ThreadLocalRandom.current().nextInt(2, 8);
             WebWalkLog.spDebug("route_minimap_click | to={} player={} cadence={}",
                     compactWorldPoint(target), compactWorldPoint(playerLoc), nextMinimapClickAt);
             return target;
@@ -335,22 +334,27 @@ final class Rs2WalkerMovement {
         WorldPoint sceneFallback = walkRawPathSceneTargetToward(rawPath, target, playerLoc,
                 maxEuclidean, rawAnchorIndex);
         if (sceneFallback != null) {
+            routeClicksSinceMinimap++;
             return sceneFallback;
         }
         if (walkFastCanvasOnScreenOnly(target, true)) {
+            routeClicksSinceMinimap++;
             WebWalkLog.spDebug("route_scene_click | to={} player={}",
                     compactWorldPoint(target), compactWorldPoint(playerLoc));
             return target;
         }
         if (walkMiniMap(target)) {
+            routeClicksSinceMinimap = 0;
             return target;
         }
         WorldPoint rawFallback = walkRawPathMiniMapTargetToward(rawPath, target, playerLoc,
                 maxEuclidean, rawAnchorIndex);
         if (rawFallback != null) {
+            routeClicksSinceMinimap = 0;
             return rawFallback;
         }
         if (allowDirectionalFallback && walkMiniMapToward(target, playerLoc, maxEuclidean)) {
+            routeClicksSinceMinimap = 0;
             return target;
         }
         return null;
