@@ -763,13 +763,24 @@ final class Rs2WalkerMovement {
                 break;
             }
         }
-        return WalkerPathGeometry.findFurthestRawPathPointMatching(rawPath.subList(0, end), playerLoc,
+        WorldPoint furthest = WalkerPathGeometry.findFurthestRawPathPointMatching(rawPath.subList(0, end), playerLoc,
                 sceneReach, anchor,
                 candidate -> !candidate.equals(playerLoc)
                         && reachable.containsKey(candidate)
                         && isKnownWalkableOrUnloaded(candidate)
                         && isSceneCanvasClickable(candidate),
                 ROUTE_PROGRESS_FORWARD_SEARCH_TILES, () -> anchor, reachable, sceneReach + 2);
+        if (furthest == null || furthest.distanceTo2D(playerLoc) < 8) return furthest;
+        int furthestIndex = rawPath.subList(0, end).lastIndexOf(furthest);
+        List<WorldPoint> choices = new ArrayList<>();
+        choices.add(furthest);
+        for (int i = Math.max(anchor + 1, furthestIndex - 2); i < furthestIndex; i++) {
+            WorldPoint candidate = rawPath.get(i);
+            if (candidate.distanceTo2D(playerLoc) >= furthest.distanceTo2D(playerLoc) - 2
+                    && reachable.containsKey(candidate) && isKnownWalkableOrUnloaded(candidate)
+                    && isSceneCanvasClickable(candidate)) choices.add(candidate);
+        }
+        return choices.get(ThreadLocalRandom.current().nextInt(choices.size()));
     }
 
     static boolean shouldIssueActiveRouteIdleNudge() {
