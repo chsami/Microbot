@@ -2442,7 +2442,7 @@ public class Rs2Bank {
         if (Rs2Bank.isOpen()) return true;
         Rs2Player.toggleRunEnergy(toggleRun);
         Microbot.status = "Walking to nearest bank " + bankLocation.toString();
-        Rs2Walker.walkUntil(bankLocation.getWorldPoint(), 1, () -> readyBankObject(bankLocation) != null);
+        walkUntilBankReady(bankLocation);
         return readyBankObject(bankLocation) != null
                 || bankLocation.getWorldPoint().distanceTo(Rs2Player.getWorldLocation()) <= 4;
     }
@@ -2511,27 +2511,11 @@ public class Rs2Bank {
         Microbot.status = "Walking to nearest bank " + bankLocation.toString();
         boolean result = readyBankObject(bankLocation) != null;
         if (!result) {
-            Rs2Walker.walkUntil(bankLocation.getWorldPoint(), 1, () -> readyBankObject(bankLocation) != null);
+            walkUntilBankReady(bankLocation);
         }
         TileObject ready = readyBankObject(bankLocation);
         if (ready != null) return openBank(ready);
         return Rs2Bank.openBank();
-    }
-
-    private static TileObject readyBankObject(BankLocation bankLocation) {
-        WorldPoint player = Rs2Player.getWorldLocation();
-        if (player == null || player.distanceTo(bankLocation.getWorldPoint()) > 24) return null;
-        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
-            TileObject[] candidates = {Rs2GameObject.findBank(), Rs2GameObject.findGrandExchangeBooth()};
-            for (TileObject candidate : candidates) {
-                if (candidate instanceof GameObject
-                        && candidate.getWorldLocation().distanceTo(bankLocation.getWorldPoint()) <= 12
-                        && net.runelite.client.plugins.microbot.util.walker.Rs2InteractionApproach.isReady((GameObject) candidate)) {
-                    return candidate;
-                }
-            }
-            return (TileObject) null;
-        }).orElse(null);
     }
 
     /**
@@ -3555,5 +3539,25 @@ public class Rs2Bank {
             }
         }
         return anyLocked;
+    }
+
+    private static void walkUntilBankReady(BankLocation bankLocation) {
+        Rs2Walker.walkUntil(bankLocation.getWorldPoint(), 1, () -> readyBankObject(bankLocation) != null);
+    }
+
+    private static TileObject readyBankObject(BankLocation bankLocation) {
+        WorldPoint player = Rs2Player.getWorldLocation();
+        if (player == null || player.distanceTo(bankLocation.getWorldPoint()) > 24) return null;
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            TileObject[] candidates = {Rs2GameObject.findBank(), Rs2GameObject.findGrandExchangeBooth()};
+            for (TileObject candidate : candidates) {
+                if (candidate instanceof GameObject
+                        && candidate.getWorldLocation().distanceTo(bankLocation.getWorldPoint()) <= 12
+                        && net.runelite.client.plugins.microbot.util.walker.Rs2InteractionApproach.isReady((GameObject) candidate)) {
+                    return candidate;
+                }
+            }
+            return (TileObject) null;
+        }).orElse(null);
     }
 }

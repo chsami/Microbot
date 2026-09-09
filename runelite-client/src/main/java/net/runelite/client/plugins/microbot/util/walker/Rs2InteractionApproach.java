@@ -18,7 +18,7 @@ public final class Rs2InteractionApproach {
             WorldPoint player = Rs2Player.getWorldLocation();
             WorldPoint target = object.getWorldLocation();
             if (!withinRange(player, target)
-                    || !Rs2Camera.isTileOnScreen(object.getLocalLocation())) return false;
+                    || !Rs2Camera.isTileOnScreen(object)) return false;
             Rs2WorldPoint approach = Rs2Tile.getNearestWalkableTile(object);
             // Collision-aware local distance excludes closed doors and walls.
             return approach != null && approach.distanceToPath(player) <= 16;
