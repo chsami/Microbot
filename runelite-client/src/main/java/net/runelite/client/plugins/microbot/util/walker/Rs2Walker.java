@@ -120,6 +120,14 @@ public class Rs2Walker {
     public static ShortestPathConfig config;
     // stuck/movement tracking state migrated to WalkerRouteState (see routeState)
     static volatile WorldPoint currentTarget;
+    private static long lastRouteCameraAlignAtNanos;
+    private static long routeCameraTurnGeneration;
+    private static long nextRouteCameraVariationAtNanos;
+    private static int routeCameraYawOffsetDegrees;
+    private static int routeCameraPitch = 300;
+    private static int routeCameraYawKey;
+    private static int routeCameraPitchKey;
+
     /** The active walk's configured finish distance — the goal-object guard needs it outside processWalk. */
     static volatile int currentWalkDistance;
     static int nextWalkingDistance = 10;
@@ -164,7 +172,7 @@ public class Rs2Walker {
 	static final int ROUTE_CLICK_REACH_MIN_TILES = 7;
 	static final int INTERIM_PRECLICK_TILES = 6;
 	static final int INTERIM_RUN_PRECLICK_TILES = 8;
-	private static final int INTERIM_MOVING_POLL_MS = 450;
+	private static final int INTERIM_MOVING_POLL_MS = 200;
 	static final long INTERIM_PROGRESS_TIMEOUT_MS = 2500L;
 	/**
 	 * How much further than its closest approach the player may get from an interim checkpoint before
@@ -172,7 +180,7 @@ public class Rs2Walker {
 	 */
 	static final int INTERIM_ABANDON_MARGIN_TILES = 4;
 	static final long INTERIM_MAX_AGE_MS = 10_000L;
-	private static final long INTERIM_RETARGET_COOLDOWN_MS = 900L;
+	static final long INTERIM_RETARGET_COOLDOWN_MS = 900L;
     private static final long ROUTE_PROGRESS_STALL_GRACE_MS = 4_000L;
     private static final long OFF_PATH_RECALC_RECENT_MOVEMENT_MS = 2_000L;
     private static final long OFF_PATH_RECALC_ROUTE_PROGRESS_GRACE_MS = 3_500L;
@@ -259,8 +267,8 @@ public class Rs2Walker {
      * genuinely still (not moving/animating/interacting) on the same tile, and
      * {@link #ACTIVE_ROUTE_IDLE_NUDGE_COOLDOWN_MS} still prevents click spam.
      */
-    static final long ACTIVE_ROUTE_IDLE_NUDGE_MS = 1_200L;
-	static final long ACTIVE_ROUTE_IDLE_NUDGE_COOLDOWN_MS = 2_000L;
+    static final long ACTIVE_ROUTE_IDLE_NUDGE_MS = 750L;
+	static final long ACTIVE_ROUTE_IDLE_NUDGE_COOLDOWN_MS = 1_200L;
     /**
      * How long after a door-recovery-suppressed tick the idle nudge stays disabled. Rolling — the suppress
      * branch re-stamps it every tick the door stays unresolved, so the nudge is held off for the whole
@@ -2859,7 +2867,7 @@ public class Rs2Walker {
 					WorldPoint interim = routeState.interimTargetWp;
 					if (interim != null && interim.getPlane() == playerLoc.getPlane()) {
 						int interimDist = interim.distanceTo2D(playerLoc);
-						if (interimDist > INTERIM_CLOSE_TILES) {
+						if (interimDist > interimPreclickTiles()) {
 							final WorldPoint interimFinal = interim;
 							// If we're already moving toward the interim checkpoint, just wait until
 							// we get close. If we've stopped (no movement), re-click the same interim
@@ -2892,7 +2900,7 @@ public class Rs2Walker {
 									routeState.stuckCount = 0;
 								}
                                 boolean closeEnoughForNextClick = posAfterWait != null
-                                        && interimFinal.distanceTo2D(posAfterWait) <= INTERIM_CLOSE_TILES;
+                                        && interimFinal.distanceTo2D(posAfterWait) <= interimPreclickTiles();
                                 if (!closeEnoughForNextClick && Rs2Player.isMoving()) {
                                     exit = WalkExit.INTERIM_IN_FLIGHT_CLICK;
                                     walkerDiag("interim-in-flight interim=%s interimDist=%d player=%s moving=true",
@@ -3041,7 +3049,7 @@ public class Rs2Walker {
                     lastAttemptedMinimapClickOk = clicked;
                     lastAttemptedMinimapClickAtMs = nowMs;
                     if (clicked) {
-                        markFirstMovementClick("first_minimap_click", target, posBefore,
+                        markFirstMovementClick("first_route_click", target, posBefore,
                                 "to=" + compactWorldPoint(clickedTarget));
                         hintRouteProgressIndex(path,
                                 Math.min(targetIdx, i + INTERIM_CLOSE_TILES),
@@ -3054,7 +3062,7 @@ public class Rs2Walker {
                         routeState.interimLastDistanceToTarget = distanceToInterimOrMax(clickedTarget, posBefore);
 						routeState.interimLastRetargetAtMs = nowMs;
 
-                        final WorldPoint b = targetWp;
+                        final WorldPoint b = clickedTarget;
                         final WorldPoint before = posBefore;
                         // Proximity-primary wake: let each click cover most of its distance
                         // before re-clicking, like a human. The progress cap is a safety net
@@ -3649,6 +3657,7 @@ public class Rs2Walker {
         if (!disableWalkerUpdate && !Rs2MiniMap.isPointInsideMinimap(point)) return false;
 
         Microbot.getMouse().click(point);
+        alignCameraTowardWalkTarget(worldPoint);
         return true;
     }
 
@@ -7921,5 +7930,108 @@ public class Rs2Walker {
 
     static boolean isMiniMapRecoveryClickable(WorldPoint worldPoint) {
         return isMiniMapClickable(worldPoint);
+    }
+
+    private static void releaseRouteCameraKeys() {
+        if (routeCameraYawKey != 0) {
+            Rs2Keyboard.keyRelease(routeCameraYawKey);
+            routeCameraYawKey = 0;
+        }
+        if (routeCameraPitchKey != 0) {
+            Rs2Keyboard.keyRelease(routeCameraPitchKey);
+            routeCameraPitchKey = 0;
+        }
+    }
+
+    static void alignCameraTowardWalkTarget(WorldPoint walkTarget) {
+        WorldPoint routeTarget = currentTarget;
+        if (walkTarget == null || routeTarget == null) {
+            return;
+        }
+        // Rotate after issuing the click so the camera cannot invalidate its canvas position.
+        Microbot.getClientThread().invokeLater(() -> {
+            if (!routeTarget.equals(currentTarget) || Microbot.getClient().getLocalPlayer() == null
+                    || Microbot.getClient().getGameState() != GameState.LOGGED_IN) {
+                return;
+            }
+            WorldPoint playerLoc = Microbot.getClient().getLocalPlayer().getWorldLocation();
+            if (playerLoc.getPlane() != walkTarget.getPlane() || playerLoc.distanceTo2D(walkTarget) < 4) {
+                return;
+            }
+            long now = System.nanoTime();
+            if (lastRouteCameraAlignAtNanos != 0L && now - lastRouteCameraAlignAtNanos < 1_200_000_000L) {
+                return;
+            }
+            int worldAngle = Math.floorMod((int) Math.round(Math.toDegrees(Math.atan2(
+                    walkTarget.getY() - playerLoc.getY(), walkTarget.getX() - playerLoc.getX()))), 360);
+            // Rs2Camera returns legacy pitch units (128-383), not degrees.
+            int startPitch = Rs2Camera.getPitch();
+            boolean varyView = nextRouteCameraVariationAtNanos == 0L || now >= nextRouteCameraVariationAtNanos;
+            if (varyView) {
+                java.util.concurrent.ThreadLocalRandom random = java.util.concurrent.ThreadLocalRandom.current();
+                routeCameraYawOffsetDegrees = random.nextInt(-12, 13);
+                // Use intermediate inclinations without returning to the overhead view.
+                do {
+                    routeCameraPitch = random.nextInt(210, 326);
+                } while (Math.abs(routeCameraPitch - startPitch) < 24);
+                WebWalkLog.spDebug("route_camera_pitch | from={} target={}", startPitch, routeCameraPitch);
+                nextRouteCameraVariationAtNanos = now + random.nextLong(5_000_000_000L, 10_000_000_001L);
+            }
+            int viewAngle = Math.floorMod(worldAngle + routeCameraYawOffsetDegrees, 360);
+            int cameraAngle = Math.floorMod(viewAngle - 90, 360);
+            if (!varyView && Math.abs(Rs2Camera.getAngleTo(cameraAngle)) < 20
+                    && Math.abs(routeCameraPitch - startPitch) <= 4) {
+                return;
+            }
+            releaseRouteCameraKeys();
+            int yawDirection = Integer.signum(Rs2Camera.getAngleTo(cameraAngle));
+            int pitchTarget = routeCameraPitch;
+            int pitchDirection = Integer.signum(pitchTarget - startPitch);
+            long generation = ++routeCameraTurnGeneration;
+            boolean[] started = {false};
+            Microbot.getClientThread().invokeLater(() -> {
+                if (generation != routeCameraTurnGeneration) {
+                    return true;
+                }
+                if (!routeTarget.equals(currentTarget)
+                        || Microbot.getClient().getGameState() != GameState.LOGGED_IN
+                        || Microbot.getClient().getLocalPlayer() == null
+                        || Microbot.getClient().getLocalPlayer().getWorldLocation().getPlane() != walkTarget.getPlane()
+                        || System.nanoTime() - now > 5_000_000_000L) {
+                    releaseRouteCameraKeys();
+                    return true;
+                }
+                try {
+                    if (!started[0]) {
+                        started[0] = true;
+                        if (Math.abs(Rs2Camera.getAngleTo(cameraAngle)) > 5) {
+                            routeCameraYawKey = yawDirection > 0 ? java.awt.event.KeyEvent.VK_LEFT : java.awt.event.KeyEvent.VK_RIGHT;
+                            Rs2Keyboard.keyHold(routeCameraYawKey);
+                        }
+                        if (Math.abs(pitchTarget - Rs2Camera.getPitch()) > 4) {
+                            routeCameraPitchKey = pitchDirection > 0 ? java.awt.event.KeyEvent.VK_UP : java.awt.event.KeyEvent.VK_DOWN;
+                            Rs2Keyboard.keyHold(routeCameraPitchKey);
+                        }
+                    }
+                    int yawRemaining = Rs2Camera.getAngleTo(cameraAngle);
+                    if (routeCameraYawKey != 0 && (Math.abs(yawRemaining) <= 5 || Integer.signum(yawRemaining) != yawDirection)) {
+                        Rs2Keyboard.keyRelease(routeCameraYawKey);
+                        routeCameraYawKey = 0;
+                    }
+                    int pitchRemaining = pitchTarget - Rs2Camera.getPitch();
+                    if (routeCameraPitchKey != 0 && (Math.abs(pitchRemaining) <= 4 || Integer.signum(pitchRemaining) != pitchDirection)) {
+                        WebWalkLog.spDebug("route_camera_pitch_reached | actual={} target={}",
+                                Rs2Camera.getPitch(), pitchTarget);
+                        Rs2Keyboard.keyRelease(routeCameraPitchKey);
+                        routeCameraPitchKey = 0;
+                    }
+                    return routeCameraYawKey == 0 && routeCameraPitchKey == 0;
+                } catch (RuntimeException e) {
+                    releaseRouteCameraKeys();
+                    throw e;
+                }
+            });
+            lastRouteCameraAlignAtNanos = now;
+        });
     }
 }

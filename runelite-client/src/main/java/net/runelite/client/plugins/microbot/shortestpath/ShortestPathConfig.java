@@ -408,6 +408,17 @@ public interface ShortestPathConfig extends Config {
     }
 
     @ConfigItem(
+            keyName = "usePortalNexus",
+            name = "Use Portal Nexus",
+            description = "Include Portal Nexus destinations saved in PoH Web Config. Requires Player-owned-house Teleports.",
+            position = 24,
+            section = sectionSettings
+    )
+    default boolean usePortalNexus() {
+        return true;
+    }
+
+    @ConfigItem(
             keyName = "cancelInstead",
             name = "Cancel instead of recalculating",
             description = "Whether the path should be cancelled rather than recalculated " +

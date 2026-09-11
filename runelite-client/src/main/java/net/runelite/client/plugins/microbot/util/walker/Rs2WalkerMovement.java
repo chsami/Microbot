@@ -97,6 +97,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
@@ -116,6 +117,10 @@ import static net.runelite.client.plugins.microbot.util.walker.Rs2WalkerTranspor
  */
 @lombok.extern.slf4j.Slf4j
 final class Rs2WalkerMovement {
+
+    private static WorldPoint routeClickSessionTarget;
+    private static int routeClicksSinceMinimap;
+    private static int nextMinimapClickAt = ThreadLocalRandom.current().nextInt(2, 8);
 
     private Rs2WalkerMovement() {
     }
@@ -313,16 +318,62 @@ final class Rs2WalkerMovement {
         if (target == null || playerLoc == null || target.equals(playerLoc)) {
             return null;
         }
+        if (!Objects.equals(routeClickSessionTarget, Rs2Walker.getCurrentTarget())) {
+            routeClickSessionTarget = Rs2Walker.getCurrentTarget();
+            routeClicksSinceMinimap = 0;
+            nextMinimapClickAt = ThreadLocalRandom.current().nextInt(2, 8);
+        }
+        boolean tryMinimapFirst = routeClicksSinceMinimap >= nextMinimapClickAt;
+        if (tryMinimapFirst && walkMiniMap(target)) {
+            routeClicksSinceMinimap = 0;
+            nextMinimapClickAt = ThreadLocalRandom.current().nextInt(2, 8);
+            WebWalkLog.spDebug("route_minimap_click | to={} player={} cadence={}",
+                    compactWorldPoint(target), compactWorldPoint(playerLoc), nextMinimapClickAt);
+            return target;
+        }
+        WorldPoint sceneFallback = walkRawPathSceneTargetToward(rawPath, target, playerLoc,
+                maxEuclidean, rawAnchorIndex);
+        if (sceneFallback != null) {
+            routeClicksSinceMinimap++;
+            return sceneFallback;
+        }
+        if (walkFastCanvasOnScreenOnly(target, true)) {
+            routeClicksSinceMinimap++;
+            WebWalkLog.spDebug("route_scene_click | to={} player={}",
+                    compactWorldPoint(target), compactWorldPoint(playerLoc));
+            return target;
+        }
         if (walkMiniMap(target)) {
+            routeClicksSinceMinimap = 0;
             return target;
         }
         WorldPoint rawFallback = walkRawPathMiniMapTargetToward(rawPath, target, playerLoc,
                 maxEuclidean, rawAnchorIndex);
         if (rawFallback != null) {
+            routeClicksSinceMinimap = 0;
             return rawFallback;
         }
         if (allowDirectionalFallback && walkMiniMapToward(target, playerLoc, maxEuclidean)) {
+            routeClicksSinceMinimap = 0;
             return target;
+        }
+        return null;
+    }
+
+    static WorldPoint walkRawPathSceneTargetToward(List<WorldPoint> rawPath,
+                                                           WorldPoint target,
+                                                           WorldPoint playerLoc,
+                                                           int maxEuclidean,
+                                                           int rawAnchorIndex) {
+        WorldPoint fallback = findFurthestSceneKnownRawPathPoint(rawPath, playerLoc,
+                maxEuclidean, rawAnchorIndex);
+        if (fallback == null || fallback.equals(playerLoc) || fallback.equals(target)) {
+            return null;
+        }
+        if (walkFastCanvasOnScreenOnly(fallback, true)) {
+            WebWalkLog.spDebug("route_scene_click_fallback | to={} requested={} player={}",
+                    compactWorldPoint(fallback), compactWorldPoint(target), compactWorldPoint(playerLoc));
+            return fallback;
         }
         return null;
     }
@@ -668,6 +719,70 @@ final class Rs2WalkerMovement {
                         && isMiniMapClickable(candidate));
     }
 
+    static WorldPoint findFurthestSceneKnownRawPathPoint(List<WorldPoint> rawPath,
+                                                         WorldPoint playerLoc,
+                                                         int maxEuclidean,
+                                                         int rawAnchorIndex) {
+        // Batch the bounded scene scan instead of waiting for a client frame per object/tile.
+        return Microbot.getClientThread().runOnClientThreadOptional(() ->
+                findFurthestScenePointOnClientThread(rawPath, playerLoc, rawAnchorIndex)).orElse(null);
+    }
+
+    private static WorldPoint findFurthestScenePointOnClientThread(List<WorldPoint> rawPath,
+                                                                 WorldPoint playerLoc,
+                                                                 int rawAnchorIndex) {
+        if (rawPath == null || rawPath.isEmpty() || playerLoc == null) {
+            return null;
+        }
+
+        // Scene reach is independent of minimap zoom and near-checkpoint click jitter.
+        final int sceneReach = 32;
+        Map<WorldPoint, Integer> reachable = Rs2Tile.getReachableTilesFromTile(playerLoc, sceneReach + 2);
+        if (reachable == null || reachable.isEmpty()) {
+            return null;
+        }
+        int anchor = WalkerPathGeometry.rawPathForwardAnchorIndex(rawPath, playerLoc, rawAnchorIndex,
+                ROUTE_PROGRESS_FORWARD_SEARCH_TILES, () -> getClosestTileIndex(rawPath, playerLoc), reachable);
+        if (anchor < 0) {
+            return null;
+        }
+        int end = Math.min(rawPath.size(), anchor + sceneReach + 1);
+        List<TileObject> sceneObjects = new ArrayList<>();
+        sceneObjects.addAll(Rs2GameObject.getWallObjects(o -> true, playerLoc, sceneReach));
+        sceneObjects.addAll(Rs2GameObject.getGameObjects(o -> true, playerLoc, sceneReach));
+        for (int i = anchor; i < end - 1; i++) {
+            WorldPoint from = rawPath.get(i);
+            WorldPoint to = rawPath.get(i + 1);
+            if (from == null || to == null || from.getPlane() != playerLoc.getPlane()
+                    || to.getPlane() != playerLoc.getPlane() || from.distanceTo2D(to) > 1
+                    || !reachable.containsKey(to) || isCatalogBackedTransportSegment(rawPath, i)
+                    || (!recentlyOpenedStationaryDoorOnSegment(from, to)
+                        && sceneObjects.stream().filter(object -> Rs2DoorGeometry.isDoorOnSegment(object, from, to))
+                            .anyMatch(object -> isPendingRouteDoorObject(object, from, to, playerLoc, sceneReach)))) {
+                end = i + 1;
+                break;
+            }
+        }
+        WorldPoint furthest = WalkerPathGeometry.findFurthestRawPathPointMatching(rawPath.subList(0, end), playerLoc,
+                sceneReach, anchor,
+                candidate -> !candidate.equals(playerLoc)
+                        && reachable.containsKey(candidate)
+                        && isKnownWalkableOrUnloaded(candidate)
+                        && isSceneCanvasClickable(candidate),
+                ROUTE_PROGRESS_FORWARD_SEARCH_TILES, () -> anchor, reachable, sceneReach + 2);
+        if (furthest == null || furthest.distanceTo2D(playerLoc) < 8) return furthest;
+        int furthestIndex = rawPath.subList(0, end).lastIndexOf(furthest);
+        List<WorldPoint> choices = new ArrayList<>();
+        choices.add(furthest);
+        for (int i = Math.max(anchor + 1, furthestIndex - 2); i < furthestIndex; i++) {
+            WorldPoint candidate = rawPath.get(i);
+            if (candidate.distanceTo2D(playerLoc) >= furthest.distanceTo2D(playerLoc) - 2
+                    && reachable.containsKey(candidate) && isKnownWalkableOrUnloaded(candidate)
+                    && isSceneCanvasClickable(candidate)) choices.add(candidate);
+        }
+        return choices.get(ThreadLocalRandom.current().nextInt(choices.size()));
+    }
+
     static boolean shouldIssueActiveRouteIdleNudge() {
         WorldPoint playerLoc = Rs2Player.getWorldLocation();
         long now = System.currentTimeMillis();
@@ -782,7 +897,28 @@ final class Rs2WalkerMovement {
 
         Microbot.doInvoke(entry,
                 new Rectangle(canvasX, canvasY, Microbot.getClient().getCanvasWidth(), Microbot.getClient().getCanvasHeight()));
+        alignCameraTowardWalkTarget(worldPoint);
         return true;
+    }
+
+    static boolean isSceneCanvasClickable(WorldPoint worldPoint) {
+        if (!Microbot.getClientThread().isClientThread()) {
+            return Microbot.getClientThread().runOnClientThreadOptional(() -> isSceneCanvasClickable(worldPoint))
+                    .orElse(false);
+        }
+            LocalPoint localPoint = localPointForWorld(worldPoint);
+            if (localPoint == null || !Rs2Camera.isTileOnScreen(localPoint)) {
+                return false;
+            }
+            Point canvasPoint = Perspective.localToCanvas(
+                    Microbot.getClient(),
+                    localPoint,
+                    worldPoint.getPlane());
+            Rectangle viewport = new Rectangle(Microbot.getClient().getViewportXOffset(),
+                    Microbot.getClient().getViewportYOffset(), Microbot.getClient().getViewportWidth(),
+                    Microbot.getClient().getViewportHeight());
+            return canvasPoint != null && viewport.contains(
+                    new Rectangle(canvasPoint.getX() - 4, canvasPoint.getY() - 4, 8, 8));
     }
 
     static LocalPoint localPointForWorld(WorldPoint worldPoint) {
@@ -857,12 +993,12 @@ final class Rs2WalkerMovement {
             clicked = clickRouteBackedShortWalk(rawPath, end, playerLoc,
                     directClickMaxDistance - 1, rawAnchorIndex);
         } else {
-            clicked = walkMiniMap(end);
+            clicked = walkFastCanvasOnScreenOnly(end, true);
             if (!clicked) {
-                clicked = walkMiniMapToward(end, playerLoc, directClickMaxDistance - 1);
+                clicked = walkMiniMap(end);
             }
             if (!clicked) {
-                clicked = walkFastCanvas(end);
+                clicked = walkMiniMapToward(end, playerLoc, directClickMaxDistance - 1);
             }
         }
         if (!clicked) {
@@ -919,6 +1055,9 @@ final class Rs2WalkerMovement {
                                                      int maxEuclidean,
                                                      int rawAnchorIndex) {
         boolean directTargetInRange = shouldAttemptDirectMinimapTarget(end, playerLoc, maxEuclidean);
+        if (directTargetInRange && walkFastCanvasOnScreenOnly(end, true)) {
+            return true;
+        }
         if (directTargetInRange && walkMiniMap(end)) {
             return true;
         }
@@ -931,13 +1070,17 @@ final class Rs2WalkerMovement {
                 rawPath, playerLoc, maxEuclidean, rawAnchorIndex);
         if (routeTarget != null
                 && !routeTarget.equals(playerLoc)
-                && !routeTarget.equals(end)
-                && walkMiniMap(routeTarget)) {
+                && !routeTarget.equals(end)) {
             if (directTargetInRange) {
                 log.debug("[Walker] Direct short-walk target {} was outside the minimap clip; continuing via route {}",
                         end, routeTarget);
             }
-            return true;
+            if (walkFastCanvasOnScreenOnly(routeTarget, true)) {
+                return true;
+            }
+            if (walkMiniMap(routeTarget)) {
+                return true;
+            }
         }
         return walkFastCanvasOnScreenOnly(end, true);
     }
@@ -1108,14 +1251,18 @@ final class Rs2WalkerMovement {
                 routeState.interimLastProgressAtMs = nowMs;
             }
         }
-        if (!shouldClearInterimTarget(interim, playerLoc, routeState.interimSetAtMs,
+        boolean readyForNextClick = interim != null && playerLoc != null
+                && interim.getPlane() == playerLoc.getPlane()
+                && playerLoc.distanceTo2D(interim) <= interimPreclickTiles()
+                && nowMs - routeState.interimSetAtMs >= INTERIM_RETARGET_COOLDOWN_MS;
+        if (!readyForNextClick && !shouldClearInterimTarget(interim, playerLoc, routeState.interimSetAtMs,
                 routeState.interimLastProgressAtMs, nowMs, routeState.interimLastDistanceToTarget)) {
             return false;
         }
         String reason;
         if (playerLoc == null || interim == null || playerLoc.getPlane() != interim.getPlane()) {
             reason = "invalid";
-        } else if (playerLoc.distanceTo2D(interim) <= INTERIM_CLOSE_TILES) {
+        } else if (readyForNextClick || playerLoc.distanceTo2D(interim) <= INTERIM_CLOSE_TILES) {
             reason = "close";
         } else if (routeState.interimLastDistanceToTarget != Integer.MAX_VALUE
                 && playerLoc.distanceTo2D(interim)
