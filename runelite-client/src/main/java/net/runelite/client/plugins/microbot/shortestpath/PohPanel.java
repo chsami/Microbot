@@ -204,6 +204,11 @@ public class PohPanel extends PluginPanel {
      * @return allTransports map with all cached PoH transports added in
      */
     public static Map<WorldPoint, Set<Transport>> getAvailableTransports(Map<WorldPoint, Set<Transport>> allTransports) {
+        return getAvailableTransports(allTransports, true);
+    }
+
+    public static Map<WorldPoint, Set<Transport>> getAvailableTransports(
+            Map<WorldPoint, Set<Transport>> allTransports, boolean usePortalNexus) {
         if (instance == null) return allTransports;
         Set<PohTeleport> pohTeleports = new HashSet<>();
         Map<WorldPoint, Set<Transport>> pohTransports = new HashMap<>();
@@ -215,7 +220,9 @@ public class PohPanel extends PluginPanel {
 
         pohTeleports.addAll(instance.checkboxPanel.getTeleports());
         pohTeleports.addAll(instance.portalPanel.getTeleports());
-        pohTeleports.addAll(instance.nexusPanel.getTeleports());
+        if (usePortalNexus) {
+            pohTeleports.addAll(instance.nexusPanel.getTeleports());
+        }
         pohTeleports.addAll(instance.jewelleryBoxPanel.getTeleports());
 
         if (instance.checkboxPanel.fairyRingCb.isSelected()) {
