@@ -80,6 +80,7 @@ public class BikeShedder extends BasicQuestHelper
 	private DetailedQuestStep conditionalRequirementLookAtCoins;
 	private ItemRequirement conditionalRequirementGoldBar;
 	private WidgetTextRequirement lookAtCooksAssistantRequirement;
+	private WidgetTextRequirement lookAtCooksAssistantTextFinishedRequirement;
 	private DetailedQuestStep lookAtCooksAssistant;
 	private WidgetTextRequirement lookAtCooksAssistantTextRequirement;
 	private ZoneRequirement byStaircaseInSunrisePalace;
@@ -166,7 +167,9 @@ public class BikeShedder extends BasicQuestHelper
 		lookAtCooksAssistantRequirement.setDisplayText("Cook's Assistant quest journal open");
 		lookAtCooksAssistantTextRequirement = new WidgetTextRequirement(InterfaceID.Questjournal.TEXTLAYER, true, "he now lets me use his high quality range");
 		lookAtCooksAssistantTextRequirement.setDisplayText("Cook's Assistant quest journal open & received reward (checking text)");
-		lookAtCooksAssistant = new DetailedQuestStep(this, "Open the Cook's Assistant quest journal. You must have started the quest for this test to work.", lookAtCooksAssistantRequirement, lookAtCooksAssistantTextRequirement);
+		lookAtCooksAssistantTextFinishedRequirement = new WidgetTextRequirement(InterfaceID.Questjournal.TEXTLAYER, true, "<str>As a reward he now lets me use his high quality range");
+		lookAtCooksAssistantTextFinishedRequirement.setDisplayText("Cook's Assistant quest journal open & received reward (checking text & tag)");
+		lookAtCooksAssistant = new DetailedQuestStep(this, "Open the Cook's Assistant quest journal. You must have started the quest for this test to work.", lookAtCooksAssistantRequirement, lookAtCooksAssistantTextRequirement, lookAtCooksAssistantTextFinishedRequirement);
 
 		var upstairsInSunrisePalace = new Zone(new WorldPoint(1684, 3162, 1), new WorldPoint(1691, 3168, 1));
 		byStaircaseInSunrisePalace = new ZoneRequirement(upstairsInSunrisePalace);
@@ -209,7 +212,7 @@ public class BikeShedder extends BasicQuestHelper
 		panels.add(new PanelDetails("Use coins on mysterious bush", List.of(useCoinOnBush, useManyCoinsOnBush), List.of(oneCoin, manyCoins)));
 		panels.add(new PanelDetails("Conditional requirement", List.of(conditionalRequirementLookAtCoins), List.of(conditionalRequirementCoins, conditionalRequirementGoldBar)));
 		panels.add(new PanelDetails("Item step", List.of(getCoins), List.of(anyCoins)));
-		panels.add(new PanelDetails("Quest state", List.of(lookAtCooksAssistant), List.of(lookAtCooksAssistantRequirement, lookAtCooksAssistantTextRequirement)));
+		panels.add(new PanelDetails("Quest state", List.of(lookAtCooksAssistant), List.of(lookAtCooksAssistantRequirement, lookAtCooksAssistantTextRequirement, lookAtCooksAssistantTextFinishedRequirement)));
 		panels.add(new PanelDetails("Ensure staircase upstairs in Sunrise Palace is highlighted", List.of(goDownstairsInSunrisePalace), List.of()));
 
 		return panels;
