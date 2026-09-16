@@ -326,3 +326,23 @@ if (mapComponent < 0) {
 Direct and fallback scene clicks must validate the projected click area against the viewport on the client thread. Reuse the validated canvas point when dispatching the click. An on-screen tile check alone can still produce a point outside the usable viewport.
 
 Checkpoint handoffs in the main click branch must use the same close/expiry policy as the start-of-pass check. In particular, entering the preclick distance while moving does not bypass the retarget cooldown.
+
+## 16. Scope global interaction recovery across nested door dispatch
+
+When an object or NPC interaction reacts to the global can't-reach flag by starting a walker approach, keep ownership of that recovery on the current thread until the approach returns. Door interactions issued by that nested walk must bypass the outer can't-reach trigger while leaving the global flag and retry counter intact for the original interaction.
+
+**Why this matters:** The legacy walker lock is reentrant. Without scoped ownership, opening a closed door during an object or NPC recovery starts another recovery walk from inside the first one, replaces the route target, and spends the shared retry budget instead of clicking the door.
+
+**Pattern to follow:**
+
+```java
+if (CantReachTargetRecovery.shouldStart(detectionEnabled, cantReachTarget)) {
+    if (CantReachTargetRecovery.walkTo(originalTarget, 2)) {
+        clearCantReachState();
+    }
+}
+```
+
+**Where this applies:** `Rs2GameObject.clickObject`, `Rs2Npc.interact`, `Rs2NpcModel.interact`, legacy walker door dispatch, and any future interaction helper that starts `Rs2Walker.walkTo` in response to the global can't-reach flag.
+
+**Defensive check:** During a recovery route through a closed door, assert that the door click occurs once, the original object or NPC target is passed unchanged to the walker, nested recovery is suppressed, and retry exhaustion still returns failure.

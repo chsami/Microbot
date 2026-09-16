@@ -24,13 +24,13 @@ public class SegmentGateTest
 										boolean recoveryInFlight,
 										boolean tileReachable,
 										boolean startupBeforeFirstClick,
-										boolean immediateSegmentTransportStep,
+										boolean startupTransportStep,
 										int segmentIdx,
 										int routeStartIdx)
 	{
 		return SegmentGate.decide(recentTransportWindow, upcomingNearbyTransport,
 			recentDoorAttemptNearSegment, doorSettling, recoveryInFlight, tileReachable,
-			startupBeforeFirstClick, immediateSegmentTransportStep, segmentIdx, routeStartIdx);
+			startupBeforeFirstClick, startupTransportStep, segmentIdx, routeStartIdx);
 	}
 
 	@Test
@@ -81,9 +81,9 @@ public class SegmentGateTest
 			decide(false, false, false, false, false, true, true, false, 5, 5));
 	}
 
-	/** A transport we are standing next to is taken at startup rather than deferred. */
+	/** A nearby or ranged first object transport is taken at startup rather than approached first. */
 	@Test
-	public void anImmediateTransportStepIsNotSkippedAtStartup()
+	public void aStartupTransportStepIsNotSkippedAtStartup()
 	{
 		assertEquals(SegmentAction.RUN,
 			decide(false, false, false, false, false, true, true, true, 5, 5));

@@ -15,6 +15,7 @@ import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2PathApi;
 import net.runelite.client.plugins.microbot.util.walker.Rs2TransportEdge;
+import net.runelite.client.plugins.microbot.util.walker.Rs2TransportExecutor;
 import net.runelite.client.plugins.microbot.util.walker.Rs2TransportType;
 
 /**
@@ -46,34 +47,45 @@ public final class Rs2DoorProbe {
     }
 
     /**
-     * True when this scene object is the interactable listed on a transport catalog row (same
-	 * coordinates and object ids as TSV loaded into the shortest-path catalog), and is not
-     * itself door-like. Used to avoid treating a catalog transport as a plain door.
+     * Whether the catalog transport executor, rather than generic door detection, owns this scene
+     * object. A route-selected OBJECT executor has the exact edge, action and completion predicate;
+     * allowing the geometry-based door cascade to claim the same object gives two independent
+     * handlers permission to cross it and can immediately reverse a successful transport.
      */
     public static boolean isCatalogTransportObject(TileObject object) {
         if (object == null) {
             return false;
         }
         WorldPoint loc = object.getWorldLocation();
-        if (loc == null) {
+        if (loc == null || object.getId() <= 0) {
             return false;
         }
-        int id = object.getId();
-        if (id <= 0) {
-            return false;
-        }
+
 		for (int dx = -1; dx <= 1; dx++) {
             for (int dy = -1; dy <= 1; dy++) {
-                WorldPoint catalogOrigin = new WorldPoint(loc.getX() + dx, loc.getY() + dy, loc.getPlane());
-				for (Rs2TransportEdge t : Rs2PathApi.getCatalogTransportEdges(catalogOrigin)) {
-                    if (t != null && t.getObjectId() == id && !isDoorLikeCatalogTransport(t)) {
-                        return true;
-                    }
+				WorldPoint origin = new WorldPoint(loc.getX() + dx, loc.getY() + dy, loc.getPlane());
+				for (Rs2TransportEdge transport : Rs2PathApi.getCatalogTransportEdges(origin)) {
+					if (transport == null || transport.getObjectId() != object.getId()) {
+						continue;
+					}
+					if (isObjectExecutorTransport(transport)) {
+						return true;
+					}
                 }
             }
         }
-        return false;
+		return false;
     }
+
+	/**
+	 * True for a catalogued interaction handled by the generic object executor. The executor can
+	 * click doors, stairs, ladders, stiles and other one-action scene objects from range; it is also
+	 * the sole owner of those objects while their edge is selected by the route.
+	 */
+	static boolean isObjectExecutorTransport(Rs2TransportEdge transport) {
+		return transport != null
+				&& transport.getExecutor() == Rs2TransportExecutor.OBJECT;
+	}
 
 	public static boolean isDoorLikeCatalogTransport(Rs2TransportEdge transport) {
 		if (transport == null || transport.getType() != Rs2TransportType.TRANSPORT) {
@@ -115,7 +127,7 @@ public final class Rs2DoorProbe {
                 || (!(object instanceof WallObject) && !(object instanceof GameObject))) {
             return false;
         }
-        if (isNonDoorCatalogTransport(ctx, object)) {
+        if (isCatalogTransportObject(ctx, object)) {
             return false;
         }
         // Snapshot location, not object.getWorldLocation(): this runs per candidate per segment.
@@ -133,7 +145,7 @@ public final class Rs2DoorProbe {
     }
 
     /**
-     * "A catalog transport that is not itself door-like" — the expensive, segment-independent half of
+     * "An object owned by the catalog transport executor" — the expensive, segment-independent half of
      * the candidate test, memoised for the scan via {@link DoorProbeContext#objectEligibilityCache()}.
      * <p>
      * The answer depends only on the object (id, location, composition), yet the probe re-evaluated it
@@ -141,13 +153,12 @@ public final class Rs2DoorProbe {
      * transport-map lookups and an uncached composition resolve each time. With no cache available the
      * behaviour is unchanged, just uncached.
      */
-    private static boolean isNonDoorCatalogTransport(DoorProbeContext ctx, TileObject object) {
+    private static boolean isCatalogTransportObject(DoorProbeContext ctx, TileObject object) {
         Map<TileObject, Boolean> cache = ctx == null ? null : ctx.objectEligibilityCache();
         if (cache == null) {
-            return isCatalogTransportObject(object) && !Rs2DoorDetection.isDoorLikeSceneObject(object);
+            return isCatalogTransportObject(object);
         }
-        return cache.computeIfAbsent(object,
-                o -> isCatalogTransportObject(o) && !Rs2DoorDetection.isDoorLikeSceneObject(o));
+        return cache.computeIfAbsent(object, Rs2DoorProbe::isCatalogTransportObject);
     }
 
     /** Nearest walk-through door lying on the {@code fromWp -> toWp} segment, using scan snapshots when present. */

@@ -4,6 +4,7 @@ import net.runelite.api.coords.WorldPoint;
 
 import java.util.List;
 import java.util.Set;
+import java.util.function.BiPredicate;
 import java.util.function.Predicate;
 
 /**
@@ -243,6 +244,54 @@ public final class RouteRecovery {
             }
 			if (hasTransportOrigin.test(wp)) {
                 return wp; // nearest reachable transport / shortcut origin ahead
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Finds the route tile recovery should click to approach the first planned transport edge ahead.
+     * If the transport origin itself is reachable, it is returned. Otherwise the last reachable raw-route
+     * tile before that origin is returned. The latter is required for object-occupied origins such as fairy
+     * rings: collision correctly excludes the ring tile from the player BFS, but walking beside it lets the
+     * normal ranged/near-origin transport handler dispatch it on the next pass.
+     * <p>
+     * The scan stops at the first exact transport edge, even when no approach is usable, so recovery never
+     * skips an unresolved transport and targets a later route branch. Both collision state and exact planned
+     * edge recognition are injected to keep the decision independent of live client state.
+     *
+     * @return the reachable transport origin or its last reachable approach tile; {@code null} when the
+     * first transport has no usable approach or there is no transport in the scan window.
+     */
+    public static WorldPoint findReachableTransportApproachAhead(List<WorldPoint> rawPath,
+                                                                 int startIndex,
+                                                                 WorldPoint playerLoc,
+                                                                 Set<WorldPoint> reachable,
+                                                                 BiPredicate<WorldPoint, WorldPoint> hasTransportStep,
+                                                                 int maxEuclidean,
+                                                                 int forwardScanTiles) {
+        if (rawPath == null || rawPath.size() < 2 || playerLoc == null || reachable == null
+                || hasTransportStep == null || startIndex < 0 || startIndex >= rawPath.size() - 1
+                || maxEuclidean < 0 || forwardScanTiles < 0) {
+            return null;
+        }
+
+        int maxSq = maxEuclidean * maxEuclidean;
+        int lastEdgeExclusive = Math.min(rawPath.size() - 1, startIndex + forwardScanTiles + 1);
+        WorldPoint bestApproach = null;
+        for (int ri = startIndex; ri < lastEdgeExclusive; ri++) {
+            WorldPoint origin = rawPath.get(ri);
+            WorldPoint destination = rawPath.get(ri + 1);
+            boolean usableOrigin = origin != null
+                    && origin.getPlane() == playerLoc.getPlane()
+                    && !origin.equals(playerLoc)
+                    && reachable.contains(origin)
+                    && euclideanSq(origin, playerLoc) <= maxSq;
+            if (usableOrigin) {
+                bestApproach = origin;
+            }
+            if (origin != null && destination != null && hasTransportStep.test(origin, destination)) {
+                return usableOrigin ? origin : bestApproach;
             }
         }
         return null;

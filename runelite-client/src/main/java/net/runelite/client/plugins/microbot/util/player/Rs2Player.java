@@ -67,7 +67,7 @@ public class Rs2Player {
     public static int moonlightTime = -1;
     public static Instant lastAnimationTime = null;
     private static final long COMBAT_TIMEOUT_MS = 10000;
-    private static long lastCombatTime = 0;
+    private static volatile long lastCombatTime = 0;
     @Getter
     public static int lastAnimationID = AnimationID.IDLE;
 

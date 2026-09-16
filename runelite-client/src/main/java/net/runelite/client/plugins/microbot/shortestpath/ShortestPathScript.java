@@ -6,6 +6,7 @@ import net.runelite.api.Player;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
+import net.runelite.client.plugins.microbot.util.input.InputArbiter;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.walker.WalkerState;
 
@@ -142,7 +143,8 @@ public class ShortestPathScript extends Script {
     }
 
     synchronized void startWalkTask() {
-        if (stopped || !walkingEnabled || triggerWalker == null || walkTaskRunning || previewPending) {
+        if (stopped || !walkingEnabled || triggerWalker == null || walkTaskRunning || previewPending
+                || InputArbiter.isHuman()) {
             return;
         }
         final long taskRevision = revision;
@@ -165,6 +167,9 @@ public class ShortestPathScript extends Script {
                         && !Thread.currentThread().isInterrupted() && !isLocalPlayerDead() && !isRecentUserStopClear();
                 synchronized (ShortestPathScript.this) {
                     if (taskRevision != revision || stopped) {
+                        return;
+                    }
+                    if (shouldPreserveTargetAfterExit(state, InputArbiter.isHuman())) {
                         return;
                     }
                     if (state == WalkerState.EXIT && retryAllowed && shouldRetryAfterExit(target)) {
@@ -215,6 +220,10 @@ public class ShortestPathScript extends Script {
 
     void onClientThread(Runnable action) {
         Microbot.getClientThread().invokeLater(action);
+    }
+
+    static boolean shouldPreserveTargetAfterExit(WalkerState state, boolean humanOwnsInput) {
+        return state == WalkerState.EXIT && humanOwnsInput;
     }
 
     private boolean shouldRetryAfterExit(WorldPoint target) {

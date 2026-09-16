@@ -803,6 +803,11 @@ final class Rs2WalkerMovement {
             routeState.idleNudgeStationarySinceMs = now;
             return false;
         }
+        if (hasFreshActiveDoorClaim(now)) {
+            routeState.idleNudgeLastObservedLocation = playerLoc;
+            routeState.idleNudgeStationarySinceMs = now;
+            return false;
+        }
         if (!playerLoc.equals(routeState.idleNudgeLastObservedLocation)) {
             routeState.idleNudgeLastObservedLocation = playerLoc;
             routeState.idleNudgeStationarySinceMs = now;
@@ -821,6 +826,9 @@ final class Rs2WalkerMovement {
                                                       WorldPoint target,
                                                       int configuredDistance,
                                                       String logLabel) {
+        if (hasFreshActiveDoorClaim(System.currentTimeMillis())) {
+            return false;
+        }
         return tryIssueRouteMovementClick(rawPath, path, target, configuredDistance, logLabel,
                 STALL_RECOVERY_MINIMAP_REACH_EUCLIDEAN, true);
     }
@@ -1238,8 +1246,8 @@ final class Rs2WalkerMovement {
     }
 
     static boolean clearInterimTargetIfReachedOrExpired(WorldPoint playerLoc,
-                                                                List<WorldPoint> path,
-                                                                long nowMs) {
+                                                                 List<WorldPoint> path,
+                                                                 long nowMs) {
         WorldPoint interim = routeState.interimTargetWp;
         recordInterimDistanceProgress(interim, playerLoc, nowMs);
         if (interim != null && path != null && !path.isEmpty()) {
@@ -1273,6 +1281,12 @@ final class Rs2WalkerMovement {
         }
         clearInterimTarget(reason);
         return true;
+    }
+
+    static boolean shouldYieldForInterimCheckpoint(List<WorldPoint> path) {
+        return routeState.interimTargetWp != null
+                && !clearInterimTargetIfReachedOrExpired(
+                        Rs2Player.getWorldLocation(), path, System.currentTimeMillis());
     }
 
     static boolean shouldYieldForActiveRecoveryInterim(WorldPoint interim,

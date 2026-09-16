@@ -676,6 +676,13 @@ public final class Rs2WalkerBankingPlanner {
 		{
 			return Rs2TransportLoadout.empty();
 		}
+		for (Map.Entry<Integer, Integer> withdrawal : withdrawals.entrySet())
+		{
+			if (safeQuantity(bankQuantityProvider, withdrawal.getKey()) < withdrawal.getValue())
+			{
+				return Rs2TransportLoadout.unavailable();
+			}
+		}
 		return new Rs2TransportLoadout(
 			withdrawals, new ArrayList<>(equipmentItemIds), true);
 	}

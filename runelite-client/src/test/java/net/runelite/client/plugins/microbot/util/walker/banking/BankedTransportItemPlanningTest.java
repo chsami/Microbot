@@ -363,7 +363,10 @@ public class BankedTransportItemPlanningTest {
 		Rs2TransportEdge edge = owned(one);
 		java.util.Map<Integer, Integer> edgeSummed =
 				Rs2WalkerBankingPlanner.getMissingTransportEdgeItemIdsWithQuantities(
-						List.of(edge, edge), ignored -> 0, ignored -> 0);
+						List.of(edge, edge),
+						itemId -> itemId == net.runelite.api.gameval.ItemID.COINS
+								? one.getCurrencyAmount() * 2 : 0,
+						ignored -> 0);
 		assertEquals("immutable selected edges must sum the same fares",
 				one.getCurrencyAmount() * 2,
 				edgeSummed.getOrDefault(net.runelite.api.gameval.ItemID.COINS, 0).intValue());
@@ -395,11 +398,36 @@ public class BankedTransportItemPlanningTest {
 		Rs2TransportEdge edge = owned(ticketRow);
 		java.util.Map<Integer, Integer> edgeMap =
 				Rs2WalkerBankingPlanner.getMissingTransportEdgeItemIdsWithQuantities(
-						List.of(edge), ignored -> 0, ignored -> 0);
+						List.of(edge),
+						itemId -> itemId == net.runelite.api.gameval.ItemID.COINS ? 5 : 0,
+						ignored -> 0);
 		assertEquals("the immutable selected edge must preserve the purchasable fallback",
 				5, edgeMap.getOrDefault(net.runelite.api.gameval.ItemID.COINS, 0).intValue());
 		assertFalse(edgeMap.containsKey(1854));
     }
+
+	@Test
+	public void accumulatedFareMustExistInBankBeforeBankRouteIsSelected() {
+		Transport fare = all.stream()
+				.filter(t -> t.getCurrencyAmount() > 1)
+				.filter(t -> "Coins".equalsIgnoreCase(t.getCurrencyName()))
+				.filter(t -> t.getItemIdRequirements() == null || t.getItemIdRequirements().isEmpty())
+				.filter(t -> Rs2WalkerBankingPlanner.isCurrencyBasedTransport(t.getType()))
+				.findFirst()
+				.orElseThrow(() -> new AssertionError("catalog should contain a coin-fare transport"));
+		int totalFare = fare.getCurrencyAmount() * 2;
+		Rs2TransportLoadout loadout = Rs2WalkerBankingPlanner.getMissingTransportEdgeLoadout(
+				List.of(owned(fare), owned(fare)),
+				itemId -> itemId == net.runelite.api.gameval.ItemID.COINS ? totalFare - 1 : 0,
+				ignored -> 0,
+				ignored -> 0,
+				itemId -> itemId == net.runelite.api.gameval.ItemID.COINS ? totalFare - 1 : 0,
+				ignored -> false);
+
+		assertFalse("a route must not claim an unaffordable accumulated fare is satisfiable",
+				loadout.isSatisfiable());
+		assertTrue(loadout.isEmpty());
+	}
 
     @Test
     public void legacyChargedItemVariantsRequestOnlyOneAlternative() {

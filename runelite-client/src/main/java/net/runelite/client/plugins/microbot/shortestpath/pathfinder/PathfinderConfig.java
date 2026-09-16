@@ -146,13 +146,6 @@ public class PathfinderConfig {
      */
     private volatile int lastComputedInvFingerprint;
     private volatile int previousRefreshInvFingerprint;
-    /**
-     * The transport-refresh cache key computed by the most recent {@code refreshTransports} —
-     * the invalidation key for {@link SealedVerdictMemo} (a verdict proven under one transport
-     * set must not survive into another).
-     */
-    @Getter
-    private volatile int lastTransportRefreshKeyHash;
     /** Which verification component moved on the most recent verify-miss; see the miss log. */
     private volatile String lastVerifyMissDetail = "";
     @Getter
@@ -392,7 +385,8 @@ public class PathfinderConfig {
 
         if (GameState.LOGGED_IN.equals(client.getGameState())) {
             long t0 = System.currentTimeMillis();
-            refreshTransports(target);
+            boolean inCombat = Rs2Player.isInCombat();
+            refreshTransports(target, inCombat);
             long t1 = System.currentTimeMillis();
             //START microbot variables
             refreshRestrictionData();
@@ -472,7 +466,7 @@ public class PathfinderConfig {
      *
      * @param target Optional target destination for optimized filtering (null for standard filtering)
      */
-    private void refreshTransports(WorldPoint target) {
+    private void refreshTransports(WorldPoint target, boolean inCombat) {
         // The 1.1s post-login client-thread freeze hid in the UNMEASURED parts of this method: the
         // stage timers summed to ~30ms while the outer wrapper read 1154ms, and the slow-stage log
         // never fired. Three regions were dark: this entry block (quest-state + bank/item gates),
@@ -497,8 +491,7 @@ public class PathfinderConfig {
         long keyStart = System.currentTimeMillis();
         final Rs2LeaguesTransport.LeaguesContext leaguesCtx = Rs2LeaguesTransport.leaguesContext();
         lastKeyLeaguesMs = System.currentTimeMillis() - keyStart;
-        final int refreshCacheKeyHash = computeTransportRefreshCacheKeyHash(target, leaguesCtx);
-        lastTransportRefreshKeyHash = refreshCacheKeyHash;
+        final int refreshCacheKeyHash = computeTransportRefreshCacheKeyHash(target, leaguesCtx, inCombat);
         long keyTime = System.currentTimeMillis() - keyStart;
 
         TransportRefreshSnapshot snap = transportRefreshSnapshots.get(refreshCacheKeyHash);
@@ -711,7 +704,7 @@ public class PathfinderConfig {
                 updateActionBasedOnQuestState(transport);
 
                 long t0 = System.nanoTime();
-                boolean usable = useTransport(transport);
+                boolean usable = useTransport(transport, inCombat);
                 long elapsed = System.nanoTime() - t0;
                 useTransportTimeNanos += elapsed;
 
@@ -745,7 +738,7 @@ public class PathfinderConfig {
         }
 
         Rs2LeaguesTransport.injectLeaguesTransports(
-                transport -> isTransportUsableWithLeaguesContext(transport, leaguesCtx),
+                transport -> isTransportUsableWithLeaguesContext(transport, leaguesCtx, inCombat),
                 leaguesCtx,
                 usableTeleports,
                 transports,
@@ -1266,7 +1259,7 @@ public class PathfinderConfig {
                 .orElse(0);
     }
 
-    private boolean useTransport(Transport transport) {
+    private boolean useTransport(Transport transport, boolean inCombat) {
         // This runs once per expanded catalog edge during every refresh. Keep individual rejection
         // reasons at TRACE; DEBUG already receives the per-type aggregate emitted by refreshTransports.
         if (transport == null || !transportPlanningPolicy.isAdmitted(transport)) {
@@ -1274,6 +1267,11 @@ public class PathfinderConfig {
                     transport == null ? null : transport.getOrigin(),
                     transport == null ? null : transport.getDestination(),
                     transport == null ? null : transport.getType());
+            return false;
+        }
+        if (!isTransportAllowedDuringCombat(transport, inCombat)) {
+            log.trace("Transport ( O: {} D: {} ) is a home teleport unavailable during combat",
+                    transport.getOrigin(), transport.getDestination());
             return false;
         }
         // Check if the feature flag is disabled
@@ -1372,14 +1370,24 @@ public class PathfinderConfig {
      * (Leagues catalog / Area teleports): quest action patch, {@link #useTransport}, {@link Rs2LeaguesTransport#isTransportAllowed}.
      */
     public boolean isTransportUsableWithLeaguesContext(Transport transport, Rs2LeaguesTransport.LeaguesContext leaguesCtx) {
+        return isTransportUsableWithLeaguesContext(transport, leaguesCtx, Rs2Player.isInCombat());
+    }
+
+    private boolean isTransportUsableWithLeaguesContext(Transport transport,
+                                                          Rs2LeaguesTransport.LeaguesContext leaguesCtx,
+                                                          boolean inCombat) {
         if (client == null || transport == null || leaguesCtx == null) {
             return false;
         }
         updateActionBasedOnQuestState(transport);
-        if (!useTransport(transport)) {
+        if (!useTransport(transport, inCombat)) {
             return false;
         }
         return Rs2LeaguesTransport.isTransportAllowed(leaguesCtx, transport);
+    }
+
+    boolean isTransportAllowedDuringCombat(Transport transport, boolean inCombat) {
+        return transport != null && (!inCombat || !transportPlanningPolicy.isZeroRuneSpell(transport));
     }
 
     /**
@@ -1983,7 +1991,9 @@ public class PathfinderConfig {
         }
     }
 
-    private int computeTransportRefreshCacheKeyHash(WorldPoint target, Rs2LeaguesTransport.LeaguesContext leaguesCtx) {
+    private int computeTransportRefreshCacheKeyHash(WorldPoint target,
+                                                     Rs2LeaguesTransport.LeaguesContext leaguesCtx,
+                                                     boolean inCombat) {
         assert leaguesCtx != null;
         int invFp = fingerprintInventoryEquipmentBank();
         lastComputedInvFingerprint = invFp;
@@ -1996,6 +2006,7 @@ public class PathfinderConfig {
                 ignoreTeleportAndItems,
                 useBankItems,
                 useNpcs,
+                inCombat,
                 invFp,
                 members,
                 Rs2Walker.disableTeleports,

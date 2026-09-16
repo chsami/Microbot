@@ -30,6 +30,18 @@ public class PathfinderHomeTeleportTest
 		assertFalse(config.isTeleportationSpellUsable(spell("Unknown Home Teleport")));
 	}
 
+	@Test
+	public void combatBlocksOnlyHomeTeleportPlanning()
+	{
+		PathfinderConfig config = new PathfinderConfig(
+			null, Collections.emptyMap(), Collections.emptyList(), null, null,
+			Rs2TransportPlanningPolicy.INSTANCE);
+
+		assertFalse(config.isTransportAllowedDuringCombat(spell("Lumbridge Home Teleport"), true));
+		assertTrue(config.isTransportAllowedDuringCombat(spell("Lumbridge Home Teleport"), false));
+		assertTrue(config.isTransportAllowedDuringCombat(spell("Varrock Teleport"), true));
+	}
+
 	private static Transport spell(String displayInfo)
 	{
 		return new Transport(

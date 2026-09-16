@@ -115,6 +115,7 @@ import static net.runelite.client.plugins.microbot.util.walker.Rs2WalkerDoors.*;
  */
 @lombok.extern.slf4j.Slf4j
 final class Rs2WalkerTransports {
+    private static final ThreadLocal<Boolean> SERVER_APPROACH_ALLOWED = new ThreadLocal<>();
 
     private Rs2WalkerTransports() {
     }
@@ -157,8 +158,8 @@ final class Rs2WalkerTransports {
      * subtype behavior that is not part of the planner-independent edge value.
      */
     static boolean handleSelectedTransport(List<WorldPoint> path,
-                                                   int indexOfStartPoint,
-                                                   Rs2PathApi.ActiveTransportSelection selection) {
+                                                    int indexOfStartPoint,
+                                                    Rs2PathApi.ActiveTransportSelection selection) {
         if (selection == null || !selection.isExecutable()) {
             if (selection != null) {
                 WebWalkLog.spWarn("selected transport has no executor | type={} origin={} dest={}",
@@ -333,16 +334,42 @@ final class Rs2WalkerTransports {
                                 break originLoop;
                             }
 
-                            Rs2NpcModel npc = Rs2Npc.getNpc(transport.getName());
-                            if (npc != null && Rs2Npc.canWalkTo(npc, 20)) {
-                                String npcAction = resolveTerminalNpcInteractionAction(
-                                        npc, transport);
-                                if (npcAction.isEmpty()) {
-                                    WebWalkLog.spWarn(
-                                            "terminal NPC has no supported interaction action name={} configured={} dest={}",
-                                            transport.getName(), transport.getAction(), transport.getDisplayInfo());
-                                    break originLoop;
-                                }
+                            // Resolve the SCENE OBJECT before falling back to the NPC lookup.
+                            // Rs2Npc#getNpc matches on CONTAINS, so an object terminal whose name is
+                            // a substring of some unrelated NPC's name lost this if/else to that NPC,
+                            // found none of its actions, and broke the origin loop — abandoning the
+                            // walk. Measured at the Tempoross ferry (boats.tsv "Board;Ferry;41311",
+                            // loctype tempoross_lobby_boat): the boat sat three tiles away with Board
+                            // in its menu and was never clicked.
+                            //
+                            // The row's id column cannot decide this: it holds an OBJECT id for object
+                            // terminals (41311) and an NPC id for NPC terminals (ships.tsv
+                            // "Port Piscarilius;Veos;10724"), so it classifies nothing. What does
+                            // classify is the scene itself — findTerminalTravelObject demands the
+                            // row's EXACT name plus its configured action within 3 tiles of the
+                            // origin, which no NPC terminal can satisfy (Veos offers "Talk-to", not
+                            // the row's destination label). Object first, NPC otherwise.
+                            TileObject declaredTerminalObject = findTerminalTravelObject(transport);
+                            Rs2NpcModel npc = declaredTerminalObject != null
+                                    ? null
+                                    : Rs2Npc.getNpc(transport.getName());
+                            boolean npcUsable = npc != null && Rs2Npc.canWalkTo(npc, 20);
+                            // Resolve the action up front so an NPC that cannot serve this row falls
+                            // THROUGH to the object branch — and, when no object matches either, to
+                            // the approach click below — instead of ending the walk. Aborting here is
+                            // how the Tempoross ferry died: a contains-matched NPC with no usable
+                            // action killed a route the scene could still have travelled.
+                            String npcAction = npcUsable
+                                    ? resolveTerminalNpcInteractionAction(npc, transport)
+                                    : "";
+                            if (npcUsable && npcAction.isEmpty()) {
+                                WebWalkLog.spInfo(
+                                        "terminal NPC has no supported interaction action name={} configured={} dest={} display={} — falling back to the scene object",
+                                        transport.getName(), transport.getAction(),
+                                        compactWorldPoint(transport.getDestination()),
+                                        transport.getDisplayInfo());
+                            }
+                            if (!npcAction.isEmpty()) {
                                 if (!markTerminalTravelAttempt(transport)) {
                                     log.debug("[Walker] terminal travel edge already attempted this walk: {}",
                                             transport.getDisplayInfo());
@@ -407,7 +434,9 @@ final class Rs2WalkerTransports {
                                     }
                                 }
                             } else {
-                                TileObject terminalObject = findTerminalTravelObject(transport);
+                                TileObject terminalObject = declaredTerminalObject != null
+                                        ? declaredTerminalObject
+                                        : findTerminalTravelObject(transport);
                                 if (terminalObject != null) {
                                     String objectAction = resolveTransportObjectAction(
                                             terminalObject,
@@ -415,8 +444,10 @@ final class Rs2WalkerTransports {
                                             .orElse("");
                                     if (objectAction.isEmpty()) {
                                         WebWalkLog.spWarn(
-                                            "terminal object has no supported interaction action name={} configured={} dest={}",
-                                            transport.getName(), transport.getAction(), transport.getDisplayInfo());
+                                            "terminal object has no supported interaction action name={} configured={} dest={} display={}",
+                                            transport.getName(), transport.getAction(),
+                                            compactWorldPoint(transport.getDestination()),
+                                            transport.getDisplayInfo());
                                         break originLoop;
                                     }
                                     if (!markTerminalTravelAttempt(transport)) {
@@ -734,7 +765,8 @@ final class Rs2WalkerTransports {
                     if (object != null) {
                         // Skip reachability check for GroundObjects and Magic Mushtrees
                         if (!(object instanceof GroundObject) && !MagicMushtree.isMagicMushtree(transport.getObjectId())) {
-                            if (!Rs2Tile.isTileReachable(transport.getOrigin())) {
+                            if (requiresReachableObjectOrigin(Boolean.TRUE.equals(SERVER_APPROACH_ALLOWED.get()))
+                                    && !Rs2Tile.isTileReachable(transport.getOrigin())) {
                                 break;
                             }
                         }
@@ -794,10 +826,10 @@ final class Rs2WalkerTransports {
                             // we are no longer on the origin we did cross, so suppress both tiles
                             // regardless of the landing verdict. The landing result itself is
                             // unchanged — this still returns false and replans.
-                            if (isAdjacentSamePlaneTransport(transport)
+                            if (isShortSamePlaneTransport(transport)
                                     && afterInteraction != null
                                     && !afterInteraction.equals(transport.getOrigin())) {
-                                markAdjacentSamePlaneTransportHandled(transport, object);
+                                markShortSamePlaneTransportHandled(transport, object);
                             }
                             WebWalkLog.spWarn(
                                     "post-handleObject landing unresolved (timeout={}ms) dest={} at={}",
@@ -806,7 +838,7 @@ final class Rs2WalkerTransports {
                                     compactWorldPoint(afterInteraction));
                         }
                         if (landedAfterObject) {
-                            markAdjacentSamePlaneTransportHandled(transport, object);
+                            markShortSamePlaneTransportHandled(transport, object);
                             return finishHandledTransport(transport);
                         }
                         return false;
@@ -1003,7 +1035,9 @@ final class Rs2WalkerTransports {
     private static boolean handleObject(Transport transport, TileObject tileObject, String action) {
         ensureRequiredItemBeforeTransport(transport);
         WorldPoint before = Rs2Player.getWorldLocation();
-        Rs2GameObject.interact(tileObject, action);
+        if (!Rs2GameObject.interact(tileObject, action)) {
+            return false;
+        }
         // Unlike the other exception handlers, a toll-gate interaction is not complete merely
         // because the menu action was issued: it may first server-walk from several tiles away and
         // then present a confirmation dialogue. Bubble an unobserved crossing back to the caller so
@@ -1103,6 +1137,39 @@ final class Rs2WalkerTransports {
                     System.currentTimeMillis() - planeChangeStartedAt, tileObject.getId());
             return planeChanged;
         }
+    }
+
+    /**
+     * Executes the normal transport dispatcher while allowing a route-ordered object click to let
+     * the game server choose its approach tile. The scoped thread-local preserves the established
+     * dispatcher signature (and its audited client-thread boundary) without leaking policy between
+     * concurrent walker tasks.
+     */
+    static boolean handleSelectedTransport(List<WorldPoint> path,
+                                            int indexOfStartPoint,
+                                            Rs2PathApi.ActiveTransportSelection selection,
+                                            boolean allowServerApproach) {
+        Boolean previous = SERVER_APPROACH_ALLOWED.get();
+        SERVER_APPROACH_ALLOWED.set(allowServerApproach);
+        try {
+            return handleSelectedTransport(path, indexOfStartPoint, selection);
+        } finally {
+            if (Boolean.TRUE.equals(previous)) {
+                SERVER_APPROACH_ALLOWED.set(Boolean.TRUE);
+            } else {
+                SERVER_APPROACH_ALLOWED.remove();
+            }
+        }
+    }
+
+    /**
+     * A route-ordered ranged object interaction deliberately delegates the approach tile to the
+     * server. Requiring the catalog origin to be locally reachable here reintroduces the old
+     * walk-beside-it behavior and disproportionately rejects closed doors, whose origin is often
+     * excluded by live collision until the interaction occurs.
+     */
+    static boolean requiresReachableObjectOrigin(boolean allowServerApproach) {
+        return !allowServerApproach;
     }
 
     private static boolean finishHandledTransport(Transport transport) {
@@ -1228,14 +1295,19 @@ final class Rs2WalkerTransports {
                 || transport.getOrigin().distanceTo2D(transport.getDestination()) > OFFSET;
     }
 
-    private static void markAdjacentSamePlaneTransportHandled(Transport transport, TileObject tileObject) {
+    private static void markShortSamePlaneTransportHandled(Transport transport, TileObject tileObject) {
         for (WorldPoint point : adjacentSamePlaneTransportSuppressionPoints(transport, tileObject)) {
             markStationaryDoorOpened(point);
         }
     }
 
+    /**
+     * Tiles whose inverse transport must be suppressed immediately after a short same-plane hop.
+     * Door catalog edges commonly span two tiles (near-side origin to far-side destination), so an
+     * adjacency-only check leaves their reverse row eligible and lets a later handler walk back.
+     */
     static Set<WorldPoint> adjacentSamePlaneTransportSuppressionPoints(Transport transport, TileObject tileObject) {
-        if (!isAdjacentSamePlaneTransport(transport)) {
+        if (!isShortSamePlaneTransport(transport)) {
             return Collections.emptySet();
         }
 
@@ -1246,6 +1318,14 @@ final class Rs2WalkerTransports {
             points.add(tileObject.getWorldLocation());
         }
         return points;
+    }
+
+    static boolean isShortSamePlaneTransport(Transport transport) {
+        return transport != null
+                && transport.getOrigin() != null
+                && transport.getDestination() != null
+                && transport.getOrigin().getPlane() == transport.getDestination().getPlane()
+                && transport.getOrigin().distanceTo2D(transport.getDestination()) <= 2;
     }
 
     static boolean isTerminalTravelTransport(TransportType transportType) {
@@ -1794,6 +1874,9 @@ final class Rs2WalkerTransports {
         Optional<TransportExecutionRegistry.HomeTeleport> homeTeleport =
                 TransportExecutionRegistry.homeTeleportFor(transport.getDisplayInfo());
         if (homeTeleport.isPresent()) {
+            if (!isTeleportSpellUsableDuringCombat(transport, Rs2Player.isInCombat())) {
+                return false;
+            }
             return Rs2Magic.quickCast(homeTeleport.get().getDisplayName());
         }
 
@@ -1802,6 +1885,11 @@ final class Rs2WalkerTransports {
             return Rs2Magic.cast(magicSpell, option, identifier);
         }
         return false;
+    }
+
+    static boolean isTeleportSpellUsableDuringCombat(Transport transport, boolean inCombat) {
+        return transport != null && (!inCombat
+                || !TransportExecutionRegistry.homeTeleportFor(transport.getDisplayInfo()).isPresent());
     }
 
     /**

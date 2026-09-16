@@ -1,12 +1,15 @@
 package net.runelite.client.plugins.microbot.util.walker;
 
 import net.runelite.api.GameObject;
+import net.runelite.api.WallObject;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
 import net.runelite.client.plugins.microbot.util.coords.Rs2WorldPoint;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
+
+import java.util.Collection;
 
 /** Read-only handoff check; the caller interacts only after walking has returned. */
 public final class Rs2InteractionApproach {
@@ -23,6 +26,25 @@ public final class Rs2InteractionApproach {
             // Collision-aware local distance excludes closed doors and walls.
             return approach != null && approach.distanceToPath(player) <= 16;
         }).orElse(false);
+    }
+
+    public static boolean isReady(WallObject object) {
+        if (object == null) return false;
+        WorldPoint target = object.getWorldLocation();
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            WorldPoint player = Rs2Player.getWorldLocation();
+            if (!withinRange(player, target)
+                    || !Rs2Camera.isTileOnScreen(object)) return false;
+            return hasReachableWallApproach(
+                    target, Rs2Tile.getReachableTilesFromTile(player, 16).keySet());
+        }).orElse(false);
+    }
+
+    static boolean hasReachableWallApproach(WorldPoint target, Collection<WorldPoint> reachable) {
+        return target != null && reachable != null && reachable.stream()
+                .anyMatch(tile -> tile != null
+                        && tile.getPlane() == target.getPlane()
+                        && tile.distanceTo2D(target) <= 1);
     }
 
     static boolean withinRange(WorldPoint player, WorldPoint target) {
