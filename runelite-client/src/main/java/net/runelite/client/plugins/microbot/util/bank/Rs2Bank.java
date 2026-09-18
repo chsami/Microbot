@@ -1340,7 +1340,7 @@ public class Rs2Bank {
         Microbot.status = "Empty containers";
         if (!Rs2Bank.isOpen()) return false;
 
-        Widget widget = Rs2Widget.getWidget(786471); // Empty containers button ID
+        Widget widget = Rs2Widget.getWidget(InterfaceID.Bankmain.DEPOSITCONTAINERS);
         if (widget == null) return false;
 
         Rs2Widget.clickWidget(widget);
