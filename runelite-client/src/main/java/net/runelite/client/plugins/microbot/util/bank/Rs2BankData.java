@@ -2,7 +2,6 @@ package net.runelite.client.plugins.microbot.util.bank;
 
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -146,7 +145,8 @@ public class Rs2BankData {
      * @param data Raw array data in format [id, quantity, slot, ...]
      */
     synchronized void setIdQuantityAndSlot(int[] data) {
-        this.idQuantityAndSlot = data != null ? data : new int[0];
+        this.idQuantityAndSlot = data != null ? data.clone() : new int[0];
+        bankItems.clear();
         
         // Update cache states: loaded from config but not yet built
         boolean hasData = this.idQuantityAndSlot.length > 0;
@@ -174,54 +174,38 @@ public class Rs2BankData {
      * 
      * @return Defensive copy of bank items list
      */
-    public synchronized List<Rs2ItemModel> getBankItems() {
-        if (!isCacheBuilt.get()) {
-            rebuildBankItemsList();
+    public List<Rs2ItemModel> getBankItems() {
+        int[] snapshot;
+        synchronized (this) {
+            if (isCacheBuilt.get() || idQuantityAndSlot.length == 0) {
+                return new ArrayList<>(bankItems);
+            }
+            snapshot = idQuantityAndSlot.clone();
         }
-        // Return defensive copy to prevent external modification
-        return new ArrayList<>(bankItems);
+
+        // Build outside the bank monitor so a live bank
+        // container event can publish its newer snapshot concurrently.
+        List<Rs2ItemModel> rebuilt = rebuildBankItemsList(snapshot);
+        synchronized (this) {
+            if (!isCacheBuilt.get() && rebuilt != null && Arrays.equals(idQuantityAndSlot, snapshot)) {
+                bankItems = rebuilt;
+                isCacheBuilt.set(true);
+            }
+            return new ArrayList<>(bankItems);
+        }
     }
 
     /**
-     * Rebuilds the bankItems list from the cached array data.
-     * Called only when needsRebuild is true to minimize performance impact.
-     * Must be called from synchronized context.
+     * Rebuilds a detached list from one immutable snapshot. The caller publishes it only
+     * if no newer live bank container event replaced that snapshot in the meantime.
      */
-    private void rebuildBankItemsList() {
-        bankItems.clear();
-
-        if (idQuantityAndSlot == null || idQuantityAndSlot.length < 3) {
-            isCacheBuilt.set(false);  // No items to build
-            return;
-        }        
-        log.debug("Rebuilding bank items list from cached data, size: {}", idQuantityAndSlot.length / 3);
-        
-        boolean rebuildSuccess = Microbot.getClientThread().runOnClientThreadOptional(() -> {
-            // Ensure we are on the client thread 
-            log.debug("Rebuilding bank items list on client thread");            
-            // Process items in triplets: [id, quantity, slot]
-            for (int i = 0; i < idQuantityAndSlot.length - 2; i += 3) {
-                int id = idQuantityAndSlot[i];
-                int quantity = idQuantityAndSlot[i + 1];
-                int slot = idQuantityAndSlot[i + 2];                
-                // Create Rs2ItemModel from cached data
-                try {               
-                    Rs2ItemModel item = Rs2ItemModel.createFromCache(id, quantity, slot);
-                    bankItems.add(item);
-                } catch (Exception e) {
-                    log.warn("Failed to recreate bank item from cache: id={}, qty={}, slot={}", id, quantity, slot, e);
-                    // Skip invalid items that can't be recreated
-                    continue;
-                }
-            }
-            return true;
-        }).orElse(false);
-        
-        // Update cache built state based on rebuild success
-        isCacheBuilt.set(rebuildSuccess);
-        
-        log.debug("Finished rebuilding bank items list with {} items, cache built: {}", 
-                  bankItems.size(), rebuildSuccess);
+    private List<Rs2ItemModel> rebuildBankItemsList(int[] snapshot) {
+        List<Rs2ItemModel> rebuilt = new ArrayList<>(snapshot.length / 3);
+        // createFromCache only copies saved values; definitions are loaded lazily by the model.
+        for (int i = 0; i < snapshot.length - 2; i += 3) {
+            rebuilt.add(Rs2ItemModel.createFromCache(snapshot[i], snapshot[i + 1], snapshot[i + 2]));
+        }
+        return rebuilt;
     }
 
     /**
