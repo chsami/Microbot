@@ -135,4 +135,19 @@ public class OkHttpTest
 		// rest of UA depends on if git is found
 		assertTrue(server.takeRequest().getHeader("User-Agent").startsWith("RuneLite/" + RuneLiteProperties.getVersion()));
 	}
+
+	@Test
+	public void testDebugCustomUserAgent() throws IOException, InterruptedException
+	{
+		server.enqueue(new MockResponse().setBody("OK"));
+
+		Request request = new Request.Builder()
+			.url(server.url("/debug"))
+			.header("User-Agent", "CustomClient/1.0")
+			.build();
+		RuneLiteDebug.buildHttpClient(false)
+			.newCall(request).execute().close();
+
+		Assert.assertEquals(RuneLiteDebug.USER_AGENT + " CustomClient/1.0", server.takeRequest().getHeader("User-Agent"));
+	}
 }

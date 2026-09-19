@@ -175,6 +175,7 @@ public enum Task
 	TZHAAR("Tzhaar", ItemID.ARCEUUS_CORPSE_TZHAAR_INITIAL, "TzTok-Jad", "TzKal-Zuk"),
 	VAMPYRES("Vampyres", ItemID.STAKE, "Vyrewatch"),
 	VARDORVIS("Vardorvis", ItemID.VARDORVISPET),
+	VENATORS("Venators", ItemID.SLAYERGUIDE_VENATOR),
 	VENENATIS("Venenatis", ItemID.VENENATIS_PET),
 	VETION("Vet'ion", ItemID.VETION_PET),
 	VORKATH("Vorkath", ItemID.VORKATHPET),

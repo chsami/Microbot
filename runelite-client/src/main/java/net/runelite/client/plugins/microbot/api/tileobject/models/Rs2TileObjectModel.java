@@ -7,6 +7,8 @@ import net.runelite.api.Point;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
+import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
 import net.runelite.client.plugins.microbot.api.IEntity;
 import net.runelite.client.plugins.microbot.api.boat.Rs2BoatCache;
 import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
@@ -190,11 +192,33 @@ public class Rs2TileObjectModel implements TileObject, IEntity {
             return false;
         }
 
-        if (objectWorldView.getId() == playerWorldView.getId()) {
-            return true;
+        // Objects in different world views are not connected by walking, so there is no path.
+        if (objectWorldView.getId() != playerWorldView.getId()) {
+            return false;
         }
 
-        return IEntity.super.isReachable();
+        // Ask whether a tile BESIDE this object can be stood on - not whether the object's own
+        // tile can be. You interact with a booth, a tree or a rock from an adjacent tile and never
+        // from the tile it occupies, so a solid object's own tile is never walkable and the
+        // IEntity default (Rs2Reachable on getWorldLocation()) answers "no" for every one of them.
+        // Rs2GameObject.isReachable asks the right question: it builds the object's WorldArea from
+        // its size, takes the interactable tiles around it, and looks for one that is walkable and
+        // reachable. Reused here rather than reimplemented so the two paths cannot drift.
+        if (tileObject instanceof GameObject) {
+            return Rs2GameObject.isReachable((GameObject) tileObject);
+        }
+
+        // Walls, ground decorations and decorative objects occupy a single tile and carry no
+        // sizeX/sizeY, so the area helper above does not apply. Their own tile is the one to test.
+        //
+        // Rs2Tile.isTileReachable and NOT IEntity.super.isReachable(): the latter is
+        // Rs2Reachable.isReachable(p), which traverses FROM p and then asks whether p is in the
+        // result. That never consults the player, so it answers "is this tile part of some walkable
+        // region" rather than "can I get to it", and a walkable tile inside a locked room passes.
+        // isTileReachable traverses from Rs2Player.getLocalLocation() to the tile, which is the
+        // question being asked, and is the same check the GameObject branch above ends up making
+        // through Rs2GameObject.isReachable.
+        return Rs2Tile.isTileReachable(getWorldLocation());
     }
 
     public boolean click() {

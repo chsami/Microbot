@@ -1140,12 +1140,6 @@ public class GpuPlugin extends Plugin implements DrawCallbacks
 			return;
 		}
 
-		// this is a noop after the first zone
-		for (int i = 0; i < rts.length; ++i) // NOPMD: ForLoopCanBeForeach
-		{
-			rts[i].vaoA.unmap();
-		}
-
 		Zone z = ctx.zones[zx][zz];
 		if (!z.initialized)
 		{
@@ -1205,6 +1199,11 @@ public class GpuPlugin extends Plugin implements DrawCallbacks
 		}
 		else if (pass == DrawCallbacks.PRE_PASS_ALPHA)
 		{
+			for (int i = 0; i < rts.length; ++i)
+			{
+				rts[i].vaoA.unmap();
+			}
+
 			glUniformMatrix4fv(uniEntityProj, false, ctx.projection);
 			glUniform4i(uniEntityTint, scene.getOverrideHue(), scene.getOverrideSaturation(), scene.getOverrideLuminance(), scene.getOverrideAmount());
 		}
@@ -1566,17 +1565,18 @@ public class GpuPlugin extends Plugin implements DrawCallbacks
 		);
 		glUniform1f(uniUiColorblindIntensity, config.colorBlindIntensity());
 
+		final GraphicsConfiguration graphicsConfiguration = clientUI.getGraphicsConfiguration();
+		final AffineTransform t = graphicsConfiguration.getDefaultTransform();
+
 		if (client.isStretchedEnabled())
 		{
 			Dimension dim = client.getStretchedDimensions();
 			glDpiAwareViewport(0, 0, dim.width, dim.height);
-			glUniform2i(uniTexTargetDimensions, dim.width, dim.height);
+			glUniform2i(uniTexTargetDimensions, getScaledValue(t.getScaleX(), dim.width), getScaledValue(t.getScaleY(), dim.height));
 		}
 		else
 		{
 			glDpiAwareViewport(0, 0, canvasWidth, canvasHeight);
-			final GraphicsConfiguration graphicsConfiguration = clientUI.getGraphicsConfiguration();
-			final AffineTransform t = graphicsConfiguration.getDefaultTransform();
 			glUniform2i(uniTexTargetDimensions, getScaledValue(t.getScaleX(), canvasWidth), getScaledValue(t.getScaleY(), canvasHeight));
 		}
 

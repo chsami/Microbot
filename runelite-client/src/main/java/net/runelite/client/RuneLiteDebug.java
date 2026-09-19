@@ -444,14 +444,19 @@ public class RuneLiteDebug {
                 .addInterceptor(chain ->
                 {
                     Request request = chain.request();
-                    if (request.header("User-Agent") != null)
+                    String ua = request.header("User-Agent");
+                    if (ua == null)
                     {
-                        return chain.proceed(request);
+                        ua = USER_AGENT;
+                    }
+                    else if (!ua.startsWith("RuneLite"))
+                    {
+                        ua = USER_AGENT + " " + ua;
                     }
 
                     Request userAgentRequest = request
                             .newBuilder()
-                            .header("User-Agent", USER_AGENT)
+                            .header("User-Agent", ua)
                             .build();
                     return chain.proceed(userAgentRequest);
                 })

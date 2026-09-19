@@ -172,6 +172,21 @@ public class LootTrackerPlugin extends Plugin
 	// Shipwreck salvaging
 	private static final Pattern SALVAGE_PATTERN = Pattern.compile("You sort through the\\s+(?<tier>\\S+)\\s+salvage.*");
 
+	// Wyrmscraig golem crafting
+	private static final Pattern GOLEM_CRAFTING_PATTERN = Pattern.compile(
+		"As you complete the golem it leaves a gift " +
+		"(?:on the ground|in your gem (?:bag|sack)) for you: 1 x " +
+		"(?<item>Uncut diamond|Uncut emerald|Uncut ruby|Uncut sapphire|Jeweller's chisel)\\.?$");
+
+	static final String GOLEM_CRAFTING_EVENT = "Golem Crafting";
+	private static final Map<String, Integer> GOLEM_CRAFTING_REWARDS = Map.of(
+		"Uncut diamond", ItemID.UNCUT_DIAMOND,
+		"Uncut emerald", ItemID.UNCUT_EMERALD,
+		"Uncut ruby", ItemID.UNCUT_RUBY,
+		"Uncut sapphire", ItemID.UNCUT_SAPPHIRE,
+		"Jeweller's chisel", ItemID.JEWELLERS_CHISEL
+	);
+
 	// Seed Pack loot handling
 	private static final String SEEDPACK_EVENT = "Seed pack";
 
@@ -269,14 +284,14 @@ public class LootTrackerPlugin extends Plugin
 	// Birdhouses
 	private static final Pattern BIRDHOUSE_PATTERN = Pattern.compile("You dismantle and discard the trap, retrieving (?:(?:a|\\d{1,2}) nests?, )?10 dead birds, \\d{1,3} feathers and (\\d,?\\d{1,3}) Hunter XP\\.");
 	private static final Map<Integer, String> BIRDHOUSE_XP_TO_TYPE = new ImmutableMap.Builder<Integer, String>().
-		put(280, "Regular Bird House").
-		put(420, "Oak Bird House").
-		put(560, "Willow Bird House").
-		put(700, "Teak Bird House").
-		put(820, "Maple Bird House").
-		put(960, "Mahogany Bird House").
-		put(1020, "Yew Bird House").
-		put(1140, "Magic Bird House").
+		put(112, "Regular Bird House").
+		put(168, "Oak Bird House").
+		put(224, "Willow Bird House").
+		put(280, "Teak Bird House").
+		put(369, "Maple Bird House").
+		put(480, "Mahogany Bird House").
+		put(612, "Yew Bird House").
+		put(969, "Magic Bird House").
 		put(1200, "Redwood Bird House").
 		build();
 
@@ -1063,6 +1078,18 @@ public class LootTrackerPlugin extends Plugin
 			return;
 		}
 
+		final Matcher golemCraftingMatcher = GOLEM_CRAFTING_PATTERN.matcher(Text.removeTags(message));
+		if (golemCraftingMatcher.find())
+		{
+			final String itemName = golemCraftingMatcher.group("item");
+			final Integer itemId = GOLEM_CRAFTING_REWARDS.get(itemName);
+			if (itemId != null)
+			{
+				addLoot(GOLEM_CRAFTING_EVENT, -1, LootRecordType.EVENT, null, List.of(new ItemStack(itemId, 1)));
+			}
+			return;
+		}
+
 		if (message.equals(HERBIBOAR_LOOTED_MESSAGE))
 		{
 			if (processHerbiboarHerbSackLoot(event.getTimestamp()))
@@ -1265,7 +1292,7 @@ public class LootTrackerPlugin extends Plugin
 
 	private void countChangedItems(int itemId, Object metadata)
 	{
-		onInvChange((((invItems, groundItems, removedItems) ->
+		onInvChange((invItems, groundItems, removedItems) ->
 		{
 			int cnt = removedItems.count(itemId);
 			if (cnt > 0)
@@ -1276,7 +1303,7 @@ public class LootTrackerPlugin extends Plugin
 				combined.addAll(groundItems);
 				addLoot(name, -1, LootRecordType.EVENT, metadata, combined, cnt);
 			}
-		})));
+		});
 	}
 
 	@Subscribe
@@ -1415,7 +1442,7 @@ public class LootTrackerPlugin extends Plugin
 							put("HERBLORE", client.getBoostedSkillLevel(Skill.HERBLORE)).
 							put("HUNTER", client.getBoostedSkillLevel(Skill.HUNTER)).
 							build();
-						onInvChange((((invItems, groundItems, removedItems) ->
+						onInvChange((invItems, groundItems, removedItems) ->
 						{
 							int cnt = removedItems.count(itemId);
 							if (cnt > 0)
@@ -1423,7 +1450,7 @@ public class LootTrackerPlugin extends Plugin
 								String name = itemManager.getItemComposition(itemId).getMembersName();
 								addLoot(name, -1, LootRecordType.EVENT, levels, invItems, cnt);
 							}
-						})));
+						});
 						break;
 				}
 			}

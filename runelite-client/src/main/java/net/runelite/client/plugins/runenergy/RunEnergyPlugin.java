@@ -173,7 +173,11 @@ public class RunEnergyPlugin extends Plugin
 			client.getLocalDestinationLocation() != null &&
 			prevLocalPlayerLocation.distanceTo(client.getLocalPlayer().getWorldLocation()) > 1;
 
-		prevLocalPlayerLocation = client.getLocalPlayer().getWorldLocation();
+		Player local =  client.getLocalPlayer();
+		if (local != null)
+		{
+			prevLocalPlayerLocation = local.getWorldLocation();
+		}
 	}
 
 	@Subscribe

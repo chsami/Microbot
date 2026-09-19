@@ -84,25 +84,30 @@ class DevToolsOverlay extends Overlay {
 
     @Override
     public Dimension render(Graphics2D graphics) {
+        CameraFocusableEntity cameraFocusable = client.getCameraFocusEntity();
+        if (cameraFocusable == null)
+        {
+            return null;
+        }
 
         WorldView tlwv = client.getTopLevelWorldView();
-        WorldView playerWv = client.getLocalPlayer().getWorldView();
+        WorldView cameraFocusWv = cameraFocusable.getWorldView();
 
         graphics.setFont(FONT);
 
         if (plugin.getPlayers().isActive()) {
             renderPlayers(tlwv, graphics);
-            if (playerWv != tlwv)
+            if (cameraFocusWv != tlwv)
             {
-                renderPlayers(playerWv, graphics);
+                renderPlayers(cameraFocusWv, graphics);
             }
         }
 
         if (plugin.getNpcs().isActive()) {
             renderNpcs(tlwv, graphics);
-            if (playerWv != tlwv)
+            if (cameraFocusWv != tlwv)
             {
-                renderNpcs(playerWv, graphics);
+                renderNpcs(cameraFocusWv, graphics);
             }
         }
 
@@ -117,9 +122,9 @@ class DevToolsOverlay extends Overlay {
         if (plugin.getGroundItems().isActive() || plugin.getGroundObjects().isActive() || plugin.getGameObjects().isActive() || plugin.getWalls().isActive() || plugin.getDecorations().isActive() || plugin.getTileLocation().isActive() || plugin.getMovementFlags().isActive())
         {
             renderTileObjects(tlwv, graphics);
-            if (playerWv != tlwv)
+            if (cameraFocusWv != tlwv)
             {
-                renderTileObjects(playerWv, graphics);
+                renderTileObjects(cameraFocusWv, graphics);
             }
         }
 
@@ -130,18 +135,18 @@ class DevToolsOverlay extends Overlay {
         if (plugin.getGraphicsObjects().isActive())
         {
             renderGraphicsObjects(tlwv, graphics);
-            if (playerWv != tlwv)
+            if (cameraFocusWv != tlwv)
             {
-                renderGraphicsObjects(playerWv, graphics);
+                renderGraphicsObjects(cameraFocusWv, graphics);
             }
         }
 
         if (plugin.getTileFlags().isActive())
         {
             renderTileFlags(tlwv, graphics);
-            if (playerWv != tlwv)
+            if (cameraFocusWv != tlwv)
             {
-                renderTileFlags(playerWv, graphics);
+                renderTileFlags(cameraFocusWv, graphics);
             }
         }
 
@@ -207,9 +212,12 @@ class DevToolsOverlay extends Overlay {
 			}
 		}
 
-        String text = local.getName() + " (A: " + local.getAnimation() + ") (P: " + local.getPoseAnimation() + ") (G: " + local.getGraphic() + ")";
-        OverlayUtil.renderActorOverlay(graphics, local, text, CYAN);
-    }
+		if (local != null)
+		{
+			String text = local.getName() + " (A: " + local.getAnimation() + ") (P: " + local.getPoseAnimation() + ") (G: " + local.getGraphic() + ")";
+			OverlayUtil.renderActorOverlay(graphics, local, text, CYAN);
+		}
+	}
 
 	private void renderNpcs(WorldView wv, Graphics2D graphics)
 	{
