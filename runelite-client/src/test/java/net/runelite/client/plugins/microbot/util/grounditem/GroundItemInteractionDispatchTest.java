@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.api.tileitem.models.Rs2TileItemModel;
+import net.runelite.client.plugins.microbot.util.mouse.Mouse;
 import net.runelite.client.plugins.microbot.util.reflection.Rs2Reflection;
 import org.junit.Test;
 import org.objectweb.asm.ClassReader;
@@ -41,6 +42,7 @@ public class GroundItemInteractionDispatchTest
         DispatchCalls calls = readDispatchCalls(GroundItemPickup.class, "click",
                 Type.getMethodDescriptor(Type.BOOLEAN_TYPE, Type.getType(Rs2TileItemModel.class), Type.getType(String.class)));
         assertEquals(1, calls.matchedMethods);
+        assertEquals(1, calls.mouseDispatch);
         assertEquals(0, calls.reflectionInvokeMenu);
     }
     private static void assertSyntheticTargetMenuDispatch(Class<?> type, String methodName,
@@ -90,6 +92,15 @@ public class GroundItemInteractionDispatchTest
                             {
                                 calls.doInvoke++;
                             }
+                            if (expectedMethod && owner.equals(Type.getInternalName(Mouse.class))
+                                    && methodName.equals("tryClick")
+                                    && methodDescriptor.equals(Type.getMethodDescriptor(Type.BOOLEAN_TYPE,
+                                            Type.getType(net.runelite.api.Point.class),
+                                            Type.getType(net.runelite.client.plugins.microbot.util.menu.NewMenuEntry.class),
+                                            Type.getType(java.util.function.BooleanSupplier.class))))
+                            {
+                                calls.mouseDispatch++;
+                            }
                             // Scan the whole class so a lambda$... or same-class helper cannot hide a
                             // reintroduced reflection dispatch from the expected interaction method.
                             if (owner.equals(Type.getInternalName(Rs2Reflection.class)) && methodName.equals("invokeMenu"))
@@ -108,6 +119,7 @@ public class GroundItemInteractionDispatchTest
     {
         private int matchedMethods;
         private int doInvoke;
+        private int mouseDispatch;
         private int reflectionInvokeMenu;
     }
 }

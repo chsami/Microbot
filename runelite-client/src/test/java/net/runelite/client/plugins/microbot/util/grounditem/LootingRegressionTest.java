@@ -15,9 +15,14 @@ public class LootingRegressionTest {
     @Test public void exceptionDoesNotLeaveScriptsPaused() throws Exception {
         boolean previous = Microbot.pauseAllScripts.getAndSet(false);
         try (ApiTestClient env = new ApiTestClient()) {
-            try { Rs2GroundItem.runWhilePaused(() -> { throw new IllegalStateException("expected"); }); fail(); }
+            boolean previouslyLooting = Rs2GroundItem.isLooting();
+            try { Rs2GroundItem.runWhilePaused(() -> {
+                assertTrue(Rs2GroundItem.isLooting());
+                throw new IllegalStateException("expected");
+            }); fail(); }
             catch (IllegalStateException expected) { }
             assertFalse(Microbot.pauseAllScripts.get());
+            assertEquals(previouslyLooting, Rs2GroundItem.isLooting());
         } finally { Microbot.pauseAllScripts.set(previous); }
     }
 
@@ -32,7 +37,15 @@ public class LootingRegressionTest {
     @Test public void fullInventoryDoesNotReportSuccessfulLoot() throws Exception {
         try (ApiTestClient env = new ApiTestClient(); MockedStatic<Rs2Inventory> inventory = mockStatic(Rs2Inventory.class)) {
             GroundItem item = GroundItem.builder().id(1).quantity(1).stackable(false).build();
+            assertEquals(GroundItemPickup.Result.NO_SPACE, Rs2GroundItem.coreLootResult(item));
             assertFalse(Rs2GroundItem.coreLoot(item));
+        }
+    }
+
+    @Test public void nullItemIsRejectedWithoutCheckingInventory() throws Exception {
+        try (ApiTestClient env = new ApiTestClient(); MockedStatic<Rs2Inventory> inventory = mockStatic(Rs2Inventory.class)) {
+            assertEquals(GroundItemPickup.Result.REJECTED, Rs2GroundItem.coreLootResult(null));
+            inventory.verifyNoInteractions();
         }
     }
 

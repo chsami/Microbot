@@ -222,7 +222,8 @@ public class Rs2GroundItem {
 
     public static GroundItemPickup.Result coreLootResult(GroundItem item) {
         if (GroundItemPickup.cancelled()) return GroundItemPickup.Result.CANCELLED;
-        if (item == null || !canTakeGroundItem(item)) return GroundItemPickup.Result.NO_SPACE;
+        if (item == null) return GroundItemPickup.Result.REJECTED;
+        if (!canTakeGroundItem(item)) return GroundItemPickup.Result.NO_SPACE;
         GroundItemPickup.Snapshot target = GroundItemPickup.find(item);
         final GroundItemPickup.Result[] result = {GroundItemPickup.Result.REJECTED};
         runWhilePaused(() -> {

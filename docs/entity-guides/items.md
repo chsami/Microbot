@@ -191,7 +191,7 @@ Bank snapshots are saved per RuneScape profile and restored after a restart. The
 
 **Defensive check:** Restart with a saved snapshot and verify it is available with epoch zero, then open the bank and verify the epoch advances and the saved contents match the live container.
 
-## 12. Separate pickup submission, ground changes and collection
+## 11. Separate pickup submission, ground changes and collection
 
 A ground pile can decrease in place without its wrapper changing identity. Another player can remove it, and a bag can receive it without an inventory change. Use the detailed pickup result instead of treating disappearance as proof of collection. Revalidate the originating view and exact item after mouse movement, and never turn Take into a selected-item/spell action.
 
