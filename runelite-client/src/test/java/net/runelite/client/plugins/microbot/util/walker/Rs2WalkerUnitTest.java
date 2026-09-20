@@ -8,6 +8,8 @@ import net.runelite.client.plugins.microbot.util.walker.door.Rs2DoorGeometry;
 import net.runelite.api.WallObject;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.InterfaceID;
+import net.runelite.client.plugins.microbot.api.ApiTestClient;
+import net.runelite.client.plugins.microbot.api.playerstate.Rs2PlayerStateCache;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.TransportType;
 import org.junit.After;
@@ -1981,14 +1983,15 @@ public class Rs2WalkerUnitTest {
     }
 
     @Test
-    public void interimPreclickKeepsCheckpointUntilCooldownExpires() {
+    public void interimPreclickKeepsCheckpointUntilCooldownExpires() throws Exception {
         Rs2WalkerMovement.clearInterimTarget("test setup");
         WorldPoint interim = new WorldPoint(3206, 3200, 0);
         WorldPoint player = new WorldPoint(3200, 3200, 0);
         Rs2Walker.routeState.interimTargetWp = interim;
         Rs2Walker.routeState.interimSetAtMs = 1000L;
         Rs2Walker.routeState.interimLastProgressAtMs = 1000L;
-        try {
+        try (ApiTestClient runtime = new ApiTestClient()) {
+            runtime.installCache("rs2PlayerStateCache", Rs2PlayerStateCache.class);
             assertFalse(Rs2WalkerMovement.clearInterimTargetIfReachedOrExpired(player,
                     Collections.emptyList(), 1899L));
             assertEquals(interim, Rs2Walker.routeState.interimTargetWp);

@@ -261,15 +261,15 @@ public class PathfinderConfig {
 
     /**
      * Creates pathfinder state. Null client/config dependencies are supported for offline planning
-     * and tests. A null client uses only static collision data, and refresh returns without reading
-     * live state when either dependency is absent.
+     * and tests. When either dependency is absent, collision checks and refresh avoid live state.
+     * A client may still be supplied for offline world-type metadata.
      */
     public PathfinderConfig(SplitFlagMap mapData, Map<WorldPoint, Set<Transport>> transports,
                             List<Restriction> restrictions,
                             Client client, ShortestPathConfig config,
                             TransportPlanningPolicy transportPlanningPolicy) {
         this.mapData = mapData;
-        this.map = ThreadLocal.withInitial(() -> client == null
+        this.map = ThreadLocal.withInitial(() -> client == null || config == null
                 ? new CollisionMap(this.mapData, this.liveCollisionOverlay, () -> -1)
                 : new CollisionMap(this.mapData, this.liveCollisionOverlay));
         this.allTransports = Collections.synchronizedMap(new HashMap<>());
