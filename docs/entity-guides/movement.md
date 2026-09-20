@@ -352,3 +352,5 @@ if (CantReachTargetRecovery.shouldStart(detectionEnabled, cantReachTarget)) {
 A target is always in its own flood region, so flooding from the target cannot prove player reachability. Cache explicit-origin floods separately by origin and scene context. Compare native tile coordinates in the same world view; local-coordinate units are not tiles.
 
 **Pattern to follow:** Use `entity.isReachable()` and player-relative query terminals. For an explicit native-coordinate anchor, constrain the world view first. **Defensive check:** disconnected regions queried in both orders must return the same answers, including after an explicit-origin lookup.
+
+If flood construction fails because collision data is unavailable or the origin is outside the scene, clear both the published tiles and cached context. Returning an empty set alone leaves stale tiles visible through the no-argument getter and can reuse an earlier successful cache entry.

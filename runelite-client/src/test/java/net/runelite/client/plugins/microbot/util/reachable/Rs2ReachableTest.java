@@ -101,4 +101,36 @@ public class Rs2ReachableTest
         assertFalse(Rs2Reachable.isReachable(null));
         assertFalse(Rs2Reachable.isReachable(new WorldPoint(3201, 3201, 1)));
     }
+
+    @Test
+    public void failedFloodClearsPublishedTilesAndCachedContext()
+    {
+        CollisionData collision = view.getCollisionMaps()[0];
+        int[][] validFlags = collision.getFlags();
+        Runnable[] failures = {
+                () -> when(view.getCollisionMaps()).thenReturn(null),
+                () -> when(view.getCollisionMaps()).thenReturn(new CollisionData[0]),
+                () -> when(view.getCollisionMaps()).thenReturn(new CollisionData[]{null}),
+                () -> when(collision.getFlags()).thenReturn(null),
+                () -> when(collision.getFlags()).thenReturn(new int[0][]),
+                () -> when(collision.getFlags()).thenReturn(new int[][]{null}),
+                () -> when(view.getBaseX()).thenReturn(3300)
+        };
+        for (Runnable failure : failures) {
+            when(view.getCollisionMaps()).thenReturn(new CollisionData[]{collision});
+            when(collision.getFlags()).thenReturn(validFlags);
+            when(view.getBaseX()).thenReturn(3200);
+            when(client.getTickCount()).thenReturn(1);
+            assertFalse(Rs2Reachable.getReachableTiles(origin).isEmpty());
+            when(client.getTickCount()).thenReturn(2);
+            failure.run();
+            assertTrue(Rs2Reachable.getReachableTiles(origin).isEmpty());
+            assertTrue(Rs2Reachable.getReachableTiles().isEmpty());
+            // Restore the old cache key with unavailable data: stale tiles must not reappear.
+            when(view.getBaseX()).thenReturn(3200);
+            when(client.getTickCount()).thenReturn(1);
+            when(view.getCollisionMaps()).thenReturn(null);
+            assertTrue(Rs2Reachable.getReachableTiles(origin).isEmpty());
+        }
+    }
 }

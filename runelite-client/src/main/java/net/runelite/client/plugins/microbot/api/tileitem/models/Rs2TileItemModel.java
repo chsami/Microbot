@@ -288,6 +288,7 @@ public class Rs2TileItemModel implements TileItem, IEntity {
                 break;
             }
         }
+        if (index < 0 && !requestedAction.isEmpty()) return null;
         MenuAction menuAction = Microbot.getClient().isWidgetSelected()
                 ? MenuAction.WIDGET_TARGET_ON_GROUND_ITEM : groundItemMenuAction(index);
         if (menuAction == null) return null;

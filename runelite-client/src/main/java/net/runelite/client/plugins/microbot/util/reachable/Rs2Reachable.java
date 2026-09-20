@@ -57,9 +57,7 @@ public class Rs2Reachable {
             int tick = c.getTickCount();
             if (c.getGameState() != net.runelite.api.GameState.LOGGED_IN
                     || worldView == null || start == null || start.getPlane() != worldView.getPlane()) {
-                lastUpdateTick = -1;
-                reachableTiles = IntSets.EMPTY_SET;
-                return reachableTiles;
+                return clearReachableTiles();
             }
             if (lastUpdateTick == tick && Objects.equals(lastOrigin, start)
                     && lastView == worldView && lastScene == worldView.getScene()
@@ -68,13 +66,13 @@ public class Rs2Reachable {
             CollisionData[] collisionMaps = worldView.getCollisionMaps();
             if (collisionMaps == null || worldView.getPlane() >= collisionMaps.length
                     || collisionMaps[worldView.getPlane()] == null) {
-                return IntSets.EMPTY_SET;
+                return clearReachableTiles();
             }
 
             int plane = worldView.getPlane();
             int[][] collisionFlags = collisionMaps[plane].getFlags();
 
-            if (collisionFlags == null || collisionFlags.length == 0 || collisionFlags[0] == null) return IntSets.EMPTY_SET;
+            if (collisionFlags == null || collisionFlags.length == 0 || collisionFlags[0] == null) return clearReachableTiles();
             int width = collisionFlags.length, height = collisionFlags[0].length;
             boolean[][] visited = new boolean[width][height];
             IntArrayFIFOQueue openQueue = new IntArrayFIFOQueue();
@@ -83,7 +81,7 @@ public class Rs2Reachable {
             int worldBaseY = worldView.getBaseY();
 
             if (start == null || start.getPlane() != plane) {
-                return IntSets.EMPTY_SET;
+                return clearReachableTiles();
             }
 
             int localStartX = start.getX() - worldBaseX;
@@ -91,7 +89,7 @@ public class Rs2Reachable {
 
             if (localStartX < 0 || localStartY < 0
                     || localStartX >= width || localStartY >= height) {
-                return IntSets.EMPTY_SET;
+                return clearReachableTiles();
             }
 
             int startKey = (localStartX << 16) | localStartY;
@@ -169,5 +167,14 @@ public class Rs2Reachable {
             lastBaseY = worldBaseY;
             lastUpdateTick = tick;
             return reachableTiles;
+    }
+    private static IntSet clearReachableTiles() {
+        lastUpdateTick = -1;
+        lastOrigin = null;
+        lastView = null;
+        lastScene = null;
+        lastWorld = lastBaseX = lastBaseY = 0;
+        reachableTiles = IntSets.EMPTY_SET;
+        return reachableTiles;
     }
 }

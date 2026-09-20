@@ -120,6 +120,52 @@ public class ApiBoundaryRegressionTest
     }
 
     @Test
+    public void groundItemRejectsUnknownActionWhilePreservingWidgetTargeting() throws Exception
+    {
+        try (ApiTestClient env = new ApiTestClient()) {
+            WorldView view = mock(WorldView.class);
+            Scene scene = mock(Scene.class);
+            Tile tile = mock(Tile.class);
+            TileItem item = mock(TileItem.class);
+            ItemComposition definition = mock(ItemComposition.class);
+            when(env.client.getGameState()).thenReturn(GameState.LOGGED_IN);
+            when(env.client.getWorldView(-1)).thenReturn(view);
+            when(view.getId()).thenReturn(-1);
+            when(view.getScene()).thenReturn(scene);
+            when(scene.getTiles()).thenReturn(new Tile[][][]{{{tile}}});
+            when(tile.getLocalLocation()).thenReturn(new LocalPoint(64, 64, -1));
+            when(tile.getGroundItems()).thenReturn(List.of(item));
+            when(env.client.getItemDefinition(0)).thenReturn(definition);
+            when(env.client.isWidgetSelected()).thenReturn(true);
+            Rs2TileItemModel model = new Rs2TileItemModel(tile, item, view);
+            java.lang.reflect.Method prepare = Rs2TileItemModel.class.getDeclaredMethod("prepareDispatch", String.class);
+            prepare.setAccessible(true);
+            env.call(() -> {
+                try (org.mockito.MockedStatic<net.runelite.client.plugins.microbot.util.reflection.Rs2Reflection> reflection =
+                             mockStatic(net.runelite.client.plugins.microbot.util.reflection.Rs2Reflection.class);
+                     org.mockito.MockedStatic<Perspective> perspective = mockStatic(Perspective.class)) {
+                    reflection.when(() -> net.runelite.client.plugins.microbot.util.reflection.Rs2Reflection.getGroundItemActions(definition))
+                            .thenReturn(new String[]{null, null, "Take"});
+                    assertNull(prepare.invoke(model, "Unknown"));
+                    Map.Entry<MenuEntry, ?> matched = (Map.Entry<MenuEntry, ?>) prepare.invoke(model, "Take");
+                    assertEquals(MenuAction.WIDGET_TARGET_ON_GROUND_ITEM, matched.getKey().getType());
+                    reflection.when(() -> net.runelite.client.plugins.microbot.util.reflection.Rs2Reflection.getGroundItemActions(definition))
+                            .thenReturn(new String[0]);
+                    Map.Entry<MenuEntry, ?> empty = (Map.Entry<MenuEntry, ?>) prepare.invoke(model, "");
+                    assertEquals(MenuAction.WIDGET_TARGET_ON_GROUND_ITEM, empty.getKey().getType());
+                    when(env.client.isWidgetSelected()).thenReturn(false);
+                    assertNull(prepare.invoke(model, "Unknown"));
+                    reflection.when(() -> net.runelite.client.plugins.microbot.util.reflection.Rs2Reflection.getGroundItemActions(definition))
+                            .thenReturn(new String[]{null, null, "Take"});
+                    Map.Entry<MenuEntry, ?> take = (Map.Entry<MenuEntry, ?>) prepare.invoke(model, "Take");
+                    assertEquals(MenuAction.GROUND_ITEM_THIRD_OPTION, take.getKey().getType());
+                }
+                return null;
+            });
+        }
+    }
+
+    @Test
     public void npcDistanceUsesTilesAndRejectsDifferentViewsAndPlanes() throws Exception
     {
         try (ApiTestClient env = new ApiTestClient()) {
