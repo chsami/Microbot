@@ -72,7 +72,7 @@ public final class Rs2TileItemCache {
 
                     for (TileItem item : items) {
                         if (item != null) {
-                            result.add(new Rs2TileItemModel(tile, item));
+                            result.add(new Rs2TileItemModel(tile, item, worldView));
                         }
                     }
                 }

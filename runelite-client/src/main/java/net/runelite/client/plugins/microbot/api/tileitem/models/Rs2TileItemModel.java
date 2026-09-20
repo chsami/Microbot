@@ -24,7 +24,17 @@ public class Rs2TileItemModel implements TileItem, IEntity {
     @Getter
     private final TileItem tileItem;
 
+    private final WorldView worldView;
+
     public Rs2TileItemModel(Tile tileObject, TileItem tileItem) {
+        this(tileObject, tileItem, Microbot.getClientThread().invoke(() -> {
+            LocalPoint local = tileObject.getLocalLocation();
+            return local == null ? null : Microbot.getClient().getWorldView(local.getWorldView());
+        }));
+    }
+
+    public Rs2TileItemModel(Tile tileObject, TileItem tileItem, WorldView worldView) {
+        this.worldView = worldView;
         this.tile = tileObject;
         this.tileItem = tileItem;
     }
@@ -116,7 +126,7 @@ public class Rs2TileItemModel implements TileItem, IEntity {
 
     @Override
     public WorldView getWorldView() {
-        return Microbot.getClient().getTopLevelWorldView();
+        return worldView;
     }
 
     public boolean isNoted() {
@@ -191,7 +201,7 @@ public class Rs2TileItemModel implements TileItem, IEntity {
     }
 
     public boolean click() {
-        return click("");
+        return click("Take");
     }
 
     /**
@@ -204,93 +214,6 @@ public class Rs2TileItemModel implements TileItem, IEntity {
     }
 
     public boolean click(String action) {
-        try {
-            int param0;
-            int param1;
-            int identifier;
-            String target;
-            MenuAction menuAction;
-            ItemComposition item;
-
-            item = Microbot.getClientThread().runOnClientThreadOptional(() -> Microbot.getClient().getItemDefinition(getId())).orElse(null);
-            if (item == null) return false;
-            identifier = getId();
-
-            LocalPoint localPoint = getLocalLocation();
-            if (localPoint == null) return false;
-
-            param0 = localPoint.getSceneX();
-            target = "<col=ff9040>" + getName();
-            param1 = localPoint.getSceneY();
-
-            String[] groundActions = Rs2Reflection.getGroundItemActions(item);
-
-            int index = -1;
-            if (action.isEmpty()) {
-                for (int i = 0; i < groundActions.length; i++) {
-                    if (groundActions[i] == null) {
-                        continue;
-                    }
-                    action = groundActions[i];
-                    index = i;
-                    break;
-                }
-                if (index == -1) return false;
-            } else {
-                for (int i = 0; i < groundActions.length; i++) {
-                    String groundAction = groundActions[i];
-                    if (groundAction == null || !groundAction.equalsIgnoreCase(action)) continue;
-                    index = i;
-                    break;
-                }
-            }
-
-            if (Microbot.getClient().isWidgetSelected()) {
-                menuAction = MenuAction.WIDGET_TARGET_ON_GROUND_ITEM;
-            } else {
-                menuAction = groundItemMenuAction(index);
-                if (menuAction == null) {
-                    log.warn("Unable to interact with ground item '{}' using action '{}'; actions={}", getName(), action, Arrays.toString(groundActions));
-                    return false;
-                }
-            }
-            LocalPoint localPoint1 = getLocalLocation();
-            if (localPoint1 == null) {
-                return false;
-            }
-            if (!Rs2Camera.isTileOnScreen(localPoint1)) {
-                Rs2Camera.turnTo(localPoint1);
-            }
-            Polygon canvas = Perspective.getCanvasTilePoly(Microbot.getClient(), localPoint1);
-            Rectangle bounds = canvas == null
-                    ? new Rectangle(1, 1, Microbot.getClient().getCanvasWidth(), Microbot.getClient().getCanvasHeight())
-                    : canvas.getBounds();
-            int worldViewId = localPoint1.getWorldView();
-            Microbot.doInvoke(new NewMenuEntry()
-                            .option(action)
-                            .target(target)
-                            .identifier(identifier)
-                            .opcode(menuAction.getId())
-                            .param0(param0)
-                            .param1(param1)
-                            .itemId(-1)
-                            .worldViewId(worldViewId),
-                    bounds);
-            return true;
-        } catch (Exception ex) {
-            Microbot.logStackTrace("Rs2TileItemModel", ex);
-            return false;
-        }
-    }
-
-    private static MenuAction groundItemMenuAction(int index) {
-        switch (index) {
-            case 0: return MenuAction.GROUND_ITEM_FIRST_OPTION;
-            case 1: return MenuAction.GROUND_ITEM_SECOND_OPTION;
-            case 2: return MenuAction.GROUND_ITEM_THIRD_OPTION;
-            case 3: return MenuAction.GROUND_ITEM_FOURTH_OPTION;
-            case 4: return MenuAction.GROUND_ITEM_FIFTH_OPTION;
-            default: return null;
-        }
+        return net.runelite.client.plugins.microbot.util.grounditem.GroundItemPickup.click(this, action);
     }
 }

@@ -94,7 +94,7 @@ public class Microbot {
     private static final ScheduledExecutorService xpSchedulor = Executors.newSingleThreadScheduledExecutor();
     @Getter
     private static final SpecialAttackConfigs specialAttackConfigs = new SpecialAttackConfigs();
-    public static MenuEntry targetMenu;
+    public static volatile MenuEntry targetMenu;
     public static boolean isGainingExp = false;
     public static AtomicBoolean pauseAllScripts = new AtomicBoolean(false);
     public static String status = "IDLE";

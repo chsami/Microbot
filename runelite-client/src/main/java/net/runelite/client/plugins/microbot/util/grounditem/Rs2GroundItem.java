@@ -36,114 +36,45 @@ import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 public class Rs2GroundItem {
     private static final int DESPAWN_DELAY_THRESHOLD_TICKS = 150;
 
-    public static boolean runWhilePaused(BooleanSupplier booleanSupplier) {
-        final boolean paused = Microbot.pauseAllScripts.getAndSet(true);
-        final boolean success = booleanSupplier.getAsBoolean();
-        if (!paused && !Microbot.pauseAllScripts.compareAndSet(true, false)) {
-            log.warn("Another script unpaused all scripts");
-        }
-        return success;
-    }
+    private static final java.util.concurrent.locks.ReentrantLock LOOT_LOCK = new java.util.concurrent.locks.ReentrantLock();
+    private static final java.util.concurrent.atomic.AtomicInteger LOOT_DEPTH = new java.util.concurrent.atomic.AtomicInteger();
 
-    private static boolean interact(RS2Item rs2Item, String action) {
-        if (rs2Item == null) return false;
+    public static boolean isLooting() { return LOOT_DEPTH.get() > 0; }
+
+    /** Serializes looting and pauses script loops without changing the user's pause flag. */
+    public static boolean runWhilePaused(BooleanSupplier action) {
+        if (GroundItemPickup.cancelled() || Microbot.getClient().isClientThread()) return false;
+        boolean locked = false;
         try {
-            interact(new InteractModel(rs2Item.getTileItem().getId(), rs2Item.getTile().getWorldLocation(), rs2Item.getItem().getName()), action);
-        } catch (Exception ex) {
-            Microbot.logStackTrace("Rs2GroundItem", ex);
-        }
-        return true;
-    }
-
-    /**
-     * Interacts with a ground item by performing a specified action.
-     *
-     * @param groundItem The ground item to interact with.
-     * @param action     The action to perform on the ground item.
-     *
-     * @return true if the interaction was successful, false otherwise.
-     */
-    private static boolean interact(InteractModel groundItem, String action) {
-        if (groundItem == null) return false;
-        try {
-            int param0;
-            int param1;
-            int identifier;
-            String target;
-            MenuAction menuAction;
-            ItemComposition item;
-
-            item = Microbot.getClientThread().runOnClientThreadOptional(() -> Microbot.getClient().getItemDefinition(groundItem.getId())).orElse(null);
-            if (item == null) return false;
-            identifier = groundItem.getId();
-
-            LocalPoint localPoint = LocalPoint.fromWorld(Microbot.getClient(), groundItem.getLocation());
-            if (localPoint == null) return false;
-
-            param0 = localPoint.getSceneX();
-            target = "<col=ff9040>" + groundItem.getName();
-            param1 = localPoint.getSceneY();
-
-            String[] groundActions = Rs2Reflection.getGroundItemActions(item);
-
-            int index = -1;
-            for (int i = 0; i < groundActions.length; i++) {
-                String groundAction = groundActions[i];
-                if (groundAction == null || !groundAction.equalsIgnoreCase(action)) continue;
-                index = i;
-                break;
-            }
-
-            if (Microbot.getClient().isWidgetSelected()) {
-                menuAction = MenuAction.WIDGET_TARGET_ON_GROUND_ITEM;
-            } else {
-                menuAction = groundItemMenuAction(index);
-                if (menuAction == null) {
-                    log.warn("Unable to interact with ground item '{}' using action '{}'; actions={}", groundItem.getName(), action, Arrays.toString(groundActions));
-                    return false;
-                }
-            }
-            LocalPoint localPoint1 = localPoint;
-            if (!Rs2Camera.isTileOnScreen(localPoint1)) {
-                Rs2Camera.turnTo(localPoint1);
-            }
-            Polygon canvas = Perspective.getCanvasTilePoly(Microbot.getClient(), localPoint1);
-            Rectangle bounds = canvas == null
-                    ? new Rectangle(1, 1, Microbot.getClient().getCanvasWidth(), Microbot.getClient().getCanvasHeight())
-                    : canvas.getBounds();
-            int worldViewId = localPoint1.getWorldView();
-            Microbot.doInvoke(new NewMenuEntry()
-                            .option(action)
-                            .target(target)
-                            .identifier(identifier)
-                            .opcode(menuAction.getId())
-                            .param0(param0)
-                            .param1(param1)
-                            .itemId(-1)
-                            .worldViewId(worldViewId),
-                    bounds);
-            return true;
-        } catch (Exception ex) {
-            Microbot.logStackTrace("Rs2GroundItem", ex);
+            locked = LOOT_LOCK.tryLock(5, java.util.concurrent.TimeUnit.SECONDS);
+            if (!locked || GroundItemPickup.cancelled()) return false;
+            LOOT_DEPTH.incrementAndGet();
+            try { return action.getAsBoolean(); }
+            finally { LOOT_DEPTH.decrementAndGet(); }
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
             return false;
-        }
+        } finally { if (locked) LOOT_LOCK.unlock(); }
+    }
+    private static boolean interact(RS2Item item, String action) {
+        if (item == null || Microbot.getClient().isClientThread()) return false;
+        net.runelite.client.plugins.microbot.api.tileitem.models.Rs2TileItemModel model =
+                Microbot.getClientThread().runOnClientThreadOptional(() ->
+                        new net.runelite.client.plugins.microbot.api.tileitem.models.Rs2TileItemModel(item.getTile(), item.getTileItem())).orElse(null);
+        return model != null && GroundItemPickup.click(model, action);
     }
 
-    private static MenuAction groundItemMenuAction(int index) {
-        switch (index) {
-            case 0: return MenuAction.GROUND_ITEM_FIRST_OPTION;
-            case 1: return MenuAction.GROUND_ITEM_SECOND_OPTION;
-            case 2: return MenuAction.GROUND_ITEM_THIRD_OPTION;
-            case 3: return MenuAction.GROUND_ITEM_FOURTH_OPTION;
-            case 4: return MenuAction.GROUND_ITEM_FIFTH_OPTION;
-            default: return null;
-        }
+    private static boolean interact(InteractModel item, String action) {
+        if (item == null) return false;
+        GroundItem request = GroundItem.builder().id(item.getId()).location(item.getLocation()).build();
+        GroundItemPickup.Snapshot target = GroundItemPickup.find(request);
+        return target != null && GroundItemPickup.click(target.model, action);
     }
 
-    public static boolean interact(GroundItem groundItem) {
-        return interact(new InteractModel(groundItem.getId(), groundItem.getLocation(), groundItem.getName()), "Take");
+    public static boolean interact(GroundItem item) {
+        GroundItemPickup.Snapshot target = GroundItemPickup.find(item);
+        return target != null && GroundItemPickup.click(target.model, "Take");
     }
-
     public static int calculateDespawnTime(GroundItem groundItem) {
         Instant spawnTime = groundItem.getSpawnTime();
         if (spawnTime == null) {
@@ -279,33 +210,32 @@ public class Rs2GroundItem {
      * @param groundItem The ground item to monitor for despawn
      * @return true if the ground item despawns, false otherwise
      */
-    public static boolean waitForGroundItemDespawn(Runnable actionWhileWaiting,GroundItem groundItem){
-        sleepUntil(() ->  {
-            actionWhileWaiting.run();
-            sleepUntil(() -> groundItem != getGroundItems().get(groundItem.getLocation(), groundItem.getId()), Rs2Random.between(600, 2100));
-            return groundItem != getGroundItems().get(groundItem.getLocation(), groundItem.getId());
-        });
-        return groundItem != getGroundItems().get(groundItem.getLocation(), groundItem.getId());
+    public static boolean waitForGroundItemDespawn(Runnable action, GroundItem item) {
+        if (item == null || GroundItemPickup.cancelled() || Microbot.getClient().isClientThread()) return false;
+        int quantity = item.getQuantity();
+        action.run();
+        return sleepUntil(() -> {
+            GroundItem current = getGroundItems().get(item.getLocation(), item.getId());
+            return current != item || current.getQuantity() < quantity;
+        }, 5000);
     }
 
-    public static boolean coreLoot(GroundItem groundItem) {
-        int quantity = Math.min(groundItem.isStackable() ? 1 : groundItem.getQuantity(),
-                Rs2Inventory.emptySlotCount());
-
-        if (quantity == 0 && groundItem.isStackable()) {
-            if (!Rs2Inventory.hasItem(groundItem.getId())) return false;
-            quantity = 1;
-        }
-
-        final int quantFinal = quantity;
-        return runWhilePaused(() -> {
-            for (int i = 0; i < quantFinal; i++) {
-                waitForGroundItemDespawn(() -> interact(groundItem), groundItem);
-            }
-            return true;
+    public static GroundItemPickup.Result coreLootResult(GroundItem item) {
+        if (GroundItemPickup.cancelled()) return GroundItemPickup.Result.CANCELLED;
+        if (item == null || !canTakeGroundItem(item)) return GroundItemPickup.Result.NO_SPACE;
+        GroundItemPickup.Snapshot target = GroundItemPickup.find(item);
+        final GroundItemPickup.Result[] result = {GroundItemPickup.Result.REJECTED};
+        runWhilePaused(() -> {
+            result[0] = GroundItemPickup.take(target, 0);
+            return result[0].madeProgress();
         });
+        return result[0];
     }
 
+    /** True only for an observed inventory gain; ground disappearance has its own detailed result. */
+    public static boolean coreLoot(GroundItem item) {
+        return coreLootResult(item) == GroundItemPickup.Result.COLLECTED;
+    }
     private static boolean validateLoot(Predicate<GroundItem> filter) {
         // If there are no more lootable items we successfully looted everything in the filter
         // true to let the script know that we successfully looted
@@ -319,76 +249,15 @@ public class Rs2GroundItem {
 
 
 
-    private static Predicate<GroundItem> baseRangeAndOwnershipFilter(LootingParameters params) {
-        final WorldPoint me = Rs2Player.getWorldLocation();
-        if (me == null) return gi -> false;
-        final boolean anti = params.isAntiLureProtection();
-        return gi ->
-                gi.getLocation().distanceTo(me) < params.getRange() &&
-                        (!anti || gi.getOwnership() == OWNERSHIP_SELF);
+    private static boolean lootWithFilter(LootingParameters params, Predicate<GroundItem> predicate, Set<String> ignored) {
+        return Rs2LootEngine.with(params).addCustom("legacy", predicate, ignored).loot();
     }
-
-    private static boolean passesIgnoredNames(GroundItem gi, Set<String> ignoredLower) {
-        if (ignoredLower == null || ignoredLower.isEmpty()) return true;
-        final String name = gi.getName() == null ? "" : gi.getName().trim().toLowerCase();
-        for (String needle : ignoredLower) {
-            if (name.contains(needle)) return false;
-        }
-        return true;
-    }
-
-    private static boolean ensureSpaceFor(GroundItem gi, LootingParameters params) {
-        if (Rs2Inventory.emptySlotCount() > params.getMinInvSlots()) {
-            return true;
-        }
-
-        if (params.isEatFoodForSpace() && !canTakeGroundItem(gi) && !Rs2Inventory.getInventoryFood().isEmpty()) {
-            if (Rs2Player.eatAt(100)) {
-                Rs2Player.waitForAnimation();
-            }
-        }
-        return canTakeGroundItem(gi);
-    }
-
-    private static boolean lootWithFilter(
-            LootingParameters params,
-            Predicate<GroundItem> itemPredicate,
-            Set<String> ignoredLower
-    ) {
-        final Predicate<GroundItem> base = baseRangeAndOwnershipFilter(params);
-        final Predicate<GroundItem> combined = base.and(itemPredicate);
-
-        final List<GroundItem> groundItems = getGroundItems().values().stream()
-                .filter(combined)
-                .collect(Collectors.toList());
-
-        if (groundItems.size() < params.getMinItems()) return false;
-
-        if (params.isDelayedLooting()) {
-            final GroundItem soonest = groundItems.stream()
-                    .min(Comparator.comparingInt(Rs2GroundItem::calculateDespawnTime))
-                    .orElse(null);
-            if (soonest == null) return false;
-            if (calculateDespawnTime(soonest) > DESPAWN_DELAY_THRESHOLD_TICKS) return false;
-        }
-
-        return runWhilePaused(() -> {
-            for (GroundItem gi : groundItems) {
-                if (gi.getQuantity() < params.getMinQuantity()) continue;
-                if (!passesIgnoredNames(gi, ignoredLower)) continue;
-                if (!ensureSpaceFor(gi, params)) continue;
-                coreLoot(gi);
-            }
-            return validateLoot(combined);
-        });
-    }
-
     private static Set<String> toLowerTrimmedSet(String[] arr) {
         if (arr == null || arr.length == 0) return Collections.emptySet();
         Set<String> out = new HashSet<>(arr.length);
         for (String s : arr) {
             if (s != null) {
-                final String t = s.trim().toLowerCase();
+                final String t = s.trim().toLowerCase(java.util.Locale.ROOT);
                 if (!t.isEmpty()) out.add(t);
             }
         }
@@ -397,22 +266,14 @@ public class Rs2GroundItem {
 
 
     public static boolean lootItemBasedOnValue(LootingParameters params) {
-        Predicate<GroundItem> byValue = gi -> {
-            final int qty = Math.max(1, gi.getQuantity());
-            final int price = gi.getGePrice();
-            return price > params.getMinValue() && (price / qty) < params.getMaxValue();
-        };
-
-        final Set<String> ignoredLower = toLowerTrimmedSet(params.getIgnoredNames());
-        return lootWithFilter(params, byValue, ignoredLower);
+        return Rs2LootEngine.with(params).addByValue().loot();
     }
-
     public static boolean lootItemsBasedOnNames(LootingParameters params) {
         final Set<String> needles = toLowerTrimmedSet(params.getNames());
         if (needles.isEmpty()) return false;
 
         Predicate<GroundItem> byNames = gi -> {
-            final String n = gi.getName() == null ? "" : gi.getName().trim().toLowerCase();
+            final String n = gi.getName() == null ? "" : gi.getName().trim().toLowerCase(java.util.Locale.ROOT);
             for (String needle : needles) {
                 if (n.contains(needle)) return true;
             }
@@ -442,23 +303,10 @@ public class Rs2GroundItem {
      * @return
      */
     public static boolean lootItemsBasedOnLocation(WorldPoint location, int itemId) {
-        final Predicate<GroundItem> filter = groundItem ->
-                groundItem.getLocation().equals(location) && groundItem.getItemId() == itemId;
-
-        List<GroundItem> groundItems = getGroundItems().values().stream()
-                .filter(filter)
-                .collect(Collectors.toList());
-
-        return runWhilePaused(() -> {
-            for (GroundItem groundItem : groundItems) {
-                coreLoot(groundItem);
-            }
-            return validateLoot(filter);
-        });
+        LootingParameters params = new LootingParameters(0, 0, Integer.MAX_VALUE, 1, 0, false, false);
+        return Rs2LootEngine.with(params).addCustom("location", item -> item.getId() == itemId
+                && item.getLocation().equals(location), null).loot();
     }
-
-
-
     private static boolean hasLootableItems(Predicate<GroundItem> filter) {
         List<GroundItem> groundItems = getGroundItems().values().stream()
                 .filter(filter)

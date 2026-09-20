@@ -8,6 +8,15 @@ import org.junit.Test;
 import static org.junit.Assert.assertArrayEquals;
 
 public class Rs2ReflectionGroundItemActionsTest {
+    @Test
+    public void strictPickupResolutionDoesNotInventTake() {
+        assertArrayEquals(new String[0], Rs2Reflection.getGroundItemActionsFromObject(
+                GroundItemActionFixture.createWithoutGroundActions(), false));
+        assertArrayEquals(new String[0], Rs2Reflection.getGroundItemActionsFromObject(
+                GroundItemActionFixture.create(), false));
+        assertArrayEquals(new String[]{null, null, "Take"}, Rs2Reflection.getGroundItemActionsFromObject(
+                GroundItemActionFixture.create(null, null, "Take"), false));
+    }
     @Before
     public void setUp() {
         Rs2Reflection.resetGroundItemActionCache();

@@ -36,6 +36,13 @@ public class GroundItemInteractionDispatchTest
                 Type.getMethodDescriptor(Type.BOOLEAN_TYPE, Type.getType(String.class)));
     }
 
+    @Test
+    public void pickupHelperUsesMouseDispatchWithoutReflectionInvoke() throws IOException {
+        DispatchCalls calls = readDispatchCalls(GroundItemPickup.class, "click",
+                Type.getMethodDescriptor(Type.BOOLEAN_TYPE, Type.getType(Rs2TileItemModel.class), Type.getType(String.class)));
+        assertEquals(1, calls.matchedMethods);
+        assertEquals(0, calls.reflectionInvokeMenu);
+    }
     private static void assertSyntheticTargetMenuDispatch(Class<?> type, String methodName,
                                                           String methodDescriptor) throws IOException
     {
@@ -43,7 +50,7 @@ public class GroundItemInteractionDispatchTest
 
         assertEquals(type.getSimpleName() + " must contain the expected interaction method",
                 1, calls.matchedMethods);
-        assertTrue(type.getSimpleName() + " must dispatch through Microbot.doInvoke", calls.doInvoke > 0);
+        assertTrue(type.getSimpleName() + " must dispatch through the validated pickup path", calls.doInvoke > 0);
         assertEquals(type.getSimpleName() + " must not dispatch through Rs2Reflection.invokeMenu",
                 0, calls.reflectionInvokeMenu);
     }
@@ -78,8 +85,8 @@ public class GroundItemInteractionDispatchTest
                         public void visitMethodInsn(int opcode, String owner, String methodName,
                                                     String methodDescriptor, boolean isInterface)
                         {
-                            if (expectedMethod && owner.equals(Type.getInternalName(Microbot.class))
-                                    && methodName.equals("doInvoke"))
+                            if (expectedMethod && owner.equals(Type.getInternalName(GroundItemPickup.class))
+                                    && methodName.equals("click"))
                             {
                                 calls.doInvoke++;
                             }

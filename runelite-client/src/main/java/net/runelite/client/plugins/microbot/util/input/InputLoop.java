@@ -171,7 +171,7 @@ public final class InputLoop
 
 		public void checkpoint()
 		{
-			if (InputArbiter.isHuman())
+			if (InputArbiter.isHuman() || Thread.currentThread().isInterrupted())
 			{
 				throw ABORTED;
 			}

@@ -82,8 +82,16 @@ public class Rs2Reflection {
         return getGroundItemActionsFromObject(item);
     }
 
-    @SneakyThrows
+    public static String[] getGroundItemActionsStrict(ItemComposition item) {
+        return getGroundItemActionsFromObject(item, false);
+    }
+
     static String[] getGroundItemActionsFromObject(Object item) {
+        return getGroundItemActionsFromObject(item, true);
+    }
+
+    @SneakyThrows
+    static String[] getGroundItemActionsFromObject(Object item, boolean fallback) {
         if (item == null) return new String[]{};
         Class<?> itemClass = item.getClass();
         if (cachedGroundItemClass != itemClass) {
@@ -93,7 +101,7 @@ public class Rs2Reflection {
 
         if (cachedOuterField != null && cachedListField != null) {
             try {
-                return extractWithCache(item);
+                return extractWithCache(item, fallback);
             } catch (Exception e) {
                 log.warn("Ground item action cache invalidated, re-discovering");
                 resetGroundItemActionCache();
@@ -135,7 +143,7 @@ public class Rs2Reflection {
                         cachedOuterField = outerField;
                         cachedListField = listField;
                         cachedStringField = null;
-                        return groundItemActionsOrDefault(toStringArray(list));
+                        return groundItemActionsOrDefault(toStringArray(list), fallback);
                     }
 
                     Field stringField = null;
@@ -150,12 +158,12 @@ public class Rs2Reflection {
                     cachedOuterField = outerField;
                     cachedListField = listField;
                     cachedStringField = stringField;
-                    return groundItemActionsOrDefault(extractFromBeans(list, stringField));
+                    return groundItemActionsOrDefault(extractFromBeans(list, stringField), fallback);
                 }
             }
         }
 
-        return defaultGroundItemActions();
+        return fallback ? defaultGroundItemActions() : new String[0];
     }
 
     static void resetGroundItemActionCache() {
@@ -165,28 +173,28 @@ public class Rs2Reflection {
         cachedStringField = null;
     }
 
-    private static String[] extractWithCache(Object item) throws Exception {
+    private static String[] extractWithCache(Object item, boolean fallback) throws Exception {
         cachedOuterField.setAccessible(true);
         Object outer = cachedOuterField.get(item);
         cachedOuterField.setAccessible(false);
-        if (outer == null) return defaultGroundItemActions();
+        if (outer == null) return fallback ? defaultGroundItemActions() : new String[0];
 
         cachedListField.setAccessible(true);
         Object listObj = cachedListField.get(outer);
         cachedListField.setAccessible(false);
-        if (!(listObj instanceof List)) return defaultGroundItemActions();
+        if (!(listObj instanceof List)) return fallback ? defaultGroundItemActions() : new String[0];
 
         List<?> list = (List<?>) listObj;
-        if (cachedStringField == null) return groundItemActionsOrDefault(toStringArray(list));
-        return groundItemActionsOrDefault(extractFromBeans(list, cachedStringField));
+        if (cachedStringField == null) return groundItemActionsOrDefault(toStringArray(list), fallback);
+        return groundItemActionsOrDefault(extractFromBeans(list, cachedStringField), fallback);
     }
 
-    private static String[] groundItemActionsOrDefault(String[] actions) {
-        if (actions == null || actions.length == 0) return defaultGroundItemActions();
+    private static String[] groundItemActionsOrDefault(String[] actions, boolean fallback) {
+        if (actions == null || actions.length == 0) return fallback ? defaultGroundItemActions() : new String[0];
         for (String action : actions) {
             if (action != null && !action.isBlank()) return actions;
         }
-        return defaultGroundItemActions();
+        return fallback ? defaultGroundItemActions() : new String[0];
     }
 
     private static String[] defaultGroundItemActions() {

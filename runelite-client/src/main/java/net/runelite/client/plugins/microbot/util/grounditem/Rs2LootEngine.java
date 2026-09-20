@@ -1,261 +1,130 @@
 package net.runelite.client.plugins.microbot.util.grounditem;
 
-import net.runelite.api.ItemID;
-import net.runelite.api.coords.WorldPoint;
-import net.runelite.client.plugins.grounditems.GroundItem;
-import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import net.runelite.client.plugins.microbot.util.player.Rs2Player;
-
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
+import net.runelite.api.ItemID;
+import net.runelite.api.TileItem;
+import net.runelite.api.coords.WorldPoint;
+import net.runelite.client.plugins.grounditems.GroundItem;
+import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.util.Global;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
+import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 
-import static net.runelite.api.TileItem.OWNERSHIP_SELF;
-import static net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem.*;
-
-// import static your.package.OwnershipConstants.OWNERSHIP_SELF;
-
+/** A reusable selection plan. Candidates are freshly captured when loot() executes. */
 public final class Rs2LootEngine {
-    private static final int DESPAWN_DELAY_THRESHOLD_TICKS = 150;
-
-    private Rs2LootEngine() {}
-
-    public static Builder with(LootingParameters params) {
-        return new Builder(params);
-    }
+    private Rs2LootEngine() { }
+    public static Builder with(LootingParameters params) { return new Builder(params); }
 
     public static final class Builder {
         private final LootingParameters params;
-        private Consumer<GroundItem> lootAction = gi -> {};
-        private final Map<String, List<GroundItem>> candidateBuckets = new LinkedHashMap<>();
-        private List<GroundItem> candidatePool = null;
+        private final Map<String, Predicate<GroundItemPickup.Snapshot>> intents = new LinkedHashMap<>();
+        private Consumer<GroundItem> customAction;
+        private GroundItemPickup.Result lastResult = GroundItemPickup.Result.REJECTED;
+        private Builder(LootingParameters params) { this.params = Objects.requireNonNull(params); }
 
-        private Builder(LootingParameters params) {
-            this.params = Objects.requireNonNull(params, "params");
-        }
+        /** Optional custom action. Completion is still checked against the target's ground quantity. */
+        public Builder withLootAction(Consumer<GroundItem> action) { customAction = Objects.requireNonNull(action); return this; }
+        public GroundItemPickup.Result getLastResult() { return lastResult; }
 
-        public Builder withLootAction(Consumer<GroundItem> lootAction) {
-            this.lootAction = Objects.requireNonNull(lootAction, "lootAction");
-            return this;
-        }
-
-        /** Existing intents (kept for completeness) */
+        /** Inclusive stack-value bounds. A maximum of zero means no upper bound. */
         public Builder addByValue() {
-            Predicate<GroundItem> byValue = gi -> {
-                final int qty = Math.max(1, gi.getQuantity());
-                final int price = gi.getGePrice();
-                return price > params.getMinValue() && (price / qty) < params.getMaxValue();
-            };
-            final Set<String> ignoredLower = toLowerTrimmedSet(params.getIgnoredNames());
-            collect("byValue", byValue, ignoredLower);
+            intents.put("value", s -> s.totalValue >= params.getMinValue()
+                    && (params.getMaxValue() == 0 || s.totalValue <= params.getMaxValue()));
             return this;
         }
-
         public Builder addByNames() {
-            final Set<String> needles = toLowerTrimmedSet(params.getNames());
-            if (needles.isEmpty()) return this;
-
-            Predicate<GroundItem> byNames = gi -> {
-                final String n = safeLower(gi.getName());
-                for (String needle : needles) {
-                    if (n.contains(needle)) return true;
-                }
-                return false;
-            };
-            collect("byNames", byNames, null);
-            return this;
+            Set<String> names = normalized(params.getNames());
+            return addCustom("names", item -> names.stream().anyMatch(n -> lower(item.getName()).contains(n)), null);
         }
-
-        public Builder addUntradables() {
-            Predicate<GroundItem> untradables = gi -> !gi.isTradeable() && gi.getId() != ItemID.COINS_995;
-            collect("untradables", untradables, null);
-            return this;
-        }
-
-        public Builder addCoins() {
-            Predicate<GroundItem> coins = gi -> gi.getId() == ItemID.COINS_995;
-            collect("coins", coins, null);
-            return this;
-        }
-
-        /** ── NEW INTENTS ───────────────────────────────────────────────────────── */
-
-        /** Arrows: by name contains "arrow". Avoid singleton stacks by default (qty > 1 on stackables). */
+        public Builder addUntradables() { return addCustom("untradables", item -> !item.isTradeable() && item.getId() != ItemID.COINS_995, null); }
+        public Builder addCoins() { return addCustom("coins", item -> item.getId() == ItemID.COINS_995, null); }
         public Builder addArrows() { return addArrows(1); }
-
-        /**
-         * Arrows with custom exclusive min stack threshold for stackables.
-         * Example: minStackExclusive=1 → allow only stacks with qty >= 2.
-         */
-        public Builder addArrows(int minStackExclusive) {
-            Predicate<GroundItem> arrows = gi -> {
-                final String n = safeLower(gi.getName());
-                if (!n.contains("arrow")) return false;
-                // Only apply stack filter if the item is actually stackable
-                return !gi.isStackable() || gi.getQuantity() > minStackExclusive;
-            };
-            collect("arrows[min>" + minStackExclusive + "]", arrows, null);
-            return this;
-        }
-
-        /** Bones: by name contains "bones". */
-        public Builder addBones() {
-            Predicate<GroundItem> bones = gi -> safeLower(gi.getName()).contains("bones");
-            collect("bones", bones, null);
-            return this;
-        }
-
-        /** Ashes: by name contains " ashes" OR equals "ashes" (to catch the exact item). */
-        public Builder addAshes() {
-            Predicate<GroundItem> ashes = gi -> {
-                final String n = safeLower(gi.getName());
-                return n.equals("ashes") || n.contains(" ashes");
-            };
-            collect("ashes", ashes, null);
-            return this;
-        }
-
-        /** Runes: by name contains " rune" (leading space so it won't hit "rune scimitar"). */
+        public Builder addArrows(int minimum) { return addCustom("arrows", item -> lower(item.getName()).contains("arrow") && (!item.isStackable() || item.getQuantity() > minimum), null); }
+        public Builder addBones() { return addCustom("bones", item -> lower(item.getName()).contains("bones"), null); }
+        public Builder addAshes() { return addCustom("ashes", item -> lower(item.getName()).equals("ashes") || lower(item.getName()).contains(" ashes"), null); }
         public Builder addRunes() { return addRunes(1); }
-
-        /**
-         * Runes with custom exclusive min stack threshold for stackables.
-         * Example: minStackExclusive=1 → avoid stacks of 1 rune.
-         */
-        public Builder addRunes(int minStackExclusive) {
-            Predicate<GroundItem> runes = gi -> {
-                final String n = safeLower(gi.getName());
-                if (!n.contains(" rune")) return false;
-                return !gi.isStackable() || gi.getQuantity() > minStackExclusive;
-            };
-            collect("runes[min>" + minStackExclusive + "]", runes, null);
+        public Builder addRunes(int minimum) { return addCustom("runes", item -> lower(item.getName()).contains(" rune") && (!item.isStackable() || item.getQuantity() > minimum), null); }
+        public Builder addCustom(String label, Predicate<GroundItem> predicate, Set<String> ignoredNames) {
+            Objects.requireNonNull(predicate);
+            Set<String> ignored = normalized(ignoredNames == null ? null : ignoredNames.toArray(new String[0]));
+            intents.put(label == null ? "custom" : label, s -> predicate.test(s.item) && !ignored(s.item, ignored));
             return this;
         }
 
-        /** Add any custom predicate-based intent. */
-        public Builder addCustom(String label, Predicate<GroundItem> predicate, Set<String> ignoredLower) {
-            collect(label == null ? "custom" : label, predicate, ignoredLower);
-            return this;
-        }
-
-        /** Final combined looting pass. */
+        /** True when every eligible target progressed; use lastResult to distinguish collection from disappearance. */
         public boolean loot() {
-            final WorldPoint me = Rs2Player.getWorldLocation();
-
-            final Map<String, GroundItem> unique = new LinkedHashMap<>();
-            for (List<GroundItem> list : candidateBuckets.values()) {
-                for (GroundItem gi : list) {
-                    unique.putIfAbsent(uniqueKey(gi), gi);
+            lastResult = GroundItemPickup.Result.REJECTED;
+            if (GroundItemPickup.cancelled() || Microbot.getClient().isClientThread()) { lastResult = GroundItemPickup.Result.CANCELLED; return false; }
+            if (params.getRange() < 0 || params.getMinQuantity() < 1 || params.getMinItems() < 0
+                    || params.getMinInvSlots() < 0 || params.getMinInvSlots() > 28
+                    || params.getMinValue() < 0 || params.getMaxValue() < 0
+                    || params.getMaxValue() > 0 && params.getMaxValue() < params.getMinValue()) throw new IllegalArgumentException("Invalid looting parameters");
+            return Rs2GroundItem.runWhilePaused(() -> {
+                List<GroundItemPickup.Snapshot> candidates = eligible();
+                if (candidates.isEmpty() || candidates.size() < params.getMinItems()) return false;
+                if (params.isDelayedLooting() && candidates.stream().allMatch(s -> s.despawnTicks > 150)) return false;
+                boolean complete = true;
+                for (GroundItemPickup.Snapshot candidate : candidates) {
+                    if (GroundItemPickup.cancelled()) { lastResult = GroundItemPickup.Result.CANCELLED; return false; }
+                    // Refresh eligibility as well as identity after earlier pickups, movement, or a hop.
+                    GroundItemPickup.Snapshot current = eligible().stream().filter(s -> s.view == candidate.view
+                            && s.model.getTileItem() == candidate.model.getTileItem()).findFirst().orElse(null);
+                    if (current == null) { lastResult = GroundItemPickup.Result.GROUND_CHANGED; continue; }
+                    if (!ensureSpace(current)) { lastResult = GroundItemPickup.Result.NO_SPACE; complete = false; continue; }
+                    if (customAction == null) lastResult = GroundItemPickup.take(current, params.getMinInvSlots());
+                    else {
+                        int before = Rs2Inventory.itemQuantity(current.item.getId());
+                        customAction.accept(current.item);
+                        boolean changed = Global.sleepUntil(() -> GroundItemPickup.cancelled()
+                                || GroundItemPickup.currentQuantity(current.model) < current.quantity
+                                || Rs2Inventory.itemQuantity(current.item.getId()) > before, 5000);
+                        lastResult = GroundItemPickup.cancelled() ? GroundItemPickup.Result.CANCELLED
+                                : Rs2Inventory.itemQuantity(current.item.getId()) > before ? GroundItemPickup.Result.COLLECTED
+                                : changed ? GroundItemPickup.Result.GROUND_CHANGED : GroundItemPickup.Result.TIMED_OUT;
+                    }
+                    if (!lastResult.madeProgress()) complete = false;
                 }
-            }
-
-            final List<GroundItem> toLoot = new ArrayList<>(unique.values());
-            toLoot.sort(Comparator.comparingInt(gi -> gi.getLocation().distanceTo(me)));
-
-            final Set<String> targetKeys = unique.keySet();
-            return runWhilePaused(() -> {
-                for (GroundItem gi : toLoot) {
-                    if (gi.getQuantity() < params.getMinQuantity()) continue;
-                    if (!ensureSpaceFor(gi, params)) continue;
-                    lootAction.accept(gi);
-                }
-                return getGroundItems().values().stream()
-                        .noneMatch(gi -> targetKeys.contains(uniqueKey(gi)));
+                return complete;
             });
         }
 
-        /** Internal collector that applies base filters, delayed gate, and per-item prechecks. */
-        private void collect(String label, Predicate<GroundItem> itemPredicate, Set<String> ignoredLower) {
-            if (candidatePool == null) {
-                candidatePool = getGroundItems().values().stream()
-                        .filter(baseRangeAndOwnershipFilter(params))
-                        .collect(Collectors.toList());
+        private List<GroundItemPickup.Snapshot> eligible() {
+            WorldPoint me = Microbot.getClientThread().runOnClientThreadOptional(() ->
+                    Microbot.getClient().getLocalPlayer() == null ? null : Microbot.getClient().getLocalPlayer().getWorldLocation()).orElse(null);
+            if (me == null) return Collections.emptyList();
+            Set<String> ignored = normalized(params.getIgnoredNames());
+            List<GroundItemPickup.Snapshot> result = new ArrayList<>();
+            for (GroundItemPickup.Snapshot s : GroundItemPickup.snapshot()) {
+                if (s.item.getLocation().getPlane() != me.getPlane() || s.item.getLocation().distanceTo(me) > params.getRange()
+                        || s.quantity < params.getMinQuantity() || ignored(s.item, ignored)
+                        || params.isAntiLureProtection() && s.item.getOwnership() != TileItem.OWNERSHIP_SELF) continue;
+                if (intents.values().stream().anyMatch(p -> p.test(s))) result.add(s);
             }
+            result.sort(Comparator.comparingInt(s -> s.item.getLocation().distanceTo(me)));
+            return result;
+        }
 
-            List<GroundItem> groundItems = candidatePool.stream()
-                    .filter(itemPredicate)
-                    .collect(Collectors.toList());
-
-            if (groundItems.size() < params.getMinItems()) {
-                candidateBuckets.put(label, Collections.emptyList());
-                return;
-            }
-
-            if (params.isDelayedLooting()) {
-                final GroundItem soonest = groundItems.stream()
-                        .min(Comparator.comparingInt(gi -> calculateDespawnTime(gi)))
-                        .orElse(null);
-                if (soonest == null || calculateDespawnTime(soonest) > DESPAWN_DELAY_THRESHOLD_TICKS) {
-                    candidateBuckets.put(label, Collections.emptyList());
-                    return;
-                }
-            }
-
-            final List<GroundItem> filtered = new ArrayList<>(groundItems.size());
-            for (GroundItem gi : groundItems) {
-                if (gi.getQuantity() < params.getMinQuantity()) continue;
-                if (!passesIgnoredNames(gi, ignoredLower)) continue;
-                filtered.add(gi);
-            }
-            candidateBuckets.put(label, filtered);
+        private boolean ensureSpace(GroundItemPickup.Snapshot item) {
+            if (hasSpace(item)) return true;
+            if (!params.isEatFoodForSpace() || Rs2Inventory.getInventoryFood().isEmpty()) return false;
+            int before = Rs2Inventory.emptySlotCount();
+            if (!Rs2Player.eatAt(100)) return false;
+            Global.sleepUntil(() -> Rs2Inventory.emptySlotCount() > before || GroundItemPickup.cancelled(), 1800);
+            return !GroundItemPickup.cancelled() && hasSpace(item);
+        }
+        private boolean hasSpace(GroundItemPickup.Snapshot item) {
+            int needed = item.item.isStackable() && Rs2Inventory.hasItem(item.item.getId()) ? 0 : 1;
+            return Rs2Inventory.emptySlotCount() - needed >= params.getMinInvSlots();
         }
     }
 
-    // ------------------ shared helpers (same logic as before) ------------------
-
-    private static Predicate<GroundItem> baseRangeAndOwnershipFilter(LootingParameters params) {
-        final WorldPoint me = Rs2Player.getWorldLocation();
-        final boolean anti = params.isAntiLureProtection();
-        return gi ->
-                gi.getLocation().distanceTo(me) < params.getRange()
-                        && (!anti || gi.getOwnership() == OWNERSHIP_SELF);
+    private static String lower(String value) { return value == null ? "" : value.trim().toLowerCase(Locale.ROOT); }
+    private static Set<String> normalized(String[] values) {
+        Set<String> result = new HashSet<>();
+        if (values != null) for (String value : values) { String normalized = lower(value); if (!normalized.isEmpty()) result.add(normalized); }
+        return result;
     }
-
-    private static boolean passesIgnoredNames(GroundItem gi, Set<String> ignoredLower) {
-        if (ignoredLower == null || ignoredLower.isEmpty()) return true;
-        final String name = safeLower(gi.getName());
-        for (String needle : ignoredLower) {
-            if (name.contains(needle)) return false;
-        }
-        return true;
-    }
-
-    private static boolean ensureSpaceFor(GroundItem gi, LootingParameters params) {
-        if (Rs2Inventory.emptySlotCount() > params.getMinInvSlots()) {
-            return true;
-        }
-        if (params.isEatFoodForSpace() && !canTakeGroundItem(gi) && !Rs2Inventory.getInventoryFood().isEmpty()) {
-            if (Rs2Player.eatAt(100)) {
-                Rs2Player.waitForAnimation();
-            }
-        }
-        return canTakeGroundItem(gi);
-    }
-
-    private static Set<String> toLowerTrimmedSet(String[] arr) {
-        if (arr == null || arr.length == 0) return Collections.emptySet();
-        Set<String> out = new HashSet<>(arr.length);
-        for (String s : arr) {
-            if (s != null) {
-                final String t = s.trim().toLowerCase();
-                if (!t.isEmpty()) out.add(t);
-            }
-        }
-        return out;
-    }
-
-    private static String safeLower(String s) {
-        return s == null ? "" : s.trim().toLowerCase();
-    }
-
-    private static boolean validateLoot(Predicate<GroundItem> filter) {
-        return getGroundItems().values().stream().noneMatch(filter);
-    }
-
-    private static String uniqueKey(GroundItem gi) {
-        final WorldPoint wp = gi.getLocation();
-        return gi.getId() + "@" + wp.getX() + "," + wp.getY() + "," + wp.getPlane();
-    }
+    private static boolean ignored(GroundItem item, Set<String> ignored) { return ignored.stream().anyMatch(n -> lower(item.getName()).contains(n)); }
 }

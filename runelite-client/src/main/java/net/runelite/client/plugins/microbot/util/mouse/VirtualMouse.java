@@ -152,6 +152,27 @@ public class VirtualMouse extends Mouse {
     }
 
     @Override
+    public boolean tryClick(Point point, NewMenuEntry entry, java.util.function.BooleanSupplier valid) {
+        if (point == null || Microbot.getClient().isClientThread() || Thread.currentThread().isInterrupted()) return false;
+        final boolean[] acknowledged = {false};
+        InputLoop.Result result = InputLoop.run(emit -> {
+            if (shouldMoveNaturally(point)) Microbot.naturalMouse.moveTo(point.getX(), point.getY());
+            emit.checkpoint();
+            if (!valid.getAsBoolean()) return;
+            try (net.runelite.client.plugins.microbot.util.menu.PendingMenuAction pending =
+                         new net.runelite.client.plugins.microbot.util.menu.PendingMenuAction(entry)) {
+                emit.move(point.getX(), point.getY());
+                if (!net.runelite.client.plugins.microbot.util.Global.sleepUntil(pending::isPrepared, 1200)) return;
+                emit.checkpoint();
+                if (!valid.getAsBoolean()) return;
+                handleClick(emit, point, false);
+                acknowledged[0] = net.runelite.client.plugins.microbot.util.Global.sleepUntil(pending::isAcknowledged, 1200);
+            }
+        });
+        return result == InputLoop.Result.COMPLETED && acknowledged[0];
+    }
+
+    @Override
     public Mouse click() {
         return click(Microbot.getClient().getMouseCanvasPosition());
     }

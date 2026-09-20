@@ -64,6 +64,11 @@ public abstract class Mouse {
 
     public abstract Mouse click(Point point, NewMenuEntry entry);
 
+    /** Returns true only after observing the requested menu event. Unsupported implementations reject it. */
+    public boolean tryClick(Point point, NewMenuEntry entry, java.util.function.BooleanSupplier valid) {
+        return false;
+    }
+
     public abstract Mouse click();
 
     public abstract Mouse move(Point point);

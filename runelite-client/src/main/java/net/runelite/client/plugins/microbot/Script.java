@@ -80,6 +80,9 @@ public abstract class Script extends Global implements IScript {
      * tutorial island is incomplete, or the current thread is interrupted.
      */
     public boolean run() {
+        if (Microbot.pauseAllScripts.get() || Thread.currentThread().isInterrupted()
+                || net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem.isLooting()) return false;
+
         ScriptHeartbeatRegistry.recordHeartbeat(this.getClass().getName());
 
         if (Microbot.isLoggedIn() && !SessionFatigue.isActive()) {

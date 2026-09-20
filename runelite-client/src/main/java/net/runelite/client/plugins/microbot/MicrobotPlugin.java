@@ -425,14 +425,16 @@ public class MicrobotPlugin extends Plugin
 				}
 			}
 			Microbot.getClient().getMenu().setMenuEntries(new MenuEntry[]{entry});
+			net.runelite.client.plugins.microbot.util.menu.PendingMenuAction.prepared(Microbot.targetMenu);
 		}
 	}
 
-	@Subscribe
+	@Subscribe(priority = -1000)
 	private void onMenuOptionClicked(MenuOptionClicked event)
 	{
 		Microbot.getPouchScript().onMenuOptionClicked(event);
 		Rs2Gembag.onMenuOptionClicked(event);
+		net.runelite.client.plugins.microbot.util.menu.PendingMenuAction.observe(event);
 		Microbot.targetMenu = null;
 		if (microbotConfig.enableMenuEntryLogging()) log.info(event.getMenuEntry().toString());
 	}
