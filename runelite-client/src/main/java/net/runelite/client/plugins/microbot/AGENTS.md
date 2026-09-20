@@ -13,7 +13,7 @@ Config UI uses the custom `MicrobotConfigPanel` (`plugins/microbot/ui`), not Run
 ## Cache / Queryable API (mandatory)
 - Use singletons via `Microbot.getRs2XxxCache()` (NPCs, objects, ground items, inventory, bank, varbits, players, widgets, …).
 - Query with `.query().<filters>.first() / .all() / .stream()` — not direct cache instantiation, not raw client iteration.
-- Caches are event-driven; treat returned entities as snapshots, re-query before acting on stale refs.
+- Cache lists snapshot membership; their entity wrappers remain live. Re-query before acting on stale refs.
 - Full reference: `runelite-client/.../microbot/api/QUERYABLE_API.md`.
 
 ## Interaction utilities

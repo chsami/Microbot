@@ -341,6 +341,7 @@ public class MicrobotPlugin extends Plugin
 		   // Clear all cache states when logging out through Rs2CacheManager
 		   //Rs2CacheManager.emptyCacheState(); // should not be nessary here, handled in ClientShutdown event,
 		   // and we also handle correct cache loading in onRuneScapeProfileChanged event
+           Rs2Inventory.invalidateInventoryCache();
 		   LoginManager.markLoggedOut();
 		   Microbot.setLastKnownRegions(null);
 		   Rs2LeaguesTransport.onLogout();

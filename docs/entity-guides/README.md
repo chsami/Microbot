@@ -42,3 +42,7 @@ Each entity guide is a numbered list of gotchas. Each entry follows this structu
 ## Adding a new gotcha to an existing guide
 
 Append a new numbered entry. Do **not** delete or rewrite existing entries unless they are factually wrong — each entry corresponds to a real failure mode and removing it loses the institutional memory of why the rule exists.
+
+## Spatial identity gotcha
+
+A location alone does not identify a world view. Preserve the originating view on entity wrappers and use native coordinates from the same view for distance/reachability. Never seed player reachability from the target. See [movement.md](movement.md) and [items.md](items.md).

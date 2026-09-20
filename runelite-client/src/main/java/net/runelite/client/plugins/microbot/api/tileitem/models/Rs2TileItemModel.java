@@ -24,79 +24,92 @@ public class Rs2TileItemModel implements TileItem, IEntity {
     @Getter
     private final TileItem tileItem;
 
+    private final WorldView worldView;
+
     public Rs2TileItemModel(Tile tileObject, TileItem tileItem) {
+        this(tileObject, tileItem, Microbot.getClientThread().invoke(() -> {
+            LocalPoint local = tileObject.getLocalLocation();
+            return local == null ? null : Microbot.getClient().getWorldView(local.getWorldView());
+        }));
+    }
+
+    public Rs2TileItemModel(Tile tileObject, TileItem tileItem, WorldView worldView) {
+        this.worldView = worldView;
         this.tile = tileObject;
         this.tileItem = tileItem;
     }
     
     @Override
     public int getId() {
-        return tileItem.getId();
+        return Microbot.getClientThread().invoke(() -> tileItem.getId());
     }
 
     @Override
     public int getQuantity() {
-        return tileItem.getQuantity();
+        return Microbot.getClientThread().invoke(() -> tileItem.getQuantity());
     }
 
     @Override
     public int getVisibleTime() {
-        return tileItem.getVisibleTime();
+        return Microbot.getClientThread().invoke(() -> tileItem.getVisibleTime());
     }
 
     @Override
     public int getDespawnTime() {
-        return tileItem.getDespawnTime();
+        return Microbot.getClientThread().invoke(() -> tileItem.getDespawnTime());
     }
 
     @Override
     public int getOwnership() {
-        return tileItem.getOwnership();
+        return Microbot.getClientThread().invoke(() -> tileItem.getOwnership());
     }
 
     @Override
     public boolean isPrivate() {
-        return tileItem.isPrivate();
+        return Microbot.getClientThread().invoke((java.util.function.Supplier<Boolean>) () -> tileItem.isPrivate());
     }
 
     @Override
     public Model getModel() {
-        return tileItem.getModel();
+        return Microbot.getClientThread().invoke(() -> tileItem.getModel());
     }
 
     @Override
     public int getModelHeight() {
-        return tileItem.getModelHeight();
+        return Microbot.getClientThread().invoke(() -> tileItem.getModelHeight());
     }
 
     @Override
     public void setModelHeight(int modelHeight) {
-        tileItem.setModelHeight(modelHeight);
+        Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            tileItem.setModelHeight(modelHeight);
+            return null;
+        });
     }
 
     @Override
     public int getAnimationHeightOffset() {
-        return tileItem.getAnimationHeightOffset();
+        return Microbot.getClientThread().invoke(() -> tileItem.getAnimationHeightOffset());
     }
 
     @Override
     public int getRenderMode() {
-        return tileItem.getRenderMode();
+        return Microbot.getClientThread().invoke(() -> tileItem.getRenderMode());
     }
 
     @Override
     public Node getNext() {
-        return tileItem.getNext();
+        return Microbot.getClientThread().invoke(() -> tileItem.getNext());
     }
 
     @Override
     public Node getPrevious() {
-        return tileItem.getPrevious();
+        return Microbot.getClientThread().invoke(() -> tileItem.getPrevious());
     }
 
     @Override
     public long getHash() {
-        return tileItem.getHash();
+        return Microbot.getClientThread().invoke(() -> tileItem.getHash());
     }
 
     public String getName() {
@@ -107,16 +120,16 @@ public class Rs2TileItemModel implements TileItem, IEntity {
     }
 
     public WorldPoint getWorldLocation() {
-        return tile.getWorldLocation();
+        return Microbot.getClientThread().invoke(tile::getWorldLocation);
     }
 
     public LocalPoint getLocalLocation() {
-        return tile.getLocalLocation();
+        return Microbot.getClientThread().invoke(tile::getLocalLocation);
     }
 
     @Override
     public WorldView getWorldView() {
-        return Microbot.getClient().getTopLevelWorldView();
+        return worldView;
     }
 
     public boolean isNoted() {
@@ -134,38 +147,63 @@ public class Rs2TileItemModel implements TileItem, IEntity {
         });
     }
 
+    /** Profit over the market price, excluding rune/consumable costs. Break-even is false. */
     public boolean isProfitableToHighAlch() {
+        return isProfitableToHighAlch(0);
+    }
+
+    public boolean isProfitableToHighAlch(long consumableCost) {
+        if (consumableCost < 0) throw new IllegalArgumentException("Negative consumable cost");
         return Microbot.getClientThread().invoke((Supplier<Boolean>) () -> {
-            ItemComposition itemComposition = Microbot.getClient().getItemDefinition(tileItem.getId());
-            int highAlchValue = itemComposition.getPrice() * 60 / 100;
-            int marketPrice = Microbot.getItemManager().getItemPrice(itemComposition.getId());
-            return marketPrice > highAlchValue;
+            ItemComposition definition = Microbot.getClient().getItemDefinition(tileItem.getId());
+            long proceeds = definition.getPrice() * 60L / 100;
+            long margin = proceeds - Microbot.getItemManager().getItemPrice(definition.getId());
+            return margin > consumableCost;
         });
     }
 
     public boolean willDespawnWithin(int ticks) {
-        return getDespawnTime() - Microbot.getClient().getTickCount() <= ticks;
+        return Microbot.getClientThread().runOnClientThreadOptional(() ->
+                tileItem.getDespawnTime() - Microbot.getClient().getTickCount() <= ticks).orElse(false);
     }
 
     public boolean isLootAble() {
-        return  !(tileItem.getOwnership() == TileItem.OWNERSHIP_OTHER);
+        return getOwnership() != TileItem.OWNERSHIP_OTHER;
     }
 
     public boolean isOwned() {
-        return tileItem.getOwnership() == TileItem.OWNERSHIP_SELF;
+        return getOwnership() == TileItem.OWNERSHIP_SELF;
     }
 
     public boolean isDespawned() {
-        int despawnTime = getDespawnTime();
-        return despawnTime != -1 && despawnTime <= Microbot.getClient().getTickCount();
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            int despawnTime = tileItem.getDespawnTime();
+            return despawnTime != -1 && despawnTime <= Microbot.getClient().getTickCount();
+        }).orElse(true);
     }
 
+    /** @deprecated Use getTotalGeValueLong(); saturates at Integer.MAX_VALUE. */
+    @Deprecated
     public int getTotalGeValue() {
-        return Microbot.getClientThread().invoke(() -> {
-            ItemComposition itemComposition = Microbot.getClient().getItemDefinition(tileItem.getId());
-            int price = itemComposition.getPrice();
-            return price * tileItem.getQuantity();
-        });
+        return (int) Math.min(Integer.MAX_VALUE, getTotalGeValueLong());
+    }
+
+    /** Stack market value, without transaction fees. */
+    public long getTotalGeValueLong() {
+        return Microbot.getClientThread().invoke(() -> (long) Microbot.getItemManager()
+                .getItemPrice(tileItem.getId()) * tileItem.getQuantity());
+    }
+
+    /** Stack definition/base value, not the market price. */
+    public long getTotalBaseValueLong() {
+        return Microbot.getClientThread().invoke(() -> (long) Microbot.getClient()
+                .getItemDefinition(tileItem.getId()).getPrice() * tileItem.getQuantity());
+    }
+
+    /** Stack high-alchemy proceeds, excluding consumables. */
+    public long getTotalHighAlchValueLong() {
+        return Microbot.getClientThread().invoke(() -> (Microbot.getClient()
+                .getItemDefinition(tileItem.getId()).getPrice() * 60L / 100) * tileItem.getQuantity());
     }
 
     public boolean isTradeable()  {
@@ -182,12 +220,14 @@ public class Rs2TileItemModel implements TileItem, IEntity {
         });
     }
 
+    /** @deprecated Use getTotalGeValueLong(); saturates at Integer.MAX_VALUE. */
+    @Deprecated
     public int getTotalValue() {
-        return Microbot.getClientThread().invoke(() -> {
-            ItemComposition itemComposition = Microbot.getClient().getItemDefinition(tileItem.getId());
-            int price = Microbot.getItemManager().getItemPrice(itemComposition.getId());
-            return price * tileItem.getQuantity();
-        });
+        return getTotalGeValue();
+    }
+
+    public long getTotalValueLong() {
+        return getTotalGeValueLong();
     }
 
     public boolean click() {
@@ -204,83 +244,62 @@ public class Rs2TileItemModel implements TileItem, IEntity {
     }
 
     public boolean click(String action) {
+        if (action == null || Microbot.getClient().isClientThread() || Thread.currentThread().isInterrupted()) return false;
         try {
-            int param0;
-            int param1;
-            int identifier;
-            String target;
-            MenuAction menuAction;
-            ItemComposition item;
-
-            item = Microbot.getClientThread().runOnClientThreadOptional(() -> Microbot.getClient().getItemDefinition(getId())).orElse(null);
-            if (item == null) return false;
-            identifier = getId();
-
-            LocalPoint localPoint = getLocalLocation();
-            if (localPoint == null) return false;
-
-            param0 = localPoint.getSceneX();
-            target = "<col=ff9040>" + getName();
-            param1 = localPoint.getSceneY();
-
-            String[] groundActions = Rs2Reflection.getGroundItemActions(item);
-
-            int index = -1;
-            if (action.isEmpty()) {
-                for (int i = 0; i < groundActions.length; i++) {
-                    if (groundActions[i] == null) {
-                        continue;
-                    }
-                    action = groundActions[i];
-                    index = i;
-                    break;
-                }
-                if (index == -1) return false;
-            } else {
-                for (int i = 0; i < groundActions.length; i++) {
-                    String groundAction = groundActions[i];
-                    if (groundAction == null || !groundAction.equalsIgnoreCase(action)) continue;
-                    index = i;
-                    break;
-                }
-            }
-
-            if (Microbot.getClient().isWidgetSelected()) {
-                menuAction = MenuAction.WIDGET_TARGET_ON_GROUND_ITEM;
-            } else {
-                menuAction = groundItemMenuAction(index);
-                if (menuAction == null) {
-                    log.warn("Unable to interact with ground item '{}' using action '{}'; actions={}", getName(), action, Arrays.toString(groundActions));
-                    return false;
-                }
-            }
-            LocalPoint localPoint1 = getLocalLocation();
-            if (localPoint1 == null) {
-                return false;
-            }
-            if (!Rs2Camera.isTileOnScreen(localPoint1)) {
-                Rs2Camera.turnTo(localPoint1);
-            }
-            Polygon canvas = Perspective.getCanvasTilePoly(Microbot.getClient(), localPoint1);
-            Rectangle bounds = canvas == null
-                    ? new Rectangle(1, 1, Microbot.getClient().getCanvasWidth(), Microbot.getClient().getCanvasHeight())
-                    : canvas.getBounds();
-            int worldViewId = localPoint1.getWorldView();
-            Microbot.doInvoke(new NewMenuEntry()
-                            .option(action)
-                            .target(target)
-                            .identifier(identifier)
-                            .opcode(menuAction.getId())
-                            .param0(param0)
-                            .param1(param1)
-                            .itemId(-1)
-                            .worldViewId(worldViewId),
-                    bounds);
-            return true;
+            LocalPoint local = Microbot.getClientThread().runOnClientThreadOptional(() ->
+                    isCurrent() ? tile.getLocalLocation() : null).orElse(null);
+            if (local == null) return false;
+            if (!Microbot.getClientThread().runOnClientThreadOptional(() -> Rs2Camera.isTileOnScreen(local)).orElse(false)) Rs2Camera.turnTo(local);
+            java.util.Map.Entry<NewMenuEntry, Rectangle> dispatch = Microbot.getClientThread()
+                    .runOnClientThreadOptional(() -> prepareDispatch(action)).orElse(null);
+            if (dispatch == null || Thread.currentThread().isInterrupted()) return false;
+            return Microbot.tryDoInvoke(dispatch.getKey(), dispatch.getValue());
         } catch (Exception ex) {
+            if (Thread.currentThread().isInterrupted()) return false;
             Microbot.logStackTrace("Rs2TileItemModel", ex);
             return false;
         }
+    }
+
+    private boolean isCurrent() {
+        assert Microbot.getClient().isClientThread() : "Client-thread-only helper";
+        if (worldView == null || Microbot.getClient().getGameState() != GameState.LOGGED_IN
+                || Microbot.getClient().getWorldView(worldView.getId()) != worldView) return false;
+        LocalPoint local = tile.getLocalLocation();
+        if (local == null || worldView.getScene() == null) return false;
+        Tile[][][] tiles = worldView.getScene().getTiles();
+        int plane = tile.getPlane(), x = local.getSceneX(), y = local.getSceneY();
+        if (plane < 0 || plane >= tiles.length || x < 0 || x >= tiles[plane].length
+                || y < 0 || y >= tiles[plane][x].length || tiles[plane][x][y] != tile) return false;
+        java.util.List<TileItem> items = tile.getGroundItems();
+        return items != null && items.stream().anyMatch(item -> item == tileItem);
+    }
+
+    private java.util.Map.Entry<NewMenuEntry, Rectangle> prepareDispatch(String requestedAction) {
+        assert Microbot.getClient().isClientThread() : "Client-thread-only helper";
+        if (!isCurrent()) return null;
+        ItemComposition definition = Microbot.getClient().getItemDefinition(tileItem.getId());
+        if (definition == null) return null;
+        String[] actions = Rs2Reflection.getGroundItemActions(definition);
+        int index = -1;
+        for (int i = 0; i < actions.length; i++) {
+            if (actions[i] != null && (requestedAction.isEmpty() || actions[i].equalsIgnoreCase(requestedAction))) {
+                index = i;
+                break;
+            }
+        }
+        MenuAction menuAction = Microbot.getClient().isWidgetSelected()
+                ? MenuAction.WIDGET_TARGET_ON_GROUND_ITEM : groundItemMenuAction(index);
+        if (menuAction == null) return null;
+        LocalPoint local = tile.getLocalLocation();
+        Polygon canvas = Perspective.getCanvasTilePoly(Microbot.getClient(), local);
+        Rectangle bounds = canvas == null ? new Rectangle(1, 1,
+                Microbot.getClient().getCanvasWidth(), Microbot.getClient().getCanvasHeight()) : canvas.getBounds();
+        String action = index < 0 ? requestedAction : actions[index];
+        return new java.util.AbstractMap.SimpleImmutableEntry<>(new NewMenuEntry()
+                .option(action).target("<col=ff9040>" + definition.getName()).identifier(tileItem.getId())
+                .opcode(menuAction.getId()).param0(local.getSceneX()).param1(local.getSceneY())
+                .itemId(-1).worldViewId(worldView.getId()), bounds);
     }
 
     private static MenuAction groundItemMenuAction(int index) {

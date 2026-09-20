@@ -79,7 +79,7 @@ public class GroundItemInteractionDispatchTest
                                                     String methodDescriptor, boolean isInterface)
                         {
                             if (expectedMethod && owner.equals(Type.getInternalName(Microbot.class))
-                                    && methodName.equals("doInvoke"))
+                                    && (methodName.equals("doInvoke") || methodName.equals("tryDoInvoke")))
                             {
                                 calls.doInvoke++;
                             }

@@ -9,11 +9,15 @@ public interface IEntity {
     int getId();
     String getName();
     WorldPoint getWorldLocation();
+    /** Coordinates in the originating view, without main-world projection. */
+    default WorldPoint getSceneWorldLocation() { return getWorldLocation(); }
     LocalPoint getLocalLocation();
     WorldView getWorldView();
     boolean click();
     boolean click(String action);
     default boolean isReachable() {
-        return Rs2Reachable.isReachable(getWorldLocation());
+        return net.runelite.client.plugins.microbot.Microbot.getClientThread().invoke(
+                (java.util.function.Supplier<Boolean>) () -> getWorldView() != null
+                        && Rs2Reachable.isReachable(getSceneWorldLocation(), getWorldView()));
     }
 }

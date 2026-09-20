@@ -26,7 +26,8 @@ public final class Rs2TileItemCache {
     private final Client client;
     private final ClientThread clientThread;
 
-    private int lastUpdateTick = 0;
+    private int lastUpdateTick = -1;
+    private List<Object> lastContext = java.util.Collections.emptyList();
     private List<Rs2TileItemModel> tileItems = new ArrayList<>();
 
     @Inject
@@ -47,21 +48,37 @@ public final class Rs2TileItemCache {
      * @return Stream of Rs2TileItemModel
      */
     public Stream<Rs2TileItemModel> getStream() {
-        if (lastUpdateTick >= client.getTickCount()) {
-            return tileItems.stream();
+        return clientThread.invoke(this::snapshot).stream();
+    }
+
+    // Membership is copied on the client thread; the models remain live wrappers.
+    private List<Rs2TileItemModel> snapshot() {
+        if (client.getLocalPlayer() == null || client.getGameState() != net.runelite.api.GameState.LOGGED_IN) {
+            tileItems = java.util.Collections.emptyList();
+            lastUpdateTick = -1;
+            lastContext = java.util.Collections.emptyList();
+            return tileItems;
         }
-
-        Player player = client.getLocalPlayer();
-        if (player == null) return Stream.empty();
-
+        List<WorldView> views = new ArrayList<>();
+        List<Object> context = new ArrayList<>();
+        context.add(client.getWorld());
+        context.add(client.getLocalPlayer());
+        for (int id : Microbot.getWorldViewIds()) {
+            WorldView view = client.getWorldView(id);
+            if (view == null) continue;
+            views.add(view);
+            context.add(view);
+            context.add(view.getScene());
+            context.add(view.getPlane());
+            context.add(view.getBaseX());
+            context.add(view.getBaseY());
+        }
+        if (lastUpdateTick == client.getTickCount() && lastContext.equals(context)) return tileItems;
         List<Rs2TileItemModel> result = new ArrayList<>();
 
-        for (var id : Microbot.getWorldViewIds()) {
-            WorldView worldView = client.getWorldView(id);
-            if (worldView == null) {
-                continue;
-            }
+        for (WorldView worldView : views) {
 
+            if (worldView.getScene() == null) continue;
             Tile[][] tiles = worldView.getScene().getTiles()[worldView.getPlane()];
             for (Tile[] tileRow : tiles) {
                 for (Tile tile : tileRow) {
@@ -72,16 +89,17 @@ public final class Rs2TileItemCache {
 
                     for (TileItem item : items) {
                         if (item != null) {
-                            result.add(new Rs2TileItemModel(tile, item));
+                            result.add(new Rs2TileItemModel(tile, item, worldView));
                         }
                     }
                 }
             }
         }
 
-        tileItems = result;
+        tileItems = java.util.Collections.unmodifiableList(result);
+        lastContext = context;
         lastUpdateTick = client.getTickCount();
-        return result.stream();
+        return tileItems;
     }
 
     /**

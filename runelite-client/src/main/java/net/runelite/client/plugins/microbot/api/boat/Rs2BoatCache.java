@@ -19,9 +19,6 @@ public final class Rs2BoatCache {
     private final Client client;
     private final ClientThread clientThread;
 
-    private int lastCheckedOnBoat = 0;
-    private Rs2BoatModel boat = null;
-
     @Inject
     public Rs2BoatCache(Client client, ClientThread clientThread) {
         this.client = client;
@@ -29,63 +26,23 @@ public final class Rs2BoatCache {
     }
 
     public Rs2BoatModel getLocalBoat() {
-        if (lastCheckedOnBoat + 2 >= client.getTickCount()) {
-            return boat;
-        }
-
-        WorldEntity worldEntity = clientThread.invoke(() -> {
-            lastCheckedOnBoat = client.getTickCount();
-            Player player = client.getLocalPlayer();
-
-            if (player == null) {
-                return null;
-            }
-
-            WorldView playerView = player.getWorldView();
-
-            if (!playerView.isTopLevel()) {
-                LocalPoint playerLocal = player.getLocalLocation();
-                int worldViewId = playerLocal.getWorldView();
-
-                return client.getTopLevelWorldView()
-                        .worldEntities()
-                        .byIndex(worldViewId);
-            }
-
-            return null;
-        });
-
-        boat = worldEntity != null ? new Rs2BoatModel(worldEntity) : null;
-        return boat;
+        return clientThread.invoke(() -> resolve(client.getLocalPlayer()));
     }
 
     public Rs2BoatModel getBoat(Rs2PlayerModel player) {
-        if (player == null) {
-            return getLocalBoat();
-        }
+        return player == null ? getLocalBoat() : clientThread.invoke(() -> resolve(player.getPlayer()));
+    }
 
-        if (lastCheckedOnBoat + 2 >= client.getTickCount()) {
-            return boat;
-        }
-
-        WorldEntity worldEntity = clientThread.invoke(() -> {
-            lastCheckedOnBoat = client.getTickCount();
-
-            WorldView playerView = player.getWorldView();
-
-            if (!playerView.isTopLevel()) {
-                LocalPoint playerLocal = player.getLocalLocation();
-                int worldViewId = playerLocal.getWorldView();
-
-                return client.getTopLevelWorldView()
-                        .worldEntities()
-                        .byIndex(worldViewId);
-            }
-
-            return null;
-        });
-
-        boat = worldEntity != null ? new Rs2BoatModel(worldEntity) : null;
-        return boat;
+    // Resolution is a single indexed lookup; do not share a result between players.
+    private Rs2BoatModel resolve(Player player) {
+        assert client.isClientThread() : "Client-thread-only helper";
+        if (player == null) return null;
+        WorldView view = player.getWorldView();
+        WorldView top = client.getTopLevelWorldView();
+        if (view == null || top == null || view.isTopLevel()) return null;
+        LocalPoint local = player.getLocalLocation();
+        if (local == null || client.getWorldView(view.getId()) != view) return null;
+        WorldEntity entity = top.worldEntities().byIndex(local.getWorldView());
+        return entity == null ? null : new Rs2BoatModel(entity);
     }
 }

@@ -2,6 +2,31 @@
 
 This is the long-form guide for the Microbot entity cache/query layer. Use singleton caches from `Microbot.getRs2XxxCache()`; do not instantiate caches or queryables directly.
 
+## Ownership, threading, coordinates and results
+
+Queries are mutable, single-use Java Stream pipelines. Keep each query on one caller thread, consume it once, and create a new query for each poll or branch. Membership lists contain **live wrappers**, not immutable entity snapshots. Re-query after despawn, logout, hop or scene replacement. Returned raw actors, widgets, compositions and collections still require client-thread access.
+
+NPC, player and ground-item query construction collects membership and refresh metadata on the client thread. Prefer `firstOnClientThread`, `nearestOnClientThread`, `nearestReachableOnClientThread`, `countOnClientThread` and `toListOnClientThread` to evaluate short live-property predicates together. These predicates must not sleep, walk, move the mouse or wait. Perform interactions after the terminal returns, on the script thread. Several independent getter calls are not one atomic observation.
+
+Caches intentionally collect all known world views. `fromWorldView()` compares the player's view by identity. Player-relative `within`, `nearest` and reachability exclude other views; distances are Chebyshev tiles, including diagonals. `getSceneWorldLocation()` supplies native coordinates in the originating view. Existing actor `getWorldLocation()` retains its main-world projection behavior; ground items retain native tile coordinates. Do not mix projected actor positions with native ground-item positions. Explicit `WorldPoint` anchors carry no view identity: anchor overloads compare native coordinates and retain all-view scope, so constrain the view explicitly when coordinates could overlap. Missing locations, other planes, negative bounds and invalid distance sentinels never qualify.
+
+Reachability floods from the local player in the player's view. Explicit-origin floods are read-only results scoped to origin, tick, world, scene/view identity and scene base. They describe collision reachability, not a guarantee that an interaction or transport will complete.
+
+Inventory and NPC/ground-item clicks report whether the synthetic action was submitted. False includes missing/replaced targets and unresolved actions. Submission is not game completion: wait separately for the expected inventory, animation or location change. Identity is rechecked before mouse submission, but the game can still change during mouse travel. Player query interactions remain unsupported and return false.
+
+`Global.awaitExecutionUntil` returns an independently cancellable future, completing after the callback finishes (or exceptionally). Its interval must be positive. `Global.awaitOnClientThread(condition, timeoutMillis)` returns false on timeout, interruption or client-thread misuse; legacy void `sleepUntilOnClientThread` delegates to it. Deadlines use monotonic time and polling pauses off-thread. Conditions must be short: an executing client callback cannot be preempted by the polling deadline, and the underlying bridge has its own timeout.
+
+```java
+boolean appeared = Global.awaitOnClientThread(() -> Microbot.getRs2NpcCache().query()
+        .withName("Banker").fromWorldView().first() != null, 5000);
+// Each poll creates a fresh query. Interact outside the client-thread callback.
+Rs2NpcModel banker = Microbot.getRs2NpcCache().query()
+        .withName("Banker").nearestOnClientThread();
+if (banker != null) banker.click("Bank");
+```
+
+Ground-item `getTotalGeValueLong()` is market price times quantity; `getTotalBaseValueLong()` uses definition price; `getTotalHighAlchValueLong()` uses per-item high-alchemy proceeds before consumables. Legacy int totals saturate at `Integer.MAX_VALUE`. `getTotalGeValue()` now actually uses market price. Alchemy profitability compares proceeds with market price and excludes consumables unless a cost is supplied; break-even is false.
+
 ## Table of Contents
 
 1. [Introduction](#introduction)
@@ -41,7 +66,7 @@ NPC banker = null;
 for (NPC npc : client.getNpcs()) {
     if (npc.getName() != null && 
         npc.getName().equals("Banker") && 
-        !npc.getInteracting() != null) {
+        npc.getInteracting() == null) {
         if (banker == null || 
             npc.getWorldLocation().distanceTo(player.getWorldLocation()) < 
             banker.getWorldLocation().distanceTo(player.getWorldLocation())) {
@@ -139,7 +164,7 @@ npcCache.query()
     .withName("Guard")           // Filter by name
     .where(npc -> !npc.isInteracting())  // Add custom filter
     .within(15)                  // Within 15 tiles
-    .nearest();                  // Get nearest match
+    .nearestOnClientThread();                  // Get nearest match
 ```
 
 ### 4. Lazy Evaluation
@@ -226,19 +251,19 @@ import net.runelite.client.plugins.microbot.api.npc.models.Rs2NpcModel;
 // Find nearest banker
 Rs2NpcModel banker = npcCache.query()
     .withName("Banker")
-    .nearest();
+    .nearestOnClientThread();
 
 // Find all guards within 10 tiles
 List<Rs2NpcModel> guards = npcCache.query()
     .withName("Guard")
     .within(10)
-    .toList();
+    .toListOnClientThread();
 
 // Find nearest non-interacting cow
 Rs2NpcModel cow = npcCache.query()
     .withName("Cow")
     .where(npc -> !npc.isInteracting())
-    .nearest();
+    .nearestOnClientThread();
 ```
 
 **Rs2NpcModel Methods:**
@@ -266,17 +291,17 @@ import net.runelite.client.plugins.microbot.api.tileitem.models.Rs2TileItemModel
 // Find nearest coins
 Rs2TileItemModel coins = tileItemCache.query()
     .withName("Coins")
-    .nearest();
+    .nearestOnClientThread();
 
 // Find valuable items
 List<Rs2TileItemModel> loot = tileItemCache.query()
     .where(item -> item.getTotalValue() > 1000)
-    .toList();
+    .toListOnClientThread();
 
 // Find nearest lootable item
 Rs2TileItemModel lootable = tileItemCache.query()
     .where(Rs2TileItemModel::isLootAble)
-    .nearest();
+    .nearestOnClientThread();
 ```
 
 **Rs2TileItemModel Methods:**
@@ -309,18 +334,18 @@ import net.runelite.client.plugins.microbot.api.player.models.Rs2PlayerModel;
 ```java
 // Find nearest player
 Rs2PlayerModel player = playerCache.query()
-    .nearest();
+    .nearestOnClientThread();
 
 // Find player by name
 Rs2PlayerModel target = playerCache.query()
     .withName("PlayerName")
-    .nearest();
+    .nearestOnClientThread();
 
 // Find all friends nearby
 List<Rs2PlayerModel> friends = playerCache.query()
     .where(Rs2PlayerModel::isFriend)
     .within(20)
-    .toList();
+    .toListOnClientThread();
 ```
 
 **Rs2PlayerModel Methods:**
@@ -350,19 +375,19 @@ import net.runelite.client.plugins.microbot.api.tileobject.models.Rs2TileObjectM
 // Find nearest tree
 Rs2TileObjectModel tree = tileObjectCache.query()
     .withName("Tree")
-    .nearest();
+    .nearestOnClientThread();
 
 // Find nearest bank booth
 Rs2TileObjectModel bank = tileObjectCache.query()
     .withName("Bank booth")
-    .nearest();
+    .nearestOnClientThread();
 
 // Find all rocks within 15 tiles
 List<Rs2TileObjectModel> rocks = tileObjectCache.query()
     .where(obj -> obj.getName() != null && 
                   obj.getName().contains("rocks"))
     .within(15)
-    .toList();
+    .toListOnClientThread();
 ```
 
 **Rs2TileObjectModel Methods:**
@@ -388,7 +413,7 @@ Returns the nearest entity to the player.
 ```java
 Rs2NpcModel npc = npcCache.query()
     .withName("Guard")
-    .nearest();
+    .nearestOnClientThread();
 ```
 
 #### `nearest(int maxDistance)`
@@ -397,7 +422,7 @@ Returns the nearest entity within max distance from player.
 ```java
 Rs2NpcModel npc = npcCache.query()
     .withName("Guard")
-    .nearest(10);  // Within 10 tiles
+    .nearestOnClientThread(10);  // Within 10 tiles
 ```
 
 #### `nearest(WorldPoint anchor, int maxDistance)`
@@ -407,7 +432,7 @@ Returns the nearest entity to a specific point.
 WorldPoint location = new WorldPoint(3100, 3500, 0);
 Rs2NpcModel npc = npcCache.query()
     .withName("Guard")
-    .nearest(location, 5);
+    .nearestOnClientThread(location, 5);
 ```
 
 #### `first()`
@@ -457,7 +482,7 @@ Returns all matching entities as a list.
 ```java
 List<Rs2NpcModel> guards = npcCache.query()
     .withName("Guard")
-    .toList();
+    .toListOnClientThread();
 ```
 
 #### `count()`
@@ -481,7 +506,7 @@ Adds a custom filter using a lambda expression.
 npcCache.query()
     .where(npc -> npc.getHealthRatio() > 0)
     .where(npc -> !npc.isInteracting())
-    .nearest();
+    .nearestOnClientThread();
 ```
 
 #### `within(int distance)`
@@ -491,7 +516,7 @@ Filters entities within distance from player.
 npcCache.query()
     .withName("Guard")
     .within(10)
-    .toList();
+    .toListOnClientThread();
 ```
 
 #### `within(WorldPoint anchor, int distance)`
@@ -502,7 +527,7 @@ WorldPoint location = new WorldPoint(3100, 3500, 0);
 npcCache.query()
     .withName("Guard")
     .within(location, 15)
-    .toList();
+    .toListOnClientThread();
 ```
 
 ---
@@ -515,7 +540,7 @@ npcCache.query()
 Rs2NpcModel cow = npcCache.query()
     .withName("Cow")
     .where(npc -> !npc.isInteracting())
-    .nearest();
+    .nearestOnClientThread();
 
 if (cow != null) {
     cow.click("Attack");
@@ -528,7 +553,7 @@ if (cow != null) {
 Rs2TileItemModel loot = tileItemCache.query()
     .where(item -> item.getTotalGeValue() >= 5000)
     .where(Rs2TileItemModel::isLootAble)
-    .nearest(10);
+    .nearestOnClientThread(10);
 
 if (loot != null) {
     loot.pickup();
@@ -542,7 +567,7 @@ List<Rs2NpcModel> guards = npcCache.query()
     .withName("Guard")
     .where(npc -> !npc.isInteracting())
     .within(15)
-    .toList();
+    .toListOnClientThread();
 
 for (Rs2NpcModel guard : guards) {
     // Do something with each guard
@@ -569,7 +594,7 @@ Rs2NpcModel target = npcCache.query()
     .where(npc -> npc.getHealthRatio() > 0)
     .where(npc -> npc.getAnimation() == -1)  // Not animating
     .within(10)
-    .nearest();
+    .nearestOnClientThread();
 ```
 
 ### Pattern 6: Find Nearest Object by Partial Name
@@ -578,7 +603,7 @@ Rs2NpcModel target = npcCache.query()
 Rs2TileObjectModel tree = tileObjectCache.query()
     .where(obj -> obj.getName() != null && 
                   obj.getName().toLowerCase().contains("tree"))
-    .nearest();
+    .nearestOnClientThread();
 ```
 
 ### Pattern 7: Find Items About to Despawn
@@ -587,7 +612,7 @@ Rs2TileObjectModel tree = tileObjectCache.query()
 List<Rs2TileItemModel> despawning = tileItemCache.query()
     .where(item -> item.willDespawnWithin(30))  // 30 seconds
     .where(item -> item.getTotalValue() > 1000)
-    .toList();
+    .toListOnClientThread();
 ```
 
 ### Pattern 8: Find Friends Nearby
@@ -596,7 +621,7 @@ List<Rs2TileItemModel> despawning = tileItemCache.query()
 List<Rs2PlayerModel> friends = playerCache.query()
     .where(Rs2PlayerModel::isFriend)
     .within(20)
-    .toList();
+    .toListOnClientThread();
 ```
 
 ### Pattern 9: Find Low Health Enemies
@@ -606,7 +631,7 @@ Rs2NpcModel weakEnemy = npcCache.query()
     .withName("Goblin")
     .where(npc -> npc.getHealthRatio() > 0 && 
                   npc.getHealthRatio() < 10)  // Low health
-    .nearest();
+    .nearestOnClientThread();
 ```
 
 ### Pattern 10: Find Specific Object by ID
@@ -614,7 +639,7 @@ Rs2NpcModel weakEnemy = npcCache.query()
 ```java
 Rs2TileObjectModel altar = tileObjectCache.query()
     .withId(409)  // Altar object ID
-    .nearest();
+    .nearestOnClientThread();
 ```
 
 ---
@@ -637,7 +662,7 @@ Rs2NpcModel target = npcCache.query()
     .where(isAlive)
     .where(notBusy)
     .where(notAnimating)
-    .nearest();
+    .nearestOnClientThread();
 ```
 
 ### Combining Predicates
@@ -650,7 +675,7 @@ Predicate<Rs2NpcModel> attackable =
 Rs2NpcModel target = npcCache.query()
     .withName("Goblin")
     .where(attackable)
-    .nearest();
+    .nearestOnClientThread();
 
 // Combine with OR
 Predicate<Rs2TileItemModel> valuableOrStackable =
@@ -658,7 +683,7 @@ Predicate<Rs2TileItemModel> valuableOrStackable =
 
 Rs2TileItemModel loot = tileItemCache.query()
     .where(valuableOrStackable)
-    .nearest();
+    .nearestOnClientThread();
 ```
 
 ### Distance-Based Queries
@@ -670,7 +695,7 @@ WorldPoint homeBase = new WorldPoint(3100, 3500, 0);
 Rs2NpcModel nearbyEnemy = npcCache.query()
     .withName("Goblin")
     .within(homeBase, 10)  // Within 10 tiles of home base
-    .nearest(homeBase, 10);  // Get nearest to home base
+    .nearestOnClientThread(homeBase, 10);  // Get nearest to home base
 ```
 
 ### Sorting and Limiting
@@ -679,7 +704,7 @@ Rs2NpcModel nearbyEnemy = npcCache.query()
 // Get 5 nearest guards
 List<Rs2NpcModel> guards = npcCache.query()
     .withName("Guard")
-    .toList()
+    .toListOnClientThread()
     .stream()
     .sorted(Comparator.comparingInt(npc -> 
         npc.getWorldLocation().distanceTo(Rs2Player.getWorldLocation())))
@@ -694,7 +719,7 @@ Always check for null results:
 ```java
 Rs2NpcModel banker = npcCache.query()
     .withName("Banker")
-    .nearest();
+    .nearestOnClientThread();
 
 if (banker != null) {
     banker.click("Bank");
@@ -710,7 +735,7 @@ if (banker != null) {
 Rs2NpcModel target = sleepUntilNotNull(() -> 
     npcCache.query()
         .withName("Banker")
-        .nearest(),
+        .nearestOnClientThread(),
     5000, 600  // 5 second timeout, check every 600ms
 );
 
@@ -731,7 +756,7 @@ if (target != null) {
 npcCache.query()
     .withName("Guard")
     .where(npc -> !npc.isInteracting())
-    .nearest();
+    .nearestOnClientThread();
 ```
 
 **2. Limit search radius:**
@@ -740,7 +765,7 @@ npcCache.query()
 npcCache.query()
     .withName("Guard")
     .within(10)
-    .nearest();
+    .nearestOnClientThread();
 ```
 
 **3. Cache results when possible:**
@@ -748,7 +773,7 @@ npcCache.query()
 // Good - query once, use multiple times
 List<Rs2NpcModel> guards = npcCache.query()
     .withName("Guard")
-    .toList();
+    .toListOnClientThread();
 
 for (Rs2NpcModel guard : guards) {
     // Process each guard
@@ -760,7 +785,7 @@ for (Rs2NpcModel guard : guards) {
 // Good - cleaner and potentially faster
 tileItemCache.query()
     .where(Rs2TileItemModel::isLootAble)
-    .nearest();
+    .nearestOnClientThread();
 ```
 
 ### ❌ DON'T:
@@ -771,7 +796,7 @@ tileItemCache.query()
 while (true) {
     Rs2NpcModel npc = npcCache.query()
         .withName("Guard")
-        .nearest();
+        .nearestOnClientThread();
     // ...
     sleep(100);  // Still too frequent
 }
@@ -780,7 +805,7 @@ while (true) {
 while (true) {
     Rs2NpcModel npc = npcCache.query()
         .withName("Guard")
-        .nearest();
+        .nearestOnClientThread();
     // ...
     sleep(600);  // ~1 game tick
 }
@@ -791,13 +816,13 @@ while (true) {
 // Bad - calls API repeatedly in filter
 npcCache.query()
     .where(npc -> someExpensiveApiCall(npc))
-    .nearest();
+    .nearestOnClientThread();
 
 // Good - call API once, cache result
 boolean shouldFilter = someExpensiveApiCall();
 npcCache.query()
     .where(npc -> shouldFilter)
-    .nearest();
+    .nearestOnClientThread();
 ```
 
 **3. Don't create unnecessary lists:**
@@ -805,7 +830,7 @@ npcCache.query()
 // Bad - creates full list just to get one item
 Rs2NpcModel npc = npcCache.query()
     .withName("Guard")
-    .toList()
+    .toListOnClientThread()
     .get(0);
 
 // Good - gets first directly
@@ -838,11 +863,11 @@ Rs2NpcModel npc = npcCache.query()
 
 Rs2NpcModel nearest = npcCache.query()
     .withName("Guard")
-    .nearest();
+    .nearestOnClientThread();
 
 List<Rs2NpcModel> npcs = npcCache.query()
     .withId(NpcID.GUARD)
-    .toList();
+    .toListOnClientThread();
 ```
 
 #### Ground Items
@@ -863,7 +888,7 @@ Rs2TileItemModel item = tileItemCache.query()
 
 Rs2TileItemModel nearest = tileItemCache.query()
     .withName("Dragon bones")
-    .nearest();
+    .nearestOnClientThread();
 ```
 
 #### Game Objects
@@ -880,11 +905,11 @@ TileObject nearest = Rs2GameObject.findObjectById(1234);
 // New way
 Rs2TileObjectModel tree = tileObjectCache.query()
     .withName("Tree")
-    .nearest();
+    .nearestOnClientThread();
 
 Rs2TileObjectModel nearest = tileObjectCache.query()
     .withId(1234)
-    .nearest();
+    .nearestOnClientThread();
 ```
 
 ### Step-by-Step Migration
@@ -911,7 +936,7 @@ NPC cow = Rs2Npc.getNpcs().stream()
 Rs2NpcModel cow = npcCache.query()
     .withName("Cow")
     .where(npc -> !npc.isInteracting())
-    .nearest();
+    .nearestOnClientThread();
 ```
 
 **Step 3:** Update interaction methods:
@@ -941,7 +966,7 @@ Rs2NpcModel enemy = npcCache.query()
     .withName("Goblin")
     .where(npc -> !npc.isInteracting())
     .where(npc -> npc.getHealthRatio() > 0)
-    .nearest(10);
+    .nearestOnClientThread(10);
 
 if (enemy != null && !Rs2Player.isInCombat()) {
     enemy.click("Attack");
@@ -956,7 +981,7 @@ if (enemy != null && !Rs2Player.isInCombat()) {
 Rs2TileItemModel loot = tileItemCache.query()
     .where(Rs2TileItemModel::isLootAble)
     .where(item -> item.getTotalGeValue() >= 5000)
-    .nearest(15);
+    .nearestOnClientThread(15);
 
 if (loot != null) {
     loot.pickup();
@@ -971,7 +996,7 @@ if (loot != null) {
 Rs2TileObjectModel tree = tileObjectCache.query()
     .where(obj -> obj.getName() != null && 
                   obj.getName().equals("Oak tree"))
-    .nearest(10);
+    .nearestOnClientThread(10);
 
 if (tree != null && !Rs2Player.isAnimating()) {
     tree.click("Chop down");
@@ -985,7 +1010,7 @@ if (tree != null && !Rs2Player.isAnimating()) {
 // Find nearest bank
 Rs2TileObjectModel bank = tileObjectCache.query()
     .withNames("Bank booth", "Bank chest", "Bank")
-    .nearest(20);
+    .nearestOnClientThread(20);
 
 if (bank != null && !Rs2Bank.isOpen()) {
     bank.click("Bank");
@@ -1006,7 +1031,7 @@ if (bank != null && !Rs2Bank.isOpen()) {
 1. **Check distance:**
 ```java
 // Increase search radius
-.nearest(20)  // Instead of default
+.nearestOnClientThread(20)  // Instead of default
 ```
 
 2. **Verify name:**
@@ -1027,7 +1052,7 @@ Rs2NpcModel test2 = npcCache.query().withName("Banker").where(filter);
 ```java
 // Wait for entity to appear
 Rs2NpcModel npc = sleepUntilNotNull(() -> 
-    npcCache.query().withName("Banker").nearest(),
+    npcCache.query().withName("Banker").nearestOnClientThread(),
     5000, 600
 );
 ```
@@ -1048,7 +1073,7 @@ Rs2NpcModel npc = sleepUntilNotNull(() ->
 // Query once per game tick, not every iteration
 List<Rs2NpcModel> npcs = npcCache.query()
     .withName("Guard")
-    .toList();
+    .toListOnClientThread();
 ```
 
 3. **Simplify predicates:**
@@ -1135,23 +1160,23 @@ import net.runelite.client.plugins.microbot.api.tileobject.models.Rs2TileObjectM
 
 ```java
 // Find nearest NPC
-npcCache.query().withName("Banker").nearest();
+npcCache.query().withName("Banker").nearestOnClientThread();
 
 // Find ground item
-tileItemCache.query().withName("Coins").nearest();
+tileItemCache.query().withName("Coins").nearestOnClientThread();
 
 // Find player
-playerCache.query().withName("PlayerName").nearest();
+playerCache.query().withName("PlayerName").nearestOnClientThread();
 
 // Find object
-tileObjectCache.query().withName("Tree").nearest();
+tileObjectCache.query().withName("Tree").nearestOnClientThread();
 
 // Complex query
 npcCache.query()
     .withName("Guard")
     .where(npc -> !npc.isInteracting())
     .within(10)
-    .nearest();
+    .nearestOnClientThread();
 ```
 
 ---

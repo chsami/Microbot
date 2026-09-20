@@ -20,8 +20,7 @@ public class Rs2PlayerModel extends Rs2ActorModel implements IEntity {
 
     public Rs2PlayerModel()
     {
-        super(Microbot.getClient().getLocalPlayer());
-        this.player = Microbot.getClient().getLocalPlayer();
+        this(Microbot.getClientThread().invoke(() -> Microbot.getClient().getLocalPlayer()));
     }
 
     public Rs2PlayerModel(final Player player)
@@ -39,7 +38,7 @@ public class Rs2PlayerModel extends Rs2ActorModel implements IEntity {
     @Override
     public int getId()
     {
-        return player.getId();
+        return Microbot.getClientThread().invoke(() -> player.getId());
     }
 
 

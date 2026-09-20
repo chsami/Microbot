@@ -3,7 +3,10 @@ package net.runelite.client.plugins.microbot.util.reachable;
 import it.unimi.dsi.fastutil.ints.IntArrayFIFOQueue;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntSet;
-import lombok.Getter;
+import it.unimi.dsi.fastutil.ints.IntSets;
+import java.util.Objects;
+import net.runelite.api.Player;
+import net.runelite.api.Scene;
 import net.runelite.api.Client;
 import net.runelite.api.CollisionData;
 import net.runelite.api.CollisionDataFlag;
@@ -13,70 +16,82 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.shortestpath.WorldPointUtil;
 
 public class Rs2Reachable {
-    private static int lastUpdateTick = 0;
-    @Getter
-    private static IntSet reachableTiles;
+    private static int lastUpdateTick = -1;
+    private static volatile IntSet reachableTiles = IntSets.EMPTY_SET;
+    private static WorldPoint lastOrigin;
+    private static WorldView lastView;
+    private static Scene lastScene;
+    private static int lastWorld, lastBaseX, lastBaseY;
 
-    private static final int REGION_SIZE = 104;
+    /** Last published, read-only flood result. */
+    public static IntSet getReachableTiles() { return reachableTiles; }
 
     public static boolean isReachable(WorldPoint target) {
-        IntSet reachableTiles = getReachableTiles(target);
-        int packedPoint = WorldPointUtil.packWorldPoint(
-                target.getX(),
-                target.getY(),
-                target.getPlane()
-        );
-        return reachableTiles.contains(packedPoint);
+        return isReachable(target, null);
     }
 
+    /** A null view means the local player's current view. */
+    public static boolean isReachable(WorldPoint target, WorldView targetView) {
+        if (target == null) return false;
+        return Microbot.getClientThread().invoke((java.util.function.Supplier<Boolean>) () -> {
+            Player player = Microbot.getClient().getLocalPlayer();
+            if (player == null) return false;
+            WorldView view = player.getWorldView();
+            if (view == null || (targetView != null && targetView != view)) return false;
+            return collect(player.getWorldLocation(), view).contains(WorldPointUtil.packWorldPoint(
+                    target.getX(), target.getY(), target.getPlane()));
+        });
+    }
+
+    /** Flood from an explicit origin in the local player's current world view. */
     public static IntSet getReachableTiles(WorldPoint start) {
-        Client client = Microbot.getClient();
-        int tick = client.getTickCount();
-
-        // Reuse cache for this tick
-        if (reachableTiles != null && lastUpdateTick == tick) {
-            return reachableTiles;
-        }
-
         return Microbot.getClientThread().invoke(() -> {
+            Player player = Microbot.getClient().getLocalPlayer();
+            return collect(start, player == null ? null : player.getWorldView());
+        });
+    }
+
+    private static IntSet collect(WorldPoint start, WorldView worldView) {
+        assert Microbot.getClient().isClientThread() : "Client-thread-only helper";
             Client c = Microbot.getClient();
-            WorldView worldView = c.getTopLevelWorldView();
-            if (worldView == null) {
-                reachableTiles = new IntOpenHashSet();
-                lastUpdateTick = tick;
+            int tick = c.getTickCount();
+            if (c.getGameState() != net.runelite.api.GameState.LOGGED_IN
+                    || worldView == null || start == null || start.getPlane() != worldView.getPlane()) {
+                lastUpdateTick = -1;
+                reachableTiles = IntSets.EMPTY_SET;
                 return reachableTiles;
             }
-
+            if (lastUpdateTick == tick && Objects.equals(lastOrigin, start)
+                    && lastView == worldView && lastScene == worldView.getScene()
+                    && lastWorld == c.getWorld() && lastBaseX == worldView.getBaseX()
+                    && lastBaseY == worldView.getBaseY()) return reachableTiles;
             CollisionData[] collisionMaps = worldView.getCollisionMaps();
-            if (collisionMaps == null) {
-                reachableTiles = new IntOpenHashSet();
-                lastUpdateTick = tick;
-                return reachableTiles;
+            if (collisionMaps == null || worldView.getPlane() >= collisionMaps.length
+                    || collisionMaps[worldView.getPlane()] == null) {
+                return IntSets.EMPTY_SET;
             }
 
             int plane = worldView.getPlane();
             int[][] collisionFlags = collisionMaps[plane].getFlags();
 
-            boolean[][] visited = new boolean[REGION_SIZE][REGION_SIZE];
+            if (collisionFlags == null || collisionFlags.length == 0 || collisionFlags[0] == null) return IntSets.EMPTY_SET;
+            int width = collisionFlags.length, height = collisionFlags[0].length;
+            boolean[][] visited = new boolean[width][height];
             IntArrayFIFOQueue openQueue = new IntArrayFIFOQueue();
 
             int worldBaseX = worldView.getBaseX();
             int worldBaseY = worldView.getBaseY();
 
             if (start == null || start.getPlane() != plane) {
-                reachableTiles = new IntOpenHashSet();
-                lastUpdateTick = tick;
-                return reachableTiles;
+                return IntSets.EMPTY_SET;
             }
 
             int localStartX = start.getX() - worldBaseX;
             int localStartY = start.getY() - worldBaseY;
 
             if (localStartX < 0 || localStartY < 0
-                    || localStartX >= REGION_SIZE || localStartY >= REGION_SIZE) {
-                reachableTiles = new IntOpenHashSet();
-                lastUpdateTick = tick;
-                return reachableTiles;
+                    || localStartX >= width || localStartY >= height) {
+                return IntSets.EMPTY_SET;
             }
 
             int startKey = (localStartX << 16) | localStartY;
@@ -102,7 +117,7 @@ public class Rs2Reachable {
 
                 // North
                 int northY = localY + 1;
-                if (northY < REGION_SIZE
+                if (northY < height
                         && (tileFlags & CollisionDataFlag.BLOCK_MOVEMENT_NORTH) == 0
                         && (collisionFlags[localX][northY] & CollisionDataFlag.BLOCK_MOVEMENT_FULL) == 0
                         && !visited[localX][northY]) {
@@ -122,7 +137,7 @@ public class Rs2Reachable {
 
                 // East
                 int eastX = localX + 1;
-                if (eastX < REGION_SIZE
+                if (eastX < width
                         && (tileFlags & CollisionDataFlag.BLOCK_MOVEMENT_EAST) == 0
                         && (collisionFlags[eastX][localY] & CollisionDataFlag.BLOCK_MOVEMENT_FULL) == 0
                         && !visited[eastX][localY]) {
@@ -133,8 +148,8 @@ public class Rs2Reachable {
 
             IntSet reachablePackedPoints = new IntOpenHashSet();
 
-            for (int x = 0; x < REGION_SIZE; x++) {
-                for (int y = 0; y < REGION_SIZE; y++) {
+            for (int x = 0; x < width; x++) {
+                for (int y = 0; y < height; y++) {
                     if (visited[x][y]) {
                         int worldX = worldBaseX + x;
                         int worldY = worldBaseY + y;
@@ -145,9 +160,14 @@ public class Rs2Reachable {
                 }
             }
 
-            reachableTiles = reachablePackedPoints;
+            reachableTiles = IntSets.unmodifiable(reachablePackedPoints);
+            lastOrigin = start;
+            lastView = worldView;
+            lastScene = worldView.getScene();
+            lastWorld = c.getWorld();
+            lastBaseX = worldBaseX;
+            lastBaseY = worldBaseY;
             lastUpdateTick = tick;
             return reachableTiles;
-        });
     }
 }

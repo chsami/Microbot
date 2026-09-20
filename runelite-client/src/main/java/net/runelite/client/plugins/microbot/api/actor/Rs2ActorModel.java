@@ -24,7 +24,7 @@ public class Rs2ActorModel implements Actor
     @Override
     public WorldView getWorldView()
     {
-        return Microbot.getClientThread().invoke(actor::getWorldView);
+        return Microbot.getClientThread().invoke(() -> actor == null ? null : actor.getWorldView());
     }
 
     @Override
@@ -47,7 +47,7 @@ public class Rs2ActorModel implements Actor
     @Override
     public boolean isInteracting()
     {
-        return actor.isInteracting();
+        return Microbot.getClientThread().invoke((java.util.function.Supplier<Boolean>) () -> actor.isInteracting());
     }
 
     @Override
@@ -72,6 +72,7 @@ public class Rs2ActorModel implements Actor
     public WorldPoint getWorldLocation()
     {
         return Microbot.getClientThread().invoke(() -> {
+            if (actor == null) return null;
             WorldView worldView = actor.getWorldView();
             if (worldView != null && !worldView.isTopLevel()) {
                 return projectActorLocationToMainWorld();
@@ -80,379 +81,459 @@ public class Rs2ActorModel implements Actor
         });
     }
 
+    public WorldPoint getSceneWorldLocation()
+    {
+        return Microbot.getClientThread().invoke(() -> actor == null ? null : actor.getWorldLocation());
+    }
+
     @Override
     public LocalPoint getLocalLocation()
     {
-        return actor.getLocalLocation();
+        return Microbot.getClientThread().invoke(() -> actor.getLocalLocation());
     }
 
     @Override
     public int getOrientation()
     {
-        return actor.getOrientation();
+        return Microbot.getClientThread().invoke(() -> actor.getOrientation());
     }
 
     @Override
     public int getCurrentOrientation()
     {
-        return actor.getCurrentOrientation();
+        return Microbot.getClientThread().invoke(() -> actor.getCurrentOrientation());
     }
 
     @Override
     public int getAnimation()
     {
-        return actor.getAnimation();
+        return Microbot.getClientThread().invoke(() -> actor.getAnimation());
     }
 
     @Override
     public int getPoseAnimation()
     {
-        return actor.getPoseAnimation();
+        return Microbot.getClientThread().invoke(() -> actor.getPoseAnimation());
     }
 
     @Override
     public void setPoseAnimation(int animation)
     {
-        actor.setPoseAnimation(animation);
+        Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            actor.setPoseAnimation(animation);
+            return null;
+        });
     }
 
     @Override
     public int getPoseAnimationFrame()
     {
-        return actor.getPoseAnimationFrame();
+        return Microbot.getClientThread().invoke(() -> actor.getPoseAnimationFrame());
     }
 
     @Override
     public void setPoseAnimationFrame(int frame)
     {
-        actor.setPoseAnimationFrame(frame);
+        Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            actor.setPoseAnimationFrame(frame);
+            return null;
+        });
     }
 
     @Override
     public int getIdlePoseAnimation()
     {
-        return actor.getIdlePoseAnimation();
+        return Microbot.getClientThread().invoke(() -> actor.getIdlePoseAnimation());
     }
 
     @Override
     public void setIdlePoseAnimation(int animation)
     {
-        actor.setIdlePoseAnimation(animation);
+        Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            actor.setIdlePoseAnimation(animation);
+            return null;
+        });
     }
 
     @Override
     public int getIdleRotateLeft()
     {
-        return actor.getIdleRotateLeft();
+        return Microbot.getClientThread().invoke(() -> actor.getIdleRotateLeft());
     }
 
     @Override
     public void setIdleRotateLeft(int animationID)
     {
-        actor.setIdleRotateLeft(animationID);
+        Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            actor.setIdleRotateLeft(animationID);
+            return null;
+        });
     }
 
     @Override
     public int getIdleRotateRight()
     {
-        return actor.getIdleRotateRight();
+        return Microbot.getClientThread().invoke(() -> actor.getIdleRotateRight());
     }
 
     @Override
     public void setIdleRotateRight(int animationID)
     {
-        actor.setIdleRotateRight(animationID);
+        Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            actor.setIdleRotateRight(animationID);
+            return null;
+        });
     }
 
     @Override
     public int getWalkAnimation()
     {
-        return actor.getWalkAnimation();
+        return Microbot.getClientThread().invoke(() -> actor.getWalkAnimation());
     }
 
     @Override
     public void setWalkAnimation(int animationID)
     {
-        actor.setWalkAnimation(animationID);
+        Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            actor.setWalkAnimation(animationID);
+            return null;
+        });
     }
 
     @Override
     public int getWalkRotateLeft()
     {
-        return actor.getWalkRotateLeft();
+        return Microbot.getClientThread().invoke(() -> actor.getWalkRotateLeft());
     }
 
     @Override
     public void setWalkRotateLeft(int animationID)
     {
-        actor.setWalkRotateLeft(animationID);
+        Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            actor.setWalkRotateLeft(animationID);
+            return null;
+        });
     }
 
     @Override
     public int getWalkRotateRight()
     {
-        return actor.getWalkRotateRight();
+        return Microbot.getClientThread().invoke(() -> actor.getWalkRotateRight());
     }
 
     @Override
     public void setWalkRotateRight(int animationID)
     {
-        actor.setWalkRotateRight(animationID);
+        Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            actor.setWalkRotateRight(animationID);
+            return null;
+        });
     }
 
     @Override
     public int getWalkRotate180()
     {
-        return actor.getWalkRotate180();
+        return Microbot.getClientThread().invoke(() -> actor.getWalkRotate180());
     }
 
     @Override
     public void setWalkRotate180(int animationID)
     {
-        actor.setWalkRotate180(animationID);
+        Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            actor.setWalkRotate180(animationID);
+            return null;
+        });
     }
 
     @Override
     public int getRunAnimation()
     {
-        return actor.getRunAnimation();
+        return Microbot.getClientThread().invoke(() -> actor.getRunAnimation());
     }
 
     @Override
     public void setRunAnimation(int animationID)
     {
-        actor.setRunAnimation(animationID);
+        Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            actor.setRunAnimation(animationID);
+            return null;
+        });
     }
 
     @Override
     public void setAnimation(int animation)
     {
-        actor.setAnimation(animation);
+        Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            actor.setAnimation(animation);
+            return null;
+        });
     }
 
     @Override
     public int getAnimationFrame()
     {
-        return actor.getAnimationFrame();
+        return Microbot.getClientThread().invoke(() -> actor.getAnimationFrame());
     }
 
     @Override
     public void setActionFrame(int frame)
     {
-        actor.setAnimationFrame(frame);
+        Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            actor.setAnimationFrame(frame);
+            return null;
+        });
     }
 
     @Override
     public void setAnimationFrame(int frame)
     {
-        actor.setAnimationFrame(frame);
+        Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            actor.setAnimationFrame(frame);
+            return null;
+        });
     }
 
     @Override
     public IterableHashTable<ActorSpotAnim> getSpotAnims()
     {
-        return actor.getSpotAnims();
+        return Microbot.getClientThread().invoke(() -> actor.getSpotAnims());
     }
 
     @Override
     public boolean hasSpotAnim(int spotAnimId)
     {
-        return actor.hasSpotAnim(spotAnimId);
+        return Microbot.getClientThread().invoke((java.util.function.Supplier<Boolean>) () -> actor.hasSpotAnim(spotAnimId));
     }
 
     @Override
     public void createSpotAnim(int id, int spotAnimId, int height, int delay)
     {
-        actor.createSpotAnim(id, spotAnimId, height, delay);
+        Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            actor.createSpotAnim(id, spotAnimId, height, delay);
+            return null;
+        });
     }
 
     @Override
     public void removeSpotAnim(int id)
     {
-        actor.removeSpotAnim(id);
+        Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            actor.removeSpotAnim(id);
+            return null;
+        });
     }
 
     @Override
     public void clearSpotAnims()
     {
-        actor.clearSpotAnims();
+        Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            actor.clearSpotAnims();
+            return null;
+        });
     }
 
     @Override
     public int getGraphic()
     {
-        return actor.getGraphic();
+        return Microbot.getClientThread().invoke(() -> actor.getGraphic());
     }
 
     @Override
     public void setGraphic(int graphic)
     {
-        actor.setGraphic(graphic);
+        Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            actor.setGraphic(graphic);
+            return null;
+        });
     }
 
     @Override
     public int getGraphicHeight()
     {
-        return actor.getGraphicHeight();
+        return Microbot.getClientThread().invoke(() -> actor.getGraphicHeight());
     }
 
     @Override
     public void setGraphicHeight(int height)
     {
-        actor.setGraphicHeight(height);
+        Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            actor.setGraphicHeight(height);
+            return null;
+        });
     }
 
     @Override
     public int getSpotAnimFrame()
     {
-        return actor.getSpotAnimFrame();
+        return Microbot.getClientThread().invoke(() -> actor.getSpotAnimFrame());
     }
 
     @Override
     public void setSpotAnimFrame(int spotAnimFrame)
     {
-        actor.setSpotAnimFrame(spotAnimFrame);
+        Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            actor.setSpotAnimFrame(spotAnimFrame);
+            return null;
+        });
     }
 
     @Override
     public Polygon getCanvasTilePoly()
     {
-        return actor.getCanvasTilePoly();
+        return Microbot.getClientThread().invoke(() -> actor.getCanvasTilePoly());
     }
 
     @Override
     public @Nullable Point getCanvasTextLocation(Graphics2D graphics, String text, int zOffset)
     {
-        return actor.getCanvasTextLocation(graphics, text, zOffset);
+        return Microbot.getClientThread().invoke(() -> actor.getCanvasTextLocation(graphics, text, zOffset));
     }
 
     @Override
     public Point getCanvasImageLocation(BufferedImage image, int zOffset)
     {
-        return actor.getCanvasImageLocation(image, zOffset);
+        return Microbot.getClientThread().invoke(() -> actor.getCanvasImageLocation(image, zOffset));
     }
 
     @Override
     public Point getCanvasSpriteLocation(SpritePixels sprite, int zOffset)
     {
-        return actor.getCanvasSpriteLocation(sprite, zOffset);
+        return Microbot.getClientThread().invoke(() -> actor.getCanvasSpriteLocation(sprite, zOffset));
     }
 
     @Override
     public Point getMinimapLocation()
     {
-        return actor.getMinimapLocation();
+        return Microbot.getClientThread().invoke(() -> actor.getMinimapLocation());
     }
 
     @Override
     public int getLogicalHeight()
     {
-        return actor.getLogicalHeight();
+        return Microbot.getClientThread().invoke(() -> actor.getLogicalHeight());
     }
 
     @Override
     public Shape getConvexHull()
     {
-        return actor.getConvexHull();
+        return Microbot.getClientThread().invoke(() -> actor.getConvexHull());
     }
 
     @Override
     public WorldArea getWorldArea()
     {
-        return actor.getWorldArea();
+        return Microbot.getClientThread().invoke(() -> actor.getWorldArea());
     }
 
     @Override
     public String getOverheadText()
     {
-        return actor.getOverheadText();
+        return Microbot.getClientThread().invoke(() -> actor.getOverheadText());
     }
 
     @Override
     public void setOverheadText(String overheadText)
     {
-        actor.setOverheadText(overheadText);
+        Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            actor.setOverheadText(overheadText);
+            return null;
+        });
     }
 
     @Override
     public int getOverheadCycle()
     {
-        return actor.getOverheadCycle();
+        return Microbot.getClientThread().invoke(() -> actor.getOverheadCycle());
     }
 
     @Override
     public void setOverheadCycle(int cycles)
     {
-        actor.setOverheadCycle(cycles);
+        Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            actor.setOverheadCycle(cycles);
+            return null;
+        });
     }
 
     @Override
     public boolean isDead()
     {
-        return actor.isDead();
+        return Microbot.getClientThread().invoke((java.util.function.Supplier<Boolean>) () -> actor.isDead());
     }
 
     @Override
     public void setDead(boolean dead)
     {
-        actor.setDead(dead);
+        Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            actor.setDead(dead);
+            return null;
+        });
     }
 
     @Override
     public int getFootprintSize() {
-        return actor.getFootprintSize();
+        return Microbot.getClientThread().invoke(() -> actor.getFootprintSize());
     }
 
     @Override
     public int getAnimationHeightOffset()
     {
-        return actor.getAnimationHeightOffset();
+        return Microbot.getClientThread().invoke(() -> actor.getAnimationHeightOffset());
     }
 
     @Override
     public int getRenderMode() {
-        return actor.getRenderMode();
+        return Microbot.getClientThread().invoke(() -> actor.getRenderMode());
     }
 
     @Override
     public Model getModel()
     {
-        return actor.getModel();
+        return Microbot.getClientThread().invoke(() -> actor.getModel());
     }
 
     @Override
     public int getModelHeight()
     {
-        return actor.getModelHeight();
+        return Microbot.getClientThread().invoke(() -> actor.getModelHeight());
     }
 
     @Override
     public void setModelHeight(int modelHeight)
     {
-        actor.setModelHeight(modelHeight);
+        Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            actor.setModelHeight(modelHeight);
+            return null;
+        });
     }
 
     @Override
     public Node getNext()
     {
-        return actor.getNext();
+        return Microbot.getClientThread().invoke(() -> actor.getNext());
     }
 
     @Override
     public Node getPrevious()
     {
-        return actor.getPrevious();
+        return Microbot.getClientThread().invoke(() -> actor.getPrevious());
     }
 
     @Override
     public long getHash()
     {
-        return actor.getHash();
+        return Microbot.getClientThread().invoke(() -> actor.getHash());
     }
 
     public WorldPoint projectActorLocationToMainWorld() {
+        return Microbot.getClientThread().invoke(this::projectActorLocationOnClientThread);
+    }
+
+    private WorldPoint projectActorLocationOnClientThread() {
+        if (actor == null) return null;
         WorldPoint actorLocation = actor.getWorldLocation();
         WorldView wv = actor.getWorldView();
+        if (wv == null || actorLocation == null) return actorLocation;
         LocalPoint localPoint = LocalPoint.fromWorld(wv, actorLocation);
 
         if (localPoint == null)

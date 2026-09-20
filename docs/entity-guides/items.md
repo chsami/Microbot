@@ -190,3 +190,9 @@ Bank snapshots are saved per RuneScape profile and restored after a restart. The
 **Where this applies:** `Rs2Bank`, `Rs2BankData`, and the legacy `Rs2Walker` bank-cache bootstrap check.
 
 **Defensive check:** Restart with a saved snapshot and verify it is available with epoch zero, then open the bank and verify the epoch advances and the saved contents match the live container.
+
+## 11. Revalidate the item slot and widget before submitting an action
+
+A cached item does not prove that its slot still contains that item, or that the current inventory widget is the one previously inspected. Capture identity, actions and bounds together on the client thread, then perform mouse work outside it. Missing slots and unresolved actions must return false; never fall back to an unrelated slot.
+
+**Pattern to follow:** Check `Rs2Inventory.interact`'s result, then separately wait for the expected game-state change. **Defensive check:** replaced containers, missing children, changed item IDs and unknown actions must submit no interaction. Ground-item wrappers must retain their originating view and reject detached scene tiles.

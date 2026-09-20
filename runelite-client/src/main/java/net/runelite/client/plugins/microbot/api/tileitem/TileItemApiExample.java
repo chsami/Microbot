@@ -39,7 +39,7 @@ public class TileItemApiExample {
 
         // Example 7: Get all ground items worth more than 1000 gp
         List<Rs2TileItemModel> valuableItems = cache.query()
-                .where(item -> item.getTotalValue() >= 1000)
+                .where(item -> item.getTotalGeValueLong() >= 1000)
                 .toList();
 
         // Example 8: Find nearest lootable item
@@ -70,7 +70,7 @@ public class TileItemApiExample {
         // Example 16: Complex query - Find nearest valuable lootable item within 15 tiles
         Rs2TileItemModel target = cache.query()
                 .where(Rs2TileItemModel::isLootAble)
-                .where(item -> item.getTotalGeValue() >= 5000)
+                .where(item -> item.getTotalGeValueLong() >= 5000)
                 .where(item -> !item.isDespawned())
                 .nearest(15);
 

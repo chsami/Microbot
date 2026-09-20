@@ -88,6 +88,29 @@ public class AbstractEntityQueryableInterruptionTest {
 		assertNull(q.nearest(null, 10));
 	}
 
+    @Test
+    public void playerRelativeWithinRejectsMissingWorldView() throws Exception {
+        try (ApiTestClient env = new ApiTestClient()) {
+            net.runelite.api.Player player = org.mockito.Mockito.mock(net.runelite.api.Player.class);
+            org.mockito.Mockito.when(env.client.getLocalPlayer()).thenReturn(player);
+            org.mockito.Mockito.when(player.getWorldLocation()).thenReturn(new WorldPoint(3200, 3200, 0));
+            assertTrue(new TestQueryable(Stream.of(new TestEntity())).within(5).count() == 0);
+        }
+    }
+
+    @Test
+    public void nearestRejectsMissingLocationsAndOtherPlanes() {
+        WorldPoint anchor = new WorldPoint(3200, 3200, 0);
+        assertNull(new TestQueryable(Stream.of(new TestEntity(null))).nearest(anchor, Integer.MAX_VALUE));
+        assertNull(new TestQueryable(Stream.of(new TestEntity(new WorldPoint(3200, 3200, 1))))
+                .nearest(anchor, Integer.MAX_VALUE));
+        TestEntity valid = new TestEntity(new WorldPoint(3202, 3202, 0));
+        assertTrue(new TestQueryable(Stream.of(new TestEntity(null), valid)).nearest(anchor, 2) == valid);
+        assertNull(new TestQueryable(Stream.of(valid)).nearest(anchor, 1));
+        assertNull(new TestQueryable(Stream.of(valid)).nearest(anchor, -1));
+        assertTrue(new TestQueryable(Stream.of(new TestEntity(null), valid)).within(anchor, 2).count() == 1);
+    }
+
 	// ---- Test fixtures -------------------------------------------------------
 
 	private static class TestQueryable extends AbstractEntityQueryable<TestQueryable, TestEntity> {

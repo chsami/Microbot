@@ -53,8 +53,12 @@ public class Rs2Inventory {
 
     private static volatile List<Rs2ItemModel> inventoryItems = Collections.emptyList();
 
+    public static void invalidateInventoryCache() {
+        inventoryItems = Collections.emptyList();
+    }
+
     public static ItemContainer inventory() {
-        return Microbot.getClient().getItemContainer(InventoryID.INV);
+        return Microbot.getClientThread().invoke(() -> Microbot.getClient().getItemContainer(InventoryID.INV));
     }
 
     public static void storeInventoryItemsInMemory(ItemContainerChanged e) {
@@ -62,7 +66,10 @@ public class Rs2Inventory {
 
         if (e.getContainerId() != InventoryID.INV) return;
         final ItemContainer itemContainer = e.getItemContainer();
-        if (itemContainer == null) return;
+        if (itemContainer == null) {
+            invalidateInventoryCache();
+            return;
+        }
 
         List<Rs2ItemModel> _inventoryItems = new ArrayList<>();
         for (int i = 0; i < itemContainer.getItems().length; i++) {
@@ -408,8 +415,7 @@ public class Rs2Inventory {
     private static boolean drop(Rs2ItemModel item) {
         if (item == null) return false;
 
-        invokeMenu(item, "Drop");
-        return true;
+        return invokeMenu(item, "Drop");
     }
 
     /**
@@ -1196,12 +1202,11 @@ public class Rs2Inventory {
      * @param item   The item to interact with.
      * @param action The action to perform on the item.
      *
-     * @return True if the interaction was successful, false otherwise.
+     * @return True if an action was submitted; this does not confirm game-state completion.
      */
     public static boolean interact(Rs2ItemModel item, String action) {
         if (item == null) return false;
-        invokeMenu(item, action);
-        return true;
+        return invokeMenu(item, action);
     }
 
     /**
@@ -1209,7 +1214,7 @@ public class Rs2Inventory {
      *
      * @param id The ID of the item to interact with.
      *
-     * @return True if the interaction was successful, false otherwise.
+     * @return True if an action was submitted; this does not confirm game-state completion.
      */
     public static boolean interact(int id) {
         return interact(id, "");
@@ -1221,7 +1226,7 @@ public class Rs2Inventory {
      * @param id     The ID of the item to interact with.
      * @param action The action to perform on the item.
      *
-     * @return True if the interaction was successful, false otherwise.
+     * @return True if an action was submitted; this does not confirm game-state completion.
      */
     public static boolean interact(int id, String action) {
         return interact(get(id), action);
@@ -1232,7 +1237,7 @@ public class Rs2Inventory {
      *
      * @param name The name of the item to interact with.
      *
-     * @return True if the interaction was successful, false otherwise.
+     * @return True if an action was submitted; this does not confirm game-state completion.
      */
     public static boolean interact(String name) {
         return interact(name, "", false);
@@ -1244,7 +1249,7 @@ public class Rs2Inventory {
      * @param name   The name of the item to interact with.
      * @param action The action to perform on the item.
      *
-     * @return True if the interaction was successful, false otherwise.
+     * @return True if an action was submitted; this does not confirm game-state completion.
      */
     public static boolean interact(String name, String action) {
         return interact(name, action, false);
@@ -1256,7 +1261,7 @@ public class Rs2Inventory {
      * @param ids  The ids of the item to interact with.
      * @param action The action to perform on the item.
      *
-     * @return True if the interaction was successful, false otherwise.
+     * @return True if an action was submitted; this does not confirm game-state completion.
      */
     public static boolean interact(int[] ids, String action) {
         return Arrays.stream(ids).sequential().anyMatch(id -> interact(id, action));
@@ -1268,7 +1273,7 @@ public class Rs2Inventory {
      * @param names  The name of the item to interact with.
      * @param action The action to perform on the item.
      *
-     * @return True if the interaction was successful, false otherwise.
+     * @return True if an action was submitted; this does not confirm game-state completion.
      */
     public static boolean interact(String[] names, String action) {
         return Arrays.stream(names).anyMatch(name -> interact(name, action));
@@ -1280,7 +1285,7 @@ public class Rs2Inventory {
      * @param name   The name of the item to interact with.
      * @param action The action to perform on the item.
      *
-     * @return True if the interaction was successful, false otherwise.
+     * @return True if an action was submitted; this does not confirm game-state completion.
      */
     public static boolean interact(String name, String action, boolean exact) {
         return interact(get(name, exact),action);
@@ -1291,7 +1296,7 @@ public class Rs2Inventory {
      *
      * @param filter The filter to apply.
      *
-     * @return True if the interaction was successful, false otherwise.
+     * @return True if an action was submitted; this does not confirm game-state completion.
      */
     public static boolean interact(Predicate<Rs2ItemModel> filter) {
         return interact(filter, "Use");
@@ -1303,7 +1308,7 @@ public class Rs2Inventory {
      * @param filter The filter to apply.
      * @param action The action to perform on the item.
      *
-     * @return True if the interaction was successful, false otherwise.
+     * @return True if an action was submitted; this does not confirm game-state completion.
      */
     public static boolean interact(Predicate<Rs2ItemModel> filter, String action) {
         return interact(get(filter),action);
@@ -1315,7 +1320,7 @@ public class Rs2Inventory {
      *
      * @param item The item to interact with.
      *
-     * @return True if the interaction was successful, false otherwise.
+     * @return True if an action was submitted; this does not confirm game-state completion.
      */
     public static boolean interact(Rs2ItemModel item) {
         return interact(item, "");
@@ -1377,7 +1382,7 @@ public class Rs2Inventory {
      */
     public static boolean isItemSelected() {
         // TODO: this will also return true if a spell is selected
-        return Microbot.getClient().isWidgetSelected();
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> Microbot.getClient().isWidgetSelected()).orElse(false);
     }
 
     /**
@@ -1895,24 +1900,61 @@ public class Rs2Inventory {
      * @param rs2Item            The current item to interact with.
      * @param action             The action to be used on the item.
      */
-    private static void invokeMenu(Rs2ItemModel rs2Item, String action) {
-        if (rs2Item == null) return;
+    private static boolean invokeMenu(Rs2ItemModel rs2Item, String action) {
+        if (rs2Item == null || action == null || Microbot.getClient().isClientThread()
+                || Thread.currentThread().isInterrupted()) return false;
         Rs2Tab.switchToInventoryTab();
-        Microbot.status = action + " " + rs2Item.getName();
+        InventoryDispatch dispatch = Microbot.getClientThread()
+                .runOnClientThreadOptional(() -> prepareInventoryDispatch(rs2Item, action)).orElse(null);
+        if (dispatch == null || Thread.currentThread().isInterrupted()) return false;
+        boolean current = Microbot.getClientThread().runOnClientThreadOptional(() ->
+                dispatch.isCurrent(rs2Item)).orElse(false);
+        if (!current || Thread.currentThread().isInterrupted()) return false;
+        if (!Microbot.tryDoInvoke(dispatch.entry, dispatch.bounds)) return false;
+        if (action.equalsIgnoreCase("destroy") && sleepUntil(() -> Rs2Widget.isWidgetVisible(584, 0))) {
+            Rs2Widget.clickWidget(584, 1);
+        }
+        return true;
+    }
 
+    private static final class InventoryDispatch {
+        private final Widget container;
+        private final Widget item;
+        private final NewMenuEntry entry;
+        private final Rectangle bounds;
+
+        private InventoryDispatch(Widget container, Widget item, NewMenuEntry entry, Rectangle bounds) {
+            this.container = container;
+            this.item = item;
+            this.entry = entry;
+            this.bounds = new Rectangle(bounds);
+        }
+
+        private boolean isCurrent(Rs2ItemModel expected) {
+        assert Microbot.getClient().isClientThread() : "Client-thread-only helper";
+            if (Microbot.getClient().getWidget(container.getId()) != container || container.isHidden()) return false;
+            Widget[] children = container.getChildren();
+            return children != null && Arrays.stream(children).anyMatch(child -> child == item
+                    && child.getIndex() == expected.getSlot() && child.getItemId() == expected.getId());
+        }
+    }
+
+    private static InventoryDispatch prepareInventoryDispatch(Rs2ItemModel rs2Item, String action) {
+        assert Microbot.getClient().isClientThread() : "Client-thread-only helper";
         int param0;
         int param1;
         int identifier = -1;
         String target = rs2Item.getName();
         MenuAction menuAction = MenuAction.CC_OP;
-        Widget[] inventoryWidgets;
+
         param0 = rs2Item.getSlot();
+        if (param0 < 0) return null;
         boolean isDepositBoxOpen = !Microbot.getClientThread().runOnClientThreadOptional(() -> Rs2Widget.getWidget(ComponentID.DEPOSIT_BOX_INVENTORY_ITEM_CONTAINER) == null
                 || Rs2Widget.getWidget(ComponentID.DEPOSIT_BOX_INVENTORY_ITEM_CONTAINER).isHidden()).orElse(false);
 
         Widget widget;
 
-        if (Rs2Bank.isOpen()) {
+        if (Rs2Widget.isWidgetVisible(12, 1)) {
             param1 = ComponentID.BANK_INVENTORY_ITEM_CONTAINER;
             widget = Rs2Widget.getWidget(param1);
         } else if (isDepositBoxOpen) {
@@ -1929,64 +1971,50 @@ public class Rs2Inventory {
             widget = Rs2Widget.getWidget(param1);
         }
 
-        if (widget != null && widget.getChildren() != null) {
-            inventoryWidgets = widget.getChildren();
-        } else {
-            inventoryWidgets = null;
+        if (widget == null || widget.isHidden() || widget.getChildren() == null) return null;
+        Widget itemWidget = Arrays.stream(widget.getChildren())
+                .filter(child -> child != null && child.getIndex() == rs2Item.getSlot()
+                        && child.getItemId() == rs2Item.getId()).findFirst().orElse(null);
+        if (itemWidget == null) return null;
+        String[] actions = itemWidget.getActions() != null ? itemWidget.getActions() : rs2Item.getInventoryActions();
+        if (actions == null) actions = new String[0];
+        String resolvedAction = action;
+        if (action.isEmpty()) {
+            resolvedAction = Arrays.stream(actions).filter(Objects::nonNull).findFirst().orElse(null);
+            if (resolvedAction == null) return null;
         }
-
-        if (inventoryWidgets == null) return;
-
-        if (!action.isEmpty()) {
-            var itemWidget = Arrays.stream(inventoryWidgets).filter(x -> x != null && x.getIndex() == rs2Item.getSlot()).findFirst().orElseGet(null);
-
-            String[] actions = itemWidget != null && itemWidget.getActions() != null ?
-                    itemWidget.getActions() :
-                    rs2Item.getInventoryActions();
-
-            int simpleIndex = indexOfIgnoreCase(stripColTags(actions), action);
-            if (simpleIndex != -1) {
-                identifier = simpleIndex + 1;
-            } else {
-                // We could not find the action in the item widget's actions, so we try to find it in the sub-menu actions
-                Map.Entry<String, Integer> subActionMap = rs2Item.getIndexOfSubAction(action);
-                if (subActionMap != null) {
-                    // The main menu index depends on the inventory interface from which this item is interacted with
-                    int mainMenuIndex = java.util.Arrays.asList(actions).indexOf(subActionMap.getKey());
-                    identifier = NewMenuEntry.findIdentifier(subActionMap.getValue() + 1, mainMenuIndex + 1);
+        int simpleIndex = indexOfIgnoreCase(stripColTags(actions), resolvedAction);
+        if (simpleIndex >= 0) {
+            identifier = simpleIndex + 1;
+        } else {
+            Map.Entry<String, Integer> subAction = rs2Item.getIndexOfSubAction(resolvedAction);
+            if (subAction != null) {
+                int mainIndex = indexOfIgnoreCase(stripColTags(actions), subAction.getKey());
+                if (mainIndex >= 0) {
+                    identifier = NewMenuEntry.findIdentifier(subAction.getValue() + 1, mainIndex + 1);
                     target = "";
                 }
             }
         }
-
-
-  /*      if (identifier > 5) {
-            menuAction = MenuAction.CC_OP_LOW_PRIORITY;
-        }*/
-
+        if (identifier < 1 && !resolvedAction.equalsIgnoreCase("use") && !resolvedAction.equalsIgnoreCase("cast")) return null;
         if (isItemSelected()) {
             menuAction = MenuAction.WIDGET_TARGET_ON_WIDGET;
-        } else if (action.equalsIgnoreCase("use")) {
+            identifier = 0;
+        } else if (resolvedAction.equalsIgnoreCase("use")) {
             menuAction = MenuAction.WIDGET_TARGET;
-        } else if (action.equalsIgnoreCase("cast")) {
+            identifier = 0;
+        } else if (resolvedAction.equalsIgnoreCase("cast")) {
+            if (!Microbot.getClient().isWidgetSelected()) return null;
             menuAction = MenuAction.WIDGET_TARGET_ON_WIDGET;
+            identifier = 0;
+        } else if (identifier < 1) {
+            return null;
         }
-
-        Microbot.doInvoke(new NewMenuEntry()
-                .option(action)
-                .param0(param0)
-                .param1(param1)
-                .opcode(menuAction.getId())
-                .identifier(identifier)
-                .itemId(rs2Item.getId())
-                .target(target)
-                ,
-                (itemBounds(rs2Item) == null) ? new Rectangle(1, 1) : itemBounds(rs2Item));
-
-        if (action.equalsIgnoreCase("destroy")) {
-            sleepUntil(() -> Rs2Widget.isWidgetVisible(584, 0));
-            Rs2Widget.clickWidget(Rs2Widget.getWidget(584, 1).getId());
-        }
+        Rectangle bounds = itemWidget.getBounds();
+        if (bounds == null || bounds.isEmpty()) return null;
+        return new InventoryDispatch(widget, itemWidget, new NewMenuEntry()
+                .option(resolvedAction).param0(param0).param1(param1).opcode(menuAction.getId())
+                .identifier(identifier).itemId(rs2Item.getId()).target(target), bounds);
     }
 
 
@@ -2020,8 +2048,7 @@ public class Rs2Inventory {
             Microbot.log("Item not found in inventory.");
             return false;
         }
-        invokeMenu(item, "Sell " + quantity);
-        return true;
+        return invokeMenu(item, "Sell " + quantity);
     }
 
     /**
@@ -2039,7 +2066,7 @@ public class Rs2Inventory {
             Microbot.log("Item not found in inventory.");
             return false;
         }
-        invokeMenu(item, "Sell " + quantity);
+        if (!invokeMenu(item, "Sell " + quantity)) return false;
         Rs2Shop.waitForShopChanges();
         return true;
     }

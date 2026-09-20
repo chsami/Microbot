@@ -36,12 +36,12 @@ public class Rs2NpcModel extends Rs2ActorModel implements IEntity
     @Override
     public int getId()
     {
-        return npc.getId();
+        return Microbot.getClientThread().invoke(() -> npc.getId());
     }
 
     public int getIndex()
     {
-        return npc.getIndex();
+        return Microbot.getClientThread().invoke(() -> npc.getIndex());
     }
 
 
@@ -55,10 +55,8 @@ public class Rs2NpcModel extends Rs2ActorModel implements IEntity
      * @return true if within distance, false otherwise
      */
     public boolean isWithinDistanceFromPlayer(int maxDistance) {
-        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
-            return this.getLocalLocation().distanceTo(
-                    Microbot.getClient().getLocalPlayer().getLocalLocation()) <= maxDistance;
-        }).orElse(false);
+        int distance = getDistanceFromPlayer();
+        return distance != Integer.MAX_VALUE && distance <= maxDistance;
     }
 
     /**
@@ -69,8 +67,12 @@ public class Rs2NpcModel extends Rs2ActorModel implements IEntity
      */
     public int getDistanceFromPlayer() {
         return Microbot.getClientThread().runOnClientThreadOptional(() -> {
-            return this.getLocalLocation().distanceTo(
-                    Microbot.getClient().getLocalPlayer().getLocalLocation());
+            Player player = Microbot.getClient().getLocalPlayer();
+            if (player == null || npc.getWorldView() == null || npc.getWorldView() != player.getWorldView())
+                return Integer.MAX_VALUE;
+            WorldPoint location = npc.getWorldLocation();
+            WorldPoint origin = player.getWorldLocation();
+            return location == null || origin == null ? Integer.MAX_VALUE : location.distanceTo(origin);
         }).orElse(Integer.MAX_VALUE);
     }
 
@@ -83,7 +85,10 @@ public class Rs2NpcModel extends Rs2ActorModel implements IEntity
      */
     public boolean isWithinDistance(WorldPoint anchor, int maxDistance) {
         if (anchor == null) return false;
-        return getWorldLocation().distanceTo(anchor) <= maxDistance;
+        WorldPoint location = getSceneWorldLocation();
+        if (location == null) return false;
+        int distance = location.distanceTo(anchor);
+        return distance != Integer.MAX_VALUE && distance <= maxDistance;
     }
 
     /**
@@ -116,21 +121,22 @@ public class Rs2NpcModel extends Rs2ActorModel implements IEntity
      * @return Health percentage (0-100), or -1 if unknown
      */
     public double getHealthPercentage() {
-        int ratio = this.getHealthRatio();
-        int scale = this.getHealthScale();
-
-        if (scale == 0) return -1;
-        return (double) ratio / (double) scale * 100.0;
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            int ratio = npc.getHealthRatio();
+            int scale = npc.getHealthScale();
+            return scale <= 0 ? -1.0 : (double) ratio / scale * 100.0;
+        }).orElse(-1.0);
     }
 
     public static Predicate<Rs2NpcModel> matches(boolean exact, String... names) {
         return npc -> {
+            if (npc == null || names == null) return false;
             String npcName = npc.getName();
             if (npcName == null) return false;
-            if (exact) npcName = npcName.toLowerCase();
+            npcName = npcName.toLowerCase(java.util.Locale.ROOT);
             final String name = npcName;
-            return exact ? Arrays.stream(names).anyMatch(name::equalsIgnoreCase) :
-                    Arrays.stream(names).anyMatch(s -> name.contains(s.toLowerCase()));
+            return exact ? Arrays.stream(names).filter(java.util.Objects::nonNull).anyMatch(name::equalsIgnoreCase) :
+                    Arrays.stream(names).filter(java.util.Objects::nonNull).anyMatch(s -> name.contains(s.toLowerCase(java.util.Locale.ROOT)));
         };
     }
 
@@ -139,6 +145,10 @@ public class Rs2NpcModel extends Rs2ActorModel implements IEntity
      * @return
      */
     public HeadIcon getHeadIcon() {
+        return Microbot.getClientThread().invoke(this::getHeadIconOnClientThread);
+    }
+
+    private HeadIcon getHeadIconOnClientThread() {
         if (npc == null) {
             return null;
         }
@@ -153,6 +163,7 @@ public class Rs2NpcModel extends Rs2ActorModel implements IEntity
 
             if (overheadSpriteId == -1) continue;
 
+            if (overheadSpriteId < 0 || overheadSpriteId >= HeadIcon.values().length) continue;
             return HeadIcon.values()[overheadSpriteId];
         }
 
@@ -162,18 +173,16 @@ public class Rs2NpcModel extends Rs2ActorModel implements IEntity
     }
 
     public boolean hasLineOfSight() {
-        if (npc == null) return false;
-
-        final WorldPoint npcLoc = getWorldLocation();
-        if (npcLoc == null) return false;
-
-        final WorldPoint myLoc = new Rs2PlayerModel().getWorldLocation();
-        if (myLoc == null) return false;
-
-        if (npcLoc.equals(myLoc)) return true;
-
-        final WorldView wv = Microbot.getClient().getTopLevelWorldView();
-        return wv != null && npcLoc.toWorldArea().hasLineOfSightTo(wv, myLoc);
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            Player player = Microbot.getClient().getLocalPlayer();
+            if (npc == null || player == null || npc.getWorldView() != player.getWorldView()) return false;
+            WorldPoint location = npc.getWorldLocation();
+            WorldPoint origin = player.getWorldLocation();
+            WorldView view = npc.getWorldView();
+            return location != null && origin != null && view != null
+                    && location.getPlane() == origin.getPlane()
+                    && location.toWorldArea().hasLineOfSightTo(view, origin);
+        }).orElse(false);
     }
 
     @Override
@@ -183,6 +192,7 @@ public class Rs2NpcModel extends Rs2ActorModel implements IEntity
 
     @Override
     public boolean click(String action) {
+        if (Microbot.getClient().isClientThread() || Thread.currentThread().isInterrupted()) return false;
         if (npc == null) {
             log.error("Error interacting with NPC for action '{}': NPC is null", action);
             return false;
@@ -223,18 +233,12 @@ public class Rs2NpcModel extends Rs2ActorModel implements IEntity
                 }
             }
 
-            final NPCComposition npcComposition = Microbot.getClientThread().runOnClientThreadOptional(
-                    () -> Microbot.getClient().getNpcDefinition(getId())).orElse(null);
-            if (npcComposition == null) {
-                log.error("Error interacting with NPC '{}' for action '{}': NPCComposition is null", npcName, action);
-                return false;
-            }
-
-            final String[] actions = npcComposition.getActions();
-            if (actions == null) {
-                log.error("Error interacting with NPC '{}' for action '{}': Actions are null", npcName, action);
-                return false;
-            }
+            final String[] actions = Microbot.getClientThread().runOnClientThreadOptional(() -> {
+                if (!isCurrent()) return null;
+                NPCComposition composition = npc.getTransformedComposition();
+                return composition == null || composition.getActions() == null ? null : composition.getActions().clone();
+            }).orElse(null);
+            if (actions == null) return false;
 
             final int index;
             if (action == null || action.isBlank()) {
@@ -264,22 +268,26 @@ public class Rs2NpcModel extends Rs2ActorModel implements IEntity
                 log.error("Error interacting with NPC '{}' for action '{}': LocalPoint is null", npcName, action);
                 return false;
             }
-            if (!Rs2Camera.isTileOnScreen(localPoint)) {
+            if (!Microbot.getClientThread().runOnClientThreadOptional(() -> Rs2Camera.isTileOnScreen(localPoint)).orElse(false)) {
                 Rs2Camera.turnTo(npc);
             }
 
-            Microbot.doInvoke(new NewMenuEntry()
-                            .param0(0)
-                            .param1(0)
-                            .opcode(menuAction.getId())
-                            .identifier(getIndex())
-                            .itemId(-1)
-                            .target(npcName)
-                            .actor(npc)
-                            .option(action)
-                    ,
-                    Rs2UiHelper.getActorClickbox(npc));
-            return true;
+            final String resolvedAction = action;
+            java.util.Map.Entry<NewMenuEntry, java.awt.Rectangle> dispatch = Microbot.getClientThread()
+                    .runOnClientThreadOptional(() -> {
+                        if (!isCurrent()) return null;
+                        NPCComposition composition = npc.getTransformedComposition();
+                        String[] currentActions = composition == null ? null : composition.getActions();
+                        if (menuAction != MenuAction.WIDGET_TARGET_ON_NPC && (currentActions == null
+                                || index < 0 || index >= currentActions.length
+                                || !resolvedAction.equalsIgnoreCase(currentActions[index]))) return null;
+                        return new java.util.AbstractMap.SimpleImmutableEntry<>(new NewMenuEntry()
+                                .param0(0).param1(0).opcode(menuAction.getId()).identifier(npc.getIndex())
+                                .itemId(-1).target(npc.getName()).actor(npc).option(resolvedAction)
+                                .worldViewId(npc.getWorldView().getId()), Rs2UiHelper.getActorClickbox(npc));
+                    }).orElse(null);
+            if (dispatch == null || Thread.currentThread().isInterrupted()) return false;
+            return Microbot.tryDoInvoke(dispatch.getKey(), dispatch.getValue());
 
         } catch (Exception ex) {
             log.error("Error interacting with NPC '{}' for action '{}': ", npcName, action, ex);
@@ -287,7 +295,16 @@ public class Rs2NpcModel extends Rs2ActorModel implements IEntity
         }
     }
 
+    private boolean isCurrent() {
+        assert Microbot.getClient().isClientThread() : "Client-thread-only helper";
+        WorldView view = npc == null ? null : npc.getWorldView();
+        return view != null && Microbot.getClient().getGameState() == GameState.LOGGED_IN
+                && Microbot.getClient().getWorldView(view.getId()) == view
+                && view.npcs().byIndex(npc.getIndex()) == npc;
+    }
+
     private MenuAction getMenuAction(int index) {
+        if (!Microbot.getClient().isClientThread()) return Microbot.getClientThread().invoke(() -> getMenuAction(index));
         if (Microbot.getClient().isWidgetSelected()) {
             return MenuAction.WIDGET_TARGET_ON_NPC;
         }

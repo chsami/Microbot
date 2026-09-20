@@ -6,6 +6,7 @@ import net.runelite.api.coords.WorldPoint;
 import java.util.List;
 import java.util.function.Predicate;
 
+/** Single-use, thread-confined query. Player click/interaction is unsupported and returns false. */
 public interface IEntityQueryable<Q extends IEntityQueryable<Q, E>, E extends IEntity> {
     Q fromWorldView();
     Q where(Predicate<E> predicate);
@@ -38,6 +39,18 @@ public interface IEntityQueryable<Q extends IEntityQueryable<Q, E>, E extends IE
     List<E> toList();
 
     int count();
+
+    default int countOnClientThread() {
+        return net.runelite.client.plugins.microbot.Microbot.getClientThread().invoke(this::count);
+    }
+
+    default E nearestReachableOnClientThread() {
+        return net.runelite.client.plugins.microbot.Microbot.getClientThread().invoke(() -> nearestReachable());
+    }
+
+    default E nearestReachableOnClientThread(int maxDistance) {
+        return net.runelite.client.plugins.microbot.Microbot.getClientThread().invoke(() -> nearestReachable(maxDistance));
+    }
 
     E firstOnClientThread();
 

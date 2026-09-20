@@ -602,15 +602,21 @@ public class Microbot {
     }
 
     public static void doInvoke(NewMenuEntry entry, Rectangle rectangle) {
+        tryDoInvoke(entry, rectangle);
+    }
+
+    /** Reports submission, not observed game completion. */
+    public static boolean tryDoInvoke(NewMenuEntry entry, Rectangle rectangle) {
         try {
             if (Rs2UiHelper.isRectangleWithinCanvas(rectangle)) {
                 click(rectangle, entry);
             } else {
                 click(new Rectangle(1, 1), entry);
             }
+            return true;
         } catch (ArrayIndexOutOfBoundsException ex) {
             log.error("Error during doInvoke", ex);
-            // Handle the error as needed
+            return false;
         }
     }
 

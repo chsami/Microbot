@@ -346,3 +346,9 @@ if (CantReachTargetRecovery.shouldStart(detectionEnabled, cantReachTarget)) {
 **Where this applies:** `Rs2GameObject.clickObject`, `Rs2Npc.interact`, `Rs2NpcModel.interact`, legacy walker door dispatch, and any future interaction helper that starts `Rs2Walker.walkTo` in response to the global can't-reach flag.
 
 **Defensive check:** During a recovery route through a closed door, assert that the door click occurs once, the original object or NPC target is passed unchanged to the walker, nested recovery is suppressed, and retry exhaustion still returns failure.
+
+## 17. Seed reachability from the player and preserve view identity
+
+A target is always in its own flood region, so flooding from the target cannot prove player reachability. Cache explicit-origin floods separately by origin and scene context. Compare native tile coordinates in the same world view; local-coordinate units are not tiles.
+
+**Pattern to follow:** Use `entity.isReachable()` and player-relative query terminals. For an explicit native-coordinate anchor, constrain the world view first. **Defensive check:** disconnected regions queried in both orders must return the same answers, including after an explicit-origin lookup.

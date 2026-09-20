@@ -43,9 +43,24 @@ public final class Rs2PlayerStateCache {
 	private final ConcurrentHashMap<Integer, Integer> varbits = new ConcurrentHashMap<>();
 	private final ConcurrentHashMap<Integer, Integer> varps = new ConcurrentHashMap<>();
 
-	private volatile int lastLocalPlayerTick = -1;
-	private volatile WorldPoint localPlayerPosition;
-	private volatile WorldView localPlayerWorldView;
+    private volatile LocalPlayerSnapshot localPlayerSnapshot;
+
+    private static final class LocalPlayerSnapshot {
+        final int tick, world;
+        final net.runelite.api.Player player;
+        final WorldPoint position;
+        final WorldView view;
+        final net.runelite.api.Scene scene;
+
+        LocalPlayerSnapshot(int tick, int world, net.runelite.api.Player player, WorldPoint position, WorldView view) {
+            this.tick = tick;
+            this.world = world;
+            this.player = player;
+            this.position = position;
+            this.view = view;
+            this.scene = view == null ? null : view.getScene();
+        }
+    }
 
 	volatile boolean questsPopulated = false;
 
@@ -61,6 +76,7 @@ public final class Rs2PlayerStateCache {
 
 	@Subscribe
 	private void onGameStateChanged(GameStateChanged e) {
+        if (e.getGameState() != GameState.LOGGED_IN) localPlayerSnapshot = null;
 		if (e.getGameState() == GameState.LOGGED_IN) {
 			populateQuests();
 		}
@@ -69,9 +85,7 @@ public final class Rs2PlayerStateCache {
 			quests.clear();
 			varbits.clear();
 			varps.clear();
-			lastLocalPlayerTick = -1;
-			localPlayerPosition = null;
-			localPlayerWorldView = null;
+            localPlayerSnapshot = null;
 		}
 		// The server only re-sends non-zero varps after a hop/reconnect, so a value that
 		// dropped to 0 while out of sync would never be corrected by onVarbitChanged.
@@ -229,29 +243,39 @@ public final class Rs2PlayerStateCache {
 		}).orElse(0);
 	}
 
-	private void refreshLocalPlayer() {
-		int currentTick = client.getTickCount();
-		if (lastLocalPlayerTick >= currentTick) {
-			return;
-		}
-		localPlayerPosition = Rs2Player.getWorldLocation_Internal();
-		localPlayerWorldView = Rs2Player.getWorldView_Internal();
-		lastLocalPlayerTick = currentTick;
-	}
+    private LocalPlayerSnapshot refreshLocalPlayer() {
+        return clientThread.runOnClientThreadOptional(() -> {
+            net.runelite.api.Player player = client.getLocalPlayer();
+            if (player == null || client.getGameState() != GameState.LOGGED_IN) {
+                localPlayerSnapshot = null;
+                return null;
+            }
+            WorldView view = player.getWorldView();
+            LocalPlayerSnapshot current = localPlayerSnapshot;
+            if (current != null && current.tick == client.getTickCount() && current.world == client.getWorld()
+                    && current.player == player && current.view == view
+                    && current.scene == (view == null ? null : view.getScene())) return current;
+            LocalPlayerSnapshot refreshed = new LocalPlayerSnapshot(client.getTickCount(), client.getWorld(),
+                    player, Rs2Player.getWorldLocation_Internal(), view);
+            localPlayerSnapshot = refreshed;
+            return refreshed;
+        }).orElse(null);
+    }
 
-	public WorldPoint getLocalPlayerPosition() {
-		refreshLocalPlayer();
-		return localPlayerPosition;
-	}
+    public WorldPoint getLocalPlayerPosition() {
+        LocalPlayerSnapshot snapshot = refreshLocalPlayer();
+        return snapshot == null ? null : snapshot.position;
+    }
 
-	public WorldView getLocalPlayerWorldView() {
-		refreshLocalPlayer();
-		return localPlayerWorldView;
-	}
+    public WorldView getLocalPlayerWorldView() {
+        LocalPlayerSnapshot snapshot = refreshLocalPlayer();
+        return snapshot == null ? null : snapshot.view;
+    }
 
-	public void invalidateLocalPlayer() {
-		lastLocalPlayerTick = -1;
-		localPlayerPosition = null;
-		localPlayerWorldView = null;
-	}
+    public void invalidateLocalPlayer() {
+        clientThread.runOnClientThreadOptional(() -> {
+            localPlayerSnapshot = null;
+            return null;
+        });
+    }
 }

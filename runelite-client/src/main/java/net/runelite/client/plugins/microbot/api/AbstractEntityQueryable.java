@@ -37,7 +37,7 @@ public abstract class AbstractEntityQueryable<
         }
 
         this.source = this.source
-                .filter(o -> o.getWorldView() != null && o.getWorldView().getId() == worldView.getId());
+                .filter(o -> o.getWorldView() == worldView);
 
         return (Q) this;
     }
@@ -52,14 +52,17 @@ public abstract class AbstractEntityQueryable<
     @SuppressWarnings("unchecked")
     @Override
     public Q within(int distance) {
-        WorldPoint playerLoc = new Rs2PlayerModel().getWorldLocation();
-        if (playerLoc == null) {
+        java.util.Map.Entry<WorldView, WorldPoint> origin = playerOrigin();
+        WorldPoint playerLoc = origin == null ? null : origin.getValue();
+        WorldView view = origin == null ? null : origin.getKey();
+        this.source = this.source.filter(entity -> entity.getWorldView() == view);
+        if (playerLoc == null || view == null) {
             this.source = Stream.empty();
             return (Q) this;
         }
 
         this.source = this.source
-                .filter(o -> o.getWorldLocation().distanceTo(playerLoc) <= distance);
+                .filter(o -> validDistance(o.getSceneWorldLocation(), playerLoc, distance));
 
         return (Q) this;
     }
@@ -73,7 +76,7 @@ public abstract class AbstractEntityQueryable<
         }
 
         this.source = this.source
-                .filter(o -> o.getWorldLocation().distanceTo(anchor) <= distance);
+                .filter(o -> validDistance(o.getSceneWorldLocation(), anchor, distance));
 
         return (Q) this;
     }
@@ -102,10 +105,10 @@ public abstract class AbstractEntityQueryable<
             return (Q) this;
         }
 
-        String needle = substring.toLowerCase();
+        String needle = substring.toLowerCase(java.util.Locale.ROOT);
         this.source = this.source.filter(x -> {
             String n = x.getName();
-            return n != null && n.toLowerCase().contains(needle);
+            return n != null && n.toLowerCase(java.util.Locale.ROOT).contains(needle);
         });
 
         return (Q) this;
@@ -177,21 +180,22 @@ public abstract class AbstractEntityQueryable<
     @Override
     public E nearestReachable(int maxDistance) {
         try {
-            var player = new Rs2PlayerModel();
-            WorldPoint playerLoc = player.getWorldLocation();
-            WorldView worldView = player.getWorldView();
+            java.util.Map.Entry<WorldView, WorldPoint> origin = playerOrigin();
+            WorldPoint playerLoc = origin == null ? null : origin.getValue();
+            WorldView worldView = origin == null ? null : origin.getKey();
             if (playerLoc == null || worldView == null) {
                 return null;
             }
 
             return source
+                    .filter(entity -> entity.getWorldView() == worldView)
                     .filter(IEntity::isReachable)
                     .map(entity -> {
-                        WorldPoint loc = entity.getWorldLocation();
+                        WorldPoint loc = entity.getSceneWorldLocation();
                         int distance = (loc != null) ? loc.distanceTo(playerLoc) : Integer.MAX_VALUE;
                         return new EntityDistance<>(entity, distance);
                     })
-                    .filter(pair -> pair.distance <= maxDistance)
+                    .filter(pair -> pair.distance != Integer.MAX_VALUE && pair.distance <= maxDistance)
                     .min(Comparator.comparingInt(pair -> pair.distance))
                     .map(pair -> pair.entity)
                     .orElse(null);
@@ -203,13 +207,14 @@ public abstract class AbstractEntityQueryable<
     @Override
     public E nearest(int maxDistance) {
         try {
-            var player = new Rs2PlayerModel();
-            WorldPoint playerLoc = player.getWorldLocation();
-            WorldView worldView = player.getWorldView();
+            java.util.Map.Entry<WorldView, WorldPoint> origin = playerOrigin();
+            WorldPoint playerLoc = origin == null ? null : origin.getValue();
+            WorldView worldView = origin == null ? null : origin.getKey();
             if (playerLoc == null || worldView == null) {
                 return null;
             }
 
+            source = source.filter(entity -> entity.getWorldView() == worldView);
             return nearest(playerLoc, maxDistance);
         } catch (RuntimeException e) {
             return returnNullIfInterrupted(e);
@@ -225,17 +230,31 @@ public abstract class AbstractEntityQueryable<
         try {
             return source
                     .map(entity -> {
-                        WorldPoint loc = entity.getWorldLocation();
+                        WorldPoint loc = entity.getSceneWorldLocation();
                         int distance = (loc != null) ? loc.distanceTo(anchor) : Integer.MAX_VALUE;
                         return new EntityDistance<>(entity, distance);
                     })
-                    .filter(pair -> pair.distance <= maxDistance)
+                    .filter(pair -> pair.distance != Integer.MAX_VALUE && pair.distance <= maxDistance)
                     .min(Comparator.comparingInt(pair -> pair.distance))
                     .map(pair -> pair.entity)
                     .orElse(null);
         } catch (RuntimeException e) {
             return returnNullIfInterrupted(e);
         }
+    }
+
+    private static java.util.Map.Entry<WorldView, WorldPoint> playerOrigin() {
+        return Microbot.getClientThread().invoke(() -> {
+            net.runelite.api.Player player = Microbot.getClient().getLocalPlayer();
+            return player == null ? null : new java.util.AbstractMap.SimpleImmutableEntry<>(
+                    player.getWorldView(), player.getWorldLocation());
+        });
+    }
+
+    private static boolean validDistance(WorldPoint location, WorldPoint anchor, int bound) {
+        if (location == null || anchor == null) return false;
+        int distance = location.distanceTo(anchor);
+        return distance != Integer.MAX_VALUE && distance <= bound;
     }
 
     private E returnNullIfInterrupted(RuntimeException e) {
