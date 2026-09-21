@@ -13,6 +13,8 @@ Each guide lists known pitfalls when working with one specific game entity type.
 | Death (graves, Death's Office, recovery) | [death.md](death.md) | Any code calling or modifying `Rs2Death`, `DeathRecoveryEvent`, `DeathEvent`, or handling graves, retrieval fees, and post-death item recovery |
 | Worlds (selection, ping, hopping) | [worlds.md](worlds.md) | Any code measuring world latency, testing world reachability, or selecting worlds based on network availability |
 
+Ground-item pickup: [propagate dispatch failures](items.md#11-propagate-ground-item-dispatch-failures) and [preserve explicit Take](items.md#12-preserve-an-explicit-ground-item-take-when-a-widget-is-selected).
+
 ## Format
 
 Each entity guide is a numbered list of gotchas. Each entry follows this structure:

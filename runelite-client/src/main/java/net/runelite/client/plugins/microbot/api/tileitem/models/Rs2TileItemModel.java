@@ -204,6 +204,7 @@ public class Rs2TileItemModel implements TileItem, IEntity {
     }
 
     public boolean click(String action) {
+        if (action == null) return false;
         try {
             int param0;
             int param1;
@@ -223,7 +224,13 @@ public class Rs2TileItemModel implements TileItem, IEntity {
             target = "<col=ff9040>" + getName();
             param1 = localPoint.getSceneY();
 
-            String[] groundActions = Rs2Reflection.getGroundItemActions(item);
+            // Take is the protocol's third ground-item option. Only custom actions
+            // need discovery from the obfuscated item definition.
+            boolean pickup = action.equalsIgnoreCase("Take");
+            String[] groundActions = pickup
+                    ? new String[]{null, null, "Take"}
+                    : Microbot.getClientThread().runOnClientThreadOptional(
+                            () -> Rs2Reflection.getGroundItemActions(item)).orElse(new String[0]);
 
             int index = -1;
             if (action.isEmpty()) {
@@ -245,7 +252,8 @@ public class Rs2TileItemModel implements TileItem, IEntity {
                 }
             }
 
-            if (Microbot.getClient().isWidgetSelected()) {
+            if (!pickup && Microbot.getClientThread().runOnClientThreadOptional(
+                    () -> Microbot.getClient().isWidgetSelected()).orElse(false)) {
                 menuAction = MenuAction.WIDGET_TARGET_ON_GROUND_ITEM;
             } else {
                 menuAction = groundItemMenuAction(index);

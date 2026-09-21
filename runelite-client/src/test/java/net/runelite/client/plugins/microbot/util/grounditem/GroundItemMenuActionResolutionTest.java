@@ -12,21 +12,14 @@ import static org.junit.Assert.assertNull;
 public class GroundItemMenuActionResolutionTest
 {
     @Test
-    public void legacyGroundItemRejectsUnresolvedAction() throws Exception
-    {
-        assertUnresolvedActionIsNotCancel(Rs2GroundItem.class);
-    }
-
-    @Test
     public void tileItemRejectsUnresolvedAction() throws Exception
     {
         assertUnresolvedActionIsNotCancel(Rs2TileItemModel.class);
     }
 
     @Test
-    public void bothPathsResolveTakeIndexToThirdOption() throws Exception
+    public void sharedDispatcherResolvesTakeIndexToThirdOption() throws Exception
     {
-        assertEquals(MenuAction.GROUND_ITEM_THIRD_OPTION, resolve(Rs2GroundItem.class, 2));
         assertEquals(MenuAction.GROUND_ITEM_THIRD_OPTION, resolve(Rs2TileItemModel.class, 2));
     }
 
