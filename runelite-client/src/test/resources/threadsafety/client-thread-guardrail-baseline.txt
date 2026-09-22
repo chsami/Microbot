@@ -56,7 +56,6 @@ net.runelite.client.plugins.microbot.api.tileitem.Rs2TileItemCache#getStream(): 
 net.runelite.client.plugins.microbot.api.tileitem.Rs2TileItemCache#getStream(): Stream  ->  net.runelite.api.Tile#getGroundItems(): List
 net.runelite.client.plugins.microbot.api.tileitem.Rs2TileItemCache#getStream(): Stream  ->  net.runelite.api.WorldView#getPlane(): int
 net.runelite.client.plugins.microbot.api.tileitem.Rs2TileItemCache#getStream(): Stream  ->  net.runelite.api.WorldView#getScene(): Scene
-net.runelite.client.plugins.microbot.api.tileitem.models.Rs2TileItemModel#click(String): boolean  ->  net.runelite.api.Client#isWidgetSelected(): boolean
 net.runelite.client.plugins.microbot.api.tileitem.models.Rs2TileItemModel#getId(): int  ->  net.runelite.api.TileItem#getId(): int
 net.runelite.client.plugins.microbot.api.tileitem.models.Rs2TileItemModel#getLocalLocation(): LocalPoint  ->  net.runelite.api.Tile#getLocalLocation(): LocalPoint
 net.runelite.client.plugins.microbot.api.tileitem.models.Rs2TileItemModel#getQuantity(): int  ->  net.runelite.api.TileItem#getQuantity(): int
@@ -400,8 +399,6 @@ net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange#viewOff
 net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem#hasLineOfSight(Tile): boolean  ->  net.runelite.api.Client#getTopLevelWorldView(): WorldView
 net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem#hasLineOfSight(Tile): boolean  ->  net.runelite.api.Tile#getWorldLocation(): WorldPoint
 net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem#hasLineOfSight(Tile): boolean  ->  net.runelite.api.coords.WorldArea#hasLineOfSightTo(WorldView, WorldArea): boolean
-net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem#interact(InteractModel, String): boolean  ->  net.runelite.api.Client#isWidgetSelected(): boolean
-net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem#interact(InteractModel, String): boolean  ->  net.runelite.api.coords.LocalPoint#fromWorld(Client, WorldPoint): LocalPoint
 net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem#interact(RS2Item, String): boolean  ->  net.runelite.api.ItemComposition#getName(): String
 net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem#interact(RS2Item, String): boolean  ->  net.runelite.api.Tile#getWorldLocation(): WorldPoint
 net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem#interact(RS2Item, String): boolean  ->  net.runelite.api.TileItem#getId(): int
