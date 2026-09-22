@@ -14,6 +14,8 @@ import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2PathApi;
+import net.runelite.client.plugins.microbot.util.walker.Rs2RouteResult;
+import net.runelite.client.plugins.microbot.util.walker.Rs2RouteStep;
 import net.runelite.client.plugins.microbot.util.walker.Rs2TransportEdge;
 import net.runelite.client.plugins.microbot.util.walker.Rs2TransportExecutor;
 import net.runelite.client.plugins.microbot.util.walker.Rs2TransportType;
@@ -68,7 +70,8 @@ public final class Rs2DoorProbe {
 					if (transport == null || transport.getObjectId() != object.getId()) {
 						continue;
 					}
-					if (isObjectExecutorTransport(transport)) {
+					if (isOwnedByObjectExecutor(transport, Rs2PathApi.getActiveRoute()
+                            .map(Rs2RouteResult::getSteps).orElse(null))) {
 						return true;
 					}
                 }
@@ -86,6 +89,28 @@ public final class Rs2DoorProbe {
 		return transport != null
 				&& transport.getExecutor() == Rs2TransportExecutor.OBJECT;
 	}
+
+    static boolean isOwnedByObjectExecutor(Rs2TransportEdge transport, List<Rs2RouteStep> routeSteps) {
+        if (!isObjectExecutorTransport(transport)) {
+            return false;
+        }
+        if (routeSteps == null || !isDoorLikeCatalogTransport(transport)) {
+            return true;
+        }
+        // Live collision deliberately treats openable doors as walkable. Search can therefore
+        // select WALK instead of the catalog edge; in that case the ordinary door handler must
+        // be allowed to open it. Catalog membership alone does not give an executor ownership.
+        for (Rs2RouteStep step : routeSteps) {
+            Rs2TransportEdge selected = step.getTransport().orElse(null);
+            if (isObjectExecutorTransport(selected)
+                    && selected.getObjectId() == transport.getObjectId()
+                    && step.getFrom().equals(transport.getOrigin())
+                    && step.getTo().equals(transport.getDestination())) {
+                return true;
+            }
+        }
+        return false;
+    }
 
 	public static boolean isDoorLikeCatalogTransport(Rs2TransportEdge transport) {
 		if (transport == null || transport.getType() != Rs2TransportType.TRANSPORT) {
@@ -148,10 +173,8 @@ public final class Rs2DoorProbe {
      * "An object owned by the catalog transport executor" — the expensive, segment-independent half of
      * the candidate test, memoised for the scan via {@link DoorProbeContext#objectEligibilityCache()}.
      * <p>
-     * The answer depends only on the object (id, location, composition), yet the probe re-evaluated it
-     * for every route segment against the entire snapshot, paying a {@code getWorldLocation()}, nine
-     * transport-map lookups and an uncached composition resolve each time. With no cache available the
-     * behaviour is unchanged, just uncached.
+     * Ownership depends on the object and active route, so cache it only for this scan. With no
+     * scan cache available, resolve ownership against the current route directly.
      */
     private static boolean isCatalogTransportObject(DoorProbeContext ctx, TileObject object) {
         Map<TileObject, Boolean> cache = ctx == null ? null : ctx.objectEligibilityCache();

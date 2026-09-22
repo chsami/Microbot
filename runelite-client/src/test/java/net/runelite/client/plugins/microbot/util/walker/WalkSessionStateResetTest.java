@@ -7,6 +7,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -114,6 +115,29 @@ public class WalkSessionStateResetTest
 		assertNull("requested goal belongs to the previous walk", routeState.requestedGoal);
 		assertEquals("rim-retarget budget belongs to the walk that spent it",
 			0, routeState.sealedRimRetargets);
+	}
+
+	@Test
+	public void returnWalkMustRediscoverTheFirstDoorBeforeLookingBeyondIt()
+	{
+		DoorAttemptLedger ledger = Rs2WalkerDoors.doorAttemptLedgerForTesting();
+		WorldPoint outside = new WorldPoint(2611, 3393, 0);
+		WorldPoint entrance = new WorldPoint(2611, 3394, 0);
+		WorldPoint innerNear = new WorldPoint(2611, 3398, 0);
+		WorldPoint innerFar = new WorldPoint(2611, 3399, 0);
+		long now = System.currentTimeMillis();
+		ledger.markStationaryDoorOpened(entrance, now);
+		ledger.markAttempt(entrance, entrance, outside, now);
+		assertTrue(ledger.recentlyOpenedDoorOnSegment(outside, entrance, 10_000, now + 100));
+		assertFalse(ledger.recentlyOpenedDoorOnSegment(innerNear, innerFar, 10_000, now + 100));
+
+		Rs2Walker.resetWalkSessionState();
+
+		assertFalse("the entrance must not stay hidden on a new route through both doors",
+			ledger.recentlyOpenedDoorOnSegment(outside, entrance, 10_000, now + 100));
+		assertFalse(ledger.wasStationaryDoorOpenedWithin(entrance, 10_000, now + 100));
+		assertTrue("resetting successful crossings must not erase interaction throttling",
+			ledger.shouldThrottleAttempt(entrance, entrance, outside, 2_500, now + 100));
 	}
 
 	/** Route progress belongs to the route that made it. */

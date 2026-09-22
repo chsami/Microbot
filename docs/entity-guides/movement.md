@@ -346,3 +346,23 @@ if (CantReachTargetRecovery.shouldStart(detectionEnabled, cantReachTarget)) {
 **Where this applies:** `Rs2GameObject.clickObject`, `Rs2Npc.interact`, `Rs2NpcModel.interact`, legacy walker door dispatch, and any future interaction helper that starts `Rs2Walker.walkTo` in response to the global can't-reach flag.
 
 **Defensive check:** During a recovery route through a closed door, assert that the door click occurs once, the original object or NPC target is passed unchanged to the walker, nested recovery is suppressed, and retry exhaustion still returns failure.
+
+## 17. Give catalogued opening doors a handler when search selects WALK
+
+Live collision can mark an openable door edge passable so search routes through it. The resulting route may select an ordinary walking edge instead of the parallel catalog transport. Suppress generic door detection only when that opening door has a selected object transport; keep catalog ownership while the route is unavailable and for moves-you objects such as ladders and stiles.
+
+**Why this matters:** Fishing Guild door `20925` stalled in both directions: generic door detection rejected catalog membership, while transport execution required a selected transport and the route contained only walking edges.
+
+**Where this applies:** `Rs2DoorProbe.isCatalogTransportObject`, live collision door masking, and route-selected transport execution.
+
+**Defensive check:** Verify the same catalog door is eligible for generic handling on a WALK edge and excluded on a selected TRANSPORT edge; test entry and exit on the live client.
+
+## 18. Clear successful door crossings at the start of a new walk
+
+The recently-opened suppression window belongs to the route that crossed the door. Clear it when a new walk starts, while retaining the separate per-edge attempt cooldown. Self-closing doors can require another interaction immediately on a return route.
+
+**Why this matters:** Returning into the Fishing Guild within ten seconds of leaving hid entrance door `20925` from detection. A route through both doors selected the inner door first, failed to reach it, and only tried the entrance after the old suppression expired.
+
+**Where this applies:** `Rs2Walker.resetWalkSessionState` and `DoorAttemptLedger`.
+
+**Defensive check:** Exit the guild and immediately route back through both doors. The entrance must be selected before the inner door, with the anti-hammer cooldown still intact.

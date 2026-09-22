@@ -433,6 +433,10 @@ public class Rs2Walker {
         // still (or worse, a step the wrong way) before the new route's first click. Per-edge
         // cooldowns survive on purpose: hammering one door across two walks is still hammering.
         doorAttemptLedger.clearLatestAttempt();
+        // Successful crossings belong to the previous route, too. Keeping their 10s suppression
+        // hides a self-closing entrance on a return walk and lets scans select the door beyond it.
+        // The separate per-edge attempt cooldown above remains intact.
+        doorAttemptLedger.clearOpenedDoors();
         routeState.walledDoorEdgeFrom = null;
         routeState.walledDoorEdgeTo = null;
         routeState.walledDoorEdgeAtMs = 0L;
