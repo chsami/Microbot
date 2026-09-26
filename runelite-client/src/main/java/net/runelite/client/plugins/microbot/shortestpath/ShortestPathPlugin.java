@@ -709,7 +709,7 @@ public class ShortestPathPlugin extends Plugin {
         lastCollisionConflictLogAtMs = now;
         LiveCollisionConflicts.Coverage coverage =
                 LiveCollisionConflicts.coverage(snapshot, staticCollisionData, priorOverlayView);
-        WebWalkLog.spInfo("collision_conflict | liveOpensStatic={} liveBlocksStatic={} sealedOpens={} base={},{}"
+        WebWalkLog.spDebug("collision_conflict | liveOpensStatic={} liveBlocksStatic={} sealedOpens={} base={},{}"
                         + " | overlayKnew={}% (known={} new={} changed={}) — live scene disagrees with the shipped map",
                 tally.liveOpensStatic, tally.liveBlocksStatic, tally.liveOpensSealed,
                 snapshot.getBaseX(), snapshot.getBaseY(),

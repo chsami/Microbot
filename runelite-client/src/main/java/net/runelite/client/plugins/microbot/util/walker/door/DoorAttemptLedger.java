@@ -213,6 +213,11 @@ public final class DoorAttemptLedger {
         }
     }
 
+    /** A new route may cross back through a self-closing door; prior crossings do not resolve it. */
+    public void clearOpenedDoors() {
+        stationaryDoorOpenedAtByTile.clear();
+    }
+
     /**
      * Whether a recently-opened stationary door sits on (within 2 tiles of either end of) the
      * {@code fromWp -> toWp} segment. Purges expired entries as a side effect, as the map-based
