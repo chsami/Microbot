@@ -20,11 +20,15 @@ public class GroundItemInteractionDispatchTest
     @Test
     public void legacyGroundItemUsesSyntheticTargetMenu() throws IOException
     {
-        assertSyntheticTargetMenuDispatch(
+        DispatchCalls calls = readDispatchCalls(
                 Rs2GroundItem.class,
                 "interact",
                 Type.getMethodDescriptor(Type.BOOLEAN_TYPE,
                         Type.getType(InteractModel.class), Type.getType(String.class)));
+        assertEquals(1, calls.matchedMethods);
+        assertEquals("Legacy interactions must delegate to the shared tile-item dispatcher", 1, calls.tileItemClick);
+        assertEquals(0, calls.doInvoke);
+        assertEquals(0, calls.reflectionInvokeMenu);
     }
 
     @Test
@@ -83,6 +87,11 @@ public class GroundItemInteractionDispatchTest
                             {
                                 calls.doInvoke++;
                             }
+                            if (expectedMethod && owner.equals(Type.getInternalName(Rs2TileItemModel.class))
+                                    && methodName.equals("click"))
+                            {
+                                calls.tileItemClick++;
+                            }
                             // Scan the whole class so a lambda$... or same-class helper cannot hide a
                             // reintroduced reflection dispatch from the expected interaction method.
                             if (owner.equals(Type.getInternalName(Rs2Reflection.class)) && methodName.equals("invokeMenu"))
@@ -101,6 +110,7 @@ public class GroundItemInteractionDispatchTest
     {
         private int matchedMethods;
         private int doInvoke;
+        private int tileItemClick;
         private int reflectionInvokeMenu;
     }
 }
