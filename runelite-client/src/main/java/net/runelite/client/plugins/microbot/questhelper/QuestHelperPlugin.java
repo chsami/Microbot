@@ -75,6 +75,7 @@ import javax.swing.*;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.*;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @PluginDescriptor(
@@ -85,6 +86,8 @@ import java.util.stream.Collectors;
 @Slf4j
 public class QuestHelperPlugin extends Plugin
 {
+	private static final Pattern NEW_QUEST_REGEX = Pattern.compile("You've started a new quest(?: speedrun)?: (?<questName>.*)");
+
 	@Getter
 	@Inject
 	@Named("developerMode")
@@ -541,12 +544,12 @@ public class QuestHelperPlugin extends Plugin
 				addCheerer();
 			}
 		}
-		if (config.autoStartQuests() && chatMessage.getType() == ChatMessageType.GAMEMESSAGE)
+		if (config.autoStartQuests() && chatMessage.getType() == ChatMessageType.GAMEMESSAGE && questManager.getSelectedQuest() == null)
 		{
-			if (questManager.getSelectedQuest() == null && chatMessage.getMessage().contains("You've started a new quest"))
-			{
-				String questName = chatMessage.getMessage().substring(chatMessage.getMessage().indexOf(">") + 1);
-				questName = questName.substring(0, questName.indexOf("<"));
+			var cleanedMessage = Text.removeTags(client.macroExpand(chatMessage.getMessage()));
+			var matcher = NEW_QUEST_REGEX.matcher(cleanedMessage);
+			if (matcher.matches()) {
+				var questName = matcher.group("questName");
 				questMenuHandler.startUpQuest(questName);
 			}
 		}
