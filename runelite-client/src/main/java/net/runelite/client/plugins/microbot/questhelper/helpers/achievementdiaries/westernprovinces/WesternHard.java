@@ -209,23 +209,23 @@ public class WesternHard extends ComplexStateQuestHelper
 
 		caughtMonkfish = new ChatMessageRequirement(
 			inPisc,
-			"<col=0040ff>Achievement Diary Stage Task - Current stage: 1.</col>"
+			"Achievement Diary Stage Task - Current stage: 1."
 		);
 		((ChatMessageRequirement) caughtMonkfish).setInvalidateRequirement(
 			new ChatMessageRequirement(
 				new Conditions(LogicType.NOR, inPisc),
-				"<col=0040ff>Achievement Diary Stage Task - Current stage: 1.</col>"
+				"Achievement Diary Stage Task - Current stage: 1."
 			)
 		);
 
 		choppedLogs = new ChatMessageRequirement(
 			inApeAtoll,
-			"<col=0040ff>Achievement Diary Stage Task - Current stage: 1.</col>"
+			"Achievement Diary Stage Task - Current stage: 1."
 		);
 		((ChatMessageRequirement) choppedLogs).setInvalidateRequirement(
 			new ChatMessageRequirement(
 				new Conditions(LogicType.NOR, inApeAtoll),
-				"<col=0040ff>Achievement Diary Stage Task - Current stage: 1.</col>"
+				"Achievement Diary Stage Task - Current stage: 1."
 			)
 		);
 
@@ -234,7 +234,7 @@ public class WesternHard extends ComplexStateQuestHelper
 		swanSong = new QuestRequirement(QuestHelperQuest.SWAN_SONG, QuestState.FINISHED);
 		regicide = new QuestRequirement(QuestHelperQuest.REGICIDE, QuestState.IN_PROGRESS);
 		mourningsEndPartI = new QuestRequirement(QuestHelperQuest.MOURNINGS_END_PART_I, QuestState.IN_PROGRESS);
-		bigChompy = new QuestRequirement(QuestHelperQuest.TAI_BWO_WANNAI_TRIO, QuestState.FINISHED);
+		bigChompy = new QuestRequirement(QuestHelperQuest.BIG_CHOMPY_BIRD_HUNTING, QuestState.FINISHED);
 		awowogeiRFD = new QuestRequirement(QuestHelperQuest.RECIPE_FOR_DISASTER_MONKEY_AMBASSADOR, QuestState.FINISHED);
 		treeGnomeVillage = new QuestRequirement(QuestHelperQuest.TREE_GNOME_VILLAGE, QuestState.FINISHED);
 	}
