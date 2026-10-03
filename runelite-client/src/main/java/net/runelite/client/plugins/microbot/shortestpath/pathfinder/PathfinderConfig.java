@@ -25,7 +25,7 @@ import net.runelite.client.plugins.microbot.util.magic.RuneFilter;
 import net.runelite.client.plugins.microbot.util.magic.Runes;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.leaguetransport.Rs2LeaguesTransport;
-import net.runelite.client.plugins.microbot.util.poh.PohTeleports;
+import net.runelite.client.plugins.microbot.util.poh.PohPresence;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.walker.WebWalkLog;
 import java.io.File;
@@ -234,6 +234,7 @@ public class PathfinderConfig {
      * run, which makes the fingerprint fall back to hashing everything.
      */
     private volatile Set<Integer> transportRelevantItemIds = null;
+    private volatile boolean transportRelevantItemIdsInitialized;
 
     /**
      * The item ids usability depends on that are NOT declared on any transport row: the fairy-ring
@@ -488,10 +489,23 @@ public class PathfinderConfig {
 
         long entryTime = System.currentTimeMillis() - entryStart;
 
+        // Build the item filter before the first key. Otherwise the cold snapshot is keyed with
+        // every item, then the next identical refresh uses the narrowed filter and misses again.
+        long bootstrapStart = System.currentTimeMillis();
+        long bootstrapMergeTime = 0;
+        Map<WorldPoint, Set<Transport>> bootstrapMergedList = null;
+        if (!transportRelevantItemIdsInitialized) {
+            bootstrapMergedList = createMergedList();
+            bootstrapMergeTime = System.currentTimeMillis() - bootstrapStart;
+            transportRelevantItemIds = collectTransportRelevantItemState(bootstrapMergedList);
+            transportRelevantItemIdsInitialized = true;
+        }
+        long bootstrapTime = System.currentTimeMillis() - bootstrapStart;
+
         long keyStart = System.currentTimeMillis();
         final Rs2LeaguesTransport.LeaguesContext leaguesCtx = Rs2LeaguesTransport.leaguesContext();
         lastKeyLeaguesMs = System.currentTimeMillis() - keyStart;
-        final int refreshCacheKeyHash = computeTransportRefreshCacheKeyHash(target, leaguesCtx, inCombat);
+        int refreshCacheKeyHash = computeTransportRefreshCacheKeyHash(target, leaguesCtx, inCombat);
         long keyTime = System.currentTimeMillis() - keyStart;
 
         TransportRefreshSnapshot snap = transportRefreshSnapshots.get(refreshCacheKeyHash);
@@ -565,7 +579,8 @@ public class PathfinderConfig {
         usableTeleports.clear();
 
         long mergeStart = System.currentTimeMillis();
-        Map<WorldPoint, Set<Transport>> mergedList = createMergedList();
+        Map<WorldPoint, Set<Transport>> mergedList = bootstrapMergedList != null
+                ? bootstrapMergedList : createMergedList();
         long mergeTime = System.currentTimeMillis() - mergeStart;
 
         long cacheStart = System.currentTimeMillis();
@@ -592,10 +607,6 @@ public class PathfinderConfig {
         // requirement). Only these may participate in the verification hash — otherwise hitpoints
         // regenerating invalidates the whole transport cache.
         Set<Integer> requiredSkillOrdinals = new HashSet<>();
-        // Item ids / currency names some transport or restriction gates on — everything else is
-        // excluded from the cache key so ordinary inventory churn stops forcing a cold start.
-        Set<Integer> relevantItemIds = new HashSet<>();
-        Set<String> relevantCurrencyNames = new HashSet<>();
         for (Set<Transport> ts : mergedList.values()) {
             for (Transport t : ts) {
                 t.getVarbits().forEach(v -> {
@@ -614,49 +625,19 @@ public class PathfinderConfig {
                         }
                     }
                 }
-                if (t.getItemIdRequirements() != null) {
-                    t.getItemIdRequirements().stream()
-                            .filter(Objects::nonNull)
-                            .forEach(relevantItemIds::addAll);
-                }
-                if (t.getCurrencyAmount() > 0 && t.getCurrencyName() != null && !t.getCurrencyName().isEmpty()) {
-                    relevantCurrencyNames.add(t.getCurrencyName());
-                }
             }
         }
-        // Restrictions gate on items too (hasRequiredItems(Restriction)), from their own list.
-        for (List<Restriction> group : Arrays.asList(resourceRestrictions, customRestrictions)) {
-            if (group == null) {
-                continue;
-            }
-            for (Restriction r : group) {
-                if (r == null || r.getItemIdRequirements() == null) {
-                    continue;
-                }
-                r.getItemIdRequirements().stream()
-                        .filter(Objects::nonNull)
-                        .forEach(relevantItemIds::addAll);
+        if (bootstrapMergedList == null) {
+            Set<Integer> discoveredIds = collectTransportRelevantItemState(mergedList);
+            Set<Integer> expandedIds = expandTransportRelevantItemState(
+                    transportRelevantItemIds, discoveredIds);
+            if (expandedIds != transportRelevantItemIds) {
+                transportRelevantItemIds = expandedIds;
+                // A catalog variant may introduce an item gate. Capture under the key that
+                // fingerprints the expanded set, so later item changes cannot reuse this pass.
+                refreshCacheKeyHash = computeTransportRefreshCacheKeyHash(target, leaguesCtx, inCombat);
             }
         }
-        relevantItemIds.addAll(HARDCODED_USABILITY_ITEM_IDS);
-        addSpellRuneItemIds(relevantItemIds);
-        // Resolve currency to ids HERE, once, rather than comparing item names during fingerprinting —
-        // reading an item's name loads its composition on the client thread. An unresolvable currency
-        // disables the narrowing rather than losing that currency's invalidation.
-        boolean allCurrenciesResolved = true;
-        for (String currency : relevantCurrencyNames) {
-            int id = currencyItemId(currency);
-            if (id > 0) {
-                relevantItemIds.add(id);
-            } else {
-                log.warn("[Walker] transport currency '{}' has no known item id — transport-refresh cache "
-                        + "key falls back to fingerprinting every item", currency);
-                allCurrenciesResolved = false;
-            }
-        }
-        transportRelevantItemIds = allCurrenciesResolved
-                ? Collections.unmodifiableSet(relevantItemIds)
-                : null;
 
         refreshBoostedLevels = new int[Transport.REQUIREMENT_LEVEL_COUNT];
         Map<Integer, Integer> varplayerValues = new HashMap<>();
@@ -770,7 +751,7 @@ public class PathfinderConfig {
         transportRefreshSnapshots.put(refreshCacheKeyHash, TransportRefreshSnapshot.capture(
                 refreshCacheKeyHash, verificationHash, verificationComponents,
                 sortedSkillOrdinals, sortedVarbitConditions, sortedVarplayerConditions, sortedQuestIds,
-                transports, usableTeleports));
+                transports, usableTeleports, blockedTransportEdgesPacked));
         long captureTime = System.currentTimeMillis() - captureStart;
 
         long similarStart = System.currentTimeMillis();
@@ -786,18 +767,18 @@ public class PathfinderConfig {
         refreshVarplayerValues = null;
 
         // varbit/varplayer counts = distinct ids referenced by merged transport definitions this refresh, not total client var space.
-        WebWalkLog.cfg("refresh_transports entry={}ms key={}ms merge={}ms cache={}ms filter={}ms useTrans={}ms verify={}ms capture={}ms similar={}ms total/chk={}/{} usablePost={} vb={} vp={}",
-                entryTime, keyTime, mergeTime, cacheTime, filterTime, useTransportTimeNanos / 1_000_000,
+        WebWalkLog.cfg("refresh_transports entry={}ms bootstrap={}ms bootstrapMerge={}ms key={}ms merge={}ms cache={}ms filter={}ms useTrans={}ms verify={}ms capture={}ms similar={}ms total/chk={}/{} usablePost={} vb={} vp={}",
+                entryTime, bootstrapTime, bootstrapMergeTime, keyTime, mergeTime, cacheTime, filterTime, useTransportTimeNanos / 1_000_000,
                 verifyTime, captureTime, similarTime,
                 totalTransports, checkedTransports, usableTeleports.size(), varbitIds.size(), varplayerIds.size());
 
         // Surface the same breakdown at INFO when the miss is slow enough to be the visible cold
         // start, so the dominant stage is identifiable without enabling debug logging.
-        long refreshTransportsTotalMs = entryTime + keyTime + mergeTime + cacheTime + filterTime
+        long refreshTransportsTotalMs = entryTime + bootstrapTime + keyTime + mergeTime + cacheTime + filterTime
                 + verifyTime + captureTime + similarTime;
         if (refreshTransportsTotalMs >= SLOW_REFRESH_LOG_THRESHOLD_MS) {
-            WebWalkLog.cfgSlow("slow refresh_transports entry={}ms key={}ms merge={}ms cache={}ms filter={}ms useTrans={}ms verify={}ms capture={}ms similar={}ms total/chk={}/{} vb={} vp={}",
-                    entryTime, keyTime, mergeTime, cacheTime, filterTime, useTransportTimeNanos / 1_000_000,
+            WebWalkLog.cfgSlow("slow refresh_transports entry={}ms bootstrap={}ms bootstrapMerge={}ms key={}ms merge={}ms cache={}ms filter={}ms useTrans={}ms verify={}ms capture={}ms similar={}ms total/chk={}/{} vb={} vp={}",
+                    entryTime, bootstrapTime, bootstrapMergeTime, keyTime, mergeTime, cacheTime, filterTime, useTransportTimeNanos / 1_000_000,
                     verifyTime, captureTime, similarTime,
                     totalTransports, checkedTransports, varbitIds.size(), varplayerIds.size());
             WebWalkLog.cfgSlow("slow refresh_transports keyDetail leagues={}ms inv={}ms equip={}ms bank={}ms",
@@ -821,6 +802,48 @@ public class PathfinderConfig {
         Arrays.stream(Runes.values())
                 .map(Runes::getItemId)
                 .forEach(relevantItemIds::add);
+    }
+
+    private Set<Integer> collectTransportRelevantItemState(Map<WorldPoint, Set<Transport>> mergedList) {
+        Set<Integer> relevantItemIds = new HashSet<>();
+        Set<String> relevantCurrencyNames = new HashSet<>();
+        for (Set<Transport> transportsAtOrigin : mergedList.values()) {
+            for (Transport transport : transportsAtOrigin) {
+                if (transport.getItemIdRequirements() != null) {
+                    transport.getItemIdRequirements().stream()
+                            .filter(Objects::nonNull)
+                            .forEach(relevantItemIds::addAll);
+                }
+                if (transport.getCurrencyAmount() > 0 && transport.getCurrencyName() != null
+                        && !transport.getCurrencyName().isEmpty()) {
+                    relevantCurrencyNames.add(transport.getCurrencyName());
+                }
+            }
+        }
+        for (List<Restriction> group : Arrays.asList(resourceRestrictions, customRestrictions)) {
+            if (group == null) {
+                continue;
+            }
+            for (Restriction restriction : group) {
+                if (restriction != null && restriction.getItemIdRequirements() != null) {
+                    restriction.getItemIdRequirements().stream()
+                            .filter(Objects::nonNull)
+                            .forEach(relevantItemIds::addAll);
+                }
+            }
+        }
+        relevantItemIds.addAll(HARDCODED_USABILITY_ITEM_IDS);
+        addSpellRuneItemIds(relevantItemIds);
+        for (String currency : relevantCurrencyNames) {
+            int itemId = currencyItemId(currency);
+            if (itemId <= 0) {
+                log.warn("[Walker] transport currency '{}' has no known item id — transport-refresh cache "
+                        + "key falls back to fingerprinting every item", currency);
+                return null;
+            }
+            relevantItemIds.add(itemId);
+        }
+        return Collections.unmodifiableSet(relevantItemIds);
     }
 
     public boolean isBlockedTransportEdge(int originPacked, int destinationPacked) {
@@ -929,6 +952,8 @@ public class PathfinderConfig {
         if (!STATIC_BLOCKED_EDGES_PACKED.contains(key)) {
             blockedTransportEdgesPacked.remove(key);
         }
+        // Older snapshots may include this session block; never restore it after unlearning.
+        invalidateTransportRefreshCache();
         log.info("[Walker] Unlearned blocked edge {} -> {} ({})", origin, destination, reason);
         return true;
     }
@@ -1055,12 +1080,14 @@ public class PathfinderConfig {
 
     private Map<WorldPoint, Set<Transport>> createMergedList() {
         if (!usePoh) return allTransports;
+        long mergeStarted = System.currentTimeMillis();
         Map<WorldPoint, Set<Transport>> mergedTransports = new HashMap<>();
 
         // Start with putting all the TSV imported persistent transports
         for (var entry : allTransports.entrySet()) {
             mergedTransports.put(entry.getKey(), new HashSet<>(entry.getValue()));
         }
+        long baseDone = System.currentTimeMillis();
 
         // Add transports from PoH to somewhere in the world
         for (var entry : PohPanel.getAvailableTransports(allTransports, usePortalNexus).entrySet()) {
@@ -1068,9 +1095,16 @@ public class PathfinderConfig {
                     .computeIfAbsent(entry.getKey(), k -> new HashSet<>())
                     .addAll(entry.getValue());
         }
+        long availableDone = System.currentTimeMillis();
 
         // If we're already in Poh there's no reason to add teleports to Poh
-        if (PohTeleports.isInHouse()) {
+        boolean inHouse = PohPresence.isInHouse();
+        long houseDone = System.currentTimeMillis();
+        if (inHouse) {
+            if (houseDone - mergeStarted >= 100) {
+                WebWalkLog.cfgSlow("slow merged transport catalog base={}ms availablePoh={}ms house={}ms toPoh=0ms",
+                        baseDone - mergeStarted, availableDone - baseDone, houseDone - availableDone);
+            }
             return mergedTransports;
         }
         // Add transports from the world to PoH
@@ -1078,6 +1112,12 @@ public class PathfinderConfig {
             mergedTransports
                     .computeIfAbsent(entry.getKey(), k -> new HashSet<>())
                     .addAll(entry.getValue());
+        }
+        long done = System.currentTimeMillis();
+        if (done - mergeStarted >= 100) {
+            WebWalkLog.cfgSlow("slow merged transport catalog base={}ms availablePoh={}ms house={}ms toPoh={}ms",
+                    baseDone - mergeStarted, availableDone - baseDone,
+                    houseDone - availableDone, done - houseDone);
         }
         return mergedTransports;
     }
@@ -1092,6 +1132,7 @@ public class PathfinderConfig {
      */
     public void invalidateTransportRefreshCache() {
         transportRefreshSnapshots.clear();
+        transportRelevantItemIdsInitialized = false;
     }
 
     /**
@@ -1259,6 +1300,18 @@ public class PathfinderConfig {
                 .orElse(0);
     }
 
+    static boolean hasAvailableCurrencyForFare(int carried, int banked, int fare,
+                                               boolean useBankItems) {
+        return (long) Math.max(0, carried) + (useBankItems ? Math.max(0, banked) : 0) >= fare;
+    }
+
+    /** The refresh snapshot already includes bank quantities when {@code useBankItems} is enabled. */
+    static int knownCurrencyQuantity(String currencyName, Map<Integer, Integer> availableQuantities) {
+        int itemId = currencyItemId(currencyName);
+        return itemId < 0 || availableQuantities == null
+                ? -1 : availableQuantities.getOrDefault(itemId, 0);
+    }
+
     private boolean useTransport(Transport transport, boolean inCombat) {
         // This runs once per expanded catalog edge during every refresh. Keep individual rejection
         // reasons at TRACE; DEBUG already receives the per-type aggregate emitted by refreshTransports.
@@ -1313,18 +1366,29 @@ public class PathfinderConfig {
 
         // If you don't have the required currency & amount for transport
         if (transport.getCurrencyAmount() > 0) {
-            if (refreshCurrencyCache != null) {
+            int knownCurrencyQuantity = knownCurrencyQuantity(
+                    transport.getCurrencyName(), refreshAvailableItemQuantities);
+            if (knownCurrencyQuantity >= 0) {
+                // Bank rows restored from saved IDs load item names on the client thread. The
+                // name-based bank lookup below can therefore take seconds even for Coins.
+                if (knownCurrencyQuantity < transport.getCurrencyAmount()) {
+                    return false;
+                }
+            } else if (refreshCurrencyCache != null) {
                 int[] cached = refreshCurrencyCache.computeIfAbsent(transport.getCurrencyName(), name -> {
                     int invCount = Rs2Inventory.itemQuantity(name);
                     int bankCount = useBankItems ? Rs2Bank.count(name) : 0;
                     return new int[]{invCount, bankCount};
                 });
-                if (cached[0] < transport.getCurrencyAmount() && cached[1] < transport.getCurrencyAmount()) {
+                if (!hasAvailableCurrencyForFare(cached[0], cached[1],
+                        transport.getCurrencyAmount(), useBankItems)) {
                     log.trace("Transport ( O: {} D: {} ) requires {} x {}", transport.getOrigin(), transport.getDestination(), transport.getCurrencyAmount(), transport.getCurrencyName());
                     return false;
                 }
-            } else if (!Rs2Inventory.hasItemAmount(transport.getCurrencyName(), transport.getCurrencyAmount())
-                    && !(useBankItems && Rs2Bank.count(transport.getCurrencyName()) >= transport.getCurrencyAmount())) {
+            } else if (!hasAvailableCurrencyForFare(
+                    Rs2Inventory.itemQuantity(transport.getCurrencyName()),
+                    useBankItems ? Rs2Bank.count(transport.getCurrencyName()) : 0,
+                    transport.getCurrencyAmount(), useBankItems)) {
                 log.trace("Transport ( O: {} D: {} ) requires {} x {}", transport.getOrigin(), transport.getDestination(), transport.getCurrencyAmount(), transport.getCurrencyName());
                 return false;
             }
@@ -1698,6 +1762,10 @@ public class PathfinderConfig {
                 return false;
         }
 
+        if (Microbot.getConfigManager() == null) {
+            return false;
+        }
+
         String charges = Microbot.getConfigManager()
                 .getRSProfileConfiguration(ItemChargeConfig.GROUP, ItemChargeConfig.KEY_CHRONICLE);
 
@@ -1712,7 +1780,18 @@ public class PathfinderConfig {
         }
 
         // Validate charges
-        return charges != null && Integer.parseInt(charges) > 0;
+        return chronicleChargeState(charges) > 0;
+    }
+
+    static int chronicleChargeState(String charges) {
+        if (charges == null || charges.trim().isEmpty()) {
+            return -1;
+        }
+        try {
+            return Integer.parseInt(charges.trim()) > 0 ? 1 : 0;
+        } catch (NumberFormatException invalid) {
+            return -1;
+        }
     }
 
     @Deprecated(since = "1.6.2 - Add Restrictions to restrictions.tsv", forRemoval = true)
@@ -1995,12 +2074,28 @@ public class PathfinderConfig {
                                                      Rs2LeaguesTransport.LeaguesContext leaguesCtx,
                                                      boolean inCombat) {
         assert leaguesCtx != null;
+        long started = System.nanoTime();
         int invFp = fingerprintInventoryEquipmentBank();
+        long inventoryDone = System.nanoTime();
         lastComputedInvFingerprint = invFp;
         int members = (client != null && client.getWorldType().contains(WorldType.MEMBERS)) ? 1 : 0;
         int preferTp = (config != null && config.preferTransportToTarget()) ? 1 : 0;
         int maxSimilar = config != null ? config.maxSimilarTransportDistance() : 0;
-        return Objects.hash(
+        long settingsDone = System.nanoTime();
+        int leagueType = Microbot.getVarbitValue(VarbitID.LEAGUE_TYPE);
+        long leagueDone = System.nanoTime();
+        int unlockedRegionsHash = leaguesCtx.getUnlockedRegions().hashCode();
+        long regionsDone = System.nanoTime();
+        int chronicleCharges = (Rs2Inventory.hasItem(ItemID.CHRONICLE)
+                || Rs2Equipment.isWearing(ItemID.CHRONICLE))
+                ? chronicleChargeState(Microbot.getConfigManager() == null ? null
+                        : Microbot.getConfigManager().getRSProfileConfiguration(
+                                ItemChargeConfig.GROUP, ItemChargeConfig.KEY_CHRONICLE))
+                : -2;
+        long contextDone = System.nanoTime();
+        boolean inHouse = usePoh && PohPresence.isInHouse();
+        long houseDone = System.nanoTime();
+        int hash = Objects.hash(
                 packTransportRefreshToggleBits(),
                 useTeleportationItems,
                 ignoreTeleportAndItems,
@@ -2010,14 +2105,27 @@ public class PathfinderConfig {
                 invFp,
                 members,
                 Rs2Walker.disableTeleports,
-                Microbot.getVarbitValue(VarbitID.LEAGUE_TYPE),
+                leagueType,
                 leaguesCtx.isActive(),
-                leaguesCtx.getUnlockedRegions().hashCode(),
+                unlockedRegionsHash,
+                chronicleCharges,
                 usePoh,
-                PohTeleports.isInHouse(),
+                inHouse,
                 maxSimilar,
                 preferTp,
                 distanceBeforeUsingTeleport);
+        long done = System.nanoTime();
+        if (done - started >= 100_000_000L) {
+            WebWalkLog.cfgSlow("slow transport key inv={}ms settings={}ms league={}ms regions={}ms charges={}ms house={}ms hash={}ms",
+                    (inventoryDone - started) / 1_000_000L,
+                    (settingsDone - inventoryDone) / 1_000_000L,
+                    (leagueDone - settingsDone) / 1_000_000L,
+                    (regionsDone - leagueDone) / 1_000_000L,
+                    (contextDone - regionsDone) / 1_000_000L,
+                    (houseDone - contextDone) / 1_000_000L,
+                    (done - houseDone) / 1_000_000L);
+        }
+        return hash;
     }
 
     private long packTransportRefreshToggleBits() {
@@ -2110,6 +2218,17 @@ public class PathfinderConfig {
         // Null set = not built yet, or a currency we could not resolve: fingerprint everything, which
         // is exactly the old behaviour and never under-invalidates.
         return relevantItemIds == null || relevantItemIds.contains(itemId);
+    }
+
+    static Set<Integer> expandTransportRelevantItemState(Set<Integer> previous, Set<Integer> discovered) {
+        // Null means an unknown currency forced the safe all-item fingerprint. Never narrow it
+        // until explicit invalidation, even if another catalog variant has known currencies.
+        if (previous == null || discovered == null || previous.containsAll(discovered)) {
+            return previous == null || discovered == null ? null : previous;
+        }
+        Set<Integer> expanded = new HashSet<>(previous);
+        expanded.addAll(discovered);
+        return Collections.unmodifiableSet(expanded);
     }
 
     /**
@@ -2387,7 +2506,7 @@ public class PathfinderConfig {
         return null;
     }
 
-    private static final class TransportRefreshSnapshot {
+    static final class TransportRefreshSnapshot {
         private final int cacheKeyHash;
         private final int verificationHash;
         private final int[] sortedSkillOrdinals;
@@ -2397,12 +2516,14 @@ public class PathfinderConfig {
         private final int[] sortedQuestIds;
         private final Map<WorldPoint, Set<Transport>> transportsData;
         private final Set<Transport> usableData;
+        private final Set<Long> blockedEdgesData;
 
         private TransportRefreshSnapshot(int cacheKeyHash, int verificationHash, int[] verificationComponents,
                 int[] sortedSkillOrdinals,
                 int[] sortedVarbitConditions, int[] sortedVarplayerConditions,
                 int[] sortedQuestIds,
-                Map<WorldPoint, Set<Transport>> transportsData, Set<Transport> usableData) {
+                Map<WorldPoint, Set<Transport>> transportsData, Set<Transport> usableData,
+                Set<Long> blockedEdgesData) {
             this.cacheKeyHash = cacheKeyHash;
             this.verificationHash = verificationHash;
             this.sortedSkillOrdinals = sortedSkillOrdinals;
@@ -2412,13 +2533,15 @@ public class PathfinderConfig {
             this.sortedQuestIds = sortedQuestIds;
             this.transportsData = transportsData;
             this.usableData = usableData;
+            this.blockedEdgesData = blockedEdgesData;
         }
 
         static TransportRefreshSnapshot capture(int cacheKeyHash, int verificationHash, int[] verificationComponents,
                 int[] sortedSkillOrdinals,
                 int[] sortedVarbitConditions, int[] sortedVarplayerConditions,
                 int[] sortedQuestIds,
-                Map<WorldPoint, Set<Transport>> srcTransports, Set<Transport> srcUsable) {
+                Map<WorldPoint, Set<Transport>> srcTransports, Set<Transport> srcUsable,
+                Set<Long> srcBlockedEdges) {
             assert srcTransports != null && srcUsable != null;
             Map<WorldPoint, Set<Transport>> copy = new HashMap<>(srcTransports.size());
             for (Map.Entry<WorldPoint, Set<Transport>> e : srcTransports.entrySet()) {
@@ -2426,7 +2549,8 @@ public class PathfinderConfig {
             }
             Set<Transport> usableCopy = new HashSet<>(srcUsable);
             return new TransportRefreshSnapshot(cacheKeyHash, verificationHash, verificationComponents, sortedSkillOrdinals, sortedVarbitConditions,
-                    sortedVarplayerConditions, sortedQuestIds, copy, usableCopy);
+                    sortedVarplayerConditions, sortedQuestIds, copy, usableCopy,
+                    new HashSet<>(srcBlockedEdges));
         }
 
         void restoreInto(PathfinderConfig c) {
@@ -2440,6 +2564,9 @@ public class PathfinderConfig {
                 c.transportsPacked.put(WorldPointUtil.packWorldPoint(wp), set);
             }
             c.usableTeleports.addAll(new HashSet<>(usableData));
+            c.blockedTransportEdgesPacked.clear();
+            c.blockedTransportEdgesPacked.addAll(blockedEdgesData);
+            c.blockedTransportEdgesPacked.addAll(c.learnedBlockedEdgeKeys);
         }
     }
 

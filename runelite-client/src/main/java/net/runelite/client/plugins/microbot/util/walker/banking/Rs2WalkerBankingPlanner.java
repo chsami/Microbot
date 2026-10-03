@@ -39,10 +39,12 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.IntPredicate;
 import java.util.function.IntUnaryOperator;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 public final class Rs2WalkerBankingPlanner {
@@ -540,21 +542,82 @@ public final class Rs2WalkerBankingPlanner {
 	public static Rs2TransportLoadout getMissingTransportEdgeLoadout(
 		List<Rs2TransportEdge> transports)
 	{
-		Map<Integer, Integer> carriedRunes = runeQuantities(
-			RuneFilter.builder().includeBank(false).build());
-		Map<Integer, Integer> bankRunes = runeQuantities(RuneFilter.builder()
-			.includeInventory(false)
-			.includeEquipment(false)
-			.includeRunePouch(false)
-			.includeBank(true)
-			.build());
+		return getMissingTransportEdgeLoadout(transports, List.of());
+	}
+
+	/** Account for fares spent on the way to the bank before sizing the withdrawal. */
+	public static Rs2TransportLoadout getMissingTransportEdgeLoadout(
+		List<Rs2TransportEdge> transports, List<Rs2TransportEdge> routeToBank)
+	{
+		if (transports == null || transports.isEmpty())
+		{
+			return hasCarriedConsumablesForRoute(routeToBank)
+				? Rs2TransportLoadout.empty() : Rs2TransportLoadout.unavailable();
+		}
+		boolean needsRunes = Stream.concat(transports.stream(), routeToBank.stream()).anyMatch(transport ->
+			isSpellTransport(transport) || transport.getItemRequirements().stream()
+				.anyMatch(Rs2TransportItemRequirement::isRuneOnly));
+		Map<Integer, Integer> carriedRunes = needsRunes
+			? runeQuantities(RuneFilter.builder().includeBank(false).build()) : Map.of();
+		Map<Integer, Integer> bankRunes = needsRunes
+			? runeQuantities(RuneFilter.builder()
+				.includeInventory(false)
+				.includeEquipment(false)
+				.includeRunePouch(false)
+				.includeBank(true)
+				.build()) : Map.of();
 		return getMissingTransportEdgeLoadout(
 			transports,
+			routeToBank,
 			Rs2Bank::count,
 			Rs2WalkerBankingPlanner::carriedItemQuantity,
 			itemId -> carriedRunes.getOrDefault(itemId, carriedItemQuantity(itemId)),
 			itemId -> bankRunes.getOrDefault(itemId, safeQuantity(Rs2Bank::count, itemId)),
 			Rs2Equipment::isWearing);
+	}
+
+	static Rs2TransportLoadout getMissingTransportEdgeLoadout(
+		List<Rs2TransportEdge> transports,
+		List<Rs2TransportEdge> routeToBank,
+		IntUnaryOperator bankQuantityProvider,
+		IntUnaryOperator carriedQuantityProvider,
+		IntUnaryOperator carriedRequirementQuantityProvider,
+		IntUnaryOperator bankRequirementQuantityProvider,
+		IntPredicate equippedItemProvider)
+	{
+		Map<Integer, Long> spent = currencyCosts(routeToBank);
+		if (spent == null || !hasCarriedCurrencyForRoute(routeToBank, carriedQuantityProvider))
+		{
+			return Rs2TransportLoadout.unavailable();
+		}
+		Map<Integer, Long> spentRunes = spellRuneCosts(
+			routeToBank, carriedRequirementQuantityProvider);
+		if (spentRunes == null)
+		{
+			return Rs2TransportLoadout.unavailable();
+		}
+		for (Map.Entry<Integer, Long> rune : spentRunes.entrySet())
+		{
+			if (rune.getValue() > safeQuantity(carriedRequirementQuantityProvider, rune.getKey()))
+			{
+				return Rs2TransportLoadout.unavailable();
+			}
+			spent.merge(rune.getKey(), rune.getValue(), Long::sum);
+		}
+		return getMissingTransportEdgeLoadout(
+			transports,
+			bankQuantityProvider,
+			itemId -> remainingAfterFares(carriedQuantityProvider, spent, itemId),
+			itemId -> remainingAfterFares(carriedRequirementQuantityProvider, spent, itemId),
+			bankRequirementQuantityProvider,
+			equippedItemProvider);
+	}
+
+	private static int remainingAfterFares(IntUnaryOperator carriedQuantityProvider,
+		Map<Integer, Long> spent, int itemId)
+	{
+		return (int) Math.max(0L, safeQuantity(carriedQuantityProvider, itemId)
+			- spent.getOrDefault(itemId, 0L));
 	}
 
 	/** Compatibility view for callers that only consume withdrawals. */
@@ -586,6 +649,8 @@ public final class Rs2WalkerBankingPlanner {
 			return Rs2TransportLoadout.empty();
 		}
 		Map<Integer, Integer> withdrawals = new LinkedHashMap<>();
+		Map<Integer, Long> consumedItems = new LinkedHashMap<>();
+		Map<Integer, Long> consumedRunes = new LinkedHashMap<>();
 		LinkedHashSet<Integer> equipmentItemIds = new LinkedHashSet<>();
 		for (Rs2TransportEdge transport : transports)
 		{
@@ -593,12 +658,7 @@ public final class Rs2WalkerBankingPlanner {
 			{
 				for (Map.Entry<Integer, Integer> rune : getSpellRuneRequirements(transport).entrySet())
 				{
-					int bankQuantity = safeQuantity(bankQuantityProvider, rune.getKey());
-					if (bankQuantity < rune.getValue())
-					{
-						return Rs2TransportLoadout.unavailable();
-					}
-					withdrawals.merge(rune.getKey(), rune.getValue(), Integer::sum);
+					consumedRunes.merge(rune.getKey(), (long) rune.getValue(), Long::sum);
 				}
 				continue;
 			}
@@ -608,11 +668,11 @@ public final class Rs2WalkerBankingPlanner {
 				&& transport.getItemRequirements().isEmpty())
 			{
 				int currencyItemId = getCurrencyItemId(transport.getCurrencyName());
-				if (currencyItemId > 0)
+				if (currencyItemId <= 0)
 				{
-					withdrawals.merge(
-						currencyItemId, transport.getCurrencyAmount(), Integer::sum);
+					return Rs2TransportLoadout.unavailable();
 				}
+				consumedItems.merge(currencyItemId, (long) transport.getCurrencyAmount(), Long::sum);
 				continue;
 			}
 
@@ -626,8 +686,18 @@ public final class Rs2WalkerBankingPlanner {
 					ItemID.LUNAR_MOONCLAN_LIMINAL_STAFF, 1)));
 			}
 
-			Rs2TransportItemRequirement.ProviderSelection providers =
-				Rs2TransportItemRequirement.selectEquipmentProviders(
+			Rs2TransportItemRequirement.ProviderSelection providers = isSpellTransport(transport)
+				? Rs2TransportItemRequirement.selectEquipmentProviders(
+					requirements,
+					ignored -> 0,
+					itemId -> safeSum(safeQuantity(carriedQuantityProvider, itemId),
+							safeQuantity(bankQuantityProvider, itemId)) > 0,
+					itemId -> safeSum(safeQuantity(carriedQuantityProvider, itemId),
+							safeQuantity(bankQuantityProvider, itemId)) > 0).orElse(null)
+				: null;
+			if (providers == null)
+			{
+				providers = Rs2TransportItemRequirement.selectEquipmentProviders(
 					requirements,
 					itemId -> safeSum(
 						safeQuantity(carriedRequirementQuantityProvider, itemId),
@@ -639,6 +709,7 @@ public final class Rs2WalkerBankingPlanner {
 						safeQuantity(carriedQuantityProvider, itemId),
 						safeQuantity(bankQuantityProvider, itemId)) > 0)
 					.orElse(null);
+			}
 			if (providers == null)
 			{
 				return Rs2TransportLoadout.unavailable();
@@ -655,14 +726,31 @@ public final class Rs2WalkerBankingPlanner {
 
 			for (Rs2TransportItemRequirement requirement : requirements)
 			{
-				if (requirement.isSatisfiedBy(carriedRequirementQuantityProvider)
-					|| requirement.getStaffAlternatives().contains(providers.getStaffItemId())
+				if (requirement.getStaffAlternatives().contains(providers.getStaffItemId())
 					|| requirement.getOffhandAlternatives().contains(providers.getOffhandItemId()))
+				{
+					continue;
+				}
+				if (requirement.isRuneOnly()
+					|| isSpellTransport(transport))
+				{
+					if (!addPreferredConsumedRequirement(
+						requirement.isRuneOnly() ? consumedRunes : consumedItems,
+						requirement.getAlternatives(), bankQuantityProvider,
+						requirement.isRuneOnly() ? carriedRequirementQuantityProvider
+							: carriedQuantityProvider))
+					{
+						return Rs2TransportLoadout.unavailable();
+					}
+					continue;
+				}
+				if (requirement.isSatisfiedBy(carriedRequirementQuantityProvider))
 				{
 					continue;
 				}
 				if (!addPreferredRequirement(
 					withdrawals,
+					consumedItems,
 					requirement.getAlternatives(),
 					transport.getType(),
 					bankQuantityProvider,
@@ -671,6 +759,11 @@ public final class Rs2WalkerBankingPlanner {
 					return Rs2TransportLoadout.unavailable();
 				}
 			}
+		}
+		if (!appendConsumedDeficits(consumedItems, withdrawals, carriedQuantityProvider)
+			|| !appendConsumedDeficits(consumedRunes, withdrawals, carriedRequirementQuantityProvider))
+		{
+			return Rs2TransportLoadout.unavailable();
 		}
 		if (withdrawals.isEmpty() && equipmentItemIds.isEmpty())
 		{
@@ -685,6 +778,155 @@ public final class Rs2WalkerBankingPlanner {
 		}
 		return new Rs2TransportLoadout(
 			withdrawals, new ArrayList<>(equipmentItemIds), true);
+	}
+
+	private static boolean appendConsumedDeficits(Map<Integer, Long> costs,
+		Map<Integer, Integer> withdrawals, IntUnaryOperator carriedQuantityProvider)
+	{
+		for (Map.Entry<Integer, Long> cost : costs.entrySet())
+		{
+			long deficit = Math.max(0L, cost.getValue()
+				- safeQuantity(carriedQuantityProvider, cost.getKey()));
+			long combined = deficit + withdrawals.getOrDefault(cost.getKey(), 0);
+			if (combined > Integer.MAX_VALUE)
+			{
+				return false;
+			}
+			if (deficit > 0)
+			{
+				withdrawals.put(cost.getKey(), (int) combined);
+			}
+		}
+		return true;
+	}
+
+	/** A direct route cannot spend the same carried fare on multiple selected hops. */
+	public static boolean hasCarriedCurrencyForRoute(Rs2RouteResult route)
+	{
+		return route != null && hasCarriedCurrencyForRoute(
+			route.getTransportSteps().stream()
+				.map(step -> step.getTransport().orElse(null))
+				.filter(Objects::nonNull)
+				.collect(Collectors.toList()),
+			Rs2Inventory::itemQuantity);
+	}
+
+	/** Route searches admit individual edges; a completed route must afford every selected hop. */
+	public static boolean hasCarriedConsumablesForRoute(Rs2RouteResult route)
+	{
+		return route != null && hasCarriedConsumablesForRoute(transportEdges(route));
+	}
+
+	public static boolean hasCarriedConsumablesForRoute(List<Rs2TransportEdge> transports)
+	{
+		boolean needsRunes = transports.stream().anyMatch(Rs2WalkerBankingPlanner::isSpellTransport);
+		Map<Integer, Integer> carriedRunes = needsRunes
+			? runeQuantities(RuneFilter.builder().includeBank(false).build()) : Map.of();
+		return hasCarriedConsumablesForRoute(transports, Rs2Inventory::itemQuantity,
+			itemId -> carriedRunes.getOrDefault(itemId, carriedItemQuantity(itemId)));
+	}
+
+	static boolean hasCarriedConsumablesForRoute(List<Rs2TransportEdge> transports,
+		IntUnaryOperator carriedQuantityProvider, IntUnaryOperator carriedRuneQuantityProvider)
+	{
+		if (!hasCarriedCurrencyForRoute(transports, carriedQuantityProvider))
+		{
+			return false;
+		}
+		Map<Integer, Long> runeCosts = spellRuneCosts(transports, carriedRuneQuantityProvider);
+		return runeCosts != null && runeCosts.entrySet().stream().allMatch(cost ->
+			cost.getValue() <= safeQuantity(carriedRuneQuantityProvider, cost.getKey()));
+	}
+
+	private static List<Rs2TransportEdge> transportEdges(Rs2RouteResult route)
+	{
+		return route.getTransportSteps().stream()
+			.map(step -> step.getTransport().orElseThrow(IllegalStateException::new))
+			.collect(Collectors.toList());
+	}
+
+	static boolean hasCarriedCurrencyForRoute(List<Rs2TransportEdge> transports,
+		IntUnaryOperator carriedQuantityProvider)
+	{
+		Map<Integer, Long> costs = currencyCosts(transports);
+		return costs != null && costs.entrySet().stream().allMatch(cost ->
+			cost.getValue() <= safeQuantity(carriedQuantityProvider, cost.getKey()));
+	}
+
+	private static Map<Integer, Long> currencyCosts(List<Rs2TransportEdge> transports)
+	{
+		Map<Integer, Long> costs = new HashMap<>();
+		for (Rs2TransportEdge transport : transports)
+		{
+			if (!isCurrencyBasedTransport(transport.getType())
+				|| transport.getCurrencyAmount() <= 0
+				|| !transport.getItemRequirements().isEmpty())
+			{
+				continue;
+			}
+			int currencyItemId = getCurrencyItemId(transport.getCurrencyName());
+			if (currencyItemId <= 0)
+			{
+				return null;
+			}
+			costs.merge(currencyItemId, (long) transport.getCurrencyAmount(), Long::sum);
+		}
+		return costs;
+	}
+
+	private static Map<Integer, Long> spellRuneCosts(List<Rs2TransportEdge> transports,
+		IntUnaryOperator carriedRuneQuantityProvider)
+	{
+		Map<Integer, Long> costs = new HashMap<>();
+		for (Rs2TransportEdge transport : transports)
+		{
+			if (!isSpellTransport(transport))
+			{
+				continue;
+			}
+			if (transport.getItemRequirements().isEmpty())
+			{
+				getSpellRuneRequirements(transport).forEach((itemId, quantity) ->
+					costs.merge(itemId, (long) quantity, Long::sum));
+				continue;
+			}
+			for (Rs2TransportItemRequirement requirement : transport.getItemRequirements())
+			{
+				if (requirement.isRuneOnly()
+					&& !addPreferredConsumedRequirement(costs, requirement.getAlternatives(),
+						ignored -> 0, carriedRuneQuantityProvider))
+				{
+					return null;
+				}
+			}
+		}
+		return costs;
+	}
+
+	private static boolean addPreferredConsumedRequirement(Map<Integer, Long> costs,
+		Map<Integer, Integer> alternatives, IntUnaryOperator bankQuantityProvider,
+		IntUnaryOperator carriedQuantityProvider)
+	{
+		Integer preferredItemId = null;
+		long preferredDeficit = Long.MAX_VALUE;
+		for (Map.Entry<Integer, Integer> alternative : alternatives.entrySet())
+		{
+			int itemId = alternative.getKey();
+			long total = costs.getOrDefault(itemId, 0L) + alternative.getValue();
+			long deficit = Math.max(0L, total - safeQuantity(carriedQuantityProvider, itemId));
+			if (deficit <= safeQuantity(bankQuantityProvider, itemId)
+				&& deficit < preferredDeficit)
+			{
+				preferredItemId = itemId;
+				preferredDeficit = deficit;
+			}
+		}
+		if (preferredItemId == null)
+		{
+			return false;
+		}
+		costs.merge(preferredItemId, (long) alternatives.get(preferredItemId), Long::sum);
+		return true;
 	}
 
 	private static boolean addProviderPreparation(
@@ -714,6 +956,7 @@ public final class Rs2WalkerBankingPlanner {
 
 	private static boolean addPreferredRequirement(
 		Map<Integer, Integer> requested,
+		Map<Integer, Long> consumedItems,
 		Map<Integer, Integer> alternatives,
 		Rs2TransportType transportType,
 		IntUnaryOperator bankQuantityProvider,
@@ -766,8 +1009,8 @@ public final class Rs2WalkerBankingPlanner {
 				int requiredQuantity = alternatives.get(purchasable.itemId);
 				int itemsNeeded = isCurrencyBasedTransport(transportType)
 					? 1 : requiredQuantity;
-				requested.merge(
-					currencyItemId, purchasable.costAmount * itemsNeeded, Integer::sum);
+				consumedItems.merge(
+					currencyItemId, (long) purchasable.costAmount * itemsNeeded, Long::sum);
 				return true;
 			}
 			return false;
@@ -830,6 +1073,12 @@ public final class Rs2WalkerBankingPlanner {
     }
 
     public static TransportRouteAnalysis compareRoutes(WorldPoint startPoint, WorldPoint target) {
+        return compareRoutes(startPoint, target, null);
+    }
+
+    /** Reuse an inventory-only direct probe when the caller already searched this exact leg. */
+    public static TransportRouteAnalysis compareRoutes(WorldPoint startPoint, WorldPoint target,
+                                                       Rs2RouteResult directProbe) {
         long totalStartTime = System.nanoTime();
         StringBuilder performanceLog = new StringBuilder();
         performanceLog.append("\n\t=== compareRoutes Performance Analysis ===\n");
@@ -848,14 +1097,21 @@ public final class Rs2WalkerBankingPlanner {
         try {
             performanceLog.append("\tStart Point: ").append(startPoint).append(", Target: ").append(target).append("\n");
             long directPathStartTime = System.nanoTime();
-            Rs2RouteResult directRoute = planRoute(
-                    startPoint, target, false, Rs2RouteRequest.Purpose.BANK_ROUTE_DIRECT);
+            Rs2RouteResult directRoute = directProbe != null
+                    && startPoint.equals(directProbe.getStart())
+                    && directProbe.getTargets().size() == 1
+                    && directProbe.getTargets().contains(target)
+                    ? directProbe
+                    : planRoute(startPoint, target, false, Rs2RouteRequest.Purpose.BANK_ROUTE_DIRECT);
             List<WorldPoint> directPath = directRoute.getPath();
             List<Rs2RouteStep> directRouteSteps = directRoute.getSteps();
             long directPathEndTime = System.nanoTime();
             double directPathTimeMs = (directPathEndTime - directPathStartTime) / 1_000_000.0;
 
             int directDistance = comparableRouteDistance(directRoute, target);
+            if (directDistance >= 0 && !hasCarriedConsumablesForRoute(directRoute)) {
+                directDistance = -1;
+            }
             performanceLog.append("\t-Direct path calculation: ").append(String.format("%.2f ms", directPathTimeMs))
                     .append(" (").append(directPath.size()).append(" waypoints, ").append(directDistance).append(" tiles)\n");
 
@@ -870,7 +1126,8 @@ public final class Rs2WalkerBankingPlanner {
                 performanceLog.append("\t-Bank items available: ").append(Rs2Bank.bankItems().size()).append("\n");
 
                 long bankSearchStartTime = System.nanoTime();
-                nearestBank = Rs2Bank.getNearestBank(startPoint);
+                Rs2Bank.NearestBankRoute nearestBankResult = Rs2Bank.getNearestBankRoute(startPoint);
+                nearestBank = nearestBankResult == null ? null : nearestBankResult.getBank();
                 long bankSearchEndTime = System.nanoTime();
                 double bankSearchTimeMs = (bankSearchEndTime - bankSearchStartTime) / 1_000_000.0;
 
@@ -880,9 +1137,14 @@ public final class Rs2WalkerBankingPlanner {
                         performanceLog.append("\t -> Found: ").append(nearestBank).append(" at ").append(bankLocation).append("\n");
 
                         long pathToBankStartTime = System.nanoTime();
-                        Rs2RouteResult bankRoute = planRoute(
-                                startPoint, bankLocation, false,
-                                Rs2RouteRequest.Purpose.BANK_ROUTE_TO_BANK);
+                        Rs2RouteResult bankRoute = nearestBankResult.getRoute();
+                        if (bankRoute == null || bankRoute.getTerminationReason() != Rs2RouteTermination.TARGET_REACHED
+                                || bankRoute.getPath().isEmpty()
+                                || !bankLocation.equals(bankRoute.getPath().get(bankRoute.getPath().size() - 1))
+                                || !bankRoute.isTargetReached(0)) {
+                            bankRoute = planRoute(startPoint, bankLocation, false,
+                                    Rs2RouteRequest.Purpose.BANK_ROUTE_TO_BANK);
+                        }
                         pathToBank = bankRoute.getPath();
                         routeToBankSteps = bankRoute.getSteps();
                         long pathToBankEndTime = System.nanoTime();
@@ -1095,7 +1357,7 @@ public final class Rs2WalkerBankingPlanner {
 			{
 				return runeRequirements;
 			}
-			Rs2Magic.getRequiredRunes(rs2Spell, 1, true).forEach((rune, quantity) ->
+			Rs2Magic.getRequiredRunes(rs2Spell, 1).forEach((rune, quantity) ->
 				runeRequirements.put(rune.getItemId(), quantity));
 		}
 		catch (Exception exception)

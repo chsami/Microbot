@@ -43,14 +43,7 @@ public class PohTeleports {
      * @return
      */
     public static boolean isInHouse() {
-        if (!Rs2Player.IsInInstance()) return false;
-        // Use the tile-object cache rather than Rs2GameObject.getGameObject; the latter
-        // routes through Rs2Player.getWorldLocation() as a scene anchor which returns the
-        // overworld-template tile inside a POH instance and breaks the scene lookup.
-        return Microbot.getRs2TileObjectCache()
-                .query()
-                .withId(ObjectID.POH_EXIT_PORTAL)
-                .nearest() != null;
+        return PohPresence.isInHouse();
     }
 
     /**

@@ -102,11 +102,14 @@ public final class Rs2DoorGeometry {
         if (playerLoc == null || rangeTiles <= 0) {
             return false;
         }
-        int best = Integer.MAX_VALUE;
         WorldPoint objectLoc = object != null ? object.getWorldLocation() : null;
-        if (objectLoc != null && objectLoc.getPlane() == playerLoc.getPlane()) {
-            best = Math.min(best, objectLoc.distanceTo2D(playerLoc));
+        if (objectLoc != null) {
+            // A long smoothed route segment may start beside the player while the actual door
+            // is much farther away. Its endpoint must not make that distant object eligible.
+            return objectLoc.getPlane() == playerLoc.getPlane()
+                    && objectLoc.distanceTo2D(playerLoc) <= rangeTiles;
         }
+        int best = Integer.MAX_VALUE;
         if (probe != null && probe.getPlane() == playerLoc.getPlane()) {
             best = Math.min(best, probe.distanceTo2D(playerLoc));
         }

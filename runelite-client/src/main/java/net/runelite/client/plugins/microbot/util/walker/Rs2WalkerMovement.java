@@ -943,6 +943,7 @@ final class Rs2WalkerMovement {
                                                   List<WorldPoint> rawPath,
                                                   List<WorldPoint> path,
                                                   boolean inInstance) {
+        long shortWalkStartedAtMs = System.currentTimeMillis();
         WorldPoint playerLoc = Rs2Player.getWorldLocation();
         if (target == null || playerLoc == null || path == null || path.isEmpty()) {
             return WalkerState.MOVING;
@@ -1011,11 +1012,25 @@ final class Rs2WalkerMovement {
             return WalkerState.MOVING;
         }
 
+        boolean firstClick = routeState.walkSessionStartedAtMs > 0
+                && !routeState.firstMovementClickMarked;
+        markFirstMovementClick("first_direct_short_click", target, playerLoc,
+                "routeBacked=" + routeBacked
+                        + " preClickMs=" + (System.currentTimeMillis() - shortWalkStartedAtMs));
+
         final WorldPoint before = playerLoc;
+        long movementWaitStartedAtMs = System.currentTimeMillis();
         boolean moved = sleepUntil(() -> {
             WorldPoint now = Rs2Player.getWorldLocation();
             return now != null && (now.distanceTo(target) <= finishTh || !now.equals(before) || Rs2Player.isMoving());
         }, 800);
+        if (firstClick) {
+            WebWalkLog.tmark("direct_short_movement_wait",
+                    System.currentTimeMillis() - routeState.walkSessionStartedAtMs,
+                    target, Rs2Player.getWorldLocation(),
+                    "waitMs=" + (System.currentTimeMillis() - movementWaitStartedAtMs)
+                            + " moved=" + moved);
+        }
 
         if (!moved) {
             WorldPoint retryPlayerLoc = Rs2Player.getWorldLocation();
@@ -1029,10 +1044,18 @@ final class Rs2WalkerMovement {
             if (!clicked) {
                 return WalkerState.MOVING;
             }
-            sleepUntil(() -> {
+            long retryWaitStartedAtMs = System.currentTimeMillis();
+            boolean retryMoved = sleepUntil(() -> {
                 WorldPoint now = Rs2Player.getWorldLocation();
                 return now != null && (now.distanceTo(target) <= finishTh || !now.equals(before) || Rs2Player.isMoving());
             }, 800);
+            if (firstClick) {
+                WebWalkLog.tmark("direct_short_retry_wait",
+                        System.currentTimeMillis() - routeState.walkSessionStartedAtMs,
+                        target, Rs2Player.getWorldLocation(),
+                        "waitMs=" + (System.currentTimeMillis() - retryWaitStartedAtMs)
+                                + " moved=" + retryMoved);
+            }
         }
 
         WorldPoint afterClick = Rs2Player.getWorldLocation();
@@ -1041,10 +1064,18 @@ final class Rs2WalkerMovement {
             return WalkerState.ARRIVED;
         }
 
-        sleepUntil(() -> {
+        long arrivalWaitStartedAtMs = System.currentTimeMillis();
+        boolean arrivedOrStopped = sleepUntil(() -> {
             WorldPoint now = Rs2Player.getWorldLocation();
             return now != null && (now.distanceTo(target) <= finishTh || !Rs2Player.isMoving());
         }, 4000);
+        if (firstClick) {
+            WebWalkLog.tmark("direct_short_arrival_wait",
+                    System.currentTimeMillis() - routeState.walkSessionStartedAtMs,
+                    target, Rs2Player.getWorldLocation(),
+                    "waitMs=" + (System.currentTimeMillis() - arrivalWaitStartedAtMs)
+                            + " arrivedOrStopped=" + arrivedOrStopped);
+        }
 
         WorldPoint afterWalk = Rs2Player.getWorldLocation();
         if (afterWalk != null && afterWalk.distanceTo(target) <= finishTh) {

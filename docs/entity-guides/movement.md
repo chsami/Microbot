@@ -366,3 +366,25 @@ The recently-opened suppression window belongs to the route that crossed the doo
 **Where this applies:** `Rs2Walker.resetWalkSessionState` and `DoorAttemptLedger`.
 
 **Defensive check:** Exit the guild and immediately route back through both doors. The entrance must be selected before the inner door, with the anti-hammer cooldown still intact.
+
+## 19. Select the first reachable route interaction before an approach click
+
+A minimap target legitimately stops on the near side of a closed door or object transport. Before yielding to an active minimap interim or choosing another approach tile, inspect raw route edges in order and dispatch only the first unresolved interaction whose near-side approach is reachable. A transport origin may itself be blocked by the object, so a reachable adjacent predecessor is sufficient for that selected edge. Check selected transports before same-plane door geometry so ladders and trapdoors that change plane are not skipped. Keep the existing transport executor for its action, variant, and landing rules.
+
+**Why this matters:** Smoothed segments can put an empty approach segment before a visible door or staircase. Treating the first processed segment as the first obstacle delays interaction until the player stops beside it. Continuing a scan after the first door is throttled or fails can click a second door through the first one. A nearby route endpoint also does not make a distant door object reachable.
+
+**Pattern to follow:** Select one raw edge using reachable route tiles and the exact active transport selection; if its action is deferred or fails, keep that edge pending while the walker approaches or retries it. Use the object location for interaction range, not a smoothed segment endpoint.
+
+**Where this applies:** `Rs2Walker` pre-click and active-interim handling, `Rs2WalkerDoors` segment and pending-door scans, and `Rs2DoorGeometry` range checks.
+
+**Defensive check:** With two visible doors, a closed first door must remain selected after a failed click; opening it allows the second. An earlier wall or non-object transport must stop the ranged scan. A cross-plane object transport can be selected from a reachable adjacent approach tile even when its origin is absent from collision reachability.
+
+## 20. Skip backtracked transport edges below the player's raw anchor
+
+Door and scene-object scans retain a lookback window for nearby ordinary doors. Skip transport edges below the player's raw anchor rather than stopping the scan or dispatching them again. Only transports at or ahead of the anchor block later interactions. The recent handled-transport window expires after eight seconds and does not record crossings made by plain walking.
+
+**Why this matters:** A player paused just beyond a same-plane gate could never handle a door ahead after recent-transport suppression expired.
+
+**Where this applies:** `Rs2Walker` raw-route scene and pending-door scans, `handleFirstRouteInteractionAtRange` transport-map construction, and `Rs2WalkerDoors.handlePendingDoorNearRawPath`.
+
+**Defensive check:** With a transport behind the raw anchor and a door ahead, select the door outside the suppression window and after plain walking. Transports at or ahead of the anchor must still block later doors. Test the production transport map used by both the pending-interaction predicate and the blocked-transport predicate, rather than filtering only the test predicates.

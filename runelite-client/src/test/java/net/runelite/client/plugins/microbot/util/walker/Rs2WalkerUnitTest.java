@@ -1219,6 +1219,35 @@ public class Rs2WalkerUnitTest {
     }
 
     @Test
+    public void hintRouteProgressIndex_doesNotCreditMovementBeforePlayerMoves() {
+        WorldPoint target = new WorldPoint(3204, 3200, 0);
+        List<WorldPoint> path = Arrays.asList(
+                new WorldPoint(3200, 3200, 0),
+                new WorldPoint(3201, 3200, 0),
+                new WorldPoint(3202, 3200, 0),
+                new WorldPoint(3203, 3200, 0),
+                target);
+        Rs2Walker.resetWalkSessionState();
+        Rs2Walker.routeState.routeProgressTarget = target;
+        Rs2Walker.routeState.routeProgressPathStart = path.get(0);
+        Rs2Walker.routeState.routeProgressPathEnd = target;
+        Rs2Walker.routeState.routeProgressPathSize = path.size();
+        Rs2Walker.routeState.routeProgressIdx = 1;
+        Rs2Walker.routeState.routeProgressAdvancedAtMs = 10_000L;
+        Rs2Walker.routeState.lastMovedTimeMs = 11_000L;
+        try {
+            // A click ahead anchors route selection, but the player has not changed tiles yet.
+            Rs2Walker.hintRouteProgressIndex(path, 4, target);
+
+            assertEquals(4, Rs2Walker.routeState.routeProgressIdx);
+            assertEquals(10_000L, Rs2Walker.routeState.routeProgressAdvancedAtMs);
+            assertEquals(11_000L, Rs2Walker.routeState.lastMovedTimeMs);
+        } finally {
+            Rs2Walker.resetWalkSessionState();
+        }
+    }
+
+    @Test
     public void findForwardRecoveryIndex_prefersLaterReachableBranch() {
         WorldPoint player = new WorldPoint(1000, 1000, 0);
         List<WorldPoint> path = Arrays.asList(

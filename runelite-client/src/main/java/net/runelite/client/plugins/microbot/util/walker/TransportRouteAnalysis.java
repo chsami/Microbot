@@ -197,6 +197,19 @@ public class TransportRouteAnalysis {
         return Math.abs(directDist - bankingDist);
     }
 
+    /** Whether the completed bank route justifies a bank trip under the configured tile threshold. */
+    public boolean isBankRouteWorthTrip(int minSavings, boolean preferBankOnTie) {
+        if (bankingRouteDistance < 0) {
+            return false;
+        }
+        if (directDistance < 0) {
+            return true;
+        }
+        int savings = directDistance - bankingRouteDistance;
+        return savings > 0 && savings >= minSavings
+                || savings == 0 && preferBankOnTie && minSavings <= 0;
+    }
+
     public boolean isTie() {
         int directDist = getDirectDistance();
         int bankingDist = getBankingRouteDistance();

@@ -96,6 +96,20 @@ public class Rs2DoorGeometryTest {
     }
 
     @Test
+    public void locatedDoorMustItselfBeWithinInteractionRange() {
+        WorldPoint player = wp(3200, 3200);
+        TileObject farDoor = mock(TileObject.class);
+        when(farDoor.getWorldLocation()).thenReturn(wp(3210, 3200));
+        assertFalse(Rs2DoorGeometry.isDoorInteractionWithinRange(farDoor, wp(3201, 3200),
+                player, wp(3210, 3200), player, 2));
+
+        TileObject nearDoor = mock(TileObject.class);
+        when(nearDoor.getWorldLocation()).thenReturn(wp(3202, 3200));
+        assertTrue(Rs2DoorGeometry.isDoorInteractionWithinRange(nearDoor, wp(3210, 3200),
+                wp(3210, 3201), wp(3211, 3200), player, 2));
+    }
+
+    @Test
     public void interactionOnDifferentPlaneIsOutOfRange() {
         // Probe is adjacent in 2D but on another plane, so it must not count as reachable.
         assertFalse(Rs2DoorGeometry.isDoorInteractionWithinRange(null, wp(3201, 3200, 1), null, null,

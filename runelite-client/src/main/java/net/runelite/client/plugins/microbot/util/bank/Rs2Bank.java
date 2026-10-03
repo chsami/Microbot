@@ -2346,8 +2346,38 @@ public class Rs2Bank {
      * @return the nearest {@link BankLocation}, or {@code null} if no accessible bank could be reached
      */
     public static BankLocation getNearestBank(WorldPoint worldPoint, int maxObjectSearchRadius) {
-        AbstractMap.SimpleEntry<List<WorldPoint>, BankLocation> result = getPathAndBankToNearestBank(worldPoint, maxObjectSearchRadius);
-        return result != null ? result.getValue() : null;
+        NearestBankRoute result = getPathAndBankToNearestBank(worldPoint, maxObjectSearchRadius);
+        return result != null ? result.getBank() : null;
+    }
+
+    /** The route is present when bank selection itself required a completed path search. */
+    public static final class NearestBankRoute {
+        private final List<WorldPoint> path;
+        private final BankLocation bank;
+        private final Rs2RouteResult route;
+
+        private NearestBankRoute(List<WorldPoint> path, BankLocation bank, Rs2RouteResult route) {
+            this.path = List.copyOf(path);
+            this.bank = bank;
+            this.route = route;
+        }
+
+        public List<WorldPoint> getPath() {
+            return path;
+        }
+
+        public BankLocation getBank() {
+            return bank;
+        }
+
+        public Rs2RouteResult getRoute() {
+            return route;
+        }
+    }
+
+    /** Select a bank using only currently carried transport items and retain the chosen route. */
+    public static NearestBankRoute getNearestBankRoute(WorldPoint worldPoint) {
+        return getPathAndBankToNearestBank(worldPoint, 20, false);
     }
 
     /**
@@ -2355,9 +2385,14 @@ public class Rs2Bank {
      *
      * @param worldPoint            the starting location for pathfinding
      * @param maxObjectSearchRadius the maximum radius (in tiles) to scan for bank booth objects
-     * @return A SimpleEntry containing the path (key) and bank location (value), or null if no accessible bank could be reached
+     * @return the path, bank and selected route, or null if no bank could be reached
      */
-    private static AbstractMap.SimpleEntry<List<WorldPoint>, BankLocation> getPathAndBankToNearestBank(WorldPoint worldPoint, int maxObjectSearchRadius) {
+    private static NearestBankRoute getPathAndBankToNearestBank(WorldPoint worldPoint, int maxObjectSearchRadius) {
+        return getPathAndBankToNearestBank(worldPoint, maxObjectSearchRadius, null);
+    }
+
+    private static NearestBankRoute getPathAndBankToNearestBank(
+            WorldPoint worldPoint, int maxObjectSearchRadius, Boolean useBankItems) {
         Microbot.log("Finding nearest bank...");
 
         Set<BankLocation> allBanks = Arrays.stream(BankLocation.values())
@@ -2388,7 +2423,7 @@ public class Rs2Bank {
                 Microbot.log("Found nearest bank (object): " + byObject.get());
                 BankLocation returnBankLocation = byObject.get();
                 List<WorldPoint> path = new ArrayList<>(Collections.singletonList(byObject.get().getWorldPoint()));
-                return new AbstractMap.SimpleEntry<>(path, returnBankLocation);
+                return new NearestBankRoute(path, returnBankLocation, null);
             }
         }
 
@@ -2409,7 +2444,11 @@ public class Rs2Bank {
                 .map(BankLocation::getWorldPoint)
                 .collect(Collectors.toSet());
 
-        Rs2RouteResult route = Rs2PathApi.plan(Rs2RouteRequest.toAny(worldPoint, targets));
+        Rs2RouteRequest request = Rs2RouteRequest.toAny(worldPoint, targets);
+        if (useBankItems != null) {
+            request = request.withBankItems(useBankItems);
+        }
+        Rs2RouteResult route = Rs2PathApi.plan(request);
         List<WorldPoint> path = route.getPath();
 
         if (path.isEmpty()) {
@@ -2439,7 +2478,7 @@ public class Rs2Bank {
             return null;
         }
         Microbot.log("Found nearest bank (shortest path): " + byPath.get());
-        return new AbstractMap.SimpleEntry<>(path, byPath.get());
+        return new NearestBankRoute(path, byPath.get(), route);
     }
 
     /**
@@ -2480,8 +2519,8 @@ public class Rs2Bank {
      * @return the complete path to the nearest bank as List<WorldPoint>, or empty list if no accessible bank could be reached
      */
     public static List<WorldPoint> getPathToNearestBank(WorldPoint worldPoint, int maxObjectSearchRadius) {
-        AbstractMap.SimpleEntry<List<WorldPoint>, BankLocation> result = getPathAndBankToNearestBank(worldPoint, maxObjectSearchRadius);
-        return result != null ? result.getKey() : new ArrayList<>();
+        NearestBankRoute result = getPathAndBankToNearestBank(worldPoint, maxObjectSearchRadius);
+        return result != null ? new ArrayList<>(result.getPath()) : new ArrayList<>();
     }
 
     /**

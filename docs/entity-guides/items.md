@@ -206,3 +206,21 @@ An explicit `Take` must remain `GROUND_ITEM_THIRD_OPTION`, even when an inventor
 **Why this matters:** A live probe selected an inventory item before calling `pickup()`. The old dispatcher returned true but used the selected item on the ground stack instead of collecting it; inventory never recovered the dropped item.
 
 **Defensive check:** Drop one item, select another inventory item with `Use`, call `pickup()`, and verify the inventory count is restored.
+
+## 13. Verify stackable withdrawals by quantity, not inventory slot count
+
+`Rs2Inventory.count(id)` counts matching inventory slots. A stack of three air runes counts as one slot; use `Rs2Inventory.itemQuantity(id)` when comparing the amount before and after `Rs2Bank.withdrawX(id, amount)`.
+
+**Why this matters:** The walker waited for three new matching slots after withdrawing three air runes for Falador Teleport. The runes occupy one stack, so the wait timed out and the walker incorrectly abandoned the banking route even if the withdrawal succeeded.
+
+**Pattern to follow:**
+
+```java
+int before = Rs2Inventory.itemQuantity(itemId);
+if (!Rs2Bank.withdrawX(itemId, amount)
+        || !sleepUntil(() -> Rs2Inventory.itemQuantity(itemId) >= before + amount, 3000)) {
+    return false;
+}
+```
+
+**Where this applies:** `Rs2Walker.walkWithBankingState` and any bank or inventory workflow that verifies a quantity of stackable items.

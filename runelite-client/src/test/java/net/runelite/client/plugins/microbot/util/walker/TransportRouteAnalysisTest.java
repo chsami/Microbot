@@ -81,6 +81,18 @@ public class TransportRouteAnalysisTest
 		assertTrue(analysis.getDirectTransportEdges().isEmpty());
 	}
 
+	@Test
+	public void unavailableDirectRouteDoesNotRequireAnArtificialTileSaving()
+	{
+		TransportRouteAnalysis reachableOnlyViaBank = new TransportRouteAnalysis(
+			List.of(), null, null, List.of(), List.of(), "test", -1, 120);
+		assertTrue(reachableOnlyViaBank.isBankRouteWorthTrip(80, false));
+		assertFalse(new TransportRouteAnalysis(List.of(), null, null, List.of(), List.of(),
+			"test", 120, -1).isBankRouteWorthTrip(0, true));
+		assertFalse(new TransportRouteAnalysis(List.of(), null, null, List.of(), List.of(),
+			"test", 120, 100).isBankRouteWorthTrip(80, false));
+	}
+
 	@Test(expected = IllegalArgumentException.class)
 	public void exactStepsMustDescribeEveryPathEdge()
 	{
