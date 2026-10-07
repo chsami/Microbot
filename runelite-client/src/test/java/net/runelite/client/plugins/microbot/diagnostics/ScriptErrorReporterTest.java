@@ -194,6 +194,15 @@ public class ScriptErrorReporterTest
 	}
 
 	@Test
+	public void requeuesBatchWhenSubmitThrows()
+	{
+		org.mockito.Mockito.doThrow(new IllegalArgumentException("bad url")).when(api).submitErrors(any(), any());
+		log(Level.ERROR, "loop failed", boom());
+		reporter.flush();
+		assertEquals(1, reporter.pendingCount());
+	}
+
+	@Test
 	public void groupsMessagesThatOnlyDifferInNumbers()
 	{
 		for (int i = 0; i < 50; i++)
