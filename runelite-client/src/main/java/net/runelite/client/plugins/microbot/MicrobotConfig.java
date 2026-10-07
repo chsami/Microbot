@@ -222,7 +222,7 @@ public interface MicrobotConfig extends Config
 	@ConfigItem(
 		keyName = keyDisableTelemetry,
 		name = "Disable telemetry",
-		description = "Stop outbound calls to microbot.cloud (update check, random-fact splash, session ping). " +
+		description = "Stop outbound calls to microbot.cloud (update check, random-fact splash, session ping, script error reports). " +
 				"Equivalent to launching with -Dmicrobot.disableTelemetry=true.",
 		position = 6,
 		section = generalSection
