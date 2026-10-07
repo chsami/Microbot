@@ -24,6 +24,7 @@
  */
 package net.runelite.client;
 
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
@@ -54,7 +55,8 @@ public class ClientSessionManager
 	private ScheduledFuture<?> scheduledFutureMicroBot;
 
 	private UUID sessionId = UUID.randomUUID();
-	private UUID microbotSessionId;
+	@Getter
+	private volatile UUID microbotSessionId;
 	private MicrobotApi microbotApi;
 
 	@Inject
@@ -172,7 +174,7 @@ public class ClientSessionManager
 		catch (IOException ex)
 		{
 			log.warn("Resetting session", ex);
-			sessionId = null;
+			microbotSessionId = null;
 		}
 
 	}
