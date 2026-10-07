@@ -21,7 +21,6 @@ import javax.inject.Inject;
 import javax.inject.Named;
 import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.Player;
 import net.runelite.client.ClientSessionManager;
 import net.runelite.client.RuneLiteProperties;
 import net.runelite.client.plugins.Plugin;
@@ -46,6 +45,7 @@ public class ScriptErrorReporter extends UnsynchronizedAppenderBase<ILoggingEven
 	private final ClientSessionManager clientSessionManager;
 	private final Map<String, JsonObject> pending = new LinkedHashMap<>();
 	private ScheduledFuture<?> flushTask;
+	private volatile String playerName;
 
 	@Inject
 	ScriptErrorReporter(MicrobotApi microbotApi, MicrobotPluginManager microbotPluginManager, ScheduledExecutorService executor,
@@ -91,7 +91,7 @@ public class ScriptErrorReporter extends UnsynchronizedAppenderBase<ILoggingEven
 		IThrowableProxy root = rootCause(event.getThrowableProxy());
 		List<String> frames = frames(root);
 		String fingerprint = root == null
-			? event.getLoggerName() + "|" + scrub(event.getMessage())
+			? event.getLoggerName() + "|" + scrub(event.getMessage()).replaceAll("\\d+", "#")
 			: root.getClassName() + "|" + frames.stream()
 				.filter(frame -> !frame.startsWith("java.") && !frame.startsWith("javax.") && !frame.startsWith("jdk.") && !frame.startsWith("sun."))
 				.limit(FINGERPRINT_FRAMES)
@@ -153,7 +153,36 @@ public class ScriptErrorReporter extends UnsynchronizedAppenderBase<ILoggingEven
 		payload.addProperty("osName", System.getProperty("os.name"));
 		payload.addProperty("osArch", System.getProperty("os.arch"));
 		payload.add("errors", errors);
-		microbotApi.submitErrors(payload);
+		microbotApi.submitErrors(payload, () -> requeue(errors));
+	}
+
+	public void rememberPlayerName(String name)
+	{
+		if (name != null && !name.isEmpty())
+		{
+			playerName = name;
+		}
+	}
+
+	private void requeue(JsonArray errors)
+	{
+		synchronized (pending)
+		{
+			for (JsonElement element : errors)
+			{
+				JsonObject error = element.getAsJsonObject();
+				String fingerprint = error.get("fingerprint").getAsString();
+				JsonObject existing = pending.get(fingerprint);
+				if (existing != null)
+				{
+					existing.addProperty("count", existing.get("count").getAsInt() + error.get("count").getAsInt());
+				}
+				else if (pending.size() < MAX_FINGERPRINTS)
+				{
+					pending.put(fingerprint, error);
+				}
+			}
+		}
 	}
 
 	int pendingCount()
@@ -164,7 +193,7 @@ public class ScriptErrorReporter extends UnsynchronizedAppenderBase<ILoggingEven
 		}
 	}
 
-	private static JsonObject describe(ILoggingEvent event, IThrowableProxy root, List<String> frames, String fingerprint)
+	private JsonObject describe(ILoggingEvent event, IThrowableProxy root, List<String> frames, String fingerprint)
 	{
 		JsonObject error = new JsonObject();
 		error.addProperty("fingerprint", fingerprint);
@@ -237,26 +266,13 @@ public class ScriptErrorReporter extends UnsynchronizedAppenderBase<ILoggingEven
 		return frames;
 	}
 
-	private static String scrub(String raw)
+	private String scrub(String raw)
 	{
-		String name = localPlayerName();
+		String name = playerName;
 		if (raw != null && name != null && !name.isEmpty())
 		{
 			raw = raw.replace(name, "[player]").replace(name.replace('\u00A0', ' '), "[player]");
 		}
 		return DiagnosticReport.clean(raw);
-	}
-
-	private static String localPlayerName()
-	{
-		try
-		{
-			Player player = Microbot.getClient().getLocalPlayer();
-			return player == null ? null : player.getName();
-		}
-		catch (RuntimeException e)
-		{
-			return null;
-		}
 	}
 }

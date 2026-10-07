@@ -174,7 +174,7 @@ public class ClientSessionManager
 		catch (IOException ex)
 		{
 			log.warn("Resetting session", ex);
-			sessionId = null;
+			microbotSessionId = null;
 		}
 
 	}

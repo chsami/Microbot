@@ -107,7 +107,7 @@ public class MicrobotApi {
         }
     }
 
-    public void submitErrors(JsonObject payload)
+    public void submitErrors(JsonObject payload, Runnable onRejected)
     {
         Request request = new Request.Builder()
                 .url(microbotApiUrl + "/plugintelemetry/errors")
@@ -121,11 +121,17 @@ public class MicrobotApi {
             public void onFailure(Call call, IOException e)
             {
                 log.debug("Error telemetry upload failed", e);
+                onRejected.run();
             }
 
             @Override
             public void onResponse(Call call, Response response)
             {
+                if (!response.isSuccessful())
+                {
+                    log.debug("Error telemetry upload rejected: HTTP {}", response.code());
+                    onRejected.run();
+                }
                 response.close();
             }
         });

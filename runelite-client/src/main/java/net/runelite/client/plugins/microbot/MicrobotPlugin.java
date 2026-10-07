@@ -644,6 +644,12 @@ public class MicrobotPlugin extends Plugin
 
 		// Start Leagues teleport calibration ASAP after login (non-blocking; prompts for consent once).
 		Rs2LeaguesTransport.tickLeaguesCalibration();
+
+		Player localPlayer = Microbot.getClient().getLocalPlayer();
+		if (localPlayer != null)
+		{
+			scriptErrorReporter.rememberPlayerName(localPlayer.getName());
+		}
 	}
 
 	@Subscribe(priority = 100)

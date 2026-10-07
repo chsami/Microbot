@@ -86,7 +86,7 @@ public class ScriptErrorReporterTest
 
 		reporter.flush();
 		ArgumentCaptor<JsonObject> captor = ArgumentCaptor.forClass(JsonObject.class);
-		verify(api).submitErrors(captor.capture());
+		verify(api).submitErrors(captor.capture(), any());
 		JsonObject first = captor.getValue().getAsJsonArray("errors").get(0).getAsJsonObject();
 		assertEquals(3, first.get("count").getAsInt());
 		assertEquals("java.lang.IllegalStateException", first.get("exception").getAsString());
@@ -102,7 +102,7 @@ public class ScriptErrorReporterTest
 		log(Level.ERROR, "Failed to load /home/alice/.runelite/x.json for alice@example.com", null);
 		reporter.flush();
 		ArgumentCaptor<JsonObject> captor = ArgumentCaptor.forClass(JsonObject.class);
-		verify(api).submitErrors(captor.capture());
+		verify(api).submitErrors(captor.capture(), any());
 		String payload = captor.getValue().toString();
 		assertFalse(payload, payload.contains("alice"));
 	}
@@ -149,15 +149,58 @@ public class ScriptErrorReporterTest
 		when(sessions.getMicrobotSessionId()).thenReturn(null);
 		log(Level.ERROR, "loop failed", boom());
 		reporter.flush();
-		verify(api, never()).submitErrors(any());
+		verify(api, never()).submitErrors(any(), any());
 		assertEquals(1, reporter.pendingCount());
 
 		when(sessions.getMicrobotSessionId()).thenReturn(UUID.fromString("00000000-0000-0000-0000-000000000002"));
 		reporter.flush();
 		ArgumentCaptor<JsonObject> captor = ArgumentCaptor.forClass(JsonObject.class);
-		verify(api).submitErrors(captor.capture());
+		verify(api).submitErrors(captor.capture(), any());
 		assertEquals("00000000-0000-0000-0000-000000000002", captor.getValue().get("sessionId").getAsString());
 		assertEquals(0, reporter.pendingCount());
+	}
+
+	@Test
+	public void scrubsRememberedPlayerNameAfterLogout()
+	{
+		reporter.rememberPlayerName("Zezima\u00A0Two");
+		reporter.rememberPlayerName(null);
+		log(Level.ERROR, "Zezima Two could not bank", new IllegalStateException("Zezima\u00A0Two is dead"));
+		reporter.flush();
+		ArgumentCaptor<JsonObject> captor = ArgumentCaptor.forClass(JsonObject.class);
+		verify(api).submitErrors(captor.capture(), any());
+		String payload = captor.getValue().toString();
+		assertFalse(payload, payload.contains("Zezima"));
+	}
+
+	@Test
+	public void requeuesRejectedBatch()
+	{
+		RuntimeException ex = boom();
+		log(Level.ERROR, "loop failed", ex);
+		reporter.flush();
+		ArgumentCaptor<Runnable> onRejected = ArgumentCaptor.forClass(Runnable.class);
+		verify(api).submitErrors(any(), onRejected.capture());
+		assertEquals(0, reporter.pendingCount());
+
+		log(Level.ERROR, "loop failed", ex);
+		onRejected.getValue().run();
+		assertEquals(1, reporter.pendingCount());
+
+		reporter.flush();
+		ArgumentCaptor<JsonObject> captor = ArgumentCaptor.forClass(JsonObject.class);
+		verify(api, org.mockito.Mockito.times(2)).submitErrors(captor.capture(), any());
+		assertEquals(2, captor.getValue().getAsJsonArray("errors").get(0).getAsJsonObject().get("count").getAsInt());
+	}
+
+	@Test
+	public void groupsMessagesThatOnlyDifferInNumbers()
+	{
+		for (int i = 0; i < 50; i++)
+		{
+			log(Level.ERROR, "failed attempt " + i, null);
+		}
+		assertEquals(1, reporter.pendingCount());
 	}
 
 	@Test
@@ -165,7 +208,7 @@ public class ScriptErrorReporterTest
 	{
 		for (int i = 0; i < ScriptErrorReporter.MAX_FINGERPRINTS + 10; i++)
 		{
-			log(Level.ERROR, "failed " + i, null);
+			log(Level.ERROR, "failed " + (char) ('a' + i % 26) + (char) ('a' + i / 26), null);
 		}
 		assertEquals(ScriptErrorReporter.MAX_FINGERPRINTS, reporter.pendingCount());
 	}
@@ -177,7 +220,7 @@ public class ScriptErrorReporterTest
 		log(Level.ERROR, "loop failed", boom());
 		reporter.flush();
 		assertEquals(0, reporter.pendingCount());
-		verify(api, never()).submitErrors(any());
+		verify(api, never()).submitErrors(any(), any());
 	}
 
 	@Test
@@ -187,6 +230,6 @@ public class ScriptErrorReporterTest
 		log(Level.ERROR, "loop failed", boom());
 		reporter.flush();
 		assertEquals(0, reporter.pendingCount());
-		verify(api, never()).submitErrors(any());
+		verify(api, never()).submitErrors(any(), any());
 	}
 }
