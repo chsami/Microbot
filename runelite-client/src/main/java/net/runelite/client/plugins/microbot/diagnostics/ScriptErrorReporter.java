@@ -22,6 +22,7 @@ import javax.inject.Named;
 import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Player;
+import net.runelite.client.ClientSessionManager;
 import net.runelite.client.RuneLiteProperties;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
@@ -42,18 +43,19 @@ public class ScriptErrorReporter extends UnsynchronizedAppenderBase<ILoggingEven
 	private final MicrobotPluginManager microbotPluginManager;
 	private final ScheduledExecutorService executor;
 	private final boolean disableTelemetry;
-	private final String sessionId = UUID.randomUUID().toString();
+	private final ClientSessionManager clientSessionManager;
 	private final Map<String, JsonObject> pending = new LinkedHashMap<>();
 	private ScheduledFuture<?> flushTask;
 
 	@Inject
 	ScriptErrorReporter(MicrobotApi microbotApi, MicrobotPluginManager microbotPluginManager, ScheduledExecutorService executor,
-		@Named("disableTelemetry") boolean disableTelemetry)
+		ClientSessionManager clientSessionManager, @Named("disableTelemetry") boolean disableTelemetry)
 	{
 		this.microbotApi = microbotApi;
 		this.microbotPluginManager = microbotPluginManager;
 		this.executor = executor;
 		this.disableTelemetry = disableTelemetry;
+		this.clientSessionManager = clientSessionManager;
 		setName("SCRIPT_ERROR_REPORTER");
 	}
 
@@ -125,6 +127,11 @@ public class ScriptErrorReporter extends UnsynchronizedAppenderBase<ILoggingEven
 
 	private void send()
 	{
+		UUID sessionId = clientSessionManager.getMicrobotSessionId();
+		if (sessionId == null)
+		{
+			return;
+		}
 		JsonArray errors = new JsonArray();
 		synchronized (pending)
 		{
@@ -138,7 +145,7 @@ public class ScriptErrorReporter extends UnsynchronizedAppenderBase<ILoggingEven
 		errors.forEach(error -> attribute(error.getAsJsonObject()));
 
 		JsonObject payload = new JsonObject();
-		payload.addProperty("sessionId", sessionId);
+		payload.addProperty("sessionId", sessionId.toString());
 		payload.addProperty("microbotVersion", RuneLiteProperties.getMicrobotVersion());
 		payload.addProperty("microbotCommit", RuneLiteProperties.getMicrobotCommit());
 		payload.addProperty("buildChannel", RuneLiteProperties.getMicrobotBuildChannel());

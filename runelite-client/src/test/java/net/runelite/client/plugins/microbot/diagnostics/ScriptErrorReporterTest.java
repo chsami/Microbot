@@ -6,7 +6,9 @@ import ch.qos.logback.classic.spi.LoggingEvent;
 import com.google.gson.JsonObject;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.ScheduledExecutorService;
+import net.runelite.client.ClientSessionManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.microbot.MicrobotApi;
@@ -32,12 +34,15 @@ public class ScriptErrorReporterTest
 
 	private final LoggerContext context = new LoggerContext();
 	private MicrobotApi api;
+	private ClientSessionManager sessions;
 	private ScriptErrorReporter reporter;
 
 	@Before
 	public void setUp()
 	{
 		api = mock(MicrobotApi.class);
+		sessions = mock(ClientSessionManager.class);
+		when(sessions.getMicrobotSessionId()).thenReturn(UUID.fromString("00000000-0000-0000-0000-000000000001"));
 		MicrobotPluginManager pluginManager = mock(MicrobotPluginManager.class);
 		when(pluginManager.getInstalledPlugins()).thenReturn(List.of(new FakePlugin()));
 		when(pluginManager.getInstalledPluginVersion("FakePlugin")).thenReturn(Optional.of("1.2.3"));
@@ -46,7 +51,7 @@ public class ScriptErrorReporterTest
 
 	private ScriptErrorReporter reporter(MicrobotPluginManager pluginManager, boolean disableTelemetry)
 	{
-		ScriptErrorReporter reporter = new ScriptErrorReporter(api, pluginManager, mock(ScheduledExecutorService.class), disableTelemetry);
+		ScriptErrorReporter reporter = new ScriptErrorReporter(api, pluginManager, mock(ScheduledExecutorService.class), sessions, disableTelemetry);
 		reporter.setContext(context);
 		reporter.start();
 		return reporter;
@@ -136,6 +141,23 @@ public class ScriptErrorReporterTest
 		{
 			return e;
 		}
+	}
+
+	@Test
+	public void keepsErrorsUntilServerSessionExists()
+	{
+		when(sessions.getMicrobotSessionId()).thenReturn(null);
+		log(Level.ERROR, "loop failed", boom());
+		reporter.flush();
+		verify(api, never()).submitErrors(any());
+		assertEquals(1, reporter.pendingCount());
+
+		when(sessions.getMicrobotSessionId()).thenReturn(UUID.fromString("00000000-0000-0000-0000-000000000002"));
+		reporter.flush();
+		ArgumentCaptor<JsonObject> captor = ArgumentCaptor.forClass(JsonObject.class);
+		verify(api).submitErrors(captor.capture());
+		assertEquals("00000000-0000-0000-0000-000000000002", captor.getValue().get("sessionId").getAsString());
+		assertEquals(0, reporter.pendingCount());
 	}
 
 	@Test
