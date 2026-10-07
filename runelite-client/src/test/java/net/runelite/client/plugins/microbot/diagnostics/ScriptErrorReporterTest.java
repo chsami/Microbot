@@ -12,6 +12,7 @@ import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.microbot.MicrobotApi;
 import net.runelite.client.plugins.microbot.externalplugins.MicrobotPluginManager;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -88,6 +89,53 @@ public class ScriptErrorReporterTest
 		assertEquals("FakePlugin", first.get("plugin").getAsString());
 		assertEquals("1.2.3", first.get("pluginVersion").getAsString());
 		assertEquals(0, reporter.pendingCount());
+	}
+
+	@Test
+	public void sanitisesErrorsWithoutException()
+	{
+		log(Level.ERROR, "Failed to load /home/alice/.runelite/x.json for alice@example.com", null);
+		reporter.flush();
+		ArgumentCaptor<JsonObject> captor = ArgumentCaptor.forClass(JsonObject.class);
+		verify(api).submitErrors(captor.capture());
+		String payload = captor.getValue().toString();
+		assertFalse(payload, payload.contains("alice"));
+	}
+
+	@Test
+	public void groupsJdkThrownErrorsByCallerFrames()
+	{
+		for (int i = 0; i < 2; i++)
+		{
+			log(Level.ERROR, "loop", i == 0 ? indexError() : indexErrorElsewhere());
+		}
+		assertEquals(2, reporter.pendingCount());
+	}
+
+	private static RuntimeException indexError()
+	{
+		try
+		{
+			new java.util.ArrayList<>().get(1);
+			return null;
+		}
+		catch (IndexOutOfBoundsException e)
+		{
+			return e;
+		}
+	}
+
+	private static RuntimeException indexErrorElsewhere()
+	{
+		try
+		{
+			new java.util.ArrayList<>().get(2);
+			return null;
+		}
+		catch (IndexOutOfBoundsException e)
+		{
+			return e;
+		}
 	}
 
 	@Test

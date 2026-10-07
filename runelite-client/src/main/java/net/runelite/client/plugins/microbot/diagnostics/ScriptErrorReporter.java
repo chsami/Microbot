@@ -16,9 +16,11 @@ import java.util.UUID;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import javax.inject.Inject;
 import javax.inject.Named;
 import javax.inject.Singleton;
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Player;
 import net.runelite.client.RuneLiteProperties;
 import net.runelite.client.plugins.Plugin;
@@ -27,6 +29,7 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.MicrobotApi;
 import net.runelite.client.plugins.microbot.externalplugins.MicrobotPluginManager;
 
+@Slf4j
 @Singleton
 public class ScriptErrorReporter extends UnsynchronizedAppenderBase<ILoggingEvent>
 {
@@ -86,8 +89,11 @@ public class ScriptErrorReporter extends UnsynchronizedAppenderBase<ILoggingEven
 		IThrowableProxy root = rootCause(event.getThrowableProxy());
 		List<String> frames = frames(root);
 		String fingerprint = root == null
-			? event.getLoggerName() + "|" + event.getMessage()
-			: root.getClassName() + "|" + String.join("|", frames.subList(0, Math.min(FINGERPRINT_FRAMES, frames.size())));
+			? event.getLoggerName() + "|" + scrub(event.getMessage())
+			: root.getClassName() + "|" + frames.stream()
+				.filter(frame -> !frame.startsWith("java.") && !frame.startsWith("javax.") && !frame.startsWith("jdk.") && !frame.startsWith("sun."))
+				.limit(FINGERPRINT_FRAMES)
+				.collect(Collectors.joining("|"));
 
 		synchronized (pending)
 		{
@@ -106,6 +112,18 @@ public class ScriptErrorReporter extends UnsynchronizedAppenderBase<ILoggingEven
 	}
 
 	public void flush()
+	{
+		try
+		{
+			send();
+		}
+		catch (RuntimeException e)
+		{
+			log.debug("Error telemetry flush failed", e);
+		}
+	}
+
+	private void send()
 	{
 		JsonArray errors = new JsonArray();
 		synchronized (pending)
@@ -217,7 +235,7 @@ public class ScriptErrorReporter extends UnsynchronizedAppenderBase<ILoggingEven
 		String name = localPlayerName();
 		if (raw != null && name != null && !name.isEmpty())
 		{
-			raw = raw.replace(name, "[player]").replace(name.replace(' ', ' '), "[player]");
+			raw = raw.replace(name, "[player]").replace(name.replace('\u00A0', ' '), "[player]");
 		}
 		return DiagnosticReport.clean(raw);
 	}
