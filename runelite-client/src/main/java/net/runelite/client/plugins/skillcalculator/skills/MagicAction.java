@@ -27,12 +27,12 @@ package net.runelite.client.plugins.skillcalculator.skills;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import net.runelite.api.SpriteID;
+import net.runelite.api.widgets.Widget;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Spellbook;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
 import java.util.Arrays;
-import java.util.stream.Collectors;
 
 @AllArgsConstructor
 @Getter
@@ -259,10 +259,20 @@ public enum MagicAction implements SkillAction
 	}
 
 	public int getWidgetId() {
-		return Rs2Widget.findWidget(name, Arrays.stream(Rs2Widget.getWidget(218, 0).getStaticChildren()).collect(Collectors.toList())).getId();
+		Widget widget = findSpellWidget();
+		return widget == null ? -1 : widget.getId();
 	}
 
 	public String[] getActions() {
-		return Rs2Widget.findWidget(name, Arrays.stream(Rs2Widget.getWidget(218, 0).getStaticChildren()).collect(Collectors.toList())).getActions();
+		Widget widget = findSpellWidget();
+		return widget == null ? null : widget.getActions();
+	}
+
+	private Widget findSpellWidget() {
+		Widget spellbook = Rs2Widget.getWidget(218, 0);
+		if (spellbook == null || spellbook.getStaticChildren() == null) {
+			return null;
+		}
+		return Rs2Widget.findWidget(name, Arrays.asList(spellbook.getStaticChildren()));
 	}
 }
