@@ -564,7 +564,6 @@ public class MicrobotPluginManager {
         } catch (com.google.common.util.concurrent.ExecutionError e) {
             // Guice/Guava wraps NoClassDefFoundError here
             Throwable cause = e.getCause();
-            StartupRecovery.pluginFailed(clazz.getSimpleName(), clazz.getAnnotation(PluginDescriptor.class).version(), "load", e);
             if (cause instanceof NoClassDefFoundError) {
                 log.error("Missing class while loading plugin {}: {}", clazz.getSimpleName(), cause.toString());
             } else {
@@ -575,11 +574,12 @@ public class MicrobotPluginManager {
             if (jar != null) {
                 jar.delete();
             }
+            throw new PluginInstantiationException(e);
         } catch (Exception ex) {
             log.error("Incompatible plugin found: " + clazz.getSimpleName());
-            StartupRecovery.pluginFailed(clazz.getSimpleName(), clazz.getAnnotation(PluginDescriptor.class).version(), "load", ex);
             File jar = getPluginJarFile(plugin.getClass().getSimpleName());
             jar.delete();
+            throw new PluginInstantiationException(ex);
         }
 
         log.debug("Loaded plugin {}", clazz.getSimpleName());

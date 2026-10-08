@@ -46,6 +46,10 @@ public class MicrobotPluginManagerHealthTest {
     public static class FutureClientFixturePlugin extends Plugin {
     }
 
+    @PluginDescriptor(name = "Injector Failure Fixture", isExternal = true, version = "1.0.0", minClientVersion = "0.0.1")
+    public static class InjectorFailureFixturePlugin extends Plugin {
+    }
+
     private MicrobotPluginManager manager;
     private PluginManager pluginManager;
     private ConfigManager configManager;
@@ -187,5 +191,12 @@ public class MicrobotPluginManagerHealthTest {
         verify(pluginManager, never()).stopPlugin(corePlugin);
         verify(pluginManager, never()).remove(corePlugin);
         verify(configManager).unsetConfiguration(eq("microbotPluginVersions"), eq("plugin.HealthFixturePlugin"));
+    }
+
+    @Test
+    public void pluginWithoutInjectorIsNotRegistered() throws Exception {
+        assertTrue(loadPlugins(InjectorFailureFixturePlugin.class).isEmpty());
+
+        verify(pluginManager, never()).addPlugin(any(Plugin.class));
     }
 }
