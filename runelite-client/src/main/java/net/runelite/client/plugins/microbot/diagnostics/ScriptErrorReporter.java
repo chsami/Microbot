@@ -89,6 +89,10 @@ public class ScriptErrorReporter extends UnsynchronizedAppenderBase<ILoggingEven
 		}
 
 		IThrowableProxy root = rootCause(event.getThrowableProxy());
+		if (root != null && InterruptedException.class.getName().equals(root.getClassName()))
+		{
+			return;
+		}
 		List<String> frames = frames(root);
 		String fingerprint = root == null
 			? event.getLoggerName() + "|" + scrub(event.getMessage()).replaceAll("\\d+", "#")

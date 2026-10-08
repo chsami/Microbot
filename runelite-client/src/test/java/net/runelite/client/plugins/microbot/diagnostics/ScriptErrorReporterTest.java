@@ -194,6 +194,14 @@ public class ScriptErrorReporterTest
 	}
 
 	@Test
+	public void ignoresInterruptedWaits()
+	{
+		log(Level.ERROR, "AttackNpcScript", new RuntimeException("Interrupted waiting for client thread", new InterruptedException()));
+		log(Level.ERROR, "Error displaying message {}:", new InterruptedException());
+		assertEquals(0, reporter.pendingCount());
+	}
+
+	@Test
 	public void groupsMessagesThatOnlyDifferInNumbers()
 	{
 		for (int i = 0; i < 50; i++)
