@@ -107,11 +107,25 @@ public class Rs2TileItemModel implements TileItem, IEntity {
     }
 
     public WorldPoint getWorldLocation() {
-        return tile.getWorldLocation();
+        if (tile == null) {
+            return null;
+        }
+        try {
+            return tile.getWorldLocation();
+        } catch (NullPointerException ex) {
+            return null;
+        }
     }
 
     public LocalPoint getLocalLocation() {
-        return tile.getLocalLocation();
+        if (tile == null) {
+            return null;
+        }
+        try {
+            return tile.getLocalLocation();
+        } catch (NullPointerException ex) {
+            return null;
+        }
     }
 
     @Override
