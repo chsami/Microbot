@@ -88,6 +88,16 @@ public class AbstractEntityQueryableInterruptionTest {
 		assertNull(q.nearest(null, 10));
 	}
 
+	@Test
+	public void withinAnchor_skipsEntitiesWithoutLocation() {
+		TestEntity detached = new TestEntity(null);
+		TestEntity near = new TestEntity(new WorldPoint(3201, 3200, 0));
+
+		TestQueryable q = new TestQueryable(Stream.of(detached, near));
+		java.util.List<TestEntity> result = q.within(new WorldPoint(3200, 3200, 0), 5).toList();
+		assertTrue(result.size() == 1 && result.get(0) == near);
+	}
+
 	// ---- Test fixtures -------------------------------------------------------
 
 	private static class TestQueryable extends AbstractEntityQueryable<TestQueryable, TestEntity> {
