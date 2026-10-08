@@ -41,6 +41,6 @@ return Microbot.getClientThread().runOnClientThreadOptional(() -> {
 }).orElse(-1);
 ```
 
-**Where this applies:** `Rs2Player` accessors (`getWorldLocation_Internal`, `getPoseAnimation`, `getAnimation`, `getCombatLevel`, `getLocalPlayer`, `getLocalLocation`, `getGraphicId`, `hasSpotAnimation`) and any new helper that reads the local player.
+**Where this applies:** `Rs2Player` accessors (`getWorldLocation_Internal`, `getPoseAnimation`, `getAnimation`, `getCombatLevel`, `getLocalPlayer`, `getLocalLocation`, `getGraphicId`, `hasSpotAnimation`), the position accessors of `Rs2ActorModel` (`getWorldView`, `getWorldLocation`, `getLocalLocation`, `projectActorLocationToMainWorld`), which `new Rs2PlayerModel()` reaches with a null actor, and any new helper that reads the local player.
 
-**Defensive check:** Mock `Client.getLocalPlayer()` to return `null` and assert each accessor returns its fallback, as in `Rs2PlayerNullLocalPlayerTest`.
+**Defensive check:** Mock `Client.getLocalPlayer()` to return `null` and assert each accessor returns its fallback, as in `Rs2PlayerNullLocalPlayerTest` and `Rs2PlayerModelNullLocalPlayerTest`.
