@@ -30,11 +30,15 @@ int ping = Ping.tcpPing(InetAddress.getByName(world.getAddress()));
 
 ```java
 // Wrong: throws on the client thread whenever the player is not loaded.
-return Microbot.getClient().getLocalPlayer().getPoseAnimation();
+return Microbot.getClientThread().runOnClientThreadOptional(() ->
+        Microbot.getClient().getLocalPlayer().getPoseAnimation()
+).orElse(-1);
 
-// Right: read once, guard, and fall back to the documented "no player" value.
-Player localPlayer = Microbot.getClient().getLocalPlayer();
-return localPlayer == null ? null : localPlayer.getPoseAnimation();
+// Right: read once, yield an empty Optional, and let orElse supply the "no player" value.
+return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+    Player localPlayer = Microbot.getClient().getLocalPlayer();
+    return localPlayer == null ? null : localPlayer.getPoseAnimation();
+}).orElse(-1);
 ```
 
 **Where this applies:** `Rs2Player` accessors (`getWorldLocation_Internal`, `getPoseAnimation`, `getAnimation`, `getCombatLevel`, `getLocalPlayer`, `getLocalLocation`, `getGraphicId`, `hasSpotAnimation`) and any new helper that reads the local player.
