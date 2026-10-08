@@ -286,14 +286,31 @@ public class Rs2Antiban {
         }
     }
 
+    static PlayStyle resolvePlayStyle() {
+        PlayStyle current = playStyle;
+        if (current != null)
+            return current;
+
+        ActivityIntensity intensity = activityIntensity != null ? activityIntensity : ActivityIntensity.EXTREME;
+        current = Rs2AntibanSettings.randomIntervals ? PlayStyle.RANDOM : intensity.getPlayStyle();
+        current.frequency = intensity.getFrequency();
+        current.amplitude = intensity.getAmplitude();
+        current.resetPlayStyle();
+        playStyle = current;
+        logDebug("No play style set, defaulting to " + current.getName());
+        return current;
+    }
+
     private static void performActionCooldown() {
+        PlayStyle current = resolvePlayStyle();
+
         if (Rs2AntibanSettings.nonLinearIntervals)
-            playStyle.evolvePlayStyle();
+            current.evolvePlayStyle();
 
         if (Rs2AntibanSettings.behavioralVariability)
-            TIMEOUT = playStyle.getRandomTickInterval();
+            TIMEOUT = current.getRandomTickInterval();
         else
-            TIMEOUT = playStyle.getPrimaryTickInterval();
+            TIMEOUT = current.getPrimaryTickInterval();
 
         // The pause (universal antiban only) and the always-set active flag both happen only after
         // TIMEOUT is computed: if computing the interval ever throws, scripts must not be left

@@ -39,8 +39,11 @@ public class PathMinimapOverlay extends Overlay {
         final Pathfinder pathfinder = ShortestPathPlugin.getPathfinder();
         if (pathfinder == null) return null;
 
+        Shape minimapClipArea = plugin.getMinimapClipArea();
+        if (minimapClipArea == null) return null;
+
         graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
-        graphics.setClip(plugin.getMinimapClipArea());
+        graphics.setClip(minimapClipArea);
 
         List<WorldPoint> pathPoints = pathfinder.getPath();
         Color pathColor = pathfinder.isDone() ? plugin.colourPath : plugin.colourPathCalculating;
