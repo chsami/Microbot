@@ -671,6 +671,7 @@ public class Rs2GameObject {
     }
 
     public static TileObject getTileObject(Predicate<TileObject> predicate, WorldPoint anchor, int distance) {
+        if (anchor == null) return null;
         LocalPoint anchorLocal = localPointFromWorldSafe(anchor);
         if (anchorLocal == null) {
             // POH fix: see Rs2GameObject.getGameObject(Predicate, WorldPoint, int).
@@ -866,6 +867,7 @@ public class Rs2GameObject {
     }
 
     public static GameObject getGameObject(Predicate<GameObject> predicate, WorldPoint anchor, int distance) {
+        if (anchor == null) return null;
         LocalPoint anchorLocal = localPointFromWorldSafe(anchor);
         if (anchorLocal == null) {
             // POH fix: inside a POH instance, the default anchor passed in by the convenience
@@ -1056,6 +1058,7 @@ public class Rs2GameObject {
     }
 
     public static GroundObject getGroundObject(Predicate<GroundObject> predicate, WorldPoint anchor, int distance) {
+        if (anchor == null) return null;
         LocalPoint anchorLocal = localPointFromWorldSafe(anchor);
         if (anchorLocal == null) {
             if (Microbot.getClient() != null && Microbot.getClient().getLocalPlayer() != null) {
@@ -1245,6 +1248,7 @@ public class Rs2GameObject {
     }
 
     public static WallObject getWallObject(Predicate<WallObject> predicate, WorldPoint anchor, int distance) {
+        if (anchor == null) return null;
         LocalPoint anchorLocal = localPointFromWorldSafe(anchor);
         if (anchorLocal == null) {
             if (Microbot.getClient() != null && Microbot.getClient().getLocalPlayer() != null) {
@@ -1434,6 +1438,7 @@ public class Rs2GameObject {
     }
 
     public static DecorativeObject getDecorativeObject(Predicate<DecorativeObject> predicate, WorldPoint anchor, int distance) {
+        if (anchor == null) return null;
         LocalPoint anchorLocal = localPointFromWorldSafe(anchor);
         if (anchorLocal == null) {
             if (Microbot.getClient() != null && Microbot.getClient().getLocalPlayer() != null) {
