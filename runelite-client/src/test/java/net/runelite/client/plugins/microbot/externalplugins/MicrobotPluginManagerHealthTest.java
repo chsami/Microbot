@@ -1,6 +1,7 @@
 package net.runelite.client.plugins.microbot.externalplugins;
 
 import com.google.gson.Gson;
+import com.google.inject.Binder;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.events.ExternalPluginsChanged;
@@ -48,6 +49,10 @@ public class MicrobotPluginManagerHealthTest {
 
     @PluginDescriptor(name = "Injector Failure Fixture", isExternal = true, version = "1.0.0", minClientVersion = "0.0.1")
     public static class InjectorFailureFixturePlugin extends Plugin {
+        @Override
+        public void configure(Binder binder) {
+            throw new IllegalStateException("injector failure");
+        }
     }
 
     private MicrobotPluginManager manager;
