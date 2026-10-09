@@ -11,6 +11,7 @@ import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @Slf4j
 public class Rs2WorldPoint {
@@ -52,6 +53,10 @@ public class Rs2WorldPoint {
 
     public List<WorldPoint> pathTo(WorldPoint other, boolean fullPath)
     {
+        if (worldPoint == null || other == null)
+        {
+            return null;
+        }
         Client client = Microbot.getClient();
         if (getPlane() != other.getPlane())
         {
@@ -181,19 +186,19 @@ public class Rs2WorldPoint {
         if (this == obj) return true;
         if (obj instanceof Rs2WorldPoint) {
             Rs2WorldPoint other = (Rs2WorldPoint) obj;
-            return worldPoint.equals(other.worldPoint);
+            return Objects.equals(worldPoint, other.worldPoint);
         }
         return false;
     }
 
     @Override
     public int hashCode() {
-        return worldPoint.hashCode();
+        return Objects.hashCode(worldPoint);
     }
 
     @Override
     public String toString() {
-        return worldPoint.toString();
+        return String.valueOf(worldPoint);
     }
 }
 
