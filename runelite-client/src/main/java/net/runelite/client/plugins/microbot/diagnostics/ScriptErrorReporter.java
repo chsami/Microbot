@@ -89,6 +89,10 @@ public class ScriptErrorReporter extends UnsynchronizedAppenderBase<ILoggingEven
 		}
 
 		IThrowableProxy root = rootCause(event.getThrowableProxy());
+		if (root != null && InterruptedException.class.getName().equals(root.getClassName()))
+		{
+			return;
+		}
 		List<String> frames = frames(root);
 		String fingerprint = root == null
 			? event.getLoggerName() + "|" + scrub(event.getMessage()).replaceAll("\\d+", "#")
@@ -153,7 +157,15 @@ public class ScriptErrorReporter extends UnsynchronizedAppenderBase<ILoggingEven
 		payload.addProperty("osName", System.getProperty("os.name"));
 		payload.addProperty("osArch", System.getProperty("os.arch"));
 		payload.add("errors", errors);
-		microbotApi.submitErrors(payload, () -> requeue(errors));
+		try
+		{
+			microbotApi.submitErrors(payload, () -> requeue(errors));
+		}
+		catch (RuntimeException e)
+		{
+			requeue(errors);
+			throw e;
+		}
 	}
 
 	public void rememberPlayerName(String name)
