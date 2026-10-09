@@ -738,7 +738,8 @@ public class Microbot {
     }
 
     static boolean isInterruption(Throwable ex) {
-        for (Throwable t = ex; t != null; t = t.getCause() == t ? null : t.getCause()) {
+        Throwable t = ex;
+        for (int depth = 0; t != null && depth < 64; depth++, t = t.getCause() == t ? null : t.getCause()) {
             if (t instanceof InterruptedException) {
                 return true;
             }

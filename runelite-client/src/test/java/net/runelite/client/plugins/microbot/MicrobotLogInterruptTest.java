@@ -9,6 +9,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.LoggerFactory;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
 public class MicrobotLogInterruptTest
 {
@@ -50,5 +51,15 @@ public class MicrobotLogInterruptTest
 
 		assertEquals(1, appender.list.size());
 		assertEquals(Level.ERROR, appender.list.get(0).getLevel());
+	}
+
+	@Test
+	public void cyclicCauseChainTerminates()
+	{
+		IllegalStateException a = new IllegalStateException("a");
+		IllegalStateException b = new IllegalStateException("b", a);
+		a.initCause(b);
+
+		assertFalse(Microbot.isInterruption(a));
 	}
 }

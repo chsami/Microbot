@@ -157,7 +157,15 @@ public class ScriptErrorReporter extends UnsynchronizedAppenderBase<ILoggingEven
 		payload.addProperty("osName", System.getProperty("os.name"));
 		payload.addProperty("osArch", System.getProperty("os.arch"));
 		payload.add("errors", errors);
-		microbotApi.submitErrors(payload, () -> requeue(errors));
+		try
+		{
+			microbotApi.submitErrors(payload, () -> requeue(errors));
+		}
+		catch (RuntimeException e)
+		{
+			requeue(errors);
+			throw e;
+		}
 	}
 
 	public void rememberPlayerName(String name)
