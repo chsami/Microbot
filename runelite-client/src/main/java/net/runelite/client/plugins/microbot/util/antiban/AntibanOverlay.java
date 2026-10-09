@@ -3,6 +3,7 @@ package net.runelite.client.plugins.microbot.util.antiban;
 import net.runelite.api.Actor;
 import net.runelite.api.Point;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.util.antiban.enums.PlayStyle;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.components.ProgressPieComponent;
@@ -118,7 +119,11 @@ public class AntibanOverlay extends Overlay {
 
 
         // Calculate the remaining time as a fraction of the total time
-        int totalTime = Rs2Antiban.getPlayStyle().getSecondaryTickInterval();
+        PlayStyle playStyle = Rs2Antiban.getPlayStyle();
+        if (playStyle == null) {
+            return;
+        }
+        int totalTime = playStyle.getSecondaryTickInterval();
 
         int timeLeft = Rs2Antiban.getTIMEOUT();
         float percent = (float) timeLeft / totalTime;
