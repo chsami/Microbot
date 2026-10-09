@@ -841,7 +841,7 @@ public class Microbot {
      * This method filters the active plugins managed by the `pluginManager` to include only those whose
      * package name contains "microbot" (case-insensitive). It further excludes certain plugins based on
      * their class names, such as "QuestHelperPlugin", "MInventorySetupsPlugin", "MicrobotPlugin",
-     * "ShortestPathPlugin", "AntibanPlugin", and "ExamplePlugin".
+     * "ShortestPathPlugin", and "AntibanPlugin".
      *
      * @return a list of active plugins belonging to the "microbot" package, excluding the specified plugins.
      */
@@ -852,8 +852,7 @@ public class Microbot {
                         && !x.getClass().getSimpleName().equalsIgnoreCase("MInventorySetupsPlugin")
                         && !x.getClass().getSimpleName().equalsIgnoreCase("MicrobotPlugin")
                         && !x.getClass().getSimpleName().equalsIgnoreCase("ShortestPathPlugin")
-                        && !x.getClass().getSimpleName().equalsIgnoreCase("AntibanPlugin")
-                        && !x.getClass().getSimpleName().equalsIgnoreCase("ExamplePlugin"))
+                        && !x.getClass().getSimpleName().equalsIgnoreCase("AntibanPlugin"))
                 .collect(Collectors.toList());
     }
 

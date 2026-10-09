@@ -3900,7 +3900,6 @@ public class Rs2Walker {
 
         Microbot.doInvoke(entry,
                 new Rectangle(1, 1, Microbot.getClient().getCanvasWidth(), Microbot.getClient().getCanvasHeight()));
-        //Rs2Reflection.invokeMenu(canvasX, canvasY, MenuAction.WALK.getId(), 0, -1, "Walk here", "", -1, -1);
     }
 
     public static boolean walkFastCanvas(WorldPoint worldPoint) {
