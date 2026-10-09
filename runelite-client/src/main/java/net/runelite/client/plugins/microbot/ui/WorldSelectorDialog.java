@@ -211,7 +211,7 @@ public class WorldSelectorDialog extends JDialog {
 				return;
 			}
 
-			List<World> worlds = worldResult.getWorlds();
+			List<World> worlds = new ArrayList<>(worldResult.getWorlds());
 			// Sort by world ID
 			worlds.sort(Comparator.comparingInt(World::getId));
 
