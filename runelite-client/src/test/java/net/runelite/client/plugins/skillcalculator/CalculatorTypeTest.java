@@ -72,6 +72,21 @@ public class CalculatorTypeTest
 	}
 
 	@Test
+	public void skillActionsGrantXp()
+	{
+		for (final CalculatorType calculatorType : CalculatorType.values())
+		{
+			for (final SkillAction skillAction : calculatorType.getSkillActions())
+			{
+				if (skillAction.getXp() <= 0)
+				{
+					fail(calculatorType.getSkill().getName() + " skill action " + skillAction + " grants no xp.");
+				}
+			}
+		}
+	}
+
+	@Test
 	public void testSkillBonusesMutuallyStack()
 	{
 		for (final CalculatorType calculatorType : CalculatorType.values())

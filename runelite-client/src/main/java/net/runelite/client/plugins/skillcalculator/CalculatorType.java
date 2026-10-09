@@ -24,6 +24,7 @@
  */
 package net.runelite.client.plugins.skillcalculator;
 
+import java.util.Arrays;
 import javax.annotation.Nullable;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -44,7 +45,7 @@ enum CalculatorType
 	PRAYER(Skill.PRAYER, PrayerBonus.values(), PrayerAction.values()),
 	CRAFTING(Skill.CRAFTING, null, CraftingAction.values()),
 	FIREMAKING(Skill.FIREMAKING, FiremakingBonus.values(), FiremakingAction.values()),
-	MAGIC(Skill.MAGIC, null, MagicAction.values()),
+	MAGIC(Skill.MAGIC, null, Arrays.stream(MagicAction.values()).filter(action -> action.getXp() > 0).toArray(SkillAction[]::new)),
 	FLETCHING(Skill.FLETCHING, null, FletchingAction.values()),
 	WOODCUTTING(Skill.WOODCUTTING, WoodcuttingBonus.values(), WoodcuttingAction.values()),
 	RUNECRAFT(Skill.RUNECRAFT, RunecraftBonus.values(), RunecraftAction.values()),

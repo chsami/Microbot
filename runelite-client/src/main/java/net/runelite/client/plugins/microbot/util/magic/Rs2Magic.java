@@ -28,7 +28,6 @@ import net.runelite.client.plugins.microbot.util.settings.Rs2SpellBookSettings;
 import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import net.runelite.client.plugins.skillcalculator.skills.MagicAction;
-import org.apache.commons.lang3.NotImplementedException;
 
 import java.awt.*;
 import java.awt.event.KeyEvent;
@@ -169,19 +168,23 @@ public class Rs2Magic {
             menuAction = MenuAction.WIDGET_TARGET;
         }
 
-        if (magicSpell.getWidgetId() == -1)
-            throw new NotImplementedException("This spell has not been configured yet in the MagicAction.java class");
+        int widgetId = magicSpell.getWidgetId();
+        Widget spellWidget = widgetId == -1 ? null : Rs2Widget.getWidget(widgetId);
+        if (spellWidget == null) {
+            log("Unable to find the spell widget for " + magicSpell.getName());
+            return false;
+        }
 
         Microbot.doInvoke(new NewMenuEntry()
                 .option(option)
                 .param0(-1)
-                .param1(magicSpell.getWidgetId())
+                .param1(widgetId)
                 .opcode(menuAction.getId())
                 .identifier(identifier)
                 .itemId(-1)
                 .target(magicSpell.getName())
                 ,
-                new Rectangle(Rs2Widget.getWidget(magicSpell.getWidgetId()).getBounds()));
+                new Rectangle(spellWidget.getBounds()));
         //Rs2Reflection.invokeMenu(-1, magicSpell.getWidgetId(), menuAction.getId(), 1, -1, "Cast", "<col=00ff00>" + magicSpell.getName() + "</col>", -1, -1);
         return true;
     }
@@ -320,7 +323,8 @@ public class Rs2Magic {
     }
 
     private static void alch(MagicAction magicSpell, Rs2ItemModel item, int sleepMin, int sleepMax) {
-        final Widget spellWidget = Rs2Widget.getWidget(magicSpell.getWidgetId());
+        final int widgetId = magicSpell.getWidgetId();
+        final Widget spellWidget = widgetId == -1 ? null : Rs2Widget.getWidget(widgetId);
         if (spellWidget == null) return;
 
         final Point point = new Point((int) spellWidget.getBounds().getCenterX(), (int) spellWidget.getBounds().getCenterY());
