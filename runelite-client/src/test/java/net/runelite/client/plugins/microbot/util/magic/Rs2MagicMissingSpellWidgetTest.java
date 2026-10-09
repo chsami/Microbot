@@ -91,4 +91,20 @@ public class Rs2MagicMissingSpellWidgetTest {
         assertFalse(Rs2Magic.cast(MagicAction.VARROCK_TELEPORT, "cast", 1));
         microbot.verify(() -> Microbot.doInvoke(any(), any(Rectangle.class)), Mockito.never());
     }
+
+    @Test
+    public void widgetLookupFallsBackToSpriteWhenNameDoesNotMatch() {
+        spellbookWithoutMatch();
+        Widget spellList = mock(Widget.class);
+        Widget other = mock(Widget.class);
+        when(other.getSpriteId()).thenReturn(-1);
+        Widget spell = mock(Widget.class);
+        when(spell.getSpriteId()).thenReturn(MagicAction.VARROCK_TELEPORT.getSprite());
+        when(spell.getId()).thenReturn(14286870);
+        when(spell.getActions()).thenReturn(new String[]{"Cast"});
+        when(spellList.getStaticChildren()).thenReturn(new Widget[]{other, spell});
+        widgets.when(() -> Rs2Widget.getWidget(218, 3)).thenReturn(spellList);
+        assertEquals(14286870, MagicAction.VARROCK_TELEPORT.getWidgetId());
+        assertEquals("Cast", MagicAction.VARROCK_TELEPORT.getActions()[0]);
+    }
 }

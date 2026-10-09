@@ -270,9 +270,19 @@ public enum MagicAction implements SkillAction
 
 	private Widget findSpellWidget() {
 		Widget spellbook = Rs2Widget.getWidget(218, 0);
-		if (spellbook == null || spellbook.getStaticChildren() == null) {
+		if (spellbook != null && spellbook.getStaticChildren() != null) {
+			Widget byName = Rs2Widget.findWidget(name, Arrays.asList(spellbook.getStaticChildren()));
+			if (byName != null) {
+				return byName;
+			}
+		}
+		Widget spellList = Rs2Widget.getWidget(218, 3);
+		if (spellList == null || spellList.getStaticChildren() == null) {
 			return null;
 		}
-		return Rs2Widget.findWidget(name, Arrays.asList(spellbook.getStaticChildren()));
+		return Arrays.stream(spellList.getStaticChildren())
+			.filter(child -> child != null && child.getSpriteId() == sprite)
+			.findFirst()
+			.orElse(null);
 	}
 }
