@@ -464,6 +464,9 @@ public class Microbot {
             } else {
                 SwingUtilities.invokeAndWait(messageRunnable);
             }
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            log.debug("Interrupted while displaying message {}", message);
         } catch (Exception ex) {
             log.error("Error displaying message {}:", message, ex);
         }
@@ -487,6 +490,9 @@ public class Microbot {
             } else {
                 SwingUtilities.invokeAndWait(messageRunnable);
             }
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            log.debug("Interrupted while displaying message {}", message);
         } catch (Exception ex) {
             log.error("Error displaying message {}:", message, ex);
         }
@@ -714,7 +720,9 @@ public class Microbot {
                 log.warn(message);
                 break;
             case ERROR:
-                if (ex != null) {
+                if (isInterruption(ex)) {
+                    log.debug(message, ex);
+                } else if (ex != null) {
                     log.error(message, ex);
                 } else {
                     log.error(message);
@@ -727,6 +735,16 @@ public class Microbot {
                 log.info(message);
                 break;
         }
+    }
+
+    static boolean isInterruption(Throwable ex) {
+        Throwable t = ex;
+        for (int depth = 0; t != null && depth < 64; depth++, t = t.getCause() == t ? null : t.getCause()) {
+            if (t instanceof InterruptedException) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

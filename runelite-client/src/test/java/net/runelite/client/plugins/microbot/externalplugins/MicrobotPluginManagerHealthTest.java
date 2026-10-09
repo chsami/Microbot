@@ -1,6 +1,10 @@
 package net.runelite.client.plugins.microbot.externalplugins;
 
 import com.google.gson.Gson;
+import com.google.inject.Binder;
+import com.google.inject.Guice;
+import com.google.inject.Injector;
+import net.runelite.client.RuneLite;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.events.ExternalPluginsChanged;
@@ -44,6 +48,22 @@ public class MicrobotPluginManagerHealthTest {
 
     @PluginDescriptor(name = "Future Fixture", isExternal = true, version = "1.0.0", minClientVersion = "999.0.0")
     public static class FutureClientFixturePlugin extends Plugin {
+    }
+
+    @PluginDescriptor(name = "Injector Failure Fixture", isExternal = true, version = "1.0.0", minClientVersion = "0.0.1")
+    public static class InjectorFailureFixturePlugin extends Plugin {
+        @Override
+        public void configure(Binder binder) {
+            throw new IllegalStateException("injector failure");
+        }
+    }
+
+    @PluginDescriptor(name = "Linkage Failure Fixture", isExternal = true, version = "1.0.0", minClientVersion = "0.0.1")
+    public static class LinkageFailureFixturePlugin extends Plugin {
+        @Override
+        public void configure(Binder binder) {
+            throw new NoClassDefFoundError("missing/ApiClass");
+        }
     }
 
     private MicrobotPluginManager manager;
@@ -187,5 +207,29 @@ public class MicrobotPluginManagerHealthTest {
         verify(pluginManager, never()).stopPlugin(corePlugin);
         verify(pluginManager, never()).remove(corePlugin);
         verify(configManager).unsetConfiguration(eq("microbotPluginVersions"), eq("plugin.HealthFixturePlugin"));
+    }
+
+    @Test
+    public void pluginWithoutInjectorIsNotRegistered() throws Exception {
+        assertTrue(loadPlugins(InjectorFailureFixturePlugin.class).isEmpty());
+
+        verify(pluginManager, never()).addPlugin(any(Plugin.class));
+    }
+
+    @Test
+    public void failingPluginDoesNotStopOthersFromLoading() throws Exception {
+        Injector previous = RuneLite.getInjector();
+        RuneLite.setInjector(Guice.createInjector());
+        try {
+            List<Plugin> loaded = loadPlugins(InjectorFailureFixturePlugin.class, LinkageFailureFixturePlugin.class, HealthFixturePlugin.class);
+
+            assertEquals(1, loaded.size());
+            assertTrue(loaded.get(0) instanceof HealthFixturePlugin);
+            verify(pluginManager).addPlugin(loaded.get(0));
+            verify(pluginManager, never()).addPlugin(any(InjectorFailureFixturePlugin.class));
+            verify(pluginManager, never()).addPlugin(any(LinkageFailureFixturePlugin.class));
+        } finally {
+            RuneLite.setInjector(previous);
+        }
     }
 }
