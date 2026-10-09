@@ -210,12 +210,15 @@ public class KourendLibraryPlugin extends Plugin
 		}
 		else if (ev.getKey().equals("showTargetHintArrow"))
 		{
-			if (client.getLocalPlayer() == null || client.getLocalPlayer().getWorldLocation().getRegionID() != REGION)
+			clientThread.invokeLater(() ->
 			{
-				return;
-			}
+				if (client.getLocalPlayer() == null || client.getLocalPlayer().getWorldLocation().getRegionID() != REGION)
+				{
+					return;
+				}
 
-			updateBookcaseHintArrow();
+				updateBookcaseHintArrow();
+			});
 		}
 	}
 

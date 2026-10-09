@@ -95,4 +95,22 @@ public class KourendLibraryPluginTest
 		SwingUtilities.invokeAndWait(() -> { });
 		verify(clientToolbar).addNavigation(any());
 	}
+
+	@Test
+	public void showTargetHintArrowReadsPlayerLocationOnClientThread()
+	{
+		when(client.getLocalPlayer()).thenReturn(null);
+
+		ConfigChanged event = new ConfigChanged();
+		event.setGroup(KourendLibraryConfig.GROUP_KEY);
+		event.setKey("showTargetHintArrow");
+		plugin.onConfigChanged(event);
+
+		ArgumentCaptor<Runnable> task = ArgumentCaptor.forClass(Runnable.class);
+		verify(clientThread).invokeLater(task.capture());
+		verify(client, never()).getLocalPlayer();
+
+		task.getValue().run();
+		verify(client).getLocalPlayer();
+	}
 }
