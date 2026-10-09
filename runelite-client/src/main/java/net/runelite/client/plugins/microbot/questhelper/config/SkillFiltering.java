@@ -73,6 +73,7 @@ public class SkillFiltering
 
 	public static boolean questPassesSkillFilter(QuestHelper questHelper)
 	{
+		questHelper.initializeRequirements();
 		List<Skill> skillsToFilterOut = Arrays.stream(Skill.values())
 			.filter(skill -> "true".equals(questHelper.getConfigManager().getConfiguration(QuestHelperConfig.QUEST_BACKGROUND_GROUP, "skillfilter" + skill.getName())))
 			.collect(Collectors.toList());

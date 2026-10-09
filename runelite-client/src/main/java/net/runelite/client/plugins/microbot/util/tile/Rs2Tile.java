@@ -1031,7 +1031,7 @@ public abstract class Rs2Tile implements Tile {
         WorldView topLevelWorldView = Microbot.getClient().getTopLevelWorldView();
 
         // Check if player and object are on the same plane
-        if (playerLocation.getPlane() != tileObject.getWorldLocation().getPlane()) {
+        if (playerLocation.getWorldPoint() == null || playerLocation.getPlane() != tileObject.getWorldLocation().getPlane()) {
             return null;
         }
 
