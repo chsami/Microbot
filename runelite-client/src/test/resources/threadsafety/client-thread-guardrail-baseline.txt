@@ -113,8 +113,6 @@ net.runelite.client.plugins.microbot.util.bank.Rs2Bank#updateLocalBank(ItemConta
 net.runelite.client.plugins.microbot.util.bank.Rs2Bank#updateLocalBank(ItemContainerChanged): void  ->  net.runelite.api.ItemContainer#getItems(): Item[]
 net.runelite.client.plugins.microbot.util.bank.Rs2Bank#updateLocalBank(ItemContainerChanged): void  ->  net.runelite.api.events.ItemContainerChanged#getContainerId(): int
 net.runelite.client.plugins.microbot.util.bank.Rs2Bank#updateLocalBank(ItemContainerChanged): void  ->  net.runelite.api.events.ItemContainerChanged#getItemContainer(): ItemContainer
-net.runelite.client.plugins.microbot.util.bank.Rs2Bank#withdrawLootItems(String, List): boolean  ->  net.runelite.api.ItemComposition#getNote(): int
-net.runelite.client.plugins.microbot.util.bank.Rs2Bank#withdrawLootItems(String, List): boolean  ->  net.runelite.api.ItemComposition#isTradeable(): boolean
 net.runelite.client.plugins.microbot.util.camera.Rs2Camera#getZoom(): int  ->  net.runelite.api.Client#getVarcIntValue(int): int
 net.runelite.client.plugins.microbot.util.camera.Rs2Camera#isTileOnScreen(LocalPoint): boolean  ->  net.runelite.api.Client#getPlane(): int
 net.runelite.client.plugins.microbot.util.combat.Rs2Combat#getWeaponAttackStyle(): String  ->  net.runelite.api.EnumComposition#getIntValue(int): int

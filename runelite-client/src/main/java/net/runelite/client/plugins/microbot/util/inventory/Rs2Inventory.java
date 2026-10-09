@@ -27,7 +27,6 @@ import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.shop.Rs2Shop;
 import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
-import org.apache.commons.lang3.NotImplementedException;
 import org.slf4j.event.Level;
 
 import java.awt.*;
@@ -1328,15 +1327,6 @@ public class Rs2Inventory {
      */
     public static boolean isEmpty() {
         return items().findAny().isEmpty();
-    }
-
-    /**
-     * Checks whether the inventory is configured to ignore whether shift interactions are enabled or not.
-     *
-     * @return True if the inventory ignores shift interactions, false otherwise.
-     */
-    public static boolean isForceNoShift() {
-        throw new NotImplementedException("TODO");
     }
 
     /**

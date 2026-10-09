@@ -757,24 +757,6 @@ public class Rs2GrandExchange {
     }
 
     /**
-     * sells all the tradeable loot items from a specific npc name
-     *
-     * @param npcName
-     * @return true if there is no more loot to sell
-     */
-    public static boolean sellLoot(String npcName, List<String> itemsToNotSell) {
-
-        boolean withdrewLootItems = Rs2Bank.withdrawLootItems(npcName, itemsToNotSell);
-
-        if (withdrewLootItems) {
-            return sellInventory();
-        }
-
-
-        return false;
-    }
-
-    /**
      * Attempts to sell all tradeable items currently in the player's inventory on the Grand Exchange.
      * <p>
      * For each tradeable item, this method:

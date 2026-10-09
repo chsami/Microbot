@@ -14,8 +14,6 @@ import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.config.RuneScapeProfileType;
 import net.runelite.client.plugins.bank.BankPlugin;
-import net.runelite.client.plugins.loottracker.LootTrackerItem;
-import net.runelite.client.plugins.loottracker.LootTrackerRecord;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.api.player.models.Rs2PlayerModel;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
@@ -2932,58 +2930,6 @@ public class Rs2Bank {
         return false;
     }
 
-
-    /**
-     * Withdraw items from the lootTrackerPlugin
-     *
-     * @param npcName the name of the npc
-     * @return {@code true} if successfully withdrew loot items, otherwise {@code false}
-     */
-    public static boolean withdrawLootItems(String npcName, List<String> itemsToNotSell) {
-        boolean isAtGe = Rs2GrandExchange.walkToGrandExchange();
-        if (isAtGe) {
-            boolean isBankOpen = Rs2Bank.openBank();
-            if (!isBankOpen) return false;
-        }
-        Rs2Bank.depositAll();
-        boolean itemFound = false;
-
-        boolean hasWithdrawAsNote = Rs2Bank.setWithdrawAsNote();
-        if (!hasWithdrawAsNote) return false;
-        for (LootTrackerRecord lootTrackerRecord : Microbot.getAggregateLootRecords()) {
-            if (!lootTrackerRecord.getTitle().equalsIgnoreCase(npcName)) continue;
-            for (LootTrackerItem lootTrackerItem : lootTrackerRecord.getItems()) {
-                if (itemsToNotSell.stream().anyMatch(x -> x.trim().equalsIgnoreCase(lootTrackerItem.getName())))
-                    continue;
-                int itemId = lootTrackerItem.getId();
-                ItemComposition itemComposition = Microbot.getClientThread().runOnClientThreadOptional(() ->
-                        Microbot.getClient().getItemDefinition(lootTrackerItem.getId())).orElse(null);
-                if (itemComposition == null) return false;
-                if (Arrays.stream(itemComposition.getInventoryActions()).anyMatch(x -> x != null && x.equalsIgnoreCase("eat")))
-                    continue;
-                final boolean isNoted = itemComposition.getNote() == 799;
-                if (!itemComposition.isTradeable() && !isNoted) continue;
-
-                if (isNoted) {
-                    final int unnotedItemId = lootTrackerItem.getId() - 1; //get the unnoted id of the item
-                    itemComposition = Microbot.getClientThread().runOnClientThreadOptional(() ->
-                            Microbot.getClient().getItemDefinition(unnotedItemId)).orElse(null);
-                    if (itemComposition == null) {
-                        return false;
-                    }
-                    if (!itemComposition.isTradeable()) continue;
-                    itemId = unnotedItemId;
-                }
-
-                boolean didWithdraw = Rs2Bank.withdrawAll(itemId);
-                if (didWithdraw) {
-                    itemFound = true;
-                }
-            }
-        }
-        Rs2Bank.closeBank();
-        return itemFound;
-    }
 
     private static Widget getBankSizeWidget() {
         return Rs2Widget.getWidget(ComponentID.BANK_ITEM_COUNT_TOP);

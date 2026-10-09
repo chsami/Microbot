@@ -8,7 +8,6 @@ import net.runelite.api.PlayerComposition;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.api.IEntity;
 import net.runelite.client.plugins.microbot.util.ActorModel;
-import org.apache.commons.lang3.NotImplementedException;
 
 @Getter
 public class Rs2PlayerModel extends ActorModel implements Player {
