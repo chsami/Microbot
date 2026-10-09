@@ -127,12 +127,14 @@ public class MicrobotApi {
             @Override
             public void onResponse(Call call, Response response)
             {
-                if (!response.isSuccessful())
+                boolean successful = response.isSuccessful();
+                int code = response.code();
+                response.close();
+                if (!successful)
                 {
-                    log.debug("Error telemetry upload rejected: HTTP {}", response.code());
+                    log.debug("Error telemetry upload rejected: HTTP {}", code);
                     onRejected.run();
                 }
-                response.close();
             }
         });
     }
