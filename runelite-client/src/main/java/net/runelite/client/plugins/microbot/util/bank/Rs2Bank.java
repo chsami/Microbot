@@ -2939,6 +2939,7 @@ public class Rs2Bank {
      * @param npcName the name of the npc
      * @return {@code true} if successfully withdrew loot items, otherwise {@code false}
      */
+    @Deprecated
     public static boolean withdrawLootItems(String npcName, List<String> itemsToNotSell) {
         boolean isAtGe = Rs2GrandExchange.walkToGrandExchange();
         if (isAtGe) {

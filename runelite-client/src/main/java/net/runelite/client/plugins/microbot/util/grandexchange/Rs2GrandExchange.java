@@ -762,6 +762,7 @@ public class Rs2GrandExchange {
      * @param npcName
      * @return true if there is no more loot to sell
      */
+    @Deprecated
     public static boolean sellLoot(String npcName, List<String> itemsToNotSell) {
 
         boolean withdrewLootItems = Rs2Bank.withdrawLootItems(npcName, itemsToNotSell);
