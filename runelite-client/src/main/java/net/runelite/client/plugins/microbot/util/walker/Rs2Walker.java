@@ -1325,6 +1325,7 @@ public class Rs2Walker {
         // sealed goal), collapsed to a 1-tile path, and the retry burned itself on it while the
         // unlearn arrived two lines later.
         withdrawWalkScopedDoorBlocks();
+        Rs2WalkerTransports.withdrawWalkScopedTransportBlocks();
         WorldPoint playerLocWalk = Rs2Player.getWorldLocation();
         if (playerLocWalk == null) {
             return WalkerState.MOVING;
@@ -4442,7 +4443,7 @@ public class Rs2Walker {
                         && isRawTransportOriginNearPlayer(rawPath, ri, playerLoc, RAW_TRANSPORT_DISPATCH_MAX_DISTANCE)) {
                     WebWalkLog.spInfo("recovery_on_origin_transport | origin={} player={} rawIdx={}",
                             compactWorldPoint(rawPath.get(ri)), compactWorldPoint(playerLoc), ri);
-                    if (handleTransports(rawPath, ri)) {
+                    if (Rs2WalkerTransports.dispatchRecoveryTransport(rawPath, ri)) {
                         return ObstacleResolution.interacted();
                     }
                 }

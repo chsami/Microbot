@@ -848,6 +848,11 @@ public class PathfinderConfig {
         return isBlockedTransportStep(originPacked, destinationPacked, blockedTransportEdgesPacked);
     }
 
+    public boolean isLearnedBlockedTransport(int originPacked, int destinationPacked) {
+        return !learnedBlockedEdgeKeys.isEmpty()
+                && learnedBlockedEdgeKeys.contains(transportEdgeKey(originPacked, destinationPacked));
+    }
+
     static boolean isBlockedTransportStep(int originPacked, int destinationPacked, Set<Long> blockedEdges) {
         if (blockedEdges == null || blockedEdges.isEmpty()) {
             return false;
