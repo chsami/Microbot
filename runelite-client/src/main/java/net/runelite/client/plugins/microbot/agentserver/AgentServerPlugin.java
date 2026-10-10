@@ -2,6 +2,9 @@ package net.runelite.client.plugins.microbot.agentserver;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonSerializer;
 import com.google.inject.Provides;
 import com.sun.net.httpserver.HttpServer;
 import lombok.extern.slf4j.Slf4j;
@@ -23,7 +26,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -56,11 +61,33 @@ public class AgentServerPlugin extends Plugin {
 	private net.runelite.client.plugins.microbot.agentserver.uds.UdsHttpServer udsServer;
 	private ExecutorService executor;
 	private Thread shutdownHook;
-	private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
+	private final Gson gson = createGson();
 
 	private java.util.concurrent.ScheduledExecutorService stealthScheduler;
 	private volatile boolean stealthActive = false;
 	private static final long STEALTH_IDLE_GRACE_MS = 20_000;
+
+	static Gson createGson() {
+		JsonSerializer<Collection<?>> collectionSerializer = (src, type, ctx) -> {
+			JsonArray array = new JsonArray();
+			for (Object element : src) {
+				array.add(ctx.serialize(element));
+			}
+			return array;
+		};
+		JsonSerializer<Map<?, ?>> mapSerializer = (src, type, ctx) -> {
+			JsonObject object = new JsonObject();
+			for (Map.Entry<?, ?> entry : src.entrySet()) {
+				object.add(String.valueOf(entry.getKey()), ctx.serialize(entry.getValue()));
+			}
+			return object;
+		};
+		return new GsonBuilder()
+				.setPrettyPrinting()
+				.registerTypeHierarchyAdapter(Collection.class, collectionSerializer)
+				.registerTypeHierarchyAdapter(Map.class, mapSerializer)
+				.create();
+	}
 
 	private static Path defaultUdsSocketPath() {
 		return Paths.get(System.getProperty("user.home"), ".runelite", ".agent.sock");
