@@ -81,6 +81,7 @@ import net.runelite.client.plugins.microbot.util.walker.awaits.Rs2WalkerRuntimeA
 import net.runelite.client.plugins.microbot.util.walker.puzzles.DraynorBasementSolver;
 import net.runelite.client.plugins.microbot.util.walker.stall.Rs2WalkerStallPolicy;
 import net.runelite.client.plugins.microbot.util.walker.transport.Rs2WalkerTransportAwaits;
+import net.runelite.client.plugins.microbot.util.walker.transport.TransportDispatchTrace;
 import net.runelite.client.plugins.microbot.util.walker.transport.TransportRefusalLedger;
 import net.runelite.client.plugins.microbot.util.walker.lifecycle.Rs2WalkerLifecycleRuntime;
 import net.runelite.client.plugins.skillcalculator.skills.MagicAction;
@@ -152,6 +153,92 @@ final class Rs2WalkerTransports {
 
 
 
+    static final class DispatchResult {
+        final boolean handled;
+        final TransportDispatchTrace.Verdict verdict;
+        final TransportDispatchTrace trace;
+        final boolean struckOut;
+
+        DispatchResult(boolean handled, TransportDispatchTrace.Verdict verdict,
+                       TransportDispatchTrace trace, boolean struckOut) {
+            this.handled = handled;
+            this.verdict = verdict;
+            this.trace = trace;
+            this.struckOut = struckOut;
+        }
+    }
+
+    private static final ThreadLocal<TransportDispatchTrace> DISPATCH_TRACE = new ThreadLocal<>();
+
+    static DispatchResult dispatchSelectedTransport(List<WorldPoint> path,
+                                                    int indexOfStartPoint,
+                                                    Rs2PathApi.ActiveTransportSelection selection) {
+        TransportDispatchTrace previous = DISPATCH_TRACE.get();
+        TransportDispatchTrace trace = new TransportDispatchTrace();
+        DISPATCH_TRACE.set(trace);
+        boolean handled;
+        try {
+            handled = handleSelectedTransport(path, indexOfStartPoint, selection);
+        } finally {
+            if (previous != null) {
+                DISPATCH_TRACE.set(previous);
+            } else {
+                DISPATCH_TRACE.remove();
+            }
+        }
+        Transport transport = selection != null ? selection.getLocalExecutionTransport() : null;
+        WorldPoint origin = transport != null ? transport.getOrigin() : null;
+        WorldPoint destination = transport != null ? transport.getDestination() : null;
+        TransportDispatchTrace.Verdict verdict =
+                trace.verdict(handled, Rs2Player.getWorldLocation(), origin, destination);
+        boolean struckOut = false;
+        if (verdict == TransportDispatchTrace.Verdict.HANDLED) {
+            transportRefusalLedger.clear(origin, destination);
+        } else if (verdict == TransportDispatchTrace.Verdict.REFUSED_AFTER_INTERACTION) {
+            struckOut = registerTransportRefusal(origin, destination, "interaction-refused");
+        }
+        return new DispatchResult(handled, verdict, trace, struckOut);
+    }
+
+    static boolean dispatchRecoveryTransport(List<WorldPoint> path, int index) {
+        Optional<Rs2PathApi.ActiveTransportSelection> selection =
+                Rs2PathApi.getActiveTransportSelection(path, index);
+        if (selection.isEmpty()) {
+            return false;
+        }
+        DispatchResult result = dispatchSelectedTransport(path, index, selection.get(), false);
+        if (result.handled || result.struckOut) {
+            return true;
+        }
+        if (result.verdict != TransportDispatchTrace.Verdict.REFUSED_WITHOUT_INTERACTION) {
+            return false;
+        }
+        Transport transport = selection.get().getLocalExecutionTransport();
+        return registerTransportFallThrough(transport.getOrigin(), transport.getDestination(),
+                result.trace.reason());
+    }
+
+    private static void noteTransportInteraction() {
+        TransportDispatchTrace trace = DISPATCH_TRACE.get();
+        if (trace != null) {
+            trace.interacted();
+        }
+    }
+
+    private static void noteDeliberateSkip(TransportDispatchTrace.DeliberateSkip reason) {
+        TransportDispatchTrace trace = DISPATCH_TRACE.get();
+        if (trace != null) {
+            trace.skip(reason);
+        }
+    }
+
+    private static void noteRefusal(TransportDispatchTrace.Refusal reason) {
+        TransportDispatchTrace trace = DISPATCH_TRACE.get();
+        if (trace != null) {
+            trace.refuse(reason);
+        }
+    }
+
     /**
      * Executes the exact transport retained by the active route through its registered Microbot executor.
      * Candidate discovery must happen through immutable route steps, never by rescanning the mutable
@@ -162,6 +249,7 @@ final class Rs2WalkerTransports {
                                                     int indexOfStartPoint,
                                                     Rs2PathApi.ActiveTransportSelection selection) {
         if (selection == null || !selection.isExecutable()) {
+            noteRefusal(TransportDispatchTrace.Refusal.UNSUPPORTED);
             if (selection != null) {
                 WebWalkLog.spWarn("selected transport has no executor | type={} origin={} dest={}",
                         selection.getEdge().getType(),
@@ -178,6 +266,7 @@ final class Rs2WalkerTransports {
         }
         if (path != null && indexOfStartPoint >= 0 && indexOfStartPoint < path.size() - 1
                 && recentlyOpenedStationaryDoorOnSegment(path.get(indexOfStartPoint), path.get(indexOfStartPoint + 1))) {
+            noteDeliberateSkip(TransportDispatchTrace.DeliberateSkip.STATIONARY_DOOR_SETTLING);
             return false;
         }
         if (log.isDebugEnabled()) {
@@ -217,6 +306,7 @@ final class Rs2WalkerTransports {
                 WorldPoint plOriginLoop = Rs2Player.getWorldLocation();
                 if (!inPohInstance && transport.getOrigin() != null && plOriginLoop != null
                         && plOriginLoop.getPlane() != transport.getOrigin().getPlane()) {
+                    noteDeliberateSkip(TransportDispatchTrace.DeliberateSkip.PLANE_MISMATCH);
                     continue;
                 }
 
@@ -231,12 +321,14 @@ final class Rs2WalkerTransports {
                     if (isPlayerWithinChebyshevOf(transport.getDestination(), OFFSET)) {
                         log.debug("[Walker] skip {}: already within {} tiles of Quetzal destination {}",
                                 transport.getDisplayInfo(), OFFSET, transport.getDestination());
+                        noteDeliberateSkip(TransportDispatchTrace.DeliberateSkip.ALREADY_AT_DESTINATION);
                         continue;
                     }
                 }
                 if (TransportType.isTeleport(transport.getType(), transport.getOrigin())) {
                     if (isPlayerWithinChebyshevOf(transport.getDestination(), TELEPORT_NEAR_SKIP_CHEBYSHEV)) {
                         log.debug("[Walker] skip {}: already near destination", transport.getDisplayInfo());
+                        noteDeliberateSkip(TransportDispatchTrace.DeliberateSkip.ALREADY_AT_DESTINATION);
                         continue;
                     }
                 }
@@ -259,6 +351,7 @@ final class Rs2WalkerTransports {
                             transport.getDisplayInfo(),
                             compactWorldPoint(transport.getOrigin()),
                             compactWorldPoint(transport.getDestination()));
+                    noteDeliberateSkip(TransportDispatchTrace.DeliberateSkip.ALREADY_AT_DESTINATION);
                     continue;
                 }
 
@@ -288,6 +381,7 @@ final class Rs2WalkerTransports {
                     }
                     if (!inPohInstance && origin != null && origin.getPlane() != plPathLoop.getPlane()) {
                         log.debug("[Walker] skip {} (i={}): plane mismatch", transport.getDisplayInfo(), i);
+                        noteDeliberateSkip(TransportDispatchTrace.DeliberateSkip.PLANE_MISMATCH);
                         break; // plane won't change across iterations, so break instead of continue
                     }
 
@@ -303,6 +397,7 @@ final class Rs2WalkerTransports {
                             if (digOrigin == null || playerAtMound == null || !playerAtMound.equals(digOrigin)) {
                                 // Digging is tile-sensitive. Let the ordinary path click finish the
                                 // approach instead of firing the spade from an adjacent mound tile.
+                                noteDeliberateSkip(TransportDispatchTrace.DeliberateSkip.BARROWS_APPROACH);
                                 return false;
                             }
                             boolean dug = attemptObserved(transport,
@@ -332,6 +427,7 @@ final class Rs2WalkerTransports {
                                         "selected terminal travel has no supported interaction mode | type={} origin={} dest={}",
                                         transport.getType(), compactWorldPoint(transport.getOrigin()),
                                         compactWorldPoint(transport.getDestination()));
+                                noteRefusal(TransportDispatchTrace.Refusal.UNSUPPORTED);
                                 break originLoop;
                             }
 
@@ -374,6 +470,7 @@ final class Rs2WalkerTransports {
                                 if (!markTerminalTravelAttempt(transport)) {
                                     log.debug("[Walker] terminal travel edge already attempted this walk: {}",
                                             transport.getDisplayInfo());
+                                    noteDeliberateSkip(TransportDispatchTrace.DeliberateSkip.TERMINAL_ALREADY_ATTEMPTED);
                                     break originLoop;
                                 }
                                 if (!npcAction.equalsIgnoreCase(transport.getAction())) {
@@ -449,11 +546,13 @@ final class Rs2WalkerTransports {
                                             transport.getName(), transport.getAction(),
                                             compactWorldPoint(transport.getDestination()),
                                             transport.getDisplayInfo());
+                                        noteRefusal(TransportDispatchTrace.Refusal.ACTION_MISSING);
                                         break originLoop;
                                     }
                                     if (!markTerminalTravelAttempt(transport)) {
                                         log.debug("[Walker] terminal travel edge already attempted this walk: {}",
                                             transport.getDisplayInfo());
+                                        noteDeliberateSkip(TransportDispatchTrace.DeliberateSkip.TERMINAL_ALREADY_ATTEMPTED);
                                         break originLoop;
                                     }
                                     prepareTransportObjectForInteraction(terminalObject);
@@ -472,6 +571,7 @@ final class Rs2WalkerTransports {
                                     }
                                 } else {
                                     WorldPoint originTile = path.get(i);
+                                    noteDeliberateSkip(TransportDispatchTrace.DeliberateSkip.TERMINAL_APPROACH);
                                     boolean clicked = Rs2Walker.walkFastCanvas(originTile);
                                     if (!clicked) {
                                         WorldPoint playerLoc = Rs2Player.getWorldLocation();
@@ -570,6 +670,7 @@ final class Rs2WalkerTransports {
                     if (transport.getType() == TransportType.SPIRIT_TREE) {
                         if (!Rs2PathApi.isSpiritTreeTravelEnabled()) {
                             log.debug("[Walker] skip spirit tree transport — setting is off");
+                            noteDeliberateSkip(TransportDispatchTrace.DeliberateSkip.SPIRIT_TREE_TRAVEL_DISABLED);
                             continue;
                         }
                         if (attemptObserved(transport, () -> handleSpiritTree(transport))) {
@@ -638,6 +739,9 @@ final class Rs2WalkerTransports {
                         WorldPoint plFairy = Rs2Player.getWorldLocation();
                         WorldPoint tdFairy = transport.getDestination();
                         boolean alreadyAtFairyDest = plFairy != null && tdFairy != null && plFairy.equals(tdFairy);
+                        if (alreadyAtFairyDest) {
+                            noteDeliberateSkip(TransportDispatchTrace.DeliberateSkip.ALREADY_AT_DESTINATION);
+                        }
                         if (!alreadyAtFairyDest && attemptObserved(transport, () -> handleFairyRing(transport))) {
                             sleepUntilTrue(() -> isPlayerWithinChebyshevOf(transport.getDestination(), OFFSET),
                                     TRANSPORT_LANDING_WAIT_POLL_MS, TRANSPORT_LANDING_WAIT_TIMEOUT_MS);
@@ -768,6 +872,7 @@ final class Rs2WalkerTransports {
                         if (!(object instanceof GroundObject) && !MagicMushtree.isMagicMushtree(transport.getObjectId())) {
                             if (requiresReachableObjectOrigin(Boolean.TRUE.equals(SERVER_APPROACH_ALLOWED.get()))
                                     && !Rs2Tile.isTileReachable(transport.getOrigin())) {
+                                noteRefusal(TransportDispatchTrace.Refusal.ORIGIN_UNREACHABLE);
                                 break;
                             }
                         }
@@ -785,7 +890,9 @@ final class Rs2WalkerTransports {
                                 log.info("[Walker] Closed transport variant at {} (id={} name={}) — opening before {}",
                                         transport.getOrigin(), object.getId(), comp.getName(), transportAction);
                                 final int closedId = object.getId();
-                                Rs2GameObject.interact(object, "Open");
+                                if (Rs2GameObject.interact(object, "Open")) {
+                                    noteTransportInteraction();
+                                }
                                 Rs2Player.waitForAnimation(2000);
                                 TileObject reopened = Rs2GameObject.getAll(o -> {
                                     if (o.getId() == closedId) return false;
@@ -799,8 +906,11 @@ final class Rs2WalkerTransports {
                             }
                         }
 
-                        String interactionAction = resolveTransportObjectAction(object, transportActions)
-                                .orElse(transportAction);
+                        Optional<String> resolvedAction = resolveTransportObjectAction(object, transportActions);
+                        if (resolvedAction.isEmpty()) {
+                            noteRefusal(TransportDispatchTrace.Refusal.ACTION_MISSING);
+                        }
+                        String interactionAction = resolvedAction.orElse(transportAction);
                         if (!Objects.equals(interactionAction, transportAction)) {
                             log.debug("[Walker] Using object action '{}' for transport action '{}' at {} (id={})",
                                     interactionAction, transportAction, object.getWorldLocation(), object.getId());
@@ -837,17 +947,14 @@ final class Rs2WalkerTransports {
                                     POST_HANDLE_OBJECT_LANDING_WAIT_MS,
                                     compactWorldPoint(destWait),
                                     compactWorldPoint(afterInteraction));
-                            if (isStillAtTransportOrigin(afterInteraction, transport.getOrigin(), destWait)) {
-                                registerTransportRefusal(transport.getOrigin(), destWait, "landing-unresolved");
-                            }
                         }
                         if (landedAfterObject) {
-                            transportRefusalLedger.clear(transport.getOrigin(), destWait);
                             markShortSamePlaneTransportHandled(transport, object);
                             return finishHandledTransport(transport);
                         }
                         return false;
                     }
+                    noteRefusal(TransportDispatchTrace.Refusal.OBJECT_MISSING);
                 }
             }
         }
@@ -856,31 +963,8 @@ final class Rs2WalkerTransports {
 
     private static final TransportRefusalLedger transportRefusalLedger = new TransportRefusalLedger();
 
-    private static final AtomicLong transportClickSerial = new AtomicLong();
-
-    private static void recordTransportClick() {
-        transportClickSerial.incrementAndGet();
-    }
-
-    static long transportClickSerial() {
-        return transportClickSerial.get();
-    }
-
-    static boolean isRefusedRecoveryDispatch(boolean clicked, WorldPoint player,
-                                             WorldPoint origin, WorldPoint destination) {
-        return TransportRefusalLedger.isRefusedDispatch(clicked, player, origin, destination);
-    }
-
-    static boolean isStillAtTransportOrigin(WorldPoint player, WorldPoint origin, WorldPoint destination) {
-        return TransportRefusalLedger.isStillAtOrigin(player, origin, destination);
-    }
-
     static int transportRefusalStrikes(WorldPoint origin, WorldPoint destination) {
         return transportRefusalLedger.strikes(origin, destination);
-    }
-
-    static void clearTransportRefusals(WorldPoint origin, WorldPoint destination) {
-        transportRefusalLedger.clear(origin, destination);
     }
 
     static boolean registerTransportRefusal(WorldPoint origin, WorldPoint destination, String mode) {
@@ -894,15 +978,38 @@ final class Rs2WalkerTransports {
                     strikes, TransportRefusalLedger.STRIKE_LIMIT);
             return false;
         }
+        strikeOutTransport(origin, destination, mode, TransportRefusalLedger.STRIKE_LIMIT);
+        return true;
+    }
+
+    static boolean registerTransportFallThrough(WorldPoint origin, WorldPoint destination, String reason) {
+        if (origin == null || destination == null) {
+            return false;
+        }
+        int fallThroughs = transportRefusalLedger.registerFallThrough(origin, destination);
+        if (!TransportRefusalLedger.isFallThroughStrikeOut(fallThroughs)) {
+            WebWalkLog.spInfo("transport_fall_through | origin={} dest={} reason={} strike={}/{}",
+                    compactWorldPoint(origin), compactWorldPoint(destination), reason,
+                    fallThroughs, TransportRefusalLedger.FALL_THROUGH_STRIKE_LIMIT);
+            return false;
+        }
+        strikeOutTransport(origin, destination, "fall-through " + reason,
+                TransportRefusalLedger.FALL_THROUGH_STRIKE_LIMIT);
+        return true;
+    }
+
+    static int transportFallThroughs(WorldPoint origin, WorldPoint destination) {
+        return transportRefusalLedger.fallThroughs(origin, destination);
+    }
+
+    private static void strikeOutTransport(WorldPoint origin, WorldPoint destination, String mode, int limit) {
         if (Rs2PathApi.learnBlockedEdge(origin, destination, "transport-refused (" + mode + ")")) {
             transportRefusalLedger.recordWalkScopedBlock(origin, destination);
         }
         WebWalkLog.spInfo("transport_strike_out | origin={} dest={} mode={} — {} refusals; "
                         + "blocking transport for this walk and replanning",
-                compactWorldPoint(origin), compactWorldPoint(destination), mode,
-                TransportRefusalLedger.STRIKE_LIMIT);
+                compactWorldPoint(origin), compactWorldPoint(destination), mode, limit);
         recalculatePath();
-        return true;
     }
 
     static void withdrawWalkScopedTransportBlocks() {
@@ -1098,9 +1205,10 @@ final class Rs2WalkerTransports {
         ensureRequiredItemBeforeTransport(transport);
         WorldPoint before = Rs2Player.getWorldLocation();
         if (!Rs2GameObject.interact(tileObject, action)) {
+            noteRefusal(TransportDispatchTrace.Refusal.INTERACT_FAILED);
             return false;
         }
-        recordTransportClick();
+        noteTransportInteraction();
         // Unlike the other exception handlers, a toll-gate interaction is not complete merely
         // because the menu action was issued: it may first server-walk from several tiles away and
         // then present a confirmation dialogue. Bubble an unobserved crossing back to the caller so
@@ -1212,10 +1320,17 @@ final class Rs2WalkerTransports {
                                             int indexOfStartPoint,
                                             Rs2PathApi.ActiveTransportSelection selection,
                                             boolean allowServerApproach) {
+        return dispatchSelectedTransport(path, indexOfStartPoint, selection, allowServerApproach).handled;
+    }
+
+    static DispatchResult dispatchSelectedTransport(List<WorldPoint> path,
+                                                    int indexOfStartPoint,
+                                                    Rs2PathApi.ActiveTransportSelection selection,
+                                                    boolean allowServerApproach) {
         Boolean previous = SERVER_APPROACH_ALLOWED.get();
         SERVER_APPROACH_ALLOWED.set(allowServerApproach);
         try {
-            return handleSelectedTransport(path, indexOfStartPoint, selection);
+            return dispatchSelectedTransport(path, indexOfStartPoint, selection);
         } finally {
             if (Boolean.TRUE.equals(previous)) {
                 SERVER_APPROACH_ALLOWED.set(Boolean.TRUE);
@@ -2238,7 +2353,11 @@ final class Rs2WalkerTransports {
         boolean ok = action.getAsBoolean();
         if (ok)
         {
-            recordTransportClick();
+            noteTransportInteraction();
+        }
+        else
+        {
+            noteRefusal(TransportDispatchTrace.Refusal.HANDLER_FAILED);
         }
         if (leaguesActive)
         {
@@ -2262,7 +2381,11 @@ final class Rs2WalkerTransports {
         boolean ok = action.getAsBoolean();
         if (ok)
         {
-            recordTransportClick();
+            noteTransportInteraction();
+        }
+        else
+        {
+            noteRefusal(TransportDispatchTrace.Refusal.HANDLER_FAILED);
         }
         if (leaguesActive)
         {
@@ -2388,6 +2511,7 @@ final class Rs2WalkerTransports {
             if (!interactResult) {
                 return false;
             }
+            noteTransportInteraction();
         }
 
         boolean result = interactWithAdventureLog(transport);
@@ -2807,6 +2931,7 @@ final class Rs2WalkerTransports {
         Rs2NpcModel renu = Rs2Npc.getNpc(NpcID.QUETZAL_CHILD_GREEN);
 
         if (Rs2Tile.isTileReachable(transport.getOrigin()) && Rs2Npc.interact(renu, "travel")) {
+            noteTransportInteraction();
             Rs2Player.waitForWalking();
             WorldPoint dest = transport.getDestination();
             String mapLabel = resolveQuetzalMapOptionLabel(transport);
@@ -2858,6 +2983,7 @@ final class Rs2WalkerTransports {
         Rs2NpcModel npc = Rs2Npc.getNpc(npcName);
         log.info("Charter Ship NPC: " + npcName + " - " + (npc != null ? npc.getId() : "not found"));
         if (Rs2Npc.canWalkTo(npc, 20) && Rs2Npc.interact(npc, transport.getAction())) {
+            noteTransportInteraction();
             Rs2Player.waitForWalking();
             if (!sleepUntil(() -> Rs2Widget.isWidgetVisible(885, 4), 5000)) {
                 return false;
@@ -3122,6 +3248,7 @@ final class Rs2WalkerTransports {
 
             // Interact with the gnome glider NPC
             if (Rs2Npc.interact(gnome, action)) {
+                noteTransportInteraction();
                 sleepUntil(() -> !Rs2Widget.isHidden(GLIDER_PARENT_WIDGET, GLIDER_CHILD_WIDGET));
             }
         }

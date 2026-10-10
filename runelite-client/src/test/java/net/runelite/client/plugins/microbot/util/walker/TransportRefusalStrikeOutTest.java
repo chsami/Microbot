@@ -8,6 +8,10 @@ import net.runelite.client.plugins.microbot.shortestpath.WorldPointUtil;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.Pathfinder;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.PathfinderConfig;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.SplitFlagMap;
+import net.runelite.client.plugins.microbot.util.walker.transport.TransportDispatchTrace;
+import net.runelite.client.plugins.microbot.util.walker.transport.TransportDispatchTrace.DeliberateSkip;
+import net.runelite.client.plugins.microbot.util.walker.transport.TransportDispatchTrace.Refusal;
+import net.runelite.client.plugins.microbot.util.walker.transport.TransportDispatchTrace.Verdict;
 import net.runelite.client.plugins.microbot.util.walker.transport.TransportRefusalLedger;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -34,7 +38,16 @@ public class TransportRefusalStrikeOutTest
 	@BeforeClass
 	public static void loadMap()
 	{
-		collisionMap = SplitFlagMap.fromResources();
+		collisionMap = sharedCollisionMap();
+	}
+
+	static synchronized SplitFlagMap sharedCollisionMap()
+	{
+		if (collisionMap == null)
+		{
+			collisionMap = SplitFlagMap.fromResources();
+		}
+		return collisionMap;
 	}
 
 	@Test
@@ -49,22 +62,57 @@ public class TransportRefusalStrikeOutTest
 	}
 
 	@Test
-	public void recoveryDispatchStrikesOnlyAfterAClickThatLeftThePlayerAtTheOrigin()
+	public void interactionRefusalRequiresThePlayerToStillBeAtTheOrigin()
 	{
 		WorldPoint door = new WorldPoint(3201, 3169, 0);
 		WorldPoint inside = new WorldPoint(3202, 3169, 0);
-		assertTrue(TransportRefusalLedger.isRefusedDispatch(true, door, door, inside));
-		assertTrue(TransportRefusalLedger.isRefusedDispatch(true, ORIGIN, ORIGIN, DESTINATION));
+		assertTrue(TransportRefusalLedger.isStillAtOrigin(door, door, inside));
+		assertTrue(TransportRefusalLedger.isStillAtOrigin(ORIGIN, ORIGIN, DESTINATION));
 
-		assertFalse("waiting or deliberately deferring is not a refusal",
-			TransportRefusalLedger.isRefusedDispatch(false, door, door, inside));
 		assertFalse("already across the edge",
-			TransportRefusalLedger.isRefusedDispatch(true, inside, door, inside));
+			TransportRefusalLedger.isStillAtOrigin(inside, door, inside));
 		assertFalse("walked away from the origin",
-			TransportRefusalLedger.isRefusedDispatch(true, new WorldPoint(3198, 3169, 0), door, inside));
+			TransportRefusalLedger.isStillAtOrigin(new WorldPoint(3198, 3169, 0), door, inside));
 		assertFalse("plane mismatch",
-			TransportRefusalLedger.isRefusedDispatch(true, new WorldPoint(3201, 3169, 1), door, inside));
-		assertFalse(TransportRefusalLedger.isRefusedDispatch(true, null, door, inside));
+			TransportRefusalLedger.isStillAtOrigin(new WorldPoint(3201, 3169, 1), door, inside));
+		assertFalse(TransportRefusalLedger.isStillAtOrigin(null, door, inside));
+	}
+
+	@Test
+	public void fallThroughsStrikeOutOnTheirOwnHigherLimit()
+	{
+		TransportRefusalLedger ledger = new TransportRefusalLedger();
+		for (int i = 1; i < TransportRefusalLedger.FALL_THROUGH_STRIKE_LIMIT; i++)
+		{
+			assertFalse(TransportRefusalLedger.isFallThroughStrikeOut(ledger.registerFallThrough(ORIGIN, DESTINATION)));
+		}
+		assertTrue(TransportRefusalLedger.isFallThroughStrikeOut(ledger.registerFallThrough(ORIGIN, DESTINATION)));
+		assertEquals("fall-throughs do not count as interaction strikes", 0, ledger.strikes(ORIGIN, DESTINATION));
+		ledger.clear(ORIGIN, DESTINATION);
+		assertEquals(0, ledger.fallThroughs(ORIGIN, DESTINATION));
+	}
+
+	@Test
+	public void dispatchClassificationSeparatesDeliberateSkipsFromRefusals()
+	{
+		assertEquals(Verdict.HANDLED,
+			TransportDispatchTrace.classify(true, true, null, Refusal.HANDLER_FAILED, true));
+		assertEquals(Verdict.REFUSED_AFTER_INTERACTION,
+			TransportDispatchTrace.classify(false, true, null, Refusal.HANDLER_FAILED, true));
+		assertEquals(Verdict.INTERACTION_LEFT_ORIGIN,
+			TransportDispatchTrace.classify(false, true, null, null, false));
+		for (DeliberateSkip skip : DeliberateSkip.values())
+		{
+			assertEquals(skip.name(), Verdict.DELIBERATE_SKIP,
+				TransportDispatchTrace.classify(false, false, skip, Refusal.ORIGIN_UNREACHABLE, true));
+		}
+		for (Refusal refusal : Refusal.values())
+		{
+			assertEquals(refusal.name(), Verdict.REFUSED_WITHOUT_INTERACTION,
+				TransportDispatchTrace.classify(false, false, null, refusal, true));
+		}
+		assertEquals(Verdict.NOT_ATTEMPTED,
+			TransportDispatchTrace.classify(false, false, null, null, true));
 	}
 
 	@Test
@@ -131,16 +179,21 @@ public class TransportRefusalStrikeOutTest
 
 	private static List<WorldPoint> plan(PathfinderConfig config)
 	{
-		Pathfinder pathfinder = new Pathfinder(config, ORIGIN, Set.of(DESTINATION));
+		return plan(config, ORIGIN, DESTINATION);
+	}
+
+	static List<WorldPoint> plan(PathfinderConfig config, WorldPoint start, WorldPoint goal)
+	{
+		Pathfinder pathfinder = new Pathfinder(config, start, Set.of(goal));
 		pathfinder.run();
 		return pathfinder.getPath();
 	}
 
 	@SuppressWarnings("unchecked")
-	private static PathfinderConfig configWithTransports(Map<WorldPoint, Set<Transport>> catalog) throws Exception
+	static PathfinderConfig configWithTransports(Map<WorldPoint, Set<Transport>> catalog) throws Exception
 	{
 		PathfinderConfig config = new PathfinderConfig(
-			collisionMap, new HashMap<>(catalog), Collections.emptyList(), null, null);
+			sharedCollisionMap(), new HashMap<>(catalog), Collections.emptyList(), null, null);
 		Field cutoff = PathfinderConfig.class.getDeclaredField("calculationCutoffMillis");
 		cutoff.setAccessible(true);
 		cutoff.setLong(config, 10_000L);

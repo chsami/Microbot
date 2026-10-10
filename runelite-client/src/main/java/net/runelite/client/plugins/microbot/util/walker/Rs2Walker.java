@@ -86,7 +86,6 @@ import net.runelite.client.plugins.microbot.util.walker.awaits.Rs2WalkerRuntimeA
 import net.runelite.client.plugins.microbot.util.walker.puzzles.DraynorBasementSolver;
 import net.runelite.client.plugins.microbot.util.walker.stall.Rs2WalkerStallPolicy;
 import net.runelite.client.plugins.microbot.util.walker.transport.Rs2WalkerTransportAwaits;
-import net.runelite.client.plugins.microbot.util.walker.transport.TransportRefusalLedger;
 import net.runelite.client.plugins.microbot.util.walker.lifecycle.Rs2WalkerLifecycleRuntime;
 import net.runelite.client.plugins.skillcalculator.skills.MagicAction;
 import net.runelite.client.ui.overlay.worldmap.WorldMapPoint;
@@ -4444,27 +4443,7 @@ public class Rs2Walker {
                         && isRawTransportOriginNearPlayer(rawPath, ri, playerLoc, RAW_TRANSPORT_DISPATCH_MAX_DISTANCE)) {
                     WebWalkLog.spInfo("recovery_on_origin_transport | origin={} player={} rawIdx={}",
                             compactWorldPoint(rawPath.get(ri)), compactWorldPoint(playerLoc), ri);
-                    WorldPoint edgeOrigin = rawPath.get(ri);
-                    WorldPoint edgeDestination = rawPath.get(ri + 1);
-                    int strikesBefore = Rs2WalkerTransports.transportRefusalStrikes(edgeOrigin, edgeDestination);
-                    long clicksBefore = Rs2WalkerTransports.transportClickSerial();
-                    if (handleTransports(rawPath, ri)) {
-                        Rs2WalkerTransports.clearTransportRefusals(edgeOrigin, edgeDestination);
-                        return ObstacleResolution.interacted();
-                    }
-                    int strikesAfter = Rs2WalkerTransports.transportRefusalStrikes(edgeOrigin, edgeDestination);
-                    boolean struckOut;
-                    if (strikesAfter != strikesBefore) {
-                        struckOut = TransportRefusalLedger.isStrikeOut(strikesAfter);
-                    } else if (Rs2WalkerTransports.isRefusedRecoveryDispatch(
-                            Rs2WalkerTransports.transportClickSerial() != clicksBefore,
-                            Rs2Player.getWorldLocation(), edgeOrigin, edgeDestination)) {
-                        struckOut = Rs2WalkerTransports.registerTransportRefusal(
-                                edgeOrigin, edgeDestination, "recovery-dispatch");
-                    } else {
-                        struckOut = false;
-                    }
-                    if (struckOut) {
+                    if (Rs2WalkerTransports.dispatchRecoveryTransport(rawPath, ri)) {
                         return ObstacleResolution.interacted();
                     }
                 }

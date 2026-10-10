@@ -11,8 +11,10 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 public final class TransportRefusalLedger {
 
     public static final int STRIKE_LIMIT = 2;
+    public static final int FALL_THROUGH_STRIKE_LIMIT = 3;
 
     private final Map<List<WorldPoint>, Integer> strikes = new ConcurrentHashMap<>();
+    private final Map<List<WorldPoint>, Integer> fallThroughs = new ConcurrentHashMap<>();
     private final ConcurrentLinkedQueue<WorldPoint[]> walkScopedBlocks = new ConcurrentLinkedQueue<>();
 
     public int registerRefusal(WorldPoint origin, WorldPoint destination) {
@@ -22,8 +24,19 @@ public final class TransportRefusalLedger {
         return strikes.merge(List.of(origin, destination), 1, Integer::sum);
     }
 
+    public int registerFallThrough(WorldPoint origin, WorldPoint destination) {
+        if (origin == null || destination == null) {
+            return 0;
+        }
+        return fallThroughs.merge(List.of(origin, destination), 1, Integer::sum);
+    }
+
     public static boolean isStrikeOut(int strikeCount) {
         return strikeCount == STRIKE_LIMIT;
+    }
+
+    public static boolean isFallThroughStrikeOut(int fallThroughCount) {
+        return fallThroughCount == FALL_THROUGH_STRIKE_LIMIT;
     }
 
     public static boolean isStillAtOrigin(WorldPoint player, WorldPoint origin, WorldPoint destination) {
@@ -37,11 +50,6 @@ public final class TransportRefusalLedger {
         return player.getPlane() != destination.getPlane() || toOrigin < player.distanceTo2D(destination);
     }
 
-    public static boolean isRefusedDispatch(boolean clicked, WorldPoint player,
-                                            WorldPoint origin, WorldPoint destination) {
-        return clicked && isStillAtOrigin(player, origin, destination);
-    }
-
     public int strikes(WorldPoint origin, WorldPoint destination) {
         if (origin == null || destination == null) {
             return 0;
@@ -49,11 +57,19 @@ public final class TransportRefusalLedger {
         return strikes.getOrDefault(List.of(origin, destination), 0);
     }
 
+    public int fallThroughs(WorldPoint origin, WorldPoint destination) {
+        if (origin == null || destination == null) {
+            return 0;
+        }
+        return fallThroughs.getOrDefault(List.of(origin, destination), 0);
+    }
+
     public void clear(WorldPoint origin, WorldPoint destination) {
         if (origin == null || destination == null) {
             return;
         }
         strikes.remove(List.of(origin, destination));
+        fallThroughs.remove(List.of(origin, destination));
     }
 
     public void recordWalkScopedBlock(WorldPoint origin, WorldPoint destination) {
@@ -65,6 +81,7 @@ public final class TransportRefusalLedger {
 
     public List<WorldPoint[]> drainWalkScopedBlocks() {
         strikes.clear();
+        fallThroughs.clear();
         List<WorldPoint[]> drained = new ArrayList<>();
         WorldPoint[] edge;
         while ((edge = walkScopedBlocks.poll()) != null) {
