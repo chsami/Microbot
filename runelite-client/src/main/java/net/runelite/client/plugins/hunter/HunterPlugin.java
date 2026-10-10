@@ -26,7 +26,9 @@ package net.runelite.client.plugins.hunter;
 
 import com.google.common.collect.BiMap;
 import com.google.common.collect.ImmutableBiMap;
+import com.google.inject.Module;
 import com.google.inject.Provides;
+import com.google.inject.util.Providers;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -63,12 +65,6 @@ import net.runelite.client.ui.overlay.OverlayManager;
 )
 public class HunterPlugin extends Plugin
 {
-	@Override
-	public com.google.inject.Module getPublicModule()
-	{
-		return binder -> binder.bind(HunterPlugin.class).toProvider(com.google.inject.util.Providers.of(this));
-	}
-
 	@Inject
 	private Client client;
 
@@ -116,6 +112,12 @@ public class HunterPlugin extends Plugin
 	HunterConfig provideConfig(ConfigManager configManager)
 	{
 		return configManager.getConfig(HunterConfig.class);
+	}
+
+	@Override
+	public Module getPublicModule()
+	{
+		return b -> b.bind(HunterPlugin.class).toProvider(Providers.of(this));
 	}
 
 	@Override
