@@ -828,8 +828,8 @@ public interface ShortestPathConfig extends Config {
     }
 
 	@ConfigSection(
-			name = "Spirit tree teleports",
-			description = "Toggle which spirit tree destinations to use",
+			name = "Farmed spirit trees (opt-in)",
+			description = "Enable only the farming-patch spirit trees you have grown yourself",
 			position = 5,
 			closedByDefault = true
 	)
@@ -838,56 +838,56 @@ public interface ShortestPathConfig extends Config {
 	@ConfigItem(
 			keyName = "spiritTreeEtceteria",
 			name = "Etceteria",
-			description = "Use the spirit tree teleport to Etceteria",
+			description = "Use the spirit tree in Etceteria. Only enable if you have grown a spirit tree in this patch",
 			position = 0,
 			section = sectionSpiritTrees
 	)
 	default boolean spiritTreeEtceteria() {
-		return true;
+		return false;
 	}
 
 	@ConfigItem(
 			keyName = "spiritTreeBrimhaven",
 			name = "Brimhaven",
-			description = "Use the spirit tree teleport to Brimhaven",
+			description = "Use the spirit tree in Brimhaven. Only enable if you have grown a spirit tree in this patch",
 			position = 1,
 			section = sectionSpiritTrees
 	)
 	default boolean spiritTreeBrimhaven() {
-		return true;
+		return false;
 	}
 
 	@ConfigItem(
 			keyName = "spiritTreePortSarim",
 			name = "Port Sarim",
-			description = "Use the spirit tree teleport to Port Sarim",
+			description = "Use the spirit tree in Port Sarim. Only enable if you have grown a spirit tree in this patch",
 			position = 2,
 			section = sectionSpiritTrees
 	)
 	default boolean spiritTreePortSarim() {
-		return true;
+		return false;
 	}
 
 	@ConfigItem(
 			keyName = "spiritTreeHosidius",
 			name = "Hosidius",
-			description = "Use the spirit tree teleport to Hosidius",
+			description = "Use the spirit tree in Hosidius. Only enable if you have grown a spirit tree in this patch",
 			position = 3,
 			section = sectionSpiritTrees
 	)
 	default boolean spiritTreeHosidius() {
-		return true;
+		return false;
 	}
 
 	@ConfigItem(
 			keyName = "spiritTreeFarmingGuild",
 			name = "Farming Guild",
-			description = "Use the spirit tree teleport to the Farming Guild",
+			description = "Use the spirit tree in the Farming Guild. Only enable if you have grown a spirit tree in this patch",
 			position = 4,
 			section = sectionSpiritTrees
 	)
     default boolean spiritTreeFarmingGuild() {
-        return true;
+        return false;
     }
 
     @ConfigSection(
