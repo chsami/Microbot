@@ -751,7 +751,6 @@ net.runelite.client.plugins.microbot.util.walker.Rs2Walker#getTile(WorldPoint): 
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#getTransportsForPath(List, int, TransportType, boolean): List  ->  net.runelite.api.Client#getTopLevelWorldView(): WorldView
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#hasLineOfSightBetween(WorldPoint, WorldPoint): boolean  ->  net.runelite.api.Client#getTopLevelWorldView(): WorldView
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#hasLineOfSightBetween(WorldPoint, WorldPoint): boolean  ->  net.runelite.api.coords.WorldArea#hasLineOfSightTo(WorldView, WorldArea): boolean
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#interactingActorNearWalkablePath(): boolean  ->  net.runelite.api.Actor#getWorldLocation(): WorldPoint
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#isClientThread(): boolean  ->  net.runelite.api.Client#isClientThread(): boolean
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#isCloseToRegion(int, int, int): boolean  ->  net.runelite.api.Client#getTopLevelWorldView(): WorldView
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#isCloseToRegion(int, int, int): boolean  ->  net.runelite.api.WorldView#getPlane(): int
