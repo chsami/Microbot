@@ -44,6 +44,7 @@ public class Rs2Widget {
                 widget = findWidget(text, null, exact);
             } else {
                 Widget rootWidget = getWidget(widgetId.get(), childId);
+                if (rootWidget == null) return false;
                 List<Widget> rootWidgets = new ArrayList<>();
                 rootWidgets.add(rootWidget);
                 widget = findWidget(text, rootWidgets, exact);
@@ -234,6 +235,7 @@ public class Rs2Widget {
      * @return The widget containing the specified text, or null if no match is found.
      */
     public static Widget searchChildren(String text, Widget child, boolean exact) {
+        if (child == null) return null;
         if (matchesText(child, text, exact)) return child;
 
         Widget[][] childGroups = {child.getChildren(), child.getNestedChildren(), child.getDynamicChildren(), child.getStaticChildren()};
@@ -325,6 +327,7 @@ public class Rs2Widget {
      * @return The widget with the specified sprite ID, or null if not found.
      */
     public static Widget searchChildren(int spriteId, Widget child) {
+        if (child == null) return null;
         if (matchesSpriteId(child, spriteId)) return child;
 
         Widget[][] childGroups = {child.getChildren(), child.getNestedChildren(), child.getDynamicChildren(), child.getStaticChildren()};
@@ -483,7 +486,9 @@ public class Rs2Widget {
 
      private static Integer getProcessingWidgetKeyCode(String actionText) {
         log.debug("Searching for processing widget with action text: {}", actionText);
-        Widget optionWidget = findWidget(actionText, List.of(getWidget(InterfaceID.SKILLMULTI, 0)), false);    
+        Widget mainWidget = getWidget(InterfaceID.SKILLMULTI, 0);
+        if (mainWidget == null) return null;
+        Widget optionWidget = findWidget(actionText, List.of(mainWidget), false);
         if (optionWidget == null) return null;
         return getProcessingWidgetKeyCode(optionWidget);
      }
