@@ -145,20 +145,15 @@ net.runelite.client.plugins.microbot.util.depositbox.Rs2DepositBox#openDepositBo
 net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue#clickOption(String, boolean): boolean  ->  net.runelite.api.widgets.Widget#getText(): String
 net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue#getCombinationOptions(): List  ->  net.runelite.api.widgets.Widget#getActions(): String[]
 net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue#getCombinationOptions(): List  ->  net.runelite.api.widgets.Widget#getStaticChildren(): Widget[]
-net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue#getDialogueOptions(): List  ->  net.runelite.api.widgets.Widget#getDynamicChildren(): Widget[]
 net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue#getDialogueOptions(): List  ->  net.runelite.api.widgets.Widget#getText(): String
-net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue#getQuestion(): String  ->  net.runelite.api.widgets.Widget#getDynamicChildren(): Widget[]
-net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue#getQuestion(): String  ->  net.runelite.api.widgets.Widget#getText(): String
 net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue#getStrippedWidgetText(int, int): String  ->  net.runelite.api.widgets.Widget#getText(): String
 net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue#handleQuestOptionDialogueSelection(): boolean  ->  net.runelite.api.widgets.Widget#getText(): String
-net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue#hasDialogueOptionTitle(String, boolean): boolean  ->  net.runelite.api.widgets.Widget#getDynamicChildren(): Widget[]
-net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue#hasDialogueOptionTitle(String, boolean): boolean  ->  net.runelite.api.widgets.Widget#getText(): String
 net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue#hasSelectAnOption(): boolean  ->  net.runelite.api.widgets.Widget#getDynamicChildren(): Widget[]
-net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue#lambda$clickOption$3(Widget, String): boolean  ->  net.runelite.api.widgets.Widget#getText(): String
-net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue#lambda$clickOption$4(Widget, String): boolean  ->  net.runelite.api.widgets.Widget#getText(): String
-net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue#lambda$getCombinationOption$9(boolean, String, Widget): boolean  ->  net.runelite.api.widgets.Widget#getName(): String
-net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue#lambda$getDialogueOption$1(boolean, String, Widget): boolean  ->  net.runelite.api.widgets.Widget#getText(): String
-net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue#lambda$hasDialogueOption$2(boolean, String, Widget): boolean  ->  net.runelite.api.widgets.Widget#getText(): String
+net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue#lambda$clickOption$5(Widget, String): boolean  ->  net.runelite.api.widgets.Widget#getText(): String
+net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue#lambda$clickOption$6(Widget, String): boolean  ->  net.runelite.api.widgets.Widget#getText(): String
+net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue#lambda$getCombinationOption$11(boolean, String, Widget): boolean  ->  net.runelite.api.widgets.Widget#getName(): String
+net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue#lambda$getDialogueOption$3(boolean, String, Widget): boolean  ->  net.runelite.api.widgets.Widget#getText(): String
+net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue#lambda$hasDialogueOption$4(boolean, String, Widget): boolean  ->  net.runelite.api.widgets.Widget#getText(): String
 net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment#<clinit>(): void  ->  net.runelite.api.EquipmentInventorySlot#getSlotIdx(): int
 net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment#<clinit>(): void  ->  net.runelite.api.EquipmentInventorySlot#values(): EquipmentInventorySlot[]
 net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment#equipment(): ItemContainer  ->  net.runelite.api.Client#getItemContainer(int): ItemContainer

@@ -153,11 +153,25 @@ public class Rs2Dialogue {
     public static String getQuestion() {
         if (!hasSelectAnOption()) return null;
 
-        Widget[] dynamicWidgetOptions = Rs2Widget.getWidget(InterfaceID.DIALOG_OPTION, 1).getDynamicChildren();
-        if (dynamicWidgetOptions != null && dynamicWidgetOptions.length > 0) {
-            return Rs2UiHelper.stripColTags(dynamicWidgetOptions[0].getText());
-        }
-        return null;
+        String text = getDialogOptionTitleText();
+        return text == null ? null : Rs2UiHelper.stripColTags(text);
+    }
+
+    private static String getDialogOptionTitleText() {
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            Widget dialogueOption = Microbot.getClient().getWidget(InterfaceID.DIALOG_OPTION, 1);
+            if (dialogueOption == null) return null;
+            Widget[] children = dialogueOption.getDynamicChildren();
+            if (children == null || children.length == 0 || children[0] == null) return null;
+            return children[0].getText();
+        }).orElse(null);
+    }
+
+    private static Widget[] getDialogOptionChildren() {
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            Widget dialogueOption = Microbot.getClient().getWidget(InterfaceID.DIALOG_OPTION, 1);
+            return dialogueOption == null ? null : dialogueOption.getDynamicChildren();
+        }).orElse(new Widget[0]);
     }
 
     /**
@@ -193,15 +207,13 @@ public class Rs2Dialogue {
     public static boolean hasDialogueOptionTitle(String text, boolean exact) {
         if (!hasSelectAnOption()) return false;
 
-        Widget dialogueOption = Rs2Widget.getWidget(InterfaceID.DIALOG_OPTION, 1);
-        if (dialogueOption == null) return false;
-        Widget[] dynamicWidgetOptions = dialogueOption.getDynamicChildren();
-        if (dynamicWidgetOptions == null || dynamicWidgetOptions.length == 0 || dynamicWidgetOptions[0] == null) return false;
+        String title = getDialogOptionTitleText();
+        if (title == null) return false;
 
         if (exact) {
-            return dynamicWidgetOptions[0].getText().equalsIgnoreCase(text);
+            return title.equalsIgnoreCase(text);
         } else {
-            return dynamicWidgetOptions[0].getText().toLowerCase().contains(text.toLowerCase());
+            return title.toLowerCase().contains(text.toLowerCase());
         }
 
     }
@@ -225,17 +237,16 @@ public class Rs2Dialogue {
         if (!hasSelectAnOption()) return Collections.emptyList();
 
         List<Widget> out = new ArrayList<>();
-        Widget dialogueOption = Rs2Widget.getWidget(InterfaceID.DIALOG_OPTION, 1);
-        if (dialogueOption == null) return new ArrayList<>();
-        Widget[] dynamicWidgetOptions = dialogueOption.getDynamicChildren();
+        Widget[] dynamicWidgetOptions = getDialogOptionChildren();
 
         // Skip the first dynamic widget option, as it is never an option
         for (int i = 1; i < dynamicWidgetOptions.length; i++) {
-            if (dynamicWidgetOptions[i].getText().isBlank()) {
+            Widget option = dynamicWidgetOptions[i];
+            if (option == null || option.getText() == null || option.getText().isBlank()) {
                 continue;
             }
 
-            out.add(dynamicWidgetOptions[i]);
+            out.add(option);
         }
 
         return out;
@@ -524,8 +535,12 @@ public class Rs2Dialogue {
         if (!hasCombinationDialogue()) return Collections.emptyList();
 
         List<Widget> options = new ArrayList<>();
-        if (Rs2Widget.isWidgetVisible(270, 13)) {
-            for (Widget widget : Rs2Widget.getWidget(270, 14).getStaticChildren()) {
+        if (!Rs2Widget.isWidgetVisible(270, 13)) return options;
+
+        Widget combinationList = Rs2Widget.getWidget(270, 14);
+        Widget[] children = combinationList == null ? null : combinationList.getStaticChildren();
+        if (children != null) {
+            for (Widget widget : children) {
                 if (widget != null && widget.getActions() != null && widget.getActions().length > 0) {
                     options.add(widget);
                 }
