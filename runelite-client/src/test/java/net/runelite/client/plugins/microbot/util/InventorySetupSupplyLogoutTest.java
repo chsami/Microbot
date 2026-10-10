@@ -21,19 +21,32 @@ import static org.mockito.Mockito.*;
 
 public class InventorySetupSupplyLogoutTest {
     @Test public void requiredInventoryItemMissingRequestsTerminalLogout() {
-        checkMissing(false, true, true);
+        checkMissing(false, true, true, true);
     }
 
     @Test public void requiredGearMissingRequestsTerminalLogout() {
-        checkMissing(true, true, true);
+        checkMissing(true, true, true, true);
     }
 
     @Test public void bankMirrorNotReadyDoesNotRequestLogout() {
-        checkMissing(false, false, false);
-        checkMissing(true, false, false);
+        checkMissing(false, false, false, true);
+        checkMissing(true, false, false, true);
     }
 
-    private void checkMissing(boolean gear, boolean mirrorReady, boolean expectLogout) {
+    @Test public void existingInventoryCallerPausesWithoutLoggingOutOrCancelling() {
+        checkMissing(false, true, false, false);
+    }
+
+    @Test public void existingGearCallerPausesWithoutLoggingOutOrCancelling() {
+        checkMissing(true, true, false, false);
+    }
+
+    @Test public void defaultPolicyDoesNotPauseForAnUnreadyBankMirror() {
+        checkMissing(false, false, false, false);
+        checkMissing(true, false, false, false);
+    }
+
+    private void checkMissing(boolean gear, boolean mirrorReady, boolean expectLogout, boolean optIn) {
         boolean pausedBefore = Microbot.pauseAllScripts.getAndSet(false);
         InventorySetup setup = mock(InventorySetup.class);
         InventorySetupsItem row = new InventorySetupsItem(100, "Required supply", 1, true,
@@ -57,10 +70,13 @@ public class InventorySetupSupplyLogoutTest {
             equipment.when(Rs2Equipment::all).thenAnswer(call -> Stream.empty());
             ScheduledFuture<?> scheduler = mock(ScheduledFuture.class);
             Rs2InventorySetup loader = new Rs2InventorySetup(setup, scheduler);
+            if (optIn) {
+                assertSame(loader, loader.withMissingSupplyPolicy(Rs2InventorySetup.MissingSupplyPolicy.LOGOUT_AND_STOP));
+            }
             assertFalse(gear ? loader.loadEquipment(false) : loader.loadInventory(false));
             player.verify(Rs2Player::logoutWithoutAutoLogin, times(expectLogout ? 1 : 0));
             verify(scheduler, times(expectLogout ? 1 : 0)).cancel(false);
-            assertFalse(Microbot.pauseAllScripts.get()); // A subsequent run must not inherit a global pause.
+            assertEquals(!optIn && mirrorReady, Microbot.pauseAllScripts.get());
         } finally {
             Microbot.pauseAllScripts.set(pausedBefore);
         }

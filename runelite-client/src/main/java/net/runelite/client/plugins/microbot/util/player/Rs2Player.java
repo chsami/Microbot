@@ -488,7 +488,7 @@ public class Rs2Player {
 
     /**
      * Best-effort terminal logout after a confirmed supply failure, off the client thread.
-     * Suppression stays armed even if logout input fails. Resume by manually logging in
+     * Pending suppression expires after 15 seconds if logout never completes. Resume by manually logging in
      * after the logout, starting another script, or restarting AutoLogin.
      * The return value distinguishes requested input from observed logout completion.
      */

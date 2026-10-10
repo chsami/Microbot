@@ -198,6 +198,23 @@ public class Rs2InventorySetup {
 
     ScheduledFuture<?> _mainScheduler;
 
+    /** Required-supply failure behavior; existing callers retain the global pause. */
+    public enum MissingSupplyPolicy { PAUSE_ALL_SCRIPTS, LOGOUT_AND_STOP }
+
+    private MissingSupplyPolicy missingSupplyPolicy = MissingSupplyPolicy.PAUSE_ALL_SCRIPTS;
+
+    /**
+     * Selects behavior for confirmed required-supply shortages on this loader only.
+     * Set this policy before loading; terminal logout must be explicitly requested by the owning script.
+     *
+     * @param policy the required-supply failure policy
+     * @return this loader for chaining after either constructor
+     */
+    public Rs2InventorySetup withMissingSupplyPolicy(MissingSupplyPolicy policy) {
+        missingSupplyPolicy = Objects.requireNonNull(policy, "policy");
+        return this;
+    }
+
     /**
      * Constructor to initialize the Rs2InventorySetup with a specific setup name and scheduler.
      *
@@ -863,10 +880,12 @@ public class Rs2InventorySetup {
 				int bankGear = bankQtyForPresetRow(item, lowerCaseName, isFuzzy);
 				int invGear = isFuzzy ? Rs2Inventory.itemQuantity((String) identifier) : Rs2Inventory.itemQuantity((int) identifier);
 				logSetup(Level.WARN,
-						"missing gear %s | bank=%d | inv=%d | need=%d — stopping",
-						item.getName(), bankGear, invGear, item.getQuantity());
+						"missing gear %s | bank=%d | inv=%d | need=%d — %s",
+						item.getName(), bankGear, invGear, item.getQuantity(),
+						missingSupplyPolicy == MissingSupplyPolicy.LOGOUT_AND_STOP ? "stopping" : "pausing");
 				stopForMissingRequiredSupply(item.getName());
-				return false;
+				if (missingSupplyPolicy == MissingSupplyPolicy.LOGOUT_AND_STOP) return false;
+				continue;
 			}
 
 			if (inInventory) {
@@ -902,6 +921,10 @@ public class Rs2InventorySetup {
     }
 
     private void stopForMissingRequiredSupply(String itemName) {
+        if (missingSupplyPolicy == MissingSupplyPolicy.PAUSE_ALL_SCRIPTS) {
+            Microbot.pauseAllScripts.compareAndSet(false, true);
+            return;
+        }
         Microbot.status = "Missing required setup supply: " + itemName;
         Rs2Player.logoutWithoutAutoLogin();
         // A later script start must not revive this run's failing bank loop.
