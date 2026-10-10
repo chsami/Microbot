@@ -856,15 +856,23 @@ final class Rs2WalkerTransports {
 
     private static final TransportRefusalLedger transportRefusalLedger = new TransportRefusalLedger();
 
+    private static final AtomicLong transportClickSerial = new AtomicLong();
+
+    private static void recordTransportClick() {
+        transportClickSerial.incrementAndGet();
+    }
+
+    static long transportClickSerial() {
+        return transportClickSerial.get();
+    }
+
+    static boolean isRefusedRecoveryDispatch(boolean clicked, WorldPoint player,
+                                             WorldPoint origin, WorldPoint destination) {
+        return TransportRefusalLedger.isRefusedDispatch(clicked, player, origin, destination);
+    }
+
     static boolean isStillAtTransportOrigin(WorldPoint player, WorldPoint origin, WorldPoint destination) {
-        if (player == null || origin == null || destination == null || player.getPlane() != origin.getPlane()) {
-            return false;
-        }
-        int toOrigin = player.distanceTo2D(origin);
-        if (toOrigin > 1) {
-            return false;
-        }
-        return player.getPlane() != destination.getPlane() || toOrigin < player.distanceTo2D(destination);
+        return TransportRefusalLedger.isStillAtOrigin(player, origin, destination);
     }
 
     static int transportRefusalStrikes(WorldPoint origin, WorldPoint destination) {
@@ -1092,6 +1100,7 @@ final class Rs2WalkerTransports {
         if (!Rs2GameObject.interact(tileObject, action)) {
             return false;
         }
+        recordTransportClick();
         // Unlike the other exception handlers, a toll-gate interaction is not complete merely
         // because the menu action was issued: it may first server-walk from several tiles away and
         // then present a confirmation dialogue. Bubble an unobserved crossing back to the caller so
@@ -2227,6 +2236,10 @@ final class Rs2WalkerTransports {
             recordTransportAttempt(transport);
         }
         boolean ok = action.getAsBoolean();
+        if (ok)
+        {
+            recordTransportClick();
+        }
         if (leaguesActive)
         {
             recordTransportResult(transport, ok);
@@ -2247,6 +2260,10 @@ final class Rs2WalkerTransports {
         }
         boolean leaguesActive = Rs2LeaguesTransport.isLeaguesActive();
         boolean ok = action.getAsBoolean();
+        if (ok)
+        {
+            recordTransportClick();
+        }
         if (leaguesActive)
         {
             recordTransportResult(transport, ok);

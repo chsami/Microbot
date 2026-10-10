@@ -26,6 +26,22 @@ public final class TransportRefusalLedger {
         return strikeCount == STRIKE_LIMIT;
     }
 
+    public static boolean isStillAtOrigin(WorldPoint player, WorldPoint origin, WorldPoint destination) {
+        if (player == null || origin == null || destination == null || player.getPlane() != origin.getPlane()) {
+            return false;
+        }
+        int toOrigin = player.distanceTo2D(origin);
+        if (toOrigin > 1) {
+            return false;
+        }
+        return player.getPlane() != destination.getPlane() || toOrigin < player.distanceTo2D(destination);
+    }
+
+    public static boolean isRefusedDispatch(boolean clicked, WorldPoint player,
+                                            WorldPoint origin, WorldPoint destination) {
+        return clicked && isStillAtOrigin(player, origin, destination);
+    }
+
     public int strikes(WorldPoint origin, WorldPoint destination) {
         if (origin == null || destination == null) {
             return 0;

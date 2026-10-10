@@ -49,6 +49,25 @@ public class TransportRefusalStrikeOutTest
 	}
 
 	@Test
+	public void recoveryDispatchStrikesOnlyAfterAClickThatLeftThePlayerAtTheOrigin()
+	{
+		WorldPoint door = new WorldPoint(3201, 3169, 0);
+		WorldPoint inside = new WorldPoint(3202, 3169, 0);
+		assertTrue(TransportRefusalLedger.isRefusedDispatch(true, door, door, inside));
+		assertTrue(TransportRefusalLedger.isRefusedDispatch(true, ORIGIN, ORIGIN, DESTINATION));
+
+		assertFalse("waiting or deliberately deferring is not a refusal",
+			TransportRefusalLedger.isRefusedDispatch(false, door, door, inside));
+		assertFalse("already across the edge",
+			TransportRefusalLedger.isRefusedDispatch(true, inside, door, inside));
+		assertFalse("walked away from the origin",
+			TransportRefusalLedger.isRefusedDispatch(true, new WorldPoint(3198, 3169, 0), door, inside));
+		assertFalse("plane mismatch",
+			TransportRefusalLedger.isRefusedDispatch(true, new WorldPoint(3201, 3169, 1), door, inside));
+		assertFalse(TransportRefusalLedger.isRefusedDispatch(true, null, door, inside));
+	}
+
+	@Test
 	public void successClearsStrikesAndWalkStartDrainsBlocks()
 	{
 		TransportRefusalLedger ledger = new TransportRefusalLedger();

@@ -4447,14 +4447,23 @@ public class Rs2Walker {
                     WorldPoint edgeOrigin = rawPath.get(ri);
                     WorldPoint edgeDestination = rawPath.get(ri + 1);
                     int strikesBefore = Rs2WalkerTransports.transportRefusalStrikes(edgeOrigin, edgeDestination);
+                    long clicksBefore = Rs2WalkerTransports.transportClickSerial();
                     if (handleTransports(rawPath, ri)) {
                         Rs2WalkerTransports.clearTransportRefusals(edgeOrigin, edgeDestination);
                         return ObstacleResolution.interacted();
                     }
                     int strikesAfter = Rs2WalkerTransports.transportRefusalStrikes(edgeOrigin, edgeDestination);
-                    boolean struckOut = strikesAfter == strikesBefore
-                            ? Rs2WalkerTransports.registerTransportRefusal(edgeOrigin, edgeDestination, "recovery-dispatch")
-                            : TransportRefusalLedger.isStrikeOut(strikesAfter);
+                    boolean struckOut;
+                    if (strikesAfter != strikesBefore) {
+                        struckOut = TransportRefusalLedger.isStrikeOut(strikesAfter);
+                    } else if (Rs2WalkerTransports.isRefusedRecoveryDispatch(
+                            Rs2WalkerTransports.transportClickSerial() != clicksBefore,
+                            Rs2Player.getWorldLocation(), edgeOrigin, edgeDestination)) {
+                        struckOut = Rs2WalkerTransports.registerTransportRefusal(
+                                edgeOrigin, edgeDestination, "recovery-dispatch");
+                    } else {
+                        struckOut = false;
+                    }
                     if (struckOut) {
                         return ObstacleResolution.interacted();
                     }
