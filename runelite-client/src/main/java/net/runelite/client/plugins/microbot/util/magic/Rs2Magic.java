@@ -23,6 +23,7 @@ import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+import net.runelite.client.plugins.microbot.util.player.Rs2Pvp;
 import net.runelite.client.plugins.microbot.util.player.Rs2PlayerModel;
 import net.runelite.client.plugins.microbot.util.settings.Rs2SpellBookSettings;
 import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
@@ -591,7 +592,33 @@ public class Rs2Magic {
     }
 
     public static Map<Runes, Integer> getMissingRunes(Spell spell, int casts, RuneFilter runeFilter) {
-        return getMissingRunes(getRequiredRunes(spell, casts), runeFilter);
+        int sacks = 0;
+        boolean inWilderness = Rs2Pvp.isInWilderness();
+        if (inWilderness && isBlightedIceSpell(spell)) {
+            if (runeFilter.isIncludeInventory()) sacks += Rs2Inventory.itemQuantity(ItemID.BLIGHTED_SACK_ICEBARRAGE);
+            if (runeFilter.isIncludeBank()) sacks += Rs2Bank.count(ItemID.BLIGHTED_SACK_ICEBARRAGE);
+        }
+        int runeCasts = runeCastsAfterIceSacks(spell, casts, sacks, inWilderness);
+        return getMissingRunes(getRequiredRunes(spell, runeCasts), runeFilter);
+    }
+
+    static boolean isBlightedIceSpell(Spell spell) {
+        if (spell == null || spell.getMagicAction() == null) return false;
+        switch (spell.getMagicAction()) {
+            case ICE_RUSH:
+            case ICE_BURST:
+            case ICE_BLITZ:
+            case ICE_BARRAGE:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    /** Sacks cover one whole ice cast each; they must not be credited as generic runes. */
+    static int runeCastsAfterIceSacks(Spell spell, int casts, int sacks, boolean inWilderness) {
+        if (!inWilderness || !isBlightedIceSpell(spell)) return Math.max(0, casts);
+        return Math.max(0, casts - Math.max(0, sacks));
     }
 
     public static Map<Runes, Integer> getMissingRunes(Spell spell, int casts) {
@@ -618,7 +645,7 @@ public class Rs2Magic {
     }
 
     public static boolean hasRequiredRunes(Spell spell, int casts, RuneFilter runeFilter) {
-        return hasRequiredRunes(getRequiredRunes(spell, casts), runeFilter);
+        return getMissingRunes(spell, casts, runeFilter).isEmpty();
     }
 
     public static boolean hasRequiredRunes(Spell spell, int casts) {
