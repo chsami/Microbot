@@ -33,6 +33,7 @@ import net.runelite.client.input.MouseManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginInstantiationException;
 import net.runelite.client.plugins.PluginManager;
+import net.runelite.client.plugins.loottracker.LootTrackerRecord;
 import net.runelite.client.plugins.microbot.configs.SpecialAttackConfigs;
 import net.runelite.client.plugins.microbot.pouch.PouchScript;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
@@ -650,6 +651,28 @@ public class Microbot {
         if (!Microbot.getClient().isClientThread()) {
             sleep(Rs2Random.logNormalBounded(50, 80));
         }
+    }
+
+    @Deprecated(since = "Use LootTrackerPlugin.getAggregateLootRecords()", forRemoval = true)
+    public static List<LootTrackerRecord> getAggregateLootRecords() {
+        return new ArrayList<>();
+    }
+
+    @Deprecated(since = "Use LootTrackerPlugin.getAggregateLootRecords()", forRemoval = true)
+    public static LootTrackerRecord getAggregateLootRecords(String npcName) {
+        return null;
+    }
+
+    /**
+     * Calculates the total GE value of loot records for a specific NPC.
+     * This method uses reflection to access private methods and fields of the LootTrackerItem class.
+     *
+     * @param npcName name of the npc to get the loot records for
+     * @return total GE value of the loot records
+     */
+    @Deprecated(since = "Use LootTrackerPlugin.getAggregateLootRecords()", forRemoval = true)
+    public static long getAggregateLootRecordsTotalGevalue(String npcName) {
+        return 0;
     }
 
     /**

@@ -667,6 +667,8 @@ curl -X POST -H "Content-Type: application/json" \
 
 ### Script Lifecycle
 
+The examples below use the Microbot-Hub `ExamplePlugin` (`net.runelite.client.plugins.microbot.example`); it is no longer bundled with the client.
+
 #### GET /scripts
 
 Lists all microbot plugins with their active/enabled status.

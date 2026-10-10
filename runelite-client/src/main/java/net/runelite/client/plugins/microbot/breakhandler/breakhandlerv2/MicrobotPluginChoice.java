@@ -5,7 +5,6 @@ import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.microbot.accountselector.AutoLoginPlugin;
 import net.runelite.client.plugins.microbot.breakhandler.BreakHandlerPlugin;
 import net.runelite.client.plugins.microbot.breakhandler.breakhandlerv2.BreakHandlerV2Plugin;
-
 import net.runelite.client.plugins.microbot.inventorysetups.MInventorySetupsPlugin;
 import net.runelite.client.plugins.microbot.mouserecorder.MouseMacroRecorderPlugin;
 import net.runelite.client.plugins.microbot.questhelper.QuestHelperPlugin;
