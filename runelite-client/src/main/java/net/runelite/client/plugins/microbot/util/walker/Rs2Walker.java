@@ -7108,7 +7108,7 @@ public class Rs2Walker {
         if (actor == null) {
             return false;
         }
-        WorldPoint loc = actor.getWorldLocation();
+        WorldPoint loc = Microbot.getClientThread().runOnClientThreadOptional(actor::getWorldLocation).orElse(null);
         if (loc == null) {
             return false;
         }
