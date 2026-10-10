@@ -81,6 +81,7 @@ import net.runelite.client.plugins.microbot.util.walker.awaits.Rs2WalkerRuntimeA
 import net.runelite.client.plugins.microbot.util.walker.puzzles.DraynorBasementSolver;
 import net.runelite.client.plugins.microbot.util.walker.stall.Rs2WalkerStallPolicy;
 import net.runelite.client.plugins.microbot.util.walker.transport.Rs2WalkerTransportAwaits;
+import net.runelite.client.plugins.microbot.util.walker.transport.TransportRefusalLedger;
 import net.runelite.client.plugins.microbot.util.walker.lifecycle.Rs2WalkerLifecycleRuntime;
 import net.runelite.client.plugins.skillcalculator.skills.MagicAction;
 import net.runelite.client.ui.overlay.worldmap.WorldMapPoint;
@@ -836,8 +837,12 @@ final class Rs2WalkerTransports {
                                     POST_HANDLE_OBJECT_LANDING_WAIT_MS,
                                     compactWorldPoint(destWait),
                                     compactWorldPoint(afterInteraction));
+                            if (isStillAtTransportOrigin(afterInteraction, transport.getOrigin(), destWait)) {
+                                registerTransportRefusal(transport.getOrigin(), destWait, "landing-unresolved");
+                            }
                         }
                         if (landedAfterObject) {
+                            transportRefusalLedger.clear(transport.getOrigin(), destWait);
                             markShortSamePlaneTransportHandled(transport, object);
                             return finishHandledTransport(transport);
                         }
@@ -847,6 +852,55 @@ final class Rs2WalkerTransports {
             }
         }
         return false;
+    }
+
+    private static final TransportRefusalLedger transportRefusalLedger = new TransportRefusalLedger();
+
+    static boolean isStillAtTransportOrigin(WorldPoint player, WorldPoint origin, WorldPoint destination) {
+        if (player == null || origin == null || destination == null || player.getPlane() != origin.getPlane()) {
+            return false;
+        }
+        int toOrigin = player.distanceTo2D(origin);
+        if (toOrigin > 1) {
+            return false;
+        }
+        return player.getPlane() != destination.getPlane() || toOrigin < player.distanceTo2D(destination);
+    }
+
+    static int transportRefusalStrikes(WorldPoint origin, WorldPoint destination) {
+        return transportRefusalLedger.strikes(origin, destination);
+    }
+
+    static void clearTransportRefusals(WorldPoint origin, WorldPoint destination) {
+        transportRefusalLedger.clear(origin, destination);
+    }
+
+    static boolean registerTransportRefusal(WorldPoint origin, WorldPoint destination, String mode) {
+        if (origin == null || destination == null) {
+            return false;
+        }
+        int strikes = transportRefusalLedger.registerRefusal(origin, destination);
+        if (!TransportRefusalLedger.isStrikeOut(strikes)) {
+            WebWalkLog.spInfo("transport_refused | origin={} dest={} mode={} strike={}/{}",
+                    compactWorldPoint(origin), compactWorldPoint(destination), mode,
+                    strikes, TransportRefusalLedger.STRIKE_LIMIT);
+            return false;
+        }
+        if (Rs2PathApi.learnBlockedEdge(origin, destination, "transport-refused (" + mode + ")")) {
+            transportRefusalLedger.recordWalkScopedBlock(origin, destination);
+        }
+        WebWalkLog.spInfo("transport_strike_out | origin={} dest={} mode={} — {} refusals; "
+                        + "blocking transport for this walk and replanning",
+                compactWorldPoint(origin), compactWorldPoint(destination), mode,
+                TransportRefusalLedger.STRIKE_LIMIT);
+        recalculatePath();
+        return true;
+    }
+
+    static void withdrawWalkScopedTransportBlocks() {
+        for (WorldPoint[] edge : transportRefusalLedger.drainWalkScopedBlocks()) {
+            Rs2PathApi.unlearnBlockedEdge(edge[0], edge[1], "walk-scoped transport strike-out expired");
+        }
     }
 
     private static boolean waitForPostHandleObjectLanding(Transport transport,

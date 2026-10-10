@@ -86,6 +86,7 @@ import net.runelite.client.plugins.microbot.util.walker.awaits.Rs2WalkerRuntimeA
 import net.runelite.client.plugins.microbot.util.walker.puzzles.DraynorBasementSolver;
 import net.runelite.client.plugins.microbot.util.walker.stall.Rs2WalkerStallPolicy;
 import net.runelite.client.plugins.microbot.util.walker.transport.Rs2WalkerTransportAwaits;
+import net.runelite.client.plugins.microbot.util.walker.transport.TransportRefusalLedger;
 import net.runelite.client.plugins.microbot.util.walker.lifecycle.Rs2WalkerLifecycleRuntime;
 import net.runelite.client.plugins.skillcalculator.skills.MagicAction;
 import net.runelite.client.ui.overlay.worldmap.WorldMapPoint;
@@ -1325,6 +1326,7 @@ public class Rs2Walker {
         // sealed goal), collapsed to a 1-tile path, and the retry burned itself on it while the
         // unlearn arrived two lines later.
         withdrawWalkScopedDoorBlocks();
+        Rs2WalkerTransports.withdrawWalkScopedTransportBlocks();
         WorldPoint playerLocWalk = Rs2Player.getWorldLocation();
         if (playerLocWalk == null) {
             return WalkerState.MOVING;
@@ -4442,7 +4444,18 @@ public class Rs2Walker {
                         && isRawTransportOriginNearPlayer(rawPath, ri, playerLoc, RAW_TRANSPORT_DISPATCH_MAX_DISTANCE)) {
                     WebWalkLog.spInfo("recovery_on_origin_transport | origin={} player={} rawIdx={}",
                             compactWorldPoint(rawPath.get(ri)), compactWorldPoint(playerLoc), ri);
+                    WorldPoint edgeOrigin = rawPath.get(ri);
+                    WorldPoint edgeDestination = rawPath.get(ri + 1);
+                    int strikesBefore = Rs2WalkerTransports.transportRefusalStrikes(edgeOrigin, edgeDestination);
                     if (handleTransports(rawPath, ri)) {
+                        Rs2WalkerTransports.clearTransportRefusals(edgeOrigin, edgeDestination);
+                        return ObstacleResolution.interacted();
+                    }
+                    int strikesAfter = Rs2WalkerTransports.transportRefusalStrikes(edgeOrigin, edgeDestination);
+                    boolean struckOut = strikesAfter == strikesBefore
+                            ? Rs2WalkerTransports.registerTransportRefusal(edgeOrigin, edgeDestination, "recovery-dispatch")
+                            : TransportRefusalLedger.isStrikeOut(strikesAfter);
+                    if (struckOut) {
                         return ObstacleResolution.interacted();
                     }
                 }
