@@ -474,17 +474,7 @@ public class Rs2Player {
         return Microbot.getVarbitPlayerValue(173) == 1;
     }
 
-    /**
-     * Logs the player out of the game
-     */
     public enum TerminalLogoutState { BANK_CLOSING, LOGOUT_REQUESTED, LOGGED_OUT, INPUT_BLOCKED }
-
-    /** One input step for an explicit script stop; ordinary logout() remains unchanged. */
-    public static TerminalLogoutState logoutWithoutAutoLoginStep() {
-        if (Microbot.getClient().isClientThread()) return TerminalLogoutState.INPUT_BLOCKED;
-        Microbot.getEventBus().post(new AutoLoginSuppressionRequest());
-        return terminalLogoutInputStep();
-    }
 
     private static TerminalLogoutState terminalLogoutInputStep() {
         if (!Microbot.isLoggedIn()) return TerminalLogoutState.LOGGED_OUT;
@@ -516,6 +506,9 @@ public class Rs2Player {
         return state;
     }
 
+    /**
+     * Logs the player out of the game
+     */
     public static void logout() {
         if (!Microbot.isLoggedIn()) return;
 
