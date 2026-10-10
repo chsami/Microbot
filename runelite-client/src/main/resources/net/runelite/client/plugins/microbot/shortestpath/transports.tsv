@@ -1156,8 +1156,8 @@
 3026 3247 1	3025 3248 0	Climb-down;Staircase;9584									
 3025 3248 0	3026 3247 1	Climb-up;Staircase;9582									
 3025 3249 0	3026 3247 1	Climb-up;Staircase;9582									
-3018 3231 0	2962 9650 0	Climb-down;Manhole;10321									
-2962 9650 0	3018 3233 0	Climb-up;Ladder;10309									
+3018 3231 0	2962 9650 0	Climb-down;Manhole;10321							Y		
+2962 9650 0	3018 3233 0	Climb-up;Ladder;10309							Y		
 											
 # Wizard Tower											
 3105 3162 0	3104 9576 0	Climb-down;Ladder;2147									
