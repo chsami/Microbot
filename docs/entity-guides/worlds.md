@@ -46,3 +46,5 @@ return Microbot.getClientThread().runOnClientThreadOptional(() -> {
 **Defensive check:** Mock `Client.getLocalPlayer()` to return `null` and assert each accessor returns its fallback, as in `Rs2PlayerNullLocalPlayerTest` and `Rs2PlayerModelNullLocalPlayerTest`.
 
 **Wrapped locations:** `Rs2Player.getRs2WorldPoint()` still returns an `Rs2WorldPoint`, but it can wrap a `null` `WorldPoint` in these states. `pathTo` returns `null` and `distanceToPath` returns `Integer.MAX_VALUE` for it; check `getWorldPoint() != null` before calling `getX()`, `getY()` or `getPlane()`, as in `Rs2WorldPointNullPointTest`.
+
+**Location consumers:** `Rs2Player.getWorldLocation()` itself returns `null` in these states. Guard it before passing it to `Rs2RouteRequest.to`/`toAny` (which reject a null start) or `WorldPoint.distanceTo`. `Rs2Bank.getNearestBank`, `getNearestBankRoute` and `getPathToNearestBank` return no bank, `isNearBank` returns `false`, and `Rs2Walker.getDistanceBetween` returns `Integer.MAX_VALUE` for a null endpoint, as in `Rs2BankNullPlayerLocationTest`.

@@ -7209,6 +7209,7 @@ public class Rs2Walker {
      * @return distance
      */
     public static int getDistanceBetween(WorldPoint startpoint, WorldPoint endpoint) {
+        if (startpoint == null || endpoint == null) return Integer.MAX_VALUE;
         return Rs2PathApi.plan(Rs2RouteRequest.to(startpoint, endpoint)).getPath().size();
     }
 
