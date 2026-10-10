@@ -261,3 +261,14 @@ Microbot.getClientThread().runOnClientThreadOptional(() -> Microbot.getClient().
 ```
 
 **Where this applies:** `Rs2GrandExchange`, `GrandExchangeWidget`, `Rs2Dialogue`, `Rs2Bank` X-amount prompts, and any helper reading chatbox prompts or GE offer state.
+
+
+## 15. Suppress AutoLogin only for confirmed terminal supply stops
+
+An ordinary logout can be a break or world hop, so it must keep normal AutoLogin behavior. After confirming a required supply is unavailable in a live bank mirror, call `Rs2Player.logoutWithoutAutoLogin()` off the client thread and cancel the owning run's scheduler. Do not set a global pause: it would prevent the next run from logging in. Partial-stack acceptance and optional supply fallbacks remain separate.
+
+**Why this matters:** AutoLogin otherwise logs back in after supply exhaustion and the stopped bank loop retries indefinitely. Suppression clears on a new gameplay script run, a manual login after the logout, or an AutoLogin restart. Background AutoLogin and BreakHandler starts do not clear it.
+
+**Pattern to follow:** The helper arms suppression before closing the bank and reports whether logout was observed or only requested. `logoutWithoutAutoLoginStep()` performs one non-blocking input step for state-machine callers. Ordinary `logout()` is unchanged; scripts that use it for terminal failure must explicitly adopt the new API.
+
+**Defensive check:** Run `AutoLoginSuppressionTest`, `AutoLoginPluginSupplyStopTest`, `ScriptStartedTest`, `TerminalSupplyLogoutTest`, and `InventorySetupSupplyLogoutTest`. Verify live that a shortage stays logged out and restarting a gameplay script permits login.

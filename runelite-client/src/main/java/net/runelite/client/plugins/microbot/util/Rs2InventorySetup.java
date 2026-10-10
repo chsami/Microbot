@@ -383,7 +383,7 @@ public class Rs2InventorySetup {
 					toleratedShortfallKeys.add(inventoryShortfallKey(item));
 					continue;
 				}
-				Microbot.pauseAllScripts.compareAndSet(false, true);
+				stopForMissingRequiredSupply(item.getName());
 				logSetup(Level.WARN,
 						"bank short: %s | bank=%d | inv=%d | setup_total=%d | withdraw=%d (id=%d fuzzy=%b noted=%b)",
 						item.getName(), bankAvail, invQty, setupTotal, desiredWithdraw,
@@ -414,7 +414,7 @@ public class Rs2InventorySetup {
 					toleratedShortfallKeys.add(inventoryShortfallKey(item));
 					continue;
 				}
-				Microbot.pauseAllScripts.compareAndSet(false, true);
+				stopForMissingRequiredSupply(item.getName());
 				logSetup(Level.WARN,
 						"bank short: %s | bank=%d | inv=%d | setup_total=%d | withdraw=%d (id=%d fuzzy=%b noted=%b)",
 						item.getName(), bankAvail, invQty, setupTotal, withdrawQuantity,
@@ -863,10 +863,10 @@ public class Rs2InventorySetup {
 				int bankGear = bankQtyForPresetRow(item, lowerCaseName, isFuzzy);
 				int invGear = isFuzzy ? Rs2Inventory.itemQuantity((String) identifier) : Rs2Inventory.itemQuantity((int) identifier);
 				logSetup(Level.WARN,
-						"missing gear %s | bank=%d | inv=%d | need=%d — pausing",
+						"missing gear %s | bank=%d | inv=%d | need=%d — stopping",
 						item.getName(), bankGear, invGear, item.getQuantity());
-				Microbot.pauseAllScripts.compareAndSet(false, true);
-				continue;
+				stopForMissingRequiredSupply(item.getName());
+				return false;
 			}
 
 			if (inInventory) {
@@ -899,6 +899,13 @@ public class Rs2InventorySetup {
         sleep(800, 1200);
 
         return doesEquipmentMatch();
+    }
+
+    private void stopForMissingRequiredSupply(String itemName) {
+        Microbot.status = "Missing required setup supply: " + itemName;
+        Rs2Player.logoutWithoutAutoLogin();
+        // A later script start must not revive this run's failing bank loop.
+        if (_mainScheduler != null) _mainScheduler.cancel(false);
     }
 
     /**

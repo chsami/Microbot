@@ -59,6 +59,20 @@ public class AutoLoginScript extends Script {
     private Instant extendedSleepStartTime = null;
     private Instant lastLoginAttemptTime = null;
     private long lastExtendedSleepLoggedMinute = -1;
+    private final AutoLoginSuppression suppression = new AutoLoginSuppression();
+
+    void suppressAutoLogin() {
+        suppression.request();
+    }
+
+    void resumeAutoLogin() {
+        suppression.clear();
+    }
+
+    void observeSuppressionGameState(GameState gameState) {
+        suppression.observe(gameState);
+    }
+
 
 
     public boolean run(AutoLoginConfig autoLoginConfig) {
@@ -90,6 +104,10 @@ public class AutoLoginScript extends Script {
      * Main state machine for auto login processing.
      */
     private void processAutoLoginStateMachine(AutoLoginConfig config) {
+        if (suppression.isSuppressed()) {
+            resetLoginState();
+            return;
+        }
         switch (loginState) {
             case WAITING_FOR_LOGIN_SCREEN:
                 handleWaitingForLoginScreenState(config);
@@ -247,6 +265,7 @@ public class AutoLoginScript extends Script {
      */
     private void initiateLogin(AutoLoginConfig config) {
         try {
+            if (suppression.isSuppressed()) return;
             // start login watchdog if enabled and not already started
             if (config.enableLoginWatchdog() && loginWatchdogStartTime == null) {
                 loginWatchdogStartTime = Instant.now();
@@ -326,6 +345,9 @@ public class AutoLoginScript extends Script {
                 }
             }
 
+            // A terminal stop can arrive during world selection.
+            if (suppression.isSuppressed()) return;
+
             // perform login attempt and track retry state
             retryCount++;
             lastLoginAttemptTime = Instant.now();
@@ -333,10 +355,10 @@ public class AutoLoginScript extends Script {
             boolean loginInitiated;
             if (targetWorld != -1) {
                 log.info("Attempting login to selected world: {} (attempt {})", targetWorld, retryCount);
-                loginInitiated = LoginManager.login(targetWorld);
+                loginInitiated = !suppression.isSuppressed() && LoginManager.login(targetWorld);
             } else {
                 log.info("Using default login (current world or last used) (attempt {})", retryCount);
-                loginInitiated = LoginManager.login();
+                loginInitiated = !suppression.isSuppressed() && LoginManager.login();
             }
 
             if (!loginInitiated) {
@@ -500,6 +522,7 @@ public class AutoLoginScript extends Script {
         log.info("Auto login script shutting down");
 
         resetLoginState();
+        suppression.clear();
         super.shutdown();
 
     }

@@ -14,6 +14,8 @@ import net.runelite.api.kit.KitType;
 import net.runelite.api.widgets.Widget;
 import net.runelite.api.widgets.WidgetInfo;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.accountselector.AutoLoginSuppressionRequest;
+import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.api.boat.Rs2BoatCache;
 import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
 import net.runelite.client.plugins.microbot.api.playerstate.Rs2PlayerStateCache;
@@ -475,6 +477,45 @@ public class Rs2Player {
     /**
      * Logs the player out of the game
      */
+    public enum TerminalLogoutState { BANK_CLOSING, LOGOUT_REQUESTED, LOGGED_OUT, INPUT_BLOCKED }
+
+    /** One input step for an explicit script stop; ordinary logout() remains unchanged. */
+    public static TerminalLogoutState logoutWithoutAutoLoginStep() {
+        if (Microbot.getClient().isClientThread()) return TerminalLogoutState.INPUT_BLOCKED;
+        Microbot.getEventBus().post(new AutoLoginSuppressionRequest());
+        return terminalLogoutInputStep();
+    }
+
+    private static TerminalLogoutState terminalLogoutInputStep() {
+        if (!Microbot.isLoggedIn()) return TerminalLogoutState.LOGGED_OUT;
+        if (Rs2Bank.isOpen()) {
+            return Rs2Widget.clickChildWidget(786434, 11)
+                    ? TerminalLogoutState.BANK_CLOSING : TerminalLogoutState.INPUT_BLOCKED;
+        }
+        logout();
+        return TerminalLogoutState.LOGOUT_REQUESTED;
+    }
+
+    /**
+     * Best-effort terminal logout after a confirmed supply failure, off the client thread.
+     * Suppression stays armed even if logout input fails. Resume by manually logging in
+     * after the logout, starting another script, or restarting AutoLogin.
+     * The return value distinguishes requested input from observed logout completion.
+     */
+    public static TerminalLogoutState logoutWithoutAutoLogin() {
+        if (Microbot.getClient().isClientThread()) return TerminalLogoutState.INPUT_BLOCKED;
+        // Post once: a newer script start during bank closure must not be re-blocked.
+        Microbot.getEventBus().post(new AutoLoginSuppressionRequest());
+        TerminalLogoutState state = terminalLogoutInputStep();
+        if (state == TerminalLogoutState.BANK_CLOSING) {
+            if (!sleepUntil(() -> !Rs2Bank.isOpen(), 2400)) return state;
+            state = terminalLogoutInputStep();
+        }
+        if (state == TerminalLogoutState.LOGOUT_REQUESTED
+                && sleepUntil(() -> !Microbot.isLoggedIn(), 5000)) return TerminalLogoutState.LOGGED_OUT;
+        return state;
+    }
+
     public static void logout() {
         if (!Microbot.isLoggedIn()) return;
 

@@ -50,3 +50,5 @@ Each entity guide is a numbered list of gotchas. Each entry follows this structu
 ## Adding a new gotcha to an existing guide
 
 Append a new numbered entry. Do **not** delete or rewrite existing entries unless they are factually wrong — each entry corresponds to a real failure mode and removing it loses the institutional memory of why the rule exists.
+
+Required-supply stops must suppress AutoLogin without blocking the next run: [items gotcha 15](items.md#15-suppress-autologin-only-for-confirmed-terminal-supply-stops).
