@@ -14,11 +14,13 @@ import net.runelite.client.plugins.microbot.util.walker.Rs2PathApi;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Base class for Microbot automation scripts.
@@ -26,7 +28,15 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 @Slf4j
 public abstract class Script extends Global implements IScript {
-    protected ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(10,
+    private final AtomicBoolean startAnnounced = new AtomicBoolean();
+
+    private void announceStart() {
+        if (Microbot.getEventBus() != null && startAnnounced.compareAndSet(false, true)) {
+            Microbot.getEventBus().post(new ScriptStarted(this));
+        }
+    }
+
+    protected ScheduledExecutorService scheduledExecutorService = new ScheduledThreadPoolExecutor(10,
         new ThreadFactory() {
             private final AtomicInteger threadNumber = new AtomicInteger(1);
             @Override
@@ -36,7 +46,22 @@ public abstract class Script extends Global implements IScript {
                 t.setDaemon(true);
                 return t;
             }
-        });
+        }) {
+            @Override
+            public ScheduledFuture<?> scheduleWithFixedDelay(Runnable command, long initialDelay,
+                    long delay, TimeUnit unit) {
+                // Announce before a zero-delay loop can report a terminal supply failure.
+                announceStart();
+                return super.scheduleWithFixedDelay(command, initialDelay, delay, unit);
+            }
+
+            @Override
+            public ScheduledFuture<?> scheduleAtFixedRate(Runnable command, long initialDelay,
+                    long period, TimeUnit unit) {
+                announceStart();
+                return super.scheduleAtFixedRate(command, initialDelay, period, unit);
+            }
+        };
     protected ScheduledFuture<?> scheduledFuture;
     protected ScheduledFuture<?> mainScheduledFuture;
 
@@ -55,6 +80,7 @@ public abstract class Script extends Global implements IScript {
      * Safe to call multiple times; no-ops if already shut down.
      */
     public void shutdown() {
+        startAnnounced.set(false);
         ScriptHeartbeatRegistry.remove(this.getClass().getName());
         if (mainScheduledFuture != null && !mainScheduledFuture.isDone()) {
             mainScheduledFuture.cancel(true);

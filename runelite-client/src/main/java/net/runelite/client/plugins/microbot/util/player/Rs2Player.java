@@ -14,6 +14,8 @@ import net.runelite.api.kit.KitType;
 import net.runelite.api.widgets.Widget;
 import net.runelite.api.widgets.WidgetInfo;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.accountselector.AutoLoginSuppressionRequest;
+import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.api.boat.Rs2BoatCache;
 import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
 import net.runelite.client.plugins.microbot.api.playerstate.Rs2PlayerStateCache;
@@ -470,6 +472,38 @@ public class Rs2Player {
      */
     public static boolean isRunEnabled() {
         return Microbot.getVarbitPlayerValue(173) == 1;
+    }
+
+    public enum TerminalLogoutState { BANK_CLOSING, LOGOUT_REQUESTED, LOGGED_OUT, INPUT_BLOCKED }
+
+    private static TerminalLogoutState terminalLogoutInputStep() {
+        if (!Microbot.isLoggedIn()) return TerminalLogoutState.LOGGED_OUT;
+        if (Rs2Bank.isOpen()) {
+            return Rs2Widget.clickChildWidget(786434, 11)
+                    ? TerminalLogoutState.BANK_CLOSING : TerminalLogoutState.INPUT_BLOCKED;
+        }
+        logout();
+        return TerminalLogoutState.LOGOUT_REQUESTED;
+    }
+
+    /**
+     * Best-effort terminal logout after a confirmed supply failure, off the client thread.
+     * Pending suppression expires after 15 seconds if logout never completes. Resume by manually logging in
+     * after the logout, starting another script, or restarting AutoLogin.
+     * The return value distinguishes requested input from observed logout completion.
+     */
+    public static TerminalLogoutState logoutWithoutAutoLogin() {
+        if (Microbot.getClient().isClientThread()) return TerminalLogoutState.INPUT_BLOCKED;
+        // Post once: a newer script start during bank closure must not be re-blocked.
+        Microbot.getEventBus().post(new AutoLoginSuppressionRequest());
+        TerminalLogoutState state = terminalLogoutInputStep();
+        if (state == TerminalLogoutState.BANK_CLOSING) {
+            if (!sleepUntil(() -> !Rs2Bank.isOpen(), 2400)) return state;
+            state = terminalLogoutInputStep();
+        }
+        if (state == TerminalLogoutState.LOGOUT_REQUESTED
+                && sleepUntil(() -> !Microbot.isLoggedIn(), 5000)) return TerminalLogoutState.LOGGED_OUT;
+        return state;
     }
 
     /**
