@@ -2397,6 +2397,7 @@ public class Rs2Bank {
 
     private static NearestBankRoute getPathAndBankToNearestBank(
             WorldPoint worldPoint, int maxObjectSearchRadius, Boolean useBankItems) {
+        if (worldPoint == null) return null;
         Microbot.log("Finding nearest bank...");
 
         Set<BankLocation> allBanks = Arrays.stream(BankLocation.values())
@@ -2561,8 +2562,9 @@ public class Rs2Bank {
         Rs2Player.toggleRunEnergy(toggleRun);
         Microbot.status = "Walking to nearest bank " + bankLocation.toString();
         walkUntilBankReady(bankLocation);
-        return readyBankObject(bankLocation) != null
-                || bankLocation.getWorldPoint().distanceTo(Rs2Player.getWorldLocation()) <= 4;
+        if (readyBankObject(bankLocation) != null) return true;
+        WorldPoint playerLocation = Rs2Player.getWorldLocation();
+        return playerLocation != null && bankLocation.getWorldPoint().distanceTo(playerLocation) <= 4;
     }
 
     /**
@@ -2573,6 +2575,7 @@ public class Rs2Bank {
      */
     public static boolean isNearBank(int distance) {
         WorldPoint playerLocation = Rs2Player.getWorldLocation();
+        if (playerLocation == null) return false;
         return Arrays.stream(BankLocation.values())
                 .anyMatch(b -> b.getWorldPoint().getPlane() == playerLocation.getPlane()
                         && b.getWorldPoint().distanceTo2D(playerLocation) <= distance);
@@ -2586,8 +2589,9 @@ public class Rs2Bank {
      * @return true if Rs2Player location is less than distance away from the bank location
      */
     public static boolean isNearBank(BankLocation bankLocation, int distance) {
-        int distanceToBank = Rs2Walker.getDistanceBetween(Rs2Player.getWorldLocation(), bankLocation.getWorldPoint());
-        return distanceToBank <= distance;
+        WorldPoint playerLocation = Rs2Player.getWorldLocation();
+        if (playerLocation == null) return false;
+        return Rs2Walker.getDistanceBetween(playerLocation, bankLocation.getWorldPoint()) <= distance;
     }
 
     /**
