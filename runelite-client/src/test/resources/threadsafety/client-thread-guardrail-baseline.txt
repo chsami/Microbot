@@ -702,7 +702,13 @@ net.runelite.client.plugins.microbot.util.tile.Rs2Tile#isVisited(WorldPoint, boo
 net.runelite.client.plugins.microbot.util.tile.Rs2Tile#isWalkableTileInternal(Tile): boolean  ->  net.runelite.api.Tile#getSceneLocation(): Point
 net.runelite.client.plugins.microbot.util.tile.Rs2Tile#isWalkableWorldPointInternal(WorldPoint): boolean  ->  net.runelite.api.Client#getTopLevelWorldView(): WorldView
 net.runelite.client.plugins.microbot.util.tile.Rs2Tile#isWalkableWorldPointInternal(WorldPoint): boolean  ->  net.runelite.api.coords.LocalPoint#fromWorld(WorldView, WorldPoint): LocalPoint
-net.runelite.client.plugins.microbot.util.tile.Rs2Tile#lambda$isBankBoothInternal$34(WorldPoint, GameObject): boolean  ->  net.runelite.api.GameObject#getWorldLocation(): WorldPoint
+net.runelite.client.plugins.microbot.util.tile.Rs2Tile#isWallBetweenInternal(WorldPoint, WorldPoint): boolean  ->  net.runelite.api.Client#getBaseX(): int
+net.runelite.client.plugins.microbot.util.tile.Rs2Tile#isWallBetweenInternal(WorldPoint, WorldPoint): boolean  ->  net.runelite.api.Client#getBaseY(): int
+net.runelite.client.plugins.microbot.util.tile.Rs2Tile#isWallBetweenInternal(WorldPoint, WorldPoint): boolean  ->  net.runelite.api.Client#getTopLevelWorldView(): WorldView
+net.runelite.client.plugins.microbot.util.tile.Rs2Tile#isWallBetweenInternal(WorldPoint, WorldPoint): boolean  ->  net.runelite.api.Scene#isInstance(): boolean
+net.runelite.client.plugins.microbot.util.tile.Rs2Tile#isWallBetweenInternal(WorldPoint, WorldPoint): boolean  ->  net.runelite.api.WorldView#getPlane(): int
+net.runelite.client.plugins.microbot.util.tile.Rs2Tile#isWallBetweenInternal(WorldPoint, WorldPoint): boolean  ->  net.runelite.api.WorldView#getScene(): Scene
+net.runelite.client.plugins.microbot.util.tile.Rs2Tile#lambda$isBankBoothInternal$35(WorldPoint, GameObject): boolean  ->  net.runelite.api.GameObject#getWorldLocation(): WorldPoint
 net.runelite.client.plugins.microbot.util.tile.Rs2Tile#pathToInternal(Tile, Tile): List  ->  net.runelite.api.Client#getScene(): Scene
 net.runelite.client.plugins.microbot.util.tile.Rs2Tile#pathToInternal(Tile, Tile): List  ->  net.runelite.api.Client#getTopLevelWorldView(): WorldView
 net.runelite.client.plugins.microbot.util.tile.Rs2Tile#pathToInternal(Tile, Tile): List  ->  net.runelite.api.CollisionData#getFlags(): int[][]

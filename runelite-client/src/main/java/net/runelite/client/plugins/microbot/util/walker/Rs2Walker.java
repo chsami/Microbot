@@ -1348,8 +1348,7 @@ public class Rs2Walker {
         // hiccup cannot turn arrival into a walk that never terminates.
         boolean unwalkableTargetReached = !walkableCheck && distToTarget <= distance
                 && (reachableWithinDistance.isEmpty()
-                || hasReachableNeighbour(target, reachableWithinDistance,
-                        Rs2Walker::stepIsNotKnownBlocked));
+                || hasReachableNeighbour(target, reachableWithinDistance, Rs2Tile::isWallBetween));
 
         if (reachableTileCheck || unwalkableTargetReached) {
             return WalkerState.ARRIVED;
@@ -1443,12 +1442,23 @@ public class Rs2Walker {
         }
 
         // Arrived? (mirrors walkWithStateInternal's arrival test)
+        //
+        // It did not actually mirror it: the unwalkable-target branch arrived on straight-line
+        // distance alone, with none of the reachable-neighbour reasoning the other entry point grew.
+        // Two callers answering "have we arrived" differently about the same tile is the bug twice,
+        // so the BFS this already computes for reachableTileCheck is now reused for the same check.
         int distToTarget = playerLoc.distanceTo(target);
         LocalPoint localTarget = LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), target);
         boolean walkableCheck = localTarget != null && Rs2Tile.isWalkable(localTarget);
+        Map<WorldPoint, Integer> reachableWithinDistance = distToTarget <= distance
+                ? Rs2Tile.getReachableTilesFromTile(playerLoc, distance)
+                : Collections.emptyMap();
         boolean reachableTileCheck = distToTarget <= distance
-                && Rs2Tile.getReachableTilesFromTile(playerLoc, distance).containsKey(target);
-        if (reachableTileCheck || (!walkableCheck && distToTarget <= distance)) {
+                && reachableWithinDistance.containsKey(target);
+        boolean unwalkableTargetReached = !walkableCheck && distToTarget <= distance
+                && (reachableWithinDistance.isEmpty()
+                || hasReachableNeighbour(target, reachableWithinDistance, Rs2Tile::isWallBetween));
+        if (reachableTileCheck || unwalkableTargetReached) {
             return WalkerState.ARRIVED;
         }
 
@@ -1718,12 +1728,12 @@ public class Rs2Walker {
      * distance says yes through a wall; this says no.
      */
     static boolean hasReachableNeighbour(WorldPoint target, Map<WorldPoint, Integer> reachable) {
-        return hasReachableNeighbour(target, reachable, (from, to) -> true);
+        return hasReachableNeighbour(target, reachable, (from, to) -> false);
     }
 
     /**
-     * As {@link #hasReachableNeighbour(WorldPoint, Map)}, but a neighbour only counts when
-     * {@code stepAllowed} agrees we could actually step from it onto the target.
+     * As {@link #hasReachableNeighbour(WorldPoint, Map)}, but a neighbour is discarded when
+     * {@code wallBetween} says a wall separates it from the target.
      * <p>
      * Membership in {@code reachable} is not enough on its own. The BFS that produces that map is
      * collision-aware about how it EXPANDS, but this check then asks a purely geometric question -
@@ -1740,9 +1750,15 @@ public class Rs2Walker {
      * Observed at Varrock's smithy: player (3245,3404), anvil (3246,3404), wall between. The walker
      * reported ARRIVED, the client answered "I can't reach that!", and the calling script retried
      * forever because its own recovery was another {@code walkTo(anvil, 1)} - equally a no-op.
+     * <p>
+     * The question asked of {@code wallBetween} is deliberately "is there a WALL", not "could I walk
+     * onto the target". The latter is always false here: this path only runs for an UNWALKABLE target
+     * (see {@code walkableCheck}), i.e. one whose tile carries {@code BLOCK_MOVEMENT_FULL}, so a
+     * walkability test would reject every neighbour of every bank booth, anvil and chest in the game
+     * and arrival would never be reported at all.
      */
     static boolean hasReachableNeighbour(WorldPoint target, Map<WorldPoint, Integer> reachable,
-                                         BiPredicate<WorldPoint, WorldPoint> stepAllowed) {
+                                         BiPredicate<WorldPoint, WorldPoint> wallBetween) {
         if (target == null || reachable == null || reachable.isEmpty()) {
             return false;
         }
@@ -1753,30 +1769,12 @@ public class Rs2Walker {
                 }
                 WorldPoint neighbour =
                         new WorldPoint(target.getX() + dx, target.getY() + dy, target.getPlane());
-                if (reachable.containsKey(neighbour) && stepAllowed.test(neighbour, target)) {
+                if (reachable.containsKey(neighbour) && !wallBetween.test(neighbour, target)) {
                     return true;
                 }
             }
         }
         return false;
-    }
-
-    /**
-     * Whether stepping {@code from -> to} is not KNOWN to be walled off.
-     * <p>
-     * Deliberately asymmetric. {@link Rs2Tile#isEdgePassable} answers false both for "a wall is in
-     * the way" and for "this could not be decided" (off-scene, an instance, a plane that is not
-     * loaded), and those two must not be treated alike here: rejecting the undecidable cases would
-     * turn arrival into a walk that never terminates, which is exactly the failure the surrounding
-     * code already guards against by falling back when the BFS is unavailable. So only a definite
-     * {@code "blocked"} verdict rejects the neighbour; anything unknown keeps the previous,
-     * geometry-only answer.
-     */
-    private static boolean stepIsNotKnownBlocked(WorldPoint from, WorldPoint to) {
-        if (Rs2Tile.isEdgePassable(from, to)) {
-            return true;
-        }
-        return !"blocked".equals(Rs2Tile.lastEdgeDecision());
     }
 
     private static WalkerState processWalk(WorldPoint target, int distance) {

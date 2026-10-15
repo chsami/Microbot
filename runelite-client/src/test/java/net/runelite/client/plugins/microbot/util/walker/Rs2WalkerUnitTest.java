@@ -2607,7 +2607,7 @@ public class Rs2WalkerUnitTest {
         WorldPoint outsideTheWall = new WorldPoint(3245, 3404, 0);
         reachable.put(outsideTheWall, 0);
         assertFalse(Rs2Walker.hasReachableNeighbour(anvil, reachable,
-                (from, to) -> !from.equals(outsideTheWall)));
+                (from, to) -> from.equals(outsideTheWall)));
     }
 
     /** A second, open approach tile rescues the arrival even when one neighbour is walled off. */
@@ -2619,20 +2619,20 @@ public class Rs2WalkerUnitTest {
         reachable.put(outsideTheWall, 0);
         reachable.put(new WorldPoint(3246, 3405, 0), 1);   // inside, north of the anvil
         assertTrue(Rs2Walker.hasReachableNeighbour(anvil, reachable,
-                (from, to) -> !from.equals(outsideTheWall)));
+                (from, to) -> from.equals(outsideTheWall)));
     }
 
     /**
-     * An undecidable edge must not reject. {@code isEdgePassable} answers false for off-scene,
-     * instanced and unloaded-plane reads as well as for real walls; treating those alike would turn
-     * arrival into a walk that never terminates.
+     * An undecidable edge must not reject. {@link Rs2Tile#isWallBetween} answers false for off-scene,
+     * instanced and unloaded-plane reads as well as for genuinely open ones; treating "cannot tell"
+     * as a wall would turn arrival into a walk that never terminates.
      */
     @Test
     public void hasReachableNeighbour_undecidableEdgeKeepsTheGeometryAnswer() {
         WorldPoint chest = new WorldPoint(3200, 3200, 0);
         java.util.Map<WorldPoint, Integer> reachable = new java.util.HashMap<>();
         reachable.put(new WorldPoint(3200, 3199, 0), 1);
-        assertTrue(Rs2Walker.hasReachableNeighbour(chest, reachable, (from, to) -> true));
+        assertTrue(Rs2Walker.hasReachableNeighbour(chest, reachable, (from, to) -> false));
     }
 
     @Test

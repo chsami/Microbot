@@ -24,6 +24,60 @@ public class Rs2TileEdgePassableTest {
         return new int[SIZE][SIZE];
     }
 
+    // ---- walls vs occupancy: the "stand beside an object" case ---------------------------------
+
+    /**
+     * The distinction {@link Rs2Tile#isWallBetween} exists for.
+     * <p>
+     * An anvil, bank booth or chest always occupies its own tile, so {@code isStepAllowed} answers
+     * false for every approach to one — it is asking "can I walk onto it", which is never. Reusing
+     * that as a wall test rejects every neighbour of every such object, which is how an earlier
+     * version of this fix would have stopped the walker ever reporting arrival at a bank.
+     */
+    @Test
+    public void occupiedDestinationIsNotAWall() {
+        int[][] flags = openField();
+        flags[FROM_X][FROM_Y + 1] = CollisionDataFlag.BLOCK_MOVEMENT_FULL;   // the anvil's own tile
+        assertFalse("walking onto the object is refused",
+                Rs2Tile.isStepAllowed(flags, FROM_X, FROM_Y, 0, 1));
+        assertFalse("but nothing walls us off from it",
+                Rs2Tile.isWallBetween(flags, FROM_X, FROM_Y, 0, 1));
+    }
+
+    /** The Varrock smithy case: the anvil tile is occupied AND a wall stands between. */
+    @Test
+    public void wallIsReportedEvenWhenTheDestinationIsAlsoOccupied() {
+        int[][] flags = openField();
+        flags[FROM_X][FROM_Y + 1] = CollisionDataFlag.BLOCK_MOVEMENT_FULL;
+        flags[FROM_X][FROM_Y] = CollisionDataFlag.BLOCK_MOVEMENT_NORTH;
+        assertTrue(Rs2Tile.isWallBetween(flags, FROM_X, FROM_Y, 0, 1));
+    }
+
+    @Test
+    public void wallBetweenReadsItsOwnDirection() {
+        int[][] flags = openField();
+        flags[FROM_X][FROM_Y] = CollisionDataFlag.BLOCK_MOVEMENT_EAST;
+        assertTrue(Rs2Tile.isWallBetween(flags, FROM_X, FROM_Y, 1, 0));
+        assertFalse(Rs2Tile.isWallBetween(flags, FROM_X, FROM_Y, 0, 1));
+        assertFalse(Rs2Tile.isWallBetween(flags, FROM_X, FROM_Y, -1, 0));
+    }
+
+    /** Diagonals are two edges, not one, and are left undecided rather than guessed at. */
+    @Test
+    public void diagonalsAreNeverReportedAsWalled() {
+        int[][] flags = openField();
+        flags[FROM_X][FROM_Y] = CollisionDataFlag.BLOCK_MOVEMENT_NORTH
+                | CollisionDataFlag.BLOCK_MOVEMENT_EAST;
+        assertFalse(Rs2Tile.isWallBetween(flags, FROM_X, FROM_Y, 1, 1));
+    }
+
+    @Test
+    public void openEdgeIsNotAWall() {
+        int[][] flags = openField();
+        assertFalse(Rs2Tile.isWallBetween(flags, FROM_X, FROM_Y, 0, 1));
+        assertFalse(Rs2Tile.isWallBetween(flags, FROM_X, FROM_Y, 0, 0));
+    }
+
     // ---- cardinal steps: the door case ---------------------------------------------------------
 
     @Test
