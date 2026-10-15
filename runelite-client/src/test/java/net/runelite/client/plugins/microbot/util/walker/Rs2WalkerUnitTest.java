@@ -2594,6 +2594,47 @@ public class Rs2WalkerUnitTest {
         assertFalse(Rs2Walker.hasReachableNeighbour(chest, reachable));
     }
 
+    /**
+     * The wall case the geometry-only check could never see. Box adjacency holds - (3245,3404) is
+     * next to (3246,3404) - but the edge between them is a smithy wall, so this is NOT somewhere the
+     * anvil can be used from. Measured live before the fix: the walker answered ARRIVED here without
+     * taking a step and the client answered "I can't reach that!".
+     */
+    @Test
+    public void hasReachableNeighbour_falseWhenTheOnlyNeighbourIsBehindAWall() {
+        WorldPoint anvil = new WorldPoint(3246, 3404, 0);
+        java.util.Map<WorldPoint, Integer> reachable = new java.util.HashMap<>();
+        WorldPoint outsideTheWall = new WorldPoint(3245, 3404, 0);
+        reachable.put(outsideTheWall, 0);
+        assertFalse(Rs2Walker.hasReachableNeighbour(anvil, reachable,
+                (from, to) -> !from.equals(outsideTheWall)));
+    }
+
+    /** A second, open approach tile rescues the arrival even when one neighbour is walled off. */
+    @Test
+    public void hasReachableNeighbour_trueWhenAnotherNeighbourIsOpen() {
+        WorldPoint anvil = new WorldPoint(3246, 3404, 0);
+        java.util.Map<WorldPoint, Integer> reachable = new java.util.HashMap<>();
+        WorldPoint outsideTheWall = new WorldPoint(3245, 3404, 0);
+        reachable.put(outsideTheWall, 0);
+        reachable.put(new WorldPoint(3246, 3405, 0), 1);   // inside, north of the anvil
+        assertTrue(Rs2Walker.hasReachableNeighbour(anvil, reachable,
+                (from, to) -> !from.equals(outsideTheWall)));
+    }
+
+    /**
+     * An undecidable edge must not reject. {@code isEdgePassable} answers false for off-scene,
+     * instanced and unloaded-plane reads as well as for real walls; treating those alike would turn
+     * arrival into a walk that never terminates.
+     */
+    @Test
+    public void hasReachableNeighbour_undecidableEdgeKeepsTheGeometryAnswer() {
+        WorldPoint chest = new WorldPoint(3200, 3200, 0);
+        java.util.Map<WorldPoint, Integer> reachable = new java.util.HashMap<>();
+        reachable.put(new WorldPoint(3200, 3199, 0), 1);
+        assertTrue(Rs2Walker.hasReachableNeighbour(chest, reachable, (from, to) -> true));
+    }
+
     @Test
     public void hasReachableNeighbour_toleratesMissingInputs() {
         assertFalse(Rs2Walker.hasReachableNeighbour(null, new java.util.HashMap<>()));
