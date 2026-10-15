@@ -609,6 +609,62 @@ public abstract class Rs2Tile implements Tile {
                 && (flags[fx][ty] & (CollisionDataFlag.BLOCK_MOVEMENT_FULL | cardinalBlockFlag(dx, 0))) == 0;
     }
 
+    /**
+     * Whether a WALL is known to separate two adjacent tiles, ignoring whether {@code to} is itself
+     * occupied.
+     * <p>
+     * Distinct from {@link #isEdgePassable}, which answers "can I walk from here to there" and so
+     * also fails when the destination tile carries {@code BLOCK_MOVEMENT_FULL}. That is the wrong
+     * question for an object you stand BESIDE: a bank booth, anvil or chest always occupies its tile,
+     * so every approach to one reads as impassable and the answer carries no information about walls.
+     * <p>
+     * Polarity is deliberate. This returns true ONLY for a definitely-known wall; "open" and "cannot
+     * tell" (off-scene, instanced, unloaded plane) both answer false, so a caller that rejects on true
+     * degrades to its previous behaviour when the collision data is unavailable rather than rejecting
+     * everything.
+     */
+    public static boolean isWallBetween(WorldPoint from, WorldPoint to) {
+        return runClientReadBoolean(() -> isWallBetweenInternal(from, to));
+    }
+
+    private static boolean isWallBetweenInternal(WorldPoint from, WorldPoint to) {
+        if (from == null || to == null || from.getPlane() != to.getPlane()) return false;
+
+        final int dx = to.getX() - from.getX();
+        final int dy = to.getY() - from.getY();
+        // Only cardinal edges are decided here. A diagonal crossing is two edges rather than one, and
+        // the game does not permit diagonal object interaction anyway, so those stay the caller's
+        // problem rather than being guessed at.
+        if (dx != 0 && dy != 0) return false;
+        if (dx == 0 && dy == 0) return false;
+        if (Math.abs(dx) > 1 || Math.abs(dy) > 1) return false;
+
+        final WorldView wv = Microbot.getClient().getTopLevelWorldView();
+        if (wv == null || wv.getPlane() != from.getPlane()) return false;
+        // Instance scenes repeat template chunks, so world -> scene by base offset is wrong there.
+        if (wv.getScene() != null && wv.getScene().isInstance()) return false;
+
+        final int[][] flags = getFlagsInternal();
+        if (flags == null) return false;
+
+        final int fx = from.getX() - Microbot.getClient().getBaseX();
+        final int fy = from.getY() - Microbot.getClient().getBaseY();
+        if (!isWithinBounds(fx, fy)) return false;
+
+        return isWallBetween(flags, fx, fy, dx, dy);
+    }
+
+    /**
+     * The wall rule alone, with no client reads: does a wall block the cardinal {@code (dx, dy)} step
+     * out of {@code (fx, fy)}? Split out so it is covered by a decision table rather than only by a
+     * live client, matching {@link #isStepAllowed}.
+     */
+    static boolean isWallBetween(int[][] flags, int fx, int fy, int dx, int dy) {
+        if (dx == 0 && dy == 0) return false;
+        if (dx != 0 && dy != 0) return false;
+        return (flags[fx][fy] & cardinalBlockFlag(dx, dy)) != 0;
+    }
+
     private static int cardinalBlockFlag(int dx, int dy) {
         if (dx > 0) return CollisionDataFlag.BLOCK_MOVEMENT_EAST;
         if (dx < 0) return CollisionDataFlag.BLOCK_MOVEMENT_WEST;
