@@ -1341,6 +1341,7 @@ public class QuestScript extends Script {
 
             if (step.isAllowMultipleHighlights()) {
                 npcsHandled.add(npc.getIndex());
+                dialogueStartedStep = step;
                 sleepUntil(Rs2Dialogue::isInDialogue);
             }
         } else if (npc != null && npc.getLocalLocation() != null && !Rs2Camera.isTileOnScreen(npc.getLocalLocation())) {
