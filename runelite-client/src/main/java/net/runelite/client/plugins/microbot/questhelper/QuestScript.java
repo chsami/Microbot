@@ -60,7 +60,7 @@ import org.slf4j.event.Level;
 import net.runelite.api.coords.WorldArea;
 
 public class QuestScript extends Script {
-    public static double version = 0.3;
+    public static double version = 0.4;
 
     private static final long MISSING_REQUIREMENT_NOTIFY_INTERVAL_MS = 10_000L;
     private static final Map<Integer, Long> lastMissingRequirementNotice = new HashMap<>();
@@ -98,6 +98,9 @@ public class QuestScript extends Script {
      */
     private long dialogueCooldownEndsAt = 0;
 
+    private int pendingNpcIndex = -1;
+    private long pendingNpcDeadline = 0;
+
 
 
     public boolean run(QuestHelperConfig config, QuestHelperPlugin mQuestPlugin) {
@@ -117,8 +120,11 @@ public class QuestScript extends Script {
 
                 QuestStep questStep = getQuestHelperPlugin().getSelectedQuest().getCurrentStep().getActiveStep();
 
-                if (Rs2Dialogue.isInDialogue() && dialogueStartedStep == null)
-                    dialogueStartedStep = questStep;
+                if (Rs2Dialogue.isInDialogue()) {
+                    pendingNpcIndex = -1;
+                    if (dialogueStartedStep == null)
+                        dialogueStartedStep = questStep;
+                }
 
                 if (questStep != null && Rs2Widget.isWidgetVisible(ComponentID.DIALOG_OPTION_OPTIONS)) {
                     var dialogOptions = Rs2Widget.getWidget(ComponentID.DIALOG_OPTION_OPTIONS);
@@ -1287,11 +1293,14 @@ public class QuestScript extends Script {
 
         if (step.isAllowMultipleHighlights()) {
             npc = npcs.stream()
-                    .filter(x -> !npcsHandled.contains(x.getIndex()))
+                    .filter(x -> x.getIndex() == pendingNpcIndex && System.currentTimeMillis() < pendingNpcDeadline)
                     .findFirst()
                     .orElseGet(() -> npcs.stream()
-                            .min(Comparator.comparing(x -> Rs2Player.getWorldLocation().distanceTo(x.getWorldLocation())))
-                            .orElse(null));
+                            .filter(x -> !npcsHandled.contains(x.getIndex()))
+                            .findFirst()
+                            .orElseGet(() -> npcs.stream()
+                                    .min(Comparator.comparing(x -> Rs2Player.getWorldLocation().distanceTo(x.getWorldLocation())))
+                                    .orElse(null)));
         }
 
         // canReach() pathfinds through closed doors (the walker opens them en route), so canReach==true
@@ -1342,6 +1351,8 @@ public class QuestScript extends Script {
             if (step.isAllowMultipleHighlights()) {
                 npcsHandled.add(npc.getIndex());
                 dialogueStartedStep = step;
+                pendingNpcIndex = npc.getIndex();
+                pendingNpcDeadline = System.currentTimeMillis() + 15000;
                 sleepUntil(Rs2Dialogue::isInDialogue);
             }
         } else if (npc != null && npc.getLocalLocation() != null && !Rs2Camera.isTileOnScreen(npc.getLocalLocation())) {
