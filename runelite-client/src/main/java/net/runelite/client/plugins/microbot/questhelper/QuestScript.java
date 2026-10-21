@@ -98,8 +98,10 @@ public class QuestScript extends Script {
      */
     private long dialogueCooldownEndsAt = 0;
 
-    private int pendingNpcIndex = -1;
-    private long pendingNpcDeadline = 0;
+    private static final long NPC_PENDING_TIMEOUT_MS = 60_000L;
+    private static int pendingNpcIndex = -1;
+    private static long pendingNpcDeadline = 0;
+    private static QuestStep pendingNpcStep = null;
 
 
 
@@ -1264,6 +1266,9 @@ public class QuestScript extends Script {
         valeTotemsSessionWoodType = null;
         obtainItemsPromptInFlight.set(false);
         obtainItemsSessionChoice = null;
+        pendingNpcIndex = -1;
+        pendingNpcDeadline = 0;
+        pendingNpcStep = null;
     }
 
     public boolean applyStep(QuestStep step) {
@@ -1293,7 +1298,7 @@ public class QuestScript extends Script {
 
         if (step.isAllowMultipleHighlights()) {
             npc = npcs.stream()
-                    .filter(x -> x.getIndex() == pendingNpcIndex && System.currentTimeMillis() < pendingNpcDeadline)
+                    .filter(x -> x.getIndex() == pendingNpcIndex && step == pendingNpcStep && System.currentTimeMillis() < pendingNpcDeadline)
                     .findFirst()
                     .orElseGet(() -> npcs.stream()
                             .filter(x -> !npcsHandled.contains(x.getIndex()))
@@ -1346,13 +1351,16 @@ public class QuestScript extends Script {
                 npc.click("");
             } else {
                 npc.click(chooseCorrectNPCOption(step, npc));
+                if (step.isAllowMultipleHighlights()) {
+                    pendingNpcIndex = npc.getIndex();
+                    pendingNpcStep = step;
+                    pendingNpcDeadline = System.currentTimeMillis() + NPC_PENDING_TIMEOUT_MS;
+                }
             }
 
             if (step.isAllowMultipleHighlights()) {
                 npcsHandled.add(npc.getIndex());
                 dialogueStartedStep = step;
-                pendingNpcIndex = npc.getIndex();
-                pendingNpcDeadline = System.currentTimeMillis() + 15000;
                 sleepUntil(Rs2Dialogue::isInDialogue);
             }
         } else if (npc != null && npc.getLocalLocation() != null && !Rs2Camera.isTileOnScreen(npc.getLocalLocation())) {
