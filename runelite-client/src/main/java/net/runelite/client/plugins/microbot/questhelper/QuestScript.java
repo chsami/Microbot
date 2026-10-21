@@ -102,7 +102,6 @@ public class QuestScript extends Script {
     private static int pendingNpcIndex = -1;
     private static long pendingNpcDeadline = 0;
     private static QuestStep pendingNpcStep = null;
-    private static boolean pendingNpcDialogueSeen = false;
 
 
 
@@ -123,11 +122,8 @@ public class QuestScript extends Script {
 
                 QuestStep questStep = getQuestHelperPlugin().getSelectedQuest().getCurrentStep().getActiveStep();
 
-                if (Rs2Dialogue.isInDialogue()) {
-                    pendingNpcDialogueSeen = true;
-                    if (dialogueStartedStep == null)
-                        dialogueStartedStep = questStep;
-                }
+                if (Rs2Dialogue.isInDialogue() && dialogueStartedStep == null)
+                    dialogueStartedStep = questStep;
 
                 if (questStep != null && Rs2Widget.isWidgetVisible(ComponentID.DIALOG_OPTION_OPTIONS)) {
                     var dialogOptions = Rs2Widget.getWidget(ComponentID.DIALOG_OPTION_OPTIONS);
@@ -233,10 +229,6 @@ public class QuestScript extends Script {
                     } else {
                         if (dialogueStartedStep != null) {
                             dialogueCooldownEndsAt = System.currentTimeMillis() + Rs2Random.between(4000, 7000);
-                        }
-                        if (pendingNpcDialogueSeen) {
-                            pendingNpcIndex = -1;
-                            pendingNpcDialogueSeen = false;
                         }
                         dialogueStartedStep = null;
                     }
@@ -1274,7 +1266,6 @@ public class QuestScript extends Script {
         pendingNpcIndex = -1;
         pendingNpcDeadline = 0;
         pendingNpcStep = null;
-        pendingNpcDialogueSeen = false;
     }
 
     public boolean applyStep(QuestStep step) {
@@ -1358,15 +1349,17 @@ public class QuestScript extends Script {
             } else {
                 npc.click(chooseCorrectNPCOption(step, npc));
                 if (step.isAllowMultipleHighlights()) {
-                    pendingNpcIndex = npc.getIndex();
-                    pendingNpcStep = step;
-                    pendingNpcDeadline = System.currentTimeMillis() + NPC_PENDING_TIMEOUT_MS;
+                    if (pendingNpcIndex != npc.getIndex() || pendingNpcStep != step) {
+                        pendingNpcIndex = npc.getIndex();
+                        pendingNpcStep = step;
+                        pendingNpcDeadline = System.currentTimeMillis() + NPC_PENDING_TIMEOUT_MS;
+                    }
+                    dialogueStartedStep = step;
                 }
             }
 
             if (step.isAllowMultipleHighlights()) {
                 npcsHandled.add(npc.getIndex());
-                dialogueStartedStep = step;
                 sleepUntil(Rs2Dialogue::isInDialogue);
             }
         } else if (npc != null && npc.getLocalLocation() != null && !Rs2Camera.isTileOnScreen(npc.getLocalLocation())) {
