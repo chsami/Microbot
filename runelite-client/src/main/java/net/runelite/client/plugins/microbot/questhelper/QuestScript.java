@@ -102,6 +102,7 @@ public class QuestScript extends Script {
     private static int pendingNpcIndex = -1;
     private static long pendingNpcDeadline = 0;
     private static QuestStep pendingNpcStep = null;
+    private static boolean pendingNpcDialogueSeen = false;
 
 
 
@@ -123,7 +124,7 @@ public class QuestScript extends Script {
                 QuestStep questStep = getQuestHelperPlugin().getSelectedQuest().getCurrentStep().getActiveStep();
 
                 if (Rs2Dialogue.isInDialogue()) {
-                    pendingNpcIndex = -1;
+                    pendingNpcDialogueSeen = true;
                     if (dialogueStartedStep == null)
                         dialogueStartedStep = questStep;
                 }
@@ -232,6 +233,10 @@ public class QuestScript extends Script {
                     } else {
                         if (dialogueStartedStep != null) {
                             dialogueCooldownEndsAt = System.currentTimeMillis() + Rs2Random.between(4000, 7000);
+                        }
+                        if (pendingNpcDialogueSeen) {
+                            pendingNpcIndex = -1;
+                            pendingNpcDialogueSeen = false;
                         }
                         dialogueStartedStep = null;
                     }
@@ -1269,6 +1274,7 @@ public class QuestScript extends Script {
         pendingNpcIndex = -1;
         pendingNpcDeadline = 0;
         pendingNpcStep = null;
+        pendingNpcDialogueSeen = false;
     }
 
     public boolean applyStep(QuestStep step) {
