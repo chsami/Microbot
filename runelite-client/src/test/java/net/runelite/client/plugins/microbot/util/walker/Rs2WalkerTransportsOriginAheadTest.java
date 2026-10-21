@@ -6,8 +6,7 @@ import org.junit.Test;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertEquals;
 
 public class Rs2WalkerTransportsOriginAheadTest
 {
@@ -21,7 +20,7 @@ public class Rs2WalkerTransportsOriginAheadTest
 				new WorldPoint(1400, 3250, 0),
 				new WorldPoint(1364, 3287, 0));
 
-		assertFalse(Rs2WalkerTransports.isOriginAheadOnPath(path, 1, ORIGIN));
+		assertEquals(-1, Rs2WalkerTransports.indexOfOriginAhead(path, 1, ORIGIN));
 	}
 
 	@Test
@@ -32,9 +31,22 @@ public class Rs2WalkerTransportsOriginAheadTest
 				new WorldPoint(1450, 3240, 0),
 				ORIGIN);
 
-		assertTrue(Rs2WalkerTransports.isOriginAheadOnPath(path, 0, ORIGIN));
-		assertTrue(Rs2WalkerTransports.isOriginAheadOnPath(path, 2, ORIGIN));
-		assertFalse(Rs2WalkerTransports.isOriginAheadOnPath(path, 3, ORIGIN));
+		assertEquals(2, Rs2WalkerTransports.indexOfOriginAhead(path, 0, ORIGIN));
+		assertEquals(2, Rs2WalkerTransports.indexOfOriginAhead(path, 2, ORIGIN));
+		assertEquals(-1, Rs2WalkerTransports.indexOfOriginAhead(path, 3, ORIGIN));
+	}
+
+	@Test
+	public void firstMatchingIndexAtOrAfterFromIndexIsReturned()
+	{
+		List<WorldPoint> path = Arrays.asList(
+				new WorldPoint(1400, 3250, 0),
+				ORIGIN,
+				new WorldPoint(1450, 3240, 0),
+				ORIGIN);
+
+		assertEquals(1, Rs2WalkerTransports.indexOfOriginAhead(path, 0, ORIGIN));
+		assertEquals(3, Rs2WalkerTransports.indexOfOriginAhead(path, 2, ORIGIN));
 	}
 
 	@Test
@@ -42,7 +54,7 @@ public class Rs2WalkerTransportsOriginAheadTest
 	{
 		List<WorldPoint> path = Arrays.asList(ORIGIN, new WorldPoint(1400, 3250, 0));
 
-		assertFalse(Rs2WalkerTransports.isOriginAheadOnPath(path, 0, null));
+		assertEquals(-1, Rs2WalkerTransports.indexOfOriginAhead(path, 0, null));
 	}
 
 	@Test
@@ -50,6 +62,6 @@ public class Rs2WalkerTransportsOriginAheadTest
 	{
 		List<WorldPoint> path = Arrays.asList(ORIGIN, new WorldPoint(1400, 3250, 0));
 
-		assertTrue(Rs2WalkerTransports.isOriginAheadOnPath(path, -5, ORIGIN));
+		assertEquals(0, Rs2WalkerTransports.indexOfOriginAhead(path, -5, ORIGIN));
 	}
 }

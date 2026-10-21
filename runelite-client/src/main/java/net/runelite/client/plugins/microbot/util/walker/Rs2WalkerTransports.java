@@ -955,25 +955,27 @@ final class Rs2WalkerTransports {
                         return false;
                     }
                     noteRefusal(TransportDispatchTrace.Refusal.OBJECT_MISSING);
-                    if (!isOriginAheadOnPath(path, i + 1, origin)) {
+                    int originAheadIndex = indexOfOriginAhead(path, i + 1, origin);
+                    if (originAheadIndex < 0) {
                         break;
                     }
+                    i = originAheadIndex - 1;
                 }
             }
         }
         return false;
     }
 
-    static boolean isOriginAheadOnPath(List<WorldPoint> path, int fromIndex, WorldPoint origin) {
+    static int indexOfOriginAhead(List<WorldPoint> path, int fromIndex, WorldPoint origin) {
         if (path == null || origin == null) {
-            return false;
+            return -1;
         }
         for (int j = Math.max(0, fromIndex); j < path.size(); j++) {
             if (origin.equals(path.get(j))) {
-                return true;
+                return j;
             }
         }
-        return false;
+        return -1;
     }
 
     private static final TransportRefusalLedger transportRefusalLedger = new TransportRefusalLedger();
