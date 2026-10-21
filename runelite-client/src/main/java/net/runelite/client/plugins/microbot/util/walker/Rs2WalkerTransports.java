@@ -671,7 +671,7 @@ final class Rs2WalkerTransports {
                         if (!Rs2PathApi.isSpiritTreeTravelEnabled()) {
                             log.debug("[Walker] skip spirit tree transport — setting is off");
                             noteDeliberateSkip(TransportDispatchTrace.DeliberateSkip.SPIRIT_TREE_TRAVEL_DISABLED);
-                            continue;
+                            break;
                         }
                         if (attemptObserved(transport, () -> handleSpiritTree(transport))) {
                             sleepUntil(() -> !Rs2Player.isAnimating());
@@ -955,22 +955,22 @@ final class Rs2WalkerTransports {
                         return false;
                     }
                     noteRefusal(TransportDispatchTrace.Refusal.OBJECT_MISSING);
-                    int originAheadIndex = indexOfOriginAhead(path, i + 1, origin);
-                    if (originAheadIndex < 0) {
+                    int nextIndex = nextIndexAfterObjectMiss(path, i, origin);
+                    if (nextIndex < 0) {
                         break;
                     }
-                    i = originAheadIndex - 1;
+                    i = nextIndex - 1;
                 }
             }
         }
         return false;
     }
 
-    static int indexOfOriginAhead(List<WorldPoint> path, int fromIndex, WorldPoint origin) {
+    static int nextIndexAfterObjectMiss(List<WorldPoint> path, int i, WorldPoint origin) {
         if (path == null || origin == null) {
             return -1;
         }
-        for (int j = Math.max(0, fromIndex); j < path.size(); j++) {
+        for (int j = Math.max(0, i + 1); j < path.size(); j++) {
             if (origin.equals(path.get(j))) {
                 return j;
             }

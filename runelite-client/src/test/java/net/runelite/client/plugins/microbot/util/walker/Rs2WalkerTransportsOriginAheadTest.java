@@ -13,31 +13,30 @@ public class Rs2WalkerTransportsOriginAheadTest
 	private static final WorldPoint ORIGIN = new WorldPoint(1487, 3232, 0);
 
 	@Test
-	public void originBehindStartIndexIsNotAhead()
+	public void originBehindTheMissedIndexStopsTheScan()
 	{
 		List<WorldPoint> path = Arrays.asList(
 				ORIGIN,
 				new WorldPoint(1400, 3250, 0),
 				new WorldPoint(1364, 3287, 0));
 
-		assertEquals(-1, Rs2WalkerTransports.indexOfOriginAhead(path, 1, ORIGIN));
+		assertEquals(-1, Rs2WalkerTransports.nextIndexAfterObjectMiss(path, 1, ORIGIN));
 	}
 
 	@Test
-	public void originAtOrAfterFromIndexIsAhead()
+	public void originAheadReturnsItsIndex()
 	{
 		List<WorldPoint> path = Arrays.asList(
 				new WorldPoint(1400, 3250, 0),
 				new WorldPoint(1450, 3240, 0),
 				ORIGIN);
 
-		assertEquals(2, Rs2WalkerTransports.indexOfOriginAhead(path, 0, ORIGIN));
-		assertEquals(2, Rs2WalkerTransports.indexOfOriginAhead(path, 2, ORIGIN));
-		assertEquals(-1, Rs2WalkerTransports.indexOfOriginAhead(path, 3, ORIGIN));
+		assertEquals(2, Rs2WalkerTransports.nextIndexAfterObjectMiss(path, 0, ORIGIN));
+		assertEquals(-1, Rs2WalkerTransports.nextIndexAfterObjectMiss(path, 2, ORIGIN));
 	}
 
 	@Test
-	public void firstMatchingIndexAtOrAfterFromIndexIsReturned()
+	public void missedIndexItselfIsNotTheTarget()
 	{
 		List<WorldPoint> path = Arrays.asList(
 				new WorldPoint(1400, 3250, 0),
@@ -45,23 +44,23 @@ public class Rs2WalkerTransportsOriginAheadTest
 				new WorldPoint(1450, 3240, 0),
 				ORIGIN);
 
-		assertEquals(1, Rs2WalkerTransports.indexOfOriginAhead(path, 0, ORIGIN));
-		assertEquals(3, Rs2WalkerTransports.indexOfOriginAhead(path, 2, ORIGIN));
+		assertEquals(1, Rs2WalkerTransports.nextIndexAfterObjectMiss(path, 0, ORIGIN));
+		assertEquals(3, Rs2WalkerTransports.nextIndexAfterObjectMiss(path, 1, ORIGIN));
 	}
 
 	@Test
-	public void nullOriginIsNeverAhead()
+	public void nullOriginStopsTheScan()
 	{
 		List<WorldPoint> path = Arrays.asList(ORIGIN, new WorldPoint(1400, 3250, 0));
 
-		assertEquals(-1, Rs2WalkerTransports.indexOfOriginAhead(path, 0, null));
+		assertEquals(-1, Rs2WalkerTransports.nextIndexAfterObjectMiss(path, 0, null));
 	}
 
 	@Test
-	public void negativeFromIndexIsClampedToPathStart()
+	public void negativeIndexStartsTheScanAtPathStart()
 	{
-		List<WorldPoint> path = Arrays.asList(ORIGIN, new WorldPoint(1400, 3250, 0));
+		List<WorldPoint> path = Arrays.asList(new WorldPoint(1400, 3250, 0), ORIGIN);
 
-		assertEquals(0, Rs2WalkerTransports.indexOfOriginAhead(path, -5, ORIGIN));
+		assertEquals(1, Rs2WalkerTransports.nextIndexAfterObjectMiss(path, -5, ORIGIN));
 	}
 }
