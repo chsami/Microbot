@@ -1303,6 +1303,7 @@ public class Rs2Bank {
         Rs2Random.waitEx(1200, 100);
         Rs2Keyboard.typeString(String.valueOf(amount));
         Rs2Keyboard.enter();
+        sleepUntil(() -> Microbot.getVarbitValue(VarbitID.BANK_REQUESTEDQUANTITY) == amount, 2400);
 
         if (safe) return sleepUntilTrue(() -> isInventory != Rs2Inventory.hasItem(rs2Item.getId()), 100, 2500);
 
