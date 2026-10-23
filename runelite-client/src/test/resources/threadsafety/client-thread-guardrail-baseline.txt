@@ -89,8 +89,8 @@ net.runelite.client.plugins.microbot.util.bank.Rs2Bank#isLockedSlot(int): boolea
 net.runelite.client.plugins.microbot.util.bank.Rs2Bank#isLockedSlot(int): boolean  ->  net.runelite.api.widgets.Widget#getChildren(): Widget[]
 net.runelite.client.plugins.microbot.util.bank.Rs2Bank#isWidgetLocked(Widget): boolean  ->  net.runelite.api.widgets.Widget#getActions(): String[]
 net.runelite.client.plugins.microbot.util.bank.Rs2Bank#itemBounds(Rs2ItemModel): Rectangle  ->  net.runelite.api.widgets.Widget#getBounds(): Rectangle
-net.runelite.client.plugins.microbot.util.bank.Rs2Bank#lambda$getPathAndBankToNearestBank$39(TileObject, BankLocation): int  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
-net.runelite.client.plugins.microbot.util.bank.Rs2Bank#lambda$getPathAndBankToNearestBank$40(Set, TileObject): AbstractMap$SimpleEntry  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
+net.runelite.client.plugins.microbot.util.bank.Rs2Bank#lambda$getPathAndBankToNearestBank$40(TileObject, BankLocation): int  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
+net.runelite.client.plugins.microbot.util.bank.Rs2Bank#lambda$getPathAndBankToNearestBank$41(Set, TileObject): AbstractMap$SimpleEntry  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
 net.runelite.client.plugins.microbot.util.bank.Rs2Bank#lambda$handleAmount$17(): boolean  ->  net.runelite.api.widgets.Widget#getText(): String
 net.runelite.client.plugins.microbot.util.bank.Rs2Bank#openBank(): boolean  ->  net.runelite.api.Client#isWidgetSelected(): boolean
 net.runelite.client.plugins.microbot.util.bank.Rs2Bank#openCollectionBox(): boolean  ->  net.runelite.api.Client#isWidgetSelected(): boolean
