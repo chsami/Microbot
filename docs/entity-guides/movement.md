@@ -568,3 +568,26 @@ if (isCardinalEdge(fromWp, toWp) && !Rs2DoorGeometry.crossedDoorAxis(fromWp, toW
 **Where this applies:** `Rs2WalkerDoors.didTraverseInteractedDoor`, `Rs2WalkerDoors.tryDoorEdgeCrossNudge`, `Rs2Walker.withdrawPreviousWalkScopedBlocks`, and any door verdict that feeds `DoorAttemptLedger` strikes.
 
 **Defensive check:** Replay the loop as pure verdicts against a `DoorAttemptLedger` and assert the edge strikes out within `DOOR_CROSS_FAILURE_STRIKE_LIMIT` cycles, as in `LockedDoorStrikeOutTest`.
+
+## 29. Null-check a scene `Tile` before pathing from or to it
+
+A slot in `scene.getTiles()[plane][x][y]` can be `null` even when the `LocalPoint` for that position resolved, for example an empty tile or a slot that has not been filled yet after a region change. `Rs2Tile.pathTo` and `Rs2Tile.fullPathTo` treat a missing endpoint as "no path", and callers that read a tile from the scene array must do the same before using it.
+
+**Why this matters:** `Rs2WorldPoint.pathTo` passed the scene tile straight into `Rs2Tile.fullPathTo`, which called `source.getPlane()`. Telemetry for 2.6.38 recorded a `NullPointerException` from `Rs2GameObject.canReach`, which threw instead of returning `false`.
+
+**Pattern to follow:**
+
+```java
+// Wrong: the scene slot may be empty.
+Tile sourceTile = tiles[plane][x][y];
+return Rs2Tile.fullPathTo(sourceTile, targetTile);
+
+// Right: no tile means no path.
+Tile sourceTile = tiles[plane][x][y];
+if (sourceTile == null || targetTile == null) return null;
+return Rs2Tile.fullPathTo(sourceTile, targetTile);
+```
+
+**Where this applies:** `Rs2WorldPoint.pathTo`, `Rs2Tile.pathTo`, `Rs2Tile.fullPathTo`, and any helper that reads a `Tile` from the scene array.
+
+**Defensive check:** Mock a scene with an empty source or target slot and assert the path is `null`, as in `Rs2WorldPointNullSceneTileTest` and `Rs2TileNullPathEndpointTest`.

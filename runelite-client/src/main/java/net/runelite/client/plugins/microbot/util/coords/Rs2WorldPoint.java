@@ -79,6 +79,10 @@ public class Rs2WorldPoint {
         Tile sourceTile = tiles[getPlane()][thisX][thisY];
 
         Tile targetTile = tiles[getPlane()][otherX][otherY];
+        if (sourceTile == null || targetTile == null)
+        {
+            return null;
+        }
         List<Tile> checkpointTiles = fullPath ? Rs2Tile.fullPathTo(sourceTile,targetTile) : Rs2Tile.pathTo(sourceTile, targetTile);
         if (checkpointTiles == null)
         {

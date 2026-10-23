@@ -31,6 +31,8 @@ Bounds-check a `LocalPoint` against its worldview before projecting it to the ca
 
 A door attempt that ends on the near side is a refusal, not a traversal: [movement gotcha 28](movement.md#28-a-door-attempt-that-ends-on-the-near-side-is-a-refusal-not-a-traversal).
 
+A missing scene tile means no path: [movement gotcha 29](movement.md#29-null-check-a-scene-tile-before-pathing-from-or-to-it).
+
 ## Format
 
 Each entity guide is a numbered list of gotchas. Each entry follows this structure:
