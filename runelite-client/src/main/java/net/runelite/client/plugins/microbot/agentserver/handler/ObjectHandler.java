@@ -71,7 +71,7 @@ public class ObjectHandler extends AgentHandler {
 
 		List<Map<String, Object>> serialized = objects.stream()
 				.limit(limit)
-				.map(this::serializeObject)
+				.map(ObjectHandler::serializeObject)
 				.collect(Collectors.toList());
 
 		Map<String, Object> response = new LinkedHashMap<>();
@@ -133,7 +133,7 @@ public class ObjectHandler extends AgentHandler {
 		sendJson(exchange, 200, response);
 	}
 
-	private Map<String, Object> serializeObject(Rs2TileObjectModel obj) {
+	static Map<String, Object> serializeObject(Rs2TileObjectModel obj) {
 		Map<String, Object> map = new LinkedHashMap<>();
 		map.put("id", obj.getId());
 		map.put("name", obj.getName());

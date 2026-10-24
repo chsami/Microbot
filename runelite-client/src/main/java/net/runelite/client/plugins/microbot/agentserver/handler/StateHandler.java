@@ -36,6 +36,10 @@ public class StateHandler extends AgentHandler {
 			return;
 		}
 
+		sendJson(exchange, 200, snapshot(client));
+	}
+
+	static Map<String, Object> snapshot(Client client) {
 		Map<String, Object> state = new LinkedHashMap<>();
 		GameState gameState = client.getGameState();
 		state.put("loggedIn", Microbot.isLoggedIn());
@@ -75,6 +79,6 @@ public class StateHandler extends AgentHandler {
 		}
 
 		state.put("scriptsPaused", Microbot.pauseAllScripts.get());
-		sendJson(exchange, 200, state);
+		return state;
 	}
 }

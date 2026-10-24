@@ -59,7 +59,7 @@ TCP mode binds to `127.0.0.1` only. UDS mode binds to `~/.runelite/.agent.sock` 
 |---------|---------|-------------|
 | Port | `8081` | HTTP server port |
 | Max Results | `200` | Default limit for list/query endpoints |
-| Auth token | generated | Required in `X-Agent-Token`; stored in `~/.runelite/.agent-token` for CLI use |
+| Auth token | generated | Required in `X-Agent-Token`; stored in `~/.runelite/.agent-token` for CLI use. Clear it to generate a new one |
 | Stealth bind | `false` | Open the socket only while scripts are active |
 | Bind mode | `TCP` | `TCP` on localhost or `UDS` at `~/.runelite/.agent.sock` |
 
@@ -177,6 +177,37 @@ Response includes `reason` field when `clicked` is `false`.
   "skills": [
     {"name": "Attack", "level": 70, "boostedLevel": 75, "xp": 737627}
   ]
+}
+```
+
+#### GET /observe
+
+One call for the usual "what is going on" check: everything from `/state`, plus inventory, equipment, dialogue, recent game chat and script heartbeats. Inventory, equipment, dialogue and nearby entities are only included while logged in.
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `chatSince` | - | Return chat lines newer than this cursor (up to 100). Without it, the last 10 lines are returned |
+| `nearby` | `0` | Also return the nearest NPCs and objects within this many tiles (max 30) |
+| `nearbyLimit` | `10` | Max NPCs and max objects when `nearby` is set |
+
+Chat keeps the last 100 game messages (`GAMEMESSAGE`, `SPAM`, `ENGINE`, `MESBOX`) seen while the plugin is enabled, with colour tags removed. Player chat is never recorded. Pass the returned `chat.cursor` as `chatSince` on the next call to get only new lines, for example the "You can't reach that." after an interaction.
+
+```bash
+./microbot-cli observe
+./microbot-cli observe --chat-since 41 --nearby 10 --limit 5
+```
+
+```json
+{
+  "loggedIn": true,
+  "gameState": "LOGGED_IN",
+  "player": {"name": "PlayerName", "position": {"x": 3222, "y": 3218, "plane": 0}, "...": "same as /state"},
+  "scriptsPaused": false,
+  "inventory": {"count": 1, "capacity": 28, "freeSlots": 27, "full": false, "items": [{"id": 1351, "name": "Bronze axe", "quantity": 1, "slot": 0}]},
+  "equipment": [{"slot": "WEAPON", "id": 1351, "name": "Bronze axe", "quantity": 1}],
+  "dialogue": {"inDialogue": false},
+  "chat": {"cursor": 42, "messages": [{"type": "GAMEMESSAGE", "message": "You can't reach that.", "at": 1761390000000, "seq": 42}]},
+  "scripts": [{"scriptClassName": "com.example.MyScript", "loopCount": 120, "lastHeartbeatAt": "2026-10-25T10:00:00Z", "stalledMs": 412}]
 }
 ```
 
@@ -369,6 +400,50 @@ Blocking timeout response:
   "message": "Walk did not complete within 30s; still in progress",
   "playerPosition": {"x": 3150, "y": 3450, "plane": 0}
 }
+```
+
+#### GET /path
+
+Plans a route with the walker's pathfinder without moving the player. Use it to see why a walk fails or takes a strange route.
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `x`, `y` | required | Destination |
+| `plane` | `0` | Destination plane |
+| `fromX`, `fromY`, `fromPlane` | player position | Plan from another start tile |
+| `bankItems` | walker setting | `true`/`false` to plan with or without items from the bank |
+| `full` | `false` | Include every path tile |
+
+```bash
+./microbot-cli path 3164 3486
+./microbot-cli path 3164 3486 0 --from 3222 3218 0 --full
+```
+
+```json
+{
+  "start": {"x": 3222, "y": 3218, "plane": 0},
+  "target": {"x": 3164, "y": 3486, "plane": 0},
+  "searchCompleted": true,
+  "termination": "TARGET_REACHED",
+  "reachesTarget": true,
+  "endpoint": {"x": 3164, "y": 3486, "plane": 0},
+  "endpointDistanceToTarget": 0,
+  "tiles": 289,
+  "metrics": {"searchMs": 41, "pathCost": 301, "nodesChecked": 18233, "transportsChecked": 112},
+  "transports": [{"from": {"x": 3216, "y": 3219, "plane": 0}, "to": {"x": 3217, "y": 3219, "plane": 0}, "type": "TRANSPORT", "info": "Open Door", "action": "Open", "target": "Door", "objectId": 1543, "teleport": false, "consumable": false}]
+}
+```
+
+`termination` is one of `TARGET_REACHED`, `SEARCH_EXHAUSTED`, `CUTOFF_REACHED`, `CANCELLED`, `FAILED`. When the target cannot be reached, `endpoint` and `endpointDistanceToTarget` show how close the planner got. The response is `503` while the pathfinder is not initialised and `409` when no start was given and the player position is unknown.
+
+While logged out the planner cannot check transport requirements, so routes that need stairs, doors or teleports can come back `SEARCH_EXHAUSTED` with no tiles. Plan those while logged in.
+
+#### GET /path/active
+
+The route the walker is currently following: `phase` (`ABSENT`, `CALCULATING`, `READY`), start, targets, endpoint, `termination`, tile counts and metrics. `?full=true` adds the walkable path.
+
+```bash
+./microbot-cli path active
 ```
 
 ### Banking
@@ -828,26 +903,43 @@ The `AgentHandler` base class provides: `sendJson()`, `parseQuery()`, `readJsonB
 
 | File | Purpose |
 |------|---------|
-| `agentserver/AgentServerPlugin.java` | Plugin lifecycle, handler registration |
-| `agentserver/AgentServerConfig.java` | Port and max results config |
-| `agentserver/handler/AgentHandler.java` | Abstract base class for all handlers |
+| `agentserver/AgentServerPlugin.java` | Plugin lifecycle, handler registration, token file, stealth bind, chat capture |
+| `agentserver/AgentServerConfig.java` | Port, max results, token, stealth bind, bind mode |
+| `agentserver/handler/AgentHandler.java` | Base class: auth, JSON, query/body parsing, errors |
 | `agentserver/handler/WidgetListHandler.java` | `GET /widgets/list` |
 | `agentserver/handler/WidgetSearchHandler.java` | `GET /widgets/search` |
 | `agentserver/handler/WidgetDescribeHandler.java` | `GET /widgets/describe` |
 | `agentserver/handler/WidgetClickHandler.java` | `POST /widgets/click` |
+| `agentserver/handler/WidgetInvokeHandler.java` | `POST /widgets/invoke` |
 | `agentserver/handler/StateHandler.java` | `GET /state` |
+| `agentserver/handler/ObserveHandler.java` | `GET /observe` |
+| `agentserver/handler/ChatLog.java` | Bounded buffer of recent game messages for `/observe` |
+| `agentserver/handler/SkillsHandler.java` | `GET /skills` |
+| `agentserver/handler/VarbitHandler.java` | `GET /varbit` |
+| `agentserver/handler/VarpHandler.java` | `GET /varp` |
 | `agentserver/handler/InventoryHandler.java` | `/inventory` endpoints |
 | `agentserver/handler/NpcHandler.java` | `/npcs` endpoints |
 | `agentserver/handler/ObjectHandler.java` | `/objects` endpoints |
+| `agentserver/handler/GroundItemHandler.java` | `/ground-items` endpoints |
 | `agentserver/handler/WalkHandler.java` | `POST /walk` |
+| `agentserver/handler/PathHandler.java` | `GET /path`, `GET /path/active` |
 | `agentserver/handler/BankHandler.java` | `/bank` endpoints |
 | `agentserver/handler/DialogueHandler.java` | `/dialogue` endpoints |
-| `agentserver/handler/GroundItemHandler.java` | `/ground-items` endpoints |
-| `agentserver/handler/SkillsHandler.java` | `GET /skills` |
+| `agentserver/handler/KeyboardHandler.java` | `POST /keyboard` |
+| `agentserver/handler/SettingsHandler.java` | `/settings` endpoints |
+| `agentserver/handler/ScreenshotHandler.java` | `GET /screenshot` |
 | `agentserver/handler/LoginHandler.java` | `/login` endpoints |
+| `agentserver/handler/LogoutHandler.java` | `POST /logout` |
+| `agentserver/handler/ProfileHandler.java` | `/profiles` endpoints |
 | `agentserver/handler/ScriptHandler.java` | `/scripts` endpoints |
 | `agentserver/handler/ScriptSession.java` | Script execution session tracking |
 | `agentserver/handler/ScriptResultStore.java` | Static result store (Java API + HTTP) |
+| `agentserver/handler/ScriptHeartbeatRegistry.java` | Script loop heartbeats for `/scripts/health` |
+| `agentserver/handler/DynamicScriptDeployHandler.java` | `/scripts/deploy` endpoints |
+| `agentserver/handler/StateMachineDebugHandler.java` | `GET /debug/snapshot` |
+| `agentserver/handler/QuestHelperHandler.java` | `/quest-helper` endpoints |
+| `agentserver/scripting/*` | Compile, class-load and start deployed scripts |
+| `agentserver/uds/*` | HTTP/1.1 over a Unix domain socket |
 | `util/widget/Rs2WidgetInspector.java` | Widget tree inspection logic |
 | `microbot-cli` (repo root) | Bash CLI wrapper |
 
@@ -879,4 +971,8 @@ NPC/object/item interaction failures include a `reason` field:
 
 ## Security
 
-The server binds exclusively to `127.0.0.1` (loopback). It cannot be reached from other machines.
+- **Local only.** TCP mode binds to `127.0.0.1`. UDS mode creates `~/.runelite/.agent.sock` with `rw-------` and restricts `~/.runelite` to its owner.
+- **Token.** Every request needs `X-Agent-Token`. The token is generated on first start, kept in the plugin config and written to `~/.runelite/.agent-token` (`rw-------`), which is deleted when the plugin stops. Clear the token in the plugin settings to rotate it.
+- **Browser and DNS-rebinding protection.** Requests with an `Origin` header, or a `Host` other than `127.0.0.1`, `localhost` or `[::1]`, are rejected.
+- **Opaque failures.** Every pre-auth rejection returns the same plain `404 Not Found` as a missing endpoint, so the API cannot be discovered without the token.
+- **Code execution.** `/scripts/deploy` compiles and runs Java from a local directory. Anyone holding the token can run code in the client.

@@ -9,6 +9,7 @@ import com.google.inject.Provides;
 import com.sun.net.httpserver.HttpServer;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
+import net.runelite.api.events.ChatMessage;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
@@ -178,7 +179,9 @@ public class AgentServerPlugin extends Plugin {
 				new QuestHelperHandler(gson),
 				new StateMachineDebugHandler(gson),
 				new ProfileHandler(gson),
-				new DynamicScriptDeployHandler(gson)
+				new DynamicScriptDeployHandler(gson),
+				new ObserveHandler(gson, client),
+				new PathHandler(gson)
 		);
 	}
 
@@ -226,6 +229,11 @@ public class AgentServerPlugin extends Plugin {
 			udsServer = null;
 			return false;
 		}
+	}
+
+	@Subscribe
+	public void onChatMessage(ChatMessage event) {
+		ChatLog.record(event.getType(), event.getMessage());
 	}
 
 	@Subscribe

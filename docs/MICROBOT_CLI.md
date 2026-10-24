@@ -65,6 +65,12 @@ MICROBOT_PORT=9090 ./microbot-cli state
 
 # Single skill
 ./microbot-cli skills --name Attack
+
+# Everything at once: state, inventory, equipment, dialogue, recent game chat, script health
+./microbot-cli observe
+
+# Only chat lines newer than the last cursor, plus the nearest NPCs/objects within 10 tiles
+./microbot-cli observe --chat-since 41 --nearby 10
 ```
 
 ### Widget Inspection
@@ -168,6 +174,15 @@ The walk command is **non-blocking by default** — it starts the walk and retur
 ```bash
 # Blocking walk — waits until arrival or 60s timeout
 ./microbot-cli walk 3222 3218 --wait --timeout 60
+```
+
+Plan a route without moving, to see why a walk fails or takes a strange route:
+
+```bash
+./microbot-cli path 3164 3486                       # termination, tiles, transports, cost
+./microbot-cli path 3164 3486 0 --from 3222 3218 0  # from another start tile
+./microbot-cli path 3164 3486 --full                # include every tile
+./microbot-cli path active                          # route the walker is following now
 ```
 
 ### Banking

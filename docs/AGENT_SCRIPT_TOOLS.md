@@ -14,7 +14,7 @@ A single-page reference for every tool available when **creating or debugging** 
 | **Logged out** | Client open, not logged in | All offline tools + `profile`, `login`, `state`, `widgets`, `screenshot` |
 | **Logged in** | Client + game session | Everything |
 
-The **Agent Server** plugin (port 8081, localhost) must be enabled for any CLI/HTTP command. It is enabled by default.
+The **Agent Server** plugin (port 8081, localhost) must be enabled for any CLI/HTTP command. It is off by default: enable **Agent Server** in the Microbot plugin list.
 
 ```bash
 # Quick connectivity check
@@ -54,6 +54,7 @@ The **Agent Server** plugin (port 8081, localhost) must be enabled for any CLI/H
 | CLI Command | Purpose |
 |-------------|---------|
 | `state` | Game state, player position, health, animation, combat level |
+| `observe [--chat-since N] [--nearby D]` | One snapshot: state, inventory, equipment, dialogue, recent game chat, script health |
 | `skills [--name X]` | All skill levels, boosted levels, XP |
 | `varbit <id>` | Read a varbit value (critical for verifying settings) |
 | `inventory` | Inventory items with id, name, quantity, slot, actions |
@@ -104,6 +105,8 @@ The **Agent Server** plugin (port 8081, localhost) must be enabled for any CLI/H
 | Tool | Purpose |
 |------|---------|
 | `scripts health` | Detect stalled scripts (heartbeat age) |
+| `path <x> <y> [plane] [--full]` | Plan a walker route without moving: termination reason, transports, cost |
+| `path active` | Route the walker is following right now |
 | `GET /debug/snapshot` | State machine snapshot — current state, transitions, guard results, trace buffer |
 | `screenshot save --label debug` | Visual state capture for multimodal analysis |
 

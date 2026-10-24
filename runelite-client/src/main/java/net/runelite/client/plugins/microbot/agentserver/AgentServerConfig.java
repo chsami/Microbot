@@ -37,7 +37,7 @@ public interface AgentServerConfig extends Config {
 	@ConfigItem(
 			keyName = KEY_TOKEN,
 			name = "Auth token",
-			description = "Shared secret required in the X-Agent-Token header. Auto-generated on first start. Use 'Regenerate token' to rotate.",
+			description = "Shared secret required in the X-Agent-Token header. Auto-generated on first start. Clear it to generate a new one.",
 			secret = true,
 			position = 2
 	)

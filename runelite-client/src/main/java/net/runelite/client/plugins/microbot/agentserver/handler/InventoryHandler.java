@@ -48,8 +48,12 @@ public class InventoryHandler extends AgentHandler {
 			return;
 		}
 
+		sendJson(exchange, 200, snapshot());
+	}
+
+	static Map<String, Object> snapshot() {
 		List<Map<String, Object>> items = Rs2Inventory.all().stream()
-				.map(this::serializeItem)
+				.map(InventoryHandler::serializeItem)
 				.collect(Collectors.toList());
 
 		Map<String, Object> response = new LinkedHashMap<>();
@@ -58,7 +62,7 @@ public class InventoryHandler extends AgentHandler {
 		response.put("freeSlots", Rs2Inventory.emptySlotCount());
 		response.put("full", Rs2Inventory.isFull());
 		response.put("items", items);
-		sendJson(exchange, 200, response);
+		return response;
 	}
 
 	private void handleInteract(HttpExchange exchange) throws IOException {
@@ -141,7 +145,7 @@ public class InventoryHandler extends AgentHandler {
 		sendJson(exchange, 200, response);
 	}
 
-	private Map<String, Object> serializeItem(Rs2ItemModel item) {
+	private static Map<String, Object> serializeItem(Rs2ItemModel item) {
 		Map<String, Object> map = new LinkedHashMap<>();
 		map.put("id", item.getId());
 		map.put("name", item.getName());

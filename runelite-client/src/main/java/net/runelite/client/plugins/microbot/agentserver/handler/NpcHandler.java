@@ -71,7 +71,7 @@ public class NpcHandler extends AgentHandler {
 
 		List<Map<String, Object>> serialized = npcs.stream()
 				.limit(limit)
-				.map(this::serializeNpc)
+				.map(NpcHandler::serializeNpc)
 				.collect(Collectors.toList());
 
 		Map<String, Object> response = new LinkedHashMap<>();
@@ -133,7 +133,7 @@ public class NpcHandler extends AgentHandler {
 		sendJson(exchange, 200, response);
 	}
 
-	private Map<String, Object> serializeNpc(Rs2NpcModel npc) {
+	static Map<String, Object> serializeNpc(Rs2NpcModel npc) {
 		Map<String, Object> map = new LinkedHashMap<>();
 		map.put("id", npc.getId());
 		map.put("index", npc.getIndex());

@@ -47,6 +47,10 @@ Widget Commands:
 
 Game State:
   state                                  Current game state and player info
+  observe [--chat-since N] [--nearby D] [--limit N]
+                                         One snapshot: state, inventory, equipment, dialogue,
+                                         recent game chat (cursor via --chat-since), script health;
+                                         --nearby D adds the nearest NPCs and objects within D tiles
   skills [--name Attack]                 Skill levels and XP
   varbit <id>                            Read a varbit value
   varp <id>                              Read a varp (player variable) value
@@ -73,6 +77,10 @@ Movement:
                                          Walk to coordinates (non-blocking by default;
                                          --wait blocks until arrival or timeout, default 30s;
                                          --distance defaults to 0 for exact coordinates)
+  path <x> <y> [plane] [--from X Y [PLANE]] [--bank-items true|false] [--full]
+                                         Plan a route without moving: termination, tiles,
+                                         transports, cost (--full includes every tile)
+  path active [--full]                   Route the walker is currently following
 
 Banking:
   bank                                   Bank status (open/closed, items)
@@ -303,6 +311,48 @@ case "$1" in
 
     state)
         do_get "${BASE}/state"
+        ;;
+
+    observe)
+        shift
+        chat_since="" nearby="" limit=""
+        while [[ $# -gt 0 ]]; do
+            case "$1" in
+                --chat-since) chat_since="$2"; shift 2 ;;
+                --nearby) nearby="$2"; shift 2 ;;
+                --limit) limit="$2"; shift 2 ;;
+                *) shift ;;
+            esac
+        done
+        q=$(build_query "chatSince" "$chat_since" "nearby" "$nearby" "nearbyLimit" "$limit")
+        do_get "${BASE}/observe${q}"
+        ;;
+
+    path)
+        if [[ "${2:-}" == "active" ]]; then
+            q=""
+            [[ "${3:-}" == "--full" ]] && q="?full=true"
+            do_get "${BASE}/path/active${q}"
+            exit 0
+        fi
+        [[ $# -lt 3 ]] && { echo '{"error":"Usage: microbot-cli path <x> <y> [plane] [--from X Y [PLANE]] [--bank-items true|false] [--full] | path active [--full]"}'; exit 1; }
+        path_x="$2" path_y="$3" path_plane=""
+        shift 3
+        if [[ $# -gt 0 ]] && [[ "$1" =~ ^[0-9]+$ ]]; then path_plane="$1"; shift; fi
+        from_x="" from_y="" from_plane="" bank_items="" full=""
+        while [[ $# -gt 0 ]]; do
+            case "$1" in
+                --from)
+                    from_x="$2" from_y="$3"; shift 3
+                    if [[ $# -gt 0 ]] && [[ "$1" =~ ^[0-9]+$ ]]; then from_plane="$1"; shift; fi
+                    ;;
+                --bank-items) bank_items="$2"; shift 2 ;;
+                --full) full="true"; shift ;;
+                *) shift ;;
+            esac
+        done
+        q=$(build_query "x" "$path_x" "y" "$path_y" "plane" "$path_plane" "fromX" "$from_x" "fromY" "$from_y" "fromPlane" "$from_plane" "bankItems" "$bank_items" "full" "$full")
+        do_get "${BASE}/path${q}"
         ;;
 
     skills)

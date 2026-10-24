@@ -48,6 +48,10 @@ public class DialogueHandler extends AgentHandler {
 			return;
 		}
 
+		sendJson(exchange, 200, snapshot());
+	}
+
+	static Map<String, Object> snapshot() {
 		boolean inDialogue = Rs2Dialogue.isInDialogue();
 		Map<String, Object> response = new LinkedHashMap<>();
 		response.put("inDialogue", inDialogue);
@@ -78,7 +82,7 @@ public class DialogueHandler extends AgentHandler {
 			}
 		}
 
-		sendJson(exchange, 200, response);
+		return response;
 	}
 
 	private void handleContinue(HttpExchange exchange) throws IOException {
