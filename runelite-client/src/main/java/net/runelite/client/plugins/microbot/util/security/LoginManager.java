@@ -514,22 +514,31 @@ public final class LoginManager {
                 log.warn("Failed to find world {}", worldNumber);
                 return;
             }
-            final net.runelite.api.World rsWorld = Microbot.getClient().createWorld();
-            if (rsWorld == null) {
-                log.warn("Failed to create world instance for {}", worldNumber);
-                return;
+            boolean changed = Microbot.getClientThread()
+                    .runOnClientThreadOptional(() -> changeWorld(Microbot.getClient(), world))
+                    .orElse(false);
+            if (!changed) {
+                log.warn("Failed to change to world {}", worldNumber);
             }
-            rsWorld.setActivity(world.getActivity());
-            rsWorld.setAddress(world.getAddress());
-            rsWorld.setId(world.getId());
-            rsWorld.setPlayerCount(world.getPlayers());
-            if (world.getRegion() != null) {
-                rsWorld.setLocation(world.getRegion().getId());
-            }
-            rsWorld.setTypes(WorldUtil.toWorldTypes(world.getTypes()));
-            Microbot.getClient().changeWorld(rsWorld);
         } catch (Exception ex) {
             log.warn("Failed to set target world {}", worldNumber, ex);
         }
+    }
+
+    private static boolean changeWorld(Client client, net.runelite.http.api.worlds.World world) {
+        final net.runelite.api.World rsWorld = client.createWorld();
+        if (rsWorld == null) {
+            return false;
+        }
+        rsWorld.setActivity(world.getActivity());
+        rsWorld.setAddress(world.getAddress());
+        rsWorld.setId(world.getId());
+        rsWorld.setPlayerCount(world.getPlayers());
+        if (world.getRegion() != null) {
+            rsWorld.setLocation(world.getRegion().getId());
+        }
+        rsWorld.setTypes(WorldUtil.toWorldTypes(world.getTypes()));
+        client.changeWorld(rsWorld);
+        return true;
     }
 }
