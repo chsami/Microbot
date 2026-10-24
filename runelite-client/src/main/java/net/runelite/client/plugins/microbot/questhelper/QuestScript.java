@@ -34,6 +34,7 @@ import net.runelite.client.plugins.microbot.util.shop.Rs2Shop;
 import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
 import net.runelite.client.plugins.microbot.util.walker.Rs2PathApi;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
+import net.runelite.client.plugins.microbot.util.walker.WalkerState;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import net.runelite.client.plugins.microbot.api.npc.models.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.api.tileobject.Rs2TileObjectQueryable;
@@ -60,7 +61,7 @@ import org.slf4j.event.Level;
 import net.runelite.api.coords.WorldArea;
 
 public class QuestScript extends Script {
-    public static double version = 0.5;
+    public static double version = 0.6;
 
     private static final long MISSING_REQUIREMENT_NOTIFY_INTERVAL_MS = 10_000L;
     private static final Map<Integer, Long> lastMissingRequirementNotice = new HashMap<>();
@@ -1427,15 +1428,13 @@ public class QuestScript extends Script {
                     targetTile = stepLocation;
             }
 
-            Rs2Walker.walkTo(targetTile, 3);
+            WalkerState walkState = Rs2Walker.walkWithState(targetTile, 3);
 
             var activeRoute = Rs2PathApi.getActiveRouteStatus();
-            if (activeRoute.isPresent()) {
-                var endpoint = activeRoute.getEndpoint();
-                if (endpoint.isPresent()
-                        && endpoint.get().distanceTo(step.getDefinedPoint().getWorldPoint()) <= 1)
-                    return false;
-            } else
+            boolean routeEndsAtStep = activeRoute.isPresent() && activeRoute.getEndpoint()
+                    .map(endpoint -> endpoint.distanceTo(step.getDefinedPoint().getWorldPoint()) <= 1)
+                    .orElse(false);
+            if (shouldKeepWalkingToObject(activeRoute.isPresent(), routeEndsAtStep, walkState, object != null))
                 return false;
         }
 
@@ -1459,6 +1458,13 @@ public class QuestScript extends Script {
         }
 
         return true;
+    }
+
+    static boolean shouldKeepWalkingToObject(boolean routeActive, boolean routeEndsAtStep, WalkerState walkState, boolean hasObject) {
+        if (routeActive) {
+            return routeEndsAtStep;
+        }
+        return !hasObject || walkState != WalkerState.UNREACHABLE;
     }
 
     private static boolean isInteractableFromReachableTile(ObjectStep step, Rs2TileObjectModel object) {
