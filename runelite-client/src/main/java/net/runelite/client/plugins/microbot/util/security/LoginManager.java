@@ -286,13 +286,19 @@ public final class LoginManager {
     }
 
     private static boolean trySetWorld(Client client, int worldId) {
-        if (worldId <= 0 || client.getWorld() == worldId) {
+        if (worldId <= 0 || isOnWorld(client, worldId)) {
             return true;
         }
         if (!setWorld(worldId)) {
             return false;
         }
-        return client.getWorld() == worldId || sleepUntil(() -> client.getWorld() == worldId, WORLD_CHANGE_TIMEOUT_MS);
+        return isOnWorld(client, worldId) || sleepUntil(() -> isOnWorld(client, worldId), WORLD_CHANGE_TIMEOUT_MS);
+    }
+
+    private static boolean isOnWorld(Client client, int worldId) {
+        return Microbot.getClientThread()
+                .runOnClientThreadOptional(() -> client.getWorld() == worldId)
+                .orElse(false);
     }
 
     private static void setCredentials(Client client, String username, String encryptedPassword) {
