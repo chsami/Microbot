@@ -324,6 +324,7 @@ net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange#collect
 net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange#collectOffer(boolean): boolean  ->  net.runelite.api.widgets.Widget#getId(): int
 net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange#collectOffer(boolean): boolean  ->  net.runelite.api.widgets.Widget#getItemId(): int
 net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange#collectOffer(boolean): boolean  ->  net.runelite.api.widgets.Widget#getItemQuantity(): int
+net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange#findSearchResult(Widget[], String, boolean): Pair  ->  net.runelite.api.widgets.Widget#getText(): String
 net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange#findSlotForItem(int, boolean): GrandExchangeSlots  ->  net.runelite.api.GrandExchangeOffer#getItemId(): int
 net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange#findSlotForItem(int, boolean): GrandExchangeSlots  ->  net.runelite.api.GrandExchangeOffer#getState(): GrandExchangeOfferState
 net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange#getActiveOfferSlotsByProgress(): List  ->  net.runelite.api.GrandExchangeOffer#getItemId(): int
@@ -343,7 +344,6 @@ net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange#getOffe
 net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange#getOfferDetailsForCancellation(GrandExchangeSlots): Map  ->  net.runelite.api.GrandExchangeOffer#getItemId(): int
 net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange#getOfferDetailsForCancellation(GrandExchangeSlots): Map  ->  net.runelite.api.GrandExchangeOffer#getQuantitySold(): int
 net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange#getOfferDetailsForCancellation(GrandExchangeSlots): Map  ->  net.runelite.api.GrandExchangeOffer#getState(): GrandExchangeOfferState
-net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange#getSearchResultWidget(String, boolean): Pair  ->  net.runelite.api.widgets.Widget#getChildren(): Widget[]
 net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange#hasBoughtOffer(GrandExchangeSlots): boolean  ->  net.runelite.api.GrandExchangeOffer#getState(): GrandExchangeOfferState
 net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange#hasBuyOffer(int): GrandExchangeOfferDetails  ->  net.runelite.api.GrandExchangeOffer#getItemId(): int
 net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange#hasBuyOffer(int): GrandExchangeOfferDetails  ->  net.runelite.api.GrandExchangeOffer#getState(): GrandExchangeOfferState
@@ -361,13 +361,12 @@ net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange#lambda$
 net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange#lambda$abortOffer$20(String, GrandExchangeSlots): boolean  ->  net.runelite.api.widgets.Widget#getChild(int): Widget
 net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange#lambda$abortOffer$20(String, GrandExchangeSlots): boolean  ->  net.runelite.api.widgets.Widget#getText(): String
 net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange#lambda$adjustPriceByPercent$12(boolean, int): boolean  ->  net.runelite.api.widgets.Widget#getText(): String
-net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange#lambda$getSearchResultWidget$24(boolean, String, Widget): boolean  ->  net.runelite.api.widgets.Widget#getText(): String
-net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange#lambda$hasBoughtOffer$27(GrandExchangeOffer): boolean  ->  net.runelite.api.GrandExchangeOffer#getState(): GrandExchangeOfferState
+net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange#lambda$hasBoughtOffer$26(GrandExchangeOffer): boolean  ->  net.runelite.api.GrandExchangeOffer#getState(): GrandExchangeOfferState
+net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange#lambda$hasFinishedBuyingOffers$27(GrandExchangeOffer): boolean  ->  net.runelite.api.GrandExchangeOffer#getState(): GrandExchangeOfferState
 net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange#lambda$hasFinishedBuyingOffers$28(GrandExchangeOffer): boolean  ->  net.runelite.api.GrandExchangeOffer#getState(): GrandExchangeOfferState
-net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange#lambda$hasFinishedBuyingOffers$29(GrandExchangeOffer): boolean  ->  net.runelite.api.GrandExchangeOffer#getState(): GrandExchangeOfferState
+net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange#lambda$hasFinishedSellingOffers$30(GrandExchangeOffer): boolean  ->  net.runelite.api.GrandExchangeOffer#getState(): GrandExchangeOfferState
 net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange#lambda$hasFinishedSellingOffers$31(GrandExchangeOffer): boolean  ->  net.runelite.api.GrandExchangeOffer#getState(): GrandExchangeOfferState
-net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange#lambda$hasFinishedSellingOffers$32(GrandExchangeOffer): boolean  ->  net.runelite.api.GrandExchangeOffer#getState(): GrandExchangeOfferState
-net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange#lambda$hasSoldOffer$30(GrandExchangeOffer): boolean  ->  net.runelite.api.GrandExchangeOffer#getState(): GrandExchangeOfferState
+net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange#lambda$hasSoldOffer$29(GrandExchangeOffer): boolean  ->  net.runelite.api.GrandExchangeOffer#getState(): GrandExchangeOfferState
 net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange#lambda$setQuantity$17(int): void  ->  net.runelite.api.widgets.Widget#getBounds(): Rectangle
 net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange#processOffer(GrandExchangeRequest): boolean  ->  net.runelite.api.widgets.Widget#getChild(int): Widget
 net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange#processOffer(GrandExchangeRequest): boolean  ->  net.runelite.api.widgets.Widget#getText(): String

@@ -925,24 +925,33 @@ public class Rs2GrandExchange {
      * @return a {@link Pair} of the clickable widget preceding the matching widget and its index, or {@code null} if not found
      */
     public static Pair<Widget, Integer> getSearchResultWidget(String search, boolean exact) {
-        Widget parent = Microbot.getClientThread().runOnClientThreadOptional(() -> Microbot.getClient().getWidget(InterfaceID.Chatbox.MES_LAYER_SCROLLCONTENTS)).orElse(null);
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            Widget parent = Microbot.getClient().getWidget(InterfaceID.Chatbox.MES_LAYER_SCROLLCONTENTS);
+            return parent == null ? null : findSearchResult(parent.getChildren(), search, exact);
+        }).orElse(null);
+    }
 
-        if (parent == null || parent.getChildren() == null) {
+    static Pair<Widget, Integer> findSearchResult(Widget[] children, String search, boolean exact) {
+        if (children == null || children.length == 0 || search == null) {
             return null;
         }
 
-        Widget child = Arrays.stream(parent.getChildren()).filter(x -> {
-                    String widgetText = Rs2UiHelper.stripColTags(x.getText());
-                    return exact ? widgetText.equalsIgnoreCase(search) : widgetText.toLowerCase().contains(search.toLowerCase());
-                })
-                .findFirst()
-                .orElse(null);
-
-        if (child != null) {
-            List<Widget> children = Arrays.stream(parent.getChildren()).collect(Collectors.toList());
-            int index = children.indexOf(child);
-            int originalWidgetIndex = index - 1;
-            return Pair.of(children.get(originalWidgetIndex), originalWidgetIndex);
+        String lowerSearch = search.toLowerCase();
+        for (int i = 0; i < children.length; i++) {
+            Widget child = children[i];
+            if (child == null || child.getText() == null) {
+                continue;
+            }
+            String widgetText = Rs2UiHelper.stripColTags(child.getText());
+            boolean matches = exact ? widgetText.equalsIgnoreCase(search) : widgetText.toLowerCase().contains(lowerSearch);
+            if (!matches) {
+                continue;
+            }
+            int originalWidgetIndex = i - 1;
+            if (originalWidgetIndex < 0 || children[originalWidgetIndex] == null) {
+                return null;
+            }
+            return Pair.of(children[originalWidgetIndex], originalWidgetIndex);
         }
         return null;
     }
