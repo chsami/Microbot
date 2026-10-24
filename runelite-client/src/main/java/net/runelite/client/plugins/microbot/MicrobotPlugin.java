@@ -40,7 +40,6 @@ import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.input.CanvasInputListener;
 import net.runelite.client.plugins.microbot.util.input.InputArbiter;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2RunePouch;
-import net.runelite.client.plugins.microbot.util.misc.HalloweenSeason;
 import net.runelite.client.plugins.microbot.util.overlay.GembagOverlay;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.reflection.Rs2Reflection;
@@ -231,8 +230,7 @@ public class MicrobotPlugin extends Plugin
 
 		topLevelConfigPanel = topLevelConfigPanelProvider.get();
 
-		final BufferedImage icon = ImageUtil.loadImageResource(getClass(),
-			HalloweenSeason.isActive() ? "microbot_config_icon_halloween.png" : "microbot_config_icon_lg.png");
+		final BufferedImage icon = ImageUtil.loadImageResource(getClass(), "microbot_config_icon_lg.png");
 
 		navButton = NavigationButton.builder()
 			.tooltip("Community Plugins")

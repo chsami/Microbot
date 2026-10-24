@@ -1,7 +1,6 @@
 package net.runelite.client.plugins.microbot.util.misc;
 
 import java.time.LocalDate;
-import net.runelite.client.plugins.microbot.MicrobotPlugin;
 import net.runelite.client.ui.SplashScreen;
 import net.runelite.client.util.ImageUtil;
 import org.junit.Test;
@@ -36,9 +35,8 @@ public class HalloweenSeasonTest
 	}
 
 	@Test
-	public void seasonalImagesLoad()
+	public void halloweenSplashLoads()
 	{
 		assertEquals(200, ImageUtil.loadImageResource(SplashScreen.class, "microbot_splash_halloween.png").getWidth());
-		assertEquals(24, ImageUtil.loadImageResource(MicrobotPlugin.class, "microbot_config_icon_halloween.png").getWidth());
 	}
 }
