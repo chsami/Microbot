@@ -949,7 +949,7 @@ public class Rs2GrandExchange {
             }
             int originalWidgetIndex = i - 1;
             if (originalWidgetIndex < 0 || children[originalWidgetIndex] == null) {
-                return null;
+                continue;
             }
             return Pair.of(children[originalWidgetIndex], originalWidgetIndex);
         }

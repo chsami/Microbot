@@ -49,6 +49,15 @@ public class Rs2GrandExchangeSearchResultTest {
 	}
 
 	@Test
+	public void skipsUnusableMatchForLaterUsableMatch() {
+		Widget clickable = widget("");
+		Widget[] children = {widget("Coal"), clickable, widget("Coal")};
+		Pair<Widget, Integer> result = Rs2GrandExchange.findSearchResult(children, "Coal", true);
+		assertSame(clickable, result.getLeft());
+		assertEquals(Integer.valueOf(1), result.getRight());
+	}
+
+	@Test
 	public void partialMatchUsesContainment() {
 		Widget clickable = widget("");
 		Widget[] children = {widget("Iron ore"), clickable, widget("Coal bag")};
