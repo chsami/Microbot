@@ -92,7 +92,7 @@ import java.util.regex.Pattern;
         description = "Draws the shortest path to a chosen destination on the map (right click a spot on the world map to use)",
         tags = {"pathfinder", "map", "waypoint", "navigation", "microbot"},
         enabledByDefault = false,
-        version = "1.0.3",
+        version = "1.0.4",
         alwaysOn = true
 )
 public class ShortestPathPlugin extends Plugin {
@@ -331,8 +331,12 @@ public class ShortestPathPlugin extends Plugin {
         overlayManager.remove(pathMapOverlay);
         overlayManager.remove(pathMapTooltipOverlay);
         overlayManager.remove(debugOverlayPanel);
-        clientToolbar.removeNavigation(navButton);
-        clientToolbar.removeNavigation(pohNavButton);
+        if (navButton != null) {
+            clientToolbar.removeNavigation(navButton);
+        }
+        if (pohNavButton != null) {
+            clientToolbar.removeNavigation(pohNavButton);
+        }
         navButton = null;
         pohNavButton = null;
         if (panel != null) {
@@ -342,7 +346,10 @@ public class ShortestPathPlugin extends Plugin {
         PohPanel.instance = null;
         pohPanel = null;
 
-        shortestPathScript.shutdown();
+        if (shortestPathScript != null) {
+            shortestPathScript.shutdown();
+            shortestPathScript = null;
+        }
 
         exit();
     }
