@@ -27,6 +27,7 @@ package net.runelite.client.ui;
 
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.plugins.microbot.RandomFactClient;
+import net.runelite.client.plugins.microbot.util.misc.HalloweenSeason;
 import net.runelite.client.ui.laf.RuneLiteLAF;
 import net.runelite.client.util.ImageUtil;
 
@@ -164,7 +165,8 @@ public class SplashScreen extends JFrame implements ActionListener {
     }
 
     private SplashScreen() {
-        BufferedImage logo = ImageUtil.loadImageResource(SplashScreen.class, "microbot_splash.png");
+        BufferedImage logo = ImageUtil.loadImageResource(SplashScreen.class,
+            HalloweenSeason.isActive() ? "microbot_splash_halloween.png" : "microbot_splash.png");
 
         setTitle("RuneLite");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
