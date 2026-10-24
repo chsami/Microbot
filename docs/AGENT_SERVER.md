@@ -35,7 +35,7 @@ The Agent Server is an embedded HTTP server that exposes Microbot's widget syste
 └──────────────────────────────────────────────────┘
 ```
 
-TCP mode binds to `127.0.0.1` only. UDS mode binds to `~/.runelite/.agent.sock` and falls back to TCP if UDS startup fails. All game data access is thread-safe via `runOnClientThreadOptional` or the singleton cache queryable API.
+TCP mode binds to `127.0.0.1` only. UDS mode binds to `~/.runelite/agent/agent.sock` and falls back to TCP if UDS startup fails. All game data access is thread-safe via `runOnClientThreadOptional` or the singleton cache queryable API.
 
 ## Server Lifecycle
 
@@ -61,7 +61,8 @@ TCP mode binds to `127.0.0.1` only. UDS mode binds to `~/.runelite/.agent.sock` 
 | Max Results | `200` | Default limit for list/query endpoints |
 | Auth token | generated | Required in `X-Agent-Token`; stored in `~/.runelite/.agent-token` for CLI use. Clear it to generate a new one |
 | Stealth bind | `false` | Open the socket only while scripts are active |
-| Bind mode | `TCP` | `TCP` on localhost or `UDS` at `~/.runelite/.agent.sock` |
+| Bind mode | `TCP` | `TCP` on localhost or `UDS` at `~/.runelite/agent/agent.sock` |
+| Trace requests | `false` | Append every authenticated request (method, path, status, duration, request body) to `~/.runelite/agent-trace.jsonl`; rotates to `.1` at 5 MB |
 
 CLI environment variables:
 
@@ -72,8 +73,21 @@ CLI environment variables:
 | `MICROBOT_TIMEOUT` | `30` | Request timeout in seconds |
 | `MICROBOT_TOKEN` | unset | Override the `X-Agent-Token` value |
 | `MICROBOT_TOKEN_FILE` | `~/.runelite/.agent-token` | Token file path |
+| `MICROBOT_SOCKET` | auto | Unix socket path. Used automatically when `~/.runelite/agent/agent.sock` exists and `MICROBOT_HOST`/`MICROBOT_PORT` are unset; a stale socket falls back to TCP |
 
 ## API Reference
+
+### GET /
+
+Lists every endpoint path. An authenticated request to an unknown path returns `404` with the same list.
+
+```bash
+./microbot-cli endpoints
+```
+
+```json
+{"count": 30, "endpoints": ["/bank", "/debug/snapshot", "/dialogue", "..."], "docs": "docs/AGENT_SERVER.md"}
+```
 
 ### Widget Endpoints
 
@@ -155,9 +169,12 @@ Response includes `reason` field when `clicked` is `false`.
     "interacting": false,
     "position": {"x": 3222, "y": 3218, "plane": 0}
   },
-  "scriptsPaused": false
+  "scriptsPaused": false,
+  "instance": {"pid": 48211, "microbotVersion": "2.6.41", "uptimeMs": 812345}
 }
 ```
+
+`instance` identifies which client answered, which matters when more than one is running.
 
 #### GET /var-changes
 
@@ -914,6 +931,19 @@ curl 'http://127.0.0.1:8081/scripts/status?className=net.runelite.client.plugins
 }
 ```
 
+#### POST /scripts/pause and /scripts/resume
+
+Pause or resume every script loop (`Microbot.pauseAllScripts`) without stopping any plugin, for example to inspect a running script's state with `/observe` while it holds still. `/state` and `/observe` report the flag as `scriptsPaused`.
+
+```bash
+./microbot-cli scripts pause
+./microbot-cli scripts resume
+```
+
+```json
+{"success": true, "scriptsPaused": true}
+```
+
 #### POST /scripts/results
 
 Submits test results from a script or test harness. Results are stored in-memory and can be retrieved via GET.
@@ -999,6 +1029,8 @@ The `AgentHandler` base class provides: `sendJson()`, `parseQuery()`, `readJsonB
 | `agentserver/handler/WidgetInvokeHandler.java` | `POST /widgets/invoke` |
 | `agentserver/handler/StateHandler.java` | `GET /state` |
 | `agentserver/handler/ObserveHandler.java` | `GET /observe` |
+| `agentserver/handler/CatalogHandler.java` | `GET /` and JSON 404 for unknown paths |
+| `agentserver/handler/AgentTrace.java` | Optional request trace to `~/.runelite/agent-trace.jsonl` |
 | `agentserver/handler/AgentLogs.java` | Recent chat, menu clicks, var changes and errors |
 | `agentserver/handler/RecentLog.java` | Bounded, cursor-addressed buffer used by `AgentLogs` |
 | `agentserver/handler/VarChangesHandler.java` | `GET /var-changes` |
@@ -1044,7 +1076,7 @@ All errors return JSON:
 |-------------|---------|
 | 200 | Success |
 | 400 | Bad request (missing/invalid parameters) |
-| 404 | Unknown sub-path |
+| 404 | Unknown endpoint or sub-path (an unknown top-level path lists the valid endpoints) |
 | 405 | Wrong HTTP method |
 | 500 | Internal server error |
 
@@ -1060,8 +1092,9 @@ NPC/object/item interaction failures include a `reason` field:
 
 ## Security
 
-- **Local only.** TCP mode binds to `127.0.0.1`. UDS mode creates `~/.runelite/.agent.sock` with `rw-------` and restricts `~/.runelite` to its owner.
-- **Token.** Every request needs `X-Agent-Token`. The token is generated on first start, kept in the plugin config and written to `~/.runelite/.agent-token` (`rw-------`), which is deleted when the plugin stops. Clear the token in the plugin settings to rotate it.
+- **Local only.** TCP mode binds to `127.0.0.1`. UDS mode creates `~/.runelite/agent/agent.sock` with `rw-------` and restricts the `~/.runelite/agent` directory to its owner.
+- **Trace file.** With *Trace requests* on, request paths and bodies (which can include names you search for or type) are written to `~/.runelite/agent-trace.jsonl`. The token itself is never written. Turn it off and delete the file when done.
+- **Token.** Every request needs `X-Agent-Token`. The token is generated on first start, kept in the plugin config and written to `~/.runelite/.agent-token` (`rw-------`) by the client whose server is running; that client deletes it when its server stops. A second client that could not bind leaves the file alone. Clear the token in the plugin settings to rotate it.
 - **Browser and DNS-rebinding protection.** Requests with an `Origin` header, or a `Host` other than `127.0.0.1`, `localhost` or `[::1]`, are rejected.
 - **Opaque failures.** Every pre-auth rejection returns the same plain `404 Not Found` as a missing endpoint, so the API cannot be discovered without the token.
 - **Code execution.** `/scripts/deploy` compiles and runs Java from a local directory. Anyone holding the token can run code in the client.

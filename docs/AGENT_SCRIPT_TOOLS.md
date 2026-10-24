@@ -71,7 +71,9 @@ The **Agent Server** plugin (port 8081, localhost) must be enabled for any CLI/H
 | `screenshot save [--label X]` | Save screenshot to disk (returns file path) |
 | `scripts` | List all plugins with on/off status |
 | `scripts status --class <cls>` | Script runtime state |
-| `scripts health [--class <cls>]` | Heartbeat / stall detection |
+| `scripts health [--class <cls>]` | Heartbeat / stall detection, last error |
+| `scripts pause` / `scripts resume` | Hold every script loop still while you inspect, then continue |
+| `endpoints` | List every endpoint path |
 | `scripts results --class <cls>` | Retrieve test results JSON |
 
 ### Act (mutate game state)
@@ -112,6 +114,7 @@ The **Agent Server** plugin (port 8081, localhost) must be enabled for any CLI/H
 | `observe --menu-since N` | Menu clicks actually sent, to compare with what the script meant to click |
 | `GET /debug/snapshot` | State machine snapshot — current state, transitions, guard results, trace buffer |
 | `screenshot save --label debug` | Visual state capture for multimodal analysis |
+| Plugin setting *Trace requests* | Every agent request with status and duration in `~/.runelite/agent-trace.jsonl`, to replay what an agent did |
 
 ---
 

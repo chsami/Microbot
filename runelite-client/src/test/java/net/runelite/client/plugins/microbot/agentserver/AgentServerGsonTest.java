@@ -84,4 +84,10 @@ public class AgentServerGsonTest {
 		assertTrue(parsed.get("opts") instanceof Map);
 		assertEquals(true, ((Map<?, ?>) parsed.get("opts")).get("a"));
 	}
+
+	@Test
+	public void doesNotHtmlEscapeQuotesOrBrackets() {
+		String json = gson.toJson(java.util.Map.of("message", "You can't reach <that> & more"));
+		assertTrue(json, json.contains("You can't reach <that> & more"));
+	}
 }

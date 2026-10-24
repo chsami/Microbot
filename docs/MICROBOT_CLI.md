@@ -45,6 +45,7 @@ The CLI reads three environment variables:
 | `MICROBOT_TIMEOUT` | `30` | Request timeout in seconds |
 | `MICROBOT_TOKEN` | unset | Override the `X-Agent-Token` value |
 | `MICROBOT_TOKEN_FILE` | `~/.runelite/.agent-token` | Token file path |
+| `MICROBOT_SOCKET` | auto | Unix socket path; used automatically when `~/.runelite/agent/agent.sock` exists and `MICROBOT_HOST`/`MICROBOT_PORT` are unset (falls back to TCP if the socket is stale) |
 
 Example with custom port:
 

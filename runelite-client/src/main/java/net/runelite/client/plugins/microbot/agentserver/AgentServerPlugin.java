@@ -33,7 +33,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.PosixFilePermissions;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -70,6 +72,7 @@ public class AgentServerPlugin extends Plugin {
 	private ExecutorService executor;
 	private Thread shutdownHook;
 	private ResetResistantAttachment errorCapture;
+	private volatile boolean ownsTokenFile;
 	private final Gson gson = createGson();
 
 	private java.util.concurrent.ScheduledExecutorService stealthScheduler;
@@ -94,11 +97,12 @@ public class AgentServerPlugin extends Plugin {
 		return new GsonBuilder()
 				.registerTypeHierarchyAdapter(Collection.class, collectionSerializer)
 				.registerTypeHierarchyAdapter(Map.class, mapSerializer)
+				.disableHtmlEscaping()
 				.create();
 	}
 
 	private static Path defaultUdsSocketPath() {
-		return Paths.get(System.getProperty("user.home"), ".runelite", ".agent.sock");
+		return Paths.get(System.getProperty("user.home"), ".runelite", "agent", "agent.sock");
 	}
 
 	@Provides
@@ -109,6 +113,7 @@ public class AgentServerPlugin extends Plugin {
 	@Override
 	protected void startUp() throws Exception {
 		attachErrorCapture();
+		applyTraceConfig();
 		if (config.bindOnlyWhileScriptsActive()) {
 			log.info("Agent server in stealth-bind mode; socket will open when a script begins running.");
 			startStealthScheduler();
@@ -157,12 +162,13 @@ public class AgentServerPlugin extends Plugin {
 		}, "AgentServer-Shutdown");
 		Runtime.getRuntime().addShutdownHook(shutdownHook);
 		Path tokenFile = writeTokenFile(token);
+		ownsTokenFile = tokenFile != null;
 		log.info("Agent server started ({} endpoints; auth enabled, token {})",
 				handlers.size(), tokenFile != null ? "at " + tokenFile : "file unavailable");
 	}
 
 	private List<AgentHandler> buildHandlers(int maxResults) {
-		return Arrays.asList(
+		List<AgentHandler> handlers = new ArrayList<>(Arrays.asList(
 				new WidgetListHandler(gson, maxResults),
 				new WidgetSearchHandler(gson, maxResults),
 				new WidgetDescribeHandler(gson),
@@ -193,7 +199,14 @@ public class AgentServerPlugin extends Plugin {
 				new PathHandler(gson),
 				new VarChangesHandler(gson),
 				new TileHandler(gson)
-		);
+		));
+		List<String> paths = new ArrayList<>();
+		for (AgentHandler handler : handlers) {
+			paths.add(handler.getPath());
+		}
+		Collections.sort(paths);
+		handlers.add(new CatalogHandler(gson, paths));
+		return handlers;
 	}
 
 	private boolean startTcp(List<AgentHandler> handlers) {
@@ -281,16 +294,30 @@ public class AgentServerPlugin extends Plugin {
 
 	@Subscribe
 	public void onConfigChanged(ConfigChanged event) {
-		if (!AgentServerConfig.GROUP.equals(event.getGroup()) || !AgentServerConfig.KEY_TOKEN.equals(event.getKey())) {
+		if (!AgentServerConfig.GROUP.equals(event.getGroup())) {
+			return;
+		}
+		if (AgentServerConfig.KEY_TRACE.equals(event.getKey())) {
+			applyTraceConfig();
+			return;
+		}
+		if (!AgentServerConfig.KEY_TOKEN.equals(event.getKey())) {
 			return;
 		}
 		String value = event.getNewValue();
 		if (value == null || value.isEmpty()) {
 			log.warn("Agent server auth token was cleared; regenerating to keep auth enforced");
-			writeTokenFile(ensureAuthToken());
-			return;
+			value = ensureAuthToken();
 		}
-		writeTokenFile(value);
+		if (ownsTokenFile) {
+			writeTokenFile(value);
+		}
+	}
+
+	private void applyTraceConfig() {
+		AgentTrace.setFile(config.traceRequests()
+				? Paths.get(System.getProperty("user.home"), ".runelite", "agent-trace.jsonl")
+				: null);
 	}
 
 	private int ensurePort() {
@@ -369,6 +396,7 @@ public class AgentServerPlugin extends Plugin {
 	@Override
 	protected void shutDown() throws Exception {
 		detachErrorCapture();
+		AgentTrace.setFile(null);
 		stopStealthScheduler();
 		stopServer();
 		deleteTokenFile();
@@ -423,6 +451,10 @@ public class AgentServerPlugin extends Plugin {
 	}
 
 	private void deleteTokenFile() {
+		if (!ownsTokenFile) {
+			return;
+		}
+		ownsTokenFile = false;
 		try {
 			Path file = Paths.get(System.getProperty("user.home"), ".runelite", ".agent-token");
 			Files.deleteIfExists(file);

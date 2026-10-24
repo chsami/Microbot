@@ -211,6 +211,23 @@ public class ScriptHandlerTest {
 		assertEquals(404, resp.code);
 	}
 
+	@Test
+	public void pauseAndResumeToggleAllScripts() throws IOException {
+		try {
+			Response paused = post("/scripts/pause", Map.of());
+			assertEquals(200, paused.code);
+			assertEquals(true, paused.body.get("scriptsPaused"));
+			assertTrue(net.runelite.client.plugins.microbot.Microbot.pauseAllScripts.get());
+
+			Response resumed = post("/scripts/resume", Map.of());
+			assertEquals(false, resumed.body.get("scriptsPaused"));
+			assertFalse(net.runelite.client.plugins.microbot.Microbot.pauseAllScripts.get());
+			assertEquals(405, get("/scripts/pause").code);
+		} finally {
+			net.runelite.client.plugins.microbot.Microbot.pauseAllScripts.set(false);
+		}
+	}
+
 	// ==========================================
 	// POST /scripts/results - Submit results
 	// ==========================================

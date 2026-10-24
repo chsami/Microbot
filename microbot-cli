@@ -29,6 +29,18 @@ if [[ -n "$AGENT_TOKEN" ]]; then
     AUTH_HEADER_ARGS=(-H "X-Agent-Token: $AGENT_TOKEN")
 fi
 
+SOCKET="${MICROBOT_SOCKET:-}"
+SOCKET_AUTO=""
+DEFAULT_SOCKET="${HOME}/.runelite/agent/agent.sock"
+if [[ -z "$SOCKET" && -z "${MICROBOT_PORT:-}" && -z "${MICROBOT_HOST:-}" && -S "$DEFAULT_SOCKET" ]]; then
+    SOCKET="$DEFAULT_SOCKET"
+    SOCKET_AUTO=1
+fi
+SOCKET_ARGS=()
+if [[ -n "$SOCKET" ]]; then
+    SOCKET_ARGS=(--unix-socket "$SOCKET")
+fi
+
 json_escape() {
     printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g; s/\t/\\t/g; s/\n/\\n/g'
 }
@@ -44,6 +56,9 @@ Widget Commands:
   widgets click <groupId> <childId>
   widgets click --text "some text"
   widgets invoke <groupId> <childId> --param0 N [--action Select] [--identifier 1]
+
+Server:
+  endpoints                              List every endpoint path
 
 Game State:
   state                                  Current game state and player info
@@ -115,7 +130,8 @@ Scripts:
   scripts start --name <name>            Start plugin by display name
   scripts stop --class <className>       Stop a running plugin
   scripts status --class <className>     Plugin runtime status
-  scripts health [--class <c>|--name <n>]  Loop heartbeat (stall detection)
+  scripts health [--class <c>|--name <n>]  Loop heartbeat (stall detection) and last error
+  scripts pause | scripts resume         Pause or resume every script loop
   scripts results --class <className>    Get test results
   scripts results post --class <c> --data <json>  Submit test results
 
@@ -156,6 +172,8 @@ Client thread (offline lookup):
 Environment:
   MICROBOT_HOST      Server host (default: 127.0.0.1)
   MICROBOT_PORT      Server port (default: 8081)
+  MICROBOT_SOCKET    Unix socket path; used automatically when ~/.runelite/agent/agent.sock
+                     exists and MICROBOT_HOST/MICROBOT_PORT are unset (falls back to TCP if stale)
   MICROBOT_TIMEOUT   Request timeout in seconds (default: 30)
 EOF
     exit 1
@@ -194,8 +212,13 @@ fail_http() {
 request() {
     local max="$1" out rc=0
     shift
-    out=$(curl -sS --fail-with-body --max-time "$max" "${AUTH_HEADER_ARGS[@]}" "$@" 2>/dev/null) || rc=$?
+    out=$(curl -sS --fail-with-body --max-time "$max" "${SOCKET_ARGS[@]}" "${AUTH_HEADER_ARGS[@]}" "$@" 2>/dev/null) || rc=$?
     [[ $rc -eq 0 ]] && { printf '%s\n' "$out"; return 0; }
+    if [[ $rc -eq 7 && -n "$SOCKET_AUTO" ]]; then
+        SOCKET_ARGS=() SOCKET_AUTO=""
+        request "$max" "$@"
+        return
+    fi
     [[ $rc -eq 22 ]] && fail_http "$out"
     fail_transport "$rc" "$max"
 }
@@ -577,7 +600,7 @@ case "$1" in
                     body="{\"world\":${world},\"timeout\":${login_timeout}}"
                 fi
                 rc=0
-                result=$(curl -s --max-time "$((login_timeout + 5))" "${AUTH_HEADER_ARGS[@]}" -X POST -H "Content-Type: application/json" -d "$body" "${BASE}/login" 2>/dev/null) || rc=$?
+                result=$(curl -s --max-time "$((login_timeout + 5))" "${SOCKET_ARGS[@]}" "${AUTH_HEADER_ARGS[@]}" -X POST -H "Content-Type: application/json" -d "$body" "${BASE}/login" 2>/dev/null) || rc=$?
                 [[ $rc -ne 0 ]] && fail_transport "$rc" "$((login_timeout + 5))"
                 [[ "$result" == "Not Found" ]] && fail_http "$result"
                 echo "$result"
@@ -599,9 +622,16 @@ case "$1" in
         esac
         ;;
 
+    endpoints)
+        do_get "${BASE}/"
+        ;;
+
     scripts)
         [[ $# -lt 2 ]] && { do_get "${BASE}/scripts"; exit 0; }
         case "$2" in
+            pause|resume)
+                do_post "${BASE}/scripts/$2" "{}"
+                ;;
             start)
                 shift 2
                 class_name="" name=""
@@ -833,7 +863,7 @@ case "$1" in
             do_get "${BASE}/screenshot${q}"
         else
             shot="${1:-screenshot.png}" rc=0
-            curl -sS --fail-with-body --max-time "$TIMEOUT" "${AUTH_HEADER_ARGS[@]}" -o "$shot" "${BASE}/screenshot" 2>/dev/null || rc=$?
+            curl -sS --fail-with-body --max-time "$TIMEOUT" "${SOCKET_ARGS[@]}" "${AUTH_HEADER_ARGS[@]}" -o "$shot" "${BASE}/screenshot" 2>/dev/null || rc=$?
             if [[ $rc -eq 22 ]]; then
                 body=$(cat "$shot"); rm -f "$shot"; fail_http "$body"
             fi

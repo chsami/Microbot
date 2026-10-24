@@ -11,6 +11,7 @@ public interface AgentServerConfig extends Config {
 	String GROUP = "agentServer";
 	String KEY_TOKEN = "authToken";
 	String KEY_PORT = "port";
+	String KEY_TRACE = "traceRequests";
 
 	@ConfigItem(
 			keyName = "port",
@@ -67,10 +68,20 @@ public interface AgentServerConfig extends Config {
 	@ConfigItem(
 			keyName = "bindMode",
 			name = "Bind mode",
-			description = "TCP: classic 127.0.0.1:<port>. UDS: Unix domain socket at ~/.runelite/.agent.sock — invisible to port scanners but clients must speak UDS.",
+			description = "TCP: classic 127.0.0.1:<port>. UDS: Unix domain socket at ~/.runelite/agent/agent.sock — invisible to port scanners but clients must speak UDS.",
 			position = 4
 	)
 	default BindMode bindMode() {
 		return BindMode.TCP;
+	}
+
+	@ConfigItem(
+			keyName = KEY_TRACE,
+			name = "Trace requests",
+			description = "Append every agent request (method, path, status, duration, request body) to ~/.runelite/agent-trace.jsonl. Rotates at 5 MB.",
+			position = 5
+	)
+	default boolean traceRequests() {
+		return false;
 	}
 }

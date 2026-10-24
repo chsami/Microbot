@@ -57,6 +57,12 @@ public class ScriptHandler extends AgentHandler {
 			case "/health":
 				handleHealth(exchange);
 				break;
+			case "/pause":
+				handlePause(exchange, true);
+				break;
+			case "/resume":
+				handlePause(exchange, false);
+				break;
 			default:
 				sendJson(exchange, 404, errorResponse("Unknown endpoint: " + BASE_PATH + sub));
 		}
@@ -312,6 +318,20 @@ public class ScriptHandler extends AgentHandler {
 		} else {
 			sendJson(exchange, 405, errorResponse("Use GET or POST"));
 		}
+	}
+
+	private void handlePause(HttpExchange exchange, boolean paused) throws IOException {
+		try {
+			requirePost(exchange);
+		} catch (HttpMethodException e) {
+			sendJson(exchange, 405, errorResponse(e.getMessage()));
+			return;
+		}
+		Microbot.pauseAllScripts.set(paused);
+		Map<String, Object> result = new LinkedHashMap<>();
+		result.put("success", true);
+		result.put("scriptsPaused", paused);
+		sendJson(exchange, 200, result);
 	}
 
 	private void handleHealth(HttpExchange exchange) throws IOException {
