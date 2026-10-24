@@ -4,11 +4,15 @@ import java.util.EnumSet;
 import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import net.runelite.api.Client;
+import net.runelite.api.GameState;
 import net.runelite.api.World;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.game.WorldService;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.http.api.worlds.WorldResult;
 import net.runelite.http.api.worlds.WorldType;
 import org.junit.After;
@@ -17,19 +21,30 @@ import org.junit.Test;
 import org.mockito.MockedStatic;
 import static org.junit.Assert.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 public class LoginManagerSetWorldTest {
     private final AtomicBoolean onClientThread = new AtomicBoolean();
     private final AtomicBoolean createdOnClientThread = new AtomicBoolean();
     private final AtomicBoolean changedOnClientThread = new AtomicBoolean();
+    private final AtomicInteger currentWorld = new AtomicInteger(301);
     private MockedStatic<Microbot> microbot;
     private Client client;
     private ClientThread clientThread;
     private World rsWorld;
 
-    @Before public void setUp() {
+    @Before public void setUp() throws Exception {
+        LoginLockout.getInstance().recordSuccessfulLogin();
+        var lastAttempt = LoginManager.class.getDeclaredField("LAST_LOGIN_ATTEMPT");
+        lastAttempt.setAccessible(true);
+        ((AtomicReference<?>) lastAttempt.get(null)).set(null);
+
         client = mock(Client.class);
+        when(client.getGameState()).thenReturn(GameState.LOGIN_SCREEN);
+        when(client.getLoginIndex()).thenReturn(2);
+        when(client.getCanvasWidth()).thenReturn(804);
+        when(client.getWorld()).thenAnswer(inv -> currentWorld.get());
         rsWorld = mock(World.class);
         when(client.createWorld()).thenAnswer(inv -> {
             createdOnClientThread.set(onClientThread.get());
@@ -37,6 +52,7 @@ public class LoginManagerSetWorldTest {
         });
         doAnswer(inv -> {
             changedOnClientThread.set(onClientThread.get());
+            currentWorld.set(308);
             return null;
         }).when(client).changeWorld(any());
 
@@ -71,7 +87,7 @@ public class LoginManagerSetWorldTest {
     }
 
     @Test public void changesWorldOnTheClientThread() {
-        LoginManager.setWorld(308);
+        assertTrue(LoginManager.setWorld(308));
 
         verify(client).changeWorld(rsWorld);
         verify(rsWorld).setId(308);
@@ -84,10 +100,48 @@ public class LoginManagerSetWorldTest {
         reset(clientThread);
         when(clientThread.runOnClientThreadOptional(any())).thenReturn(Optional.empty());
 
-        LoginManager.setWorld(308);
+        assertFalse(LoginManager.setWorld(308));
 
         verify(client, never()).createWorld();
         verify(client, never()).changeWorld(any());
+    }
+
+    @Test public void reportsFailureForAnUnknownWorld() {
+        assertFalse(LoginManager.setWorld(999));
+
+        verify(client, never()).changeWorld(any());
+    }
+
+    @Test public void loginStopsBeforeCredentialsWhenTheWorldCannotBeSelected() {
+        reset(clientThread);
+        when(clientThread.runOnClientThreadOptional(any())).thenReturn(Optional.empty());
+
+        try (var keyboard = mockStatic(Rs2Keyboard.class)) {
+            assertFalse(LoginManager.login("user", "", 308));
+
+            keyboard.verifyNoInteractions();
+        }
+        verify(client, never()).setUsername(anyString());
+        assertFalse(LoginManager.isLoginAttemptActive());
+    }
+
+    @Test public void loginSubmitsAfterTheWorldChangeIsObserved() {
+        try (var keyboard = mockStatic(Rs2Keyboard.class)) {
+            assertTrue(LoginManager.login("user", "", 308));
+        }
+        verify(client).changeWorld(rsWorld);
+        verify(client).setUsername("user");
+        assertTrue(changedOnClientThread.get());
+    }
+
+    @Test public void loginSkipsTheWorldChangeWhenAlreadyOnTheTargetWorld() {
+        currentWorld.set(308);
+
+        try (var keyboard = mockStatic(Rs2Keyboard.class)) {
+            assertTrue(LoginManager.login("user", "", 308));
+        }
+        verify(client, never()).createWorld();
+        verify(client).setUsername("user");
     }
 
     @Test public void deprecatedLoginSetWorldUsesTheSamePath() {
