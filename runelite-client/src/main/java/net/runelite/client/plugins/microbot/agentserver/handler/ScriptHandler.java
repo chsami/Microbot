@@ -350,6 +350,10 @@ public class ScriptHandler extends AgentHandler {
 			result.put("lastHeartbeatAt", null);
 			result.put("stalledMs", null);
 			result.put("status", "NO_HEARTBEAT");
+			Map<String, Object> lastError = AgentLogs.lastErrorFor(className);
+			if (lastError != null) {
+				result.put("lastError", lastError);
+			}
 			sendJson(exchange, 200, result);
 			return;
 		}
@@ -367,7 +371,7 @@ public class ScriptHandler extends AgentHandler {
 	static List<Map<String, Object>> healthFor(String className) {
 		Map<String, Object> exact = ScriptHeartbeatRegistry.getHealth(className);
 		if (exact != null) {
-			return List.of(exact);
+			return List.of(withLastError(exact));
 		}
 		int dot = className.lastIndexOf('.');
 		if (dot < 0) {
@@ -377,10 +381,18 @@ public class ScriptHandler extends AgentHandler {
 		List<Map<String, Object>> matches = new ArrayList<>();
 		for (Map.Entry<String, Map<String, Object>> entry : ScriptHeartbeatRegistry.getAllHealth().entrySet()) {
 			if (entry.getKey().startsWith(pluginPackage)) {
-				matches.add(entry.getValue());
+				matches.add(withLastError(entry.getValue()));
 			}
 		}
 		return matches;
+	}
+
+	static Map<String, Object> withLastError(Map<String, Object> health) {
+		Map<String, Object> lastError = AgentLogs.lastErrorFor((String) health.get("scriptClassName"));
+		if (lastError != null) {
+			health.put("lastError", lastError);
+		}
+		return health;
 	}
 
 	private PluginManager getPluginManager() {

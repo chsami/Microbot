@@ -159,6 +159,35 @@ Response includes `reason` field when `clicked` is `false`.
 }
 ```
 
+#### GET /var-changes
+
+Recent varbit and varp changes: the last 500 `VarbitChanged` events seen while the plugin is enabled. Useful for "did the quest varbit move after that step?" without knowing the id in advance.
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `since` | `0` | Only changes newer than this cursor |
+| `varbit` | - | Only this varbit |
+| `varp` | - | Only this varp |
+| `limit` | `50` | Max changes (newest kept) |
+
+```bash
+./microbot-cli var-changes --since 1200
+./microbot-cli var-changes --varbit 4070
+```
+
+```json
+{
+  "cursor": 1214,
+  "count": 2,
+  "changes": [
+    {"varbit": 4070, "varp": 439, "value": 3, "seq": 1213, "at": 1761390000000},
+    {"varp": 281, "value": 1000, "seq": 1214, "at": 1761390000600}
+  ]
+}
+```
+
+A varbit change carries both `varbit` and the `varp` that holds it. A plain varp change has no `varbit`.
+
 #### GET /skills
 
 | Parameter | Required | Description |
@@ -182,19 +211,31 @@ Response includes `reason` field when `clicked` is `false`.
 
 #### GET /observe
 
-One call for the usual "what is going on" check: everything from `/state`, plus inventory, equipment, dialogue, recent game chat and script heartbeats. Inventory, equipment, dialogue and nearby entities are only included while logged in.
+One call for the usual "what is going on" check: everything from `/state`, plus inventory, equipment, dialogue, recent game chat, recent menu clicks, recent errors and script heartbeats. Inventory, equipment, dialogue and nearby entities are only included while logged in.
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `chatSince` | - | Return chat lines newer than this cursor (up to 100). Without it, the last 10 lines are returned |
+| `menuSince` | - | Return menu clicks newer than this cursor (up to 50). Without it, the last 5 are returned |
+| `errorSince` | - | Return errors newer than this cursor (up to 50). Without it, the last 3 are returned |
+| `waitTicks` | `0` | Wait this many game ticks (max 10) before taking the snapshot. Ignored while logged out |
 | `nearby` | `0` | Also return the nearest NPCs and objects within this many tiles (max 30) |
 | `nearbyLimit` | `10` | Max NPCs and max objects when `nearby` is set |
 
-Chat keeps the last 100 game messages (`GAMEMESSAGE`, `SPAM`, `ENGINE`, `MESBOX`) seen while the plugin is enabled, with colour tags removed. Player chat is never recorded. Pass the returned `chat.cursor` as `chatSince` on the next call to get only new lines, for example the "You can't reach that." after an interaction.
+Each stream returns a `cursor`; pass it back as the matching `*Since` parameter to get only what happened since the last call.
+
+- **chat**: the last 100 game messages (`GAMEMESSAGE`, `SPAM`, `ENGINE`, `MESBOX`) with colour tags removed. Player chat is never recorded.
+- **menu**: the last 50 menu clicks that reached the client, from scripts or from the mouse: `option`, `target`, `action`, `id`, `itemId`, `param0`, `param1`. Compare it with what a script meant to click.
+- **errors**: the last 50 `ERROR` log events from any logger: logger, thread, message, root exception and its first 8 non-JDK frames.
+
+All three only cover the time the plugin has been enabled.
+
+A typical act-then-check step: interact, then `observe --wait-ticks 3 --chat-since <cursor> --menu-since <cursor>` to see the click that was sent, what the game said, and the resulting state in one call.
 
 ```bash
 ./microbot-cli observe
 ./microbot-cli observe --chat-since 41 --nearby 10 --limit 5
+./microbot-cli observe --wait-ticks 3 --chat-since 41 --menu-since 12
 ```
 
 ```json
@@ -206,7 +247,9 @@ Chat keeps the last 100 game messages (`GAMEMESSAGE`, `SPAM`, `ENGINE`, `MESBOX`
   "inventory": {"count": 1, "capacity": 28, "freeSlots": 27, "full": false, "items": [{"id": 1351, "name": "Bronze axe", "quantity": 1, "slot": 0}]},
   "equipment": [{"slot": "WEAPON", "id": 1351, "name": "Bronze axe", "quantity": 1}],
   "dialogue": {"inDialogue": false},
-  "chat": {"cursor": 42, "messages": [{"type": "GAMEMESSAGE", "message": "You can't reach that.", "at": 1761390000000, "seq": 42}]},
+  "chat": {"cursor": 42, "messages": [{"type": "GAMEMESSAGE", "message": "You can't reach that.", "seq": 42, "at": 1761390000000}]},
+  "menu": {"cursor": 12, "clicks": [{"option": "Chop down", "target": "Oak tree", "action": "GAME_OBJECT_FIRST_OPTION", "id": 10820, "itemId": -1, "param0": 51, "param1": 52, "seq": 12, "at": 1761389999400}]},
+  "errors": {"cursor": 0, "recent": []},
   "scripts": [{"scriptClassName": "com.example.MyScript", "loopCount": 120, "lastHeartbeatAt": "2026-10-25T10:00:00Z", "stalledMs": 412}]
 }
 ```
@@ -398,9 +441,12 @@ Blocking timeout response:
   "walking": true,
   "timedOut": true,
   "message": "Walk did not complete within 30s; still in progress",
+  "route": {"phase": "READY", "generation": 7, "termination": "TARGET_REACHED", "rawTiles": 412, "walkableTiles": 398, "...": "same as /path/active"},
   "playerPosition": {"x": 3150, "y": 3450, "plane": 0}
 }
 ```
+
+Whenever a blocking walk does not succeed, the response includes `route`: the walker's current route, as returned by `GET /path/active`.
 
 #### GET /path
 
@@ -444,6 +490,36 @@ The route the walker is currently following: `phase` (`ABSENT`, `CALCULATING`, `
 
 ```bash
 ./microbot-cli path active
+```
+
+#### GET /tile
+
+What the pathfinder believes about one tile. For each direction, `canMove` shows the static map's answer, the live collision captured from loaded scenes (omitted when that region was never loaded), the `effective` value the pathfinder uses (live wins), and whether the two disagree. `conflicts` lists the directions where they differ: the usual cause of a walker that tries to path through a closed door or gets stuck on a wall that moved. `regionMapped: false` means the static map has no data for the region, which makes every edge read as blocked. While logged in, `objects` lists the objects on that exact tile.
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `x`, `y` | required | Tile |
+| `plane` | `0` | Plane |
+
+```bash
+./microbot-cli tile 3108 3353
+```
+
+```json
+{
+  "tile": {"x": 3108, "y": 3353, "plane": 0},
+  "regionMapped": true,
+  "blocked": false,
+  "conflicts": ["north"],
+  "canMove": {
+    "north": {"static": true, "live": false, "effective": false, "conflict": true},
+    "east": {"static": true, "live": true, "effective": true, "conflict": false},
+    "south": {"static": true, "effective": true, "conflict": false},
+    "west": {"static": false, "live": false, "effective": false, "conflict": false}
+  },
+  "liveCollisionEnabled": true,
+  "objects": [{"id": 1535, "name": "Door", "type": "WALL", "reachable": true, "position": {"x": 3108, "y": 3353, "plane": 0}}]
+}
 ```
 
 ### Banking
@@ -804,6 +880,16 @@ curl -X POST -H 'Content-Type: application/json' \
 {"success": true, "className": "net.runelite.client.plugins.microbot.example.ExamplePlugin", "status": "STOPPED"}
 ```
 
+#### GET /scripts/health
+
+Heartbeats of running `Script` loops. Without parameters it lists every script. With `className` or `name`, a plugin resolves to the `Script` classes in its package. A script class is matched exactly.
+
+Each entry has `loopCount`, `lastHeartbeatAt` and `stalledMs`. When an `ERROR` was logged from the script's package (by its logger, or with one of its classes in the stack), `lastError` holds the most recent one plus `recentCount`. That also shows on `NO_HEARTBEAT`, so a script that crashed before its first loop is visible.
+
+```bash
+./microbot-cli scripts health --class "com.example.MyPlugin"
+```
+
 #### GET /scripts/status
 
 Gets detailed status of a specific plugin, including runtime.
@@ -913,7 +999,10 @@ The `AgentHandler` base class provides: `sendJson()`, `parseQuery()`, `readJsonB
 | `agentserver/handler/WidgetInvokeHandler.java` | `POST /widgets/invoke` |
 | `agentserver/handler/StateHandler.java` | `GET /state` |
 | `agentserver/handler/ObserveHandler.java` | `GET /observe` |
-| `agentserver/handler/ChatLog.java` | Bounded buffer of recent game messages for `/observe` |
+| `agentserver/handler/AgentLogs.java` | Recent chat, menu clicks, var changes and errors |
+| `agentserver/handler/RecentLog.java` | Bounded, cursor-addressed buffer used by `AgentLogs` |
+| `agentserver/handler/VarChangesHandler.java` | `GET /var-changes` |
+| `agentserver/handler/TileHandler.java` | `GET /tile` |
 | `agentserver/handler/SkillsHandler.java` | `GET /skills` |
 | `agentserver/handler/VarbitHandler.java` | `GET /varbit` |
 | `agentserver/handler/VarpHandler.java` | `GET /varp` |

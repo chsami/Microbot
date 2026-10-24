@@ -163,7 +163,7 @@ public class PathHandler extends AgentHandler {
 		return points.stream().map(PathHandler::position).collect(Collectors.toList());
 	}
 
-	private static Map<String, Integer> position(WorldPoint point) {
+	static Map<String, Integer> position(WorldPoint point) {
 		if (point == null) {
 			return null;
 		}
@@ -174,7 +174,7 @@ public class PathHandler extends AgentHandler {
 		return map;
 	}
 
-	private static int requiredInt(Map<String, String> params, String key) {
+	static int requiredInt(Map<String, String> params, String key) {
 		String val = params.get(key);
 		if (val == null || val.isEmpty()) {
 			throw new BadRequestException("Missing required parameter: " + key);
@@ -182,7 +182,7 @@ public class PathHandler extends AgentHandler {
 		return parseInt(key, val);
 	}
 
-	private static int optionalInt(Map<String, String> params, String key, int defaultValue) {
+	static int optionalInt(Map<String, String> params, String key, int defaultValue) {
 		String val = params.get(key);
 		return val == null || val.isEmpty() ? defaultValue : parseInt(key, val);
 	}

@@ -1,5 +1,8 @@
 package net.runelite.client.plugins.microbot.agentserver;
 
+import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.UnsynchronizedAppenderBase;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
@@ -10,6 +13,8 @@ import com.sun.net.httpserver.HttpServer;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.events.ChatMessage;
+import net.runelite.api.events.MenuOptionClicked;
+import net.runelite.api.events.VarbitChanged;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
@@ -17,6 +22,8 @@ import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.microbot.agentserver.handler.*;
 import net.runelite.client.ui.DrawManager;
+import net.runelite.client.util.ResetResistantAttachment;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.io.IOException;
@@ -62,6 +69,7 @@ public class AgentServerPlugin extends Plugin {
 	private net.runelite.client.plugins.microbot.agentserver.uds.UdsHttpServer udsServer;
 	private ExecutorService executor;
 	private Thread shutdownHook;
+	private ResetResistantAttachment errorCapture;
 	private final Gson gson = createGson();
 
 	private java.util.concurrent.ScheduledExecutorService stealthScheduler;
@@ -100,6 +108,7 @@ public class AgentServerPlugin extends Plugin {
 
 	@Override
 	protected void startUp() throws Exception {
+		attachErrorCapture();
 		if (config.bindOnlyWhileScriptsActive()) {
 			log.info("Agent server in stealth-bind mode; socket will open when a script begins running.");
 			startStealthScheduler();
@@ -181,7 +190,9 @@ public class AgentServerPlugin extends Plugin {
 				new ProfileHandler(gson),
 				new DynamicScriptDeployHandler(gson),
 				new ObserveHandler(gson, client),
-				new PathHandler(gson)
+				new PathHandler(gson),
+				new VarChangesHandler(gson),
+				new TileHandler(gson)
 		);
 	}
 
@@ -233,7 +244,39 @@ public class AgentServerPlugin extends Plugin {
 
 	@Subscribe
 	public void onChatMessage(ChatMessage event) {
-		ChatLog.record(event.getType(), event.getMessage());
+		AgentLogs.recordChat(event.getType(), event.getMessage());
+	}
+
+	@Subscribe
+	public void onMenuOptionClicked(MenuOptionClicked event) {
+		AgentLogs.recordMenu(event);
+	}
+
+	@Subscribe
+	public void onVarbitChanged(VarbitChanged event) {
+		AgentLogs.recordVar(event);
+	}
+
+	private void attachErrorCapture() {
+		detachErrorCapture();
+		LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
+		UnsynchronizedAppenderBase<ILoggingEvent> appender = new UnsynchronizedAppenderBase<>() {
+			@Override
+			protected void append(ILoggingEvent event) {
+				AgentLogs.recordError(event);
+			}
+		};
+		appender.setName("AgentServerErrors");
+		appender.setContext(context);
+		appender.start();
+		errorCapture = ResetResistantAttachment.attach(context, appender, appender::start);
+	}
+
+	private void detachErrorCapture() {
+		if (errorCapture != null) {
+			errorCapture.remove();
+			errorCapture = null;
+		}
 	}
 
 	@Subscribe
@@ -325,6 +368,7 @@ public class AgentServerPlugin extends Plugin {
 
 	@Override
 	protected void shutDown() throws Exception {
+		detachErrorCapture();
 		stopStealthScheduler();
 		stopServer();
 		deleteTokenFile();

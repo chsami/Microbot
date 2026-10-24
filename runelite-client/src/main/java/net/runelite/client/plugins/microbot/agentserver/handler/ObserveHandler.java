@@ -12,7 +12,6 @@ import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -22,6 +21,10 @@ import java.util.stream.Collectors;
 public class ObserveHandler extends AgentHandler {
 
 	private static final int DEFAULT_CHAT_LINES = 10;
+	private static final int DEFAULT_MENU_CLICKS = 5;
+	private static final int DEFAULT_ERRORS = 3;
+	private static final int MAX_WAIT_TICKS = 10;
+	private static final long TICK_MS = 600;
 	private static final int MAX_NEARBY_DISTANCE = 30;
 	private static final int DEFAULT_NEARBY_LIMIT = 10;
 
@@ -48,8 +51,15 @@ public class ObserveHandler extends AgentHandler {
 
 		Map<String, String> params = parseQuery(exchange.getRequestURI());
 		long chatSince = getLongParam(params, "chatSince");
+		long menuSince = getLongParam(params, "menuSince");
+		long errorSince = getLongParam(params, "errorSince");
+		int waitTicks = Math.min(getIntParam(params, "waitTicks", 0), MAX_WAIT_TICKS);
 		int nearby = Math.min(getIntParam(params, "nearby", 0), MAX_NEARBY_DISTANCE);
 		int nearbyLimit = getIntParam(params, "nearbyLimit", DEFAULT_NEARBY_LIMIT);
+
+		if (waitTicks > 0) {
+			waitForTicks(waitTicks);
+		}
 
 		Map<String, Object> result = new LinkedHashMap<>(StateHandler.snapshot(client));
 		if (Microbot.isLoggedIn()) {
@@ -61,18 +71,35 @@ public class ObserveHandler extends AgentHandler {
 				result.put("objects", nearbyObjects(nearby, nearbyLimit));
 			}
 		}
-		result.put("chat", chat(chatSince));
-		result.put("scripts", new ArrayList<>(ScriptHeartbeatRegistry.getAllHealth().values()));
+		result.put("chat", stream(AgentLogs.CHAT, "messages", chatSince, DEFAULT_CHAT_LINES));
+		result.put("menu", stream(AgentLogs.MENU, "clicks", menuSince, DEFAULT_MENU_CLICKS));
+		result.put("errors", stream(AgentLogs.ERRORS, "recent", errorSince, DEFAULT_ERRORS));
+		result.put("scripts", ScriptHeartbeatRegistry.getAllHealth().values().stream()
+				.map(ScriptHandler::withLastError)
+				.collect(Collectors.toList()));
 		sendJson(exchange, 200, result);
 	}
 
-	static Map<String, Object> chat(long chatSince) {
-		Map<String, Object> chat = new LinkedHashMap<>();
-		chat.put("cursor", ChatLog.cursor());
-		chat.put("messages", chatSince >= 0
-				? ChatLog.since(chatSince, ChatLog.CAPACITY)
-				: ChatLog.since(0, DEFAULT_CHAT_LINES));
-		return chat;
+	static Map<String, Object> stream(RecentLog log, String key, long since, int defaultTail) {
+		Map<String, Object> stream = new LinkedHashMap<>();
+		stream.put("cursor", log.cursor());
+		stream.put(key, since >= 0 ? log.since(since, log.capacity()) : log.since(0, defaultTail));
+		return stream;
+	}
+
+	private void waitForTicks(int ticks) {
+		if (client == null || !Microbot.isLoggedIn()) {
+			return;
+		}
+		int target = client.getTickCount() + ticks;
+		long deadline = System.currentTimeMillis() + ticks * TICK_MS * 2;
+		try {
+			while (client.getTickCount() < target && System.currentTimeMillis() < deadline) {
+				Thread.sleep(50);
+			}
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+		}
 	}
 
 	private static long getLongParam(Map<String, String> params, String key) {

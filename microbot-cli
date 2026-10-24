@@ -47,10 +47,14 @@ Widget Commands:
 
 Game State:
   state                                  Current game state and player info
-  observe [--chat-since N] [--nearby D] [--limit N]
+  observe [--chat-since N] [--menu-since N] [--errors-since N] [--wait-ticks T] [--nearby D] [--limit N]
                                          One snapshot: state, inventory, equipment, dialogue,
-                                         recent game chat (cursor via --chat-since), script health;
+                                         recent game chat, menu clicks, errors, script health;
+                                         each stream has a cursor for its --*-since flag;
+                                         --wait-ticks T waits T game ticks (max 10) first;
                                          --nearby D adds the nearest NPCs and objects within D tiles
+  var-changes [--since N] [--varbit ID] [--varp ID] [--limit N]
+                                         Recent varbit/varp changes (cursor via --since)
   skills [--name Attack]                 Skill levels and XP
   varbit <id>                            Read a varbit value
   varp <id>                              Read a varp (player variable) value
@@ -81,6 +85,8 @@ Movement:
                                          Plan a route without moving: termination, tiles,
                                          transports, cost (--full includes every tile)
   path active [--full]                   Route the walker is currently following
+  tile <x> <y> [plane]                   Pathfinder collision for one tile: static vs live
+                                         edges, conflicts, objects on the tile
 
 Banking:
   bank                                   Bank status (open/closed, items)
@@ -157,10 +163,23 @@ EOF
 
 fail_transport() {
     case "$1" in
+        7) echo '{"error":"Connection refused - is the Agent Server plugin enabled?"}' ;;
         28) echo "{\"error\":\"Request timed out after ${2}s\"}" ;;
-        *) echo '{"error":"Connection refused - is the Agent Server plugin enabled?"}' ;;
+        *) echo "{\"error\":\"Request failed (curl exit $1)\"}" ;;
     esac
     exit 1
+}
+
+urlencode() {
+    local LC_ALL=C s="$1" out="" c i
+    for ((i = 0; i < ${#s}; i++)); do
+        c="${s:i:1}"
+        case "$c" in
+            [a-zA-Z0-9.~_-]) out+="$c" ;;
+            *) out+=$(printf '%%%02X' "'$c") ;;
+        esac
+    done
+    printf '%s' "$out"
 }
 
 fail_http() {
@@ -195,7 +214,7 @@ build_query() {
     while [[ $# -gt 0 ]]; do
         local key="$1" val="$2"
         if [[ -n "$val" ]]; then
-            params="${params}${sep}${key}=$(curl -Gso /dev/null -w '%{url_effective}' --data-urlencode "=${val}" '' 2>/dev/null | cut -c3- || echo "$val")"
+            params="${params}${sep}${key}=$(urlencode "$val")"
             sep="&"
         fi
         shift 2
@@ -315,17 +334,42 @@ case "$1" in
 
     observe)
         shift
-        chat_since="" nearby="" limit=""
+        chat_since="" menu_since="" errors_since="" wait_ticks="" nearby="" limit=""
         while [[ $# -gt 0 ]]; do
             case "$1" in
                 --chat-since) chat_since="$2"; shift 2 ;;
+                --menu-since) menu_since="$2"; shift 2 ;;
+                --errors-since) errors_since="$2"; shift 2 ;;
+                --wait-ticks) wait_ticks="$2"; shift 2 ;;
                 --nearby) nearby="$2"; shift 2 ;;
                 --limit) limit="$2"; shift 2 ;;
                 *) shift ;;
             esac
         done
-        q=$(build_query "chatSince" "$chat_since" "nearby" "$nearby" "nearbyLimit" "$limit")
+        q=$(build_query "chatSince" "$chat_since" "menuSince" "$menu_since" "errorSince" "$errors_since" "waitTicks" "$wait_ticks" "nearby" "$nearby" "nearbyLimit" "$limit")
         do_get "${BASE}/observe${q}"
+        ;;
+
+    var-changes)
+        shift
+        since="" varbit="" varp="" limit=""
+        while [[ $# -gt 0 ]]; do
+            case "$1" in
+                --since) since="$2"; shift 2 ;;
+                --varbit) varbit="$2"; shift 2 ;;
+                --varp) varp="$2"; shift 2 ;;
+                --limit) limit="$2"; shift 2 ;;
+                *) shift ;;
+            esac
+        done
+        q=$(build_query "since" "$since" "varbit" "$varbit" "varp" "$varp" "limit" "$limit")
+        do_get "${BASE}/var-changes${q}"
+        ;;
+
+    tile)
+        [[ $# -lt 3 ]] && { echo '{"error":"Usage: microbot-cli tile <x> <y> [plane]"}'; exit 1; }
+        q=$(build_query "x" "$2" "y" "$3" "plane" "${4:-}")
+        do_get "${BASE}/tile${q}"
         ;;
 
     path)

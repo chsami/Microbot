@@ -86,6 +86,10 @@ public class CollisionMap {
         return collisionData.get(x, y, z, flag);
     }
 
+    public boolean staticEdge(int x, int y, int z, int flag) {
+        return collisionData.get(x, y, z, flag);
+    }
+
     public long getLiveEdgeQueries() {
         return liveEdgeQueries;
     }

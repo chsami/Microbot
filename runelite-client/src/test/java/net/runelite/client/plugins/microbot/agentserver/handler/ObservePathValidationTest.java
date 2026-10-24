@@ -24,7 +24,7 @@ public class ObservePathValidationTest {
 		server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
 		server.setExecutor(Executors.newFixedThreadPool(2));
 		Gson gson = new Gson();
-		for (AgentHandler handler : new AgentHandler[]{new ObserveHandler(gson, null), new PathHandler(gson)}) {
+		for (AgentHandler handler : new AgentHandler[]{new ObserveHandler(gson, null), new PathHandler(gson), new VarChangesHandler(gson), new TileHandler(gson)}) {
 			server.createContext(handler.getPath(), handler);
 		}
 		server.start();
@@ -62,6 +62,18 @@ public class ObservePathValidationTest {
 	public void pathRejectsPostAndUnknownSubPath() throws IOException {
 		assertEquals(405, status("POST", "/path?x=1&y=1"));
 		assertEquals(404, status("GET", "/path/nope"));
+	}
+
+	@Test
+	public void varChangesRejectsPost() throws IOException {
+		assertEquals(405, status("POST", "/var-changes"));
+		assertEquals(200, status("GET", "/var-changes?since=0"));
+	}
+
+	@Test
+	public void tileRequiresCoordinatesAndAPathfinder() throws IOException {
+		assertEquals(400, status("GET", "/tile?x=3200"));
+		assertEquals(503, status("GET", "/tile?x=3200&y=3200"));
 	}
 
 	private static int status(String method, String path) throws IOException {

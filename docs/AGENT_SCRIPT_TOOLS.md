@@ -54,7 +54,8 @@ The **Agent Server** plugin (port 8081, localhost) must be enabled for any CLI/H
 | CLI Command | Purpose |
 |-------------|---------|
 | `state` | Game state, player position, health, animation, combat level |
-| `observe [--chat-since N] [--nearby D]` | One snapshot: state, inventory, equipment, dialogue, recent game chat, script health |
+| `observe [--chat-since N] [--menu-since N] [--wait-ticks T] [--nearby D]` | One snapshot: state, inventory, equipment, dialogue, recent game chat, menu clicks, errors, script health |
+| `var-changes [--since N] [--varbit ID]` | Recent varbit/varp changes |
 | `skills [--name X]` | All skill levels, boosted levels, XP |
 | `varbit <id>` | Read a varbit value (critical for verifying settings) |
 | `inventory` | Inventory items with id, name, quantity, slot, actions |
@@ -107,6 +108,8 @@ The **Agent Server** plugin (port 8081, localhost) must be enabled for any CLI/H
 | `scripts health` | Detect stalled scripts (heartbeat age) |
 | `path <x> <y> [plane] [--full]` | Plan a walker route without moving: termination reason, transports, cost |
 | `path active` | Route the walker is following right now |
+| `tile <x> <y> [plane]` | Pathfinder collision for one tile: static vs live, conflicts, objects |
+| `observe --menu-since N` | Menu clicks actually sent, to compare with what the script meant to click |
 | `GET /debug/snapshot` | State machine snapshot — current state, transitions, guard results, trace buffer |
 | `screenshot save --label debug` | Visual state capture for multimodal analysis |
 

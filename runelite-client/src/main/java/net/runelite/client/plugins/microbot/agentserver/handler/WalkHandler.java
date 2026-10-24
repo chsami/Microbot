@@ -5,6 +5,7 @@ import com.sun.net.httpserver.HttpExchange;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.util.walker.Rs2PathApi;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.walker.WalkerState;
 
@@ -176,6 +177,9 @@ public class WalkHandler extends AgentHandler {
 			if (distanceToDestination >= 0) {
 				response.put("distanceToDestination", distanceToDestination);
 			}
+		}
+		if (!Boolean.TRUE.equals(response.get("success"))) {
+			response.put("route", PathHandler.serializeActive(Rs2PathApi.getActiveRouteStatus(), false));
 		}
 		addPlayerPosition(response);
 		sendJson(exchange, 200, response);
