@@ -72,8 +72,9 @@ public class Rs2DepositBox {
      * @return true if the deposit box interface was successfully closed, false otherwise.
      */
     public static boolean closeDepositBox() {
-        if (!isOpen()) return false;
-        Widget closeDepositBox = Rs2Widget.findWidget("Close", List.of(getDepositBoxWidget()), false);
+        Widget depositBoxWidget = getDepositBoxWidget();
+        if (depositBoxWidget == null) return false;
+        Widget closeDepositBox = Rs2Widget.findWidget("Close", List.of(depositBoxWidget), false);
         if (closeDepositBox == null) return false;
         Rs2Widget.clickWidget(closeDepositBox);
         return sleepUntil(() -> !isOpen());
@@ -112,8 +113,9 @@ public class Rs2DepositBox {
     public static void depositAll() {
         Microbot.status = "Depositing all items";
         if (Rs2Inventory.isEmpty()) return;
-        if (!isOpen()) return;
-        Widget depositAllWidget = Rs2Widget.findWidget("Deposit Inventory", List.of(getDepositBoxWidget()), false);
+        Widget depositBoxWidget = getDepositBoxWidget();
+        if (depositBoxWidget == null) return;
+        Widget depositAllWidget = Rs2Widget.findWidget("Deposit Inventory", List.of(depositBoxWidget), false);
         if (depositAllWidget == null) return;
 
         Rs2Widget.clickWidget(depositAllWidget);
@@ -333,8 +335,9 @@ public class Rs2DepositBox {
      * Deposits all equipment into the deposit box.
      */
     public static void depositEquipment() {
-        if (!isOpen()) return;
-        Widget depositWornItems = Rs2Widget.findWidget("Deposit worn items", List.of(getDepositBoxWidget()), false);
+        Widget depositBoxWidget = getDepositBoxWidget();
+        if (depositBoxWidget == null) return;
+        Widget depositWornItems = Rs2Widget.findWidget("Deposit worn items", List.of(depositBoxWidget), false);
         if (depositWornItems == null) return;
 
         Rs2Widget.clickWidget(depositWornItems);
