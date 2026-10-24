@@ -5,6 +5,7 @@ import java.util.function.Supplier;
 import net.runelite.api.Client;
 import net.runelite.api.ObjectComposition;
 import net.runelite.api.TileObject;
+import net.runelite.api.WorldView;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.plugins.microbot.Microbot;
@@ -42,6 +43,7 @@ public class Rs2TileObjectModelCompositionTest {
         tileObject = mock(TileObject.class);
         when(tileObject.getId()).thenReturn(OBJECT_ID);
         when(tileObject.getLocalLocation()).thenReturn(new LocalPoint(6400, 6400, -1));
+        when(tileObject.getWorldView()).thenReturn(mock(WorldView.class));
     }
 
     @After
@@ -88,5 +90,26 @@ public class Rs2TileObjectModelCompositionTest {
         when(client.getObjectDefinition(OBJECT_ID)).thenReturn(null);
 
         assertFalse(new Rs2TileObjectModel(tileObject).click("Enter"));
+    }
+
+    @Test
+    public void clickReturnsFalseWithoutInvokingWhenWorldViewIsUnloaded() {
+        when(tileObject.getWorldView()).thenReturn(null);
+
+        assertFalse(new Rs2TileObjectModel(tileObject).click("Deposit"));
+        assertFalse(new Rs2TileObjectModel(tileObject).click());
+        microbot.verify(() -> Microbot.doInvoke(any(NewMenuEntry.class), any(Rectangle.class)), never());
+    }
+
+    @Test
+    public void clickReturnsFalseWhenInteractionThrows() {
+        ObjectComposition base = mock(ObjectComposition.class);
+        when(base.getActions()).thenReturn(new String[]{"Deposit", null, null, null, null});
+        when(base.getName()).thenReturn("Salvaging station");
+        when(client.getObjectDefinition(OBJECT_ID)).thenReturn(base);
+        when(client.isWidgetSelected()).thenThrow(new IllegalStateException("boom"));
+
+        assertFalse(new Rs2TileObjectModel(tileObject).click("Deposit"));
+        microbot.verify(() -> Microbot.doInvoke(any(NewMenuEntry.class), any(Rectangle.class)), never());
     }
 }

@@ -253,6 +253,11 @@ public class Rs2TileObjectModel implements TileObject, IEntity {
      */
     public boolean click(String action) {
         try {
+            WorldView worldView = getWorldView();
+            if (worldView == null) {
+                log.warn("Failed to interact with object {} - object is no longer in a loaded world view", getId());
+                return false;
+            }
 
             int param0;
             int param1;
@@ -345,7 +350,7 @@ public class Rs2TileObjectModel implements TileObject, IEntity {
                             .itemId(-1)
                             .option(action)
                             .target(objName)
-                            .setWorldViewId(getWorldView().getId())
+                            .setWorldViewId(worldView.getId())
                             .gameObject(tileObject)
                     ,
                     Rs2UiHelper.getObjectClickbox(tileObject));
@@ -354,6 +359,7 @@ public class Rs2TileObjectModel implements TileObject, IEntity {
 
         } catch (Exception ex) {
             log.error("Failed to interact with object: ", ex);
+            return false;
         }
 
         return true;
