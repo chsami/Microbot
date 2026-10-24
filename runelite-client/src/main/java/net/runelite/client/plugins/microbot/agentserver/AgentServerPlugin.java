@@ -83,7 +83,6 @@ public class AgentServerPlugin extends Plugin {
 			return object;
 		};
 		return new GsonBuilder()
-				.setPrettyPrinting()
 				.registerTypeHierarchyAdapter(Collection.class, collectionSerializer)
 				.registerTypeHierarchyAdapter(Map.class, mapSerializer)
 				.create();

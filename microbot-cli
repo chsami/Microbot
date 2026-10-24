@@ -147,12 +147,38 @@ EOF
     exit 1
 }
 
+fail_transport() {
+    case "$1" in
+        28) echo "{\"error\":\"Request timed out after ${2}s\"}" ;;
+        *) echo '{"error":"Connection refused - is the Agent Server plugin enabled?"}' ;;
+    esac
+    exit 1
+}
+
+fail_http() {
+    if [[ "$1" == "Not Found" ]]; then
+        echo '{"error":"Not Found - unknown endpoint, or the auth token is missing or stale (~/.runelite/.agent-token)"}'
+    else
+        printf '%s\n' "$1"
+    fi
+    exit 1
+}
+
+request() {
+    local max="$1" out rc=0
+    shift
+    out=$(curl -sS --fail-with-body --max-time "$max" "${AUTH_HEADER_ARGS[@]}" "$@" 2>/dev/null) || rc=$?
+    [[ $rc -eq 0 ]] && { printf '%s\n' "$out"; return 0; }
+    [[ $rc -eq 22 ]] && fail_http "$out"
+    fail_transport "$rc" "$max"
+}
+
 do_get() {
-    curl -sf --max-time "$TIMEOUT" "${AUTH_HEADER_ARGS[@]}" "$1" 2>/dev/null || { echo '{"error":"Connection refused - is the Agent Server plugin enabled?"}'; exit 1; }
+    request "$TIMEOUT" "$1"
 }
 
 do_post() {
-    curl -sf --max-time "$TIMEOUT" "${AUTH_HEADER_ARGS[@]}" -X POST -H "Content-Type: application/json" -d "$2" "$1" 2>/dev/null || { echo '{"error":"Connection refused - is the Agent Server plugin enabled?"}'; exit 1; }
+    request "$TIMEOUT" -X POST -H "Content-Type: application/json" -d "$2" "$1"
 }
 
 build_query() {
@@ -392,8 +418,7 @@ case "$1" in
         walk_body="{\"x\":${walk_x},\"y\":${walk_y},\"plane\":${walk_plane},\"wait\":${walk_wait},\"timeout\":${walk_timeout},\"distance\":${walk_distance}}"
         if [[ "$walk_wait" == "true" ]]; then
             curl_timeout=$((walk_timeout + 5))
-            curl -sf --max-time "$curl_timeout" "${AUTH_HEADER_ARGS[@]}" -X POST -H "Content-Type: application/json" -d "$walk_body" "${BASE}/walk" 2>/dev/null \
-                || { echo '{"error":"Connection refused - is the Agent Server plugin enabled?"}'; exit 1; }
+            request "$curl_timeout" -X POST -H "Content-Type: application/json" -d "$walk_body" "${BASE}/walk"
         else
             do_post "${BASE}/walk" "$walk_body"
         fi
@@ -457,7 +482,10 @@ case "$1" in
                 if [[ -n "$world" ]]; then
                     body="{\"world\":${world},\"timeout\":${login_timeout}}"
                 fi
-                result=$(curl -s --max-time "$((login_timeout + 5))" "${AUTH_HEADER_ARGS[@]}" -X POST -H "Content-Type: application/json" -d "$body" "${BASE}/login" 2>/dev/null) || { echo '{"error":"Connection refused - is the Agent Server plugin enabled?"}'; exit 1; }
+                rc=0
+                result=$(curl -s --max-time "$((login_timeout + 5))" "${AUTH_HEADER_ARGS[@]}" -X POST -H "Content-Type: application/json" -d "$body" "${BASE}/login" 2>/dev/null) || rc=$?
+                [[ $rc -ne 0 ]] && fail_transport "$rc" "$((login_timeout + 5))"
+                [[ "$result" == "Not Found" ]] && fail_http "$result"
                 echo "$result"
                 echo "$result" | grep -q '"success": *true' || exit 1
                 ;;
@@ -710,7 +738,12 @@ case "$1" in
             q=$(build_query "save" "true" "label" "${label:-screenshot}" "dir" "${dir:-}")
             do_get "${BASE}/screenshot${q}"
         else
-            curl -sf --max-time "$TIMEOUT" "${AUTH_HEADER_ARGS[@]}" -o "${1:-screenshot.png}" "${BASE}/screenshot" 2>/dev/null || { echo '{"error":"Connection refused - is the Agent Server plugin enabled?"}'; exit 1; }
+            shot="${1:-screenshot.png}" rc=0
+            curl -sS --fail-with-body --max-time "$TIMEOUT" "${AUTH_HEADER_ARGS[@]}" -o "$shot" "${BASE}/screenshot" 2>/dev/null || rc=$?
+            if [[ $rc -eq 22 ]]; then
+                body=$(cat "$shot"); rm -f "$shot"; fail_http "$body"
+            fi
+            [[ $rc -ne 0 ]] && fail_transport "$rc" "$TIMEOUT"
             echo "{\"success\":true,\"path\":\"$(pwd)/${1:-screenshot.png}\"}"
         fi
         ;;

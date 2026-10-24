@@ -235,7 +235,8 @@ Step-by-step playbooks for common debugging scenarios. Each shows the commands t
 
 # 3. Is the loop stalled? (check heartbeat age)
 ./microbot-cli scripts health --class "com.example.MyPlugin"
-# → If lastLoopMs is very old, the script loop is stuck or crashed
+# → A plugin class resolves to the Script classes in its package; several scripts come back as a "scripts" list
+# → If stalledMs is very old, the script loop is stuck or crashed
 
 # 4. Take a screenshot to see visual state
 ./microbot-cli screenshot save --label "debug-stuck"

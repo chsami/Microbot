@@ -8,6 +8,7 @@ import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.PluginInstantiationException;
 import net.runelite.client.plugins.PluginManager;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.agentserver.AgentServerPlugin;
 
 import javax.swing.*;
 import java.io.IOException;
@@ -177,6 +178,11 @@ public class ScriptHandler extends AgentHandler {
 			return;
 		}
 
+		if (plugin instanceof AgentServerPlugin) {
+			sendJson(exchange, 400, errorResponse("Refusing to stop the Agent Server through its own API"));
+			return;
+		}
+
 		PluginManager pm = getPluginManager();
 		if (!pm.isActive(plugin)) {
 			sendJson(exchange, 400, errorResponse("Plugin is not running"));
@@ -336,8 +342,8 @@ public class ScriptHandler extends AgentHandler {
 			className = plugin.getClass().getName();
 		}
 
-		Map<String, Object> health = ScriptHeartbeatRegistry.getHealth(className);
-		if (health == null) {
+		List<Map<String, Object>> health = healthFor(className);
+		if (health.isEmpty()) {
 			Map<String, Object> result = new LinkedHashMap<>();
 			result.put("scriptClassName", className);
 			result.put("loopCount", 0);
@@ -347,8 +353,34 @@ public class ScriptHandler extends AgentHandler {
 			sendJson(exchange, 200, result);
 			return;
 		}
+		if (health.size() == 1) {
+			sendJson(exchange, 200, health.get(0));
+			return;
+		}
 
-		sendJson(exchange, 200, health);
+		Map<String, Object> result = new LinkedHashMap<>();
+		result.put("className", className);
+		result.put("scripts", health);
+		sendJson(exchange, 200, result);
+	}
+
+	static List<Map<String, Object>> healthFor(String className) {
+		Map<String, Object> exact = ScriptHeartbeatRegistry.getHealth(className);
+		if (exact != null) {
+			return List.of(exact);
+		}
+		int dot = className.lastIndexOf('.');
+		if (dot < 0) {
+			return List.of();
+		}
+		String pluginPackage = className.substring(0, dot + 1);
+		List<Map<String, Object>> matches = new ArrayList<>();
+		for (Map.Entry<String, Map<String, Object>> entry : ScriptHeartbeatRegistry.getAllHealth().entrySet()) {
+			if (entry.getKey().startsWith(pluginPackage)) {
+				matches.add(entry.getValue());
+			}
+		}
+		return matches;
 	}
 
 	private PluginManager getPluginManager() {
@@ -396,19 +428,40 @@ public class ScriptHandler extends AgentHandler {
 	private Plugin findPluginByName(String name) {
 		PluginManager pm = getPluginManager();
 		if (pm == null) return null;
-
-		String lower = name.toLowerCase();
-		for (Plugin plugin : pm.getPlugins()) {
-			PluginDescriptor desc = plugin.getClass().getAnnotation(PluginDescriptor.class);
-			if (desc == null) continue;
-			if (desc.name().toLowerCase().contains(lower)) {
-				return plugin;
-			}
-		}
-		return null;
+		return matchPluginByName(pm.getPlugins(), name);
 	}
 
-	private boolean isMicrobotPlugin(Plugin plugin) {
+	static Plugin matchPluginByName(Collection<Plugin> plugins, String name) {
+		String wanted = name.trim().toLowerCase();
+		List<Plugin> partial = new ArrayList<>();
+		for (Plugin plugin : plugins) {
+			if (!isMicrobotPlugin(plugin)) continue;
+			PluginDescriptor desc = plugin.getClass().getAnnotation(PluginDescriptor.class);
+			if (desc == null) continue;
+			String plain = plainName(desc.name()).toLowerCase();
+			if (plain.equals(wanted)) {
+				return plugin;
+			}
+			if (plain.contains(wanted)) {
+				partial.add(plugin);
+			}
+		}
+		if (partial.size() > 1) {
+			StringJoiner names = new StringJoiner(", ");
+			for (Plugin plugin : partial) {
+				names.add(plainName(plugin.getClass().getAnnotation(PluginDescriptor.class).name()));
+			}
+			throw new BadRequestException("Ambiguous plugin name '" + name + "' matches: " + names
+					+ ". Use the exact name or className.");
+		}
+		return partial.isEmpty() ? null : partial.get(0);
+	}
+
+	static String plainName(String descriptorName) {
+		return descriptorName.replaceAll("<[^>]*>", "").replaceFirst("^\\[[^\\]]*]\\s*", "").trim();
+	}
+
+	private static boolean isMicrobotPlugin(Plugin plugin) {
 		return plugin.getClass().getPackageName().toLowerCase().contains("microbot");
 	}
 }

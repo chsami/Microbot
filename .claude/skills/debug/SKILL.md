@@ -128,7 +128,7 @@ Deploy + start + collect *(delegate to Sonnet)*. Brief it with these commands an
 
 ```bash
 # Deploy (compiles and registers)
-curl -sS -X POST -H "X-Agent-Token: $(cat ~/.microbot/agent-token)" -H 'Content-Type: application/json' \
+curl -sS -X POST -H "X-Agent-Token: $(cat ~/.runelite/.agent-token)" -H 'Content-Type: application/json' \
   -d '{"name":"debug-probe","sourcePath":"/tmp/microbot-debug-probes/<run-id>"}' \
   http://127.0.0.1:8081/scripts/deploy
 
@@ -144,7 +144,7 @@ Tell the subagent to return: deploy response body, health JSON, and the last 50 
 **You** (Opus) then read those outputs and decide: did the probe surface the bug? If yes → Stage 3. If not → revise the probe (you, with Edit) and have Sonnet hot-reload it:
 
 ```bash
-curl -sS -X POST -H "X-Agent-Token: $(cat ~/.microbot/agent-token)" -H 'Content-Type: application/json' \
+curl -sS -X POST -H "X-Agent-Token: $(cat ~/.runelite/.agent-token)" -H 'Content-Type: application/json' \
   -d '{"name":"debug-probe"}' \
   http://127.0.0.1:8081/scripts/deploy/reload
 ```
@@ -221,7 +221,7 @@ Print a detailed explanation with these sections:
 ## Pitfalls
 
 - **Client already running:** don't blindly start another. Check `:8081/state` first and reuse if it's responsive.
-- **Token auth:** prefer `./microbot-cli` over raw curl where possible — it reads `~/.microbot/agent-token` automatically. For endpoints the CLI doesn't wrap (`/debug/snapshot`, `/scripts/deploy*`), pass `-H "X-Agent-Token: $(cat ~/.microbot/agent-token)"` with curl.
+- **Token auth:** prefer `./microbot-cli` over raw curl where possible — it reads `~/.runelite/.agent-token` automatically. For endpoints the CLI doesn't wrap (`/debug/snapshot`, `/scripts/deploy*`), pass `-H "X-Agent-Token: $(cat ~/.runelite/.agent-token)"` with curl.
 - **Hot-reload doesn't help engine edits.** Dynamic deploy only reloads the probe plugin's bytecode. Changes to files already compiled into the client (`Pathfinder.java`, `Node.java`, anything in `:client`) require a full rebuild + restart.
 - **Background client lifecycle:** if you started the client with `&`, it's yours to kill. Don't leave orphan JVMs between runs — `pkill -f 'net.runelite.client.RuneLite'` before a fresh launch.
 - **Login welcome screen:** after `login now`, the "Click here to play" widget may still cover the game view. Check and dismiss before probing in-game state.
