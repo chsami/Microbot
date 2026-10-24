@@ -289,7 +289,10 @@ public final class LoginManager {
         if (worldId <= 0 || client.getWorld() == worldId) {
             return true;
         }
-        return setWorld(worldId) && sleepUntil(() -> client.getWorld() == worldId, WORLD_CHANGE_TIMEOUT_MS);
+        if (!setWorld(worldId)) {
+            return false;
+        }
+        return client.getWorld() == worldId || sleepUntil(() -> client.getWorld() == worldId, WORLD_CHANGE_TIMEOUT_MS);
     }
 
     private static void setCredentials(Client client, String username, String encryptedPassword) {

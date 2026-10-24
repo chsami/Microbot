@@ -134,6 +134,18 @@ public class LoginManagerSetWorldTest {
         assertTrue(changedOnClientThread.get());
     }
 
+    @Test public void loginStopsWhenTheClientNeverReportsTheNewWorld() {
+        doNothing().when(client).changeWorld(any());
+
+        try (var keyboard = mockStatic(Rs2Keyboard.class)) {
+            assertFalse(LoginManager.login("user", "", 308));
+
+            keyboard.verifyNoInteractions();
+        }
+        verify(client).changeWorld(rsWorld);
+        verify(client, never()).setUsername(anyString());
+    }
+
     @Test public void loginSkipsTheWorldChangeWhenAlreadyOnTheTargetWorld() {
         currentWorld.set(308);
 
