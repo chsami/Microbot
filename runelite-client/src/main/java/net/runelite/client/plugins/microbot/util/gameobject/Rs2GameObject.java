@@ -1842,6 +1842,11 @@ public class Rs2GameObject {
         }
 
         try {
+            WorldView objectWorldView = object.getWorldView();
+            if (objectWorldView == null) {
+                Microbot.log("Failed to interact with object " + object.getId() + " - object is no longer in a loaded world view");
+                return false;
+            }
 
             int param0;
             int param1;
@@ -1929,7 +1934,7 @@ public class Rs2GameObject {
 
             int worldViewId = WorldView.TOPLEVEL;
 
-            if (!object.getWorldView().isTopLevel()) {
+            if (!objectWorldView.isTopLevel()) {
                 var worldView =Microbot.getClientThread().invoke(() ->  Microbot.getClient().getLocalPlayer().getWorldView());
                 if (worldView == null) {
                     worldViewId = Microbot.getClient().getTopLevelWorldView().getId();
@@ -1958,6 +1963,7 @@ public class Rs2GameObject {
 
         } catch (Exception ex) {
             Microbot.log("Failed to interact with object " + ex.getMessage());
+            return false;
         }
 
         return true;

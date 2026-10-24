@@ -9,6 +9,7 @@ import net.runelite.api.WorldView;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
 import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
 import org.junit.After;
 import org.junit.Before;
@@ -94,10 +95,18 @@ public class Rs2TileObjectModelCompositionTest {
 
     @Test
     public void clickReturnsFalseWithoutInvokingWhenWorldViewIsUnloaded() {
+        ObjectComposition base = mock(ObjectComposition.class);
+        when(base.getActions()).thenReturn(new String[]{"Deposit", null, null, null, null});
+        when(base.getName()).thenReturn("Salvaging station");
+        when(client.getObjectDefinition(OBJECT_ID)).thenReturn(base);
         when(tileObject.getWorldView()).thenReturn(null);
 
-        assertFalse(new Rs2TileObjectModel(tileObject).click("Deposit"));
-        assertFalse(new Rs2TileObjectModel(tileObject).click());
+        try (MockedStatic<Rs2Camera> camera = Mockito.mockStatic(Rs2Camera.class)) {
+            camera.when(() -> Rs2Camera.isTileOnScreen(any(LocalPoint.class))).thenReturn(true);
+
+            assertFalse(new Rs2TileObjectModel(tileObject).click("Deposit"));
+            assertFalse(new Rs2TileObjectModel(tileObject).click());
+        }
         microbot.verify(() -> Microbot.doInvoke(any(NewMenuEntry.class), any(Rectangle.class)), never());
     }
 
