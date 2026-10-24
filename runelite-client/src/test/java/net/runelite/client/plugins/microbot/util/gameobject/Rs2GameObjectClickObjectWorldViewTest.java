@@ -14,6 +14,7 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
 import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -81,6 +82,18 @@ public class Rs2GameObjectClickObjectWorldViewTest {
 
         assertFalse(Rs2GameObject.clickObject(object, "Deposit"));
         microbot.verify(() -> Microbot.doInvoke(any(NewMenuEntry.class), any(Rectangle.class)), never());
+    }
+
+    @Test
+    public void doesNotWalkTowardObjectWhoseWorldViewIsUnloaded() {
+        when(object.getWorldView()).thenReturn(null);
+        player.when(Rs2Player::getWorldLocation).thenReturn(new WorldPoint(3300, 3300, 0));
+        when(object.getLocalLocation()).thenReturn(null);
+
+        try (MockedStatic<Rs2Walker> walker = Mockito.mockStatic(Rs2Walker.class)) {
+            assertFalse(Rs2GameObject.clickObject(object, "Deposit"));
+            walker.verify(() -> Rs2Walker.walkTo(any(WorldPoint.class)), never());
+        }
     }
 
     @Test

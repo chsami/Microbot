@@ -1788,6 +1788,11 @@ public class Rs2GameObject {
 
     public static boolean clickObject(TileObject object, String action) {
         if (object == null) return false;
+        WorldView objectWorldView = object.getWorldView();
+        if (objectWorldView == null) {
+            Microbot.log("Failed to interact with object " + object.getId() + " - object is no longer in a loaded world view");
+            return false;
+        }
         if (CantReachTargetRecovery.shouldStart(
                 Microbot.isCantReachTargetDetectionEnabled, Microbot.cantReachTarget)) {
             // The game said "I can't reach that!" on the previous interaction — something solid sits
@@ -1842,11 +1847,6 @@ public class Rs2GameObject {
         }
 
         try {
-            WorldView objectWorldView = object.getWorldView();
-            if (objectWorldView == null) {
-                Microbot.log("Failed to interact with object " + object.getId() + " - object is no longer in a loaded world view");
-                return false;
-            }
 
             int param0;
             int param1;
