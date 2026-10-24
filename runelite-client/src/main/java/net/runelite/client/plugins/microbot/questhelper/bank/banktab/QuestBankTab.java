@@ -387,6 +387,12 @@ public class QuestBankTab
 
 		Widget[] containerChildren = itemContainer.getDynamicChildren();
 		clientThread.invokeAtTickEnd(() -> {
+			Widget currentContainer = client.getWidget(InterfaceID.Bankmain.ITEMS);
+			if (currentContainer != itemContainer || currentContainer.isHidden() || !questBankTabInterface.isQuestTabActive())
+			{
+				return;
+			}
+
 			// Desired extra functionality:
 			// X - Recommended items also included in section
 			// X - Expand option to see alternative items for a recommended item
