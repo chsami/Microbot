@@ -374,7 +374,19 @@ public class DeviceLinkFlowTest
 	}
 
 	@Test
-	public void telemetryDisabledSaysAlertsAreOffInsteadOfLinking() throws IOException
+	public void turningOnTelemetryClearsTheSettingWithoutLinking() throws IOException
+	{
+		when(token.isTelemetryDisabled()).thenReturn(true, false);
+		flow.start();
+
+		verify(configManager).setConfiguration(MicrobotConfig.configGroup, MicrobotConfig.keyDisableTelemetry, false);
+		verify(dialog, never()).showMessage(anyString());
+		verify(api, never()).startDeviceLink(anyString());
+		assertFalse(flow.isLinking());
+	}
+
+	@Test
+	public void telemetryForcedOffByLaunchOptionSaysHowToTurnItOn() throws IOException
 	{
 		when(token.isTelemetryDisabled()).thenReturn(true);
 		flow.start();

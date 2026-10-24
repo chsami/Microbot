@@ -7,7 +7,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum BotAlertStatus
 {
-	TELEMETRY_OFF("Off, telemetry is disabled", null),
+	TELEMETRY_OFF("Off, telemetry is disabled", "Turn on telemetry"),
 	LINKING("Waiting for approval", "Show code"),
 	LINKED("On", "Manage"),
 	LINKED_BY_LAUNCHER("On, linked by the launcher", "Manage"),

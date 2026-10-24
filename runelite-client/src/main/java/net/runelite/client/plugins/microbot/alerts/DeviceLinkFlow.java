@@ -29,7 +29,8 @@ public class DeviceLinkFlow
 
 	static final String ALERTS_PAGE = "https://dashboard.microbot.cloud/alerts";
 
-	static final String TELEMETRY_OFF = "Bot alerts are off because telemetry is disabled.\nTurn telemetry back on to link this client.";
+	static final String TELEMETRY_OFF = "Telemetry is turned off by a launch option, so this client cannot be linked.\n"
+		+ "Remove --disable-telemetry or -Dmicrobot.disableTelemetry=true from how you start the client, then restart it.";
 	static final String ALREADY_LINKED = "This client is linked to a Microbot account.\n\n"
 		+ "To rename or remove it, go to " + ALERTS_PAGE + "\n"
 		+ "To link it to a different account, click Link to another account.";
@@ -82,7 +83,11 @@ public class DeviceLinkFlow
 	{
 		if (clientLinkToken.isTelemetryDisabled())
 		{
-			dialog.showMessage(TELEMETRY_OFF);
+			configManager.setConfiguration(MicrobotConfig.configGroup, MicrobotConfig.keyDisableTelemetry, false);
+			if (clientLinkToken.isTelemetryDisabled())
+			{
+				dialog.showMessage(TELEMETRY_OFF);
+			}
 			return;
 		}
 		if (attempt != null)
