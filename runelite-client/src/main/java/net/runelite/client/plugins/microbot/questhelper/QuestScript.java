@@ -53,6 +53,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
@@ -60,7 +61,7 @@ import org.slf4j.event.Level;
 import net.runelite.api.coords.WorldArea;
 
 public class QuestScript extends Script {
-    public static double version = 0.5;
+    public static double version = 0.6;
 
     private static final long MISSING_REQUIREMENT_NOTIFY_INTERVAL_MS = 10_000L;
     private static final Map<Integer, Long> lastMissingRequirementNotice = new HashMap<>();
@@ -1551,17 +1552,17 @@ public class QuestScript extends Script {
     }
 
 	private String chooseCorrectItemOption(QuestStep step, int itemId) {
-		var actions = Rs2Inventory.get(itemId).getInventoryActions();
+		return chooseItemAction(step.getText(), Rs2Inventory.get(itemId).getInventoryActions());
+	}
 
-		for (var action : actions) {
-			if (action != null && step.getText().stream().anyMatch(x -> x.toLowerCase().contains(action.toLowerCase())))
-				return action;
-		}
-
-		// Fallback: first non-empty inventory action (the item's default left-click).
-		for (var action : actions) {
-			if (action != null && !action.isEmpty())
-				return action;
+	static String chooseItemAction(List<String> stepText, String[] actions) {
+		if (stepText != null && actions != null) {
+			for (var action : actions) {
+				if (action == null || action.isEmpty()) continue;
+				Pattern word = Pattern.compile("(?<![a-z])" + Pattern.quote(action.toLowerCase()) + "(?![a-z])");
+				if (stepText.stream().anyMatch(x -> x != null && word.matcher(x.toLowerCase()).find()))
+					return action;
+			}
 		}
 
 		return "use";
