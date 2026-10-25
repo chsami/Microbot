@@ -131,6 +131,7 @@ public class ChildrenOfTheSun extends BasicQuestHelper
 		talkToAlina.addDialogSteps("When will this delegation arrive?", "Yes.");
 		followGuard = new NpcStep(this, NpcID.VMQ1_BAG_GUARD,
 			"Follow the guard slowly behind them, hiding in the marked locations to avoid him spotting you. Do not let him get too far from you or you'll fail.");
+			((NpcStep) followGuard).addAlternateNpcs(NpcID.VMQ1_BAG_GUARD_VIS);
 		followGuard.setLinePoints(Arrays.asList(
 			new WorldPoint(3225, 3429, 0),
 			new WorldPoint(3233, 3429, 0),

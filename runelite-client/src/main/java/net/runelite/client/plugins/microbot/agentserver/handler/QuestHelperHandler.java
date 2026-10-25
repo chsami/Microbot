@@ -13,6 +13,10 @@ import net.runelite.client.plugins.PluginManager;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.questhelper.QuestHelperConfig;
 import net.runelite.client.plugins.microbot.questhelper.QuestHelperPlugin;
+import net.runelite.client.plugins.microbot.questhelper.QuestPreflight;
+import net.runelite.client.plugins.microbot.questhelper.combat.QuestCombatHandler;
+import net.runelite.client.plugins.microbot.questhelper.combat.QuestCombatLoadout;
+import net.runelite.client.plugins.microbot.questhelper.combat.QuestCombatStore;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.questinfo.QuestHelperQuest;
 import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
@@ -87,6 +91,9 @@ public class QuestHelperHandler extends AgentHandler
 		result.put("turnOn", Microbot.getConfigManager()
 			.getConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "TurnOn"));
 
+		result.put("awaitingSetup", QuestCombatHandler.isAwaitingSetup());
+		result.put("preflight", QuestPreflight.getStatus());
+
 		QuestHelper selectedQuest = plugin.getSelectedQuest();
 		result.put("selected", selectedQuest != null);
 		if (selectedQuest != null)
@@ -144,13 +151,74 @@ public class QuestHelperHandler extends AgentHandler
 			return;
 		}
 
+		QuestHelper helper = QuestHelperQuest.getByName(name);
+		Object combat = body.get("combat");
+		boolean hasExtras = false;
+		for (String field : new String[]{"gear", "inventory", "reserveSlots", "stamina", "fights"})
+		{
+			hasExtras |= body.get(field) != null;
+		}
+		if (helper != null && helper.getQuest() != null && (combat != null || hasExtras))
+		{
+			String questKey = helper.getQuest().name();
+			QuestCombatLoadout loadout;
+			if (combat == null)
+			{
+				QuestCombatLoadout saved = QuestCombatStore.load(questKey);
+				loadout = saved != null ? saved : QuestCombatLoadout.bare();
+			}
+			else if ("skip".equals(combat))
+			{
+				loadout = QuestCombatLoadout.skipped();
+			}
+			else if (combat instanceof Map)
+			{
+				try
+				{
+					loadout = QuestCombatLoadout.fromMap((Map<?, ?>) combat);
+				}
+				catch (IllegalArgumentException e)
+				{
+					sendJson(exchange, 400, errorResponse(e.getMessage()));
+					return;
+				}
+			}
+			else
+			{
+				sendJson(exchange, 400, errorResponse("combat must be \"skip\" or an object"));
+				return;
+			}
+			if (hasExtras)
+			{
+				try
+				{
+					loadout = QuestCombatLoadout.applyOverrides(loadout, body, QuestCombatHandler::wornGear);
+				}
+				catch (IllegalArgumentException e)
+				{
+					sendJson(exchange, 400, errorResponse(e.getMessage()));
+					return;
+				}
+			}
+			QuestCombatStore.save(questKey, loadout);
+		}
+
+		Object preflight = body.get("preflight");
+		if (preflight != null && !(preflight instanceof Boolean))
+		{
+			sendJson(exchange, 400, errorResponse("preflight must be true or false"));
+			return;
+		}
+		// The quest script reads this when it sees the start, so it applies to this start only
+		QuestPreflight.skipNextStart(Boolean.FALSE.equals(preflight));
 		if (!plugin.startQuestHelper(name))
 		{
+			QuestPreflight.skipNextStart(false);
 			sendJson(exchange, 404, errorResponse("Quest helper not found or not loaded: " + name));
 			return;
 		}
 
-		Microbot.getConfigManager().setRSProfileConfiguration(
+		Microbot.getConfigManager().setConfiguration(
 			QuestHelperConfig.QUEST_HELPER_GROUP,
 			"TurnOn",
 			true);
@@ -184,6 +252,10 @@ public class QuestHelperHandler extends AgentHandler
 			.runOnClientThreadOptional(() ->
 			{
 				plugin.getQuestManager().shutDownQuest(true);
+				Microbot.getConfigManager().setConfiguration(
+					QuestHelperConfig.QUEST_HELPER_GROUP,
+					"TurnOn",
+					false);
 				return true;
 			})
 			.orElse(false);

@@ -418,6 +418,11 @@ public class ItemRequirement extends AbstractRequirement
 	 *
 	 * @return a new {@link ItemRequirement} instance that is not considered a consumed item
 	 */
+	public boolean isConsumed()
+	{
+		return isConsumedItem;
+	}
+
 	public ItemRequirement isNotConsumed()
 	{
 		ItemRequirement newItem = copy();

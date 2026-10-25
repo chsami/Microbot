@@ -313,6 +313,7 @@ public class TheTouristTrap extends BasicQuestHelper
 		goUpToSiad = new ObjectStep(this, ObjectID.TOURTRAP_QIP_LADDER, new WorldPoint(3290, 3036, 0), "Climb up the ladder in the building in the camp.", bedabinKey);
 		searchBookcase = new ObjectStep(this, ObjectID.CAPT_SIAD_BOOKCASE, new WorldPoint(3284, 3033, 1), "Search the south west bookcase.");
 		talkToSiad = new NpcStep(this, NpcID.CAPT_SIAD, new WorldPoint(3292, 3032, 1), "Talk to Captain Siad about sailing to distract him.", bedabinKey);
+		((NpcStep) talkToSiad).addAlternateNpcs(NpcID.CAPT_SIAD_VIS);
 		talkToSiad.addDialogSteps("I wanted to have a chat?", "You seem to have a lot of books!", "So, you're interested in sailing?", "I could tell by the cut of your jib.");
 		searchChest = new ObjectStep(this, ObjectID.CAPTAIN_SIADS_CHEST_CLOSED, new WorldPoint(3292, 3033, 1), "Search the chest.");
 		searchChest.addDialogSteps("I wanted to have a chat?", "You seem to have a lot of books!", "So, you're interested in sailing?", "I could tell by the cut of your jib.");

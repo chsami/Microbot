@@ -167,8 +167,9 @@ public class ShieldOfArravPhoenixGang extends BasicQuestHelper
 			"Trade your weapon store key to your partner. If you can't trade, use the key on them to drop it at their feet. " +
 				"AFTERWARDS, talk to Curator Haig in the Varrock Museum.", shieldHalf);
 		talkToHaig.addSubSteps(leaveAfterGettingShieldHalf);
-		talkToRoald = new NpcStep(this, NpcID.KING_ROALD_CUTSCENE, new WorldPoint(3222, 3473, 0),
+		talkToRoald = new NpcStep(this, NpcID.KING_ROALD, new WorldPoint(3222, 3473, 0),
 			"Talk to King Roald in Varrock Castle to finish the quest.", certificate);
+		((NpcStep) talkToRoald).addAlternateNpcs(NpcID.KING_ROALD_CUTSCENE);
 
 		tradeCertificateHalf = new DetailedQuestStep(this,
 			"Trade one of your certificate halves for the other half with another player.  If you cannot trade, use " +

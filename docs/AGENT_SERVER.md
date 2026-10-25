@@ -839,6 +839,36 @@ curl -X POST -H "Content-Type: application/json" \
 - `404` — No profile matches the given name (response includes `available` list)
 - `503` — Profile system not initialized
 
+### Quest Helper
+
+`POST /quest-helper/start` with `{"name": "<quest display name>"}` starts a quest. The first time a quest runs (with the "Ask for quest setup" toggle on) the quester shows a quest setup dialog: gear, food, potions, prayer, stamina potions, extra inventory items, free slots for quest items, and a style and gear per fight. `GET /quest-helper/status` reports `"awaitingSetup": true` while that dialog is open, and `"preflight"` (see below). Answer it up front with optional fields, saved for that quest so no dialog appears:
+
+```json
+{"name": "Priest in Peril",
+ "combat": {"food": "Lobster", "foodQty": 10, "eatAtPercent": 50, "potion": "prayer_potion", "potionQty": 2,
+   "prayer": "protect_melee", "drinkAtPrayer": 20, "style": "auto"},
+ "gear": "worn",
+ "inventory": [{"name": "Law rune", "qty": 50, "stackable": true}, {"name": "Games necklace", "qty": 1}],
+ "reserveSlots": 6,
+ "stamina": {"type": "stamina", "qty": 2, "drinkAtEnergy": 30},
+ "fights": {"Temple Guardian": {"style": "ranged", "gear": {"setup": "Quest ranged"}},
+            "Monk of Zamorak": {"style": "melee"}}}
+```
+
+- `combat`: an object, or `"skip"` (fight with current gear, bring no food or potions). `style`: auto | melee | ranged | magic (auto reads the worn weapon). `potion`: none | prayer_potion | super_restore. `prayer`: off | quick | protect_melee | protect_range | protect_magic.
+- `gear` (main gear): `"worn"` (snapshot of what is equipped now), `{"setup": "<Inventory Setup name>"}`, or `{"items": [{"id": 1163, "slot": "head"}, {"name": "Rune scimitar", "slot": "weapon"}]}` (id or name; slot is head, cape, amulet, weapon, body, shield, legs, gloves, boots, ring or ammo). Pieces not worn are put on from the inventory or withdrawn from the bank before the fight.
+- `inventory`: items to bring, withdrawn in the supply bank trip (`stackable` counts as one slot). `reserveSlots` (0-27): free slots always kept for quest items; omitted means the quest's own estimate.
+- `stamina`: `{"type": "none|stamina|energy", "qty": 2, "drinkAtEnergy": 30}`; fetched in the same trip as food and drunk when run energy falls to the threshold. Works for quests without fights.
+- `fights`: keyed by fight name (case and "(level N)" ignored), each `{"style": ..., "gear": ...}` (or `"gearSetup": "<name>"`). A fight without an entry uses the main style and gear.
+- `preflight`: `false` skips the quest items check for this start (default `true`, also controlled by the "Check and buy all quest items before starting" Quest Helper toggle).
+- Without `combat`, `gear`, `inventory`, `stamina` and `fights` are merged into the saved setup, or into one that brings no food. A bad value returns 400 naming the field. Saved setups are cleared with the "Reset quest setups" Quest Helper toggle.
+
+#### Quest items preflight
+
+Once the setup dialog is answered, each quest start runs a one-time preflight: the tradable items the whole quest still needs (quest-level requirements when the quest is not started, plus the requirements of every remaining step) are counted across inventory, equipment and bank, and any shortfall is bought from the Grand Exchange and left in the bank. Quest-given items, items a step picks up or loots itself, coins and placeholder requirements are ignored; duplicates across steps take the largest quantity. If the bank has not been opened this session the quester opens it once to count. One INFO line summarises it, e.g. `Quest helper preflight for The Restless Ghost: Rope x1 (in bank), Air rune x6 (buying)`. If gp is short the quester stops with a message listing the missing items and the estimated cost.
+
+`GET /quest-helper/status` reports `"preflight"`: `pending` (not reached yet), `checking`, `buying`, `done` (finished, skipped or disabled), or `failed: <reason>`.
+
 ### Script Lifecycle
 
 The examples below use the Microbot-Hub `ExamplePlugin` (`net.runelite.client.plugins.microbot.example`); it is no longer bundled with the client.

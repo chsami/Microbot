@@ -239,6 +239,15 @@ public class ObjectStep extends DetailedQuestStep
 		}
 	}
 
+	/** All object ids this step accepts (primary first, then alternates). */
+	public List<Integer> getAllObjectIds()
+	{
+		List<Integer> ids = new ArrayList<>();
+		ids.add(objectID);
+		ids.addAll(alternateObjectIDs);
+		return ids;
+	}
+
 	public ObjectStep addAlternateObjects(Integer... alternateObjectIDs)
 	{
 		this.alternateObjectIDs.addAll(Arrays.asList(alternateObjectIDs));

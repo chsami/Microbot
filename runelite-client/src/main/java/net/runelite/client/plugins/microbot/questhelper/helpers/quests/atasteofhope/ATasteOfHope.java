@@ -383,6 +383,7 @@ public class ATasteOfHope extends BasicQuestHelper
 		);
 
 		talkToGarth = new NpcStep(this, NpcID.MYQ4_GARTH, new WorldPoint(3668, 3217, 0), "Talk to Garth outside the Theatre of Blood.");
+		((NpcStep) talkToGarth).addAlternateNpcs(NpcID.MYQ4_GARTH_VIS);
 		talkToGarth.addDialogStep("Yes.");
 
 		pressDecoratedWall = new ObjectStep(this, ObjectID.SANG_MYREQUE_HIDEOUT_SYMBOL_MULTI, new WorldPoint(3638, 3251, 0), "Enter the Meiyerditch Myreque base. The easiest way to get there is to have a Vyrewatch take you to the mines, escape by mining 15 rocks, then head south from there.");
@@ -398,6 +399,7 @@ public class ATasteOfHope extends BasicQuestHelper
 			"Return to the Theatre of Blood and attempt to climb rubble in its south west corner.");
 		talkToHarpert = new NpcStep(this, NpcID.MYQ4_HARPERT, new WorldPoint(3644, 3211, 0),
 			"Talk to Harpert near the rubble.", coins1000);
+			((NpcStep) talkToHarpert).addAlternateNpcs(NpcID.MYQ4_HARPERT_VIS);
 		talkToHarpert.addDialogStep("Fine, here's the money.");
 		climbRubbleAfterHarpert = new ObjectStep(this, ObjectID.MYQ4_OBSTACLE_RUBBLE_01, new WorldPoint(3642, 3207, 0),
 			"Attempt to climb the rubble again.");

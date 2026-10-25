@@ -741,6 +741,7 @@ public class QuestHelperPanel extends PluginPanel
 		if ("true".equals(configManager.getConfiguration(QuestHelperConfig.QUEST_BACKGROUND_GROUP, "selected-assist-level")))
 		{
 			searchQuestsPanel.setVisible(true);
+			net.runelite.client.plugins.microbot.questhelper.combat.QuestCombatHandler.noteQuestStarted();
 			questManager.startUpQuest(questHelper, true);
 		}
 		else
