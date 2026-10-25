@@ -860,6 +860,7 @@ curl -X POST -H "Content-Type: application/json" \
 - `inventory`: items to bring, withdrawn in the supply bank trip (`stackable` counts as one slot). `reserveSlots` (0-27): free slots always kept for quest items; omitted means the quest's own estimate.
 - `stamina`: `{"type": "none|stamina|energy", "qty": 2, "drinkAtEnergy": 30}`; fetched in the same trip as food and drunk when run energy falls to the threshold. Works for quests without fights.
 - `fights`: keyed by fight name (case and "(level N)" ignored), each `{"style": ..., "gear": ...}` (or `"gearSetup": "<name>"`). A fight without an entry uses the main style and gear.
+- `obtainMissingItems`: `"YES"`, `"NO"` or `"ASK"`; whether the quester buys/withdraws missing quest items (the "Obtain Missing Items" Quest Helper setting, also offered as "Buy missing items" in the setup dialog). Saved to that setting. With `NO` the quester never buys: a step needing a missing must-be-worn item waits with a status message instead of proceeding, and preflight only reports. `ASK` (default) pauses the quester until the prompt is answered.
 - `preflight`: `false` skips the quest items check for this start (default `true`, also controlled by the "Check and buy all quest items before starting" Quest Helper toggle).
 - Without `combat`, `gear`, `inventory`, `stamina` and `fights` are merged into the saved setup, or into one that brings no food. A bad value returns 400 naming the field. Saved setups are cleared with the "Reset quest setups" Quest Helper toggle.
 

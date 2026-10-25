@@ -27,6 +27,18 @@ public class QuestPreflightTest
 	}
 
 	@Test
+	public void notedStockIsFoldedOncePerIdAcrossDuplicateNeeds()
+	{
+		Map<Integer, Integer> onPlayer = owned(1512, 5);
+		Map<Integer, Integer> owned = owned(1512, 5);
+		List<QuestPreflight.Need> needs = Arrays.asList(need("Logs", 5, true, 1511), need("Logs", 3, true, 1511));
+		QuestPreflight.foldNoted(needs, id -> id == 1511 ? 1512 : -1, onPlayer, owned);
+		assertEquals(5, (int) onPlayer.get(1511));
+		assertEquals(5, (int) owned.get(1511));
+		assertEquals(0, QuestPreflight.compute(needs, owned).get(0).missing);
+	}
+
+	@Test
 	public void reportsOnlyTheShortfall()
 	{
 		List<QuestPreflight.Shortfall> out = QuestPreflight.compute(

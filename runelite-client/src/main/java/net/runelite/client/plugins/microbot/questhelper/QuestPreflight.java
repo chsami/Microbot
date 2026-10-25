@@ -23,6 +23,45 @@ public final class QuestPreflight
 	private static volatile String status = PENDING;
 	private static final AtomicBoolean SKIP_NEXT = new AtomicBoolean(false);
 
+
+	/** Quests that cannot be finished solo: enum names of {@code QuestHelperQuest} mapped to what the other player does. */
+	private static final Map<String, String> NEEDS_ANOTHER_PLAYER = new java.util.LinkedHashMap<>();
+
+	static
+	{
+		NEEDS_ANOTHER_PLAYER.put("SHIELD_OF_ARRAV_PHOENIX_GANG", "trade the certificate half / key");
+		NEEDS_ANOTHER_PLAYER.put("SHIELD_OF_ARRAV_BLACK_ARM_GANG", "trade the certificate half / key");
+		NEEDS_ANOTHER_PLAYER.put("HEROES_QUEST", "trade the other gang's key");
+	}
+
+	/** Whether the quest (a {@code QuestHelperQuest} enum name) needs a second player. */
+	public static boolean needsAnotherPlayer(String questEnumName)
+	{
+		return questEnumName != null && NEEDS_ANOTHER_PLAYER.containsKey(questEnumName);
+	}
+
+	/** The failed status for such a quest, or null when it can be done solo. */
+	public static String anotherPlayerFailure(String questEnumName, String questDisplayName)
+	{
+		String task = questEnumName == null ? null : NEEDS_ANOTHER_PLAYER.get(questEnumName);
+		return task == null ? null
+			: FAILED_PREFIX + questDisplayName + " needs another player to " + task + " - can't be done solo";
+	}
+
+	/** Any dose of any antifire potion, for quests with a dragon fight; the caller adds it to the needs list. */
+	public static Need antifireNeed()
+	{
+		return new Need("Antifire potion", java.util.Arrays.asList(
+			net.runelite.api.ItemID.ANTIFIRE_POTION4, net.runelite.api.ItemID.ANTIFIRE_POTION3,
+			net.runelite.api.ItemID.ANTIFIRE_POTION2, net.runelite.api.ItemID.ANTIFIRE_POTION1,
+			net.runelite.api.ItemID.EXTENDED_ANTIFIRE4, net.runelite.api.ItemID.EXTENDED_ANTIFIRE3,
+			net.runelite.api.ItemID.EXTENDED_ANTIFIRE2, net.runelite.api.ItemID.EXTENDED_ANTIFIRE1,
+			net.runelite.api.ItemID.SUPER_ANTIFIRE_POTION4, net.runelite.api.ItemID.SUPER_ANTIFIRE_POTION3,
+			net.runelite.api.ItemID.SUPER_ANTIFIRE_POTION2, net.runelite.api.ItemID.SUPER_ANTIFIRE_POTION1,
+			net.runelite.api.ItemID.EXTENDED_SUPER_ANTIFIRE4, net.runelite.api.ItemID.EXTENDED_SUPER_ANTIFIRE3,
+			net.runelite.api.ItemID.EXTENDED_SUPER_ANTIFIRE2, net.runelite.api.ItemID.EXTENDED_SUPER_ANTIFIRE1), 1, true);
+	}
+
 	private QuestPreflight()
 	{
 	}
@@ -36,6 +75,7 @@ public final class QuestPreflight
 		/** False for items the quest does not use up ({@code isNotConsumed()}). */
 		public final boolean consumed;
 
+		/** A requirement satisfied by any of {@code ids}, needing {@code quantity} in total. */
 		public Need(String name, List<Integer> ids, int quantity, boolean consumed)
 		{
 			this.name = name;
@@ -129,6 +169,43 @@ public final class QuestPreflight
 		return out;
 	}
 
+	/**
+	 * Adds the noted stock the player carries to its unnoted id, once per item id however many needs list that id.
+	 *
+	 * @param notedVariant noted id for an unnoted id, or a value <= 0 when there is none
+	 * @param onPlayer inventory + equipment counts, updated in place
+	 * @param owned inventory + equipment + bank counts, updated in place
+	 */
+	static void foldNoted(List<Need> needs, java.util.function.IntUnaryOperator notedVariant,
+		Map<Integer, Integer> onPlayer, Map<Integer, Integer> owned)
+	{
+		Set<Integer> folded = new java.util.HashSet<>();
+		for (Need need : needs)
+		{
+			if (need == null || need.ids == null)
+			{
+				continue;
+			}
+			for (Integer id : need.ids)
+			{
+				if (id == null || !folded.add(id))
+				{
+					continue;
+				}
+				int notedId = notedVariant.applyAsInt(id);
+				if (notedId > 0)
+				{
+					int noted = onPlayer.getOrDefault(notedId, 0);
+					if (noted > 0)
+					{
+						onPlayer.merge(id, noted, Integer::sum);
+						owned.merge(id, noted, Integer::sum);
+					}
+				}
+			}
+		}
+	}
+
 	/** Total held of the given ids (each id counted once). */
 	public static int countOwned(Iterable<Integer> ids, Map<Integer, Integer> owned)
 	{
@@ -150,11 +227,13 @@ public final class QuestPreflight
 		return status;
 	}
 
+	/** Sets the status reported to the Agent Server. */
 	static void setStatus(String value)
 	{
 		status = value;
 	}
 
+	/** True while the preflight is counting or buying. */
 	static boolean isInProgress()
 	{
 		return CHECKING.equals(status) || BUYING.equals(status);
@@ -166,6 +245,7 @@ public final class QuestPreflight
 		SKIP_NEXT.set(skip);
 	}
 
+	/** Reads and clears the skip flag set by {@link #skipNextStart(boolean)}. */
 	static boolean consumeSkip()
 	{
 		return SKIP_NEXT.getAndSet(false);

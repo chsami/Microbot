@@ -113,9 +113,9 @@ public class FightArena extends BasicQuestHelper
 	{
 		inCell = new ZoneRequirement(cell);
 		inArena = new ZoneRequirement(arena1);
-		inArenaWithOgre = and(inArena, new NpcCondition(NpcID.ARENA_OGRE, arena1));
-		inArenaWithScorpion = and(inArena, new NpcCondition(NpcID.ARENA_SCORPION, arena1));
-		inArenaWithBouncer = and(inArena, new NpcCondition(NpcID.ARENA_BOUNCER, arena1));
+		inArenaWithOgre = and(inArena, new NpcCondition(NpcID.ARENA_OGRE, arena1).addAlternateNpcs(NpcID.ARENA_OGRE_VIS));
+		inArenaWithScorpion = and(inArena, new NpcCondition(NpcID.ARENA_SCORPION, arena1).addAlternateNpcs(NpcID.ARENA_SCORPION_VIS));
+		inArenaWithBouncer = and(inArena, new NpcCondition(NpcID.ARENA_BOUNCER, arena1).addAlternateNpcs(NpcID.ARENA_BOUNCER_VIS));
 
 		coins = new ItemRequirement("Coins", ItemCollections.COINS, 5);
 

@@ -612,3 +612,29 @@ if (!isCanvasPointInsideViewport(canvasPoint, viewport)
 **Where this applies:** `Rs2WalkerMovement.sceneCanvasPoint`, `Rs2WalkerMovement.isSceneCanvasClickable`, `Rs2WalkerMovement.dispatchSceneWalk`, and any helper that clicks a projected canvas point with a `WALK` entry.
 
 **Defensive check:** Assert points inside, touching and outside overlay rectangles against `isCanvasPointCoveredByInterface`, as in `Rs2WalkerUnitTest.sceneClickRejectsPointsCoveredByVisibleInterfaces`.
+
+## 31. Minigame teleports make a far bank look free to "nearest bank"
+
+The pathfinder prices minigame teleports (Soul Wars, Clan Wars) as nearly free, so a multi-target search for the nearest bank can pick `ISLE_OF_SOULS` from Falador and walk to a portal.
+
+**Why this matters:** a quester short of items walked from Falador to Edgeville to take the Soul Wars portal to a bank 1000 tiles away.
+
+**Pattern to follow:** `Rs2Bank.getPathAndBankToNearestBank` drops minigame-only banks unless within 40 tiles and re-plans without a bank whose route uses a minigame teleport, or whose tile distance is over 3x the nearest bank, unless the route uses an item or spell teleport (`NearestBankPolicy`).
+
+**Where this applies:** any "nearest X" chosen from pathfinder cost alone.
+
+## 32. A conversation opened by the walker is answered by the walker, not by the caller's tick
+
+Opening a guarded door can raise a dialogue menu (Black Knights' Fortress: "[2] I don't care. I'm going in anyway."). While the walker loop runs, the quest driver's tick that applies the step's choices is not reached, so nothing answered and the door retried forever.
+
+**Pattern to follow:** the quest driver publishes the active step's wanted options with `DialogueChoiceProvider.set(...)`; `Rs2WalkerAwaits.awaitDoorInteractionProgress` calls `DialogueChoiceProvider.answerOpenDialogue(...)` after a door interaction. Without a published match nothing is clicked, so quest-lock detection still reads the dialogue text. Continues are only clicked after an option was answered.
+
+**Where this applies:** `Rs2WalkerAwaits`, `Rs2WalkerDoors`, `QuestScript`.
+
+## 33. An enclosed start tile is not "no bank exists"
+
+Inside the Black Knights' Fortress the only exits are push-walls and ladders that were missing from `transports.tsv`, so the search expanded one tile and "nearest bank" returned null on every quester tick.
+
+**Pattern to follow:** `Rs2Bank.getPathAndBankToNearestBank` re-seeds the search from nearby standable tiles (`Rs2PathApi.isStandable`), then falls back to the straight-line nearest bank (the walker handles doors/ladders via the scene) and backs off 45 s for the same tile (`NearestBankPolicy`). Missing object transports (push walls, ladders) belong in the TSV.
+
+**Where this applies:** any helper that treats a failed/partial pathfinder result as "unreachable".

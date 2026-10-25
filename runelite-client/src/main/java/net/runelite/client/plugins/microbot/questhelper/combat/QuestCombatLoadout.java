@@ -22,6 +22,7 @@ import lombok.Data;
 @Data
 public class QuestCombatLoadout
 {
+	/** Combat potion the setup can bring. */
 	public enum Potion
 	{
 		NONE("None", ""),
@@ -49,6 +50,7 @@ public class QuestCombatLoadout
 		}
 	}
 
+	/** Protection prayer the setup can use. */
 	public enum Prayer
 	{
 		OFF("Off"),
@@ -71,6 +73,7 @@ public class QuestCombatLoadout
 		}
 	}
 
+	/** Combat style (attack type) of a fight. */
 	public enum Style
 	{
 		AUTO("Auto (from worn weapon)"),
@@ -92,6 +95,7 @@ public class QuestCombatLoadout
 		}
 	}
 
+	/** Run-energy potion the setup can bring. */
 	public enum StaminaType
 	{
 		NONE("None", ""),
@@ -133,6 +137,7 @@ public class QuestCombatLoadout
 		{
 		}
 
+		/** Creates a worn item; null name or slot become empty. */
 		public GearItem(int id, String name, String slot, int qty)
 		{
 			this.id = id;
@@ -156,6 +161,7 @@ public class QuestCombatLoadout
 		{
 		}
 
+		/** Creates an inventory item; a null name becomes empty. */
 		public InventoryItem(String name, int id, int qty, boolean stackable)
 		{
 			this.name = name == null ? "" : name;
@@ -176,12 +182,14 @@ public class QuestCombatLoadout
 		{
 		}
 
+		/** Creates a gear spec; null values become empty. */
 		public GearSpec(String setup, List<GearItem> items)
 		{
 			this.setup = setup == null ? "" : setup.trim();
 			this.items = items == null ? new ArrayList<>() : new ArrayList<>(items);
 		}
 
+		/** True when neither a setup name nor items are given. */
 		public boolean isEmpty()
 		{
 			return (setup == null || setup.isEmpty()) && (items == null || items.isEmpty());
@@ -196,6 +204,7 @@ public class QuestCombatLoadout
 		private String gearSetup = "";
 		private List<GearItem> gearItems = new ArrayList<>();
 
+		/** The gear this fight overrides with. */
 		public GearSpec gear()
 		{
 			return new GearSpec(gearSetup, gearItems);
@@ -233,6 +242,7 @@ public class QuestCombatLoadout
 	/** Per-fight overrides keyed by {@link #fightKey(String)}. */
 	private Map<String, FightSetup> fights = new LinkedHashMap<>();
 
+	/** A loadout that brings nothing and leaves gear alone (the user chose to skip the setup). */
 	public static QuestCombatLoadout skipped()
 	{
 		QuestCombatLoadout loadout = new QuestCombatLoadout();
@@ -252,26 +262,31 @@ public class QuestCombatLoadout
 		return loadout.normalised();
 	}
 
+	/** True when food should be brought. */
 	public boolean wantsFood()
 	{
 		return !skip && foodQty > 0 && !food.isEmpty();
 	}
 
+	/** True when combat potions should be brought. */
 	public boolean wantsPotions()
 	{
 		return !skip && potion != Potion.NONE && potionQty > 0;
 	}
 
+	/** True when a protection prayer should be used. */
 	public boolean usesPrayer()
 	{
 		return !skip && prayer != Prayer.OFF;
 	}
 
+	/** True when run-energy potions should be brought. */
 	public boolean wantsStamina()
 	{
 		return useStamina && staminaType != StaminaType.NONE && staminaQty > 0;
 	}
 
+	/** True when custom inventory items are configured. */
 	public boolean wantsInventoryItems()
 	{
 		return !inventoryItems.isEmpty();
@@ -283,6 +298,7 @@ public class QuestCombatLoadout
 		return wantsStamina() || wantsInventoryItems();
 	}
 
+	/** The main gear spec, empty when the setup is skipped. */
 	public GearSpec mainGear()
 	{
 		return skip ? new GearSpec() : new GearSpec(gearSetup, gearItems);
@@ -389,6 +405,7 @@ public class QuestCombatLoadout
 		return out;
 	}
 
+	/** Serialises the loadout for the config store. */
 	public String toJson()
 	{
 		return GSON.toJson(this);

@@ -151,6 +151,29 @@ public class QuestHelperHandler extends AgentHandler
 			return;
 		}
 
+		QuestHelperConfig.ObtainMissingItemsOption obtainOption = null;
+		Object obtainRaw = body.get("obtainMissingItems");
+		if (obtainRaw != null)
+		{
+			if (obtainRaw instanceof String)
+			{
+				try
+				{
+					obtainOption = QuestHelperConfig.ObtainMissingItemsOption
+						.valueOf(((String) obtainRaw).trim().toUpperCase(java.util.Locale.ROOT));
+				}
+				catch (IllegalArgumentException e)
+				{
+					obtainOption = null;
+				}
+			}
+			if (obtainOption == null)
+			{
+				sendJson(exchange, 400, errorResponse("obtainMissingItems must be YES, NO or ASK"));
+				return;
+			}
+		}
+
 		QuestHelper helper = QuestHelperQuest.getByName(name);
 		Object combat = body.get("combat");
 		boolean hasExtras = false;
@@ -208,6 +231,13 @@ public class QuestHelperHandler extends AgentHandler
 		{
 			sendJson(exchange, 400, errorResponse("preflight must be true or false"));
 			return;
+		}
+		if (obtainOption != null)
+		{
+			Microbot.getConfigManager().setConfiguration(
+				QuestHelperConfig.QUEST_HELPER_GROUP,
+				"obtainMissingItems",
+				obtainOption);
 		}
 		// The quest script reads this when it sees the start, so it applies to this start only
 		QuestPreflight.skipNextStart(Boolean.FALSE.equals(preflight));

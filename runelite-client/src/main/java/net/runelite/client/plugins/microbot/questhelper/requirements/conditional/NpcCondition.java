@@ -36,6 +36,7 @@ import java.util.ArrayList;
 public class NpcCondition extends ConditionForStep
 {
 	private final int npcID;
+	private int[] alternateNpcIDs = new int[0];
 	private final ArrayList<NPC> npcs = new ArrayList<>();
 	private boolean npcInScene = false;
 	private final Zone zone;
@@ -65,12 +66,39 @@ public class NpcCondition extends ConditionForStep
 		this.zone = zone;
 	}
 
+	/**
+	 * Also accept these NPC ids (for example the {@code _VIS} sibling of the base id).
+	 *
+	 * @return this condition
+	 */
+	public NpcCondition addAlternateNpcs(int... ids)
+	{
+		this.alternateNpcIDs = ids == null ? new int[0] : ids.clone();
+		return this;
+	}
+
+	private boolean matchesId(int id)
+	{
+		if (id == npcID)
+		{
+			return true;
+		}
+		for (int alternate : alternateNpcIDs)
+		{
+			if (id == alternate)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
 	@Override
 	public void initialize(Client client)
 	{
 		for (NPC npc : client.getTopLevelWorldView().npcs())
 		{
-			if (npcID == npc.getId())
+			if (matchesId(npc.getId()))
 			{
 				this.npcs.add(npc);
 				npcInScene = true;
@@ -116,7 +144,7 @@ public class NpcCondition extends ConditionForStep
 
 	public void checkNpcSpawned(NPC npc)
 	{
-		if (npc.getId() == this.npcID)
+		if (matchesId(npc.getId()))
 		{
 			npcs.add(npc);
 			npcInScene = true;
@@ -134,13 +162,13 @@ public class NpcCondition extends ConditionForStep
 
 	public void checkNpcChanged(NpcChanged npcChanged)
 	{
-		if (npcs.contains(npcChanged.getNpc()) && npcChanged.getNpc().getId() != this.npcID)
+		if (npcs.contains(npcChanged.getNpc()) && !matchesId(npcChanged.getNpc().getId()))
 		{
 			this.npcs.remove(npcChanged.getNpc());
 			npcInScene = false;
 		}
 
-		if (npcChanged.getNpc().getId() == this.npcID)
+		if (matchesId(npcChanged.getNpc().getId()))
 		{
 			this.npcs.add(npcChanged.getNpc());
 			npcInScene = true;

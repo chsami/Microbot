@@ -107,6 +107,7 @@ public class ItemRequirement extends AbstractRequirement
 	 * Whether the item should be highlighted in the inventory.
 	 */
 	@Setter
+	@Getter
 	protected boolean highlightInInventory;
 
 	/**

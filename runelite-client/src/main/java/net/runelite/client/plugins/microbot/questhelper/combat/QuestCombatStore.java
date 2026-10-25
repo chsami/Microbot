@@ -13,6 +13,7 @@ public final class QuestCombatStore
 	{
 	}
 
+	/** The saved loadout for the quest, or null when none is stored. */
 	public static QuestCombatLoadout load(String questKey)
 	{
 		ConfigManager configManager = Microbot.getConfigManager();
@@ -24,6 +25,7 @@ public final class QuestCombatStore
 			configManager.getConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, KEY_PREFIX + questKey));
 	}
 
+	/** Stores the loadout for the quest. */
 	public static void save(String questKey, QuestCombatLoadout loadout)
 	{
 		ConfigManager configManager = Microbot.getConfigManager();
@@ -33,6 +35,7 @@ public final class QuestCombatStore
 		}
 	}
 
+	/** Removes every stored quest loadout. */
 	public static void clearAll()
 	{
 		ConfigManager configManager = Microbot.getConfigManager();

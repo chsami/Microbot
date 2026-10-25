@@ -28,7 +28,6 @@ import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
 /** Decides whether a quest has fights, which ones, and whether a step is one. */
 public final class QuestCombatDetector
 {
-	private static final Pattern KILL_TEXT = Pattern.compile("\\b(kill|defeat|fight|slay)", Pattern.CASE_INSENSITIVE);
 	private static final Pattern TARGET = Pattern.compile(
 		"\\b(?:kill|defeat|fight|slay)\\s+(?:the\\s+|a\\s+|an\\s+|some\\s+|all\\s+|any\\s+)?(?:\\d+\\s+)?(.+?)"
 			+ "(?=\\s*\\(|[.,;!:]|\\s+(?:to|for|with|in|at|on|using|until|and|so|from|by|inside|outside|near"
@@ -61,27 +60,19 @@ public final class QuestCombatDetector
 	{
 	}
 
+	/** True when the step text asks the player to kill something. */
 	public static boolean isKillText(List<String> text)
 	{
-		if (text == null)
-		{
-			return false;
-		}
-		for (String line : text)
-		{
-			if (line != null && KILL_TEXT.matcher(line).find())
-			{
-				return true;
-			}
-		}
-		return false;
+		return net.runelite.client.plugins.microbot.questhelper.KillStepRule.isKillText(text);
 	}
 
+	/** True for an NPC step whose text asks the player to kill something. */
 	public static boolean isKillStep(QuestStep step)
 	{
 		return step instanceof NpcStep && isKillText(step.getText());
 	}
 
+	/** True when the quest has any fight, from its combat requirements or its kill steps. */
 	public static boolean hasFights(QuestHelper quest)
 	{
 		List<String> requirements = quest.getCombatRequirements();
@@ -301,6 +292,7 @@ public final class QuestCombatDetector
 		return null;
 	}
 
+	/** The first level number found in the text, or 0 when none. */
 	static int parseLevel(List<String> text)
 	{
 		if (text != null)

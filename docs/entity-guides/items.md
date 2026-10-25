@@ -293,3 +293,13 @@ While a shop, bank, deposit box or Grand Exchange inventory is open or rebuildin
 An owning script can set `withMissingSupplyHandler` on its Inventory Setup loader to keep its scheduled loop alive while `TerminalLogoutPrompt` closes the bank and requests logout. Do not show a blocking shortage notification or cancel that loop until `LOGGED_OUT` is observed. The default loader policy stays unchanged when no handler is supplied; ordinary breaks and world hops do not arm terminal Auto Login suppression.
 
 The observed terminal state is `LOGIN_SCREEN`; loading, hopping, connection loss and login transitions are not successful logout. A terminal prompt requests Auto Login suppression once across its retries so an explicit script/Auto Login restart is not repeatedly re-blocked by the old prompt.
+
+## 18. Charged items and dosed potions are one item per charge, so match by name family
+
+Glories, rings of wealth, games necklaces, combat bracelets and potions are separate item ids per charge or dose, named like `Ring of wealth (4)` or `Prayer potion(3)`. Matching a saved item by its recorded id (or exact name) misses the same item at another charge.
+
+**Why this matters:** a quest-setup snapshot recorded `Ring of wealth (4)`; the player owned a different charge and the restore logged `is not in the bank, continuing without it`.
+
+**Pattern to follow:** compare names with the trailing `(n)` stripped (`ChargedItemNames.sameFamily`) and pick the exact id, else the highest charge, else the uncharged base (`ChargedItemNames.pick`).
+
+**Where this applies:** questhelper/combat gear restore and custom-item withdrawals.

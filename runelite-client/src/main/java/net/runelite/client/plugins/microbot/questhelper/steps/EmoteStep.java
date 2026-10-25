@@ -41,6 +41,7 @@ import java.awt.image.BufferedImage;
 public class EmoteStep extends DetailedQuestStep
 {
 	private boolean hasScrolled;
+	@lombok.Getter
 	private final QuestEmote emote;
 
 	public EmoteStep(QuestHelper questHelper, QuestEmote emote, WorldPoint worldPoint, String text, Requirement... requirements)

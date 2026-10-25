@@ -108,7 +108,7 @@ public class ChildrenOfTheSun extends BasicQuestHelper
 	@Override
 	protected void setupRequirements()
 	{
-		isFollowing = new NpcRequirement("Guard", NpcID.VMQ1_BAG_GUARD);
+		isFollowing = new NpcRequirement("Guard", NpcID.VMQ1_BAG_GUARD).addAlternateNpcs(NpcID.VMQ1_BAG_GUARD_VIS);
 		markedGuard1 = new VarbitRequirement(GUARD_1_CHANGE_VARBIT, 2);
 		markedGuard2 = new VarbitRequirement(GUARD_2_CHANGE_VARBIT, 2);
 		markedGuard3 = new VarbitRequirement(GUARD_3_CHANGE_VARBIT, 2);

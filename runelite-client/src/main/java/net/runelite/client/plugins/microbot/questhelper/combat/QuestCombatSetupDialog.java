@@ -51,6 +51,7 @@ import net.runelite.client.plugins.microbot.questhelper.combat.QuestCombatLoadou
  */
 public final class QuestCombatSetupDialog
 {
+	/** How the setup dialog was closed. */
 	public enum Outcome
 	{
 		SAVE, SKIP,
@@ -60,6 +61,7 @@ public final class QuestCombatSetupDialog
 		DISMISSED
 	}
 
+	/** The dialog outcome and, when saved, the chosen loadout. */
 	public static final class Result
 	{
 		public final Outcome outcome;
@@ -83,6 +85,8 @@ public final class QuestCombatSetupDialog
 		public String wornWeapon = "";
 		public List<InventoryItem> inventory = new ArrayList<>();
 		public int defaultReserve = 4;
+		/** Current "Obtain Missing Items" setting (ASK, YES or NO). */
+		public String obtainMissingItems = "ASK";
 	}
 
 	private enum Kind
@@ -241,6 +245,7 @@ public final class QuestCombatSetupDialog
 		private JSpinner staminaQty;
 		private JSpinner staminaAt;
 		private JSpinner reserve;
+		private JComboBox<String> obtainMissing;
 		private DefaultTableModel itemModel;
 		private JTable itemTable;
 		private JLabel slots = new JLabel();
@@ -400,6 +405,10 @@ public final class QuestCombatSetupDialog
 			row = addRow(panel, row, "Potion quantity (stamina/energy)", staminaQty);
 			row = addRow(panel, row, "Drink at run energy %", staminaAt);
 			row = addRow(panel, row, "Keep free slots for quest items", reserve);
+			obtainMissing = new JComboBox<>(new String[]{"Ask", "Yes", "No"});
+			obtainMissing.setSelectedItem(capitalise(ctx.obtainMissingItems));
+			obtainMissing.setToolTipText("Buy or withdraw missing quest items from the bank and Grand Exchange");
+			row = addRow(panel, row, "Buy missing items", obtainMissing);
 			filler(panel, row);
 			for (JSpinner s : new JSpinner[]{foodQty, eatAt, potionQty, drinkAt, staminaQty, staminaAt, reserve})
 			{
@@ -681,8 +690,40 @@ public final class QuestCombatSetupDialog
 				loadout.setPrayer(QuestCombatLoadout.Prayer.OFF);
 				loadout.setFights(new java.util.LinkedHashMap<>());
 			}
+			saveObtainMissing();
 			answer = new Result(outcome, loadout.normalised());
 			dialog.dispose();
+		}
+
+		private void saveObtainMissing()
+		{
+			try
+			{
+				Object selected = obtainMissing == null ? null : obtainMissing.getSelectedItem();
+				if (selected != null && net.runelite.client.plugins.microbot.Microbot.getConfigManager() != null)
+				{
+					net.runelite.client.plugins.microbot.Microbot.getConfigManager().setConfiguration(
+						net.runelite.client.plugins.microbot.questhelper.QuestHelperConfig.QUEST_HELPER_GROUP,
+						"obtainMissingItems",
+						net.runelite.client.plugins.microbot.questhelper.QuestHelperConfig.ObtainMissingItemsOption
+							.valueOf(selected.toString().toUpperCase(Locale.ROOT)));
+				}
+			}
+			catch (RuntimeException e)
+			{
+				net.runelite.client.plugins.microbot.Microbot.log("Quest helper: could not save Buy missing items: " + e,
+					org.slf4j.event.Level.WARN);
+			}
+		}
+
+		private static String capitalise(String value)
+		{
+			if (value == null || value.isEmpty())
+			{
+				return "Ask";
+			}
+			String lower = value.toLowerCase(Locale.ROOT);
+			return Character.toUpperCase(lower.charAt(0)) + lower.substring(1);
 		}
 
 		private boolean confirm(String message)

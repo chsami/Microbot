@@ -6008,3 +6008,8 @@
 3546 9686 3	3567 3274 0	Climb-up;Staircase;20670							Y	1	Karil's Barrow exit
 3566 9683 3	3553 3281 0	Climb-up;Staircase;20671							Y	1	Torag's Barrow exit
 3578 9704 3	3556 3297 0	Climb-up;Staircase;20672							Y	1	Verac's Barrow exit
+# Black Knights' Fortress (ladder pair at 3022 3517 and the wall at 3030 3510 measured live; other fortress ladders/walls unmeasured, left to scene interaction)
+3030 3510 1	3031 3508 1	Push;Wall;2341									
+3031 3508 1	3030 3510 1	Push;Wall;2341									
+3022 3517 0	3022 3517 1	Climb-up;Ladder;17159									
+3022 3517 1	3022 3517 0	Climb-down;Ladder;17160									
