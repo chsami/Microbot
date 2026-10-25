@@ -113,6 +113,8 @@ public abstract class Script extends Global implements IScript {
      * Default pre-loop guard invoked by script schedulers.
      * Returns {@code false} to pause a loop when a blocking event is executing, scripts are paused,
      * tutorial island is incomplete, or the current thread is interrupted.
+     * When logged in, it also turns run on if auto-run is enabled, energy is above
+     * {@link Microbot#runEnergyThreshold} and no blocking interface is open (see {@link #isBlockingInterfaceOpen()}).
      */
     public boolean run() {
         ScriptHeartbeatRegistry.recordHeartbeat(this.getClass().getName());
@@ -166,6 +168,12 @@ public abstract class Script extends Global implements IScript {
             InterfaceID.SKILLMULTI, InterfaceID.SMITHING, InterfaceID.CRAFTING_GOLD, InterfaceID.SILVER_CRAFTING
     };
 
+    /**
+     * Checks, in one client-thread call, whether any interface in {@link #AUTO_RUN_BLOCKING_INTERFACES}
+     * has a visible root widget.
+     *
+     * @return {@code true} if one is open, or if the client thread couldn't answer (so auto-run skips the click)
+     */
     static boolean isBlockingInterfaceOpen() {
         return Microbot.getClientThread().runOnClientThreadOptional(() -> {
             for (int groupId : AUTO_RUN_BLOCKING_INTERFACES) {
