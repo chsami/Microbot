@@ -357,7 +357,7 @@ public class Rs2GameObject {
             return hasAction(comp, "Bank", false) || hasAction(comp, "Collect", false);
         };
 
-        return getGameObjects(o -> Rs2BankID.BANK_ID_SET.contains(o.getId()), maxSearchRadius).stream()
+        return getGameObjects(o -> net.runelite.client.plugins.microbot.api.tileobject.Rs2BankID.BANK_ID_SET.contains(o.getId()), maxSearchRadius).stream()
                 .filter(bankableFilter)
                 .findFirst()
                 .orElse(null);
@@ -382,7 +382,7 @@ public class Rs2GameObject {
             if (comp == null) return false;
             return hasAction(comp, "Deposit", false);
         };
-        return getGameObjects(o -> Rs2BankID.BANK_ID_SET.contains(o.getId()), maxSearchRadius).stream()
+        return getGameObjects(o -> net.runelite.client.plugins.microbot.api.tileobject.Rs2BankID.BANK_ID_SET.contains(o.getId()), maxSearchRadius).stream()
                 .filter(depositableFilter)
                 .findFirst()
                 .orElse(null);
@@ -1720,7 +1720,7 @@ public class Rs2GameObject {
             Class<?>[] classesToScan = {
                     net.runelite.api.ObjectID.class,
                     net.runelite.api.gameval.ObjectID.class,
-                    net.runelite.client.plugins.microbot.util.gameobject.ObjectID.class
+                    net.runelite.client.plugins.microbot.api.tileobject.MicrobotObjectID.class
             };
 
             for (Class<?> clazz : classesToScan) {

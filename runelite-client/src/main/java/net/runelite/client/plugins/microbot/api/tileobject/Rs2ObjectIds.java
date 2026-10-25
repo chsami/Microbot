@@ -20,7 +20,7 @@ public final class Rs2ObjectIds {
             Class<?>[] constants = {
                     net.runelite.api.ObjectID.class,
                     net.runelite.api.gameval.ObjectID.class,
-                    net.runelite.client.plugins.microbot.util.gameobject.ObjectID.class
+                    MicrobotObjectID.class
             };
             for (Class<?> type : constants) {
                 for (Field field : type.getFields()) {

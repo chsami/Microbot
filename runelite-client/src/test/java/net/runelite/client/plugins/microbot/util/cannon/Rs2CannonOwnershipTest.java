@@ -1,11 +1,12 @@
-package net.runelite.client.plugins.microbot.util.gameobject;
+package net.runelite.client.plugins.microbot.util.cannon;
 
-import net.runelite.api.GameObject;
-import net.runelite.api.TileObject;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.api.tileobject.Rs2TileObjectCache;
+import net.runelite.client.plugins.microbot.api.tileobject.Rs2TileObjectQueryable;
+import net.runelite.client.plugins.microbot.api.tileobject.models.Rs2TileObjectModel;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import org.junit.After;
 import org.junit.Before;
@@ -23,8 +24,10 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.RETURNS_SELF;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class Rs2CannonOwnershipTest {
@@ -33,8 +36,7 @@ public class Rs2CannonOwnershipTest {
 
     private MockedStatic<Microbot> microbot;
     private MockedStatic<Rs2Inventory> inventory;
-    private MockedStatic<Rs2GameObject> gameObject;
-    private GameObject cannon;
+    private Rs2TileObjectModel cannon;
 
     @Before
     public void setUp() {
@@ -46,15 +48,17 @@ public class Rs2CannonOwnershipTest {
         inventory = Mockito.mockStatic(Rs2Inventory.class);
         inventory.when(() -> Rs2Inventory.hasItemAmount(eq("cannonball"), anyInt(), anyBoolean())).thenReturn(true);
 
-        cannon = mock(GameObject.class);
-        when(cannon.getWorldLocation()).thenReturn(CANNON_CENTER);
-        gameObject = Mockito.mockStatic(Rs2GameObject.class);
-        gameObject.when(() -> Rs2GameObject.findObject(any(Integer[].class))).thenReturn(cannon);
+        cannon = mock(Rs2TileObjectModel.class);
+        when(cannon.getRuneLiteWorldLocation()).thenReturn(CANNON_CENTER);
+        Rs2TileObjectQueryable query = mock(Rs2TileObjectQueryable.class, RETURNS_SELF);
+        when(query.nearestOnClientThread(anyInt())).thenReturn(cannon);
+        Rs2TileObjectCache cache = mock(Rs2TileObjectCache.class);
+        when(cache.query()).thenReturn(query);
+        microbot.when(Microbot::getRs2TileObjectCache).thenReturn(cache);
     }
 
     @After
     public void tearDown() {
-        gameObject.close();
         inventory.close();
         microbot.close();
         Microbot.pauseAllScripts.set(false);
@@ -73,7 +77,7 @@ public class Rs2CannonOwnershipTest {
         ownCannonAt(0);
         assertFalse(Rs2Cannon.refill(15));
         assertFalse(Microbot.pauseAllScripts.get());
-        gameObject.verify(() -> Rs2GameObject.interact(any(TileObject.class), anyString()), never());
+        verify(cannon, never()).click(anyString());
     }
 
     @Test
@@ -81,20 +85,20 @@ public class Rs2CannonOwnershipTest {
         ownCannonAt(coordOf(3300, 3300, 0));
         assertFalse(Rs2Cannon.refill(15));
         assertFalse(Microbot.pauseAllScripts.get());
-        gameObject.verify(() -> Rs2GameObject.interact(any(TileObject.class), anyString()), never());
+        verify(cannon, never()).click(anyString());
     }
 
     @Test
     public void repairReturnsFalseWhenNoCannonOwned() {
         ownCannonAt(-1);
         assertFalse(Rs2Cannon.repair());
-        gameObject.verify(() -> Rs2GameObject.interact(any(TileObject.class), anyString()), never());
+        verify(cannon, never()).click(anyString());
     }
 
     @Test
     public void repairInteractsWithOwnedCannonWithoutCannonPlugin() {
         ownCannonAt(coordOf(CANNON_CENTER.getX() - 1, CANNON_CENTER.getY() - 1, CANNON_CENTER.getPlane()));
         assertTrue(Rs2Cannon.repair());
-        gameObject.verify(() -> Rs2GameObject.interact((TileObject) cannon, "Repair"));
+        verify(cannon).click("Repair");
     }
 }

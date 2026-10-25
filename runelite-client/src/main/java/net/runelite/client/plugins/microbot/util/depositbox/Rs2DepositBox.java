@@ -5,7 +5,7 @@ import net.runelite.api.MenuAction;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.util.gameobject.Rs2BankID;
+import net.runelite.client.plugins.microbot.api.tileobject.Rs2BankID;
 import net.runelite.client.plugins.microbot.api.tileobject.Rs2BankObjects;
 import net.runelite.client.plugins.microbot.api.tileobject.models.Rs2TileObjectModel;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;

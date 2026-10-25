@@ -150,7 +150,6 @@ net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment#storeEquipmentI
 net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment#storeEquipmentItemsInMemory(ItemContainerChanged): void  ->  net.runelite.api.ItemContainer#getItems(): Item[]
 net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment#storeEquipmentItemsInMemory(ItemContainerChanged): void  ->  net.runelite.api.events.ItemContainerChanged#getContainerId(): int
 net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment#storeEquipmentItemsInMemory(ItemContainerChanged): void  ->  net.runelite.api.events.ItemContainerChanged#getItemContainer(): ItemContainer
-net.runelite.client.plugins.microbot.util.gameobject.Rs2Cannon#isOwnedCannon(TileObject): boolean  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
 net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject#canWalkTo(TileObject, int): boolean  ->  net.runelite.api.Client#isInInstancedRegion(): boolean
 net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject#canWalkTo(TileObject, int): boolean  ->  net.runelite.api.GameObject#getSceneMinLocation(): Point
 net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject#canWalkTo(TileObject, int): boolean  ->  net.runelite.api.GameObject#sizeX(): int

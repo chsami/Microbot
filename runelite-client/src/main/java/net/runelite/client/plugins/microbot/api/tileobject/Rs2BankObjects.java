@@ -11,7 +11,6 @@ import net.runelite.client.plugins.microbot.api.tileobject.models.Rs2TileObjectM
 import net.runelite.client.plugins.microbot.api.tileobject.models.TileObjectType;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
-import net.runelite.client.plugins.microbot.util.gameobject.Rs2BankID;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
