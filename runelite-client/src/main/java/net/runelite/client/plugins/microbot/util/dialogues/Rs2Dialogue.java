@@ -3,6 +3,7 @@ package net.runelite.client.plugins.microbot.util.dialogues;
 import net.runelite.api.gameval.InterfaceID.Chatbox;
 import net.runelite.api.widgets.InterfaceID;
 import net.runelite.api.widgets.Widget;
+import net.runelite.client.plugins.microbot.util.Global;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
@@ -28,7 +29,8 @@ public class Rs2Dialogue {
      * @return true if any dialogue-related widget is visible and the scroll bar is not visible, false otherwise.
      */
     public static boolean isInDialogue() {
-        return !Rs2Widget.isWidgetVisible(Chatbox.CHATSCROLLBAR) && (hasContinue() || hasSelectAnOption());
+        return hasQuestStartMenu()
+                || (!Rs2Widget.isWidgetVisible(Chatbox.CHATSCROLLBAR) && (hasContinue() || hasSelectAnOption()));
     }
 
     /**
@@ -142,7 +144,7 @@ public class Rs2Dialogue {
         Widget widget = Rs2Widget.getWidget(InterfaceID.DIALOG_OPTION, 1);
         if (widget == null) return false;
 
-        return widget.getDynamicChildren() != null;
+        return widget.getDynamicChildren() != null || getDialogOptionChildren().length > 0;
     }
 
     /**
@@ -162,6 +164,7 @@ public class Rs2Dialogue {
             Widget dialogueOption = Microbot.getClient().getWidget(InterfaceID.DIALOG_OPTION, 1);
             if (dialogueOption == null) return null;
             Widget[] children = dialogueOption.getDynamicChildren();
+            if (children == null || children.length == 0) children = dialogueOption.getStaticChildren();
             if (children == null || children.length == 0 || children[0] == null) return null;
             return children[0].getText();
         }).orElse(null);
@@ -170,10 +173,12 @@ public class Rs2Dialogue {
     private static Widget[] getDialogOptionChildren() {
         return Microbot.getClientThread().runOnClientThreadOptional(() -> {
             Widget dialogueOption = Microbot.getClient().getWidget(InterfaceID.DIALOG_OPTION, 1);
-            return dialogueOption == null ? null : dialogueOption.getDynamicChildren();
+            if (dialogueOption == null) return new Widget[0];
+            Widget[] children = dialogueOption.getDynamicChildren();
+            if (children == null || children.length == 0) children = dialogueOption.getStaticChildren();
+            return children == null ? new Widget[0] : children;
         }).orElse(new Widget[0]);
     }
-
     /**
      * Checks if the current dialogue contains a question that matches the specified text.
      *
@@ -786,6 +791,8 @@ public class Rs2Dialogue {
         String question = getQuestion();
         if (question == null) return false;
 
+        if (QuestStartMenu.isTitle(question)) return acceptQuestStartMenu();
+
         String q = question.toLowerCase().trim();
         if (!q.startsWith("would you like to start")) return false;
         if (!q.contains("quest")) return false;
@@ -836,5 +843,32 @@ public class Rs2Dialogue {
     public static Widget getDialogueSprite() {
         if (!hasSpriteContinue()) return null;
         return Rs2Widget.getWidget(InterfaceID.DIALOG_SPRITE, 1);
+    }
+
+    /**
+     * True while the quest-start confirmation ("Start Doric's Quest?" / Yes. / No.) is open: a chat
+     * menu in widget group 219 whose title is not "Select an Option".
+     */
+    public static boolean hasQuestStartMenu() {
+        return QuestStartMenu.isTitle(getDialogOptionTitleText());
+    }
+
+    /** Selects "Yes." on the quest-start menu: option-number key (live-verified), then widget click. */
+    public static boolean acceptQuestStartMenu() {
+        if (!hasQuestStartMenu()) return false;
+        List<Widget> options = getDialogueOptions();
+        List<String> texts = Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            List<String> out = new ArrayList<>();
+            for (Widget w : options) out.add(w.getText());
+            return out;
+        }).orElse(new ArrayList<>());
+        int idx = QuestStartMenu.yesIndex(texts);
+        if (idx < 0) idx = 0; // "Yes." is always option 1
+        Rs2Keyboard.keyPress(String.valueOf(idx + 1).charAt(0));
+        for (int i = 0; i < 8; i++) {
+            Global.sleep(100);
+            if (!hasQuestStartMenu()) return true;
+        }
+        return idx < options.size() && Rs2Widget.clickWidget(options.get(idx));
     }
 }

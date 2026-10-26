@@ -93,6 +93,7 @@ public class Pathfinder implements Runnable {
      * 31 = no teleports can be used
      */
     private int wildernessLevel;
+    private Object jitterKey;
 
     public Pathfinder(PathfinderConfig config, int start, Set<Integer> targets) {
         stats = new PathfinderStats();
@@ -105,6 +106,10 @@ public class Pathfinder implements Runnable {
             this.targetsPacked[idx++] = t;
         }
         targetInWilderness = PathfinderConfig.isInWildernessPackedPoint(targets);
+        if (PathJitter.isActive() && !targets.isEmpty()) {
+            jitterKey = java.util.Collections.min(targets);
+            PathJitter.beginWalk(jitterKey, System.currentTimeMillis(), start, (int) jitterKey);
+        }
         wildernessLevel = 31;
         WebWalkLog.pf("created src={} dst={} config={}",
                 WorldPointUtil.toString(this.start),
@@ -835,6 +840,105 @@ public class Pathfinder implements Runnable {
 
     @Override
     public void run() {
+        runInner();
+        if (!QuestWalkRule.isActive() || QuestWalkRule.inFallback() || cancelled
+                || terminationReason == PathTerminationReason.TARGET_REACHED) {
+            return;
+        }
+        // quest walking found no route on foot: allow ships and the like, and say which are used
+        QuestWalkRule.allowAll(this::runInner);
+        if (terminationReason == PathTerminationReason.TARGET_REACHED) {
+            Set<String> used = new LinkedHashSet<>();
+            for (PathEdge edge : getPathEdges()) {
+                if (edge.isTransport() && QuestWalkRule.isRestrictedType(edge.getTransport().getType(), edge.getTransport().getOrigin())) {
+                    used.add(edge.getTransport().getType() + " " + edge.getFrom() + " -> " + edge.getTo());
+                }
+            }
+            Microbot.log("Quest walking: no route on foot to " + WorldPointUtil.toString(targets)
+                    + "; falling back to transports: " + used);
+        }
+    }
+
+    private void runInner() {
+        if (!PathJitter.isActive() || jitterKey == null) {
+            runSearch();
+            return;
+        }
+        runVaried();
+    }
+
+    /**
+     * Seeded variation, bounded by pathfinder cost against an unjittered base route measured first. A varied route
+     * is dropped when it costs more than the bound, adds a transport the base route did not use (only local ones,
+     * and only within 10 percent), or repeats a recent route; the base route is the fallback.
+     */
+    private void runVaried() {
+        long[] baseCost = {-1L};
+        Set<String> baseTransports = new HashSet<>();
+        PathJitter.withoutJitter(() -> {
+            runSearch();
+            if (terminationReason == PathTerminationReason.TARGET_REACHED && !getPath().isEmpty()) {
+                baseCost[0] = selectedPathCost;
+                for (PathEdge edge : getPathEdges()) {
+                    if (edge.isTransport()) {
+                        baseTransports.add(transportKey(edge));
+                    }
+                }
+            }
+        });
+        if (baseCost[0] < 0 || cancelled) {
+            return; // the base search is the result (failure, cutoff or cancel)
+        }
+        for (int attempt = 0; attempt < 3 && !cancelled; attempt++) {
+            if (attempt > 0) {
+                PathJitter.reroll(jitterKey, System.currentTimeMillis(), start, (Integer) jitterKey);
+            }
+            runSearch();
+            if (terminationReason != PathTerminationReason.TARGET_REACHED || getPath().isEmpty()) {
+                break;
+            }
+            List<PathEdge> edges = getPathEdges();
+            boolean newLocal = false;
+            boolean newForbidden = false;
+            long penalties = 0;
+            for (PathEdge edge : edges) {
+                int to = WorldPointUtil.packWorldPoint(edge.getTo());
+                if (edge.isTransport()) {
+                    penalties += PathJitter.transportPenalty(to);
+                    if (!baseTransports.contains(transportKey(edge))) {
+                        if (PathJitter.mayAddTransport(edge.getTransport().getType())) {
+                            newLocal = true;
+                        } else {
+                            newForbidden = true;
+                        }
+                    }
+                } else if (targets.contains(to)) {
+                    penalties += targets.size() > 1 ? PathJitter.targetPenalty(to) : 0;
+                } else {
+                    penalties += PathJitter.penalty(to);
+                }
+            }
+            long variedCost = Math.max(0L, selectedPathCost - penalties);
+            if (!PathJitter.acceptVaried(variedCost, baseCost[0], newLocal, newForbidden)) {
+                continue;
+            }
+            int hash = PathJitter.routeHash(getPath());
+            if (attempt == 2 || !PathJitter.seenRoute(jitterKey, hash)) {
+                PathJitter.recordRoute(jitterKey, hash);
+                return;
+            }
+        }
+        if (!cancelled) {
+            PathJitter.withoutJitter(this::runSearch);
+        }
+    }
+
+    /** Identity of a used transport that survives config copies: its type and both ends. */
+    private static String transportKey(PathEdge edge) {
+        return edge.getTransport().getType() + ":" + edge.getFrom() + ">" + edge.getTo();
+    }
+
+    private void runSearch() {
         WebWalkLog.pf("run_start src={} dst={} cutoffMs={}",
                 WorldPointUtil.toString(start), WorldPointUtil.toString(targets), config.getCalculationCutoffMillis());
         path = Collections.emptyList();

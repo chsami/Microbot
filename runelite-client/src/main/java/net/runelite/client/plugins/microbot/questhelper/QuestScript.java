@@ -31,6 +31,7 @@ import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
 import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
 import net.runelite.client.plugins.microbot.util.dialogues.DialogueChoiceProvider;
 import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
+import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange;
 import net.runelite.client.plugins.microbot.util.grandexchange.models.WikiPrice;
@@ -106,11 +107,15 @@ public class QuestScript extends Script {
 	private int preflightBuyRounds;
 	private QuestPurchasePlan preflightPlan;
 	private boolean purchaseApproved;
-	private boolean purchaseAsked;
 	private Boolean purchaseConfirmOverride;
-	private final java.util.concurrent.atomic.AtomicReference<QuestPurchaseConfirmDialog.Outcome> purchaseAnswer =
-			new java.util.concurrent.atomic.AtomicReference<>();
-	private final java.util.concurrent.atomic.AtomicInteger purchaseEpoch = new java.util.concurrent.atomic.AtomicInteger();
+	/** One buy at a time: a second script loop (after a plugin restart) must never run the Grand Exchange too. */
+	private static final TickGuard BUY_GUARD = new TickGuard();
+	private static final TickGuard TICK_GUARD = new TickGuard();
+	private volatile boolean stopInterruptSent;
+	private int windowNonce = Integer.MIN_VALUE;
+	private String windowQuestKey;
+	private boolean windowDone = true;
+	private final java.util.concurrent.atomic.AtomicReference<Object> windowAnswer = new java.util.concurrent.atomic.AtomicReference<>();
 
 	private enum PurchaseGate { PROCEED, WAIT, STOPPED, SKIPPED }
 
@@ -175,26 +180,46 @@ public class QuestScript extends Script {
     public boolean run(QuestHelperConfig config, QuestHelperPlugin mQuestPlugin) {
         this.config = config;
         this.mQuestPlugin = mQuestPlugin;
+        cancelLoops();
 
-
-        mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
+        mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(guardedTick(() -> {
             try {
+                net.runelite.client.plugins.microbot.util.walker.WalkPathVariation.configure(
+                        config.pathVariation() && !escortActive, config.pathVariationStrength().getLevel());
+                net.runelite.client.plugins.microbot.shortestpath.pathfinder.QuestWalkRule.setActive(config.startStopQuestHelper());
                 if (!config.startStopQuestHelper()) {
+                    net.runelite.client.plugins.microbot.util.walker.WalkPathVariation.configure(false, 2);
                     restoreAutoRetaliate();
                     combat.reset();
+                    resetPreflightOnStop();
+                    return;
+                }
+                if (QuestPause.isPaused()) {
+                    Microbot.status = "Quest helper: PAUSED";
                     return;
                 }
                 if (!Microbot.isLoggedIn()) return;
                 if (!super.run()) return;
+                if (queueRunner.tick(System.currentTimeMillis())) return;
                 if (getQuestHelperPlugin().getSelectedQuest() == null) return;
 
                 if (handleShortBreak()) return;
+                humanizePause();
 
                 QuestStep questStep = getQuestHelperPlugin().getSelectedQuest().getCurrentStep().getActiveStep();
 
                 publishDialogueChoices(questStep);
                 // Dialogue is answered first and at ~100 ms, regardless of combat or animation state.
                 answerDialogueFast(questStep);
+
+                // Quest-start confirmation ("Start <quest>?" / Yes. / No.): always accept while a quest is selected,
+                // whether it was opened via NPC, object or item. isInDialogue() reports it, but the step's own
+                // choices never match it, so answer it here before anything re-interacts with the start NPC.
+                if (Rs2Dialogue.hasQuestStartMenu()) {
+                    Rs2Walker.clearWalkingRoute("quest-helper:quest-start-menu");
+                    Rs2Dialogue.acceptQuestStartMenu();
+                    return;
+                }
 
                 // Being hit while a non-kill step is active must not stall it: skip the settle wait and keep acting.
                 boolean attackedOnNonKillStep = isAttackedOnNonKillStep(questStep);
@@ -345,6 +370,10 @@ public class QuestScript extends Script {
                         return;
                     }
 
+					if (questWindowGate(selectedQuest)) {
+						return;
+					}
+
 					if (combat.beginStep(selectedQuest)) {
 						return;
 					}
@@ -375,6 +404,10 @@ public class QuestScript extends Script {
 								return;
 							}
 						}
+					}
+
+					if (handleCarryRules(selectedQuest, questStep)) {
+						return;
 					}
 
 					if (combat.recoverHealth(questStep, slotsReservedForStep(questStep))) {
@@ -438,7 +471,7 @@ public class QuestScript extends Script {
                 System.out.println(ex.getMessage());
                 ex.printStackTrace(System.out);
             }
-        }, 0, Rs2Random.between(400, 1000), TimeUnit.MILLISECONDS);
+        }), 0, Rs2Random.between(400, 1000), TimeUnit.MILLISECONDS);
 
         combatSupportFuture = scheduledExecutorService.scheduleWithFixedDelay(this::combatSupportTick,
                 600, 600, TimeUnit.MILLISECONDS);
@@ -447,13 +480,30 @@ public class QuestScript extends Script {
         return true;
     }
 
+	private final RandomEventDismissRule randomEventRule = new RandomEventDismissRule();
+
+	/** Dismisses a random-event NPC that targets us; rate-limited per NPC, and clears any dialogue it opened. */
+	private void dismissRandomEventTick(long now) {
+		if (config == null || !config.dismissRandomEvents()) return;
+		net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel event = Rs2Npc.getRandomEventNPC();
+		if (event == null) return;
+		if (Rs2Dialogue.hasContinue()) {
+			Rs2Dialogue.clickContinue();
+			return;
+		}
+		if (!randomEventRule.shouldDismiss(event.getIndex(), now)) return;
+		Microbot.log("[QuestHelper] Dismissing random event NPC " + event.getName(), Level.INFO);
+		Rs2Npc.interact(event, "Dismiss");
+	}
+
 	/**
 	 * Runs beside the main loop (which blocks inside walks): cancels the in-flight walk the moment
 	 * automation is paused or the quest deselected, and drives the stuck watchdog.
 	 */
 	private void supervisorTick() {
 		try {
-			boolean on = config != null && config.startStopQuestHelper();
+			interruptOnStop();
+			boolean on = config != null && config.startStopQuestHelper() && !QuestPause.isPaused();
 			QuestHelper selected = getQuestHelperPlugin() == null ? null : getQuestHelperPlugin().getSelectedQuest();
 			long now = System.currentTimeMillis();
 			if (!on || selected == null) {
@@ -475,6 +525,7 @@ public class QuestScript extends Script {
 				stuckWatchdog.reset(now);
 				return;
 			}
+			dismissRandomEventTick(now);
 			endEscortIfInactive(selected.getCurrentStep() == null ? null : selected.getCurrentStep().getActiveStep());
 			WorldPoint walkTarget = Rs2Walker.getCurrentTarget();
 			if (walkTarget != null) lastWalkTarget = walkTarget;
@@ -780,6 +831,11 @@ public class QuestScript extends Script {
 	 * @return true while the preflight used this tick and the quest must not act yet
 	 */
 	private boolean runPreflight(QuestHelper quest) {
+		// another loop that is already buying keeps the quest waiting
+		return BUY_GUARD.callOrElse(() -> runPreflightLocked(quest), true);
+	}
+
+	private boolean runPreflightLocked(QuestHelper quest) {
 		String soloFailure = QuestPreflight.anotherPlayerFailure(quest.getQuest().name(), quest.getQuest().getName());
 		if (soloFailure != null) {
 			finishPreflight(soloFailure);
@@ -798,10 +854,6 @@ public class QuestScript extends Script {
 			preflightBuyRounds = 0;
 			preflightPlan = null;
 			purchaseApproved = false;
-			purchaseAsked = false;
-			purchaseEpoch.incrementAndGet();
-			purchaseAnswer.set(null);
-			QuestPurchaseConfirmDialog.dismiss();
 			QuestPurchasePlan.setCurrent(null);
 			Boolean confirmOverride = freshStart ? QuestPurchasePlan.consumeOverride() : null;
 			purchaseConfirmOverride = confirmOverride;
@@ -836,7 +888,7 @@ public class QuestScript extends Script {
 		Microbot.status = "Quest helper: checking quest items";
 
 		ItemAndLastUpdated bank = QuestContainerManager.getBankData();
-		if (bank.getLastUpdated() < 0 && bank.getItems().length == 0) {
+		if (!QuestPreflight.bankScanned(bank.getLastUpdated())) {
 			if (preflightBankAttempts >= PREFLIGHT_MAX_BANK_ATTEMPTS) {
 				Microbot.log("Quest helper preflight skipped: could not open the bank to count quest items", Level.WARN);
 				finishPreflight(QuestPreflight.FAILED_PREFIX + "could not open the bank");
@@ -857,6 +909,7 @@ public class QuestScript extends Script {
 		if (needs == null) {
 			return true; // waiting on the Vale Totems wood type
 		}
+		dropNoBuyNeeds(needs, quest);
 
 		Map<Integer, Integer> onPlayer = new HashMap<>();
 		addContainer(onPlayer, QuestContainerManager.getEquippedData());
@@ -875,7 +928,11 @@ public class QuestScript extends Script {
 			summary.append(shortfall.name).append(" x").append(shortfall.needed);
 			if (shortfall.missing > 0) {
 				summary.append(shortfall.owned > 0 ? " (buying " + shortfall.missing + " more)" : " (buying)");
-				toBuy.add(new ItemRequirement(shortfall.name, shortfall.ids, shortfall.missing));
+				toBuy.add(new ItemRequirement(QuestPreflight.purchaseLabel(shortfall), shortfall.ids, shortfall.missing));
+				if (shortfall.supply && !preflightSummaryLogged) {
+					Microbot.log("Quest helper: selected supply " + QuestPreflight.purchaseLabel(shortfall)
+							+ " (not enough in the bank or on you)", Level.WARN);
+				}
 			} else if (QuestPreflight.countOwned(shortfall.ids, onPlayer) >= shortfall.needed) {
 				summary.append(" (on you)");
 			} else {
@@ -892,7 +949,7 @@ public class QuestScript extends Script {
 			return false;
 		}
 		if (!purchaseApproved) {
-			boolean bankKnown = bank.getLastUpdated() >= 0 || bank.getItems().length > 0;
+			boolean bankKnown = QuestPreflight.bankScanned(bank.getLastUpdated());
 			switch (gatePurchases(quest, toBuy, onPlayer, owned, bankKnown)) {
 				case WAIT:
 				case STOPPED:
@@ -922,39 +979,14 @@ public class QuestScript extends Script {
 	 */
 	private PurchaseGate gatePurchases(QuestHelper quest, List<ItemRequirement> toBuy,
 			Map<Integer, Integer> onPlayer, Map<Integer, Integer> owned, boolean bankKnown) {
-		QuestPurchaseConfirmDialog.Outcome answer = purchaseAnswer.getAndSet(null);
-		if (answer != null) {
-			QuestPurchasePlan plan = preflightPlan;
-			switch (answer) {
-				case BUY:
-					purchaseApproved = true;
-					Microbot.log("Quest helper: purchase approved (" + (plan == null ? "" : plan.describeItems()) + ")", Level.INFO);
-					return PurchaseGate.PROCEED;
-				case SKIP:
-					Microbot.log("Quest helper: starting without buying; missing quest items: "
-							+ describeItems(toBuy), Level.WARN);
-					finishPreflight(QuestPreflight.DONE);
-					return PurchaseGate.SKIPPED;
-				case CANCEL:
-					stopQuesterWithReason("Quest cancelled at the purchase confirmation");
-					return PurchaseGate.STOPPED;
-				default:
-					purchaseAsked = false; // closed by code, ask again
-					break;
-			}
-		}
-		if (purchaseAsked) {
-			Microbot.status = "Quest helper: waiting for purchase confirmation";
-			return PurchaseGate.WAIT;
-		}
-
 		if (preflightPlan == null) {
 			List<QuestPurchasePlan.Line> lines = new ArrayList<>();
 			for (ItemRequirement ir : toBuy) {
 				int primaryId = tradablePrimaryId(ir);
 				if (primaryId == -1) {
-					stopQuesterWithReason("Quest item is not tradable on the Grand Exchange: " + ir.getName());
-					return PurchaseGate.STOPPED;
+					Microbot.log("Quest helper: " + ir.getName() + " is not tradable on the Grand Exchange, "
+							+ "not buying it (the quest steps will obtain it in game)", Level.WARN);
+					continue;
 				}
 				int basePrice = fetchInstabuyReferencePrice(primaryId);
 				if (basePrice <= 0) {
@@ -969,31 +1001,39 @@ public class QuestScript extends Script {
 			QuestPurchasePlan.setCurrent(preflightPlan);
 		}
 
-		boolean confirm = purchaseConfirmOverride != null ? purchaseConfirmOverride : config.confirmPurchases();
-		switch (preflightPlan.decide(confirm)) {
-			case BUY:
-				purchaseApproved = true;
-				Microbot.log(String.format("Quest helper: buying %s (~%,d gp, have %,d gp)",
-						preflightPlan.describeItems(), preflightPlan.total(), preflightPlan.coins()), Level.INFO);
-				return PurchaseGate.PROCEED;
-			case INSUFFICIENT:
+		boolean automatedRun = config.fullyAutomated();
+		if (queueRunner.hasApproval() || automatedRun) {
+			List<String> planned = preflightPlan.lines().stream().map(l -> l.name).collect(Collectors.toList());
+			if (queueRunner.hasApproval() && !queueRunner.covers(planned, preflightPlan.total())) {
+				stopQuesterWithReason("Skipped " + quest.getQuest().getName() + ": "
+						+ queueRunner.refusal(planned, preflightPlan.total()));
+				return PurchaseGate.STOPPED;
+			}
+			if (automatedRun && QuestSpendRules.decide(preflightPlan.total(), config.maxSpendPerQuest(),
+					preflightPlan.coins()) == QuestSpendRules.Decision.OVER_MAX_SPEND) {
+				stopQuesterWithReason(String.format(
+						"Skipped %s: its purchases (~%,d gp) are over the max spend of %,d gp per quest",
+						quest.getQuest().getName(), preflightPlan.total(), config.maxSpendPerQuest()));
+				return PurchaseGate.STOPPED;
+			}
+			if (!preflightPlan.affordable()) {
 				stopQuesterWithReason(preflightPlan.insufficientMessage());
 				return PurchaseGate.STOPPED;
-			default:
-				break;
-		}
-
-		purchaseAsked = true;
-		QuestPurchasePlan.setAwaiting(true);
-		Microbot.status = "Quest helper: waiting for purchase confirmation";
-		Microbot.log("Quest helper: waiting for purchase confirmation", Level.INFO);
-		final int epoch = purchaseEpoch.get();
-		QuestPurchaseConfirmDialog.showAsync(quest.getQuest().getName(), preflightPlan, outcome -> {
-			if (epoch == purchaseEpoch.get()) {
-				purchaseAnswer.set(outcome);
 			}
-		});
-		return PurchaseGate.WAIT;
+			queueRunner.recordSpend(preflightPlan.total());
+			purchaseApproved = true;
+			announce(String.format("Buying %s (~%,d gp)", preflightPlan.describeItems(), preflightPlan.total()));
+			return PurchaseGate.PROCEED;
+		}
+		// the quest window was switched off for this quest: buy what is missing when it can be paid for
+		if (!preflightPlan.affordable()) {
+			stopQuesterWithReason(preflightPlan.insufficientMessage());
+			return PurchaseGate.STOPPED;
+		}
+		purchaseApproved = true;
+		Microbot.log(String.format("Quest helper: buying %s (~%,d gp, have %,d gp)", preflightPlan.describeItems(),
+				preflightPlan.total(), preflightPlan.coins()), Level.INFO);
+		return PurchaseGate.PROCEED;
 	}
 
 	/**
@@ -1063,6 +1103,16 @@ public class QuestScript extends Script {
 	/** Tradable, not step-supplied item requirements of the rest of the quest; null while the Vale Totems wood is unset. */
 	private List<QuestPreflight.Need> collectPreflightNeeds(QuestHelper quest, QuestState state) {
 		List<Requirement> candidates = new ArrayList<>();
+		final boolean notStarted = state == QuestState.NOT_STARTED;
+		Set<Integer> upfrontIds = new HashSet<>();
+		if (quest.getItemRequirements() != null) {
+			for (ItemRequirement ir : quest.getItemRequirements()) {
+				if (ir != null) {
+					upfrontIds.addAll(ir.getAllIds());
+				}
+			}
+		}
+		final String questEnumName = quest.getQuest() == null ? null : quest.getQuest().name();
 		// Once the quest is underway its start items are spent or placed, so only the steps ahead count
 		if (state == QuestState.NOT_STARTED && quest.getItemRequirements() != null) {
 			for (ItemRequirement ir : quest.getItemRequirements()) {
@@ -1105,6 +1155,7 @@ public class QuestScript extends Script {
 			needs.addAll(combat.swapPreflightNeeds(steps));
 			needs.addAll(combat.boostPreflightNeeds(steps));
 		}
+		needs.addAll(combat.supplyPreflightNeeds(this::isIdTradable));
 		for (Requirement requirement : candidates) {
 			// Subclasses (keyrings, followers, composites) have their own ownership rules; leave them to the steps
 			if (requirement == null || requirement.getClass() != ItemRequirement.class) {
@@ -1112,6 +1163,10 @@ public class QuestScript extends Script {
 			}
 			ItemRequirement ir = (ItemRequirement) requirement;
 			List<Integer> ids = ir.getAllIds().stream().filter(id -> id != null && id > 0).collect(Collectors.toList());
+			boolean inUpfront = ids.stream().anyMatch(upfrontIds::contains);
+			if (QuestPreflight.obtainedDuringQuest(questEnumName, ir.getName(), ir.getTooltip(), notStarted, inUpfront)) {
+				continue;
+			}
 			if (ir.getQuantity() <= 0 || ids.isEmpty() || ids.contains(ItemID.COINS_995)) {
 				continue;
 			}
@@ -1123,6 +1178,38 @@ public class QuestScript extends Script {
 		}
 		return needs;
 	}
+
+    private HumanizedTiming humanTiming;
+
+    /** Skewed random pause before an action, with fatigue and rare hesitations; skipped when timing matters. */
+    private void humanizePause() {
+        if (!config.humanizedTiming()) {
+            humanTiming = null;
+            return;
+        }
+        if (humanTiming == null) {
+            humanTiming = new HumanizedTiming(new java.util.Random(), config.humanizedFatigue());
+        }
+        long now = System.currentTimeMillis();
+        humanTiming.update(now, breakEndsAtMs > now);
+        net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban.mouseFatigue.noiseAmplitude =
+                5.0 + 10.0 * humanTiming.fatigue();
+        QuestHelper selected = getQuestHelperPlugin().getSelectedQuest();
+        QuestStep step = selected.getCurrentStep() == null ? null : selected.getCurrentStep().getActiveStep();
+        if (Rs2Dialogue.isInDialogue() || Rs2Combat.inCombat() || QuestCombatDetector.isKillStep(step)
+                || Rs2Player.getHealthPercentage() < 60) {
+            return;
+        }
+        boolean idle = !Rs2Bank.isOpen() && !Rs2Player.isMoving() && !Rs2Player.isInteracting()
+                && !Rs2Player.isAnimating() && !QuestCombatHandler.isAwaitingSetup() && !QuestPreflight.isInProgress();
+        long hesitation = humanTiming.maybeHesitate(now, config.hesitationChancePercent() / 100.0, idle);
+        if (hesitation > 0) {
+            Microbot.status = "Quest helper: hesitating (" + (hesitation / 1000) + "s)";
+            sleep((int) hesitation);
+            return;
+        }
+        sleep((int) humanTiming.nextDelayMs(150));
+    }
 
     /** Idles for a few seconds now and then; true while a break is running. Timestamp based, never blocks. */
     private boolean handleShortBreak() {
@@ -1335,9 +1422,19 @@ public class QuestScript extends Script {
 			return false;
 		}
 
+		for (ItemRequirement ir : missing) {
+			if (ir.getAllIds().contains(ItemID.BURNT_MEAT) && !Rs2Inventory.contains(ItemID.BURNT_MEAT)) {
+				return makeBurntMeat();
+			}
+		}
+
+		// Whatever the bank already holds (bought earlier, or kept there) is fetched by walking to the bank,
+		// rather than looping on "missing required item" or buying it again
 		List<ItemRequirement> nonTradableInBank = new ArrayList<>();
 		for (ItemRequirement ir : missing) {
-			if (!isItemRequirementTradable(ir) && isHeldInBank(ir)) {
+			if (isHeldInBank(ir) && (!isItemRequirementTradable(ir)
+					|| QuestPreflight.bankCovers(ir.checkTotalMatchesInContainers(QuestContainerManager.getBankData()),
+							remainingQuantityNeeded(ir), isCarryLimited(ir)))) {
 				nonTradableInBank.add(ir);
 			}
 		}
@@ -1356,6 +1453,52 @@ public class QuestScript extends Script {
 		}
 
 		return acquireMissingTradableItems(missing);
+	}
+
+	private static final int[] BURNT_MEAT_SOURCES = {ItemID.COOKED_MEAT, ItemID.RAW_BEEF, ItemID.RAW_RAT_MEAT,
+			ItemID.RAW_BEAR_MEAT};
+	private static final WorldPoint LUMBRIDGE_RANGE = new WorldPoint(3211, 3215, 0);
+
+	/** Burnt meat is not on the Grand Exchange: get (or buy) meat and burn it on a range or fire. */
+	private boolean makeBurntMeat() {
+		Microbot.status = "Quest helper: burning meat";
+		Integer meatId = null;
+		for (int id : BURNT_MEAT_SOURCES) {
+			if (Rs2Inventory.contains(id)) {
+				meatId = id;
+				break;
+			}
+		}
+		if (meatId == null) {
+			List<Integer> ids = new ArrayList<>();
+			for (int id : BURNT_MEAT_SOURCES) {
+				ids.add(id);
+			}
+			return acquireMissingTradableItems(new ArrayList<>(java.util.Collections.singletonList(
+					new ItemRequirement("Cooked meat", ids, 1))));
+		}
+		Rs2TileObjectModel heat = null;
+		for (String name : new String[]{"Fire", "Range", "Cooking range"}) {
+			WorldPoint here = Rs2Player.getWorldLocation();
+			heat = Microbot.getRs2TileObjectCache().query()
+					.withName(name).within(here, 15).toListOnClientThread().stream()
+					.filter(o -> o.getWorldLocation() != null && o.getWorldLocation().getPlane() == here.getPlane())
+					.min(Comparator.comparingInt(o -> o.getWorldLocation().distanceTo(here)))
+					.orElse(null);
+			if (heat != null) {
+				break;
+			}
+		}
+		if (heat == null) {
+			if (LUMBRIDGE_RANGE.distanceTo(Rs2Player.getWorldLocation()) > 3) {
+				Rs2Walker.walkTo(LUMBRIDGE_RANGE, 2);
+			}
+			return true;
+		}
+		if (Rs2Inventory.use(meatId) && heat.click()) {
+			sleepUntil(() -> Rs2Inventory.contains(ItemID.BURNT_MEAT), 6_000);
+		}
+		return true;
 	}
 
 	/** Only true once the bank has been opened this session, so an unknown bank falls back to the old behaviour. */
@@ -1397,6 +1540,10 @@ public class QuestScript extends Script {
 			if (idToWithdraw == -1 || qty <= 0) {
 				continue;
 			}
+			qty = roomFor(ir, qty);
+			if (qty <= 0) {
+				continue;
+			}
 
 			Microbot.status = "Withdrawing " + ir.getName() + " x" + qty;
 			Rs2Bank.withdrawX(idToWithdraw, qty);
@@ -1406,6 +1553,36 @@ public class QuestScript extends Script {
 		}
 
 		return true;
+	}
+
+	/**
+	 * With the bank open, how much of a withdrawal fits in the inventory. Banks what the quest does not need first when
+	 * the free slots are short, so a withdrawal never waits on a full inventory. 0 means no room even after that.
+	 */
+	private int roomFor(ItemRequirement ir, int qty) {
+		if (qty <= 0) {
+			return 0;
+		}
+		boolean stackable = isStackable(ir);
+		boolean held = inventoryQuantity(ir) > 0;
+		int need = QuestInventoryRules.slotsNeeded(stackable, held, qty);
+		for (int attempt = 0; attempt < 4 && Rs2Bank.isOpen() && Rs2Inventory.emptySlotCount() < need; attempt++) {
+			int before = Rs2Inventory.emptySlotCount();
+			clearInventoryForQuest();
+			sleepUntil(() -> Rs2Inventory.emptySlotCount() > before, 1_500);
+			if (Rs2Inventory.emptySlotCount() < need) {
+				ensureFreeSlotInBank(java.util.Collections.singletonList(ir));
+			}
+			if (Rs2Inventory.emptySlotCount() <= before) {
+				break;
+			}
+		}
+		int fit = QuestInventoryRules.fitQuantity(stackable, held, qty, Rs2Inventory.emptySlotCount());
+		if (fit < qty) {
+			Microbot.log("Quest helper: room for " + fit + " of " + qty + " " + ir.getName() + " in the inventory",
+					Level.WARN);
+		}
+		return fit;
 	}
 
 	/** With the bank open, banks what the rest of the quest no longer needs before any carry cap is computed. */
@@ -1459,6 +1636,20 @@ public class QuestScript extends Script {
 	 *                  nothing is withdrawn to the inventory, and purchases stay in the bank
 	 */
 	private boolean acquireMissingTradableItems(List<ItemRequirement> missing, boolean stockpile) {
+		return BUY_GUARD.callOrElse(() -> acquireMissingTradableItemsLocked(missing, stockpile), true);
+	}
+
+	private boolean acquireMissingTradableItemsLocked(List<ItemRequirement> missing, boolean stockpile) {
+		if (!actionGate()) {
+			return true;
+		}
+		if (!stockpile && queueRunner.hasApproval()) {
+			List<String> wanted = missing.stream().map(ItemRequirement::getName).collect(Collectors.toList());
+			if (!queueRunner.covers(wanted, 0)) {
+				queueRunner.skipCurrent(queueRunner.refusal(wanted, 0));
+				return true;
+			}
+		}
 		notifyMissingRequirement(missing.get(0));
 
 		List<ItemRequirement> actionable = new ArrayList<>();
@@ -1560,9 +1751,9 @@ public class QuestScript extends Script {
 
 			int primaryId = tradablePrimaryId(ir);
 			if (primaryId == -1) {
-				Rs2Bank.closeBank();
-				stopQuesterWithReason("Quest item is not tradable on the Grand Exchange: " + ir.getName());
-				return true;
+				Microbot.log("Quest helper: " + ir.getName() + " is not tradable on the Grand Exchange, "
+						+ "not buying it (the quest steps will obtain it in game)", Level.WARN);
+				continue;
 			}
 
 			if (isMembersItem(primaryId) && !isOnMembersWorld()) {
@@ -1648,7 +1839,7 @@ public class QuestScript extends Script {
 			if (idToWithdraw == null || idToWithdraw <= 0) {
 				continue;
 			}
-			int qty = Math.min(remainingQuantityNeeded(ir), Rs2Bank.count(idToWithdraw));
+			int qty = roomFor(ir, Math.min(remainingQuantityNeeded(ir), Rs2Bank.count(idToWithdraw)));
 			if (qty <= 0) {
 				continue;
 			}
@@ -1720,6 +1911,9 @@ public class QuestScript extends Script {
 		}
 		int placedOffers = 0;
 		for (ItemRequirement ir : toBuy) {
+			if (!actionGate()) {
+				return true;
+			}
 			int offerPrice = offerPrices.getOrDefault(ir, 0);
 			int qty = buyQuantities.getOrDefault(ir, 0);
 			int primaryId = buyPrimaryIds.getOrDefault(ir, -1);
@@ -1729,17 +1923,23 @@ public class QuestScript extends Script {
 
 			String canonicalName = canonicalItemName(primaryId);
 			if (canonicalName == null || canonicalName.isEmpty() || "null".equalsIgnoreCase(canonicalName)) {
-				stopQuesterWithReason("Unable to resolve in-game name for: " + ir.getName());
-				return true;
+				Microbot.log("Quest helper: no in-game name for " + ir.getName() + ", skipping it (the steps will obtain it)",
+						Level.WARN);
+				continue;
 			}
 
 			Microbot.status = "Buying " + canonicalName + " x" + qty;
 			if (Rs2GrandExchange.buyItem(canonicalName, offerPrice, qty)) {
 				placedOffers++;
+			} else {
+				Microbot.log("Quest helper: could not place an offer for " + canonicalName + ", skipping it", Level.WARN);
 			}
 			sleep(800, 1500);
 		}
 
+		if (!actionGate()) {
+			return true;
+		}
 		if (placedOffers == 0) {
 			stopQuesterWithReason("Failed to place any Grand Exchange offers for missing quest items");
 			return true;
@@ -1749,6 +1949,9 @@ public class QuestScript extends Script {
 		final int perAttemptWaitMs = 15_000;
 
 		for (int attempt = 1; attempt <= maxBuyAttempts; attempt++) {
+			if (!actionGate()) {
+				return true;
+			}
 			Microbot.status = String.format(
 					"Waiting for Grand Exchange offers to fill (attempt %d/%d)",
 					attempt, maxBuyAttempts);
@@ -1814,11 +2017,23 @@ public class QuestScript extends Script {
 				long retryInvCoins = Rs2Inventory.itemQuantity(ItemID.COINS_995);
 				long costNeeded = (long) newPrice * (long) qtyNeeded;
 				if (retryInvCoins < costNeeded) {
-					Rs2GrandExchange.abortAllOffers(false);
-					stopQuesterWithReason(String.format(
-							"Not enough gp to retry %s at %,d gp each (need %,d, have %,d)",
-							canonicalName, newPrice, costNeeded, retryInvCoins), Level.WARN);
-					return true;
+					long bankCoinsNow = bankCoinSnapshot();
+					long take = QuestCoins.toWithdraw(costNeeded, retryInvCoins, bankCoinsNow);
+					if (take < 0) {
+						Rs2GrandExchange.abortAllOffers(false);
+						stopQuesterWithReason(QuestCoins.shortMessage(canonicalName, newPrice, costNeeded,
+								retryInvCoins, bankCoinsNow));
+						return true;
+					}
+					if (!withdrawCoinsFromBank(take, costNeeded, toBuy)) {
+						Rs2GrandExchange.abortAllOffers(false);
+						stopQuesterWithReason(QuestCoins.shortMessage(canonicalName, newPrice, costNeeded,
+								Rs2Inventory.itemQuantity(ItemID.COINS_995), bankCoinsNow));
+						return true;
+					}
+					if (!actionGate()) {
+						return true;
+					}
 				}
 
 				Microbot.status = String.format(
@@ -1893,6 +2108,12 @@ public class QuestScript extends Script {
 		if (stockpile) {
 			// Purchases stay in the bank; wait for the bank snapshot to show them so they are not bought twice
 			sleepUntil(() -> items.stream().allMatch(this::isHeldInBank), 3_000);
+			// Nothing is withdrawn here: the items may be for several queued quests. Each quest withdraws its own at
+			// its start, within the free slots, the carry cap and the reserved slots.
+			if (!items.stream().allMatch(this::isHeldInBank)) {
+				Microbot.log("Quest helper: purchased items are not in the bank yet; the next round counts them again",
+						Level.WARN);
+			}
 			Rs2Bank.closeBank();
 			sleepUntil(() -> !Rs2Bank.isOpen(), 3_000);
 			return;
@@ -1920,7 +2141,10 @@ public class QuestScript extends Script {
 				continue;
 			}
 
-			qty = Math.min(qty, Rs2Bank.count(idToWithdraw));
+			qty = roomFor(ir, Math.min(qty, Rs2Bank.count(idToWithdraw)));
+			if (qty <= 0) {
+				continue;
+			}
 			Microbot.status = "Withdrawing " + ir.getName() + " x" + qty;
 			Rs2Bank.withdrawX(idToWithdraw, qty);
 			if (!sleepUntil(() -> hasItemInInventoryOrEquipped(ir) || isFilledToCarryCapacity(ir), 2_000)) {
@@ -1940,7 +2164,7 @@ public class QuestScript extends Script {
 					continue;
 				}
 				ItemComposition def = Microbot.getClient().getItemDefinition(id);
-				if (def != null && def.isTradeable()) {
+				if (def != null && QuestInventoryRules.geTradable(id, def.isTradeable())) {
 					return true;
 				}
 			}
@@ -1956,7 +2180,7 @@ public class QuestScript extends Script {
 					continue;
 				}
 				ItemComposition def = Microbot.getClient().getItemDefinition(id);
-				if (def != null && def.isTradeable()) {
+				if (def != null && QuestInventoryRules.geTradable(id, def.isTradeable())) {
 					ids.add(id);
 				}
 			}
@@ -2291,7 +2515,14 @@ public class QuestScript extends Script {
 		if (Rs2Player.isIronman()) {
 			return false;
 		}
+		Boolean queued = queueRunner.obtainOverride();
+		if (queued != null) {
+			return queued;
+		}
 		QuestHelperConfig.ObtainMissingItemsOption option = config.obtainMissingItems();
+		if (config.fullyAutomated() && option == QuestHelperConfig.ObtainMissingItemsOption.ASK) {
+			option = QuestHelperConfig.ObtainMissingItemsOption.YES;
+		}
 		if (option == QuestHelperConfig.ObtainMissingItemsOption.YES) {
 			return true;
 		}
@@ -2456,12 +2687,30 @@ public class QuestScript extends Script {
 	}
 
 	private int fetchInstabuyReferencePrice(int itemId) {
-		WikiPrice priceData = Rs2GrandExchange.getRealTimePrices(itemId);
-		if (priceData != null && priceData.buyPrice > 0 && priceData.buyPrice < Integer.MAX_VALUE) {
-			return priceData.buyPrice;
+		int price = QuestPriceLookup.withRetry(() -> {
+			WikiPrice priceData = Rs2GrandExchange.getRealTimePrices(itemId);
+			if (priceData != null && priceData.buyPrice > 0 && priceData.buyPrice < Integer.MAX_VALUE) {
+				return priceData.buyPrice;
+			}
+			return Rs2GrandExchange.getPrice(itemId);
+		}, 3, 500L, ms -> sleep((int) ms), -1);
+		if (price > 0) {
+			return price;
 		}
-		int price = Rs2GrandExchange.getPrice(itemId);
-		return (price > 0 && price < Integer.MAX_VALUE) ? price : -1;
+		int store = Microbot.getClientThread().runOnClientThreadOptional(() -> {
+			ItemComposition def = Microbot.getClient().getItemDefinition(itemId);
+			return def == null ? 0 : def.getPrice();
+		}).orElse(0);
+		int fallback = Math.max(QuestPriceLookup.FALLBACK_PRICE, store);
+		Microbot.log("Quest helper: price lookup failed for item " + itemId + ", using fallback " + fallback + " gp", Level.WARN);
+		return fallback;
+	}
+
+	private boolean isIdTradable(int id) {
+		return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+			ItemComposition def = Microbot.getClient().getItemDefinition(id);
+			return def != null && QuestInventoryRules.geTradable(id, def.isTradeable());
+		}).orElse(false);
 	}
 
 	private int notedVariantId(int unnotedId) {
@@ -2601,6 +2850,9 @@ public class QuestScript extends Script {
 			QuestPreflight.setStatus(QuestPreflight.FAILED_PREFIX + reason);
 			preflightFinished = true;
 		}
+		if (queueRunner.onStop(reason)) {
+			return; // a queued quest is skipped, the queue goes on
+		}
 		Microbot.status = reason;
 		Microbot.log("Quest helper stopped: " + reason, level);
 		if (Microbot.getConfigManager() != null) {
@@ -2680,8 +2932,643 @@ public class QuestScript extends Script {
 		return item.click("");
 	}
 
+	// ---- quest planner queue ----
+
+	private final QuestQueueRunner queueRunner = new QuestQueueRunner(new QuestQueueRunner.Host() {
+		@Override
+		public QuestHelperPlugin plugin() {
+			return getQuestHelperPlugin();
+		}
+
+		@Override
+		public boolean ironman() {
+			return Rs2Player.isIronman();
+		}
+
+		@Override
+		public boolean runQueuePreflight(List<net.runelite.client.plugins.microbot.questhelper.planner.QuestProfile> remaining) {
+			return QuestScript.this.runQueuePreflight(remaining);
+		}
+
+		@Override
+		public boolean needsBlockedItems(QuestHelper helper,
+				net.runelite.client.plugins.microbot.questhelper.planner.QuestProfile profile) {
+			return QuestScript.this.needsBlockedItems(helper, profile);
+		}
+
+		@Override
+		public void rest(long untilMs) {
+			breakEndsAtMs = untilMs;
+		}
+
+		@Override
+		public boolean bankLeftovers(net.runelite.client.plugins.microbot.questhelper.planner.QuestProfile current) {
+			return bankLeftoversForQuest(current);
+		}
+
+		@Override
+		public double fatigue() {
+			return humanTiming == null ? 0 : humanTiming.fatigue();
+		}
+
+		@Override
+		public void turnOff(String reason) {
+			Microbot.status = reason;
+			if (Microbot.getConfigManager() != null) {
+				Microbot.getConfigManager().setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "TurnOn", false);
+			}
+		}
+	});
+
+	/**
+	 * At a queued quest's start: banks what the inventory holds that this quest does not need and the user did not
+	 * select (other quests' items, other quests' food). Coins, runes, this quest's items and its selected supplies stay.
+	 *
+	 * @return true while it is still working
+	 */
+	private boolean bankLeftoversForQuest(net.runelite.client.plugins.microbot.questhelper.planner.QuestProfile profile) {
+		QuestHelper helper = net.runelite.client.plugins.microbot.questhelper.questinfo.QuestHelperQuest
+				.getByName(profile.getQuestName());
+		if (helper == null || Rs2Player.isIronman()) {
+			return false;
+		}
+		Set<Integer> needed = new HashSet<>();
+		try {
+			Microbot.getClientThread().runOnClientThreadOptional(() -> {
+				helper.initializeRequirements();
+				return true;
+			});
+			List<ItemRequirement> requirements = helper.getItemRequirements();
+			if (requirements != null) {
+				for (ItemRequirement requirement : requirements) {
+					if (requirement != null) {
+						for (Integer id : requirement.getAllIds()) {
+							if (id != null) {
+								needed.add(id);
+							}
+						}
+					}
+				}
+			}
+		} catch (RuntimeException e) {
+			Microbot.log("Quest queue: could not read the items of " + profile.getQuestName() + ": " + e, Level.WARN);
+			return false;
+		}
+		Set<String> supplies = QuestInventoryRules.selectedSupplyNames(profile.getSupplies());
+		Predicate<Rs2ItemModel> leftover = item -> !QuestInventoryRules.keepAtQuestStart(item.getId(), item.getName(),
+				needed, supplies);
+		if (!Rs2Inventory.items(leftover).findAny().isPresent()) {
+			return false;
+		}
+		Microbot.status = "Quest queue: banking items " + profile.getQuestName() + " does not need";
+		if (!Rs2Bank.isOpen()) {
+			Rs2Bank.walkToBankAndUseBankReturningTo(bankReturnPoint());
+			sleepUntil(Rs2Bank::isOpen, 15_000);
+			if (!Rs2Bank.isOpen()) {
+				return true;
+			}
+		}
+		Rs2Bank.depositAll(leftover);
+		sleepUntil(() -> !Rs2Inventory.items(leftover).findAny().isPresent(), 3_000);
+		Rs2Bank.closeBank();
+		sleepUntil(() -> !Rs2Bank.isOpen(), 3_000);
+		return true;
+	}
+
+	private int queuePreflightBankAttempts;
+	private int queuePreflightBuyRounds;
+	private boolean queuePreflightPlanned;
+
+	/** The preflight shopping list of a quest (what the planner shows and the queue buys), empty when unknown. */
+	public List<QuestPreflight.Need> preflightNeedsFor(QuestHelper quest) {
+		QuestState state = Microbot.getClientThread()
+				.runOnClientThreadOptional(() -> quest.getQuest().getState(Microbot.getClient())).orElse(null);
+		if (state != QuestState.NOT_STARTED && state != QuestState.IN_PROGRESS) {
+			return new ArrayList<>();
+		}
+		List<QuestPreflight.Need> needs = collectPreflightNeeds(quest, state);
+		return needs == null ? new ArrayList<>() : needs;
+	}
+
+	/** What the quest window's combat tabs show for a quest. */
+	public net.runelite.client.plugins.microbot.questhelper.combat.QuestCombatSetupDialog.Context combatContextFor(
+			QuestHelper quest) {
+		return combat.contextFor(quest);
+	}
+
+	/** True when the quest needs items that may not be bought and that the player neither carries nor banks. */
+	private boolean needsBlockedItems(QuestHelper helper,
+			net.runelite.client.plugins.microbot.questhelper.planner.QuestProfile profile) {
+		if (profile.geAllowed() && !Rs2Player.isIronman()) {
+			return false;
+		}
+		ItemAndLastUpdated bank = QuestContainerManager.getBankData();
+		if (bank.getLastUpdated() < 0 && bank.getItems().length == 0) {
+			return false; // bank never seen: cannot tell
+		}
+		List<QuestPreflight.Need> needs = preflightNeedsFor(helper);
+		Map<Integer, Integer> owned = new HashMap<>();
+		addContainer(owned, QuestContainerManager.getEquippedData());
+		addContainer(owned, QuestContainerManager.getInventoryData());
+		addContainer(owned, bank);
+		return !QuestPreflight.compute(needs, owned).isEmpty()
+				&& QuestPreflight.compute(needs, owned).stream().anyMatch(s -> s.missing > 0);
+	}
+
+	/**
+	 * Once per queue run, before the first quest: counts what every queued quest (and its supplies) needs, pays for the
+	 * shortfall at the Grand Exchange and banks it. The purchase was approved in the planner, so no dialog opens.
+	 *
+	 * @return true while it is still working
+	 */
+	private boolean runQueuePreflight(List<net.runelite.client.plugins.microbot.questhelper.planner.QuestProfile> remaining) {
+		return BUY_GUARD.callOrElse(() -> runQueuePreflightLocked(remaining), true);
+	}
+
+	private boolean runQueuePreflightLocked(
+			List<net.runelite.client.plugins.microbot.questhelper.planner.QuestProfile> remaining) {
+		if (!config.preflightQuestItems() || Rs2Player.isIronman()) {
+			return false;
+		}
+		ItemAndLastUpdated bank = QuestContainerManager.getBankData();
+		QuestPreflight.setStatus(QuestPreflight.CHECKING);
+		Microbot.status = "Quest queue: counting what the quests need";
+		if (bank.getLastUpdated() < 0 && bank.getItems().length == 0) {
+			if (queuePreflightBankAttempts >= PREFLIGHT_MAX_BANK_ATTEMPTS) {
+				QuestPreflight.setStatus(QuestPreflight.DONE);
+				return false;
+			}
+			queuePreflightBankAttempts++;
+			Rs2Bank.walkToBankAndUseBankReturningTo(bankReturnPoint());
+			if (sleepUntil(Rs2Bank::isOpen, 15_000)) {
+				sleepUntil(() -> QuestContainerManager.getBankData().getLastUpdated() >= 0, 3_000);
+				Rs2Bank.closeBank();
+				sleepUntil(() -> !Rs2Bank.isOpen(), 3_000);
+			}
+			return true;
+		}
+
+		int globalMin = net.runelite.client.plugins.microbot.questhelper.planner.QuestQueue.shared().defaultMinStamina();
+		Map<String, QuestPreflight.Need> merged = new java.util.LinkedHashMap<>();
+		for (net.runelite.client.plugins.microbot.questhelper.planner.QuestProfile profile : remaining) {
+			if (!profile.geAllowed()) {
+				continue;
+			}
+			QuestHelper helper = net.runelite.client.plugins.microbot.questhelper.questinfo.QuestHelperQuest
+					.getByName(profile.getQuestName());
+			List<QuestPreflight.Need> needs = new ArrayList<>();
+			if (helper != null) {
+				needs.addAll(preflightNeedsFor(helper));
+			}
+			for (net.runelite.client.plugins.microbot.questhelper.planner.QuestProfile.SupplyLine supply
+					: profile.getSupplies().buyable(profile.effectiveMinStamina(globalMin))) {
+				List<Integer> ids = new ArrayList<>(supply.ids);
+				if (ids.isEmpty()) {
+					int id = QuestCombatHandler.resolveItemId(supply.name);
+					if (id > 0) {
+						ids.add(id);
+					}
+				}
+				if (!ids.isEmpty()) {
+					needs.add(new QuestPreflight.Need(supply.name, ids, supply.qty, true));
+				}
+			}
+			for (QuestPreflight.Need need : needs) {
+				String key = need.name.toLowerCase();
+				QuestPreflight.Need old = merged.get(key);
+				merged.put(key, old == null ? need
+						: new QuestPreflight.Need(old.name, old.ids, old.quantity + need.quantity, old.consumed || need.consumed));
+			}
+		}
+		List<QuestPreflight.Need> needs = new ArrayList<>(merged.values());
+		Map<Integer, Integer> onPlayer = new HashMap<>();
+		addContainer(onPlayer, QuestContainerManager.getEquippedData());
+		addContainer(onPlayer, QuestContainerManager.getInventoryData());
+		Map<Integer, Integer> owned = new HashMap<>(onPlayer);
+		addContainer(owned, bank);
+		QuestPreflight.foldNoted(needs, this::notedVariantId, onPlayer, owned);
+
+		List<ItemRequirement> toBuy = new ArrayList<>();
+		for (QuestPreflight.Shortfall shortfall : QuestPreflight.compute(needs, owned)) {
+			if (shortfall.missing > 0) {
+				toBuy.add(new ItemRequirement(shortfall.name, shortfall.ids, shortfall.missing));
+			}
+		}
+		if (toBuy.isEmpty()) {
+			QuestPreflight.setStatus(QuestPreflight.DONE);
+			return false;
+		}
+		if (!queuePreflightPlanned) {
+			long total = 0;
+			List<String> names = new ArrayList<>();
+			for (ItemRequirement ir : toBuy) {
+				int primaryId = tradablePrimaryId(ir);
+				int price = primaryId == -1 ? -1 : fetchInstabuyReferencePrice(primaryId);
+				if (price <= 0) {
+					Microbot.log("Quest queue: no price for " + ir.getName() + ", not buying it up front", Level.WARN);
+					continue;
+				}
+				total += (long) ir.getQuantity() * QuestPurchasePlan.offerPrice(price);
+				names.add(ir.getName());
+			}
+			if (queueRunner.hasApproval() && !queueRunner.covers(names, total)) {
+				Microbot.log("Quest queue: not buying up front, " + queueRunner.refusal(names, total), Level.WARN);
+				QuestPreflight.setStatus(QuestPreflight.DONE);
+				return false;
+			}
+			queueRunner.recordSpend(total);
+			queuePreflightPlanned = true;
+			Microbot.log(String.format("Quest queue: buying %s up front (~%,d gp)", describeItems(toBuy), total), Level.INFO);
+		}
+		if (++queuePreflightBuyRounds > PREFLIGHT_MAX_BUY_ROUNDS) {
+			Microbot.log("Quest queue: gave up buying " + describeItems(toBuy), Level.WARN);
+			QuestPreflight.setStatus(QuestPreflight.DONE);
+			return false;
+		}
+		QuestPreflight.setStatus(QuestPreflight.BUYING);
+		Microbot.status = "Quest queue: buying what the quests need";
+		acquireMissingTradableItems(toBuy, true);
+		return true;
+	}
+
+	// ---- one loop, pause, stop and the quest window ----
+
+	/** Wraps the main tick so only one tick runs at a time, even if a second loop was scheduled by mistake. */
+	private Runnable guardedTick(Runnable body) {
+		return TICK_GUARD.guard(body);
+	}
+
+	/** Cancels the loops of an earlier run() so a restart never leaves two of them going. */
+	private void cancelLoops() {
+		if (mainScheduledFuture != null && !mainScheduledFuture.isDone()) {
+			mainScheduledFuture.cancel(true);
+		}
+		if (combatSupportFuture != null) {
+			combatSupportFuture.cancel(true);
+			combatSupportFuture = null;
+		}
+		if (supervisorFuture != null) {
+			supervisorFuture.cancel(true);
+			supervisorFuture = null;
+		}
+	}
+
+	/**
+	 * Called between the actions of a long routine (buying, banking): waits while paused, and returns false when
+	 * automation was stopped (or the thread interrupted), so the routine gives up at once.
+	 */
+	private boolean actionGate() {
+		return QuestPause.awaitResume(() -> config != null && config.startStopQuestHelper(), 150);
+	}
+
+	/** Stop: the preflight goes back to idle and any plan or window of the run is dropped. */
+	private void resetPreflightOnStop() {
+		QuestPause.resume();
+		QuestPreflight.resetToIdle();
+		preflightQuestKey = null;
+		preflightNonce = Integer.MIN_VALUE;
+		preflightPlan = null;
+		preflightFinished = false;
+		purchaseApproved = false;
+		queuePreflightBankAttempts = 0;
+		queuePreflightBuyRounds = 0;
+		queuePreflightPlanned = false;
+		windowDone = true;
+		windowQuestKey = null;
+		queueRunner.setWindowResult(null, null);
+		QuestPurchasePlan.setCurrent(null);
+		net.runelite.client.plugins.microbot.questhelper.planner.QuestWindow.dismiss();
+	}
+
+	/** While automation is switched off, a main loop still inside the preflight or a Grand Exchange routine is interrupted. */
+	private void interruptOnStop() {
+		boolean stopRequested = config != null && !config.startStopQuestHelper();
+		if (!stopRequested) {
+			stopInterruptSent = false;
+			return;
+		}
+		Thread running = TICK_GUARD.owner();
+		if (!stopInterruptSent && running != null && running != Thread.currentThread()
+				&& (QuestPreflight.isInProgress() || BUY_GUARD.isBusy())) {
+			stopInterruptSent = true;
+			Microbot.log("Quest helper: stopped, interrupting the buy in progress", Level.INFO);
+			running.interrupt();
+		}
+	}
+
+	/** Coins in the bank according to the last bank read, or -1 when the bank was never read. */
+	private long bankCoinSnapshot() {
+		ItemAndLastUpdated bank = QuestContainerManager.getBankData();
+		if (bank.getLastUpdated() < 0 && bank.getItems().length == 0) {
+			return -1;
+		}
+		long sum = 0;
+		for (Item item : bank.getItems()) {
+			if (item != null && item.getId() == ItemID.COINS_995) {
+				sum += item.getQuantity();
+			}
+		}
+		return sum;
+	}
+
+	/** Takes {@code take} gp out of the bank (bank first), then reopens the Grand Exchange. */
+	private boolean withdrawCoinsFromBank(long take, long needed, List<ItemRequirement> toBuy) {
+		if (take <= 0) {
+			return true;
+		}
+		Microbot.status = String.format("Withdrawing %,d gp from the bank for the Grand Exchange retry", take);
+		if (!Rs2Bank.isOpen()) {
+			Rs2Bank.walkToBankAndUseBankReturningTo(bankReturnPoint());
+			if (!sleepUntil(Rs2Bank::isOpen, 15_000)) {
+				return false;
+			}
+		}
+		if (!Rs2Bank.setWithdrawAsItem()) {
+			Rs2Bank.closeBank();
+			return false;
+		}
+		ensureFreeSlotInBank(toBuy);
+		Rs2Bank.withdrawX(ItemID.COINS_995, (int) Math.min(Integer.MAX_VALUE, take));
+		sleepUntil(() -> Rs2Inventory.itemQuantity(ItemID.COINS_995) >= needed, 3_000);
+		Rs2Bank.closeBank();
+		sleepUntil(() -> !Rs2Bank.isOpen(), 3_000);
+		if (Rs2Inventory.itemQuantity(ItemID.COINS_995) < needed) {
+			return false;
+		}
+		if (!Rs2GrandExchange.isOpen()) {
+			Rs2GrandExchange.walkToGrandExchange();
+			Rs2GrandExchange.openExchange();
+			sleepUntil(Rs2GrandExchange::isOpen, 15_000);
+		}
+		return Rs2GrandExchange.isOpen();
+	}
+
+	/** Drops the needs of supplies the player switched off for the Grand Exchange. */
+	private void dropNoBuyNeeds(List<QuestPreflight.Need> needs,
+			QuestHelper quest) {
+		net.runelite.client.plugins.microbot.questhelper.planner.QuestProfile profile = queueRunner.profileInForce();
+		if (profile == null) {
+			profile = net.runelite.client.plugins.microbot.questhelper.planner.QuestQueue.shared()
+					.savedProfile(quest.getQuest().getName());
+		}
+		if (profile == null) {
+			return;
+		}
+		Set<String> blocked = profile.getSupplies().noBuyNames();
+		if (blocked.isEmpty()) {
+			return;
+		}
+		needs.removeIf(need -> blocked.contains(need.name.replaceAll("\\s*\\(\\d+\\)$", "").trim().toLowerCase()));
+	}
+
+	/** A short chat message that does not block anything. */
+	private void announce(String message) {
+		Microbot.log("Quest helper: " + message, Level.INFO);
+		try {
+			Microbot.getClientThread().invokeLater(() -> {
+				if (Microbot.getClient() != null) {
+					Microbot.getClient().addChatMessage(net.runelite.api.ChatMessageType.GAMEMESSAGE, "",
+							"[Quest helper] " + message, null);
+				}
+			});
+		} catch (RuntimeException e) {
+			// chat is a convenience only
+		}
+	}
+
+	/**
+	 * Opens the quest window once for every quest that starts (the planner already did the review for a queue, but
+	 * the window is quick: it is prefilled and Start accepts it). Skipped only when Fully automated is on, or the
+	 * quest was set to "do not ask again". Waits, tick by tick, for the answer.
+	 *
+	 * @return true while the window is open and the quest must not act yet
+	 */
+	private boolean questWindowGate(QuestHelper quest) {
+		int nonce = QuestCombatHandler.startNonce();
+		String key = quest.getQuest().name();
+		if (nonce != windowNonce || !key.equals(windowQuestKey)) {
+			windowNonce = nonce;
+			windowQuestKey = key;
+			windowAnswer.set(null);
+			queueRunner.setWindowResult(null, null);
+			net.runelite.client.plugins.microbot.questhelper.planner.QuestProfile known = queueRunner.current();
+			if (known == null) {
+				known = net.runelite.client.plugins.microbot.questhelper.planner.QuestQueue.shared()
+						.savedProfile(quest.getQuest().getName());
+			}
+			boolean skip = config.fullyAutomated() || (known != null && !known.isAskSupplies());
+			QuestPurchasePlan.consumeOverride(); // the Agent Server confirmPurchases override never hides the window
+			if (skip) {
+				windowDone = true;
+				return false;
+			}
+			windowDone = false;
+			final int mine = nonce;
+			Microbot.status = "Quest helper: review the quest window";
+			net.runelite.client.plugins.microbot.questhelper.planner.QuestPlannerLauncher.openForQuest(
+					quest.getQuest().getName(), result -> {
+						if (mine == windowNonce) {
+							windowAnswer.set(result == null ? "cancelled" : result);
+						}
+					});
+			return true;
+		}
+		if (windowDone) {
+			return false;
+		}
+		Object answer = windowAnswer.get();
+		if (answer == null) {
+			Microbot.status = "Quest helper: waiting for the quest window";
+			return true;
+		}
+		windowDone = true;
+		if (!(answer instanceof net.runelite.client.plugins.microbot.questhelper.planner.QuestWindow.Result)) {
+			stopQuesterWithReason("Quest cancelled in the quest window");
+			return true;
+		}
+		net.runelite.client.plugins.microbot.questhelper.planner.QuestWindow.Result result =
+				(net.runelite.client.plugins.microbot.questhelper.planner.QuestWindow.Result) answer;
+		if (!result.profiles.isEmpty()) {
+			queueRunner.setWindowResult(result.profiles.get(0), result.approval);
+		}
+		if (result.skipBuying) {
+			QuestPreflight.skipNextStart(true);
+		}
+		return false;
+	}
+
+	// ---- carry rules: forbidden items, restricted steps and stamina potions ----
+
+	private final Map<String, List<net.runelite.client.plugins.microbot.questhelper.planner.QuestRestrictions.Restriction>>
+			questRestrictionCache = new HashMap<>();
+	private String carryEnforcedKey = "";
+	private final Set<String> carryWarned = new HashSet<>();
+
+	/** The profile the running quest follows: the queue's, else the one saved for it, else none. */
+	private net.runelite.client.plugins.microbot.questhelper.planner.QuestProfile activeProfile(QuestHelper quest) {
+		net.runelite.client.plugins.microbot.questhelper.planner.QuestProfile profile = queueRunner.current();
+		if (profile != null) {
+			return profile;
+		}
+		return net.runelite.client.plugins.microbot.questhelper.planner.QuestQueue.shared()
+				.savedProfile(quest.getQuest().getName());
+	}
+
+	/**
+	 * Keeps stamina potions and forbidden items in line with the step: banks what the step forbids (empty inventory,
+	 * no food, no weapons or armour, named items), leaves the stamina potions in the bank while a step forbids carrying
+	 * them, and fetches them back only when a bank is open anyway. Never walks to a bank just for stamina potions.
+	 *
+	 * @return true when this tick was used
+	 */
+	private boolean handleCarryRules(QuestHelper quest, QuestStep step) {
+		if (step == null) {
+			return false;
+		}
+		net.runelite.client.plugins.microbot.questhelper.planner.QuestProfile profile = activeProfile(quest);
+		String enumName = quest.getQuest().name();
+		List<net.runelite.client.plugins.microbot.questhelper.planner.QuestRestrictions.Restriction> questLevel =
+				questRestrictionCache.computeIfAbsent(enumName, key ->
+						net.runelite.client.plugins.microbot.questhelper.planner.QuestRestrictions.forQuest(key,
+								net.runelite.client.plugins.microbot.questhelper.planner.QuestInfo.restrictionTexts(quest)));
+		List<String> stepTexts = new ArrayList<>();
+		if (step.getText() != null) {
+			stepTexts.addAll(step.getText());
+		}
+		if (step instanceof DetailedQuestStep && ((DetailedQuestStep) step).getRequirements() != null) {
+			for (Requirement requirement : ((DetailedQuestStep) step).getRequirements()) {
+				if (requirement instanceof ItemRequirement) {
+					stepTexts.add(((ItemRequirement) requirement).getTooltip());
+				}
+			}
+		}
+		List<net.runelite.client.plugins.microbot.questhelper.planner.QuestRestrictions.Restriction> stepLevel =
+				net.runelite.client.plugins.microbot.questhelper.planner.QuestRestrictions.fromTexts(stepTexts);
+
+		int reserved = slotsReservedForStep(step);
+		int staminaHeld = Rs2Inventory.count("stamina potion", false);
+		boolean restricted = net.runelite.client.plugins.microbot.questhelper.planner.QuestRestrictions
+				.restrictsStamina(stepLevel, Rs2Inventory.emptySlotCount() + staminaHeld);
+		combat.setCarryRestricted(restricted);
+		if (Rs2Bank.isOpen() && (combat.depositStamina(reserved) || combat.topUpStamina(reserved))) {
+			return true;
+		}
+
+		for (net.runelite.client.plugins.microbot.questhelper.planner.QuestRestrictions.Restriction restriction : questLevel) {
+			if (!restriction.enforce && carryWarned.add(enumName + "|" + restriction.text)) {
+				Microbot.log("Quest helper: " + quest.getQuest().getName() + ": " + restriction.text, Level.WARN);
+			}
+		}
+		if (profile != null && !profile.isBankForbidden()) {
+			return false;
+		}
+		List<net.runelite.client.plugins.microbot.questhelper.planner.QuestRestrictions.Restriction> enforce = new ArrayList<>();
+		for (net.runelite.client.plugins.microbot.questhelper.planner.QuestRestrictions.Restriction restriction : stepLevel) {
+			if (restriction.enforce && restriction.kind
+					!= net.runelite.client.plugins.microbot.questhelper.planner.QuestRestrictions.Kind.FREE_SLOTS) {
+				enforce.add(restriction);
+			}
+		}
+		for (net.runelite.client.plugins.microbot.questhelper.planner.QuestRestrictions.Restriction restriction : questLevel) {
+			if (restriction.enforce && restriction.kind
+					== net.runelite.client.plugins.microbot.questhelper.planner.QuestRestrictions.Kind.ITEM) {
+				enforce.add(restriction);
+			}
+		}
+		if (enforce.isEmpty()) {
+			return false;
+		}
+		String key = enumName + "|" + String.join("/", step.getText() == null ? new ArrayList<>() : step.getText());
+		if (key.equals(carryEnforcedKey)) {
+			return false;
+		}
+		Set<Integer> stepItems = new HashSet<>();
+		if (step instanceof DetailedQuestStep && ((DetailedQuestStep) step).getRequirements() != null) {
+			for (Requirement requirement : ((DetailedQuestStep) step).getRequirements()) {
+				if (requirement instanceof ItemRequirement) {
+					stepItems.addAll(((ItemRequirement) requirement).getAllIds().stream()
+							.filter(id -> id != null && id > 0).collect(Collectors.toList()));
+				}
+			}
+		}
+		if (!carriesForbidden(enforce, stepItems)) {
+			carryEnforcedKey = key;
+			return false;
+		}
+		Microbot.status = "Quest helper: banking items this step does not allow";
+		if (!Rs2Bank.isOpen()) {
+			Rs2Bank.walkToBankAndUseBankReturningTo(bankReturnPoint());
+			if (!sleepUntil(Rs2Bank::isOpen, 15_000)) {
+				return true;
+			}
+		}
+		for (net.runelite.client.plugins.microbot.questhelper.planner.QuestRestrictions.Restriction restriction : enforce) {
+			switch (restriction.kind) {
+				case EMPTY_INVENTORY:
+					Rs2Bank.depositAll();
+					break;
+				case NO_WEAPONS_OR_ARMOUR:
+					Rs2Bank.depositEquipment();
+					break;
+				case NO_FOOD:
+					for (Rs2ItemModel food : Rs2Inventory.items(Rs2ItemModel::isFood).collect(Collectors.toList())) {
+						if (!stepItems.contains(food.getId())) {
+							Rs2Bank.depositAll(food.getId());
+						}
+					}
+					break;
+				case ITEM:
+					if (!restriction.item.isEmpty()) {
+						Rs2Bank.depositAll(restriction.item);
+					}
+					break;
+				default:
+					break;
+			}
+			sleep(300, 600);
+		}
+		Microbot.log("Quest helper: banked what this step forbids (" + enforce.get(0).text + ")", Level.INFO);
+		carryEnforcedKey = key;
+		Rs2Bank.closeBank();
+		sleepUntil(() -> !Rs2Bank.isOpen(), 3_000);
+		return true;
+	}
+
+	private boolean carriesForbidden(
+			List<net.runelite.client.plugins.microbot.questhelper.planner.QuestRestrictions.Restriction> enforce,
+			Set<Integer> stepItems) {
+		for (net.runelite.client.plugins.microbot.questhelper.planner.QuestRestrictions.Restriction restriction : enforce) {
+			switch (restriction.kind) {
+				case EMPTY_INVENTORY:
+					if (Rs2Inventory.items(i -> !stepItems.contains(i.getId())).findAny().isPresent()) {
+						return true;
+					}
+					break;
+				case NO_WEAPONS_OR_ARMOUR:
+					if (!Rs2Equipment.items().isEmpty()) {
+						return true;
+					}
+					break;
+				case NO_FOOD:
+					if (Rs2Inventory.items(i -> i.isFood() && !stepItems.contains(i.getId())).findAny().isPresent()) {
+						return true;
+					}
+					break;
+				case ITEM:
+					if (!restriction.item.isEmpty() && Rs2Inventory.hasItem(restriction.item)) {
+						return true;
+					}
+					break;
+				default:
+					break;
+			}
+		}
+		return false;
+	}
+
 	@Override
 	public void shutdown() {
+		net.runelite.client.plugins.microbot.shortestpath.pathfinder.QuestWalkRule.setActive(false);
 		DialogueChoiceProvider.clear();
 		if (combatSupportFuture != null) {
 			combatSupportFuture.cancel(true);
@@ -2715,7 +3602,7 @@ public class QuestScript extends Script {
         valeTotemsSessionWoodType = null;
         obtainItemsPromptInFlight.set(false);
         obtainItemsSessionChoice = null;
-        QuestPurchaseConfirmDialog.dismiss();
+        net.runelite.client.plugins.microbot.questhelper.planner.QuestWindow.dismiss();
         QuestPurchasePlan.setCurrent(null);
         lastBlockedEquipmentNotice = "";
     }

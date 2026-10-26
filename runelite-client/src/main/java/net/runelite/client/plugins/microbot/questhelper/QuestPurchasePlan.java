@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicReference;
 /**
  * What the quest preflight is about to buy and whether the player can pay for it. Pure data and decisions, plus the
  * small amount of static state the Agent Server reads; the game and Swing parts live in {@link QuestScript} and
- * {@link QuestPurchaseConfirmDialog}.
+ * the quest window.
  */
 public final class QuestPurchasePlan
 {

@@ -2496,7 +2496,8 @@ public class Rs2Bank {
         Optional<BankLocation> byPath = Optional.empty();
         // Re-plan without a rejected bank a few times: a route that is implausible versus the straight-line
         // nearest bank (and not a genuine item/spell teleport) is dropped rather than walked.
-        for (int attempt = 0; attempt < 4 && !candidates.isEmpty(); attempt++) {
+        NearestBankRoute travelFallback = null;
+        for (int attempt = 0; attempt < 8 && !candidates.isEmpty(); attempt++) {
             Set<WorldPoint> targets = candidates.stream()
                     .map(BankLocation::getWorldPoint)
                     .collect(Collectors.toSet());
@@ -2519,6 +2520,18 @@ public class Rs2Bank {
             if (!byPath.isPresent()) {
                 break;
             }
+            if (NearestBankPolicy.usesTravelTransport(route)) {
+                // never sail or fly to a bank while another one may be reachable on foot
+                if (travelFallback == null) {
+                    travelFallback = new NearestBankRoute(path, byPath.get(), route);
+                }
+                Microbot.log("Rejecting bank " + byPath.get() + " from " + worldPoint + ": its route needs a ship or similar transport");
+                candidates.remove(byPath.get());
+                byPath = Optional.empty();
+                route = null;
+                path = Collections.emptyList();
+                continue;
+            }
             if (NearestBankPolicy.isPlausible(worldPoint, byPath.get().getWorldPoint(), allCandidatePoints,
                     NearestBankPolicy.usesMinigameTransport(route),
                     NearestBankPolicy.usesItemOrSpellTeleport(route))) {
@@ -2529,6 +2542,10 @@ public class Rs2Bank {
             byPath = Optional.empty();
             route = null;
             path = Collections.emptyList();
+        }
+        if (route == null && travelFallback != null) {
+            Microbot.log("No bank is reachable on foot from " + worldPoint + "; using " + travelFallback.getBank() + " by transport");
+            return travelFallback;
         }
         if (route == null) {
             Microbot.log("No plausible bank route from " + worldPoint);
@@ -2571,7 +2588,8 @@ public class Rs2Bank {
         routes.put(planned.getBank(), planned);
         options.add(new NearestBankPolicy.BankOption(planned.getBank(),
                 routeCost(planned.getRoute(), planned.getPath()),
-                NearestBankPolicy.usesHomeTeleport(planned.getRoute())));
+                NearestBankPolicy.usesHomeTeleport(planned.getRoute()),
+                NearestBankPolicy.usesTravelTransport(planned.getRoute())));
         List<BankLocation> near = candidates.stream()
                 .filter(b -> b != planned.getBank() && b.getWorldPoint().distanceTo2D(worldPoint) <= 80)
                 .sorted(Comparator.comparingInt(b -> b.getWorldPoint().distanceTo2D(worldPoint)))
@@ -2592,7 +2610,8 @@ public class Rs2Bank {
                 continue;
             }
             routes.put(b, new NearestBankRoute(p, b, r));
-            options.add(new NearestBankPolicy.BankOption(b, routeCost(r, p), NearestBankPolicy.usesHomeTeleport(r)));
+            options.add(new NearestBankPolicy.BankOption(b, routeCost(r, p), NearestBankPolicy.usesHomeTeleport(r),
+                    NearestBankPolicy.usesTravelTransport(r)));
         }
         NearestBankPolicy.BankOption pick = NearestBankPolicy.choose(worldPoint, returnPoint, options);
         return pick == null ? planned : routes.get(pick.bank);

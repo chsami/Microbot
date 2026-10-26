@@ -109,6 +109,31 @@ final class NearestBankPolicy {
                 && start.distanceTo2D(bank.getWorldPoint()) <= MINIGAME_BANK_MAX_TILES;
     }
 
+    private static final Set<Rs2TransportType> TRAVEL_TRANSPORTS = EnumSet.of(
+            Rs2TransportType.BOAT, Rs2TransportType.CANOE, Rs2TransportType.CHARTER_SHIP, Rs2TransportType.SHIP,
+            Rs2TransportType.FAIRY_RING, Rs2TransportType.QUETZAL, Rs2TransportType.QUETZAL_WHISTLE,
+            Rs2TransportType.GNOME_GLIDER, Rs2TransportType.MINECART, Rs2TransportType.SPIRIT_TREE,
+            Rs2TransportType.MAGIC_CARPET, Rs2TransportType.HOT_AIR_BALLOON, Rs2TransportType.MAGIC_MUSHTREE);
+
+    /** Ships, charters, quetzals, gliders and the like: transports that carry the player to another region. */
+    static boolean isTravelTransport(Rs2TransportType type) {
+        return type != null && TRAVEL_TRANSPORTS.contains(type);
+    }
+
+    /** Whether a route needs a ship, charter, quetzal or similar long-distance transport. */
+    static boolean usesTravelTransport(Rs2RouteResult route) {
+        if (route == null) {
+            return false;
+        }
+        for (Rs2RouteStep step : route.getTransportSteps()) {
+            Rs2TransportEdge edge = step.getTransport().orElse(null);
+            if (edge != null && isTravelTransport(edge.getType())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     static boolean usesMinigameTransport(Rs2RouteResult route) {
         return hasTransport(route, false);
     }
@@ -204,11 +229,18 @@ final class NearestBankPolicy {
         final BankLocation bank;
         final long toBankCost;
         final boolean homeTeleport;
+        /** The route needs a ship, charter, quetzal or similar. */
+        final boolean travelTransport;
 
         BankOption(BankLocation bank, long toBankCost, boolean homeTeleport) {
+            this(bank, toBankCost, homeTeleport, false);
+        }
+
+        BankOption(BankLocation bank, long toBankCost, boolean homeTeleport, boolean travelTransport) {
             this.bank = bank;
             this.toBankCost = toBankCost;
             this.homeTeleport = homeTeleport;
+            this.travelTransport = travelTransport;
         }
     }
 
@@ -241,12 +273,18 @@ final class NearestBankPolicy {
      * Home-teleport options for banks closer than {@link #HOME_TELEPORT_MIN_TILES} are dropped.
      */
     static BankOption choose(WorldPoint player, WorldPoint returnPoint, Collection<BankOption> options) {
+        boolean anyOnFoot = false;
+        for (BankOption o : options) {
+            if (o != null && o.bank != null && !o.travelTransport) {
+                anyOnFoot = true;
+            }
+        }
         BankOption best = null;
         long bestScore = Long.MAX_VALUE;
         BankOption nearby = null;
         long nearbyScore = Long.MAX_VALUE;
         for (BankOption o : options) {
-            if (o == null || o.bank == null) {
+            if (o == null || o.bank == null || (anyOnFoot && o.travelTransport)) {
                 continue;
             }
             WorldPoint bp = o.bank.getWorldPoint();

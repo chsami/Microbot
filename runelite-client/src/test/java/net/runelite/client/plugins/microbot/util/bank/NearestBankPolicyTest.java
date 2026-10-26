@@ -19,6 +19,29 @@ public class NearestBankPolicyTest {
             BankLocation.FALADOR_WEST.getWorldPoint());
 
     @Test
+    public void rimmingtonPrefersFootBankOverCheaperShipBank() {
+        WorldPoint rimmington = new WorldPoint(2969, 3206, 0);
+        NearestBankPolicy.BankOption ship = new NearestBankPolicy.BankOption(BankLocation.PORT_KHAZARD, 20, false, true);
+        NearestBankPolicy.BankOption falador = new NearestBankPolicy.BankOption(BankLocation.FALADOR_WEST, 90, false, false);
+        NearestBankPolicy.BankOption pick = NearestBankPolicy.choose(rimmington, rimmington, Arrays.asList(ship, falador));
+        assertTrue(pick.bank == BankLocation.FALADOR_WEST);
+    }
+
+    @Test
+    public void shipBankIsKeptWhenNothingIsReachableOnFoot() {
+        NearestBankPolicy.BankOption ship = new NearestBankPolicy.BankOption(BankLocation.PORT_KHAZARD, 20, false, true);
+        assertTrue(NearestBankPolicy.choose(new WorldPoint(2969, 3206, 0), null, Arrays.asList(ship)).bank == BankLocation.PORT_KHAZARD);
+    }
+
+    @Test
+    public void travelTransportTypes() {
+        assertTrue(NearestBankPolicy.isTravelTransport(net.runelite.client.plugins.microbot.util.walker.Rs2TransportType.SHIP));
+        assertTrue(NearestBankPolicy.isTravelTransport(net.runelite.client.plugins.microbot.util.walker.Rs2TransportType.QUETZAL));
+        assertTrue(NearestBankPolicy.isTravelTransport(net.runelite.client.plugins.microbot.util.walker.Rs2TransportType.CHARTER_SHIP));
+        assertFalse(NearestBankPolicy.isTravelTransport(net.runelite.client.plugins.microbot.util.walker.Rs2TransportType.TRANSPORT));
+    }
+
+    @Test
     public void minigameBankExcludedFarAway() {
         assertFalse(NearestBankPolicy.isEligibleTarget(FALADOR_NORTH, BankLocation.ISLE_OF_SOULS));
         assertTrue(NearestBankPolicy.isEligibleTarget(new WorldPoint(2215, 2860, 0), BankLocation.ISLE_OF_SOULS));

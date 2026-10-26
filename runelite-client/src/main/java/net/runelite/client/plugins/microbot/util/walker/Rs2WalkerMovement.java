@@ -333,12 +333,15 @@ final class Rs2WalkerMovement {
         if (!Objects.equals(routeClickSessionTarget, Rs2Walker.getCurrentTarget())) {
             routeClickSessionTarget = Rs2Walker.getCurrentTarget();
             routeClicksSinceMinimap = 0;
-            nextMinimapClickAt = ThreadLocalRandom.current().nextInt(2, 8);
+            nextMinimapClickAt = WalkPathVariation.nextCadence(2, 8, ThreadLocalRandom.current());
         }
         boolean tryMinimapFirst = routeClicksSinceMinimap >= nextMinimapClickAt;
-        if (tryMinimapFirst && walkMiniMap(target)) {
+        WorldPoint minimapTarget = tryMinimapFirst
+                ? WalkPathVariation.varyMinimapTarget(rawPath, target, playerLoc, routeClickSessionTarget)
+                : target;
+        if (tryMinimapFirst && (walkMiniMap(minimapTarget) || (minimapTarget != target && walkMiniMap(target)))) {
             routeClicksSinceMinimap = 0;
-            nextMinimapClickAt = ThreadLocalRandom.current().nextInt(2, 8);
+            nextMinimapClickAt = WalkPathVariation.nextCadence(2, 8, ThreadLocalRandom.current());
             WebWalkLog.spDebug("route_minimap_click | to={} player={} cadence={}",
                     compactWorldPoint(target), compactWorldPoint(playerLoc), nextMinimapClickAt);
             return target;

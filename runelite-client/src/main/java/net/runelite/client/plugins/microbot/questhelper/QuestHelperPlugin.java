@@ -138,6 +138,20 @@ public class QuestHelperPlugin extends Plugin
 	private QuestBankManager questBankManager;
 
 	@Inject
+	private net.runelite.client.input.KeyManager keyManager;
+
+	private final net.runelite.client.util.HotkeyListener pauseHotkey = new net.runelite.client.util.HotkeyListener(
+		() -> config.pauseHotkey())
+	{
+		@Override
+		public void hotkeyPressed()
+		{
+			boolean paused = QuestPause.toggle();
+			log.info("Quest helper {}", paused ? "paused" : "resumed");
+		}
+	};
+
+	@Inject
 	@Getter
 	private QuestManager questManager;
 
@@ -204,6 +218,7 @@ public class QuestHelperPlugin extends Plugin
 		scanAndInstantiate();
 
 		questOverlayManager.startUp();
+		keyManager.registerKeyListener(pauseHotkey);
 
 		if (developerMode)
 		{
@@ -251,6 +266,7 @@ public class QuestHelperPlugin extends Plugin
 			questOverlayManager.removeDebugOverlay();
 		}
 		questOverlayManager.shutDown();
+		keyManager.unregisterKeyListener(pauseHotkey);
 		playerStateManager.shutDown();
 
 		clientToolbar.removeNavigation(navButton);
@@ -382,6 +398,25 @@ public class QuestHelperPlugin extends Plugin
 			return;
 		}
 
+		if ("TurnOn".equals(event.getKey()) && "true".equals(event.getNewValue()))
+		{
+			net.runelite.client.plugins.microbot.questhelper.planner.QuestPlannerLauncher.onTurnOn(this);
+		}
+
+		if ("openPlanner".equals(event.getKey()) && "true".equals(event.getNewValue()))
+		{
+			configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "openPlanner", false);
+			net.runelite.client.plugins.microbot.questhelper.planner.QuestPlannerLauncher.open(this);
+			return;
+		}
+
+		if ("openCombatSetup".equals(event.getKey()) && "true".equals(event.getNewValue()))
+		{
+			configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "openCombatSetup", false);
+			net.runelite.client.plugins.microbot.questhelper.planner.QuestPlannerLauncher.openForSelected(this);
+			return;
+		}
+
 		if ("resetCombatSetups".equals(event.getKey()) && "true".equals(event.getNewValue()))
 		{
 			QuestCombatStore.clearAll();
@@ -486,6 +521,19 @@ public class QuestHelperPlugin extends Plugin
 	public @Nullable QuestHelper getSelectedQuest()
 	{
 		return questManager.getSelectedQuest();
+	}
+
+	/** The preflight shopping list of a quest, for the quest planner's review pages. */
+	public java.util.List<QuestPreflight.Need> preflightNeedsFor(QuestHelper quest)
+	{
+		return questScript.preflightNeedsFor(quest);
+	}
+
+	/** What the quest window's combat tabs show for a quest. Call off the EDT. */
+	public net.runelite.client.plugins.microbot.questhelper.combat.QuestCombatSetupDialog.Context combatContextFor(
+		QuestHelper quest)
+	{
+		return questScript.combatContextFor(quest);
 	}
 
 	public boolean startQuestHelper(String questName)

@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
@@ -111,5 +112,39 @@ public class QuestPreflightTest
 			need("Weapon and armour", 1, false, -1), need("Nothing", 0, true, 954), need("Null ids", 1, true)),
 			owned());
 		assertTrue(out.isEmpty());
+	}
+
+	@Test
+	public void bankCountsTowardOwnedAndOnlyTheShortfallIsBought()
+	{
+		// carried: 1 clay, 2 noted copper (437); bank: 5 clay. Needs 6 clay, 2 copper, 1 iron.
+		Map<Integer, Integer> onPlayer = owned(434, 1, 437, 2);
+		Map<Integer, Integer> all = new HashMap<>(onPlayer);
+		all.merge(434, 5, Integer::sum);
+		List<QuestPreflight.Need> needs = Arrays.asList(
+			need("Clay", 6, true, 434), need("Copper ore", 2, true, 436), need("Iron ore", 1, true, 440));
+		QuestPreflight.foldNoted(needs, id -> id == 436 ? 437 : -1, onPlayer, all);
+		List<QuestPreflight.Shortfall> out = QuestPreflight.compute(needs, all);
+		assertEquals(0, out.get(0).missing);
+		assertEquals(0, out.get(1).missing);
+		assertEquals(1, out.get(2).missing);
+	}
+
+	@Test
+	public void bankIsOnlyScannedOnceAContainerTickExists()
+	{
+		assertFalse(QuestPreflight.bankScanned(-1));
+		assertTrue(QuestPreflight.bankScanned(0));
+		assertTrue(QuestPreflight.bankScanned(1234));
+	}
+
+	@Test
+	public void bankCoversNeedOrCarryLimitedPartial()
+	{
+		assertTrue(QuestPreflight.bankCovers(4, 4, false));
+		assertFalse(QuestPreflight.bankCovers(2, 4, false));
+		assertTrue(QuestPreflight.bankCovers(2, 4, true));
+		assertFalse(QuestPreflight.bankCovers(0, 4, true));
+		assertFalse(QuestPreflight.bankCovers(5, 0, false));
 	}
 }

@@ -41,7 +41,8 @@ public final class QuestPotions
 		SUPER_ANTIFIRE("super_antifire", "Super antifire potion", Role.ANTIFIRE, null, 21978, 21981, 21984, 21987),
 		ENERGY("energy_potion", "Energy potion", Role.ENERGY, null, 3008, 3010, 3012, 3014),
 		SUPER_ENERGY("super_energy", "Super energy", Role.ENERGY, null, 3016, 3018, 3020, 3022),
-		STAMINA("stamina_potion", "Stamina potion", Role.ENERGY, null, 12625, 12627, 12629, 12631);
+		STAMINA("stamina_potion", "Stamina potion", Role.ENERGY, null, 12625, 12627, 12629, 12631,
+			31638, 31641, 31644, 31647);
 
 		private final String key;
 		private final String itemName;
@@ -215,6 +216,35 @@ public final class QuestPotions
 			}
 		}
 		return clean(out);
+	}
+
+	/**
+	 * True when a base item name (dose stripped) is a run-energy potion: energy, super energy, stamina, and the
+	 * stamina variants ("Extended stamina potion", "Brutal stamina potion").
+	 */
+	public static boolean isRunEnergyName(String baseName)
+	{
+		if (baseName == null)
+		{
+			return false;
+		}
+		String n = baseName.trim().toLowerCase(java.util.Locale.ROOT);
+		return n.equals("energy potion") || n.equals("super energy") || n.endsWith("stamina potion");
+	}
+
+	/** True when {@code base} satisfies the wanted run-potion name, counting stamina variants as stamina. */
+	public static boolean runPotionMatches(String base, String wanted)
+	{
+		if (base == null || wanted == null)
+		{
+			return false;
+		}
+		if (base.trim().equalsIgnoreCase(wanted.trim()))
+		{
+			return true;
+		}
+		return wanted.trim().equalsIgnoreCase("Stamina potion")
+			&& base.trim().toLowerCase(java.util.Locale.ROOT).endsWith("stamina potion");
 	}
 
 	/** True when the item name (any dose) is the given kind. */

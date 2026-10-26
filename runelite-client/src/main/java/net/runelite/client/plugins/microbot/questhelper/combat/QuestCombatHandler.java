@@ -226,6 +226,7 @@ public class QuestCombatHandler
 		fightGearDone = true;
 		styleAppliedFor = null;
 		supplied = false;
+		staminaPending = false;
 		bankAttempts = 0;
 		restocks = 0;
 		defaultReserve = -1;
@@ -327,8 +328,91 @@ public class QuestCombatHandler
 			return false;
 		}
 
+		QuestCombatLoadout global = QuestCombatStore.loadGlobal();
+		boolean swapUnanswered = false;
+		try
+		{
+			for (QuestCombatDetector.Fight fight : QuestCombatDetector.enumerateFights(quest))
+			{
+				// the global default carries no per-fight rows, so it can never answer a style swap
+				swapUnanswered |= fight.needsSwap;
+			}
+		}
+		catch (RuntimeException e)
+		{
+			swapUnanswered = true;
+		}
+		if (decidePrompt(config.get().fullyAutomated() ? QuestHelperConfig.SetupPromptOption.NEVER : config.get().setupPrompt(),
+			false, global != null, questHasFights, swapUnanswered)
+			== PromptDecision.AUTO_APPLY)
+		{
+			loadout = autoLoadout(global);
+			Microbot.log("Quest helper: using the last used setup for " + quest.getQuest().getName()
+				+ (global == null ? " (no saved setup yet, bringing nothing extra)" : "")
+				+ " without asking", Level.INFO);
+			phase = Phase.ACTIVE;
+			snapshotUserItems();
+			return false;
+		}
+
 		phase = Phase.PROMPTING;
 		return awaitAnswer(quest);
+	}
+
+	/** Whether to apply a setup silently or show the dialog; pure so it can be tested. */
+	enum PromptDecision
+	{
+		AUTO_APPLY, SHOW
+	}
+
+	static PromptDecision decidePrompt(QuestHelperConfig.SetupPromptOption policy, boolean hasPerQuest,
+		boolean hasGlobal, boolean hasFights, boolean needsSwapUnanswered)
+	{
+		if (hasPerQuest || policy == QuestHelperConfig.SetupPromptOption.NEVER)
+		{
+			return PromptDecision.AUTO_APPLY;
+		}
+		if (policy == QuestHelperConfig.SetupPromptOption.ALWAYS)
+		{
+			return PromptDecision.SHOW;
+		}
+		if (!hasFights)
+		{
+			return PromptDecision.AUTO_APPLY;
+		}
+		return hasGlobal && !needsSwapUnanswered ? PromptDecision.AUTO_APPLY : PromptDecision.SHOW;
+	}
+
+	/** The global default without per-fight rows (Auto style, default swap kits), or a bare loadout. */
+	static QuestCombatLoadout autoLoadout(QuestCombatLoadout global)
+	{
+		if (global == null)
+		{
+			return QuestCombatLoadout.bare();
+		}
+		QuestCombatLoadout copy = QuestCombatLoadout.fromJson(global.toJson());
+		if (copy == null)
+		{
+			return QuestCombatLoadout.bare();
+		}
+		copy.setFights(new java.util.LinkedHashMap<>());
+		copy.setStyle(QuestCombatLoadout.Style.AUTO);
+		return copy.normalised();
+	}
+
+	/** What the combat tabs of the quest window show for a quest (running or not). Call off the EDT. */
+	public QuestCombatSetupDialog.Context contextFor(QuestHelper quest)
+	{
+		QuestCombatSetupDialog.Context context = buildContext(quest);
+		try
+		{
+			context.hasFights = QuestCombatDetector.hasFights(quest);
+		}
+		catch (RuntimeException e)
+		{
+			context.hasFights = true;
+		}
+		return context;
 	}
 
 	private boolean awaitAnswer(QuestHelper quest)
@@ -349,9 +433,15 @@ public class QuestCombatHandler
 				askedIn = generation;
 				AWAITING_SETUP.set(true);
 			}
-			QuestCombatSetupDialog.Context context = buildContext(quest);
 			Microbot.log("Quest helper: waiting for quest setup for " + quest.getQuest().getName(), Level.INFO);
-			QuestCombatSetupDialog.showAsync(context, result -> onDialogResult(askedIn, result));
+			final String questName = quest.getQuest().getName();
+			net.runelite.client.plugins.microbot.questhelper.planner.QuestPlannerLauncher.openForQuest(questName, window ->
+			{
+				QuestCombatLoadout chosen = window == null ? null : window.loadouts.get(questName);
+				onDialogResult(askedIn, chosen == null
+					? QuestCombatSetupDialog.Result.of(QuestCombatSetupDialog.Outcome.CANCEL, null, false)
+					: QuestCombatSetupDialog.Result.of(QuestCombatSetupDialog.Outcome.SAVE, chosen, false));
+			});
 			return true;
 		}
 
@@ -360,6 +450,12 @@ public class QuestCombatHandler
 			case SAVE:
 			case SKIP:
 				QuestCombatStore.save(questKey, answer.loadout);
+				QuestCombatStore.saveGlobal(answer.loadout);
+				if (answer.dontAskAgain)
+				{
+					Microbot.getConfigManager().setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "setupPrompt",
+						QuestHelperConfig.SetupPromptOption.NEVER);
+				}
 				loadout = answer.loadout;
 				phase = Phase.ACTIVE;
 				snapshotUserItems();
@@ -417,6 +513,7 @@ public class QuestCombatHandler
 		QuestCombatSetupDialog.Context context = new QuestCombatSetupDialog.Context();
 		context.obtainMissingItems = config.get().obtainMissingItems().name();
 		context.questName = quest.getQuest().getName();
+		context.defaults = QuestCombatStore.loadGlobal();
 		context.hasFights = questHasFights;
 		List<String> notes = quest.getCombatRequirements();
 		if (notes != null)
@@ -1275,6 +1372,78 @@ public class QuestCombatHandler
 		return Rs2Player.getWorldLocation();
 	}
 
+	private volatile boolean carryRestricted;
+	private boolean staminaPending;
+
+	/** The current or upcoming step forbids carrying items; set by the quest script every tick. */
+	public void setCarryRestricted(boolean restricted)
+	{
+		carryRestricted = restricted;
+	}
+
+	/** True while stamina potions were left in the bank because of a restricted step and still need fetching. */
+	public boolean staminaPending()
+	{
+		return staminaPending;
+	}
+
+	/**
+	 * With the bank open: puts stamina potions back when the step forbids carrying them, or when quest items or
+	 * reserved slots need the room (the potions go first). Returns true when it deposited something.
+	 */
+	public boolean depositStamina(int stepReserved)
+	{
+		QuestCombatLoadout current = loadout;
+		if (current == null || phase != Phase.ACTIVE || !Rs2Bank.isOpen() || !current.wantsLegacyStamina())
+		{
+			return false;
+		}
+		List<Rs2ItemModel> held = staminaItems(current);
+		int reserved = Math.min(27, stepReserved + reserveFor(current));
+		int free = Rs2Inventory.emptySlotCount();
+		if (held.isEmpty() || !net.runelite.client.plugins.microbot.questhelper.planner.QuestStaminaRules.mustDeposit(
+			current.getStaminaQty(), held.size(), free, reserved, carryRestricted, 27))
+		{
+			return false;
+		}
+		int keep = net.runelite.client.plugins.microbot.questhelper.planner.QuestStaminaRules.allowed(
+			current.getStaminaQty(), held.size(), free, reserved, carryRestricted, 27);
+		boolean acted = false;
+		for (int i = 0; i < held.size() - keep; i++)
+		{
+			acted |= Rs2Bank.depositOne(held.get(i).getId());
+			sleepUntil(() -> true, 200);
+		}
+		if (acted)
+		{
+			staminaPending = true;
+			Microbot.log("Quest helper: stamina potions banked for this step, back at the next bank visit", Level.INFO);
+		}
+		return acted;
+	}
+
+	/** With the bank open and the step allowing items: fetches the stamina potions left behind. No walking. */
+	public boolean topUpStamina(int stepReserved)
+	{
+		QuestCombatLoadout current = loadout;
+		if (!staminaPending || carryRestricted || current == null || phase != Phase.ACTIVE || !Rs2Bank.isOpen()
+			|| !current.wantsLegacyStamina() || !Rs2Bank.setWithdrawAsItem())
+		{
+			return false;
+		}
+		int reserved = Math.min(27, stepReserved + reserveFor(current));
+		int held = staminaCount(current);
+		int target = net.runelite.client.plugins.microbot.questhelper.planner.QuestStaminaRules.allowed(
+			current.getStaminaQty(), held, Rs2Inventory.emptySlotCount(), reserved, false, 27);
+		staminaPending = false;
+		if (target <= held)
+		{
+			return false;
+		}
+		withdrawPotion(current.getStaminaType().getItemName(), target - held);
+		return true;
+	}
+
 	private boolean restock(QuestCombatLoadout current, int stepReserved)
 	{
 		Microbot.status = "Quest helper: fetching supplies";
@@ -1300,7 +1469,11 @@ public class QuestCombatHandler
 
 		int reserved = Math.min(27, stepReserved + reserveFor(current));
 
-		if (current.wantsLegacyStamina())
+		if (current.wantsLegacyStamina() && carryRestricted)
+		{
+			staminaPending = true; // a restricted step: left in the bank, fetched at the next bank visit
+		}
+		else if (current.wantsLegacyStamina())
 		{
 			int held = staminaCount(current);
 			// with no fights left the free slots go to the quest items, so a single run potion is all that is kept
@@ -1574,7 +1747,7 @@ public class QuestCombatHandler
 		for (Rs2ItemModel item : Rs2Inventory.items(i -> !i.isNoted() && i.getName() != null).collect(Collectors.toList()))
 		{
 			String base = item.getName().replaceAll("\\s*\\(\\d+\\)$", "").trim();
-			if (!keep.contains(item.getId()) && names.stream().anyMatch(base::equalsIgnoreCase))
+			if (!keep.contains(item.getId()) && names.stream().anyMatch(n -> QuestPotions.runPotionMatches(base, n)))
 			{
 				out.add(item);
 			}
@@ -1639,10 +1812,13 @@ public class QuestCombatHandler
 	}
 
 
+	private int eatOffset = EatPolicy.rollOffset(new java.util.Random());
+
 	private int eatThreshold()
 	{
 		QuestCombatLoadout current = loadout;
-		return current != null && !current.isSkip() ? current.getEatAtPercent() : 50;
+		QuestHelperConfig cfg = config.get();
+		return EatPolicy.threshold(cfg == null ? 50 : cfg.eatAtHealthPercent(), current, eatOffset);
 	}
 
 	/** Edible inventory food that is not a quest item. */
@@ -1726,6 +1902,7 @@ public class QuestCombatHandler
 			return true;
 		}
 		lastConsumeMs = now;
+		eatOffset = EatPolicy.rollOffset(new java.util.Random());
 		QuestCombatLoadout current = loadout;
 		if (current != null && !current.isSkip() && current.wantsFood())
 		{
@@ -1848,8 +2025,7 @@ public class QuestCombatHandler
 			return false;
 		}
 		String base = baseName(item);
-		return base.equalsIgnoreCase("Stamina potion") || base.equalsIgnoreCase("Energy potion")
-			|| base.equalsIgnoreCase("Super energy");
+		return QuestPotions.isRunEnergyName(base);
 	}
 
 	/** True for an item configured in the dialog's inventory tab; the bank prep never deposits these. */
@@ -1944,6 +2120,17 @@ public class QuestCombatHandler
 	 * Tradable needs for the loadout's boost potions (any dose, bought as the 4-dose) when the quest has a kill step
 	 * among {@code steps}, so the preflight buys them. Empty when there is no active loadout or no boosts chosen.
 	 */
+	public List<net.runelite.client.plugins.microbot.questhelper.QuestPreflight.Need> supplyPreflightNeeds(
+		java.util.function.IntPredicate tradable)
+	{
+		QuestCombatLoadout current = loadout;
+		if (phase != Phase.ACTIVE || current == null)
+		{
+			return new ArrayList<>();
+		}
+		return QuestSupplyNeeds.fromLoadout(current, QuestCombatHandler::resolveItemId, tradable);
+	}
+
 	public List<net.runelite.client.plugins.microbot.questhelper.QuestPreflight.Need> boostPreflightNeeds(
 		List<DetailedQuestStep> steps)
 	{
@@ -2011,7 +2198,7 @@ public class QuestCombatHandler
 		{
 			for (Rs2ItemModel item : Rs2Bank.bankItems())
 			{
-				if (item != null && !item.isNoted() && item.getName() != null && baseName(item).equalsIgnoreCase(name))
+				if (item != null && !item.isNoted() && item.getName() != null && QuestPotions.runPotionMatches(baseName(item), name))
 				{
 					pick = item;
 					break;
@@ -2440,7 +2627,7 @@ public class QuestCombatHandler
 	}
 
 	/** Item id for a swap kit name: a default-kit id, else an exact tradable-name match, else -1. */
-	private static int resolveItemId(String name)
+	public static int resolveItemId(String name)
 	{
 		int known = QuestStyleSwap.knownItemId(name);
 		if (known > 0 || name == null || name.isEmpty())
@@ -2916,7 +3103,7 @@ public class QuestCombatHandler
 			return;
 		}
 
-		if (Rs2Player.getHealthPercentage() <= current.getEatAtPercent() && eat(current, now))
+		if (Rs2Player.getHealthPercentage() <= eatThreshold() && eat(current, now))
 		{
 			return;
 		}
@@ -3064,6 +3251,7 @@ public class QuestCombatHandler
 			return true;
 		}
 		lastConsumeMs = now;
+		eatOffset = EatPolicy.rollOffset(new java.util.Random());
 		return hasNamed ? Rs2Inventory.interact(named.get(0), "Eat") : eatBest();
 	}
 

@@ -16,6 +16,7 @@ import java.util.regex.Pattern;
 import net.runelite.api.ItemComposition;
 import net.runelite.api.NPCComposition;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.questhelper.QuestInventoryRules;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.BasicQuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
@@ -48,6 +49,8 @@ public final class QuestCombatDetector
 		public final List<String> restrictionTexts;
 		/** True when the fight text or requirements say it needs a combat style swap (target prayers). */
 		public boolean needsSwap;
+		/** The enemy level named by the step or the combat notes, 0 when none is named. */
+		public int level;
 
 		Fight(String key, String label, List<String> notes, List<String> restrictionTexts)
 		{
@@ -268,6 +271,30 @@ public final class QuestCombatDetector
 		return false;
 	}
 
+	/**
+	 * The highest enemy level over the quest's fights, or 0 when there are no fights or any fight has no known level
+	 * (an unknown enemy is not treated as weak).
+	 */
+	public static int maxEnemyLevel(QuestHelper quest)
+	{
+		int max = 0;
+		for (Fight fight : enumerateFights(quest))
+		{
+			if (fight.level <= 0)
+			{
+				return 0;
+			}
+			max = Math.max(max, fight.level);
+		}
+		return max;
+	}
+
+	/** Default food count for the quest: none when every enemy is weak, else a few. */
+	public static int defaultFoodQty(QuestHelper quest)
+	{
+		return QuestInventoryRules.foodQtyForMaxLevel(maxEnemyLevel(quest));
+	}
+
 	/** Target name in a kill step text ("Kill the Temple Guardian (level 30)." gives "Temple Guardian"), or null. */
 	static String parseTarget(List<String> text)
 	{
@@ -427,6 +454,7 @@ public final class QuestCombatDetector
 				notes.addAll(stepText);
 			}
 			Fight fight = new Fight(key, label, notes, restriction);
+			fight.level = level > 0 ? level : parseLevel(notes);
 			fight.needsSwap = stepNeedsSwap(step) || QuestStyleSwap.textNeedsSwap(notes);
 			fights.put(key, fight);
 		}

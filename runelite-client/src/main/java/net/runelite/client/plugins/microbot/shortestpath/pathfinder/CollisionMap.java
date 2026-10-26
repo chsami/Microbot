@@ -283,6 +283,9 @@ public class CollisionMap {
             if (isMoa) moaSeenHere++;
 
             //START microbot variables
+            if (QuestWalkRule.blocks(transport.getType(), transport.getOrigin())) {
+                continue;
+            }
             if (visited.get(transport.getDestination())) {
                 if (isMoa) moaVisited++;
                 continue;
@@ -363,7 +366,10 @@ public class CollisionMap {
                             + DANGEROUS_TILE_PENALTY;
                     neighbors.add(new Node(neighborPacked, node, penalizedCost));
                 } else {
-                    neighbors.add(new Node(neighborPacked, node));
+                    neighbors.add(PathJitter.isActive() && (!targets.contains(neighborPacked) || targets.size() > 1)
+                            ? new Node(neighborPacked, node, node.cost + WorldPointUtil.distanceBetween(node.packedPosition, neighborPacked)
+                                    + (targets.contains(neighborPacked) ? PathJitter.targetPenalty(neighborPacked) : PathJitter.penalty(neighborPacked)))
+                            : new Node(neighborPacked, node));
                 }
             } else if (Math.abs(d.x + d.y) == 1 && isBlocked(x + d.x, y + d.y, z)) {
                 // The transport starts from a blocked adjacent tile, e.g. fairy ring
@@ -406,6 +412,9 @@ public class CollisionMap {
                     continue;
                 }
                 if (config.isLearnedBlockedTransport(originPacked, node.packedPosition)) {
+                    continue;
+                }
+                if (QuestWalkRule.blocks(transport.getType(), transport.getOrigin())) {
                     continue;
                 }
                 if (TransportType.isTeleport(transport.getType(), transport.getOrigin())) {
@@ -472,7 +481,9 @@ public class CollisionMap {
                             + DANGEROUS_TILE_PENALTY;
                     neighbors.add(new Node(prevPacked, node, penalizedCost));
                 } else {
-                    neighbors.add(new Node(prevPacked, node));
+                    neighbors.add(PathJitter.isActive()
+                            ? new Node(prevPacked, node, node.cost + WorldPointUtil.distanceBetween(node.packedPosition, prevPacked) + PathJitter.penalty(node.packedPosition))
+                            : new Node(prevPacked, node));
                 }
             } else if (Math.abs(d.x + d.y) == 1
                     && isBlocked(WorldPointUtil.unpackWorldX(prevPacked), WorldPointUtil.unpackWorldY(prevPacked), z)) {

@@ -66,11 +66,25 @@ public final class QuestCombatSetupDialog
 	{
 		public final Outcome outcome;
 		public final QuestCombatLoadout loadout;
+		/** True when the player ticked "Don't ask again" on a Save. */
+		public final boolean dontAskAgain;
 
 		Result(Outcome outcome, QuestCombatLoadout loadout)
 		{
+			this(outcome, loadout, false);
+		}
+
+		/** A result built by another window (the unified quest window). */
+		public static Result of(Outcome outcome, QuestCombatLoadout loadout, boolean dontAskAgain)
+		{
+			return new Result(outcome, loadout, dontAskAgain);
+		}
+
+		Result(Outcome outcome, QuestCombatLoadout loadout, boolean dontAskAgain)
+		{
 			this.outcome = outcome;
 			this.loadout = loadout;
+			this.dontAskAgain = dontAskAgain;
 		}
 	}
 
@@ -85,6 +99,8 @@ public final class QuestCombatSetupDialog
 		public String wornWeapon = "";
 		public List<InventoryItem> inventory = new ArrayList<>();
 		public int defaultReserve = 4;
+		/** The global last used setup to pre-fill supplies from; null when none exists. */
+		public QuestCombatLoadout defaults;
 		/** Combat skill levels (melee is the higher of Attack and Strength); drive the default second style. */
 		public int meleeLevel = 1;
 		public int rangedLevel = 1;
@@ -267,6 +283,31 @@ public final class QuestCombatSetupDialog
 		return best;
 	}
 
+	/** The setup tabs inside another window (the unified quest window). EDT only. */
+	public static final class Panel
+	{
+		private final Form form;
+
+		public Panel(Context ctx)
+		{
+			this.form = new Form(ctx, 0);
+		}
+
+		/** The gear, style and fights tabs, prefilled from {@code ctx.defaults}; supplies are left to the profile. */
+		public javax.swing.JComponent component(Component parent)
+		{
+			form.embeddedParent = parent;
+			return form.buildTabs(false);
+		}
+
+		/** The loadout the tabs describe, or null when the player backed out of a warning. */
+		public QuestCombatLoadout loadout()
+		{
+			Result result = form.resolve(Outcome.SAVE);
+			return result == null ? null : result.loadout;
+		}
+	}
+
 	private static final class Form
 	{
 		private final Context ctx;
@@ -275,6 +316,8 @@ public final class QuestCombatSetupDialog
 		private boolean adjusting;
 
 		private JDialog dialog;
+		/** Parent for the confirm dialogs when the form sits inside another window instead of its own dialog. */
+		private Component embeddedParent;
 		private final int epoch;
 		private Result answer = new Result(Outcome.DISMISSED, null);
 
@@ -296,6 +339,8 @@ public final class QuestCombatSetupDialog
 		private DefaultTableModel itemModel;
 		private JTable itemTable;
 		private JLabel slots = new JLabel();
+		private final javax.swing.JCheckBox dontAsk =
+			new javax.swing.JCheckBox("Don't ask again (use these settings for future quests)");
 		private final List<FightRow> rows = new ArrayList<>();
 
 		Form(Context ctx, int epoch)
@@ -309,18 +354,7 @@ public final class QuestCombatSetupDialog
 			dialog = new JDialog(clientFrame(), ctx.questName + " - Quest setup", true);
 			dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
 
-			JTabbedPane tabs = new JTabbedPane();
-			tabs.addTab("Gear & style", gearTab());
-			tabs.addTab("Supplies", suppliesTab());
-			tabs.addTab("Inventory items", itemsTab());
-			if (!ctx.fights.isEmpty())
-			{
-				tabs.addTab("Fights (" + ctx.fights.size() + ")", fightsTab());
-			}
-			if (!ctx.hasFights)
-			{
-				tabs.setSelectedIndex(1);
-			}
+			JTabbedPane tabs = buildTabs(true);
 
 			JButton save = new JButton("Save & start");
 			JButton skip = new JButton(skipLabel(ctx.hasFights));
@@ -340,7 +374,10 @@ public final class QuestCombatSetupDialog
 			buttons.add(cancel);
 			JPanel south = new JPanel(new BorderLayout());
 			slots.setBorder(javax.swing.BorderFactory.createEmptyBorder(4, 8, 4, 8));
-			south.add(slots, BorderLayout.WEST);
+			JPanel west = new JPanel(new BorderLayout());
+			west.add(slots, BorderLayout.NORTH);
+			west.add(dontAsk, BorderLayout.SOUTH);
+			south.add(west, BorderLayout.WEST);
 			south.add(buttons, BorderLayout.EAST);
 
 			dialog.getContentPane().add(tabs, BorderLayout.CENTER);
@@ -349,19 +386,6 @@ public final class QuestCombatSetupDialog
 			dialog.setPreferredSize(new Dimension(820, 580));
 			dialog.pack();
 			dialog.setLocationRelativeTo(dialog.getOwner());
-
-			if (!ctx.hasFights)
-			{
-				combatOnly.forEach(component ->
-				{
-					component.setEnabled(combatControlsEnabled(ctx.hasFights));
-					if (component instanceof javax.swing.JComponent)
-					{
-						((javax.swing.JComponent) component).setToolTipText(NO_FIGHTS_NOTE);
-					}
-				});
-			}
-			refresh();
 
 			dialog.addWindowListener(new WindowAdapter()
 			{
@@ -396,6 +420,50 @@ public final class QuestCombatSetupDialog
 			openEpoch = epoch;
 			dialog.setVisible(true);
 			return answer;
+		}
+
+		/**
+		 * Builds the tabs and prefills them. With {@code includeSupplies} false the supplies and inventory tabs are still
+		 * built (they hold the values) but not shown: the unified window edits those through the quest profile.
+		 */
+		JTabbedPane buildTabs(boolean includeSupplies)
+		{
+			JTabbedPane tabs = new JTabbedPane();
+			tabs.addTab("Gear & style", gearTab());
+			JPanel suppliesPanel = suppliesTab();
+			JPanel itemsPanel = itemsTab();
+			if (includeSupplies)
+			{
+				tabs.addTab("Supplies", suppliesPanel);
+				tabs.addTab("Inventory items", itemsPanel);
+			}
+			if (!ctx.fights.isEmpty())
+			{
+				tabs.addTab("Fights (" + ctx.fights.size() + ")", fightsTab());
+			}
+			if (!ctx.hasFights && includeSupplies)
+			{
+				tabs.setSelectedIndex(1);
+			}
+			if (!ctx.hasFights)
+			{
+				combatOnly.forEach(component ->
+				{
+					component.setEnabled(combatControlsEnabled(ctx.hasFights));
+					if (component instanceof javax.swing.JComponent)
+					{
+						((javax.swing.JComponent) component).setToolTipText(NO_FIGHTS_NOTE);
+					}
+				});
+			}
+			applyDefaults();
+			refresh();
+			return tabs;
+		}
+
+		private Component parentComponent()
+		{
+			return dialog != null ? dialog : embeddedParent;
 		}
 
 		// ---- tabs ----
@@ -894,7 +962,63 @@ public final class QuestCombatSetupDialog
 			return out;
 		}
 
+		/** Pre-fills the supplies from the global last used setup. */
+		private void applyDefaults()
+		{
+			QuestCombatLoadout d = ctx.defaults;
+			if (d == null)
+			{
+				return;
+			}
+			if (!d.getFood().isEmpty())
+			{
+				food.setText(d.getFood());
+			}
+			foodQty.setValue(d.getFoodQty());
+			eatAt.setValue(d.getEatAtPercent());
+			if (d.isUseStamina())
+			{
+				staminaType.setSelectedItem(d.getStaminaType());
+			}
+			staminaQty.setValue(d.getStaminaQty());
+			staminaAt.setValue(d.getDrinkStaminaAtEnergy());
+			if (d.getReserveSlots() >= 0)
+			{
+				reserve.setValue(d.getReserveSlots());
+			}
+			potionModel.setRowCount(0);
+			for (QuestPotions.Row potion : d.potionRows())
+			{
+				for (QuestPotions.Kind kind : QuestPotions.Kind.values())
+				{
+					if (kind.key().equals(potion.getType()))
+					{
+						potionModel.addRow(new Object[]{kind, potion.getQty()});
+					}
+				}
+			}
+			itemModel.setRowCount(0);
+			for (InventoryItem item : d.getInventoryItems())
+			{
+				itemModel.addRow(new Object[]{item.getId() > 0 && item.getName().isEmpty()
+					? String.valueOf(item.getId()) : item.getName(), item.getQty(), item.isStackable()});
+			}
+		}
+
 		private void finish(Outcome outcome)
+		{
+			Result resolved = resolve(outcome);
+			if (resolved == null)
+			{
+				return;
+			}
+			saveObtainMissing();
+			answer = resolved;
+			dialog.dispose();
+		}
+
+		/** The result for the outcome, or null when the player backed out of a warning. Does not close anything. */
+		Result resolve(Outcome outcome)
 		{
 			QuestCombatLoadout loadout = build();
 
@@ -903,7 +1027,7 @@ public final class QuestCombatSetupDialog
 				if (loadout.getStyle() == Style.MAGIC && QuestCombatLoadout.mentionsMagicImmunity(ctx.notes)
 					&& !confirm("The quest notes say magic does not work against these fights.\nUse Magic anyway?"))
 				{
-					return;
+					return null;
 				}
 				for (FightRow row : rows)
 				{
@@ -912,7 +1036,7 @@ public final class QuestCombatSetupDialog
 						+ " does not work against it (" + String.join(" ", row.fight.notes)
 						+ ").\nUse it anyway?"))
 					{
-						return;
+						return null;
 					}
 				}
 			}
@@ -928,9 +1052,7 @@ public final class QuestCombatSetupDialog
 				loadout.setPrayer(QuestCombatLoadout.Prayer.OFF);
 				loadout.setFights(new java.util.LinkedHashMap<>());
 			}
-			saveObtainMissing();
-			answer = new Result(outcome, loadout.normalised());
-			dialog.dispose();
+			return new Result(outcome, loadout.normalised(), outcome == Outcome.SAVE && dontAsk.isSelected());
 		}
 
 		private void saveObtainMissing()
@@ -966,7 +1088,7 @@ public final class QuestCombatSetupDialog
 
 		private boolean confirm(String message)
 		{
-			return JOptionPane.showConfirmDialog(dialog, message, "Check this fight", JOptionPane.YES_NO_OPTION,
+			return JOptionPane.showConfirmDialog(parentComponent(), message, "Check this fight", JOptionPane.YES_NO_OPTION,
 				JOptionPane.WARNING_MESSAGE) == JOptionPane.YES_OPTION;
 		}
 
@@ -1116,7 +1238,7 @@ public final class QuestCombatSetupDialog
 			panel.add(new JScrollPane(table), BorderLayout.CENTER);
 			panel.add(bar, BorderLayout.SOUTH);
 			panel.setPreferredSize(new Dimension(420, 260));
-			if (JOptionPane.showConfirmDialog(dialog, panel, "Custom gear", JOptionPane.OK_CANCEL_OPTION,
+			if (JOptionPane.showConfirmDialog(parentComponent(), panel, "Custom gear", JOptionPane.OK_CANCEL_OPTION,
 				JOptionPane.PLAIN_MESSAGE) != JOptionPane.OK_OPTION)
 			{
 				return null;

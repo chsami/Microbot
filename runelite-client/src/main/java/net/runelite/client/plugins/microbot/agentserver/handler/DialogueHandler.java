@@ -59,6 +59,7 @@ public class DialogueHandler extends AgentHandler {
 		if (inDialogue) {
 			response.put("hasContinue", Rs2Dialogue.hasContinue());
 			response.put("hasOptions", Rs2Dialogue.hasSelectAnOption());
+			response.put("questStart", Rs2Dialogue.hasQuestStartMenu());
 
 			String dialogueText = Rs2Dialogue.getDialogueText();
 			if (dialogueText != null && !dialogueText.isEmpty()) {

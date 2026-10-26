@@ -60,6 +60,9 @@ public class QuestOverlayManager
 	@Inject
 	private QuestHelperDebugOverlay questHelperDebugOverlay;
 
+	@Inject
+	private net.runelite.client.plugins.microbot.questhelper.overlays.QuestPauseOverlay questPauseOverlay;
+
 	public void startUp()
 	{
 		overlayManager.add(questHelperOverlay);
@@ -69,6 +72,7 @@ public class QuestOverlayManager
 		overlayManager.add(questHelperWidgetOverlay);
 		overlayManager.add(questHelperMinimapOverlay);
 		overlayManager.add(questHelperTooltipOverlay);
+		overlayManager.add(questPauseOverlay);
 	}
 
 	public void updateOverlay()
@@ -86,6 +90,7 @@ public class QuestOverlayManager
 		overlayManager.remove(questHelperDebugOverlay);
 		overlayManager.remove(questHelperMinimapOverlay);
 		overlayManager.remove(questHelperTooltipOverlay);
+		overlayManager.remove(questPauseOverlay);
 	}
 
 	public void addDebugOverlay()

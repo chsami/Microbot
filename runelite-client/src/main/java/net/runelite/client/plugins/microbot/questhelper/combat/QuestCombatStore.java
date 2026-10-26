@@ -9,6 +9,9 @@ public final class QuestCombatStore
 {
 	private static final String KEY_PREFIX = "combatLoadout.";
 
+	/** Key suffix of the global "last used" setup; never a quest name. */
+	private static final String GLOBAL_KEY = "__last__";
+
 	private QuestCombatStore()
 	{
 	}
@@ -33,6 +36,24 @@ public final class QuestCombatStore
 		{
 			configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, KEY_PREFIX + questKey, loadout.toJson());
 		}
+	}
+
+	/** The last used setup across quests, or null when none was saved yet. */
+	public static QuestCombatLoadout loadGlobal()
+	{
+		return load(GLOBAL_KEY);
+	}
+
+	/** Stores the loadout as the global default, without its quest-specific per-fight rows. */
+	public static void saveGlobal(QuestCombatLoadout loadout)
+	{
+		QuestCombatLoadout copy = QuestCombatLoadout.fromJson(loadout.toJson());
+		if (copy == null)
+		{
+			return;
+		}
+		copy.setFights(new java.util.LinkedHashMap<>());
+		save(GLOBAL_KEY, copy.normalised());
 	}
 
 	/** Removes every stored quest loadout. */

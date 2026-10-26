@@ -39,6 +39,7 @@ public class WidgetClickHandler extends AgentHandler {
 		Integer groupNum = getIntField(request, "groupId");
 		Integer childNum = getIntField(request, "childId");
 		String text = getStringField(request, "text");
+		Integer indexNum = getIntField(request, "index");
 
 		Map<String, Object> response = new LinkedHashMap<>();
 		boolean clicked;
@@ -55,7 +56,22 @@ public class WidgetClickHandler extends AgentHandler {
 				sendJson(exchange, 200, response);
 				return;
 			}
-			clicked = Rs2Widget.clickWidget(gid, cid);
+			if (indexNum != null) {
+				// dynamic child of the container, e.g. the options of the 219:1 chat menu
+				net.runelite.api.widgets.Widget container = Rs2Widget.getWidget(gid, cid);
+				net.runelite.api.widgets.Widget[] kids = container == null ? null : container.getDynamicChildren();
+				int idx = indexNum.intValue();
+				if (kids == null || idx < 0 || idx >= kids.length || kids[idx] == null) {
+					response.put("clicked", false);
+					response.put("reason", "No dynamic child at index " + idx);
+					sendJson(exchange, 200, response);
+					return;
+				}
+				clicked = Rs2Widget.clickWidget(kids[idx]);
+				response.put("index", idx);
+			} else {
+				clicked = Rs2Widget.clickWidget(gid, cid);
+			}
 			response.put("groupId", gid);
 			response.put("childId", cid);
 		} else if (text != null && !text.isEmpty()) {

@@ -39,6 +39,7 @@ import javax.annotation.Nonnull;
  */
 public class CombatLevelRequirement extends AbstractRequirement
 {
+	@lombok.Getter
 	private final int requiredLevel;
 	private final Operation operation;
 

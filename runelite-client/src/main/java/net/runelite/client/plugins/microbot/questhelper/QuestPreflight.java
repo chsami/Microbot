@@ -48,6 +48,37 @@ public final class QuestPreflight
 			: FAILED_PREFIX + questDisplayName + " needs another player to " + task + " - can't be done solo";
 	}
 
+	/** Items a quest hands over itself, by quest enum name; never bought up front. */
+	private static final Map<String, Set<String>> QUEST_GIVEN = new java.util.HashMap<>();
+
+	static
+	{
+		QUEST_GIVEN.put("RUNE_MYSTERIES", new LinkedHashSet<>(java.util.Arrays.asList(
+			"air talisman", "research package", "research notes")));
+	}
+
+	/**
+	 * Whether the quest itself supplies this item, so the preflight must not buy it: it is flagged "can be obtained
+	 * during the quest", the quest is known to hand it out, or the quest has not started and the item only appears
+	 * on later steps without being in the quest's upfront item list.
+	 */
+	public static boolean obtainedDuringQuest(String questEnumName, String itemName, String tooltip,
+		boolean notStarted, boolean inUpfrontList)
+	{
+		String lowerName = itemName == null ? "" : itemName.toLowerCase(java.util.Locale.ROOT);
+		Set<String> given = questEnumName == null ? null : QUEST_GIVEN.get(questEnumName);
+		if (given != null && given.contains(lowerName))
+		{
+			return true;
+		}
+		String lowerTip = tooltip == null ? "" : tooltip.toLowerCase(java.util.Locale.ROOT);
+		if (lowerTip.contains("obtained during the quest") || lowerTip.contains("you can get another from"))
+		{
+			return true;
+		}
+		return notStarted && !inUpfrontList;
+	}
+
 	/** Any dose of any antifire potion, for quests with a dragon fight; the caller adds it to the needs list. */
 	public static Need antifireNeed()
 	{
@@ -66,6 +97,22 @@ public final class QuestPreflight
 	{
 	}
 
+	/** A requirement for a supply the user selected in the setup window. */
+	public static Need supplyNeed(String name, List<Integer> ids, int quantity, boolean consumed)
+	{
+		return new Need(name, ids, quantity, consumed, true);
+	}
+
+	/** Label for the purchase list: says plainly that a selected supply was not found and will be bought. */
+	public static String purchaseLabel(Shortfall s)
+	{
+		if (!s.supply || s.missing <= 0)
+		{
+			return s.name;
+		}
+		return s.name + (s.owned == 0 ? " (missing - will buy)" : " (short " + s.missing + " - will buy)");
+	}
+
 	/** One requirement fed to the computation: the ids that satisfy it (alternates included) and how many. */
 	public static final class Need
 	{
@@ -74,10 +121,18 @@ public final class QuestPreflight
 		public final int quantity;
 		/** False for items the quest does not use up ({@code isNotConsumed()}). */
 		public final boolean consumed;
+		/** True for a supply the user ticked in the quest setup (stamina, food, potions, custom items). */
+		public final boolean supply;
 
 		/** A requirement satisfied by any of {@code ids}, needing {@code quantity} in total. */
 		public Need(String name, List<Integer> ids, int quantity, boolean consumed)
 		{
+			this(name, ids, quantity, consumed, false);
+		}
+
+		Need(String name, List<Integer> ids, int quantity, boolean consumed, boolean supply)
+		{
+			this.supply = supply;
 			this.name = name;
 			this.ids = ids;
 			this.quantity = quantity;
@@ -93,9 +148,11 @@ public final class QuestPreflight
 		public final int needed;
 		public final int owned;
 		public final int missing;
+		public final boolean supply;
 
-		Shortfall(String name, List<Integer> ids, int needed, int owned)
+		Shortfall(String name, List<Integer> ids, int needed, int owned, boolean supply)
 		{
+			this.supply = supply;
 			this.name = name;
 			this.ids = ids;
 			this.needed = needed;
@@ -120,6 +177,7 @@ public final class QuestPreflight
 		List<String> names = new ArrayList<>();
 		List<Set<Integer>> idSets = new ArrayList<>();
 		List<Integer> quantities = new ArrayList<>();
+		List<Boolean> supplies = new ArrayList<>();
 
 		for (Need need : needs)
 		{
@@ -142,6 +200,7 @@ public final class QuestPreflight
 
 			String name = need.name;
 			int quantity = need.quantity;
+			boolean supply = need.supply;
 			// Absorb every earlier group that shares an id, which also joins groups an alternate bridges
 			for (int i = idSets.size() - 1; i >= 0; i--)
 			{
@@ -149,6 +208,8 @@ public final class QuestPreflight
 				{
 					ids.addAll(idSets.get(i));
 					quantity = Math.max(quantity, quantities.get(i));
+					supply = supply || supplies.get(i);
+					supplies.remove(i);
 					name = names.get(i) != null ? names.get(i) : name;
 					idSets.remove(i);
 					quantities.remove(i);
@@ -158,13 +219,14 @@ public final class QuestPreflight
 			idSets.add(ids);
 			quantities.add(quantity);
 			names.add(name);
+			supplies.add(supply);
 		}
 
 		List<Shortfall> out = new ArrayList<>();
 		for (int i = 0; i < idSets.size(); i++)
 		{
 			out.add(new Shortfall(names.get(i), new ArrayList<>(idSets.get(i)), quantities.get(i),
-				countOwned(idSets.get(i), owned)));
+				countOwned(idSets.get(i), owned), supplies.get(i)));
 		}
 		return out;
 	}
@@ -206,6 +268,21 @@ public final class QuestPreflight
 		}
 	}
 
+	/**
+	 * Whether the bank was actually opened and read this session. The bank item list can be restored from a previous
+	 * session, so a non-empty list alone proves nothing; only a container update tick (>= 0) does.
+	 */
+	public static boolean bankScanned(int bankLastUpdatedTick)
+	{
+		return bankLastUpdatedTick >= 0;
+	}
+
+	/** Whether the bank holds enough of a needed item (or, if the item is carry-limited, any of it) to withdraw it. */
+	public static boolean bankCovers(int inBank, int needed, boolean carryLimited)
+	{
+		return needed > 0 && (inBank >= needed || (inBank > 0 && carryLimited));
+	}
+
 	/** Total held of the given ids (each id counted once). */
 	public static int countOwned(Iterable<Integer> ids, Map<Integer, Integer> owned)
 	{
@@ -237,6 +314,12 @@ public final class QuestPreflight
 	static boolean isInProgress()
 	{
 		return CHECKING.equals(status) || BUYING.equals(status);
+	}
+
+	/** Stop: back to idle, so the status no longer says checking or buying. */
+	static void resetToIdle()
+	{
+		status = PENDING;
 	}
 
 	/** Called by the Agent Server before a start that asked to skip the preflight. */

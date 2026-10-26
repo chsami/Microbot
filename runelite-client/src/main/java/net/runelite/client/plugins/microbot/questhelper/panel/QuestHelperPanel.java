@@ -249,6 +249,7 @@ public class QuestHelperPanel extends PluginPanel
 
 
 		titlePanel.add(viewControls, BorderLayout.EAST);
+		titlePanel.add(new QuestAutomationControls(questHelperPlugin, configManager), BorderLayout.SOUTH);
 
 		JTextArea questsCompletedLabel = JGenerator.makeJTextArea();
 		questsCompletedLabel.setForeground(Color.GRAY);
