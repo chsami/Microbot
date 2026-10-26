@@ -851,6 +851,7 @@ curl -X POST -H "Content-Type: application/json" \
  "inventory": [{"name": "Law rune", "qty": 50, "stackable": true}, {"name": "Games necklace", "qty": 1}],
  "reserveSlots": 6,
  "stamina": {"type": "stamina", "qty": 2, "drinkAtEnergy": 30},
+ "boosts": {"type": "super_attack_strength", "defence": false, "qty": 1},
  "fights": {"Temple Guardian": {"style": "ranged", "gear": {"setup": "Quest ranged"}},
             "Monk of Zamorak": {"style": "melee"}}}
 ```
@@ -859,14 +860,19 @@ curl -X POST -H "Content-Type: application/json" \
 - `gear` (main gear): `"worn"` (snapshot of what is equipped now), `{"setup": "<Inventory Setup name>"}`, or `{"items": [{"id": 1163, "slot": "head"}, {"name": "Rune scimitar", "slot": "weapon"}]}` (id or name; slot is head, cape, amulet, weapon, body, shield, legs, gloves, boots, ring or ammo). Pieces not worn are put on from the inventory or withdrawn from the bank before the fight.
 - `inventory`: items to bring, withdrawn in the supply bank trip (`stackable` counts as one slot). `reserveSlots` (0-27): free slots always kept for quest items; omitted means the quest's own estimate.
 - `stamina`: `{"type": "none|stamina|energy", "qty": 2, "drinkAtEnergy": 30}`; fetched in the same trip as food and drunk when run energy falls to the threshold. Works for quests without fights.
+- `boosts`: `{"type": "none|super_attack_strength|combat|attack_strength", "defence": false, "qty": 1}`; `defence: true` adds Super defence. Any dose; bought in preflight and withdrawn in the supply trip when the quest has fights; one is drunk in a kill step's fight whenever its skill's boosted level is at most 2 above the real level.
+- `potions`: `[{"type":"prayer_potion","qty":4},{"type":"super_restore","qty":2}]`, a list of potion types and counts (any dose; bought in preflight, withdrawn in the supply trip, never deposited). Types: prayer_potion, super_restore, super_attack, super_strength, super_defence, super_combat, combat_potion, attack_potion, strength_potion, defence_potion, ranging_potion, magic_potion, antipoison, superantipoison, antidote_plus_plus, antifire, extended_antifire, super_antifire, energy_potion, super_energy, stamina_potion. Replaces the older `potion`/`potionQty`/`boosts` fields when present (those still work alone). Prayer potions and super restores are drunk at `drinkAtPrayer`, boosts when their skill is unboosted, antipoisons when poisoned, energy potions at the run-energy threshold. Items already in the inventory when the quest starts are never banked by the quest helper unless a slot is needed for a quest item.
 - `fights`: keyed by fight name (case and "(level N)" ignored), each `{"style": ..., "gear": ...}` (or `"gearSetup": "<name>"`). A fight without an entry uses the main style and gear.
 - `obtainMissingItems`: `"YES"`, `"NO"` or `"ASK"`; whether the quester buys/withdraws missing quest items (the "Obtain Missing Items" Quest Helper setting, also offered as "Buy missing items" in the setup dialog). Saved to that setting. With `NO` the quester never buys: a step needing a missing must-be-worn item waits with a status message instead of proceeding, and preflight only reports. `ASK` (default) pauses the quester until the prompt is answered.
+- `confirmPurchases`: `false` skips the purchase confirmation dialog for this start and buys automatically when the coins (inventory + bank) cover the estimate (default: the "Confirm purchases before buying" Quest Helper toggle, on). If the coins fall short the quester stops before walking to the Grand Exchange, with a message listing the items and gp needed.
 - `preflight`: `false` skips the quest items check for this start (default `true`, also controlled by the "Check and buy all quest items before starting" Quest Helper toggle).
 - Without `combat`, `gear`, `inventory`, `stamina` and `fights` are merged into the saved setup, or into one that brings no food. A bad value returns 400 naming the field. Saved setups are cleared with the "Reset quest setups" Quest Helper toggle.
 
 #### Quest items preflight
 
 Once the setup dialog is answered, each quest start runs a one-time preflight: the tradable items the whole quest still needs (quest-level requirements when the quest is not started, plus the requirements of every remaining step) are counted across inventory, equipment and bank, and any shortfall is bought from the Grand Exchange and left in the bank. Quest-given items, items a step picks up or loots itself, coins and placeholder requirements are ignored; duplicates across steps take the largest quantity. If the bank has not been opened this session the quester opens it once to count. One INFO line summarises it, e.g. `Quest helper preflight for The Restless Ghost: Rope x1 (in bank), Air rune x6 (buying)`. If gp is short the quester stops with a message listing the missing items and the estimated cost.
+
+Before walking to the Grand Exchange the preflight prices the shortfall (reference price x 1.2) and, with confirmation on, shows an items-to-buy dialog (Buy and start / Start without buying / Cancel). `GET /quest-helper/status` reports `"awaitingPurchaseConfirm": true` while it is open and `"plannedPurchases"` (`items` with name, quantity, estimatedEach, estimatedTotal; `estimatedTotal`, `coins`, `affordable`).
 
 `GET /quest-helper/status` reports `"preflight"`: `pending` (not reached yet), `checking`, `buying`, `done` (finished, skipped or disabled), or `failed: <reason>`.
 

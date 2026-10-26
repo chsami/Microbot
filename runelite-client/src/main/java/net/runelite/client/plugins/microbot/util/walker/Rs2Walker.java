@@ -71,6 +71,8 @@ import net.runelite.client.plugins.microbot.util.walker.obstacle.ObstacleResolut
 import net.runelite.client.plugins.microbot.util.walker.obstacle.PlannedEdge;
 import net.runelite.client.plugins.microbot.util.walker.recovery.FrontierDecision;
 import net.runelite.client.plugins.microbot.util.walker.recovery.RouteRecovery;
+import net.runelite.client.plugins.microbot.util.walker.recovery.WalkLivelockPolicy;
+import net.runelite.client.plugins.microbot.util.walker.recovery.WalledReplanLedger;
 import net.runelite.client.plugins.microbot.util.walker.segment.SegmentGate;
 import net.runelite.client.plugins.microbot.util.walker.recovery.TailDecision;
 import net.runelite.client.plugins.microbot.util.walker.state.WalkExit;
@@ -310,6 +312,31 @@ public class Rs2Walker {
      * cohesive clusters; first cluster: transport handoff. See {@link WalkerRouteState}.
      */
     static final WalkerRouteState routeState = new WalkerRouteState();
+    private static final WalledReplanLedger walledReplanLedger = new WalledReplanLedger();
+
+    /**
+     * Counts consecutive walled-recovery replans for the same tile/target and, at the strike limit,
+     * blacklists the walled target edge and first hop for this session (live bug #45: a decorative
+     * ladder platform replanned forever). Kept outside processWalk so that method cannot grow.
+     */
+    private static void blacklistRepeatedWalledReplan(WorldPoint playerLoc, WorldPoint recoverTarget,
+                                                      List<WorldPoint> path, int i) {
+        if (!walledReplanLedger.record(playerLoc, recoverTarget, WalledReplanLedger.DEFAULT_STRIKE_LIMIT)) {
+            return;
+        }
+        WorldPoint nextHop = path.get(Math.min(i, path.size() - 1));
+        if (nextHop.equals(playerLoc) && i + 1 < path.size()) {
+            nextHop = path.get(i + 1);
+        }
+        String reason = "recovery-target-walled x" + WalledReplanLedger.DEFAULT_STRIKE_LIMIT;
+        boolean learned = Rs2PathApi.learnBlockedEdge(playerLoc, recoverTarget, reason);
+        if (!nextHop.equals(playerLoc)) {
+            learned |= Rs2PathApi.learnBlockedEdge(playerLoc, nextHop, reason);
+        }
+        WebWalkLog.spInfo("recovery_walled_strike_out | from={} target={} next={} newlyBlocked={}",
+                compactWorldPoint(playerLoc), compactWorldPoint(recoverTarget), compactWorldPoint(nextHop), learned);
+    }
+
     // idle-nudge state migrated to WalkerRouteState (see routeState)
     // route-progress state migrated to WalkerRouteState (see routeState)
     static final java.util.Deque<WorldPoint> expectedTransportDestinations = new ArrayDeque<>();
@@ -1566,6 +1593,10 @@ public class Rs2Walker {
                 walkBudgetLastProgressAtMs = nowMs;
             }
         }
+        if (WalkLivelockPolicy.shouldAbort(walkBudgetLastProgressAtMs, nowMs, WalkLivelockPolicy.getAbortMs())) {
+            abortLivelockedWalk(target, nowMs);
+            return;
+        }
         if (!TailDecision.isWallClockExhausted(walkBudgetLastProgressAtMs, nowMs, WALK_WALL_CLOCK_BUDGET_MS)
                 || walkBudgetReportedForSessionAtMs == startedAt) {
             return;
@@ -1576,6 +1607,20 @@ public class Rs2Walker {
                         + " cap cannot catch this because exempt exits refund it",
                 WALK_WALL_CLOCK_BUDGET_MS, nowMs - walkBudgetLastProgressAtMs, nowMs - startedAt,
                 target, Rs2Player.getWorldLocation(), processWalkTail);
+    }
+
+    /**
+     * Aborts a walk that has not closed distance on its goal for the livelock window so the caller
+     * (quest watchdog, scripts) can recover. The loop's next cancel check observes the cleared target.
+     */
+    private static void abortLivelockedWalk(WorldPoint target, long nowMs) {
+        WorldPoint at = Rs2Player.getWorldLocation();
+        String reason = "livelock-abort: no distance gain for " + (nowMs - walkBudgetLastProgressAtMs)
+                + "ms target=" + target + " at=" + at;
+        log.warn("[Walker] {} — aborting walk so the caller can recover", reason);
+        WalkLivelockPolicy.recordAbort(reason, nowMs);
+        walkBudgetLastProgressAtMs = nowMs;
+        setTarget(null, "rs2walker:processWalk:" + reason);
     }
 
     /** How long the route progress index may hold still before the route is declared stagnant. */
@@ -2770,6 +2815,7 @@ public class Rs2Walker {
                                 routeState.lastWalledRecoveryReplanAtMs = System.currentTimeMillis();
                                 WebWalkLog.spInfo("recovery_target_walled | to={} player={} replanning",
                                         compactWorldPoint(recoverTarget), compactWorldPoint(playerLoc));
+                                blacklistRepeatedWalledReplan(playerLoc, recoverTarget, path, i);
 								recalculatePathForRecovery();
                             }
                             WalkExit recoveryClickExit = FrontierDecision.exitForRecoveryClick(clickAction);

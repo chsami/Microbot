@@ -79,4 +79,42 @@ public class NearestBankPolicyTest {
         assertTrue(NearestBankPolicy.isPlausible(desert, BankLocation.EDGEVILLE.getWorldPoint(),
                 CANDIDATES, false, true));
     }
+
+    private static final WorldPoint ARDOUGNE_GARDEN = new WorldPoint(2566, 3332, 0);
+
+    @Test
+    public void freeHomeTeleportDoesNotBeatNearbyBank() {
+        List<NearestBankPolicy.BankOption> options = Arrays.asList(
+                new NearestBankPolicy.BankOption(BankLocation.LUMBRIDGE_TOP, 1, true),
+                new NearestBankPolicy.BankOption(BankLocation.ARDOUGNE_NORTH, 60, false));
+        NearestBankPolicy.BankOption pick = NearestBankPolicy.choose(ARDOUGNE_GARDEN, ARDOUGNE_GARDEN, options);
+        assertTrue(pick.bank == BankLocation.ARDOUGNE_NORTH);
+    }
+
+    @Test
+    public void homeTeleportDroppedUnlessFar() {
+        assertFalse(NearestBankPolicy.homeTeleportAllowed(ARDOUGNE_GARDEN, BankLocation.ARDOUGNE_NORTH.getWorldPoint()));
+        assertTrue(NearestBankPolicy.homeTeleportAllowed(ARDOUGNE_GARDEN, BankLocation.LUMBRIDGE_TOP.getWorldPoint()));
+        assertTrue(NearestBankPolicy.choose(ARDOUGNE_GARDEN, ARDOUGNE_GARDEN, Arrays.asList(
+                new NearestBankPolicy.BankOption(BankLocation.ARDOUGNE_NORTH, 60, true))) == null);
+    }
+
+    @Test
+    public void returnLegDecidesBetweenBanks() {
+        WorldPoint returnPoint = BankLocation.ARDOUGNE_SOUTH.getWorldPoint();
+        List<NearestBankPolicy.BankOption> options = Arrays.asList(
+                new NearestBankPolicy.BankOption(BankLocation.ARDOUGNE_NORTH, 50, false),
+                new NearestBankPolicy.BankOption(BankLocation.ARDOUGNE_SOUTH, 60, false));
+        assertTrue(NearestBankPolicy.choose(ARDOUGNE_GARDEN, returnPoint, options).bank == BankLocation.ARDOUGNE_SOUTH);
+    }
+
+    @Test
+    public void nearbyBankWinsTies() {
+        WorldPoint player = BankLocation.ARDOUGNE_NORTH.getWorldPoint();
+        List<NearestBankPolicy.BankOption> options = Arrays.asList(
+                new NearestBankPolicy.BankOption(BankLocation.EDGEVILLE, 10, false),
+                new NearestBankPolicy.BankOption(BankLocation.ARDOUGNE_NORTH, 10, false));
+        // Edgeville's return leg is hundreds of tiles; nearby bank is also strictly cheaper here.
+        assertTrue(NearestBankPolicy.choose(player, player, options).bank == BankLocation.ARDOUGNE_NORTH);
+    }
 }

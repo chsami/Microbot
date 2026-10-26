@@ -41,4 +41,9 @@ public final class KillStepRule {
 	public static boolean isKillStep(List<String> text, boolean targetHasAttackAction) {
 		return targetHasAttackAction && isKillText(text);
 	}
+
+	/** Click Attack unless we are already fighting the target; rate-limited so a slow server tick is not spammed. */
+	public static boolean shouldClickAttack(boolean interactingWithTarget, long msSinceLastClick, long minIntervalMs) {
+		return !interactingWithTarget && msSinceLastClick >= minIntervalMs;
+	}
 }

@@ -303,3 +303,12 @@ Glories, rings of wealth, games necklaces, combat bracelets and potions are sepa
 **Pattern to follow:** compare names with the trailing `(n)` stripped (`ChargedItemNames.sameFamily`) and pick the exact id, else the highest charge, else the uncharged base (`ChargedItemNames.pick`).
 
 **Where this applies:** questhelper/combat gear restore and custom-item withdrawals.
+
+
+## Bank mid-task with a return point, not just the nearest bank
+
+Pick banks by round trip (player to bank plus bank back to where the task resumes), never by cost to the bank alone. Callers that bank mid-task (quest missing-item flow, combat restock) use `Rs2Bank.walkToBankAndUseBankReturningTo(returnPoint)` or `getNearestBankForRoundTrip`; the plain overloads use the player's tile.
+
+**Why this matters:** the planner prices the Lumbridge home teleport as near free, so a quest at the Ardougne mud patch teleported to Lumbridge for 4 buckets of water and then walked back for minutes (live bug #42). Home teleports now cost a cast plus cooldown and are dropped for banks within 150 tiles; a bank within 40 tiles wins unless another is strictly cheaper (`NearestBankPolicy.choose`).
+
+**Where this applies:** `Rs2Bank.getNearestBank*`, `QuestScript`, `QuestCombatHandler`.

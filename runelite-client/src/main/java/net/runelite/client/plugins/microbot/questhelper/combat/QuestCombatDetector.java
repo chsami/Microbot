@@ -46,6 +46,8 @@ public final class QuestCombatDetector
 		public final List<String> notes;
 		/** Notes plus step text; what the style restriction check reads. */
 		public final List<String> restrictionTexts;
+		/** True when the fight text or requirements say it needs a combat style swap (target prayers). */
+		public boolean needsSwap;
 
 		Fight(String key, String label, List<String> notes, List<String> restrictionTexts)
 		{
@@ -336,6 +338,34 @@ public final class QuestCombatDetector
 		return "Fight";
 	}
 
+	/**
+	 * True when a step asks for a combat style swap: its text says so, or one of its requirements is the
+	 * "Two combat styles" placeholder.
+	 */
+	public static boolean stepNeedsSwap(QuestStep step)
+	{
+		if (step == null)
+		{
+			return false;
+		}
+		if (QuestStyleSwap.textNeedsSwap(step.getText()))
+		{
+			return true;
+		}
+		if (step instanceof DetailedQuestStep && ((DetailedQuestStep) step).getRequirements() != null)
+		{
+			for (Requirement requirement : ((DetailedQuestStep) step).getRequirements())
+			{
+				if (requirement instanceof ItemRequirement
+					&& QuestStyleSwap.isStylePlaceholder(((ItemRequirement) requirement).getName()))
+				{
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
 	/** Key of the fight a kill step belongs to, or null when the step is not a kill step. */
 	public static String fightKeyOf(QuestStep step)
 	{
@@ -367,8 +397,16 @@ public final class QuestCombatDetector
 		{
 			String name = targetName(step);
 			String key = QuestCombatLoadout.fightKey(name);
-			if (key.isEmpty() || fights.containsKey(key))
+			if (key.isEmpty())
 			{
+				continue;
+			}
+			if (fights.containsKey(key))
+			{
+				if (stepNeedsSwap(step))
+				{
+					fights.get(key).needsSwap = true;
+				}
 				continue;
 			}
 			int level = parseLevel(step.getText());
@@ -388,7 +426,9 @@ public final class QuestCombatDetector
 			{
 				notes.addAll(stepText);
 			}
-			fights.put(key, new Fight(key, label, notes, restriction));
+			Fight fight = new Fight(key, label, notes, restriction);
+			fight.needsSwap = stepNeedsSwap(step) || QuestStyleSwap.textNeedsSwap(notes);
+			fights.put(key, fight);
 		}
 		return new ArrayList<>(fights.values());
 	}

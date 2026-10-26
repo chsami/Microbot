@@ -85,6 +85,15 @@ public final class QuestCombatSetupDialog
 		public String wornWeapon = "";
 		public List<InventoryItem> inventory = new ArrayList<>();
 		public int defaultReserve = 4;
+		/** Combat skill levels (melee is the higher of Attack and Strength); drive the default second style. */
+		public int meleeLevel = 1;
+		public int rangedLevel = 1;
+		public int magicLevel = 1;
+		public int prayerLevel = 1;
+		/** Best-healing food held in the bank or inventory; null when none is known. */
+		public String bestOwnedFood;
+		/** Whether the bank contents were seen this session. */
+		public boolean bankSeen;
 		/** Current "Obtain Missing Items" setting (ASK, YES or NO). */
 		public String obtainMissingItems = "ASK";
 	}
@@ -122,6 +131,44 @@ public final class QuestCombatSetupDialog
 					return items.isEmpty() ? "Custom items..." : "Custom items (" + items.size() + ")...";
 			}
 		}
+	}
+
+	/** Shown on the Supplies and Gear tabs when the quest has no fights. */
+	static final String NO_FIGHTS_NOTE =
+		"No fights detected in this quest — combat options are not needed. Food and potions are optional.";
+
+	/** Prayer, gear, style and per-fight rows only matter when the quest has fights. Food and potions are always editable. */
+	static boolean combatControlsEnabled(boolean hasFights)
+	{
+		return hasFights;
+	}
+
+	/** The skip button label; it stays enabled either way. */
+	static String skipLabel(boolean hasFights)
+	{
+		return hasFights ? "Skip combat setup" : "Skip setup";
+	}
+
+	static final String FOOD_PLACEHOLDER = "best food in bank";
+
+	/** Default food: the best-healing food owned when known, else the old Lobster default. */
+	static String defaultFood(Context ctx)
+	{
+		return ctx != null && ctx.bestOwnedFood != null && !ctx.bestOwnedFood.trim().isEmpty() ? ctx.bestOwnedFood : "Lobster";
+	}
+
+	/** Inventory slots the entered food and potions take. */
+	static int foodAndPotionSlots(String food, int foodQty, boolean hasPotion, int potionQty)
+	{
+		return (food != null && !food.trim().isEmpty() ? Math.max(0, foodQty) : 0)
+			+ (hasPotion ? Math.max(0, potionQty) : 0);
+	}
+
+	private static JLabel noFightsNote()
+	{
+		JLabel note = new JLabel("<html><body style='width:640px'>" + NO_FIGHTS_NOTE + "</body></html>");
+		note.setForeground(new Color(190, 120, 20));
+		return note;
 	}
 
 	private static volatile JDialog openDialog;
@@ -237,8 +284,8 @@ public final class QuestCombatSetupDialog
 		private JTextField food;
 		private JSpinner foodQty;
 		private JSpinner eatAt;
-		private JComboBox<QuestCombatLoadout.Potion> potion;
-		private JSpinner potionQty;
+		private DefaultTableModel potionModel;
+		private JTable potionTable;
 		private JComboBox<QuestCombatLoadout.Prayer> prayer;
 		private JSpinner drinkAt;
 		private JComboBox<QuestCombatLoadout.StaminaType> staminaType;
@@ -276,9 +323,9 @@ public final class QuestCombatSetupDialog
 			}
 
 			JButton save = new JButton("Save & start");
-			JButton skip = new JButton("Skip combat setup");
+			JButton skip = new JButton(skipLabel(ctx.hasFights));
 			JButton cancel = new JButton("Cancel");
-			skip.setEnabled(ctx.hasFights);
+			skip.setEnabled(true);
 			save.addActionListener(e -> finish(Outcome.SAVE));
 			skip.addActionListener(e -> finish(Outcome.SKIP));
 			cancel.addActionListener(e ->
@@ -305,7 +352,14 @@ public final class QuestCombatSetupDialog
 
 			if (!ctx.hasFights)
 			{
-				combatOnly.forEach(component -> component.setEnabled(false));
+				combatOnly.forEach(component ->
+				{
+					component.setEnabled(combatControlsEnabled(ctx.hasFights));
+					if (component instanceof javax.swing.JComponent)
+					{
+						((javax.swing.JComponent) component).setToolTipText(NO_FIGHTS_NOTE);
+					}
+				});
 			}
 			refresh();
 
@@ -361,7 +415,7 @@ public final class QuestCombatSetupDialog
 			}
 			else
 			{
-				row = addRow(panel, row, "Combat", new JLabel("This quest has no fights, so combat settings are off."));
+				row = addSpan(panel, row, noFightsNote());
 			}
 			mainGear = new GearPicker(false);
 			row = addRow(panel, row, "Gear", mainGear.combo);
@@ -380,12 +434,60 @@ public final class QuestCombatSetupDialog
 		{
 			JPanel panel = new JPanel(new GridBagLayout());
 			int row = 0;
-			food = new JTextField("Lobster", 14);
-			foodQty = spinner(10, 0, 27, 1);
+			if (!ctx.hasFights)
+			{
+				row = addSpan(panel, row, noFightsNote());
+			}
+			food = new JTextField(defaultFood(ctx), 14)
+			{
+				@Override
+				protected void paintComponent(java.awt.Graphics g)
+				{
+					super.paintComponent(g);
+					if (getText().isEmpty())
+					{
+						g.setColor(Color.GRAY);
+						g.drawString(FOOD_PLACEHOLDER, getInsets().left + 2, getHeight() / 2 + g.getFontMetrics().getAscent() / 2 - 1);
+					}
+				}
+			};
+			food.setToolTipText(ctx.bankSeen ? "Defaults to the best food you own" : "Bank not seen yet: " + FOOD_PLACEHOLDER);
+			foodQty = spinner(ctx.hasFights ? 10 : 0, 0, 27, 1);
 			eatAt = spinner(50, 1, 99, 5);
-			potion = new JComboBox<>(QuestCombatLoadout.Potion.values());
-			potionQty = spinner(2, 0, 27, 1);
+			potionModel = new DefaultTableModel(new Object[]{"Potion", "Count"}, 0)
+			{
+				@Override
+				public Class<?> getColumnClass(int column)
+				{
+					return column == 1 ? Integer.class : QuestPotions.Kind.class;
+				}
+			};
+			potionTable = new JTable(potionModel);
+			potionTable.setRowHeight(22);
+			potionTable.getColumnModel().getColumn(0).setCellEditor(
+				new DefaultCellEditor(new JComboBox<>(QuestPotions.Kind.values())));
+			potionTable.setPreferredScrollableViewportSize(new Dimension(420, 110));
+			potionModel.addTableModelListener(e -> refresh());
+			potionModel.addRow(new Object[]{QuestPotions.Kind.PRAYER_POTION, 2});
+			JButton addPotion = new JButton("Add potion");
+			addPotion.addActionListener(e -> potionModel.addRow(new Object[]{QuestPotions.Kind.SUPER_RESTORE, 1}));
+			JButton removePotion = new JButton("Remove potion");
+			removePotion.addActionListener(e ->
+			{
+				int selected = potionTable.getSelectedRow();
+				if (selected >= 0)
+				{
+					potionModel.removeRow(selected);
+				}
+			});
+			JPanel potionPanel = new JPanel(new BorderLayout());
+			potionPanel.add(new JScrollPane(potionTable), BorderLayout.CENTER);
+			JPanel potionBar = new JPanel(new FlowLayout(FlowLayout.LEFT));
+			potionBar.add(addPotion);
+			potionBar.add(removePotion);
+			potionPanel.add(potionBar, BorderLayout.SOUTH);
 			prayer = new JComboBox<>(QuestCombatLoadout.Prayer.values());
+			prayer.setSelectedItem(QuestPrayer.defaultPrayer(ctx.hasFights, ctx.prayerLevel));
 			drinkAt = spinner(20, 1, 98, 1);
 			staminaType = new JComboBox<>(QuestCombatLoadout.StaminaType.values());
 			staminaType.setSelectedItem(QuestCombatLoadout.StaminaType.NONE);
@@ -396,11 +498,10 @@ public final class QuestCombatSetupDialog
 			row = addRow(panel, row, "Food", food);
 			row = addRow(panel, row, "Food quantity", foodQty);
 			row = addRow(panel, row, "Eat at HP %", eatAt);
-			row = addRow(panel, row, "Potions", potion);
-			row = addRow(panel, row, "Potion quantity", potionQty);
+			row = addRow(panel, row, "Potions (type and count; bought or withdrawn)", potionPanel);
 			row = addRow(panel, row, "Prayer", prayer);
 			row = addRow(panel, row, "Drink at prayer points", drinkAt);
-			combatOnly.addAll(java.util.Arrays.asList(food, foodQty, eatAt, potion, potionQty, prayer, drinkAt));
+			combatOnly.addAll(java.util.Arrays.asList(prayer, drinkAt));
 			row = addRow(panel, row, "Run energy potions", staminaType);
 			row = addRow(panel, row, "Potion quantity (stamina/energy)", staminaQty);
 			row = addRow(panel, row, "Drink at run energy %", staminaAt);
@@ -410,11 +511,11 @@ public final class QuestCombatSetupDialog
 			obtainMissing.setToolTipText("Buy or withdraw missing quest items from the bank and Grand Exchange");
 			row = addRow(panel, row, "Buy missing items", obtainMissing);
 			filler(panel, row);
-			for (JSpinner s : new JSpinner[]{foodQty, eatAt, potionQty, drinkAt, staminaQty, staminaAt, reserve})
+			for (JSpinner s : new JSpinner[]{foodQty, eatAt, drinkAt, staminaQty, staminaAt, reserve})
 			{
 				s.addChangeListener(e -> refresh());
 			}
-			for (JComboBox<?> c : new JComboBox<?>[]{potion, prayer, staminaType})
+			for (JComboBox<?> c : new JComboBox<?>[]{prayer, staminaType})
 			{
 				c.addActionListener(e -> refresh());
 			}
@@ -490,7 +591,8 @@ public final class QuestCombatSetupDialog
 				addCell(panel, 2, y, fightRow.style, 0);
 				addCell(panel, 3, y, fightRow.gear.combo, 0);
 				addCell(panel, 1, y + 1, fightRow.warning, 1);
-				y += 2;
+				addCell(panel, 1, y + 2, fightRow.swapPanel(), 1);
+				y += 3;
 			}
 			JPanel wrap = new JPanel(new BorderLayout());
 			wrap.add(panel, BorderLayout.NORTH);
@@ -508,10 +610,125 @@ public final class QuestCombatSetupDialog
 			final GearPicker gear = new GearPicker(true);
 			final JLabel warning = new JLabel(" ");
 			boolean touched;
+			final JComboBox<QuestCombatLoadout.SecondaryStyle> secondary =
+				new JComboBox<>(QuestCombatLoadout.SecondaryStyle.values());
+			final JTextField weapon = new JTextField(12);
+			final JTextField ammo = new JTextField(12);
+			final JSpinner ammoQty = spinner(0, 0, 100_000, 10);
+			final JComboBox<String> swapSetup = new JComboBox<>();
+			final JLabel swapNote = new JLabel(" ");
+			boolean kitTouched;
+			private boolean fillingKit;
+
+			/** Secondary style controls: style, weapon, ammo/runes and quantity, or an Inventory Setup. */
+			JPanel swapPanel()
+			{
+				JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+				panel.add(new JLabel("Swap to"));
+				panel.add(secondary);
+				panel.add(new JLabel("Weapon"));
+				panel.add(weapon);
+				panel.add(new JLabel("Ammo/runes"));
+				panel.add(ammo);
+				panel.add(ammoQty);
+				panel.add(new JLabel("or setup"));
+				panel.add(swapSetup);
+				panel.add(swapNote);
+				return panel;
+			}
+
+			Style primaryStyle()
+			{
+				Style primary = effective();
+				return primary == null ? Style.MELEE : primary;
+			}
+
+			/** The second style this row resolves to now, or null when the fight is not swapped. */
+			Style resolvedSecondary()
+			{
+				QuestCombatLoadout.SecondaryStyle chosen = (QuestCombatLoadout.SecondaryStyle) secondary.getSelectedItem();
+				if (chosen == QuestCombatLoadout.SecondaryStyle.NONE
+					|| chosen == QuestCombatLoadout.SecondaryStyle.AUTO && !fight.needsSwap)
+				{
+					return null;
+				}
+				if (chosen != QuestCombatLoadout.SecondaryStyle.AUTO)
+				{
+					return chosen.style();
+				}
+				return QuestStyleSwap.defaultSecondary(primaryStyle(), ctx.meleeLevel, ctx.rangedLevel, ctx.magicLevel,
+					QuestCombatLoadout.forbiddenStyles(fight.restrictionTexts));
+			}
+
+			void refreshSwap()
+			{
+				Style second = resolvedSecondary();
+				if (!kitTouched)
+				{
+					String[] kit = QuestStyleSwap.defaultKit(second);
+					fillingKit = true;
+					try
+					{
+						weapon.setText(kit[0]);
+						ammo.setText(kit[1]);
+						ammoQty.setValue(Integer.parseInt(kit[2]));
+					}
+					finally
+					{
+						fillingKit = false;
+					}
+				}
+				swapNote.setText(second == null ? (fight.needsSwap ? "No second style available"
+					: "") : "Swaps " + primaryStyle() + " / " + second + (fight.needsSwap ? " (prayers detected)" : ""));
+			}
 
 			FightRow(QuestCombatDetector.Fight fight)
 			{
 				this.fight = fight;
+				swapSetup.addItem("");
+				for (String name : setups)
+				{
+					swapSetup.addItem(name);
+				}
+				javax.swing.event.DocumentListener kitListener = new javax.swing.event.DocumentListener()
+				{
+					private void changed()
+					{
+						if (!fillingKit)
+						{
+							kitTouched = true;
+						}
+					}
+
+					@Override
+					public void insertUpdate(javax.swing.event.DocumentEvent e)
+					{
+						changed();
+					}
+
+					@Override
+					public void removeUpdate(javax.swing.event.DocumentEvent e)
+					{
+						changed();
+					}
+
+					@Override
+					public void changedUpdate(javax.swing.event.DocumentEvent e)
+					{
+						changed();
+					}
+				};
+				weapon.getDocument().addDocumentListener(kitListener);
+				ammo.getDocument().addDocumentListener(kitListener);
+				ammoQty.addChangeListener(e ->
+				{
+					if (!fillingKit)
+					{
+						kitTouched = true;
+					}
+				});
+				secondary.addActionListener(e -> refreshSwap());
+				refreshSwap();
 				style.setSelectedItem(QuestCombatLoadout.defaultStyle(Style.AUTO, fight.restrictionTexts));
 				warning.setForeground(new Color(190, 40, 40));
 				style.addActionListener(e ->
@@ -582,9 +799,28 @@ public final class QuestCombatSetupDialog
 			return QuestCombatLoadout.styleOfWeapon(ctx.wornWeapon);
 		}
 
+		private List<QuestPotions.Row> readPotions()
+		{
+			if (potionTable != null && potionTable.isEditing())
+			{
+				potionTable.getCellEditor().stopCellEditing();
+			}
+			List<QuestPotions.Row> rows = new ArrayList<>();
+			for (int i = 0; i < potionModel.getRowCount(); i++)
+			{
+				Object kind = potionModel.getValueAt(i, 0);
+				Object qty = potionModel.getValueAt(i, 1);
+				if (kind instanceof QuestPotions.Kind && qty instanceof Number)
+				{
+					rows.add(new QuestPotions.Row(((QuestPotions.Kind) kind).key(), ((Number) qty).intValue()));
+				}
+			}
+			return QuestPotions.clean(rows);
+		}
+
 		private void refresh()
 		{
-			if (mainGear == null || slots == null || reserve == null || itemModel == null || potion == null || staminaType == null)
+			if (mainGear == null || slots == null || reserve == null || itemModel == null || potionModel == null || staminaType == null)
 			{
 				return;
 			}
@@ -593,10 +829,10 @@ public final class QuestCombatSetupDialog
 				+ (mainDetected == null ? "set by the Inventory Setup" : mainDetected.toString().replace(" (from worn weapon)", "")));
 
 			int supplies = 0;
-			if (ctx.hasFights)
+			supplies += foodAndPotionSlots(food.getText(), (Integer) foodQty.getValue(), false, 0);
+			for (QuestPotions.Row row : readPotions())
 			{
-				supplies += !food.getText().trim().isEmpty() ? (Integer) foodQty.getValue() : 0;
-				supplies += potion.getSelectedItem() != QuestCombatLoadout.Potion.NONE ? (Integer) potionQty.getValue() : 0;
+				supplies += row.getQty();
 			}
 			if (staminaType.getSelectedItem() != QuestCombatLoadout.StaminaType.NONE)
 			{
@@ -614,6 +850,7 @@ public final class QuestCombatSetupDialog
 
 			for (FightRow row : rows)
 			{
+				row.refreshSwap();
 				if (row.forbidden())
 				{
 					row.warning.setText("Warning: " + row.effective().toString().replace(" (from worn weapon)", "")
@@ -687,6 +924,7 @@ public final class QuestCombatSetupDialog
 				loadout.setFoodQty(0);
 				loadout.setPotion(QuestCombatLoadout.Potion.NONE);
 				loadout.setPotionQty(0);
+				loadout.setPotions(new ArrayList<>());
 				loadout.setPrayer(QuestCombatLoadout.Prayer.OFF);
 				loadout.setFights(new java.util.LinkedHashMap<>());
 			}
@@ -740,11 +978,6 @@ public final class QuestCombatSetupDialog
 				GearSpec gear = mainGear.spec();
 				loadout.setGearSetup(gear.getSetup());
 				loadout.setGearItems(gear.getItems());
-				loadout.setFood(food.getText());
-				loadout.setFoodQty((Integer) foodQty.getValue());
-				loadout.setEatAtPercent((Integer) eatAt.getValue());
-				loadout.setPotion((QuestCombatLoadout.Potion) potion.getSelectedItem());
-				loadout.setPotionQty((Integer) potionQty.getValue());
 				loadout.setPrayer((QuestCombatLoadout.Prayer) prayer.getSelectedItem());
 				loadout.setDrinkAtPrayer((Integer) drinkAt.getValue());
 				loadout.setStyle((Style) style.getSelectedItem());
@@ -755,15 +988,28 @@ public final class QuestCombatSetupDialog
 					GearSpec own = row.gear.spec();
 					setup.setGearSetup(own.getSetup());
 					setup.setGearItems(own.getItems());
+					QuestCombatLoadout.SecondaryStyle chosen =
+						(QuestCombatLoadout.SecondaryStyle) row.secondary.getSelectedItem();
+					setup.setSecondaryStyle(chosen == QuestCombatLoadout.SecondaryStyle.AUTO ? null : chosen);
+					Object setupChoice = row.swapSetup.getSelectedItem();
+					setup.setSecondaryGearSetup(setupChoice == null ? "" : setupChoice.toString());
+					if (row.kitTouched)
+					{
+						setup.setSecondaryWeapon(row.weapon.getText());
+						setup.setSecondaryAmmo(row.ammo.getText());
+						setup.setSecondaryAmmoQty((Integer) row.ammoQty.getValue());
+					}
 					loadout.getFights().put(row.fight.key, setup);
 				}
 			}
-			else
-			{
-				loadout.setSkip(true);
-				loadout.setFoodQty(0);
-				loadout.setPotionQty(0);
-			}
+			// food and potions are optional supplies for every quest; without fights only they apply (skip stays off)
+			loadout.setFood(food.getText());
+			loadout.setFoodQty((Integer) foodQty.getValue());
+			loadout.setEatAtPercent((Integer) eatAt.getValue());
+			loadout.setPotion(QuestCombatLoadout.Potion.NONE);
+			loadout.setPotionQty(0);
+			loadout.setBoostType(QuestCombatLoadout.BoostType.NONE);
+			loadout.setPotions(readPotions());
 			QuestCombatLoadout.StaminaType type = (QuestCombatLoadout.StaminaType) staminaType.getSelectedItem();
 			loadout.setUseStamina(type != QuestCombatLoadout.StaminaType.NONE);
 			if (type != QuestCombatLoadout.StaminaType.NONE)
@@ -934,6 +1180,20 @@ public final class QuestCombatSetupDialog
 		c.anchor = GridBagConstraints.NORTHWEST;
 		c.insets = new Insets(3, 3, 3, 6);
 		panel.add(component, c);
+	}
+
+	private static int addSpan(JPanel panel, int row, Component component)
+	{
+		GridBagConstraints c = new GridBagConstraints();
+		c.gridx = 0;
+		c.gridy = row;
+		c.gridwidth = 2;
+		c.fill = GridBagConstraints.HORIZONTAL;
+		c.weightx = 1;
+		c.anchor = GridBagConstraints.WEST;
+		c.insets = new Insets(6, 6, 6, 6);
+		panel.add(component, c);
+		return row + 1;
 	}
 
 	private static int addRow(JPanel panel, int row, String label, Component field)

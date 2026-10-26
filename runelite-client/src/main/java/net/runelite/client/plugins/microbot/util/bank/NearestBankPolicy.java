@@ -113,6 +113,19 @@ final class NearestBankPolicy {
         return hasTransport(route, false);
     }
 
+    static boolean usesHomeTeleport(Rs2RouteResult route) {
+        if (route == null) {
+            return false;
+        }
+        for (Rs2RouteStep step : route.getTransportSteps()) {
+            Rs2TransportEdge edge = step.getTransport().orElse(null);
+            if (edge != null && edge.getType() == Rs2TransportType.TELEPORTATION_SPELL_HOME) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     static boolean usesItemOrSpellTeleport(Rs2RouteResult route) {
         return hasTransport(route, true);
     }
@@ -175,5 +188,85 @@ final class NearestBankPolicy {
         }
         int nearest = Math.max(nearestTiles(start, candidates), MIN_NEAREST_FOR_RATIO);
         return chosenTiles <= (long) nearest * MAX_DISTANCE_RATIO;
+    }
+
+    /** A bank within this many walking tiles of the player is preferred unless another is strictly cheaper. */
+    static final int NEARBY_WALK_TILES = 40;
+    /** Home teleport is only a candidate when the bank is farther than this many tiles away. */
+    static final int HOME_TELEPORT_MIN_TILES = 150;
+    /** Cast (~10 s) plus cooldown awareness, in the planner's tick-like cost units. */
+    static final long HOME_TELEPORT_COST = 50;
+    /** Added when the return leg changes plane. */
+    static final int PLANE_CHANGE_COST = 4;
+
+    /** One planned way to reach a bank. {@code toBankCost} is the planner cost from the player to the bank. */
+    static final class BankOption {
+        final BankLocation bank;
+        final long toBankCost;
+        final boolean homeTeleport;
+
+        BankOption(BankLocation bank, long toBankCost, boolean homeTeleport) {
+            this.bank = bank;
+            this.toBankCost = toBankCost;
+            this.homeTeleport = homeTeleport;
+        }
+    }
+
+    /** Whether a route using the home teleport spell may be considered for a bank this far (straight line) away. */
+    static boolean homeTeleportAllowed(WorldPoint start, WorldPoint bank) {
+        return start == null || bank == null || start.distanceTo2D(bank) > HOME_TELEPORT_MIN_TILES;
+    }
+
+    /** Straight-line approximation of the walk from the bank back to the point the caller needs to resume at. */
+    static long returnLegCost(WorldPoint bank, WorldPoint returnPoint) {
+        if (bank == null || returnPoint == null) {
+            return 0;
+        }
+        long cost = bank.distanceTo2D(returnPoint);
+        if (bank.getPlane() != returnPoint.getPlane()) {
+            cost += PLANE_CHANGE_COST;
+        }
+        return cost;
+    }
+
+    /** Round trip: player to bank (planner cost, home teleport priced realistically) plus bank to return point. */
+    static long roundTripScore(BankOption option, WorldPoint returnPoint) {
+        long to = option.toBankCost + (option.homeTeleport ? HOME_TELEPORT_COST : 0);
+        return to + returnLegCost(option.bank.getWorldPoint(), returnPoint);
+    }
+
+    /**
+     * Picks the option with the lowest round-trip score, except that an accessible bank within
+     * {@link #NEARBY_WALK_TILES} of the player wins unless another bank is strictly cheaper.
+     * Home-teleport options for banks closer than {@link #HOME_TELEPORT_MIN_TILES} are dropped.
+     */
+    static BankOption choose(WorldPoint player, WorldPoint returnPoint, Collection<BankOption> options) {
+        BankOption best = null;
+        long bestScore = Long.MAX_VALUE;
+        BankOption nearby = null;
+        long nearbyScore = Long.MAX_VALUE;
+        for (BankOption o : options) {
+            if (o == null || o.bank == null) {
+                continue;
+            }
+            WorldPoint bp = o.bank.getWorldPoint();
+            if (o.homeTeleport && !homeTeleportAllowed(player, bp)) {
+                continue;
+            }
+            long score = roundTripScore(o, returnPoint);
+            if (score < bestScore) {
+                bestScore = score;
+                best = o;
+            }
+            boolean isNearby = player != null && !o.homeTeleport && player.distanceTo2D(bp) <= NEARBY_WALK_TILES;
+            if (isNearby && score < nearbyScore) {
+                nearbyScore = score;
+                nearby = o;
+            }
+        }
+        if (nearby != null && bestScore >= nearbyScore) {
+            return nearby;
+        }
+        return best;
     }
 }

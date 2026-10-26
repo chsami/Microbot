@@ -104,6 +104,15 @@ public class QuestScript extends Script {
 	private boolean preflightSummaryLogged;
 	private int preflightBankAttempts;
 	private int preflightBuyRounds;
+	private QuestPurchasePlan preflightPlan;
+	private boolean purchaseApproved;
+	private boolean purchaseAsked;
+	private Boolean purchaseConfirmOverride;
+	private final java.util.concurrent.atomic.AtomicReference<QuestPurchaseConfirmDialog.Outcome> purchaseAnswer =
+			new java.util.concurrent.atomic.AtomicReference<>();
+	private final java.util.concurrent.atomic.AtomicInteger purchaseEpoch = new java.util.concurrent.atomic.AtomicInteger();
+
+	private enum PurchaseGate { PROCEED, WAIT, STOPPED, SKIPPED }
 
     private static final AtomicBoolean valeTotemsPromptInFlight = new AtomicBoolean(false);
     private static volatile QuestHelperConfig.ValeTotemsWoodType valeTotemsSessionWoodType;
@@ -114,6 +123,18 @@ public class QuestScript extends Script {
     private final QuestCombatHandler combat = new QuestCombatHandler(
             () -> this.config, () -> mainScheduledFuture, this::stopQuesterWithReason);
     private ScheduledFuture<?> combatSupportFuture;
+    private ScheduledFuture<?> supervisorFuture;
+    private final QuestStuckWatchdog stuckWatchdog = new QuestStuckWatchdog(QuestStuckWatchdog.DEFAULT_STAGE_INTERVAL_MS);
+    private static volatile String stuckStage = "NONE";
+    private static volatile long stuckForMs;
+    private volatile boolean automationWasOn;
+    private volatile long pausedAtMs;
+    private volatile WorldPoint lastWalkTarget;
+
+    /** Watchdog stage for GET /quest-helper/status ("NONE" when making progress). */
+    public static String getStuckStage() { return stuckStage; }
+
+    public static long getStuckForMs() { return stuckForMs; }
     private long nextBreakAtMs;
     private long breakEndsAtMs;
 
@@ -369,6 +390,10 @@ public class QuestScript extends Script {
 						return;
 					}
 
+					if (handleSwapKit()) {
+						return;
+					}
+
 					if (QuestCombatDetector.isKillStep(questStep) && combat.positionForKill(questStep)) {
 						return;
 					}
@@ -417,8 +442,81 @@ public class QuestScript extends Script {
 
         combatSupportFuture = scheduledExecutorService.scheduleWithFixedDelay(this::combatSupportTick,
                 600, 600, TimeUnit.MILLISECONDS);
+        supervisorFuture = scheduledExecutorService.scheduleWithFixedDelay(this::supervisorTick,
+                1000, 1000, TimeUnit.MILLISECONDS);
         return true;
     }
+
+	/**
+	 * Runs beside the main loop (which blocks inside walks): cancels the in-flight walk the moment
+	 * automation is paused or the quest deselected, and drives the stuck watchdog.
+	 */
+	private void supervisorTick() {
+		try {
+			boolean on = config != null && config.startStopQuestHelper();
+			QuestHelper selected = getQuestHelperPlugin() == null ? null : getQuestHelperPlugin().getSelectedQuest();
+			long now = System.currentTimeMillis();
+			if (!on || selected == null) {
+				if (automationWasOn) {
+					automationWasOn = false;
+					pausedAtMs = now;
+				}
+				// keep cancelling for a few seconds: the main loop may re-issue a walk before it sees the pause
+				if (now - pausedAtMs < 10_000L && Rs2Walker.getCurrentTarget() != null) {
+					Rs2Walker.clearWalkingRoute(on ? "quest-helper:quest-deselected" : "quest-helper:paused");
+				}
+				stuckWatchdog.reset(now);
+				stuckStage = "NONE";
+				stuckForMs = 0;
+				return;
+			}
+			automationWasOn = true;
+			if (!Microbot.isLoggedIn()) {
+				stuckWatchdog.reset(now);
+				return;
+			}
+			endEscortIfInactive(selected.getCurrentStep() == null ? null : selected.getCurrentStep().getActiveStep());
+			WorldPoint walkTarget = Rs2Walker.getCurrentTarget();
+			if (walkTarget != null) lastWalkTarget = walkTarget;
+			QuestStep step = selected.getCurrentStep() == null ? null : selected.getCurrentStep().getActiveStep();
+			int var = Microbot.getClientThread().runOnClientThreadOptional(selected::getVar).orElse(-1);
+			boolean suppressed = (config.takeShortBreaks() && breakEndsAtMs > now)
+					|| QuestCombatHandler.isAwaitingSetup() || QuestPreflight.isInProgress()
+					|| Rs2Combat.inCombat() || Rs2Bank.isOpen();
+			QuestStuckWatchdog.Stage entered = stuckWatchdog.tick(now,
+					QuestStuckRecovery.signature(step, var, Rs2Dialogue.isInDialogue(), escortProgress), suppressed);
+			stuckStage = stuckWatchdog.current().name();
+			stuckForMs = stuckWatchdog.stuckForMs(now);
+			if (entered == null) return;
+			WorldPoint at = Rs2Player.getWorldLocation();
+			Microbot.log("[QuestWatchdog] stuck " + (stuckForMs / 1000) + "s at " + at + " step=\""
+					+ (step == null ? "?" : step.getText()) + "\" -> stage " + entered, Level.WARN);
+			WorldPoint stepPoint = step instanceof DetailedQuestStep && ((DetailedQuestStep) step).getDefinedPoint() != null
+					? ((DetailedQuestStep) step).getDefinedPoint().getWorldPoint() : lastWalkTarget;
+			switch (entered) {
+				case REPLAN:
+					QuestStuckRecovery.replan();
+					break;
+				case BLACKLIST:
+					QuestStuckRecovery.blacklist(lastWalkTarget != null ? lastWalkTarget : stepPoint);
+					break;
+				case PLANE_ESCAPE:
+					QuestStuckRecovery.escapePlane();
+					break;
+				case TELEPORT:
+					QuestStuckRecovery.teleport(stepPoint);
+					break;
+				case GIVE_UP:
+					stopQuesterWithReason("Stuck for " + (stuckForMs / 1000) + "s at " + at + " on step \""
+							+ (step == null ? "?" : step.getText()) + "\" after all recovery stages");
+					break;
+				default:
+					break;
+			}
+		} catch (Exception ex) {
+			Microbot.log("[QuestWatchdog] supervisor tick failed: " + ex, Level.DEBUG);
+		}
+	}
 
 	/** Publishes the active step's wanted dialogue options so the walker can answer doors' conversations itself. */
 	private void publishDialogueChoices(QuestStep step) {
@@ -538,7 +636,8 @@ public class QuestScript extends Script {
 			Rs2Combat.setAutoRetaliate(false);
 			return true;
 		}
-		if (kill && !retaliateOn && autoRetaliateDisabledByUs) {
+		if (kill && !retaliateOn) {
+			// always on for kill steps, even if the player had it off: otherwise a target that hits first is never fought
 			if (Rs2Combat.setAutoRetaliate(true)) {
 				autoRetaliateDisabledByUs = false;
 			}
@@ -697,6 +796,15 @@ public class QuestScript extends Script {
 			preflightSummaryLogged = false;
 			preflightBankAttempts = 0;
 			preflightBuyRounds = 0;
+			preflightPlan = null;
+			purchaseApproved = false;
+			purchaseAsked = false;
+			purchaseEpoch.incrementAndGet();
+			purchaseAnswer.set(null);
+			QuestPurchaseConfirmDialog.dismiss();
+			QuestPurchasePlan.setCurrent(null);
+			Boolean confirmOverride = freshStart ? QuestPurchasePlan.consumeOverride() : null;
+			purchaseConfirmOverride = confirmOverride;
 			QuestPreflight.setStatus(QuestPreflight.PENDING);
 			if (freshStart && QuestPreflight.consumeSkip()) {
 				finishPreflight(QuestPreflight.DONE);
@@ -736,7 +844,7 @@ public class QuestScript extends Script {
 			}
 			preflightBankAttempts++;
 			Microbot.status = "Quest helper: opening the bank to count quest items";
-			Rs2Bank.walkToBankAndUseBank();
+			Rs2Bank.walkToBankAndUseBankReturningTo(bankReturnPoint());
 			if (sleepUntil(Rs2Bank::isOpen, 15_000)) {
 				sleepUntil(() -> QuestContainerManager.getBankData().getLastUpdated() >= 0, 3_000);
 				Rs2Bank.closeBank();
@@ -783,6 +891,18 @@ public class QuestScript extends Script {
 			finishPreflight(QuestPreflight.DONE);
 			return false;
 		}
+		if (!purchaseApproved) {
+			boolean bankKnown = bank.getLastUpdated() >= 0 || bank.getItems().length > 0;
+			switch (gatePurchases(quest, toBuy, onPlayer, owned, bankKnown)) {
+				case WAIT:
+				case STOPPED:
+					return true;
+				case SKIPPED:
+					return false;
+				default:
+					break;
+			}
+		}
 		if (++preflightBuyRounds > PREFLIGHT_MAX_BUY_ROUNDS) {
 			String reason = "could not buy " + describeItems(toBuy);
 			Microbot.log("Quest helper preflight gave up: " + reason, Level.WARN);
@@ -794,6 +914,131 @@ public class QuestScript extends Script {
 		Microbot.status = "Quest helper: buying missing quest items";
 		acquireMissingTradableItems(toBuy, true);
 		return true;
+	}
+
+	/**
+	 * Before the preflight walks to the Grand Exchange: prices the shortfall, checks the coins and, unless the player
+	 * turned confirmation off, waits (asynchronously, one tick at a time) for them to approve the purchase.
+	 */
+	private PurchaseGate gatePurchases(QuestHelper quest, List<ItemRequirement> toBuy,
+			Map<Integer, Integer> onPlayer, Map<Integer, Integer> owned, boolean bankKnown) {
+		QuestPurchaseConfirmDialog.Outcome answer = purchaseAnswer.getAndSet(null);
+		if (answer != null) {
+			QuestPurchasePlan plan = preflightPlan;
+			switch (answer) {
+				case BUY:
+					purchaseApproved = true;
+					Microbot.log("Quest helper: purchase approved (" + (plan == null ? "" : plan.describeItems()) + ")", Level.INFO);
+					return PurchaseGate.PROCEED;
+				case SKIP:
+					Microbot.log("Quest helper: starting without buying; missing quest items: "
+							+ describeItems(toBuy), Level.WARN);
+					finishPreflight(QuestPreflight.DONE);
+					return PurchaseGate.SKIPPED;
+				case CANCEL:
+					stopQuesterWithReason("Quest cancelled at the purchase confirmation");
+					return PurchaseGate.STOPPED;
+				default:
+					purchaseAsked = false; // closed by code, ask again
+					break;
+			}
+		}
+		if (purchaseAsked) {
+			Microbot.status = "Quest helper: waiting for purchase confirmation";
+			return PurchaseGate.WAIT;
+		}
+
+		if (preflightPlan == null) {
+			List<QuestPurchasePlan.Line> lines = new ArrayList<>();
+			for (ItemRequirement ir : toBuy) {
+				int primaryId = tradablePrimaryId(ir);
+				if (primaryId == -1) {
+					stopQuesterWithReason("Quest item is not tradable on the Grand Exchange: " + ir.getName());
+					return PurchaseGate.STOPPED;
+				}
+				int basePrice = fetchInstabuyReferencePrice(primaryId);
+				if (basePrice <= 0) {
+					stopQuesterWithReason("Failed to fetch Grand Exchange price for: " + ir.getName());
+					return PurchaseGate.STOPPED;
+				}
+				lines.add(new QuestPurchasePlan.Line(ir.getName(), ir.getQuantity(), QuestPurchasePlan.offerPrice(basePrice)));
+			}
+			long invCoins = onPlayer.getOrDefault(ItemID.COINS_995, 0);
+			long bankCoins = bankKnown ? Math.max(0, owned.getOrDefault(ItemID.COINS_995, 0) - invCoins) : -1;
+			preflightPlan = new QuestPurchasePlan(lines, invCoins, bankCoins);
+			QuestPurchasePlan.setCurrent(preflightPlan);
+		}
+
+		boolean confirm = purchaseConfirmOverride != null ? purchaseConfirmOverride : config.confirmPurchases();
+		switch (preflightPlan.decide(confirm)) {
+			case BUY:
+				purchaseApproved = true;
+				Microbot.log(String.format("Quest helper: buying %s (~%,d gp, have %,d gp)",
+						preflightPlan.describeItems(), preflightPlan.total(), preflightPlan.coins()), Level.INFO);
+				return PurchaseGate.PROCEED;
+			case INSUFFICIENT:
+				stopQuesterWithReason(preflightPlan.insufficientMessage());
+				return PurchaseGate.STOPPED;
+			default:
+				break;
+		}
+
+		purchaseAsked = true;
+		QuestPurchasePlan.setAwaiting(true);
+		Microbot.status = "Quest helper: waiting for purchase confirmation";
+		Microbot.log("Quest helper: waiting for purchase confirmation", Level.INFO);
+		final int epoch = purchaseEpoch.get();
+		QuestPurchaseConfirmDialog.showAsync(quest.getQuest().getName(), preflightPlan, outcome -> {
+			if (epoch == purchaseEpoch.get()) {
+				purchaseAnswer.set(outcome);
+			}
+		});
+		return PurchaseGate.WAIT;
+	}
+
+	/**
+	 * With the bank open, makes sure at least one inventory slot is free (coins and bought items need one): deposits
+	 * the least important item that is not a quest item, coins or something the user brought; if everything is
+	 * protected, one stack of food.
+	 */
+	private void ensureFreeSlotInBank(List<ItemRequirement> keepFor) {
+		if (Rs2Inventory.emptySlotCount() > 0 || !Rs2Bank.isOpen()) {
+			return;
+		}
+		Set<Integer> keep = new HashSet<>();
+		keep.add(ItemID.COINS_995);
+		for (Requirement requirement : currentRequirements) {
+			if (requirement instanceof ItemRequirement) {
+				for (Integer id : ((ItemRequirement) requirement).getAllIds()) {
+					if (id != null) {
+						keep.add(id);
+					}
+				}
+			}
+		}
+		for (ItemRequirement ir : keepFor) {
+			for (Integer id : ir.getAllIds()) {
+				if (id != null) {
+					keep.add(id);
+				}
+			}
+		}
+		Rs2ItemModel victim = Rs2Inventory.get(item -> !keep.contains(item.getId()) && !combat.isUserBroughtProtected(item));
+		if (victim == null) {
+			victim = Rs2Inventory.get(Rs2ItemModel::isFood);
+			if (victim != null) {
+				Microbot.log("Quest helper: inventory full of protected items, banking one stack of "
+						+ victim.getName() + " to make room for coins", Level.WARN);
+			}
+		}
+		if (victim == null) {
+			Microbot.log("Quest helper: inventory is full and nothing can be banked to make room", Level.WARN);
+			return;
+		}
+		final int victimId = victim.getId();
+		Microbot.status = "Quest helper: banking " + victim.getName() + " to free a slot";
+		Rs2Bank.depositAll(victimId);
+		sleepUntil(() -> Rs2Inventory.emptySlotCount() > 0, 3_000);
 	}
 
 	private void finishPreflight(String status) {
@@ -855,6 +1100,10 @@ public class QuestScript extends Script {
 		if (steps != null && steps.stream().anyMatch(step -> QuestCombatDetector.isKillStep(step)
 				&& QuestFightSupport.isDragonFight(QuestCombatDetector.fightKeyOf(step), step.getText()))) {
 			needs.add(QuestPreflight.antifireNeed());
+		}
+		if (steps != null) {
+			needs.addAll(combat.swapPreflightNeeds(steps));
+			needs.addAll(combat.boostPreflightNeeds(steps));
 		}
 		for (Requirement requirement : candidates) {
 			// Subclasses (keyrings, followers, composites) have their own ownership rules; leave them to the steps
@@ -942,6 +1191,23 @@ public class QuestScript extends Script {
 		return reserved;
 	}
 
+	/** Where banking must come back to: the current step's defined point, else the player's tile. */
+	private WorldPoint bankReturnPoint() {
+		try {
+			QuestHelper selected = getQuestHelperPlugin().getSelectedQuest();
+			QuestStep step = selected == null || selected.getCurrentStep() == null ? null : selected.getCurrentStep().getActiveStep();
+			if (step instanceof DetailedQuestStep && ((DetailedQuestStep) step).getDefinedPoint() != null) {
+				WorldPoint p = ((DetailedQuestStep) step).getDefinedPoint().getWorldPoint();
+				if (p != null) {
+					return p;
+				}
+			}
+		} catch (RuntimeException ignored) {
+			// fall back to the player's tile
+		}
+		return Rs2Player.getWorldLocation();
+	}
+
 	private boolean handleRequirements(DetailedQuestStep questStep) {
 		var requirements = questStep.getRequirements();
 
@@ -993,6 +1259,32 @@ public class QuestScript extends Script {
 		}
 		Rs2Inventory.interact(invId, action);
 		sleepUntil(() -> itemRequirement.getAllIds().stream().anyMatch(Rs2Equipment::isWearing), 2_000);
+		return true;
+	}
+
+	/** After the bank trips: buys a style-swap kit the bank lacked, or stops the quest when it cannot be had. */
+	private boolean handleSwapKit() {
+		if (!combat.swapKitWanted()) {
+			return false;
+		}
+		boolean mayBuy = shouldObtainMissingItems();
+		if (config.obtainMissingItems() == QuestHelperConfig.ObtainMissingItemsOption.ASK
+				&& obtainItemsSessionChoice == null) {
+			mayBuy = false;
+		}
+		List<QuestPreflight.Need> needs = combat.swapKitToObtain(mayBuy);
+		if (needs == null) {
+			return false;
+		}
+		if (!needs.isEmpty()) {
+			List<ItemRequirement> missing = new ArrayList<>();
+			for (QuestPreflight.Need need : needs) {
+				missing.add(new ItemRequirement(need.name, need.ids, need.quantity));
+			}
+			missingBatch = new ArrayList<>(missing);
+			currentRequirements = new ArrayList<Requirement>(missing);
+			acquireMissingTradableItems(missing);
+		}
 		return true;
 	}
 
@@ -1075,7 +1367,7 @@ public class QuestScript extends Script {
 		Microbot.status = "Quest helper: fetching " + inBank.get(0).getName() + " from the bank";
 
 		if (!Rs2Bank.isOpen()) {
-			Rs2Bank.walkToBankAndUseBank();
+			Rs2Bank.walkToBankAndUseBankReturningTo(bankReturnPoint());
 			sleepUntil(Rs2Bank::isOpen, 15_000);
 			if (!Rs2Bank.isOpen()) {
 				return true;
@@ -1148,8 +1440,14 @@ public class QuestScript extends Script {
 		}
 
 		Microbot.status = "Quest helper: banking unrelated items to make room";
-		Predicate<Rs2ItemModel> isKept = item -> keep.contains(item.getId());
-		return Rs2Bank.depositAllExcept(isKept);
+		// the player's own consumables stay unless nothing else frees a slot for the quest item
+		Predicate<Rs2ItemModel> isKept = item -> keep.contains(item.getId()) || combat.isUserBroughtProtected(item);
+		if (Rs2Bank.depositAllExcept(isKept)) {
+			return true;
+		}
+		Microbot.log("Quest helper: no other slot to free, banking your own supplies for a quest item", Level.WARN);
+		Predicate<Rs2ItemModel> questOnly = item -> keep.contains(item.getId());
+		return Rs2Bank.depositAllExcept(questOnly);
 	}
 
 	private boolean acquireMissingTradableItems(List<ItemRequirement> missing) {
@@ -1197,7 +1495,7 @@ public class QuestScript extends Script {
 
 		if (!Rs2Bank.isOpen()) {
 			Microbot.status = "Quest helper: walking to bank for missing items";
-			Rs2Bank.walkToBankAndUseBank();
+			Rs2Bank.walkToBankAndUseBankReturningTo(bankReturnPoint());
 			sleepUntil(Rs2Bank::isOpen, 15_000);
 			if (!Rs2Bank.isOpen()) {
 				return true;
@@ -1376,6 +1674,7 @@ public class QuestScript extends Script {
 			if (requiredCoins > currentInvCoins) {
 				long coinsStillNeeded = requiredCoins - currentInvCoins;
 				int coinsToWithdraw = (int) Math.min(Integer.MAX_VALUE, coinsStillNeeded);
+				ensureFreeSlotInBank(toBuy);
 				Microbot.status = "Withdrawing " + coinsToWithdraw + " gp for Grand Exchange";
 				Rs2Bank.withdrawX(ItemID.COINS_995, coinsToWithdraw);
 				sleepUntil(() -> Rs2Inventory.itemQuantity(ItemID.COINS_995) >= requiredCoins, 3_000);
@@ -1577,7 +1876,7 @@ public class QuestScript extends Script {
 
 		if (!Rs2Bank.isOpen()) {
 			Microbot.status = "Opening bank to retrieve purchased quest items";
-			Rs2Bank.walkToBankAndUseBank();
+			Rs2Bank.walkToBankAndUseBankReturningTo(bankReturnPoint());
 			sleepUntil(Rs2Bank::isOpen, 15_000);
 			if (!Rs2Bank.isOpen()) {
 				Microbot.log("Quest helper: failed to open bank after Grand Exchange collection", Level.WARN);
@@ -1599,6 +1898,7 @@ public class QuestScript extends Script {
 			return;
 		}
 
+		ensureFreeSlotInBank(items);
 		for (ItemRequirement ir : items) {
 			int qty = remainingQuantityNeeded(ir);
 			if (qty <= 0) {
@@ -2212,7 +2512,7 @@ public class QuestScript extends Script {
 	private boolean unnoteItemsViaBank(List<ItemRequirement> items) {
 		if (!Rs2Bank.isOpen()) {
 			Microbot.status = "Quest helper: walking to bank to un-note items";
-			Rs2Bank.walkToBankAndUseBank();
+			Rs2Bank.walkToBankAndUseBankReturningTo(bankReturnPoint());
 			sleepUntil(Rs2Bank::isOpen, 15_000);
 			if (!Rs2Bank.isOpen()) {
 				return true;
@@ -2387,7 +2687,14 @@ public class QuestScript extends Script {
 			combatSupportFuture.cancel(true);
 			combatSupportFuture = null;
 		}
+		if (supervisorFuture != null) {
+			supervisorFuture.cancel(true);
+			supervisorFuture = null;
+		}
+		stuckWatchdog.reset(System.currentTimeMillis());
+		stuckStage = "NONE";
 		combat.reset();
+		endEscort();
 		if (autoRetaliateDisabledByUs) {
 			// shutdown may run on a caller that must not block, so restore off-thread
 			Thread restorer = new Thread(this::restoreAutoRetaliate, "quest-restore-retaliate");
@@ -2408,6 +2715,8 @@ public class QuestScript extends Script {
         valeTotemsSessionWoodType = null;
         obtainItemsPromptInFlight.set(false);
         obtainItemsSessionChoice = null;
+        QuestPurchaseConfirmDialog.dismiss();
+        QuestPurchasePlan.setCurrent(null);
         lastBlockedEquipmentNotice = "";
     }
 
@@ -2469,13 +2778,21 @@ public class QuestScript extends Script {
 
         // canReach() pathfinds through closed doors (the walker opens them en route), so canReach==true
         // doesn't mean a direct click will succeed. Require line-of-sight too, or we walk instead.
+        // A kill target already in melee range is attacked even when pathfinding says "unreachable" (arena gates,
+        // fight cages): otherwise we walk at it forever while it hits us and never click Attack.
+        boolean closeKillTarget = killStep && npc != null && npc.getLocalLocation() != null
+                && Rs2Camera.isTileOnScreen(npc.getLocalLocation()) && npc.getWorldLocation() != null
+                && npc.getWorldLocation().distanceTo(Rs2Player.getWorldLocation()) <= 10 && npc.hasLineOfSight();
         if (npc != null && npc.getLocalLocation() != null && Rs2Camera.isTileOnScreen(npc.getLocalLocation())
-                && (Microbot.getClient().isInInstancedRegion() || (Rs2Walker.canReach(npc.getWorldLocation()) && npc.hasLineOfSight()))) {
+                && (closeKillTarget || Microbot.getClient().isInInstancedRegion() || (Rs2Walker.canReach(npc.getWorldLocation()) && npc.hasLineOfSight()))) {
             Rs2Walker.clearWalkingRoute("quest-helper:npc-step-visible-interact");
 
             if (killStep && npcHasAction(npc, "Attack")) {
                 // Only ever the step's target: re-target it when the player is fighting something else.
-                if (!isFightingNpc(npc)) {
+                // inCombat() is true when the target hit us first, so test the interaction target instead.
+                long now = System.currentTimeMillis();
+                if (KillStepRule.shouldClickAttack(isFightingNpc(npc), now - lastKillAttackClickMs, KILL_ATTACK_MIN_INTERVAL_MS)) {
+                    lastKillAttackClickMs = now;
                     npc.click("Attack");
                 }
                 return true;
@@ -2499,6 +2816,7 @@ public class QuestScript extends Script {
                 npc.click("");
             } else {
                 npc.click(chooseCorrectNPCOption(step, npc));
+                lastTalkedNpcId = npc.getId();
                 if (step.isAllowMultipleHighlights()) {
                     multiNpcTarget.commit(step, npc.getIndex(), System.currentTimeMillis());
                 }
@@ -2523,6 +2841,8 @@ public class QuestScript extends Script {
 
 
     private static final int KILL_AREA_RADIUS = 12;
+    private static final long KILL_ATTACK_MIN_INTERVAL_MS = 1_200;
+    private long lastKillAttackClickMs = 0;
     private static final Pattern STEP_LEVEL = Pattern.compile("level\\s*(\\d+)", Pattern.CASE_INSENSITIVE);
 
     private static Set<Integer> stepNpcIds(NpcStep step) {
@@ -2649,6 +2969,27 @@ public class QuestScript extends Script {
     private static final int FALLBACK_NPC_RADIUS = 10;
     private static final long NO_NPC_LOG_INTERVAL_MS = 30_000;
     private final Map<Integer, String> npcNameById = new HashMap<>();
+    private static final int MISSING_LOG_RADIUS = 8;
+    private static final long MISSING_LOG_IDLE_MS = 10_000;
+    private long missingIdleSince = 0;
+
+    /** True when a missing NPC/object is worth logging: player within 8 tiles on the same plane, or (no point) idle for 10 s. */
+    private boolean shouldLogMissingEntity(WorldPoint point) {
+        long now = System.currentTimeMillis();
+        if (Rs2Player.isMoving() || Rs2Player.isAnimating()) {
+            missingIdleSince = 0;
+            return false;
+        }
+        if (point != null) {
+            WorldPoint me = Rs2Player.getWorldLocation();
+            return me != null && me.distanceTo(point) <= MISSING_LOG_RADIUS;
+        }
+        if (missingIdleSince == 0) {
+            missingIdleSince = now;
+        }
+        return now - missingIdleSince >= MISSING_LOG_IDLE_MS;
+    }
+
     private QuestStep lastNoNpcLoggedStep = null;
     private long lastNoNpcLoggedAt = 0;
 
@@ -2686,7 +3027,7 @@ public class QuestScript extends Script {
                     .withName(name)
                     .nearestOnClientThread(point, FALLBACK_NPC_RADIUS);
         }
-        if (found == null) {
+        if (found == null && shouldLogMissingEntity(point)) {
             long now = System.currentTimeMillis();
             if (lastNoNpcLoggedStep != step || now - lastNoNpcLoggedAt > NO_NPC_LOG_INTERVAL_MS) {
                 lastNoNpcLoggedStep = step;
@@ -2942,8 +3283,7 @@ public class QuestScript extends Script {
                 return found;
             }
         }
-        WorldPoint me = Rs2Player.getWorldLocation();
-        if (me != null && me.distanceTo(point) <= 1) {
+        if (shouldLogMissingEntity(point)) {
             long now = System.currentTimeMillis();
             if (lastNoObjectLoggedStep != step || now - lastNoObjectLoggedAt > NO_OBJECT_LOG_INTERVAL_MS) {
                 lastNoObjectLoggedStep = step;
@@ -3120,8 +3460,132 @@ public class QuestScript extends Script {
 				&& fromArea.hasLineOfSightTo(Microbot.getClient().getTopLevelWorldView(), targetArea);
 	}
 
+    // ---- escort steps (an NPC follows the player; sprinting ahead makes it stop) ----
+    private volatile long escortProgress;
+    private volatile int lastTalkedNpcId = -1;
+    private int escortActions;
+    private int escortLastGap = Integer.MAX_VALUE;
+    private volatile boolean escortActive;
+    private Boolean escortRunBefore;
+    private boolean escortAutoRunBefore;
+    private WorldPoint escortFollowerLastSeen;
+
+    private static boolean isEscortStep(DetailedQuestStep step) {
+        if (step instanceof EscortStep) return true;
+        if (step.getClass() != DetailedQuestStep.class || step.getDefinedPoint() == null
+                || step.getIconItemID() != -1) return false;
+        return EscortSupport.matchesEscortText(String.join(" ", step.getText()));
+    }
+
+    private void endEscortIfInactive(QuestStep activeStep) {
+        if (escortActive && !(activeStep instanceof DetailedQuestStep && isEscortStep((DetailedQuestStep) activeStep))) {
+            endEscort();
+        }
+    }
+
+    private void endEscort() {
+        if (!escortActive) return;
+        escortActive = false;
+        Microbot.enableAutoRunOn = escortAutoRunBefore;
+        Boolean wasRun = escortRunBefore;
+        escortRunBefore = null;
+        escortFollowerLastSeen = null;
+        escortLastGap = Integer.MAX_VALUE;
+        if (wasRun != null && wasRun) {
+            Thread restorer = new Thread(() -> Rs2Player.toggleRunEnergy(true), "quest-restore-run");
+            restorer.setDaemon(true);
+            restorer.start();
+        }
+    }
+
+    private Rs2NpcModel findEscortFollower(DetailedQuestStep step) {
+        WorldPoint me = Rs2Player.getWorldLocation();
+        if (step instanceof EscortStep && ((EscortStep) step).getFollowerIds().length > 0) {
+            Rs2NpcModel byId = Microbot.getRs2NpcCache().query().withIds(((EscortStep) step).getFollowerIds())
+                    .nearestOnClientThread(me, 25);
+            if (byId != null) return byId;
+        }
+        Rs2NpcModel following = Microbot.getRs2NpcCache().query().within(me, 15)
+                .where(Rs2NpcModel::isInteractingWithPlayer).nearestOnClientThread(me, 15);
+        if (following != null) return following;
+        if (lastTalkedNpcId != -1) {
+            return Microbot.getRs2NpcCache().query().withId(lastTalkedNpcId).nearestOnClientThread(me, 25);
+        }
+        return null;
+    }
+
+    private boolean applyEscortStep(DetailedQuestStep step) {
+        WorldPoint target = step.getDefinedPoint() == null ? null : step.getDefinedPoint().getWorldPoint();
+        WorldPoint me = Rs2Player.getWorldLocation();
+        if (target == null || me == null) return false;
+
+        if (!escortActive) {
+            escortActive = true;
+            escortRunBefore = Rs2Player.isRunEnabled();
+            escortAutoRunBefore = Microbot.enableAutoRunOn;
+            escortActions = 0;
+        }
+        Microbot.enableAutoRunOn = false; // the walker must not turn run back on
+        if (Rs2Player.isRunEnabled()) {
+            Rs2Player.toggleRunEnergy(false);
+        }
+
+        Rs2NpcModel follower = findEscortFollower(step);
+        WorldPoint followerAt = follower == null ? null : follower.getWorldLocation();
+        if (followerAt != null) escortFollowerLastSeen = followerAt;
+        boolean waitedOut = false;
+        if (followerAt != null && me.distanceTo(followerAt) > EscortSupport.KEEP_CLOSE
+                && me.distanceTo(followerAt) <= EscortSupport.LOST_DISTANCE) {
+            final Rs2NpcModel f = follower;
+            waitedOut = !sleepUntil(() -> {
+                WorldPoint p = f.getWorldLocation();
+                WorldPoint m = Rs2Player.getWorldLocation();
+                return p != null && m != null && m.distanceTo(p) <= EscortSupport.KEEP_CLOSE;
+            }, 6_000);
+            followerAt = follower.getWorldLocation();
+            me = Rs2Player.getWorldLocation();
+            if (followerAt == null || me == null) return true;
+        }
+        int gap = followerAt == null ? Integer.MAX_VALUE : me.distanceTo(followerAt);
+        if (gap < escortLastGap) escortActions++;
+        escortLastGap = gap;
+
+        boolean interacting = follower != null && follower.isInteractingWithPlayer();
+        EscortSupport.Action action = EscortSupport.decide(me, followerAt, interacting, waitedOut, target);
+        switch (action) {
+            case ARRIVED:
+                return true;
+            case FIND_FOLLOWER:
+                if (escortFollowerLastSeen != null && me.distanceTo(escortFollowerLastSeen) > 2) {
+                    escortActions++;
+                    Rs2Walker.walkTo(escortFollowerLastSeen, 2);
+                }
+                break;
+            case CATCH_UP:
+                escortActions++;
+                Rs2Walker.walkTo(followerAt, 1);
+                break;
+            case TALK_TO_FOLLOWER:
+                escortActions++;
+                if (follower.click(chooseCorrectNPCOption(step, follower))) {
+                    sleepUntil(Rs2Dialogue::isInDialogue, 5_000);
+                }
+                break;
+            case HOP:
+                escortActions++;
+                Rs2Walker.walkTo(EscortSupport.nextHop(me, target, EscortSupport.MAX_HOP), 0);
+                break;
+            case WAIT_FOR_FOLLOWER:
+            default:
+                break;
+        }
+        escortProgress = EscortSupport.progressToken(escortActions, gap == Integer.MAX_VALUE ? 999 : gap);
+        return true;
+    }
+
     private boolean applyDetailedQuestStep(DetailedQuestStep conditionalStep) {
         if (conditionalStep instanceof NpcStep) return false;
+        if (isEscortStep(conditionalStep)) return applyEscortStep(conditionalStep);
         if (conditionalStep instanceof MonumentKeyStep) return applyMonumentKeyStep((MonumentKeyStep) conditionalStep);
 
         WorldPoint definedPoint = conditionalStep.getDefinedPoint() == null ? null : conditionalStep.getDefinedPoint().getWorldPoint();

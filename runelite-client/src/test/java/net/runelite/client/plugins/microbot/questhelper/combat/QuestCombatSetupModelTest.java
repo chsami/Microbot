@@ -193,4 +193,31 @@ public class QuestCombatSetupModelTest
 		assertEquals("Bob", QuestCombatDetector.parseTarget(Collections.singletonList("Defeat Bob.")));
 		assertEquals(30, QuestCombatDetector.parseLevel(Collections.singletonList("Kill the Temple Guardian (level 30).")));
 	}
+
+	@Test
+	public void noFightsOnlyCombatControlsAreDisabled()
+	{
+		assertTrue(QuestCombatSetupDialog.combatControlsEnabled(true));
+		assertFalse(QuestCombatSetupDialog.combatControlsEnabled(false));
+		assertEquals("Skip combat setup", QuestCombatSetupDialog.skipLabel(true));
+		assertEquals("Skip setup", QuestCombatSetupDialog.skipLabel(false));
+		assertTrue(QuestCombatSetupDialog.NO_FIGHTS_NOTE.contains("Food and potions are optional."));
+	}
+
+	@Test
+	public void foodAndPotionsCountTowardSlots()
+	{
+		assertEquals(0, QuestCombatSetupDialog.foodAndPotionSlots("", 5, false, 2));
+		assertEquals(5, QuestCombatSetupDialog.foodAndPotionSlots("Lobster", 5, false, 2));
+		assertEquals(7, QuestCombatSetupDialog.foodAndPotionSlots("Lobster", 5, true, 2));
+	}
+
+	@Test
+	public void optionalFoodStaysWantedWhenNotSkipped()
+	{
+		QuestCombatLoadout loadout = new QuestCombatLoadout();
+		loadout.setFood("Trout");
+		loadout.setFoodQty(4);
+		assertTrue(loadout.normalised().wantsFood());
+	}
 }

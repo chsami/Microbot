@@ -14,6 +14,7 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.questhelper.QuestHelperConfig;
 import net.runelite.client.plugins.microbot.questhelper.QuestHelperPlugin;
 import net.runelite.client.plugins.microbot.questhelper.QuestPreflight;
+import net.runelite.client.plugins.microbot.questhelper.QuestPurchasePlan;
 import net.runelite.client.plugins.microbot.questhelper.combat.QuestCombatHandler;
 import net.runelite.client.plugins.microbot.questhelper.combat.QuestCombatLoadout;
 import net.runelite.client.plugins.microbot.questhelper.combat.QuestCombatStore;
@@ -92,7 +93,15 @@ public class QuestHelperHandler extends AgentHandler
 			.getConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "TurnOn"));
 
 		result.put("awaitingSetup", QuestCombatHandler.isAwaitingSetup());
+		result.put("stuckStage", net.runelite.client.plugins.microbot.questhelper.QuestScript.getStuckStage());
+		result.put("stuckForMs", net.runelite.client.plugins.microbot.questhelper.QuestScript.getStuckForMs());
 		result.put("preflight", QuestPreflight.getStatus());
+		result.put("awaitingPurchaseConfirm", QuestPurchasePlan.isAwaitingConfirmation());
+		QuestPurchasePlan plannedPurchases = QuestPurchasePlan.current();
+		if (plannedPurchases != null)
+		{
+			result.put("plannedPurchases", plannedPurchases.toStatus());
+		}
 
 		QuestHelper selectedQuest = plugin.getSelectedQuest();
 		result.put("selected", selectedQuest != null);
@@ -232,6 +241,12 @@ public class QuestHelperHandler extends AgentHandler
 			sendJson(exchange, 400, errorResponse("preflight must be true or false"));
 			return;
 		}
+		Object confirmPurchases = body.get("confirmPurchases");
+		if (confirmPurchases != null && !(confirmPurchases instanceof Boolean))
+		{
+			sendJson(exchange, 400, errorResponse("confirmPurchases must be true or false"));
+			return;
+		}
 		if (obtainOption != null)
 		{
 			Microbot.getConfigManager().setConfiguration(
@@ -241,14 +256,21 @@ public class QuestHelperHandler extends AgentHandler
 		}
 		// The quest script reads this when it sees the start, so it applies to this start only
 		QuestPreflight.skipNextStart(Boolean.FALSE.equals(preflight));
+		QuestPurchasePlan.overrideNextStart((Boolean) confirmPurchases);
 		if (!plugin.startQuestHelper(name))
 		{
 			QuestPreflight.skipNextStart(false);
+			QuestPurchasePlan.overrideNextStart(null);
 			sendJson(exchange, 404, errorResponse("Quest helper not found or not loaded: " + name));
 			return;
 		}
 
+		// Global key drives the toolbar toggle; the profile key is what Quest Helper itself reads
 		Microbot.getConfigManager().setConfiguration(
+			QuestHelperConfig.QUEST_HELPER_GROUP,
+			"TurnOn",
+			true);
+		Microbot.getConfigManager().setRSProfileConfiguration(
 			QuestHelperConfig.QUEST_HELPER_GROUP,
 			"TurnOn",
 			true);
@@ -282,10 +304,13 @@ public class QuestHelperHandler extends AgentHandler
 			.runOnClientThreadOptional(() ->
 			{
 				plugin.getQuestManager().shutDownQuest(true);
-				Microbot.getConfigManager().setConfiguration(
-					QuestHelperConfig.QUEST_HELPER_GROUP,
-					"TurnOn",
-					false);
+				if (Microbot.getConfigManager() != null)
+				{
+					Microbot.getConfigManager().setConfiguration(
+						QuestHelperConfig.QUEST_HELPER_GROUP,
+						"TurnOn",
+						false);
+				}
 				return true;
 			})
 			.orElse(false);

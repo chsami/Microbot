@@ -55,6 +55,7 @@ public class QuestCombatLoadout
 	{
 		OFF("Off"),
 		QUICK("Quick prayers"),
+		BEST_OFFENSIVE("Best offensive"),
 		PROTECT_MELEE("Protect from Melee"),
 		PROTECT_RANGE("Protect from Missiles"),
 		PROTECT_MAGIC("Protect from Magic");
@@ -95,6 +96,37 @@ public class QuestCombatLoadout
 		}
 	}
 
+	/** Second combat style of a fight where the target's prayers force a swap. */
+	public enum SecondaryStyle
+	{
+		AUTO("Auto (best trained)", null),
+		MELEE("Melee", Style.MELEE),
+		RANGED("Ranged", Style.RANGED),
+		MAGIC("Magic", Style.MAGIC),
+		NONE("None (no swapping)", null);
+
+		private final String display;
+		private final Style style;
+
+		SecondaryStyle(String display, Style style)
+		{
+			this.display = display;
+			this.style = style;
+		}
+
+		/** The combat style this choice names; null for Auto and None. */
+		public Style style()
+		{
+			return style;
+		}
+
+		@Override
+		public String toString()
+		{
+			return display;
+		}
+	}
+
 	/** Run-energy potion the setup can bring. */
 	public enum StaminaType
 	{
@@ -114,6 +146,28 @@ public class QuestCombatLoadout
 		public String getItemName()
 		{
 			return itemName;
+		}
+
+		@Override
+		public String toString()
+		{
+			return display;
+		}
+	}
+
+	/** Combat boost potions the setup can bring and drink when a fight starts. */
+	public enum BoostType
+	{
+		NONE("None"),
+		SUPER_ATTACK_STRENGTH("Super attack + Super strength"),
+		COMBAT("Combat potion"),
+		ATTACK_STRENGTH("Attack + Strength potion");
+
+		private final String display;
+
+		BoostType(String display)
+		{
+			this.display = display;
 		}
 
 		@Override
@@ -203,6 +257,29 @@ public class QuestCombatLoadout
 		private Style style;
 		private String gearSetup = "";
 		private List<GearItem> gearItems = new ArrayList<>();
+		/** Second style for a fight that needs a style swap; null means Auto. */
+		private SecondaryStyle secondaryStyle;
+		/** Secondary weapon and ammo/runes item names; empty uses the style's default kit. */
+		private String secondaryWeapon = "";
+		private String secondaryAmmo = "";
+		private int secondaryAmmoQty;
+		/** Inventory Setup naming the secondary weapon and ammo; wins over the item names. */
+		private String secondaryGearSetup = "";
+
+		public String getSecondaryWeapon()
+		{
+			return secondaryWeapon == null ? "" : secondaryWeapon;
+		}
+
+		public String getSecondaryAmmo()
+		{
+			return secondaryAmmo == null ? "" : secondaryAmmo;
+		}
+
+		public String getSecondaryGearSetup()
+		{
+			return secondaryGearSetup == null ? "" : secondaryGearSetup;
+		}
 
 		/** The gear this fight overrides with. */
 		public GearSpec gear()
@@ -235,6 +312,15 @@ public class QuestCombatLoadout
 	private StaminaType staminaType = StaminaType.STAMINA;
 	private int staminaQty = 2;
 	private int drinkStaminaAtEnergy = 30;
+
+	private BoostType boostType = BoostType.NONE;
+	/** Adds Super defence to the chosen boost. */
+	private boolean boostDefence;
+	/** Potions of each kind to bring (any dose). */
+	private int boostQty = 1;
+
+	/** The potion list (type + count). Null in loadouts saved before the list existed: then the old fields stand in. */
+	private List<QuestPotions.Row> potions;
 
 	private List<InventoryItem> inventoryItems = new ArrayList<>();
 	/** Free slots to keep for quest items; negative means "work it out from the quest". */
@@ -271,7 +357,62 @@ public class QuestCombatLoadout
 	/** True when combat potions should be brought. */
 	public boolean wantsPotions()
 	{
-		return !skip && potion != Potion.NONE && potionQty > 0;
+		return !skip && !potionRows().isEmpty();
+	}
+
+	/** The effective potion rows: the list when set, else what the old potion and boost fields stand for. */
+	public List<QuestPotions.Row> potionRows()
+	{
+		if (skip)
+		{
+			return new ArrayList<>();
+		}
+		return QuestPotions.clean(potions != null ? potions
+			: QuestPotions.migrate(potion, potionQty, boostType, boostDefence, boostQty));
+	}
+
+	/** Rows of one role. */
+	public List<QuestPotions.Row> potionRows(QuestPotions.Role role)
+	{
+		List<QuestPotions.Row> out = new ArrayList<>();
+		for (QuestPotions.Row row : potionRows())
+		{
+			if (row.kind().role() == role)
+			{
+				out.add(row);
+			}
+		}
+		return out;
+	}
+
+	/** True when a prayer potion or super restore is in the list. */
+	public boolean wantsPrayerPotions()
+	{
+		return !potionRows(QuestPotions.Role.PRAYER).isEmpty();
+	}
+
+	/** Count of one boost potion in the list; 0 when absent. */
+	public int boostQtyOf(QuestBoosts.Potion boost)
+	{
+		for (QuestPotions.Row row : potionRows(QuestPotions.Role.BOOST))
+		{
+			if (row.kind().boost() == boost)
+			{
+				return row.getQty();
+			}
+		}
+		return 0;
+	}
+
+	/** Inventory slots the potion list takes. */
+	public int potionSlots()
+	{
+		int sum = 0;
+		for (QuestPotions.Row row : potionRows())
+		{
+			sum += row.getQty();
+		}
+		return sum;
 	}
 
 	/** True when a protection prayer should be used. */
@@ -283,7 +424,33 @@ public class QuestCombatLoadout
 	/** True when run-energy potions should be brought. */
 	public boolean wantsStamina()
 	{
+		return wantsLegacyStamina() || !potionRows(QuestPotions.Role.ENERGY).isEmpty();
+	}
+
+	/** True when the old single run-energy choice asks for potions. */
+	public boolean wantsLegacyStamina()
+	{
 		return useStamina && staminaType != StaminaType.NONE && staminaQty > 0;
+	}
+
+	/** True when combat boost potions should be brought and drunk in fights. */
+	public boolean wantsBoosts()
+	{
+		return !boostPotions().isEmpty();
+	}
+
+	/** The boost potions this loadout brings; empty when none. */
+	public List<QuestBoosts.Potion> boostPotions()
+	{
+		List<QuestBoosts.Potion> out = new ArrayList<>();
+		for (QuestPotions.Row row : potionRows(QuestPotions.Role.BOOST))
+		{
+			if (row.kind().boost() != null)
+			{
+				out.add(row.kind().boost());
+			}
+		}
+		return out;
 	}
 
 	/** True when custom inventory items are configured. */
@@ -326,6 +493,21 @@ public class QuestCombatLoadout
 		return own != null && own.getStyle() != null ? own.getStyle() : style;
 	}
 
+	/**
+	 * The style swap plan of one fight, or null when it is not swapped (the setup is skipped, the fight needs no
+	 * swap and none was chosen, or "None" was chosen).
+	 */
+	public QuestStyleSwap.Plan swapPlanFor(String fightKey, boolean detected, Style primary, int melee, int ranged,
+		int magic, List<String> restrictionTexts)
+	{
+		if (skip || fightKey == null)
+		{
+			return null;
+		}
+		return QuestStyleSwap.plan(fightKey, fights.get(fightKey), detected, primary, melee, ranged, magic,
+			restrictionTexts);
+	}
+
 	/** Clamps values and fills nulls, so a hand-edited or partial JSON cannot break the fight loop. */
 	public QuestCombatLoadout normalised()
 	{
@@ -342,6 +524,9 @@ public class QuestCombatLoadout
 		staminaType = staminaType == null ? StaminaType.STAMINA : staminaType;
 		staminaQty = clamp(staminaQty, 0, 27);
 		drinkStaminaAtEnergy = clamp(drinkStaminaAtEnergy, 1, 99);
+		boostType = boostType == null ? BoostType.NONE : boostType;
+		boostQty = clamp(boostQty, 0, 27);
+		potions = potions == null ? null : QuestPotions.clean(potions);
 		reserveSlots = reserveSlots < 0 ? -1 : Math.min(reserveSlots, 27);
 
 		List<InventoryItem> cleanItems = new ArrayList<>();
@@ -375,6 +560,10 @@ public class QuestCombatLoadout
 				FightSetup setup = entry.getValue();
 				setup.gearSetup = setup.gearSetup == null ? "" : setup.gearSetup.trim();
 				setup.gearItems = cleanGear(setup.gearItems);
+				setup.secondaryWeapon = setup.getSecondaryWeapon().trim();
+				setup.secondaryAmmo = setup.getSecondaryAmmo().trim();
+				setup.secondaryGearSetup = setup.getSecondaryGearSetup().trim();
+				setup.secondaryAmmoQty = clamp(setup.secondaryAmmoQty, 0, 1_000_000);
 				cleanFights.put(fightKey(entry.getKey()), setup);
 			}
 		}
@@ -527,6 +716,14 @@ public class QuestCombatLoadout
 		{
 			applyStamina(base, body.get("stamina"));
 		}
+		if (body.get("boosts") != null)
+		{
+			applyBoosts(base, body.get("boosts"));
+		}
+		if (body.get("potions") != null)
+		{
+			applyPotions(base, body.get("potions"));
+		}
 		if (body.get("fights") != null)
 		{
 			Object raw = body.get("fights");
@@ -554,6 +751,23 @@ public class QuestCombatLoadout
 				{
 					setup.gearSetup = String.valueOf(row.get("gearSetup"));
 				}
+				if (row.get("secondaryStyle") != null)
+				{
+					setup.secondaryStyle = enumValue(row, "secondaryStyle", SecondaryStyle.class, null, prefix);
+				}
+				if (row.get("secondaryWeapon") != null)
+				{
+					setup.secondaryWeapon = String.valueOf(row.get("secondaryWeapon"));
+				}
+				if (row.get("secondaryAmmo") != null)
+				{
+					setup.secondaryAmmo = String.valueOf(row.get("secondaryAmmo"));
+				}
+				setup.secondaryAmmoQty = intValue(row, "secondaryAmmoQty", 0, prefix);
+				if (row.get("secondaryGearSetup") != null)
+				{
+					setup.secondaryGearSetup = String.valueOf(row.get("secondaryGearSetup"));
+				}
 				if (row.get("gear") != null)
 				{
 					GearSpec gear = parseGear(row.get("gear"), worn, prefix + "gear");
@@ -565,6 +779,63 @@ public class QuestCombatLoadout
 			base.fights = parsed;
 		}
 		return base.normalised();
+	}
+
+	private static void applyPotions(QuestCombatLoadout base, Object raw)
+	{
+		if (!(raw instanceof List))
+		{
+			throw new IllegalArgumentException("potions must be an array like [{\"type\":\"prayer_potion\",\"qty\":4}]");
+		}
+		List<QuestPotions.Row> rows = new ArrayList<>();
+		for (Object entry : (List<?>) raw)
+		{
+			if (!(entry instanceof Map))
+			{
+				throw new IllegalArgumentException("potions entries must be objects like {\"type\":\"prayer_potion\",\"qty\":4}");
+			}
+			Map<?, ?> row = (Map<?, ?>) entry;
+			QuestPotions.Kind kind = QuestPotions.kindOf(row.get("type") == null ? null : String.valueOf(row.get("type")));
+			if (kind == null)
+			{
+				throw new IllegalArgumentException("potions.type " + row.get("type") + " is unknown; use one of "
+					+ java.util.Arrays.stream(QuestPotions.Kind.values()).map(QuestPotions.Kind::key)
+						.collect(java.util.stream.Collectors.joining(", ")));
+			}
+			int qty = intValue(row, "qty", 1, "potions.");
+			if (qty < 0 || qty > 27)
+			{
+				throw new IllegalArgumentException("potions.qty must be between 0 and 27");
+			}
+			rows.add(new QuestPotions.Row(kind.key(), qty));
+		}
+		base.potions = rows;
+	}
+
+	private static void applyBoosts(QuestCombatLoadout base, Object raw)
+	{
+		if (raw instanceof String)
+		{
+			base.boostType = enumValue(Collections1.single("type", raw), "type", BoostType.class, base.boostType,
+				"boosts.");
+			return;
+		}
+		if (!(raw instanceof Map))
+		{
+			throw new IllegalArgumentException("boosts must be an object like "
+				+ "{\"type\":\"super_attack_strength\",\"defence\":false,\"qty\":1}");
+		}
+		Map<?, ?> map = (Map<?, ?>) raw;
+		base.boostType = enumValue(map, "type", BoostType.class, base.boostType, "boosts.");
+		base.boostQty = intValue(map, "qty", base.boostQty, "boosts.");
+		if (base.boostQty < 0 || base.boostQty > 27)
+		{
+			throw new IllegalArgumentException("boosts.qty must be between 0 and 27");
+		}
+		if (map.get("defence") != null)
+		{
+			base.boostDefence = Boolean.parseBoolean(String.valueOf(map.get("defence")));
+		}
 	}
 
 	private static void applyStamina(QuestCombatLoadout base, Object raw)

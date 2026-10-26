@@ -316,6 +316,16 @@ public interface QuestHelperConfig extends Config
 	}
 
 	@ConfigItem(
+			keyName = "confirmPurchases",
+			name = "Confirm purchases before buying",
+			description = "Show the items and estimated cost, and ask before the quest helper buys quest items from the Grand Exchange. When off, it still stops before walking there if you cannot afford them.",
+			section = microbotSection
+	)
+	default boolean confirmPurchases() {
+		return true;
+	}
+
+	@ConfigItem(
 			keyName = "resetCombatSetups",
 			name = "Reset quest setups",
 			description = "Turn on to forget every saved quest setup (including skipped ones). Switches itself back off.",
