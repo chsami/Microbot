@@ -135,8 +135,7 @@ public class Rs2WorldUtil {
         }
         if(!Microbot.isLoggedIn() ){
             if(activeProfile != null){
-                boolean isPlayerMember = activeProfile.isMember();
-                return isPlayerMember;
+                return MembershipRecorder.isMember(activeProfile, System.currentTimeMillis());
             }                                               
             log.warn("Cannot determine membership status - not logged in, no active profile, and no cached data available");
             return false;

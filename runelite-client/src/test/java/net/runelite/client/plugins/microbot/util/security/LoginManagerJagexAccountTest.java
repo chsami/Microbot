@@ -47,8 +47,13 @@ public class LoginManagerJagexAccountTest {
         when(client.getLauncherDisplayName()).thenReturn("Jagex character");
 
         ClientThread clientThread = mock(ClientThread.class);
-        when(clientThread.runOnClientThreadOptional(any()))
-            .thenAnswer(inv -> Optional.ofNullable(((Callable<?>) inv.getArgument(0)).call()));
+        when(clientThread.runOnClientThreadOptional(any())).thenAnswer(inv -> {
+            try {
+                return Optional.ofNullable(((Callable<?>) inv.getArgument(0)).call());
+            } catch (Exception e) {
+                return Optional.empty(); // like ClientThread: a call that did not complete has no result
+            }
+        });
 
         SessionStore sessionStore = mock(SessionStore.class);
         when(sessionStore.load()).thenReturn(List.of());
@@ -89,6 +94,26 @@ public class LoginManagerJagexAccountTest {
             assertTrue(LoginManager.login("Imported character", "", 301));
         }
         verify(client).switchJagexAccount("session-id", "42", "Imported character");
+        verify(client, never()).setUsername(any());
+    }
+
+    @Test public void launchCharacterIsSelectedAgainInsteadOfAssumed() {
+        // after a legacy login the launch-time name is still reported, but its account is no longer selected
+        try (var keyboard = mockStatic(Rs2Keyboard.class); var launch = mockStatic(JagexCredentials.class)) {
+            launch.when(JagexCredentials::fromLaunch).thenReturn(new JagexCredentials("launch-session", "7", "Jagex character"));
+            assertTrue(LoginManager.login("Jagex character", "", 301));
+        }
+        verify(client).switchJagexAccount("launch-session", "7", "Jagex character");
+        verify(client, never()).setUsername(any());
+    }
+
+    @Test public void loginStopsWhenTheAccountSwitchDoesNotRun() {
+        doThrow(new IllegalStateException("client thread busy")).when(client).switchJagexAccount(null, null, null);
+
+        try (var keyboard = mockStatic(Rs2Keyboard.class)) {
+            assertFalse(LoginManager.login("legacy-user", "", 301));
+            keyboard.verifyNoInteractions();
+        }
         verify(client, never()).setUsername(any());
     }
 }

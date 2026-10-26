@@ -322,7 +322,13 @@ public final class LoginManager {
             switchJagexAccount(client, Encryption.decrypt(profile.getJagexSessionId()), profile.getJagexCharacterId(), profile.getName());
             return true;
         }
+        // getLauncherDisplayName() keeps the launch-time name after the account changes, so it does not show
+        // which account is selected now: select the launch character again
         if (username.equalsIgnoreCase(client.getLauncherDisplayName())) {
+            JagexCredentials launch = JagexCredentials.fromLaunch();
+            if (launch != null) {
+                switchJagexAccount(client, launch.getSessionId(), launch.getCharacterId(), launch.getDisplayName());
+            }
             return true;
         }
         JagexAuthService jagexAuthService = Microbot.getInjector().getInstance(JagexAuthService.class);
@@ -352,10 +358,13 @@ public final class LoginManager {
 
     private static void switchJagexAccount(Client client, String sessionId, String characterId, String displayName) {
         // Waits for the switch to finish. getLauncherDisplayName() keeps the launch-time name, so it cannot confirm it.
-        Microbot.getClientThread().runOnClientThreadOptional(() -> {
+        boolean switched = Microbot.getClientThread().runOnClientThreadOptional(() -> {
             client.switchJagexAccount(sessionId, characterId, displayName);
             return true;
-        });
+        }).orElse(false);
+        if (!switched) {
+            throw new IllegalStateException("The client thread did not switch the Jagex Account");
+        }
     }
 
     private static void setCredentials(Client client, String username, String encryptedPassword) {

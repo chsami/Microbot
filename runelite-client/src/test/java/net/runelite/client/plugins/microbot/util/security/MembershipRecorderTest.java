@@ -88,4 +88,24 @@ public class MembershipRecorderTest {
         assertEquals(-1, MembershipRecorder.remainingDays(profile, System.currentTimeMillis()));
         assertEquals("Unknown until login", MembershipRecorder.describe(profile, System.currentTimeMillis()));
     }
+
+    @Test public void expiredMembershipIsFreeToPlayForDisplayAndWorldChoice() {
+        long saved = 1_000 * DAY;
+        when(profile.getMemberExpireDaysTimeStemp()).thenReturn(saved);
+        when(profile.getMemberExpireDays()).thenReturn(10L);
+        when(profile.isMember()).thenReturn(true); // still set from the last login
+
+        assertTrue(MembershipRecorder.isMember(profile, saved + 3 * DAY));
+        assertFalse(MembershipRecorder.isMember(profile, saved + 30 * DAY));
+        assertEquals("Free-to-play", MembershipRecorder.describe(profile, saved + 30 * DAY));
+    }
+
+    @Test public void aMemberRecordedWithNoCreditDaysStaysMembers() {
+        when(profile.getMemberExpireDaysTimeStemp()).thenReturn(DAY);
+        when(profile.getMemberExpireDays()).thenReturn(0L);
+        when(profile.isMember()).thenReturn(true);
+
+        assertTrue(MembershipRecorder.isMember(profile, 30 * DAY));
+        assertEquals("Members", MembershipRecorder.describe(profile, 30 * DAY));
+    }
 }

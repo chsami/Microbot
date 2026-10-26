@@ -90,6 +90,25 @@ public class MembershipRecorder {
     }
 
     /**
+     * Whether the profile's account is members, from what was saved at its last login. Used both for display
+     * and for choosing a world while logged out, so the two always agree.
+     */
+    public static boolean isMember(ConfigProfile profile, long now) {
+        if (profile == null) {
+            return false;
+        }
+        long days = remainingDays(profile, now);
+        if (days > 0) {
+            return true;
+        }
+        if (days == 0 && profile.getMemberExpireDays() > 0) {
+            return false; // the saved days have run out since the last login
+        }
+        // a member recorded with 0 credit days, or a profile not logged in since this was added
+        return profile.isMember();
+    }
+
+    /**
      * Membership as saved on the profile, for display.
      */
     public static String describe(ConfigProfile profile, long now) {
@@ -100,9 +119,6 @@ public class MembershipRecorder {
         if (days > 0) {
             return "Members · " + days + (days == 1 ? " day left" : " days left");
         }
-        if (profile.getMemberExpireDays() > 0) {
-            return "Free-to-play"; // the saved days have run out since the last login
-        }
-        return profile.isMember() ? "Members" : "Free-to-play";
+        return isMember(profile, now) ? "Members" : "Free-to-play";
     }
 }
