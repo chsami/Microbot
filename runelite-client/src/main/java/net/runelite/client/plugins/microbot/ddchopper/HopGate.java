@@ -28,6 +28,7 @@ public final class HopGate
 	private static final long HOUR = 3_600_000L;
 
 	private final int maxOthers;
+	private final boolean seekBusy;
 	private final long graceMillis;
 	private final long minGapMillis;
 	private final int maxPerHour;
@@ -42,6 +43,18 @@ public final class HopGate
 
 	public HopGate(int maxOthers, long graceMillis, long minGapMillis, int maxPerHour)
 	{
+		this(maxOthers, graceMillis, minGapMillis, maxPerHour, false);
+	}
+
+	/** Inverted rule for Forestry: hop when fewer than {@code minPlayers} others are at the spot. */
+	public static HopGate seekBusy(int minPlayers, int maxPerHour)
+	{
+		return new HopGate(minPlayers, GRACE_MILLIS, MIN_GAP_MILLIS, maxPerHour, true);
+	}
+
+	private HopGate(int maxOthers, long graceMillis, long minGapMillis, int maxPerHour, boolean seekBusy)
+	{
+		this.seekBusy = seekBusy;
 		this.maxOthers = maxOthers;
 		this.graceMillis = graceMillis;
 		this.minGapMillis = minGapMillis;
@@ -50,7 +63,7 @@ public final class HopGate
 
 	public Decision decide(int others, long now)
 	{
-		if (others <= maxOthers)
+		if (seekBusy ? others >= maxOthers : others <= maxOthers)
 		{
 			crowdedSince = -1;
 			return Decision.STAY;

@@ -3,16 +3,16 @@ package net.runelite.client.plugins.microbot.ddchopper;
 /** Config dropdown: pick the tree automatically (by XP/hour) or force one. */
 public enum TreeChoice
 {
-	AUTO("Auto (best XP/hr)", null),
+	AUTO("Auto", null),
 	NORMAL("Tree", TreeType.NORMAL),
 	OAK("Oak", TreeType.OAK),
 	WILLOW("Willow", TreeType.WILLOW),
-	TEAK("Teak (members)", TreeType.TEAK),
-	MAPLE("Maple (members)", TreeType.MAPLE),
-	MAHOGANY("Mahogany (members)", TreeType.MAHOGANY),
+	TEAK("Teak", TreeType.TEAK),
+	MAPLE("Maple", TreeType.MAPLE),
+	MAHOGANY("Mahogany", TreeType.MAHOGANY),
 	YEW("Yew", TreeType.YEW),
-	MAGIC("Magic (members)", TreeType.MAGIC),
-	REDWOOD("Redwood (members)", TreeType.REDWOOD);
+	MAGIC("Magic", TreeType.MAGIC),
+	REDWOOD("Redwood", TreeType.REDWOOD);
 
 	private final String label;
 	private final TreeType tree;

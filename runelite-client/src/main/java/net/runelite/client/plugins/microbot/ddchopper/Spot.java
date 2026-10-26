@@ -21,7 +21,7 @@ import java.util.List;
 @Getter
 public enum Spot
 {
-	AUTO("Auto (optimal spot)", null, false, 1, "", false, "", 0, 0, 0, 0, 0, 0),
+	AUTO("Auto", null, false, 1, "", false, "", 0, 0, 0, 0, 0, 0),
 
 	// Normal trees
 	LUMBRIDGE_TREES("Normal: Lumbridge west", TreeType.NORMAL, false, 1, "", false, "Lumbridge Castle roof", 15, 10,
@@ -185,6 +185,12 @@ public enum Spot
 	@Override
 	public String toString()
 	{
-		return label;
+		// Short on purpose: the RuneLite config panel truncates the label column when dropdown options are wide.
+		if (this == AUTO)
+		{
+			return "Auto";
+		}
+		String n = name().replace('_', ' ').toLowerCase();
+		return Character.toUpperCase(n.charAt(0)) + n.substring(1);
 	}
 }

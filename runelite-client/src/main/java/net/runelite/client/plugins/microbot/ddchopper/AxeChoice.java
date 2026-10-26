@@ -3,7 +3,7 @@ package net.runelite.client.plugins.microbot.ddchopper;
 /** Config dropdown: best usable axe, or one specific axe. */
 public enum AxeChoice
 {
-	AUTO("Auto (best available)", null),
+	AUTO("Auto", null),
 	BRONZE("Bronze", Axe.BRONZE),
 	IRON("Iron", Axe.IRON),
 	STEEL("Steel", Axe.STEEL),

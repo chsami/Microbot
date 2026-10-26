@@ -4,7 +4,7 @@ public enum GoalType
 {
 	TARGET_LEVEL("Target level"),
 	RUN_TIME("Run time"),
-	UNTIL_STOPPED("Until stopped");
+	UNTIL_STOPPED("Endless");
 
 	private final String label;
 

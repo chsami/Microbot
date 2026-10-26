@@ -144,7 +144,7 @@ public final class ChopPlanner
 			}
 			for (Spot s : Spot.values())
 			{
-				if (s != Spot.AUTO && (s.name().equalsIgnoreCase(t) || s.getLabel().equalsIgnoreCase(t)))
+				if (s != Spot.AUTO && (s.name().equalsIgnoreCase(t) || s.getLabel().equalsIgnoreCase(t) || s.toString().equalsIgnoreCase(t)))
 				{
 					out.add(s);
 				}
