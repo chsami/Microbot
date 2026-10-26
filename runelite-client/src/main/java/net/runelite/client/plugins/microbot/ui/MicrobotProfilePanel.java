@@ -15,6 +15,8 @@ import net.runelite.client.events.ProfileChanged;
 import net.runelite.client.events.RuneScapeProfileChanged;
 import net.runelite.client.events.SessionClose;
 import net.runelite.client.events.SessionOpen;
+import net.runelite.client.plugins.microbot.util.security.Encryption;
+import net.runelite.client.plugins.microbot.util.security.JagexCredentials;
 import net.runelite.client.plugins.microbot.util.security.LoginManager;
 import net.runelite.client.plugins.screenmarkers.ScreenMarkerPlugin;
 import net.runelite.client.ui.ColorScheme;
@@ -1070,6 +1072,10 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
         log.info("Importing profile from {}", file);
 
         executor.execute(() -> {
+            if (importJagexCredentials(file)) {
+                return;
+            }
+
             try (ProfileManager.Lock lock = profileManager.lock()) {
                 String name = "Imported Profile";
                 int number = 1;
@@ -1085,6 +1091,40 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
                 configManager.importAndMigrate(lock, file, profile);
             }
         });
+    }
+
+    /**
+     * Saves the Jagex Account character in a credentials.properties file to the profile named after
+     * it, creating that profile if needed. Logging in with the profile then switches to that character.
+     *
+     * @return false if the file is not a Jagex credentials file
+     */
+    private boolean importJagexCredentials(File file) {
+        JagexCredentials credentials;
+        String encryptedSessionId;
+        try {
+            credentials = JagexCredentials.load(file);
+            if (credentials == null) {
+                return false;
+            }
+            encryptedSessionId = Encryption.encrypt(credentials.getSessionId());
+        } catch (Exception e) {
+            log.error("Unable to read Jagex credentials from {}", file, e);
+            return false;
+        }
+
+        try (ProfileManager.Lock lock = profileManager.lock()) {
+            ConfigProfile profile = lock.findProfile(credentials.getDisplayName());
+            if (profile == null) {
+                profile = lock.createProfile(credentials.getDisplayName());
+            }
+            profile.setJagexSessionId(encryptedSessionId);
+            profile.setJagexCharacterId(credentials.getCharacterId());
+            lock.dirty();
+            reload(lock.getProfiles());
+        }
+        log.info("Imported Jagex Account character into profile {}", credentials.getDisplayName());
+        return true;
     }
 
     private void cloneProfile(ConfigProfile profile) {

@@ -308,13 +308,20 @@ public final class LoginManager {
     }
 
     /**
-     * Puts the login screen in the mode the profile needs. If {@code username} matches a saved
-     * Jagex Account character, that character is selected. Otherwise the active Jagex Account is
-     * cleared so the username and password fields can be filled in.
+     * Puts the login screen in the mode the profile needs. If the active profile holds an imported
+     * Jagex Account session, or {@code username} matches a saved Jagex Account character, that
+     * character is selected. Otherwise the active Jagex Account is cleared so the username and
+     * password fields can be filled in.
      *
      * @return true if a Jagex Account character was selected
      */
-    private static boolean selectAccount(Client client, String username) {
+    private static boolean selectAccount(Client client, String username) throws Exception {
+        ConfigProfile profile = Microbot.getConfigManager() != null ? getActiveProfile() : null;
+        if (profile != null && profile.getJagexSessionId() != null && username.equalsIgnoreCase(profile.getName())) {
+            log.debug("Switching to the profile's imported Jagex Account character");
+            switchJagexAccount(client, Encryption.decrypt(profile.getJagexSessionId()), profile.getJagexCharacterId(), profile.getName());
+            return true;
+        }
         if (username.equalsIgnoreCase(client.getLauncherDisplayName())) {
             return true;
         }

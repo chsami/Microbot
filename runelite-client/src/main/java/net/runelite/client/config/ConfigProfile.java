@@ -65,6 +65,13 @@ public class ConfigProfile
 	private String discordWebhookUrl;
 	@Getter
 	@Setter
+	@ToString.Exclude
+	private String jagexSessionId; // encrypted like password; set by importing a credentials.properties file
+	@Getter
+	@Setter
+	private String jagexCharacterId;
+	@Getter
+	@Setter
 	private boolean sync;
 	@Getter
 	@Setter

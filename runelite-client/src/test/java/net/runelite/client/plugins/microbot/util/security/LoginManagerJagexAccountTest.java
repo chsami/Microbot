@@ -10,6 +10,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.client.callback.ClientThread;
+import net.runelite.client.config.ConfigManager;
+import net.runelite.client.config.ConfigProfile;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.rs.auth.JagexAuthClient;
@@ -31,6 +33,7 @@ public class LoginManagerJagexAccountTest {
 
     private MockedStatic<Microbot> microbot;
     private Client client;
+    private final ConfigManager configManager = mock(ConfigManager.class);
 
     @Before public void setUp() throws Exception {
         LoginLockout.getInstance().recordSuccessfulLogin();
@@ -60,6 +63,7 @@ public class LoginManagerJagexAccountTest {
         microbot.when(Microbot::getClient).thenReturn(client);
         microbot.when(Microbot::getClientThread).thenReturn(clientThread);
         microbot.when(Microbot::getInjector).thenReturn(injector);
+        microbot.when(Microbot::getConfigManager).thenReturn(configManager);
     }
 
     @After public void tearDown() {
@@ -72,5 +76,19 @@ public class LoginManagerJagexAccountTest {
         }
         verify(client).switchJagexAccount(null, null, null);
         verify(client).setUsername("legacy-user");
+    }
+
+    @Test public void importedProfileSwitchesToItsJagexAccountInsteadOfTypingCredentials() throws Exception {
+        ConfigProfile profile = mock(ConfigProfile.class);
+        when(profile.getName()).thenReturn("Imported character");
+        when(profile.getJagexSessionId()).thenReturn(Encryption.encrypt("session-id"));
+        when(profile.getJagexCharacterId()).thenReturn("42");
+        when(configManager.getProfile()).thenReturn(profile);
+
+        try (var keyboard = mockStatic(Rs2Keyboard.class)) {
+            assertTrue(LoginManager.login("Imported character", "", 301));
+        }
+        verify(client).switchJagexAccount("session-id", "42", "Imported character");
+        verify(client, never()).setUsername(any());
     }
 }
