@@ -335,6 +335,9 @@ final class Rs2WalkerMovement {
             routeClicksSinceMinimap = 0;
             nextMinimapClickAt = WalkPathVariation.nextCadence(2, 8, ThreadLocalRandom.current());
         }
+        if (tryOpenClosedDoorOnBlockedPath(rawPath, playerLoc)) {
+            return target;
+        }
         boolean tryMinimapFirst = routeClicksSinceMinimap >= nextMinimapClickAt;
         WorldPoint minimapTarget = tryMinimapFirst
                 ? WalkPathVariation.varyMinimapTarget(rawPath, target, playerLoc, routeClickSessionTarget)
