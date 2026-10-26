@@ -9,6 +9,9 @@ import net.runelite.client.config.ConfigProfile;
 import net.runelite.client.config.ProfileManager;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
+import net.runelite.client.rs.auth.Account;
+import net.runelite.client.rs.auth.JagexAuthService;
+import net.runelite.client.rs.auth.Session;
 import net.runelite.client.util.WorldUtil;
 import net.runelite.http.api.worlds.World;
 import net.runelite.http.api.worlds.WorldRegion;
@@ -220,8 +223,11 @@ public final class LoginManager {
                 log.warn("Login aborted - could not select world {}", worldId);
                 return false;
             }
+            boolean jagexAccount = selectAccount(client, username);
             triggerLoginScreen();
-            setCredentials(client, username, encryptedPassword);
+            if (!jagexAccount) {
+                setCredentials(client, username, encryptedPassword);
+            }
             submitLogin();
             handleBlockingDialogs(client);
             return true;
@@ -299,6 +305,50 @@ public final class LoginManager {
         return Microbot.getClientThread()
                 .runOnClientThreadOptional(() -> client.getWorld() == worldId)
                 .orElse(false);
+    }
+
+    /**
+     * Puts the login screen in the mode the profile needs. If {@code username} matches a saved
+     * Jagex Account character, that character is selected. Otherwise the active Jagex Account is
+     * cleared so the username and password fields can be filled in.
+     *
+     * @return true if a Jagex Account character was selected
+     */
+    private static boolean selectAccount(Client client, String username) {
+        if (username.equalsIgnoreCase(client.getLauncherDisplayName())) {
+            return true;
+        }
+        JagexAuthService jagexAuthService = Microbot.getInjector().getInstance(JagexAuthService.class);
+        if (jagexAuthService.getSessions().isEmpty()) {
+            // Profile logins run on the shared single-thread executor, so loadFromStore().join() would deadlock
+            jagexAuthService.loadFromStoreNow();
+        }
+        for (Session session : jagexAuthService.getSessions()) {
+            Account[] accounts = jagexAuthService.getAccounts(session.getSessionId());
+            if (accounts == null) {
+                continue;
+            }
+            for (Account account : accounts) {
+                if (username.equalsIgnoreCase(account.getDisplayName())) {
+                    log.debug("Switching to the profile's Jagex Account character");
+                    switchJagexAccount(client, session.getSessionId(), Long.toString(account.getAccountId()), account.getDisplayName());
+                    return true;
+                }
+            }
+        }
+        if (client.getLauncherDisplayName() != null) {
+            log.debug("Clearing the active Jagex Account for a legacy account login");
+            switchJagexAccount(client, null, null, null);
+        }
+        return false;
+    }
+
+    private static void switchJagexAccount(Client client, String sessionId, String characterId, String displayName) {
+        // Waits for the switch to finish. getLauncherDisplayName() keeps the launch-time name, so it cannot confirm it.
+        Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            client.switchJagexAccount(sessionId, characterId, displayName);
+            return true;
+        });
     }
 
     private static void setCredentials(Client client, String username, String encryptedPassword) {

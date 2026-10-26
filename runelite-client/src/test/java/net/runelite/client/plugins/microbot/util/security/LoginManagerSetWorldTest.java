@@ -6,6 +6,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import com.google.inject.Injector;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.World;
@@ -13,6 +14,7 @@ import net.runelite.client.callback.ClientThread;
 import net.runelite.client.game.WorldService;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
+import net.runelite.client.rs.auth.JagexAuthService;
 import net.runelite.http.api.worlds.WorldResult;
 import net.runelite.http.api.worlds.WorldType;
 import org.junit.After;
@@ -80,6 +82,9 @@ public class LoginManagerSetWorldTest {
         microbot.when(Microbot::getClient).thenReturn(client);
         microbot.when(Microbot::getClientThread).thenReturn(clientThread);
         microbot.when(Microbot::getWorldService).thenReturn(worldService);
+        Injector injector = mock(Injector.class);
+        when(injector.getInstance(JagexAuthService.class)).thenReturn(mock(JagexAuthService.class));
+        microbot.when(Microbot::getInjector).thenReturn(injector);
     }
 
     @After public void tearDown() {
