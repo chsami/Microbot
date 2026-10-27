@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 
+import static net.runelite.client.plugins.microbot.ddchopper.ScriptTimings.ACTION_TIMEOUT_MS;
 import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 import static net.runelite.client.plugins.microbot.util.Global.sleepUntilTrue;
 
@@ -27,28 +28,33 @@ final class AxeSupplier
 	{
 		/** A step was taken (or is still needed); call again next tick. */
 		WORKING,
-		/** {@link #readyAxe()} is usable. */
+		/** {@link Result#axe} is worn or carried and usable. */
 		READY,
 		/** Nothing usable owned and nothing could be bought. */
 		MISSING
 	}
 
-	static final Integer[] AXE_IDS = new Integer[Axe.values().length];
+	/** Outcome of one {@link #check}; the axe is only set when the state is READY. */
+	static final class Result
+	{
+		private static final Result WORKING = new Result(State.WORKING, null);
+		private static final Result MISSING = new Result(State.MISSING, null);
+
+		final State state;
+		final Axe axe;
+
+		private Result(State state, Axe axe)
+		{
+			this.state = state;
+			this.axe = axe;
+		}
+	}
 
 	private static final int COINS = 995;
-	private static final int ACTION_TIMEOUT_MS = 3_000;
 	private static final int OFFER_POLL_MS = 600;
 	private static final int OFFER_TIMEOUT_MS = 60_000;
 	/** Price margin over the GE guide price so the offer fills quickly. */
 	private static final double BUY_PRICE_MARGIN = 1.15;
-
-	static
-	{
-		for (Axe axe : Axe.values())
-		{
-			AXE_IDS[axe.ordinal()] = axe.getItemId();
-		}
-	}
 
 	private final DDChopperConfig config;
 	private final Consumer<String> status;
@@ -56,7 +62,7 @@ final class AxeSupplier
 	private boolean bankChecked;
 	private boolean depositLeftover;
 	private int buyAttemptLevel = -1;
-	private Axe readyAxe;
+	private volatile Axe currentAxe;
 
 	AxeSupplier(DDChopperConfig config, Consumer<String> status)
 	{
@@ -64,18 +70,18 @@ final class AxeSupplier
 		this.status = status;
 	}
 
-	Axe readyAxe()
+	/** The axe last reported READY (for the overlay and the chop planner); null until one is ready. */
+	Axe currentAxe()
 	{
-		return readyAxe;
+		return currentAxe;
 	}
 
-	State check(int level)
+	Result check(int level)
 	{
-		readyAxe = null;
 		if (depositLeftover)
 		{
 			depositLeftoverCoins();
-			return State.WORKING;
+			return Result.WORKING;
 		}
 		Set<Axe> owned = ownedAxes();
 		Axe target = AxePlanner.chooseOwned(config.axe(), owned, level);
@@ -86,16 +92,16 @@ final class AxeSupplier
 		if (!bankChecked && (target == null || wantBuy))
 		{
 			checkBank();
-			return State.WORKING;
+			return Result.WORKING;
 		}
 		if (wantBuy)
 		{
 			tryBuy(level, target);
-			return State.WORKING;
+			return Result.WORKING;
 		}
 		if (target == null)
 		{
-			return State.MISSING;
+			return Result.MISSING;
 		}
 		return equip(target);
 	}
@@ -103,7 +109,7 @@ final class AxeSupplier
 	private void depositLeftoverCoins()
 	{
 		status.accept("Banking leftover coins");
-		if (!BankTrip.ensureOpen())
+		if (!BankTrip.walkToAndOpen())
 		{
 			return;
 		}
@@ -121,7 +127,7 @@ final class AxeSupplier
 	private void checkBank()
 	{
 		status.accept("Checking bank for axes");
-		if (BankTrip.ensureOpen())
+		if (BankTrip.walkToAndOpen())
 		{
 			// Wait for the bank snapshot so the coin count below is not read from an empty cache.
 			sleepUntil(() -> !Rs2Bank.bankItems().isEmpty(), ACTION_TIMEOUT_MS);
@@ -144,7 +150,7 @@ final class AxeSupplier
 	}
 
 	/** Wields (or fetches from the bank) the chosen axe; READY once it is worn or carried. */
-	private State equip(Axe target)
+	private Result equip(Axe target)
 	{
 		int id = target.getItemId();
 		int attack = Rs2Player.getRealSkillLevel(Skill.ATTACK);
@@ -165,7 +171,7 @@ final class AxeSupplier
 		if (bankChecked && Rs2Bank.hasItem(id))
 		{
 			status.accept("Fetching " + target.getItemName());
-			if (BankTrip.ensureOpen())
+			if (BankTrip.walkToAndOpen())
 			{
 				if (target.canWield(attack))
 				{
@@ -183,13 +189,17 @@ final class AxeSupplier
 		{
 			bankChecked = false;
 		}
-		return State.WORKING;
+		return Result.WORKING;
 	}
 
-	private State ready(Axe axe)
+	private Result ready(Axe axe)
 	{
-		readyAxe = axe;
-		return State.READY;
+		if (currentAxe != axe)
+		{
+			Microbot.log("DD Chopper: using " + axe.getItemName());
+		}
+		currentAxe = axe;
+		return new Result(State.READY, axe);
 	}
 
 	private void tryBuy(int level, Axe owned)
@@ -267,7 +277,7 @@ final class AxeSupplier
 
 	private void withdrawCoins(Axe axe, int price, long budget)
 	{
-		if (!BankTrip.ensureOpen())
+		if (!BankTrip.walkToAndOpen())
 		{
 			return;
 		}

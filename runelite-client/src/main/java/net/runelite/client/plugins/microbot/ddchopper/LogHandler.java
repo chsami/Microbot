@@ -10,6 +10,8 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
+import static net.runelite.client.plugins.microbot.ddchopper.ScriptTimings.ACTION_TIMEOUT_MS;
+import static net.runelite.client.plugins.microbot.ddchopper.ScriptTimings.ANIMATION_WINDOW_MS;
 import static net.runelite.client.plugins.microbot.util.Global.sleep;
 import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 
@@ -18,13 +20,10 @@ final class LogHandler
 {
 	private static final Predicate<Rs2ItemModel> IS_LOGS =
 		item -> item.getName() != null && item.getName().toLowerCase().endsWith("logs");
-	private static final int ACTION_TIMEOUT_MS = 3_000;
 	/** Upper bound on drop clicks per tick (a full inventory is 28 slots). */
 	private static final int MAX_DROPS_PER_TICK = 30;
-	private static final int LIGHT_START_TIMEOUT_MS = 3_000;
 	private static final int LIGHT_FINISH_TIMEOUT_MS = 12_000;
 	private static final int LIGHT_START_ANIMATION_MS = 1200;
-	private static final int ANIMATION_IDLE_MS = 1800;
 
 	private final DDChopperConfig config;
 	private final HumanPacing pacing;
@@ -68,8 +67,8 @@ final class LogHandler
 			sleep(300, 600);
 			return;
 		}
-		sleepUntil(() -> Rs2Player.isAnimating(LIGHT_START_ANIMATION_MS), LIGHT_START_TIMEOUT_MS);
-		sleepUntil(() -> !Rs2Player.isAnimating(ANIMATION_IDLE_MS) && !Rs2Player.isMoving(), LIGHT_FINISH_TIMEOUT_MS);
+		sleepUntil(() -> Rs2Player.isAnimating(LIGHT_START_ANIMATION_MS), ACTION_TIMEOUT_MS);
+		sleepUntil(() -> !Rs2Player.isAnimating(ANIMATION_WINDOW_MS) && !Rs2Player.isMoving(), LIGHT_FINISH_TIMEOUT_MS);
 	}
 
 	/** Drops the logs one by one with a varying pace. */
@@ -93,9 +92,9 @@ final class LogHandler
 	private void bankLogs()
 	{
 		status.accept("Banking logs");
-		if (BankTrip.ensureOpen())
+		if (BankTrip.walkToAndOpen())
 		{
-			Rs2Bank.depositAllExcept(AxeSupplier.AXE_IDS);
+			Rs2Bank.depositAllExcept(Axe.itemIds());
 			sleepUntil(() -> !Rs2Inventory.isFull(), ACTION_TIMEOUT_MS);
 			Rs2Bank.closeBank();
 		}

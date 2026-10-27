@@ -15,6 +15,8 @@ import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+import static net.runelite.client.plugins.microbot.ddchopper.ScriptTimings.ACTION_TIMEOUT_MS;
+import static net.runelite.client.plugins.microbot.ddchopper.ScriptTimings.ANIMATION_WINDOW_MS;
 import static net.runelite.client.plugins.microbot.util.Global.sleep;
 import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 
@@ -22,9 +24,6 @@ import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 final class TreeChopper
 {
 	private static final int NEST_SEARCH_RADIUS = 8;
-	/** Animation window that counts as "still chopping". */
-	private static final int CHOPPING_ANIMATION_MS = 1800;
-	private static final int ACTION_TIMEOUT_MS = 3_000;
 	private static final int NEST_PICKUP_TIMEOUT_MS = 4_000;
 	private static final int BLACKLIST_MS = 60_000;
 	/** Distance from the spot centre beyond which we walk back to it. */
@@ -64,11 +63,12 @@ final class TreeChopper
 	}
 
 	/**
-	 * One chop step. The spot is resolved lazily so a still-busy player does not advance the spot rotation.
+	 * One chop step. The spot is resolved lazily, after the still-busy check, to keep the original order of the
+	 * script's spot lookups (its "moving on" log line fires from whichever step asks first).
 	 */
 	void chop(TreeType tree, Supplier<Spot> activeSpot)
 	{
-		if (Rs2Player.isAnimating(CHOPPING_ANIMATION_MS) || Rs2Player.isMoving())
+		if (Rs2Player.isAnimating(ANIMATION_WINDOW_MS) || Rs2Player.isMoving())
 		{
 			status.accept("Chopping " + tree.getObjectName());
 			wasBusy = true;

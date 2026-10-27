@@ -9,8 +9,8 @@ final class BankTrip
 	{
 	}
 
-	/** Walks to the nearest bank and opens it if needed; true once the bank interface is open. */
-	static boolean ensureOpen()
+	/** Blocks while walking to the nearest bank and opening it if needed; true once the bank interface is open. */
+	static boolean walkToAndOpen()
 	{
 		if (!Rs2Bank.isOpen())
 		{

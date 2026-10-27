@@ -64,6 +64,8 @@ public class DDChopperPanel extends PluginPanel
 	private JLabel statusLabel;
 	private JLabel levelLabel;
 	private JLabel xpLabel;
+	private JLabel nextLevelLabel;
+	private JLabel goalEtaLabel;
 	private JLabel forestryNote;
 	private JSpinner targetLevel;
 	private JSpinner runHours;
@@ -224,9 +226,13 @@ public class DDChopperPanel extends PluginPanel
 		statusLabel = new JLabel();
 		levelLabel = new JLabel();
 		xpLabel = new JLabel();
+		nextLevelLabel = new JLabel();
+		goalEtaLabel = new JLabel();
 		p.add(statusLabel);
 		p.add(levelLabel);
 		p.add(xpLabel);
+		p.add(nextLevelLabel);
+		p.add(goalEtaLabel);
 		p.add(Box.createVerticalStrut(4));
 		JPanel buttons = new JPanel(new GridLayout(1, 3, 4, 0));
 		buttons.setOpaque(false);
@@ -289,6 +295,10 @@ public class DDChopperPanel extends PluginPanel
 		levelLabel.setText("Level: " + RuntimeStatus.levelLine(config.goalType(), script.getCurrentLevel(),
 			config.targetLevel()));
 		xpLabel.setText("XP/hr: " + String.format("%,d", script.getXpPerHour()));
+		nextLevelLabel.setText("Next lvl: " + script.getNextLevelEta());
+		String goalLabel = script.getGoalEtaLabel();
+		goalEtaLabel.setVisible(goalLabel != null);
+		goalEtaLabel.setText(goalLabel == null ? "" : goalLabel + ": " + script.getGoalEta());
 	}
 
 	private String reasonFor(RuntimeStatus.State state)

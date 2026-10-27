@@ -41,11 +41,11 @@ public class DDChopperScript extends Script
 	// What the overlay and panel show.
 	private volatile int currentLevel;
 	private volatile long xpGained;
+	private volatile long currentXp;
 	private volatile long xpPerHour;
 	private volatile String status = "Idle";
 	private volatile TreeType currentTree;
 	private volatile Spot currentSpot;
-	private volatile Axe currentAxe;
 	private volatile boolean paused;
 	private volatile boolean running;
 	private volatile String blockReason = "";
@@ -107,10 +107,10 @@ public class DDChopperScript extends Script
 		plan = null;
 		lastNote = "";
 		finished = false;
-		currentAxe = null;
 		currentTree = null;
 		currentSpot = null;
 		xpGained = 0;
+		currentXp = 0;
 		xpPerHour = 0;
 		status = "Starting";
 	}
@@ -255,6 +255,7 @@ public class DDChopperScript extends Script
 		{
 			startXp = xp;
 		}
+		currentXp = xp;
 		xpGained = xp - startXp;
 		double hours = Math.max(activeMillis, MIN_XP_RATE_WINDOW_MS) / MS_PER_HOUR;
 		xpPerHour = (long) (xpGained / hours);
@@ -273,15 +274,9 @@ public class DDChopperScript extends Script
 	/** Runs one axe step; true once an axe is ready and the tick can carry on. */
 	private boolean secureAxe(int level)
 	{
-		switch (axes.check(level))
+		switch (axes.check(level).state)
 		{
 			case READY:
-				Axe axe = axes.readyAxe();
-				if (currentAxe != axe)
-				{
-					Microbot.log("DD Chopper: using " + axe.getItemName());
-				}
-				currentAxe = axe;
 				axeCheck = false;
 				blockReason = "";
 				replan = true;
@@ -299,7 +294,8 @@ public class DDChopperScript extends Script
 	{
 		ChopPlanner.Input in = new ChopPlanner.Input();
 		in.level = level;
-		in.axe = currentAxe != null ? currentAxe : Axe.BRONZE;
+		Axe current = axes.currentAxe();
+		in.axe = current != null ? current : Axe.BRONZE;
 		in.treeChoice = config.tree();
 		in.spotChoice = config.spot();
 		in.mode = config.mode();
@@ -401,12 +397,51 @@ public class DDChopperScript extends Script
 	/** Time left at the current spot, or "-" when not rotating. */
 	public String getSpotTimeLeft()
 	{
-		if (!config.rotateSpots() || plan == null || plan.pool.size() <= 1)
+		if (config == null || !config.rotateSpots() || plan == null || plan.pool.size() <= 1)
 		{
 			return "-";
 		}
 		long ms = rotation.remainingMillis(activeMillis);
-		return String.format("%d:%02d left", ms / MS_PER_MINUTE / 60 * 60 + ms / MS_PER_MINUTE % 60, ms / 1000 % 60);
+		return String.format("%d:%02d left", ms / MS_PER_MINUTE, ms / 1000 % 60);
+	}
+
+	/** Time to the next Woodcutting level at the current XP rate, formatted; a dash when unknown. */
+	public String getNextLevelEta()
+	{
+		return XpEta.format(XpEta.millisToNextLevel(currentLevel, currentXp, xpPerHour));
+	}
+
+	/** Label for {@link #getGoalEta()} (for example "Lvl 35 in"), or null when the goal has no estimate. */
+	public String getGoalEtaLabel()
+	{
+		if (config == null)
+		{
+			return null;
+		}
+		switch (config.goalType())
+		{
+			case TARGET_LEVEL:
+				return "Lvl " + config.targetLevel() + " in";
+			case RUN_TIME:
+				return "Run time left";
+			default:
+				return null;
+		}
+	}
+
+	/** Time to the goal, formatted; a dash when unknown. Only meaningful when {@link #getGoalEtaLabel()} is set. */
+	public String getGoalEta()
+	{
+		if (config == null)
+		{
+			return XpEta.UNKNOWN;
+		}
+		if (config.goalType() == GoalType.RUN_TIME)
+		{
+			long limit = GoalTracker.runLimitMillis(config.runHours(), config.runMinutes());
+			return XpEta.format(Math.max(0, limit - activeMillis));
+		}
+		return XpEta.format(XpEta.millisToLevel(config.targetLevel(), currentXp, xpPerHour));
 	}
 
 	public int getCurrentLevel()
@@ -437,6 +472,7 @@ public class DDChopperScript extends Script
 
 	public String getAxeLabel()
 	{
-		return currentAxe == null ? "-" : currentAxe.getItemName();
+		Axe axe = axes == null ? null : axes.currentAxe();
+		return axe == null ? "-" : axe.getItemName();
 	}
 }

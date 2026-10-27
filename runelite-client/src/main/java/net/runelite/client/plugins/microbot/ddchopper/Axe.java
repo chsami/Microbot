@@ -35,6 +35,17 @@ public enum Axe
 		this.buyable = buyable;
 	}
 
+	/** Item ids of every axe in tier order; a fresh array per call so callers cannot alter shared state. */
+	public static Integer[] itemIds()
+	{
+		Integer[] ids = new Integer[values().length];
+		for (Axe axe : values())
+		{
+			ids[axe.ordinal()] = axe.itemId;
+		}
+		return ids;
+	}
+
 	public boolean canChop(int woodcuttingLevel)
 	{
 		return woodcuttingLevel >= this.woodcuttingLevel;
