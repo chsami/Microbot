@@ -651,6 +651,15 @@ public class Rs2TileObjectModel implements TileObject, IEntity {
                 Rs2Camera.turnTo(tileObject);
             }
 
+            Rectangle clickArea = clearClickArea();
+            if (clickArea == null) {
+                Rs2Camera.turnTo(tileObject);
+                clickArea = clearClickArea();
+            }
+            if (clickArea == null) {
+                log.warn("Failed to interact with object {} - no part of it is clear of the interface", getId());
+                return false;
+            }
 
             Microbot.doInvoke(new NewMenuEntry()
                             .param0(param0)
@@ -663,7 +672,7 @@ public class Rs2TileObjectModel implements TileObject, IEntity {
                             .setWorldViewId(worldView.getId())
                             .gameObject(tileObject)
                     ,
-                    Rs2UiHelper.getObjectClickbox(tileObject));
+                    clickArea);
 // MenuEntryImpl(getOption=Use, getTarget=Barrier, getIdentifier=43700, getType=GAME_OBJECT_THIRD_OPTION, getParam0=53, getParam1=51, getItemId=-1, isForceLeftClick=true, getWorldViewId=-1, isDeprioritized=false)
             //Rs2Reflection.invokeMenu(param0, param1, menuAction.getId(), object.getId(),-1, "", "", -1, -1);
 
@@ -673,6 +682,15 @@ public class Rs2TileObjectModel implements TileObject, IEntity {
         }
 
         return true;
+    }
+
+    private Rectangle clearClickArea() {
+        Rectangle clickbox = Rs2UiHelper.getObjectClickbox(tileObject);
+        if (Rs2UiHelper.isFallbackRectangle(clickbox)) {
+            return clickbox;
+        }
+        return Rs2UiHelper.clearOfInterfaces(clickbox, Rs2UiHelper.sceneViewportBounds(),
+                Rs2UiHelper.visibleSceneOverlayBounds());
     }
 
 }
