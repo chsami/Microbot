@@ -24,13 +24,13 @@ public class DDChopperOverlay extends OverlayPanel
 		this.script = script;
 		this.config = config;
 		setPosition(OverlayPosition.TOP_LEFT);
+		setPreferredSize(new Dimension(PANEL_WIDTH, 0));
 		setNaughty();
 	}
 
 	@Override
 	public Dimension render(Graphics2D graphics)
 	{
-		panelComponent.setPreferredSize(new Dimension(PANEL_WIDTH, 0));
 		panelComponent.getChildren().add(TitleComponent.builder().text("DD Chopper").color(Color.GREEN).build());
 		panelComponent.getChildren().add(LineComponent.builder().left("Level").right(
 			config.goalType() == GoalType.TARGET_LEVEL ? script.getCurrentLevel() + " -> " + config.targetLevel() : script.getCurrentLevel() + " (" + config.goalType() + ")").build());

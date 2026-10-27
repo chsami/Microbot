@@ -6,7 +6,7 @@ import net.runelite.api.Experience;
 public final class XpEta
 {
 	/** Shown when there is no meaningful estimate (no XP rate yet, level cap reached). */
-	public static final String UNKNOWN = "—";
+	public static final String UNKNOWN = "-";
 
 	/** Returned by the millis methods when no estimate can be made. */
 	public static final long NONE = -1;

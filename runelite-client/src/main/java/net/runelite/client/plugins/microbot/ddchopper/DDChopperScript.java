@@ -51,7 +51,7 @@ public class DDChopperScript extends Script
 	private volatile String blockReason = "";
 
 	// Run state.
-	private long activeMillis;
+	private volatile long activeMillis;
 	private long lastTickMillis;
 	private int lastLevel = -1;
 	private int startXp = -1;
@@ -82,9 +82,10 @@ public class DDChopperScript extends Script
 		Rs2Walker.disableTeleports = true;
 		walkerOverrides.apply();
 		pacing = new HumanPacing(new Random(), config.humanizedTiming(), config.humanizedFatigue(), config.idlePauseChance());
-		axes = new AxeSupplier(config, this::setStatus);
+		BankTrip bank = new BankTrip();
+		axes = new AxeSupplier(config, this::setStatus, bank);
 		crowd = new CrowdHopper(config, this::setStatus);
-		logs = new LogHandler(config, pacing, this::setStatus, this::isRunning);
+		logs = new LogHandler(config, pacing, this::setStatus, this::isRunning, bank);
 		chopper = new TreeChopper(pacing, this::setStatus);
 		breaks = new BreakSync(config);
 		rotation = new SpotRotation(new Random(), config.rotateMinMinutes(), config.rotateMaxMinutes());
@@ -274,7 +275,7 @@ public class DDChopperScript extends Script
 	/** Runs one axe step; true once an axe is ready and the tick can carry on. */
 	private boolean secureAxe(int level)
 	{
-		switch (axes.check(level).state)
+		switch (axes.check(level))
 		{
 			case READY:
 				axeCheck = false;

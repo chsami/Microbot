@@ -12,6 +12,8 @@ import java.util.function.Predicate;
 
 import static net.runelite.client.plugins.microbot.ddchopper.ScriptTimings.ACTION_TIMEOUT_MS;
 import static net.runelite.client.plugins.microbot.ddchopper.ScriptTimings.ANIMATION_WINDOW_MS;
+import static net.runelite.client.plugins.microbot.ddchopper.ScriptTimings.LIGHT_FINISH_TIMEOUT_MS;
+import static net.runelite.client.plugins.microbot.ddchopper.ScriptTimings.LIGHT_START_ANIMATION_MS;
 import static net.runelite.client.plugins.microbot.util.Global.sleep;
 import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 
@@ -22,16 +24,17 @@ final class LogHandler
 		item -> item.getName() != null && item.getName().toLowerCase().endsWith("logs");
 	/** Upper bound on drop clicks per tick (a full inventory is 28 slots). */
 	private static final int MAX_DROPS_PER_TICK = 30;
-	private static final int LIGHT_FINISH_TIMEOUT_MS = 12_000;
-	private static final int LIGHT_START_ANIMATION_MS = 1200;
 
 	private final DDChopperConfig config;
 	private final HumanPacing pacing;
 	private final Consumer<String> status;
 	private final BooleanSupplier scriptRunning;
+	private final BankTrip bank;
 
-	LogHandler(DDChopperConfig config, HumanPacing pacing, Consumer<String> status, BooleanSupplier scriptRunning)
+	LogHandler(DDChopperConfig config, HumanPacing pacing, Consumer<String> status, BooleanSupplier scriptRunning,
+		BankTrip bank)
 	{
+		this.bank = bank;
 		this.config = config;
 		this.pacing = pacing;
 		this.status = status;
@@ -92,11 +95,16 @@ final class LogHandler
 	private void bankLogs()
 	{
 		status.accept("Banking logs");
-		if (BankTrip.walkToAndOpen())
+		if (bank.walkToAndOpen())
 		{
 			Rs2Bank.depositAllExcept(Axe.itemIds());
 			sleepUntil(() -> !Rs2Inventory.isFull(), ACTION_TIMEOUT_MS);
 			Rs2Bank.closeBank();
+		}
+		else if (bank.isUnavailable())
+		{
+			status.accept("Dropping logs (bank unavailable)");
+			dropLogs();
 		}
 	}
 }

@@ -10,6 +10,8 @@ import java.util.Map;
 import org.junit.Test;
 
 public class AxeBuyAndClicksTest {
+	private static final java.util.Set<Axe> NONE = java.util.EnumSet.noneOf(Axe.class);
+
 	private static Map<Axe, Integer> prices(int live) {
 		Map<Axe, Integer> m = new EnumMap<>(Axe.class);
 		for (Axe a : Axe.values()) if (a.isBuyable()) m.put(a, AxePlanner.effectivePrice(a, live));
@@ -18,11 +20,10 @@ public class AxeBuyAndClicksTest {
 
 	@Test
 	public void level21PlayerWithBankCoinsBuysMithril() {
-		AxePlanner.BuyDecision d = AxePlanner.decideBuy(AxeChoice.AUTO, 21, Axe.BRONZE, 20_000, 4_600_000, true, prices(900));
+		AxePlanner.BuyDecision d = AxePlanner.decideBuy(AxeChoice.AUTO, 21, Axe.BRONZE, 20_000, 4_600_000, true, prices(900), NONE);
 		assertEquals(AxePlanner.BuyStep.BUY, d.step);
 		assertEquals(Axe.MITHRIL, d.axe);
 		assertEquals(900, d.price);
-		assertEquals(4_620_000L, d.coins);
 	}
 
 	@Test
@@ -30,7 +31,7 @@ public class AxeBuyAndClicksTest {
 		assertEquals(AxePlanner.fallbackPrice(Axe.MITHRIL), AxePlanner.effectivePrice(Axe.MITHRIL, 0));
 		assertEquals(AxePlanner.fallbackPrice(Axe.MITHRIL), AxePlanner.effectivePrice(Axe.MITHRIL, -1));
 		assertEquals(1234, AxePlanner.effectivePrice(Axe.MITHRIL, 1234));
-		AxePlanner.BuyDecision d = AxePlanner.decideBuy(AxeChoice.AUTO, 21, Axe.BRONZE, 20_000, 0, true, prices(0));
+		AxePlanner.BuyDecision d = AxePlanner.decideBuy(AxeChoice.AUTO, 21, Axe.BRONZE, 20_000, 0, true, prices(0), NONE);
 		assertEquals(Axe.MITHRIL, d.axe);
 	}
 
@@ -41,21 +42,20 @@ public class AxeBuyAndClicksTest {
 
 	@Test
 	public void unscannedBankWithTooFewCoinsAsksForAScan() {
-		AxePlanner.BuyDecision d = AxePlanner.decideBuy(AxeChoice.AUTO, 21, Axe.BRONZE, 50, 4_600_000, false, prices(900));
+		AxePlanner.BuyDecision d = AxePlanner.decideBuy(AxeChoice.AUTO, 21, Axe.BRONZE, 50, 4_600_000, false, prices(900), NONE);
 		assertEquals(AxePlanner.BuyStep.SCAN_BANK, d.step);
 		assertNull(d.axe);
-		assertEquals(50L, d.coins);
 	}
 
 	@Test
 	public void scannedAndBrokeMeansNone() {
-		AxePlanner.BuyDecision d = AxePlanner.decideBuy(AxeChoice.AUTO, 21, Axe.BRONZE, 50, 10, true, prices(900));
+		AxePlanner.BuyDecision d = AxePlanner.decideBuy(AxeChoice.AUTO, 21, Axe.BRONZE, 50, 10, true, prices(900), NONE);
 		assertEquals(AxePlanner.BuyStep.NONE, d.step);
 	}
 
 	@Test
 	public void noDowngradeBuy() {
-		AxePlanner.BuyDecision d = AxePlanner.decideBuy(AxeChoice.AUTO, 21, Axe.MITHRIL, 1_000_000, 0, true, prices(900));
+		AxePlanner.BuyDecision d = AxePlanner.decideBuy(AxeChoice.AUTO, 21, Axe.MITHRIL, 1_000_000, 0, true, prices(900), NONE);
 		assertEquals(AxePlanner.BuyStep.NONE, d.step);
 	}
 

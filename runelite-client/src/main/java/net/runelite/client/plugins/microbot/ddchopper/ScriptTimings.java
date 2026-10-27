@@ -8,6 +8,11 @@ final class ScriptTimings
 	/** Animation window that still counts as "busy" (chopping or lighting a fire). */
 	static final int ANIMATION_WINDOW_MS = 1800;
 
+	/** Animation window that means a fire-lighting attempt has started. */
+	static final int LIGHT_START_ANIMATION_MS = 1200;
+	/** How long lighting one fire may take before the next tick re-evaluates. */
+	static final int LIGHT_FINISH_TIMEOUT_MS = 12_000;
+
 	private ScriptTimings()
 	{
 	}

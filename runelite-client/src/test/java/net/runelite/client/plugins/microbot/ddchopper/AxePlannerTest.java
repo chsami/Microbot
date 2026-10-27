@@ -14,6 +14,8 @@ import static org.junit.Assert.assertTrue;
 
 public class AxePlannerTest
 {
+	private static final Set<Axe> NONE = EnumSet.noneOf(Axe.class);
+
 	@Test
 	public void requirementsMatchTheWiki()
 	{
@@ -71,12 +73,12 @@ public class AxePlannerTest
 		prices.put(Axe.STEEL, 200);
 		prices.put(Axe.MITHRIL, 1000);
 		prices.put(Axe.RUNE, 9000);
-		assertEquals(Axe.IRON, AxePlanner.chooseToBuy(AxeChoice.AUTO, 5, 300, prices));
-		assertEquals(Axe.STEEL, AxePlanner.chooseToBuy(AxeChoice.AUTO, 10, 300, prices));
-		assertEquals(Axe.MITHRIL, AxePlanner.chooseToBuy(AxeChoice.AUTO, 25, 2000, prices));
-		assertEquals(Axe.MITHRIL, AxePlanner.chooseToBuy(AxeChoice.AUTO, 45, 2000, prices));
-		assertEquals(Axe.RUNE, AxePlanner.chooseToBuy(AxeChoice.AUTO, 45, 20000, prices));
-		assertNull(AxePlanner.chooseToBuy(AxeChoice.AUTO, 45, 5, prices));
+		assertEquals(Axe.IRON, AxePlanner.chooseToBuy(AxeChoice.AUTO, 5, 300, prices, NONE));
+		assertEquals(Axe.STEEL, AxePlanner.chooseToBuy(AxeChoice.AUTO, 10, 400, prices, NONE));
+		assertEquals(Axe.MITHRIL, AxePlanner.chooseToBuy(AxeChoice.AUTO, 25, 2000, prices, NONE));
+		assertEquals(Axe.MITHRIL, AxePlanner.chooseToBuy(AxeChoice.AUTO, 45, 2000, prices, NONE));
+		assertEquals(Axe.RUNE, AxePlanner.chooseToBuy(AxeChoice.AUTO, 45, 20000, prices, NONE));
+		assertNull(AxePlanner.chooseToBuy(AxeChoice.AUTO, 45, 5, prices, NONE));
 	}
 
 	@Test
@@ -84,17 +86,7 @@ public class AxePlannerTest
 	{
 		Map<Axe, Integer> prices = new EnumMap<>(Axe.class);
 		prices.put(Axe.CRYSTAL, 1);
-		assertNull(AxePlanner.chooseToBuy(AxeChoice.CRYSTAL, 99, 1_000_000, prices));
-	}
-
-	@Test
-	public void levelUpUnlocksUpgrade()
-	{
-		assertFalse(AxePlanner.upgradeUnlocked(Axe.IRON, 5, false));
-		assertTrue(AxePlanner.upgradeUnlocked(Axe.IRON, 6, false));
-		assertFalse(AxePlanner.upgradeUnlocked(Axe.DRAGON, 70, false));
-		assertTrue(AxePlanner.upgradeUnlocked(Axe.DRAGON, 71, true));
-		assertTrue(AxePlanner.upgradeUnlocked(null, 1, false));
+		assertNull(AxePlanner.chooseToBuy(AxeChoice.CRYSTAL, 99, 1_000_000, prices, NONE));
 	}
 
 	@Test
@@ -140,13 +132,32 @@ public class AxePlannerTest
 	}
 
 	@Test
-	public void fallbackPicksBestOwnedAxeNotGivenUpOn()
+	public void coinsBetweenPriceAndBudgetAreNotAffordable()
 	{
-		Set<Axe> owned = EnumSet.of(Axe.BRONZE, Axe.STEEL, Axe.RUNE);
-		assertEquals(Axe.RUNE, AxePlanner.fallbackAxe(owned, EnumSet.noneOf(Axe.class), 50));
-		assertEquals(Axe.STEEL, AxePlanner.fallbackAxe(owned, EnumSet.of(Axe.RUNE), 50));
-		// Level too low for the rune axe.
-		assertEquals(Axe.STEEL, AxePlanner.fallbackAxe(owned, EnumSet.noneOf(Axe.class), 10));
-		assertNull(AxePlanner.fallbackAxe(owned, EnumSet.of(Axe.BRONZE, Axe.STEEL, Axe.RUNE), 50));
+		Map<Axe, Integer> prices = new EnumMap<>(Axe.class);
+		prices.put(Axe.MITHRIL, 1000);
+		long budget = AxePlanner.coinBudget(1000);
+		assertNull(AxePlanner.chooseToBuy(AxeChoice.AUTO, 25, 1000, prices, NONE));
+		assertNull(AxePlanner.chooseToBuy(AxeChoice.AUTO, 25, budget - 1, prices, NONE));
+		assertEquals(Axe.MITHRIL, AxePlanner.chooseToBuy(AxeChoice.AUTO, 25, budget, prices, NONE));
+		AxePlanner.BuyDecision broke = AxePlanner.decideBuy(AxeChoice.AUTO, 25, Axe.BRONZE, 1000, 0, true, prices, NONE);
+		assertEquals(AxePlanner.BuyStep.NONE, broke.step);
+	}
+
+	@Test
+	public void abandonedAxeIsNeverChosenAgainEvenWhenACheaperOneIsAffordable()
+	{
+		Map<Axe, Integer> prices = new EnumMap<>(Axe.class);
+		prices.put(Axe.MITHRIL, 1000);
+		prices.put(Axe.ADAMANT, 5000);
+		// A specific, unaffordable Adamant choice falls back to the cheaper Mithril ...
+		assertEquals(Axe.MITHRIL, AxePlanner.chooseToBuy(AxeChoice.ADAMANT, 35, 2000, prices, NONE));
+		AxePlanner.BuyDecision first = AxePlanner.decideBuy(AxeChoice.ADAMANT, 35, Axe.BRONZE, 2000, 0, true, prices, NONE);
+		assertEquals(Axe.MITHRIL, first.axe);
+		// ... and once that buy is abandoned there is nothing left to buy.
+		Set<Axe> abandoned = EnumSet.of(Axe.MITHRIL);
+		assertNull(AxePlanner.chooseToBuy(AxeChoice.ADAMANT, 35, 2000, prices, abandoned));
+		AxePlanner.BuyDecision again = AxePlanner.decideBuy(AxeChoice.ADAMANT, 35, Axe.BRONZE, 2000, 0, true, prices, abandoned);
+		assertEquals(AxePlanner.BuyStep.NONE, again.step);
 	}
 }
