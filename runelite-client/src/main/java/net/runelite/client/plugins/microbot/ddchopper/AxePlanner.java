@@ -127,6 +127,15 @@ public final class AxePlanner
 		return Math.max(0, Math.min(coinBudget(price) - inventoryCoins, bankCoins));
 	}
 
+	/** Coin withdrawals for one purchase before it is abandoned: guards against a purchase that never progresses. */
+	public static final int MAX_WITHDRAW_ATTEMPTS = 3;
+
+	/** True once {@code withdrawAttempts} withdrawals still have not produced a full budget. */
+	public static boolean shouldAbandonBuy(int withdrawAttempts)
+	{
+		return withdrawAttempts >= MAX_WITHDRAW_ATTEMPTS;
+	}
+
 	public enum BuyStep
 	{
 		/** Coins on hand do not cover it and the bank has not been scanned: open a bank first. */

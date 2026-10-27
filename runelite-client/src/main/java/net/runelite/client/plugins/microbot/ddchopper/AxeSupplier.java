@@ -62,6 +62,10 @@ final class AxeSupplier
 	private boolean bankChecked;
 	private boolean depositLeftover;
 	private int buyAttemptLevel = -1;
+	/** Withdrawals made for the axe being bought that have not yet produced a full budget. */
+	private int withdrawAttempts;
+	/** Axes given up on for this run after repeated failed coin withdrawals. */
+	private final Set<Axe> abandoned = EnumSet.noneOf(Axe.class);
 	private volatile Axe currentAxe;
 
 	AxeSupplier(DDChopperConfig config, Consumer<String> status)
@@ -87,7 +91,8 @@ final class AxeSupplier
 		Axe target = AxePlanner.chooseOwned(config.axe(), owned, level);
 		Axe desired = config.axe().axe() != null ? config.axe().axe() : AxePlanner.bestUnlocked(level, false);
 		boolean wantBuy = config.buyAxe() && desired != null && desired.isBuyable() && desired.canChop(level)
-			&& (target == null || target.ordinal() < desired.ordinal()) && buyAttemptLevel != level;
+			&& (target == null || target.ordinal() < desired.ordinal()) && buyAttemptLevel != level
+			&& !abandoned.contains(desired);
 
 		if (!bankChecked && (target == null || wantBuy))
 		{
@@ -113,11 +118,11 @@ final class AxeSupplier
 		{
 			return;
 		}
-		long coins = Rs2Inventory.count(COINS);
+		long coins = Rs2Inventory.itemQuantity(COINS);
 		if (coins > 0)
 		{
 			Rs2Bank.depositAll(COINS);
-			sleepUntil(() -> Rs2Inventory.count(COINS) == 0, ACTION_TIMEOUT_MS);
+			sleepUntil(() -> Rs2Inventory.itemQuantity(COINS) == 0, ACTION_TIMEOUT_MS);
 		}
 		Microbot.log("DD Chopper: deposited " + coins + " leftover coins");
 		depositLeftover = false;
@@ -204,7 +209,7 @@ final class AxeSupplier
 
 	private void tryBuy(int level, Axe owned)
 	{
-		long inventoryCoins = Rs2Inventory.count(COINS);
+		long inventoryCoins = Rs2Inventory.itemQuantity(COINS);
 		long bankCoins = Rs2Bank.count(COINS);
 		fillPrices(level, owned);
 		AxePlanner.BuyDecision decision = AxePlanner.decideBuy(config.axe(), level, owned, inventoryCoins, bankCoins,
@@ -249,11 +254,18 @@ final class AxeSupplier
 	{
 		status.accept("Buying " + axe.getItemName());
 		long budget = AxePlanner.coinBudget(price);
-		if (Rs2Inventory.count(COINS) < budget)
+		if (Rs2Inventory.itemQuantity(COINS) < budget)
 		{
+			if (AxePlanner.shouldAbandonBuy(withdrawAttempts))
+			{
+				abandonBuy(axe);
+				return;
+			}
+			withdrawAttempts++;
 			withdrawCoins(axe, price, budget);
 			return;
 		}
+		withdrawAttempts = 0;
 		if (!Rs2GrandExchange.isOpen())
 		{
 			Rs2GrandExchange.walkToGrandExchange();
@@ -275,20 +287,30 @@ final class AxeSupplier
 		Microbot.log("DD Chopper: bought " + axe.getItemName() + " (offer " + price + " gp), leftover coins go back to the bank");
 	}
 
+	/** Stops buying this axe for the rest of the run; any coins already withdrawn go back to the bank. */
+	private void abandonBuy(Axe axe)
+	{
+		Microbot.log("DD Chopper: coins withdrawn " + withdrawAttempts + " times for " + axe.getItemName()
+			+ " never reached the budget, giving up on buying it and carrying on with the current axe");
+		abandoned.add(axe);
+		withdrawAttempts = 0;
+		depositLeftover = true;
+	}
+
 	private void withdrawCoins(Axe axe, int price, long budget)
 	{
 		if (!BankTrip.walkToAndOpen())
 		{
 			return;
 		}
-		long have = Rs2Inventory.count(COINS);
+		long have = Rs2Inventory.itemQuantity(COINS);
 		long take = AxePlanner.coinsToWithdraw(price, have, Rs2Bank.count(COINS));
 		Microbot.log("DD Chopper: withdrawing " + take + " coins for " + axe.getItemName() + " (price " + price
 			+ ", budget " + budget + ", had " + have + ")");
 		if (take > 0)
 		{
 			Rs2Bank.withdrawX(COINS, (int) take);
-			sleepUntil(() -> Rs2Inventory.count(COINS) >= Math.min(budget, have + take), ACTION_TIMEOUT_MS);
+			sleepUntil(() -> Rs2Inventory.itemQuantity(COINS) >= Math.min(budget, have + take), ACTION_TIMEOUT_MS);
 		}
 		Rs2Bank.closeBank();
 	}

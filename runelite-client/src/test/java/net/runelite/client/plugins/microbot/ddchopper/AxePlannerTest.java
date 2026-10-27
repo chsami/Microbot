@@ -96,4 +96,12 @@ public class AxePlannerTest
 		assertTrue(AxePlanner.upgradeUnlocked(Axe.DRAGON, 71, true));
 		assertTrue(AxePlanner.upgradeUnlocked(null, 1, false));
 	}
+
+	@Test
+	public void abandonsBuyAfterRepeatedFailedWithdrawals()
+	{
+		org.junit.Assert.assertFalse(AxePlanner.shouldAbandonBuy(0));
+		org.junit.Assert.assertFalse(AxePlanner.shouldAbandonBuy(AxePlanner.MAX_WITHDRAW_ATTEMPTS - 1));
+		org.junit.Assert.assertTrue(AxePlanner.shouldAbandonBuy(AxePlanner.MAX_WITHDRAW_ATTEMPTS));
+	}
 }
