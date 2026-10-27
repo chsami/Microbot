@@ -303,7 +303,7 @@ public class DDChopperPanel extends PluginPanel
 
 	private String reasonFor(RuntimeStatus.State state)
 	{
-		return state == RuntimeStatus.State.RUNNING ? "" : script.getBlockReason();
+		return state == RuntimeStatus.State.RUNNING ? script.getNotice() : script.getBlockReason();
 	}
 
 	private static String wrap(String text)

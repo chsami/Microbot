@@ -11,7 +11,13 @@ import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 final class BankTrip
 {
 	private final AxePlanner.Attempts failures = new AxePlanner.Attempts();
+	private final Runnable onUnavailable;
 	private boolean unavailable;
+
+	BankTrip(Runnable onUnavailable)
+	{
+		this.onUnavailable = onUnavailable;
+	}
 
 	/** Blocks while walking to the nearest bank and opening it if needed; true once the bank interface is open. */
 	boolean walkToAndOpen()
@@ -33,6 +39,7 @@ final class BankTrip
 		{
 			unavailable = true;
 			Microbot.log("DD Chopper: the bank will not open, no longer using it");
+			onUnavailable.run();
 		}
 		return false;
 	}

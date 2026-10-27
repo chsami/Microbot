@@ -4,6 +4,7 @@ import net.runelite.api.Skill;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
+import net.runelite.client.plugins.microbot.util.grandexchange.GrandExchangeSlots;
 import net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
@@ -16,6 +17,7 @@ import java.util.function.Consumer;
 
 import static net.runelite.client.plugins.microbot.ddchopper.ScriptTimings.ACTION_TIMEOUT_MS;
 import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
+import static net.runelite.client.plugins.microbot.util.Global.sleepUntilNotNull;
 import static net.runelite.client.plugins.microbot.util.Global.sleepUntilTrue;
 
 /**
@@ -310,14 +312,22 @@ final class AxeSupplier
 			abandonBuy(axe, "the offer could not be placed", level);
 			return;
 		}
-		sleepUntilTrue(Rs2GrandExchange::hasFinishedBuyingOffers, OFFER_POLL_MS, OFFER_TIMEOUT_MS);
-		Rs2GrandExchange.collectAllToInventory();
-		boolean bought = sleepUntil(() -> Rs2Inventory.hasItem(axe.getItemId()), ACTION_TIMEOUT_MS);
-		if (!bought)
+		GrandExchangeSlots slot = sleepUntilNotNull(() -> OwnOffer.find(axe.getItemId()), ACTION_TIMEOUT_MS);
+		if (slot == null)
 		{
-			// Cancel the unfilled offer so the coins come back instead of staying locked in the exchange.
-			Rs2GrandExchange.abortOffer(axe.getItemName(), false);
+			Rs2GrandExchange.closeExchange();
+			abandonBuy(axe, "the offer could not be found", level);
+			return;
 		}
+		sleepUntilTrue(() -> !OwnOffer.isBuying(slot), OFFER_POLL_MS, OFFER_TIMEOUT_MS);
+		if (OwnOffer.isBuying(slot))
+		{
+			// Cancel only our own unfilled offer; the coins reach the collection box once the server applies it.
+			OwnOffer.abort(slot);
+			sleepUntil(() -> !OwnOffer.isBuying(slot), ACTION_TIMEOUT_MS);
+		}
+		Rs2GrandExchange.collectOffer(slot, false);
+		boolean bought = sleepUntil(() -> Rs2Inventory.hasItem(axe.getItemId()), ACTION_TIMEOUT_MS);
 		Rs2GrandExchange.closeExchange();
 		bankChecked = false;
 		depositLeftover = true;

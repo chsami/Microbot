@@ -49,6 +49,8 @@ public class DDChopperScript extends Script
 	private volatile boolean paused;
 	private volatile boolean running;
 	private volatile String blockReason = "";
+	/** A problem the script works around while it keeps running, shown next to RUNNING in the panel. */
+	private volatile String notice = "";
 
 	// Run state.
 	private volatile long activeMillis;
@@ -82,7 +84,7 @@ public class DDChopperScript extends Script
 		Rs2Walker.disableTeleports = true;
 		walkerOverrides.apply();
 		pacing = new HumanPacing(new Random(), config.humanizedTiming(), config.humanizedFatigue(), config.idlePauseChance());
-		BankTrip bank = new BankTrip();
+		BankTrip bank = new BankTrip(() -> notice = "Bank unavailable - dropping logs");
 		axes = new AxeSupplier(config, this::setStatus, bank);
 		crowd = new CrowdHopper(config, this::setStatus);
 		logs = new LogHandler(config, pacing, this::setStatus, this::isRunning, bank);
@@ -93,6 +95,7 @@ public class DDChopperScript extends Script
 		running = true;
 		paused = false;
 		blockReason = "";
+		notice = "";
 		mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(this::loop, 0, TICK_MS, TimeUnit.MILLISECONDS);
 		return true;
 	}
@@ -377,6 +380,11 @@ public class DDChopperScript extends Script
 		return finished ? status : blockReason;
 	}
 
+	public String getNotice()
+	{
+		return notice;
+	}
+
 	public RuntimeStatus.State getRunState()
 	{
 		return RuntimeStatus.state(running && !finished, paused, config != null && config.enableBreaks() && BreakHandlerScript.isBreakActive());
@@ -385,7 +393,7 @@ public class DDChopperScript extends Script
 	public String getRunStatusLine()
 	{
 		RuntimeStatus.State state = getRunState();
-		String reason = state == RuntimeStatus.State.STOPPED && finished ? status : (state == RuntimeStatus.State.RUNNING ? "" : blockReason);
+		String reason = state == RuntimeStatus.State.STOPPED && finished ? status : (state == RuntimeStatus.State.RUNNING ? notice : blockReason);
 		return RuntimeStatus.describe(state, reason);
 	}
 
