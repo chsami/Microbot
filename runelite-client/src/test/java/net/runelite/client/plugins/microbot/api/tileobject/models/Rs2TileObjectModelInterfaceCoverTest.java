@@ -18,6 +18,7 @@ import net.runelite.client.callback.ClientThread;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
 import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
+import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import org.junit.After;
 import org.junit.Before;
@@ -32,6 +33,7 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 
 public class Rs2TileObjectModelInterfaceCoverTest {
@@ -140,6 +142,41 @@ public class Rs2TileObjectModelInterfaceCoverTest {
 
         camera.verify(() -> Rs2Camera.turnTo(any(TileObject.class)));
         microbot.verify(() -> Microbot.doInvoke(any(NewMenuEntry.class), any(Rectangle.class)), never());
+    }
+
+    @Test
+    public void turnsTheCameraOnlyOnceWhenTheTileWasOffScreen() {
+        clickbox.set(new Rectangle(100, 650, 60, 40));
+        camera.when(() -> Rs2Camera.isTileOnScreen(any(LocalPoint.class))).thenReturn(false);
+
+        assertFalse(new Rs2TileObjectModel(object).click("Climb-down"));
+
+        camera.verify(() -> Rs2Camera.turnTo(any(TileObject.class)), times(1));
+        microbot.verify(() -> Microbot.doInvoke(any(NewMenuEntry.class), any(Rectangle.class)), never());
+    }
+
+    @Test
+    public void aClickboxOverTheTopLeftCornerIsClickedAsARealArea() {
+        clickbox.set(new Rectangle(-50, -40, 200, 200));
+
+        assertTrue(new Rs2TileObjectModel(object).click("Climb-down"));
+
+        Rectangle area = clickedArea();
+        assertEquals(new Rectangle(2, 2, 148, 158), area);
+        assertFalse(Rs2UiHelper.isFallbackRectangle(area));
+    }
+
+    @Test
+    public void theCoveredWarningIsRateLimitedPerObject() {
+        long start = 1_000_000L;
+
+        assertTrue(Rs2TileObjectModel.shouldWarnCovered(-77, start));
+        assertFalse(Rs2TileObjectModel.shouldWarnCovered(-77, start + 1_000));
+        assertTrue(Rs2TileObjectModel.shouldWarnCovered(-78, start + 2_000));
+        assertTrue(Rs2TileObjectModel.shouldWarnCovered(-77, start + 3_000));
+        assertFalse(Rs2TileObjectModel.shouldWarnCovered(-77, start + 4_000));
+        assertTrue(Rs2TileObjectModel.shouldWarnCovered(-77,
+                start + 3_000 + Rs2TileObjectModel.COVERED_WARN_INTERVAL_MS));
     }
 
     @Test

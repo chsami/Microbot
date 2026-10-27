@@ -647,17 +647,19 @@ public class Rs2TileObjectModel implements TileObject, IEntity {
                 menuAction = MenuAction.GAME_OBJECT_FIFTH_OPTION;
             }
 
+            boolean turned = false;
             if (!Rs2Camera.isTileOnScreen(getLocalLocation())) {
                 Rs2Camera.turnTo(tileObject);
+                turned = true;
             }
 
             Rectangle clickArea = clearClickArea();
-            if (clickArea == null) {
+            if (clickArea == null && !turned) {
                 Rs2Camera.turnTo(tileObject);
                 clickArea = clearClickArea();
             }
             if (clickArea == null) {
-                log.warn("Failed to interact with object {} - no part of it is clear of the interface", getId());
+                warnCoveredByInterface(objName);
                 return false;
             }
 
@@ -691,6 +693,33 @@ public class Rs2TileObjectModel implements TileObject, IEntity {
         }
         return Rs2UiHelper.clearOfInterfaces(clickbox, Rs2UiHelper.sceneViewportBounds(),
                 Rs2UiHelper.visibleSceneOverlayBounds());
+    }
+
+    static final long COVERED_WARN_INTERVAL_MS = 10_000;
+    private static int lastCoveredWarnId = -1;
+    private static long lastCoveredWarnAt;
+
+    static synchronized boolean shouldWarnCovered(int objectId, long now) {
+        if (objectId == lastCoveredWarnId && now - lastCoveredWarnAt < COVERED_WARN_INTERVAL_MS) {
+            return false;
+        }
+        lastCoveredWarnId = objectId;
+        lastCoveredWarnAt = now;
+        return true;
+    }
+
+    private void warnCoveredByInterface(String objName) {
+        String name = objName == null || objName.isEmpty() ? getName() : Rs2UiHelper.stripColTags(objName);
+        if (name == null || name.isEmpty() || "null".equalsIgnoreCase(name)) {
+            name = "object " + getId();
+        }
+        String message = "Can't click {} - it is behind the chatbox, side panel or minimap even after turning the camera."
+                + " If this keeps happening, zoom out or move the camera so it is in view.";
+        if (shouldWarnCovered(getId(), System.currentTimeMillis())) {
+            log.warn(message, name);
+        } else {
+            log.debug(message, name);
+        }
     }
 
 }

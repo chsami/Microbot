@@ -120,11 +120,26 @@ public class Rs2UiHelper {
         }
         Rectangle largest = null;
         for (Rectangle area : clear) {
-            if (largest == null || (long) area.width * area.height > (long) largest.width * largest.height) {
-                largest = area;
+            Rectangle candidate = awayFromFallbackOrigin(area);
+            if (candidate == null) {
+                continue;
+            }
+            if (largest == null || (long) candidate.width * candidate.height > (long) largest.width * largest.height) {
+                largest = candidate;
             }
         }
         return largest;
+    }
+
+    static final int FALLBACK_ORIGIN_INSET_PX = 2;
+
+    private static Rectangle awayFromFallbackOrigin(Rectangle area) {
+        if (!isFallbackRectangle(area)) {
+            return area;
+        }
+        Rectangle moved = new Rectangle(FALLBACK_ORIGIN_INSET_PX, FALLBACK_ORIGIN_INSET_PX,
+                area.x + area.width - FALLBACK_ORIGIN_INSET_PX, area.y + area.height - FALLBACK_ORIGIN_INSET_PX);
+        return moved.isEmpty() ? null : moved;
     }
 
     private static void addIfNotEmpty(List<Rectangle> areas, Rectangle area) {

@@ -69,6 +69,19 @@ public class Rs2UiHelperInterfaceClearanceTest {
     }
 
     @Test
+    public void aClickboxOverTheTopLeftCornerIsNotMistakenForTheFallbackRectangle() {
+        Rectangle object = new Rectangle(-50, -40, 200, 200);
+
+        Rectangle clear = Rs2UiHelper.clearOfInterfaces(object, VIEWPORT, INTERFACES);
+
+        assertEquals(new Rectangle(2, 2, 148, 158), clear);
+        assertFalse(Rs2UiHelper.isFallbackRectangle(clear));
+        assertNull(Rs2UiHelper.clearOfInterfaces(new Rectangle(-10, -10, 11, 11), VIEWPORT, INTERFACES));
+        assertEquals(new Rectangle(0, 50, 30, 40),
+                Rs2UiHelper.clearOfInterfaces(new Rectangle(-10, 50, 40, 40), VIEWPORT, INTERFACES));
+    }
+
+    @Test
     public void missingInputsAreHandled() {
         Rectangle stairs = new Rectangle(600, 300, 80, 60);
 
