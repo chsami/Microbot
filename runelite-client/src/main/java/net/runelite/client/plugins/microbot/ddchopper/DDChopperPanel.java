@@ -16,10 +16,12 @@ import javax.swing.JPanel;
 import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingUtilities;
+import javax.swing.border.TitledBorder;
 import javax.swing.Timer;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.GridLayout;
 import java.util.ArrayList;
 import java.util.List;
@@ -38,6 +40,11 @@ public class DDChopperPanel extends PluginPanel
 	private static final Color BLUE = new Color(0x4FA3E0);
 	private static final Color ORANGE = new Color(0xE0903A);
 	private static final Color RED = new Color(0xE05050);
+
+	private static final int REFRESH_MS = 1000;
+	/** Width of wrapped hint text, sized to the sidebar. */
+	private static final int WRAP_WIDTH_PX = 170;
+	private static final int LABEL_WIDTH = 70;
 
 	private final ConfigManager configManager;
 	private final DDChopperConfig config;
@@ -92,7 +99,7 @@ public class DDChopperPanel extends PluginPanel
 		body.add(foot);
 		add(body, BorderLayout.NORTH);
 
-		refresh = new Timer(1000, e -> refreshAll());
+		refresh = new Timer(REFRESH_MS, e -> refreshAll());
 		refresh.start();
 		refreshAll();
 	}
@@ -113,7 +120,7 @@ public class DDChopperPanel extends PluginPanel
 		JPanel p = box(null);
 		JLabel title = new JLabel("DD Chopper");
 		title.setForeground(GREEN);
-		title.setFont(title.getFont().deriveFont(java.awt.Font.BOLD, 16f));
+		title.setFont(title.getFont().deriveFont(Font.BOLD, 16f));
 		JLabel sub = new JLabel("<html>Auto woodcutting: best axe, best tree, human timing.</html>");
 		sub.setForeground(Color.LIGHT_GRAY);
 		p.add(title);
@@ -125,7 +132,7 @@ public class DDChopperPanel extends PluginPanel
 	{
 		JPanel p = box("Resource collection");
 
-		JComboBox<TreeChoice> tree = combo(TreeChoice.values(), "tree", () -> config.tree());
+		JComboBox<TreeChoice> tree = combo(TreeChoice.values(), "tree", config::tree);
 		p.add(row("Tree", tree));
 
 		spotBox = new JComboBox<>();
@@ -162,8 +169,8 @@ public class DDChopperPanel extends PluginPanel
 		});
 		p.add(row("Spot", spotBox));
 
-		p.add(row("Axe", combo(AxeChoice.values(), "axe", () -> config.axe())));
-		p.add(row("Handling", combo(ChopMode.values(), "mode", () -> config.mode())));
+		p.add(row("Axe", combo(AxeChoice.values(), "axe", config::axe)));
+		p.add(row("Handling", combo(ChopMode.values(), "mode", config::mode)));
 		handlingHint = new JLabel();
 		p.add(handlingHint);
 		return p;
@@ -172,12 +179,12 @@ public class DDChopperPanel extends PluginPanel
 	private JComponent goalSection()
 	{
 		JPanel p = box("Goal");
-		p.add(row("Goal", combo(GoalType.values(), "goalType", () -> config.goalType())));
-		targetLevel = spinner("targetLevel", 2, 99, () -> config.targetLevel());
+		p.add(row("Goal", combo(GoalType.values(), "goalType", config::goalType)));
+		targetLevel = spinner("targetLevel", 2, 99, config::targetLevel);
 		p.add(row("Target level", targetLevel));
-		runHours = spinner("runHours", 0, 99, () -> config.runHours());
+		runHours = spinner("runHours", 0, 99, config::runHours);
 		p.add(row("Run hours", runHours));
-		runMinutes = spinner("runMinutes", 0, 59, () -> config.runMinutes());
+		runMinutes = spinner("runMinutes", 0, 59, config::runMinutes);
 		p.add(row("Run minutes", runMinutes));
 		return p;
 	}
@@ -185,26 +192,26 @@ public class DDChopperPanel extends PluginPanel
 	private JComponent displaySection()
 	{
 		JPanel p = box("Display");
-		p.add(check("Show in-game overlay", "showOverlay", () -> config.showOverlay()));
+		p.add(check("Show in-game overlay", "showOverlay", config::showOverlay));
 		return p;
 	}
 
 	private JComponent forestrySection()
 	{
 		JPanel p = box("Forestry");
-		p.add(check("Enable Forestry events", "forestryEnabled", () -> config.forestryEnabled()));
-		p.add(check("Rising Roots", "forestryRoots", () -> config.forestryRoots()));
-		p.add(check("Struggling Sapling", "forestrySapling", () -> config.forestrySapling()));
-		p.add(check("Friendly Entlings", "forestryEntlings", () -> config.forestryEntlings()));
-		p.add(check("Beehives", "forestryBeehives", () -> config.forestryBeehives()));
-		p.add(check("Pheasant Control", "forestryPheasant", () -> config.forestryPheasant()));
-		p.add(check("Poachers / Fox", "forestryPoachers", () -> config.forestryPoachers()));
-		p.add(check("Enchantment Ritual", "forestryRitual", () -> config.forestryRitual()));
-		p.add(check("Woodcutting Leprechaun", "forestryLeprechaun", () -> config.forestryLeprechaun()));
-		p.add(check("Flowering Tree", "forestryFlowering", () -> config.forestryFlowering()));
+		p.add(check("Enable Forestry events", "forestryEnabled", config::forestryEnabled));
+		p.add(check("Rising Roots", "forestryRoots", config::forestryRoots));
+		p.add(check("Struggling Sapling", "forestrySapling", config::forestrySapling));
+		p.add(check("Friendly Entlings", "forestryEntlings", config::forestryEntlings));
+		p.add(check("Beehives", "forestryBeehives", config::forestryBeehives));
+		p.add(check("Pheasant Control", "forestryPheasant", config::forestryPheasant));
+		p.add(check("Poachers / Fox", "forestryPoachers", config::forestryPoachers));
+		p.add(check("Enchantment Ritual", "forestryRitual", config::forestryRitual));
+		p.add(check("Woodcutting Leprechaun", "forestryLeprechaun", config::forestryLeprechaun));
+		p.add(check("Flowering Tree", "forestryFlowering", config::forestryFlowering));
 		p.add(Box.createVerticalStrut(4));
-		p.add(check("Prefer busy world for events", "forestryBusyWorld", () -> config.forestryBusyWorld()));
-		p.add(row("Min players at spot", spinner("forestryMinPlayers", 1, 50, () -> config.forestryMinPlayers())));
+		p.add(check("Prefer busy world for events", "forestryBusyWorld", config::forestryBusyWorld));
+		p.add(row("Min players at spot", spinner("forestryMinPlayers", 1, 50, config::forestryMinPlayers)));
 		forestryNote = new JLabel();
 		forestryNote.setForeground(RED);
 		p.add(forestryNote);
@@ -291,7 +298,7 @@ public class DDChopperPanel extends PluginPanel
 
 	private static String wrap(String text)
 	{
-		return text == null || text.isEmpty() ? "" : "<html><div style='width:170px'>" + text + "</div></html>";
+		return text == null || text.isEmpty() ? "" : "<html><div style='width:" + WRAP_WIDTH_PX + "px'>" + text + "</div></html>";
 	}
 
 	// ---------------------------------------------------------------------------------------------
@@ -400,7 +407,7 @@ public class DDChopperPanel extends PluginPanel
 		p.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		p.setBorder(title == null ? BorderFactory.createEmptyBorder(6, 6, 6, 6) : BorderFactory.createCompoundBorder(
 			BorderFactory.createTitledBorder(BorderFactory.createLineBorder(ColorScheme.MEDIUM_GRAY_COLOR), title,
-				javax.swing.border.TitledBorder.LEFT, javax.swing.border.TitledBorder.TOP, null, GREEN),
+				TitledBorder.LEFT, TitledBorder.TOP, null, GREEN),
 			BorderFactory.createEmptyBorder(4, 6, 6, 6)));
 		return p;
 	}
@@ -411,7 +418,7 @@ public class DDChopperPanel extends PluginPanel
 		r.setOpaque(false);
 		JLabel l = new JLabel(label);
 		l.setForeground(Color.WHITE);
-		l.setPreferredSize(new Dimension(70, 20));
+		l.setPreferredSize(new Dimension(LABEL_WIDTH, 20));
 		r.add(l, BorderLayout.WEST);
 		r.add(field, BorderLayout.CENTER);
 		r.setMaximumSize(new Dimension(Integer.MAX_VALUE, 28));
