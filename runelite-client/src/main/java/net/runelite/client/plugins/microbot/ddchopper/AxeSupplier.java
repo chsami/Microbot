@@ -62,10 +62,13 @@ final class AxeSupplier
 	private boolean bankChecked;
 	private boolean depositLeftover;
 	private int buyAttemptLevel = -1;
-	/** Withdrawals made for the axe being bought that have not yet produced a full budget. */
-	private int withdrawAttempts;
-	/** Axes given up on for this run after repeated failed coin withdrawals. */
+	private final AxePlanner.Attempts attempts = new AxePlanner.Attempts();
+	/** Axes given up on buying for this run (coins, bank or Grand Exchange kept failing). */
 	private final Set<Axe> abandoned = EnumSet.noneOf(Axe.class);
+	/** Owned axes that could not be taken out of the bank; the next best owned axe is used instead. */
+	private final Set<Axe> unusable = EnumSet.noneOf(Axe.class);
+	/** The bank would not open repeatedly: stop relying on it for the rest of the run. */
+	private boolean bankUnavailable;
 	private volatile Axe currentAxe;
 
 	AxeSupplier(DDChopperConfig config, Consumer<String> status)
@@ -111,11 +114,43 @@ final class AxeSupplier
 		return equip(target);
 	}
 
+	/** Opens the bank (blocking walk); after repeated failures banking is given up for the run. */
+	private boolean openBank()
+	{
+		if (bankUnavailable)
+		{
+			return false;
+		}
+		if (BankTrip.walkToAndOpen())
+		{
+			attempts.progress(AxePlanner.Step.OPEN_BANK);
+			return true;
+		}
+		if (!attempts.tryStep(AxePlanner.Step.OPEN_BANK))
+		{
+			bankUnavailable = true;
+			Microbot.log("DD Chopper: the bank will not open, no longer using it for axes");
+		}
+		return false;
+	}
+
+	/** Ends the buy for good this run: logs the fallback axe and sends leftover coins back to the bank. */
+	private void abandonBuy(Axe wanted, String reason, int level)
+	{
+		abandoned.add(wanted);
+		attempts.clear();
+		depositLeftover = true;
+		Axe using = AxePlanner.fallbackAxe(ownedAxes(), unusable, level);
+		Microbot.log("DD Chopper: can't get " + wanted.getItemName() + " (" + reason + "), using "
+			+ (using == null ? "no axe" : using.getItemName()));
+	}
+
 	private void depositLeftoverCoins()
 	{
 		status.accept("Banking leftover coins");
-		if (!BankTrip.walkToAndOpen())
+		if (!openBank())
 		{
+			depositLeftover = !bankUnavailable;
 			return;
 		}
 		long coins = Rs2Inventory.itemQuantity(COINS);
@@ -132,10 +167,14 @@ final class AxeSupplier
 	private void checkBank()
 	{
 		status.accept("Checking bank for axes");
-		if (BankTrip.walkToAndOpen())
+		if (openBank())
 		{
 			// Wait for the bank snapshot so the coin count below is not read from an empty cache.
 			sleepUntil(() -> !Rs2Bank.bankItems().isEmpty(), ACTION_TIMEOUT_MS);
+			bankChecked = true;
+		}
+		else if (bankUnavailable)
+		{
 			bankChecked = true;
 		}
 	}
@@ -146,7 +185,8 @@ final class AxeSupplier
 		for (Axe axe : Axe.values())
 		{
 			int id = axe.getItemId();
-			if (Rs2Equipment.isWearing(id) || Rs2Inventory.hasItem(id) || (bankChecked && Rs2Bank.hasItem(id)))
+			if (!unusable.contains(axe)
+				&& (Rs2Equipment.isWearing(id) || Rs2Inventory.hasItem(id) || (bankChecked && Rs2Bank.hasItem(id))))
 			{
 				owned.add(axe);
 			}
@@ -176,7 +216,18 @@ final class AxeSupplier
 		if (bankChecked && Rs2Bank.hasItem(id))
 		{
 			status.accept("Fetching " + target.getItemName());
-			if (BankTrip.walkToAndOpen())
+			if (!openBank())
+			{
+				if (bankUnavailable)
+				{
+					giveUpOn(target);
+				}
+			}
+			else if (!attempts.tryStep(AxePlanner.Step.FETCH_AXE))
+			{
+				giveUpOn(target);
+			}
+			else
 			{
 				if (target.canWield(attack))
 				{
@@ -190,11 +241,23 @@ final class AxeSupplier
 				Rs2Bank.closeBank();
 			}
 		}
-		else
+		else if (attempts.tryStep(AxePlanner.Step.RESCAN_BANK))
 		{
 			bankChecked = false;
 		}
+		else
+		{
+			giveUpOn(target);
+		}
 		return Result.WORKING;
+	}
+
+	/** An owned axe that cannot be taken out of the bank: ignore it so the next best owned axe is chosen. */
+	private void giveUpOn(Axe axe)
+	{
+		unusable.add(axe);
+		attempts.clear();
+		Microbot.log("DD Chopper: can't get " + axe.getItemName() + " (not retrievable from the bank), using the next best axe");
 	}
 
 	private Result ready(Axe axe)
@@ -224,6 +287,10 @@ final class AxeSupplier
 			buyAttemptLevel = level;
 			Microbot.log("DD Chopper: cannot afford a better axe at level " + level + " (coins " + inventoryCoins
 				+ " inventory + " + bankCoins + " bank, prices " + prices + ")");
+			if (owned != null)
+			{
+				Microbot.log("DD Chopper: can't get a better axe (not enough coins), using " + owned.getItemName());
+			}
 			return;
 		}
 		Microbot.log("DD Chopper: buying " + decision.axe.getItemName() + " for " + decision.price + " gp (coins "
@@ -256,18 +323,17 @@ final class AxeSupplier
 		long budget = AxePlanner.coinBudget(price);
 		if (Rs2Inventory.itemQuantity(COINS) < budget)
 		{
-			if (AxePlanner.shouldAbandonBuy(withdrawAttempts))
-			{
-				abandonBuy(axe);
-				return;
-			}
-			withdrawAttempts++;
-			withdrawCoins(axe, price, budget);
+			withdrawCoins(axe, price, budget, level);
 			return;
 		}
-		withdrawAttempts = 0;
+		attempts.progress(AxePlanner.Step.WITHDRAW_COINS);
 		if (!Rs2GrandExchange.isOpen())
 		{
+			if (!attempts.tryStep(AxePlanner.Step.OPEN_GRAND_EXCHANGE))
+			{
+				abandonBuy(axe, "the Grand Exchange will not open", level);
+				return;
+			}
 			Rs2GrandExchange.walkToGrandExchange();
 			Rs2GrandExchange.openExchange();
 			return;
@@ -275,8 +341,8 @@ final class AxeSupplier
 		buyAttemptLevel = level;
 		if (!Rs2GrandExchange.buyItem(axe.getItemName(), price, 1))
 		{
-			Microbot.log("DD Chopper: could not place the offer for " + axe.getItemName());
 			Rs2GrandExchange.closeExchange();
+			abandonBuy(axe, "the offer could not be placed", level);
 			return;
 		}
 		sleepUntilTrue(Rs2GrandExchange::hasFinishedBuyingOffers, OFFER_POLL_MS, OFFER_TIMEOUT_MS);
@@ -284,23 +350,30 @@ final class AxeSupplier
 		Rs2GrandExchange.closeExchange();
 		bankChecked = false;
 		depositLeftover = true;
-		Microbot.log("DD Chopper: bought " + axe.getItemName() + " (offer " + price + " gp), leftover coins go back to the bank");
-	}
-
-	/** Stops buying this axe for the rest of the run; any coins already withdrawn go back to the bank. */
-	private void abandonBuy(Axe axe)
-	{
-		Microbot.log("DD Chopper: coins withdrawn " + withdrawAttempts + " times for " + axe.getItemName()
-			+ " never reached the budget, giving up on buying it and carrying on with the current axe");
-		abandoned.add(axe);
-		withdrawAttempts = 0;
-		depositLeftover = true;
-	}
-
-	private void withdrawCoins(Axe axe, int price, long budget)
-	{
-		if (!BankTrip.walkToAndOpen())
+		attempts.clear();
+		if (Rs2Inventory.hasItem(axe.getItemId()))
 		{
+			Microbot.log("DD Chopper: bought " + axe.getItemName() + " (offer " + price + " gp), leftover coins go back to the bank");
+		}
+		else
+		{
+			abandonBuy(axe, "the offer did not fill in time", level);
+		}
+	}
+
+	private void withdrawCoins(Axe axe, int price, long budget, int level)
+	{
+		if (!openBank())
+		{
+			if (bankUnavailable)
+			{
+				abandonBuy(axe, "the bank will not open", level);
+			}
+			return;
+		}
+		if (!attempts.tryStep(AxePlanner.Step.WITHDRAW_COINS))
+		{
+			abandonBuy(axe, "withdrawing coins did not cover the price", level);
 			return;
 		}
 		long have = Rs2Inventory.itemQuantity(COINS);

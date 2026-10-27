@@ -98,10 +98,55 @@ public class AxePlannerTest
 	}
 
 	@Test
-	public void abandonsBuyAfterRepeatedFailedWithdrawals()
+	public void attemptsAreBoundedPerStep()
 	{
-		org.junit.Assert.assertFalse(AxePlanner.shouldAbandonBuy(0));
-		org.junit.Assert.assertFalse(AxePlanner.shouldAbandonBuy(AxePlanner.MAX_WITHDRAW_ATTEMPTS - 1));
-		org.junit.Assert.assertTrue(AxePlanner.shouldAbandonBuy(AxePlanner.MAX_WITHDRAW_ATTEMPTS));
+		AxePlanner.Attempts attempts = new AxePlanner.Attempts();
+		for (int i = 0; i < 3; i++)
+		{
+			assertTrue(attempts.tryStep(AxePlanner.Step.WITHDRAW_COINS));
+		}
+		assertFalse(attempts.tryStep(AxePlanner.Step.WITHDRAW_COINS));
+		// Another step has its own budget.
+		assertTrue(attempts.tryStep(AxePlanner.Step.FETCH_AXE));
+	}
+
+	@Test
+	public void progressAndClearRestoreTheBudget()
+	{
+		AxePlanner.Attempts attempts = new AxePlanner.Attempts();
+		for (int i = 0; i < 4; i++)
+		{
+			attempts.tryStep(AxePlanner.Step.WITHDRAW_COINS);
+		}
+		attempts.progress(AxePlanner.Step.WITHDRAW_COINS);
+		assertTrue(attempts.tryStep(AxePlanner.Step.WITHDRAW_COINS));
+		for (int i = 0; i < 4; i++)
+		{
+			attempts.tryStep(AxePlanner.Step.FETCH_AXE);
+		}
+		attempts.clear();
+		assertTrue(attempts.tryStep(AxePlanner.Step.FETCH_AXE));
+	}
+
+	@Test
+	public void walkingStepsGetMoreTriesThanBankActions()
+	{
+		AxePlanner.Attempts attempts = new AxePlanner.Attempts();
+		for (int i = 0; i < 10; i++)
+		{
+			assertTrue(attempts.tryStep(AxePlanner.Step.OPEN_BANK));
+		}
+		assertFalse(attempts.tryStep(AxePlanner.Step.OPEN_BANK));
+	}
+
+	@Test
+	public void fallbackPicksBestOwnedAxeNotGivenUpOn()
+	{
+		Set<Axe> owned = EnumSet.of(Axe.BRONZE, Axe.STEEL, Axe.RUNE);
+		assertEquals(Axe.RUNE, AxePlanner.fallbackAxe(owned, EnumSet.noneOf(Axe.class), 50));
+		assertEquals(Axe.STEEL, AxePlanner.fallbackAxe(owned, EnumSet.of(Axe.RUNE), 50));
+		// Level too low for the rune axe.
+		assertEquals(Axe.STEEL, AxePlanner.fallbackAxe(owned, EnumSet.noneOf(Axe.class), 10));
+		assertNull(AxePlanner.fallbackAxe(owned, EnumSet.of(Axe.BRONZE, Axe.STEEL, Axe.RUNE), 50));
 	}
 }

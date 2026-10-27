@@ -1,5 +1,7 @@
 package net.runelite.client.plugins.microbot.ddchopper;
 
+import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -127,13 +129,62 @@ public final class AxePlanner
 		return Math.max(0, Math.min(coinBudget(price) - inventoryCoins, bankCoins));
 	}
 
-	/** Coin withdrawals for one purchase before it is abandoned: guards against a purchase that never progresses. */
-	public static final int MAX_WITHDRAW_ATTEMPTS = 3;
-
-	/** True once {@code withdrawAttempts} withdrawals still have not produced a full budget. */
-	public static boolean shouldAbandonBuy(int withdrawAttempts)
+	/** The steps of acquiring an axe that repeat across ticks, each with how many tries it gets without progress. */
+	public enum Step
 	{
-		return withdrawAttempts >= MAX_WITHDRAW_ATTEMPTS;
+		/** Walking to a bank and opening it; high because the walk takes several ticks. */
+		OPEN_BANK(10),
+		/** Taking coins out of the bank for the purchase. */
+		WITHDRAW_COINS(3),
+		/** Walking to the Grand Exchange and opening it; high because the walk takes several ticks. */
+		OPEN_GRAND_EXCHANGE(10),
+		/** Taking an owned axe out of the bank. */
+		FETCH_AXE(3),
+		/** Re-reading the bank because an axe it listed was not there. */
+		RESCAN_BANK(3);
+
+		private final int limit;
+
+		Step(int limit)
+		{
+			this.limit = limit;
+		}
+	}
+
+	/**
+	 * Attempt tracker for one "acquire the desired axe" operation: every repeatable step is bounded, so a step that
+	 * keeps failing ends the operation (the caller then falls back to an axe it already has) instead of looping.
+	 */
+	public static final class Attempts
+	{
+		private final Map<Step, Integer> counts = new EnumMap<>(Step.class);
+
+		/** Records one try of {@code step}; true while within its limit, false once it is exhausted. */
+		public boolean tryStep(Step step)
+		{
+			return counts.merge(step, 1, Integer::sum) <= step.limit;
+		}
+
+		/** Forgets the tries of {@code step} after it made progress. */
+		public void progress(Step step)
+		{
+			counts.remove(step);
+		}
+
+		/** Forgets everything, when the operation ends. */
+		public void clear()
+		{
+			counts.clear();
+		}
+	}
+
+	/** The axe to fall back on: the best usable owned axe that has not been given up on. Null when none. */
+	public static Axe fallbackAxe(Set<Axe> owned, Set<Axe> unusable, int woodcuttingLevel)
+	{
+		Set<Axe> candidates = EnumSet.noneOf(Axe.class);
+		candidates.addAll(owned);
+		candidates.removeAll(unusable);
+		return bestOwnedUsable(candidates, woodcuttingLevel);
 	}
 
 	public enum BuyStep
