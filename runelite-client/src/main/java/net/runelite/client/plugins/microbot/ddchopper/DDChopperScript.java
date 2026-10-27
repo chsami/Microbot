@@ -84,7 +84,7 @@ public class DDChopperScript extends Script
 		Rs2Walker.disableTeleports = true;
 		walkerOverrides.apply();
 		pacing = new HumanPacing(new Random(), config.humanizedTiming(), config.humanizedFatigue(), config.idlePauseChance());
-		BankTrip bank = new BankTrip(() -> notice = "Bank unavailable - dropping logs");
+		BankTrip bank = new BankTrip(() -> notice = "Bank unavailable" + (config.mode() == ChopMode.BANK ? " - dropping logs" : ""));
 		axes = new AxeSupplier(config, this::setStatus, bank);
 		crowd = new CrowdHopper(config, this::setStatus);
 		logs = new LogHandler(config, pacing, this::setStatus, this::isRunning, bank);

@@ -37,6 +37,8 @@ final class AxeSupplier
 	}
 
 	private static final int COINS = 995;
+	/** How long the placed offer may take to show up in the client's offer list. */
+	private static final int OFFER_APPEAR_TIMEOUT_MS = 5_000;
 	private static final int OFFER_POLL_MS = 600;
 	private static final int OFFER_TIMEOUT_MS = 60_000;
 	/** Price margin over the GE guide price so the offer fills quickly. */
@@ -306,13 +308,15 @@ final class AxeSupplier
 			return;
 		}
 		buyAttemptLevel = level;
+		boolean[] emptyBefore = OwnOffer.emptySlots();
 		if (!Rs2GrandExchange.buyItem(axe.getItemName(), price, 1))
 		{
 			Rs2GrandExchange.closeExchange();
 			abandonBuy(axe, "the offer could not be placed", level);
 			return;
 		}
-		GrandExchangeSlots slot = sleepUntilNotNull(() -> OwnOffer.find(axe.getItemId()), ACTION_TIMEOUT_MS);
+		GrandExchangeSlots byItem = sleepUntilNotNull(() -> OwnOffer.find(emptyBefore, axe.getItemId()), OFFER_APPEAR_TIMEOUT_MS);
+		GrandExchangeSlots slot = byItem != null ? byItem : OwnOffer.findNewOffer(emptyBefore);
 		if (slot == null)
 		{
 			Rs2GrandExchange.closeExchange();

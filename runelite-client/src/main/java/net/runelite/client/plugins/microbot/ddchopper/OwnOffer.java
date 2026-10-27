@@ -14,11 +14,14 @@ import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import java.awt.Rectangle;
 
 /**
- * The Grand Exchange buy offer this script placed, addressed by slot. Rs2GrandExchange can only abort by item name,
- * which could cancel one of the player's own offers for the same item.
+ * The Grand Exchange buy offer this script placed, identified by the slot it filled. Rs2GrandExchange can only abort
+ * by item name, which could cancel one of the player's own offers for the same item.
  */
 final class OwnOffer
 {
+	/** Pass to {@link #pick} to accept any new offer regardless of its item. */
+	static final int NO_ITEM = -1;
+
 	/** Child of the offers interface holding slot ONE; the other slots follow in order. */
 	private static final int FIRST_SLOT_CHILD = 7;
 	private static final int ABORT_IDENTIFIER = 2;
@@ -28,24 +31,71 @@ final class OwnOffer
 	{
 	}
 
-	/** The slot with a buy offer for {@code itemId} (still buying, or already bought), or null. */
-	static GrandExchangeSlots find(int itemId)
+	/** Which slots are empty right now; take this before placing an offer so the new one can be told apart. */
+	static boolean[] emptySlots()
 	{
 		GrandExchangeOffer[] offers = Microbot.getClient().getGrandExchangeOffers();
-		for (GrandExchangeSlots slot : GrandExchangeSlots.values())
+		boolean[] empty = new boolean[offers.length];
+		for (int i = 0; i < offers.length; i++)
 		{
-			if (slot.ordinal() >= offers.length)
+			empty[i] = offers[i].getState() == GrandExchangeOfferState.EMPTY;
+		}
+		return empty;
+	}
+
+	/** The slot that was empty before and now buys (or bought) {@code itemId}, or null. */
+	static GrandExchangeSlots find(boolean[] emptyBefore, int itemId)
+	{
+		return slotAt(pickFromClient(emptyBefore, itemId));
+	}
+
+	/** Fallback: the slot that was empty before and now holds any offer, or null. */
+	static GrandExchangeSlots findNewOffer(boolean[] emptyBefore)
+	{
+		return slotAt(pickFromClient(emptyBefore, NO_ITEM));
+	}
+
+	/**
+	 * Pure pick of the new offer's slot index, or -1. Only slots that were empty before are considered, so an
+	 * existing offer is never touched. With an item id the offer must be buying or bought that item; with
+	 * {@link #NO_ITEM} any non-empty state qualifies.
+	 */
+	static int pick(boolean[] emptyBefore, GrandExchangeOfferState[] states, int[] itemIds, int itemId)
+	{
+		for (int i = 0; i < emptyBefore.length && i < states.length; i++)
+		{
+			if (!emptyBefore[i])
 			{
-				break;
+				continue;
 			}
-			GrandExchangeOffer offer = offers[slot.ordinal()];
-			boolean buy = offer.getState() == GrandExchangeOfferState.BUYING || offer.getState() == GrandExchangeOfferState.BOUGHT;
-			if (buy && offer.getItemId() == itemId)
+			GrandExchangeOfferState state = states[i];
+			boolean matches = itemId == NO_ITEM
+				? state != GrandExchangeOfferState.EMPTY
+				: (state == GrandExchangeOfferState.BUYING || state == GrandExchangeOfferState.BOUGHT) && itemIds[i] == itemId;
+			if (matches)
 			{
-				return slot;
+				return i;
 			}
 		}
-		return null;
+		return -1;
+	}
+
+	private static int pickFromClient(boolean[] emptyBefore, int itemId)
+	{
+		GrandExchangeOffer[] offers = Microbot.getClient().getGrandExchangeOffers();
+		GrandExchangeOfferState[] states = new GrandExchangeOfferState[offers.length];
+		int[] itemIds = new int[offers.length];
+		for (int i = 0; i < offers.length; i++)
+		{
+			states[i] = offers[i].getState();
+			itemIds[i] = offers[i].getItemId();
+		}
+		return pick(emptyBefore, states, itemIds, itemId);
+	}
+
+	private static GrandExchangeSlots slotAt(int index)
+	{
+		return index < 0 ? null : GrandExchangeSlots.values()[index];
 	}
 
 	static boolean isBuying(GrandExchangeSlots slot)
