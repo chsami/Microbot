@@ -54,6 +54,7 @@ import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import net.runelite.client.plugins.microbot.util.security.HopBudget;
 import net.runelite.client.plugins.microbot.util.security.LoginManager;
+import net.runelite.client.plugins.microbot.util.security.MembershipRecorder;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.ui.overlay.Overlay;
@@ -123,6 +124,8 @@ public class MicrobotPlugin extends Plugin
 
 	@Inject
 	private ScheduledExecutorService executor;
+
+	private final MembershipRecorder membershipRecorder = new MembershipRecorder(() -> this.eventBus.post(new MembershipRecorder.MembershipSaved()));
 
 	private MicrobotTopLevelConfigPanel topLevelConfigPanel;
 
@@ -413,6 +416,10 @@ public class MicrobotPlugin extends Plugin
 	   if (gameStateChanged.getGameState() == GameState.LOGIN_SCREEN || gameStateChanged.getGameState() == GameState.HOPPING)
 	   {
 		   hwidSpoofCheck.loginStarted();
+	   }
+	   if (gameStateChanged.getGameState() == GameState.LOGIN_SCREEN)
+	   {
+		   membershipRecorder.reset();
 	   }
 	   if (gameStateChanged.getGameState() == GameState.HOPPING || gameStateChanged.getGameState() == GameState.LOGIN_SCREEN || gameStateChanged.getGameState() == GameState.CONNECTION_LOST)
 	   {
@@ -759,6 +766,8 @@ public class MicrobotPlugin extends Plugin
 		{
 			scriptErrorReporter.rememberPlayerName(localPlayer.getName());
 		}
+
+		membershipRecorder.onGameTick(Microbot.getClient(), configManager, executor);
 	}
 
 	@Subscribe(priority = 100)

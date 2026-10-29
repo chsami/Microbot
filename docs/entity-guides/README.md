@@ -16,6 +16,8 @@ Each guide lists known pitfalls when working with one specific game entity type.
 
 Ground-item pickup: [propagate dispatch failures](items.md#11-propagate-ground-item-dispatch-failures) and [preserve explicit Take](items.md#12-preserve-an-explicit-ground-item-take-when-a-widget-is-selected).
 
+Membership reads as 0 until the server sends it: [world gotcha 3](worlds.md#3-membership-reads-as-0-until-the-server-sends-it).
+
 Run-orb energy, geometry, and pending-click semantics: [movement gotcha 21](movement.md#21-apply-the-shared-energy-policy-before-clicking-the-run-orb).
 
 Scene walk-click render validity and destination confirmation: [movement gotcha 22](movement.md#22-a-scene-walk-click-is-only-valid-on-a-tile-rendered-at-click-time).

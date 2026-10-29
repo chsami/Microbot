@@ -48,3 +48,13 @@ return Microbot.getClientThread().runOnClientThreadOptional(() -> {
 **Wrapped locations:** `Rs2Player.getRs2WorldPoint()` still returns an `Rs2WorldPoint`, but it can wrap a `null` `WorldPoint` in these states. `pathTo` returns `null` and `distanceToPath` returns `Integer.MAX_VALUE` for it; check `getWorldPoint() != null` before calling `getX()`, `getY()` or `getPlane()`, as in `Rs2WorldPointNullPointTest`.
 
 **Location consumers:** `Rs2Player.getWorldLocation()` itself returns `null` in these states. Guard it before passing it to `Rs2RouteRequest.to`/`toAny` (which reject a null start) or `WorldPoint.distanceTo`. `Rs2Bank.getNearestBank`, `getNearestBankRoute` and `getPathToNearestBank` return no bank, `isNearBank` and `walkToBank` return `false`, `BankLocation.MINING_GUILD.hasRequirements` returns `false`, `Rs2Walker.getDistanceBetween` returns `Integer.MAX_VALUE` for a null endpoint, as in `Rs2BankNullPlayerLocationTest`, and `Rs2Walker.proximityWaitSatisfied` returns `false` for a null location, so once the `processWalk` post-click wait reaches it (the player is still moving after 600 ms) it keeps waiting until its timeout, as in `Rs2WalkerProximityWaitTest`.
+
+## 3. Membership reads as 0 until the server sends it
+
+`VarPlayerID.ACCOUNT_CREDIT` (days of membership left) and `VarClientID.PLAYERMEMBER` (the member flag) both read 0 until the server sends them after login, which looks the same as a free-to-play account. A member can also have 0 credit days left, so read both.
+
+**Why this matters:** the profile's saved membership picks a members or free world before the next login. Saving a single reading taken when the game state turns `LOGGED_IN` can record a member as free-to-play.
+
+**Pattern to follow:** `MembershipRecorder` reads both values on each game tick once the local player exists and saves them again whenever they change, which also catches a bond redeemed during the session. Read the saved value through `MembershipRecorder.remainingDays`, which counts the days down from when they were saved.
+
+**Defensive check:** `MembershipRecorderTest` feeds a 0 reading before the real one and asserts that the later reading replaces it.
