@@ -102,6 +102,8 @@ The **Agent Server** plugin (port 8081, localhost) must be enabled for any CLI/H
 | `keyboard backspace` | Press Backspace |
 | `settings search <term>` | Open in-game settings and search |
 | `scripts results post --class <cls> --data <json>` | Submit test results |
+| `plugins install <name> [--version V]` | Download and load a Plugin Hub plugin |
+| `plugins remove <name>` | Unload and delete a Plugin Hub plugin |
 
 ### Debug (script introspection)
 

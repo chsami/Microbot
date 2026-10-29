@@ -21,6 +21,7 @@ import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.microbot.agentserver.handler.*;
+import net.runelite.client.plugins.microbot.externalplugins.MicrobotPluginManager;
 import net.runelite.client.ui.DrawManager;
 import net.runelite.client.util.ResetResistantAttachment;
 import org.slf4j.LoggerFactory;
@@ -66,6 +67,9 @@ public class AgentServerPlugin extends Plugin {
 
 	@Inject
 	private DrawManager drawManager;
+
+	@Inject
+	private MicrobotPluginManager microbotPluginManager;
 
 	private HttpServer server;
 	private net.runelite.client.plugins.microbot.agentserver.uds.UdsHttpServer udsServer;
@@ -198,7 +202,9 @@ public class AgentServerPlugin extends Plugin {
 				new ObserveHandler(gson, client),
 				new PathHandler(gson),
 				new VarChangesHandler(gson),
-				new TileHandler(gson)
+				new TileHandler(gson),
+				new PluginHubHandler(gson, microbotPluginManager, maxResults),
+				new GrandExchangeHandler(gson)
 		));
 		List<String> paths = new ArrayList<>();
 		for (AgentHandler handler : handlers) {

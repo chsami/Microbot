@@ -166,6 +166,11 @@ public class BankHandler extends AgentHandler {
 			return;
 		}
 
+		Boolean noted = getBooleanField(body, "noted");
+		if (noted != null) {
+			Rs2Bank.setWithdrawAs(noted);
+		}
+
 		boolean success;
 		int quantity = quantityNum != null ? quantityNum.intValue() : 1;
 

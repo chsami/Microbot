@@ -340,6 +340,25 @@ A typical workflow: a contributor unsure whether their script utility needs to w
 
 These endpoints are designed for the Microbot-Hub automated testing loop: the Hub spawns a client, logs in, starts a script, polls status, and collects results. See `docs/AGENT_SERVER.md` for the full HTTP API.
 
+### Plugin Hub
+
+```bash
+# Search the Plugin Hub
+./microbot-cli plugins --search miner
+
+# List plugins loaded in this client
+./microbot-cli plugins --installed
+
+# Install the latest version, or a given version; blocks until loaded
+./microbot-cli plugins install AutoMiner
+./microbot-cli plugins install "Auto Miner" --version 1.4.0
+
+# Unload and delete
+./microbot-cli plugins remove AutoMiner
+```
+
+An installed plugin is not started. Start it with `./microbot-cli scripts start --name <name>`.
+
 ## Response Format
 
 All responses are JSON. Successful queries return structured data:
