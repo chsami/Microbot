@@ -2,6 +2,8 @@ package net.runelite.client.plugins.microbot.util.security;
 
 import com.google.gson.Gson;
 import com.google.inject.Injector;
+import com.google.inject.Key;
+import com.google.inject.name.Names;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.Callable;
@@ -33,6 +35,7 @@ public class LoginManagerJagexAccountTest {
 
     private MockedStatic<Microbot> microbot;
     private Client client;
+    private Injector injector;
     private final ConfigManager configManager = mock(ConfigManager.class);
 
     @Before public void setUp() throws Exception {
@@ -61,7 +64,7 @@ public class LoginManagerJagexAccountTest {
         ScheduledExecutorService busySharedExecutor = mock(ScheduledExecutorService.class);
         JagexAuthService jagexAuthService = new JagexAuthService(
             client, clientThread, mock(JagexAuthClient.class), sessionStore, new Gson(), busySharedExecutor);
-        Injector injector = mock(Injector.class);
+        injector = mock(Injector.class);
         when(injector.getInstance(JagexAuthService.class)).thenReturn(jagexAuthService);
 
         microbot = mockStatic(Microbot.class);
@@ -105,6 +108,36 @@ public class LoginManagerJagexAccountTest {
         }
         verify(client).switchJagexAccount("launch-session", "7", "Jagex character");
         verify(client, never()).setUsername(any());
+    }
+
+    /** Launcher "Play With Jagex Account" on a profile whose name is not the character's: keep the launch character. */
+    @Test public void launchProfileKeepsTheLaunchCharacter() {
+        ConfigProfile profile = mock(ConfigProfile.class);
+        when(profile.getName()).thenReturn("Main#");
+        when(profile.getPassword()).thenReturn("stored");
+        when(configManager.getProfile()).thenReturn(profile);
+        when(injector.getInstance(Key.get(String.class, Names.named("profile")))).thenReturn("Main#");
+
+        try (var keyboard = mockStatic(Rs2Keyboard.class); var launch = mockStatic(JagexCredentials.class)) {
+            launch.when(JagexCredentials::fromLaunch).thenReturn(new JagexCredentials("launch-session", "7", "Jagex character"));
+            assertTrue(LoginManager.login("Main#", "", 301));
+        }
+        verify(client).switchJagexAccount("launch-session", "7", "Jagex character");
+        verify(client, never()).setUsername(any());
+    }
+
+    /** Switching in-client to a different, legacy profile still clears the launch character. */
+    @Test public void otherProfileThanTheLaunchOneStillLogsInLegacy() {
+        ConfigProfile profile = mock(ConfigProfile.class);
+        when(profile.getName()).thenReturn("legacy-user");
+        when(configManager.getProfile()).thenReturn(profile);
+        when(injector.getInstance(Key.get(String.class, Names.named("profile")))).thenReturn("Main#");
+
+        try (var keyboard = mockStatic(Rs2Keyboard.class)) {
+            assertTrue(LoginManager.login("legacy-user", "", 301));
+        }
+        verify(client).switchJagexAccount(null, null, null);
+        verify(client).setUsername("legacy-user");
     }
 
     @Test public void loginStopsWhenTheAccountSwitchDoesNotRun() {
