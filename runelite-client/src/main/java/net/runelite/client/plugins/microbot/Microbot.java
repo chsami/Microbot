@@ -949,8 +949,22 @@ public class Microbot {
      */
     public static void openPopUp(String title, String description) {
         getClientThread().invoke(() -> {
-            // Open a modal interface with the specified widget ID and modal mode
-            WidgetNode widgetNode = getClient().openInterface((161 << 16) | 13, 660, WidgetModalMode.MODAL_CLICKTHROUGH);
+            Client c = getClient();
+            if (c.getGameState() != GameState.LOGGED_IN) {
+                return;
+            }
+            int container = popUpContainer(c.getTopLevelInterfaceId());
+            if (container == -1 || c.getWidget(container) == null) {
+                return;
+            }
+
+            WidgetNode widgetNode;
+            try {
+                widgetNode = c.openInterface(container, InterfaceID.NOTIFICATION_DISPLAY, WidgetModalMode.MODAL_CLICKTHROUGH);
+            } catch (IllegalStateException ex) {
+                log.debug("Unable to open pop-up on component {}", container, ex);
+                return;
+            }
 
             // Run a client script to populate the interface with the title and description
             getClient().runScript(3343, title, description, -1);
@@ -967,6 +981,19 @@ public class Microbot {
                 return true;
             });
         });
+    }
+
+    static int popUpContainer(int topLevelInterfaceId) {
+        switch (topLevelInterfaceId) {
+            case InterfaceID.TOPLEVEL:
+                return InterfaceID.Toplevel.NOTIFICATIONS;
+            case InterfaceID.TOPLEVEL_OSRS_STRETCH:
+                return InterfaceID.ToplevelOsrsStretch.NOTIFICATIONS;
+            case InterfaceID.TOPLEVEL_PRE_EOC:
+                return InterfaceID.ToplevelPreEoc.NOTIFICATIONS;
+            default:
+                return -1;
+        }
     }
 
     public static boolean isPluginEnabled(Plugin plugin) {
