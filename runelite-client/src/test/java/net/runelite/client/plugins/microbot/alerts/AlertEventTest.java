@@ -135,4 +135,86 @@ public class AlertEventTest
 		assertTrue(json.get("plugin").isJsonNull());
 		assertTrue(json.get("message").isJsonNull());
 	}
+
+	@Test
+	public void availableScriptsAreSentSortedByNameWithTheirClassName()
+	{
+		JsonObject json = AlertEvent.builder()
+			.type(AlertEvent.HEARTBEAT)
+			.availableScripts(List.of(
+				new AlertEvent.AvailableScript("net.runelite.client.plugins.microbot.woodcutting.AutoWoodcuttingPlugin", "Woodcutter"),
+				new AlertEvent.AvailableScript("net.runelite.client.plugins.microbot.fishing.AutoFishingPlugin", "auto fisher"),
+				new AlertEvent.AvailableScript("net.runelite.client.plugins.microbot.agility.MicroAgilityPlugin$Inner", "Agility")))
+			.build()
+			.toJson(SESSION);
+
+		JsonArray available = json.getAsJsonArray("availableScripts");
+		assertEquals(3, available.size());
+		assertEquals("Agility", available.get(0).getAsJsonObject().get("name").getAsString());
+		assertEquals("net.runelite.client.plugins.microbot.agility.MicroAgilityPlugin$Inner", available.get(0).getAsJsonObject().get("id").getAsString());
+		assertEquals("auto fisher", available.get(1).getAsJsonObject().get("name").getAsString());
+		assertEquals("net.runelite.client.plugins.microbot.fishing.AutoFishingPlugin", available.get(1).getAsJsonObject().get("id").getAsString());
+		assertEquals("Woodcutter", available.get(2).getAsJsonObject().get("name").getAsString());
+		assertEquals(2, available.get(0).getAsJsonObject().size());
+	}
+
+	@Test
+	public void availableScriptsAreAlwaysSentEvenWhenEmpty()
+	{
+		JsonObject json = AlertEvent.builder()
+			.type(AlertEvent.SCRIPT_STOPPED)
+			.build()
+			.toJson(SESSION);
+
+		assertTrue(json.get("availableScripts").isJsonArray());
+		assertEquals(0, json.getAsJsonArray("availableScripts").size());
+	}
+
+	@Test
+	public void availableScriptsSkipIdsTheApiWouldRejectAndCutLongNames()
+	{
+		JsonObject json = AlertEvent.builder()
+			.type(AlertEvent.HEARTBEAT)
+			.availableScripts(Arrays.asList(
+				new AlertEvent.AvailableScript("com.example.Good", "n".repeat(120)),
+				new AlertEvent.AvailableScript("com.example.Bad-Id", "Dash"),
+				new AlertEvent.AvailableScript("com.example.Bad Id", "Space"),
+				new AlertEvent.AvailableScript("", "Empty"),
+				new AlertEvent.AvailableScript(null, "Null"),
+				new AlertEvent.AvailableScript("a".repeat(201), "Too long"),
+				new AlertEvent.AvailableScript("a".repeat(200), "Just fits"),
+				new AlertEvent.AvailableScript("com.example.Blank", "  "),
+				new AlertEvent.AvailableScript("com.example.Good", "z duplicate"),
+				null))
+			.build()
+			.toJson(SESSION);
+
+		JsonArray available = json.getAsJsonArray("availableScripts");
+		assertEquals(2, available.size());
+		assertEquals("Just fits", available.get(0).getAsJsonObject().get("name").getAsString());
+		assertEquals("com.example.Good", available.get(1).getAsJsonObject().get("id").getAsString());
+		assertEquals(AlertEvent.MAX_SCRIPT_NAME_CHARS, available.get(1).getAsJsonObject().get("name").getAsString().length());
+	}
+
+	@Test
+	public void availableScriptsAreCappedAtThreeHundred()
+	{
+		List<AlertEvent.AvailableScript> scripts = new ArrayList<>();
+		for (int i = 0; i < 350; i++)
+		{
+			scripts.add(new AlertEvent.AvailableScript("com.example.Script" + i, String.format("Script %03d", 349 - i)));
+		}
+
+		JsonObject json = AlertEvent.builder()
+			.type(AlertEvent.HEARTBEAT)
+			.availableScripts(scripts)
+			.build()
+			.toJson(SESSION);
+
+		JsonArray available = json.getAsJsonArray("availableScripts");
+		assertEquals(AlertEvent.MAX_AVAILABLE_SCRIPTS, available.size());
+		assertEquals("Script 000", available.get(0).getAsJsonObject().get("name").getAsString());
+		assertEquals("com.example.Script349", available.get(0).getAsJsonObject().get("id").getAsString());
+		assertEquals("Script 299", available.get(299).getAsJsonObject().get("name").getAsString());
+	}
 }
