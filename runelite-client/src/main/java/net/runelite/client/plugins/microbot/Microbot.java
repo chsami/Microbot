@@ -611,12 +611,24 @@ public class Microbot {
         return "Ran out of supplies: " + item;
     }
 
-    /**
-     * Shows a non-modal message that closes itself, so a script calling this never waits for a click.
-     */
     public static void showMessage(String message) {
-        log.info("Message: {}", message);
-        showMessage(message, 8000);
+        try {
+            Runnable messageRunnable = () ->
+            {
+                JOptionPane.showConfirmDialog(null, message, "Message",
+                        JOptionPane.DEFAULT_OPTION);
+            };
+            if (SwingUtilities.isEventDispatchThread()) {
+                messageRunnable.run();
+            } else {
+                SwingUtilities.invokeAndWait(messageRunnable);
+            }
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            log.debug("Interrupted while displaying message {}", message);
+        } catch (Exception ex) {
+            log.error("Error displaying message {}:", message, ex);
+        }
     }
 
     public static void showMessage(String message, int disposeTime) {
