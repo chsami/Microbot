@@ -372,6 +372,7 @@ public class ClientAlertReporter
 	{
 		return AlertEvent.builder()
 			.runningScripts(scripts.stream().map(ClientAlertReporter::scriptName).collect(Collectors.toList()))
+			.availableScripts(installedScripts())
 			.loggedIn(isLoggedIn())
 			.breakActive(isBreakActive());
 	}
@@ -381,6 +382,14 @@ public class ClientAlertReporter
 		return pluginManager.getPlugins().stream()
 			.filter(ClientAlertReporter::isScript)
 			.filter(pluginManager::isPluginActive)
+			.collect(Collectors.toList());
+	}
+
+	private List<AlertEvent.AvailableScript> installedScripts()
+	{
+		return pluginManager.getPlugins().stream()
+			.filter(ClientAlertReporter::isScript)
+			.map(plugin -> new AlertEvent.AvailableScript(plugin.getClass().getName(), scriptName(plugin)))
 			.collect(Collectors.toList());
 	}
 

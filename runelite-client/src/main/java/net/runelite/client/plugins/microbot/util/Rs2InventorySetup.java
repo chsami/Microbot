@@ -229,10 +229,13 @@ public class Rs2InventorySetup {
      * @param mainScheduler The scheduler to monitor for cancellation.
      */
     public Rs2InventorySetup(String name, ScheduledFuture<?> mainScheduler) {
-        inventorySetup = MInventorySetupsPlugin.getInventorySetups().stream().filter(Objects::nonNull).filter(x -> x.getName().equalsIgnoreCase(name)).findFirst().orElse(null);
-        if (inventorySetup == null) {
-			inventorySetup = MInventorySetupsPlugin.getInventorySetups().stream().filter(Objects::nonNull).filter(x -> x.getName().equals("default")).findFirst().orElse(null);
-		}
+        List<InventorySetup> setups = MInventorySetupsPlugin.getInventorySetups();
+        if (setups != null) {
+            inventorySetup = setups.stream().filter(Objects::nonNull).filter(x -> x.getName().equalsIgnoreCase(name)).findFirst().orElse(null);
+            if (inventorySetup == null) {
+                inventorySetup = setups.stream().filter(Objects::nonNull).filter(x -> x.getName().equals("default")).findFirst().orElse(null);
+            }
+        }
 		_mainScheduler = mainScheduler;
     }
 
@@ -258,7 +261,8 @@ public class Rs2InventorySetup {
      * @return {@code true} if an inventory setup with the specified name exists, {@code false} otherwise
      */
     public static boolean isInventorySetup(String name) {
-        return MInventorySetupsPlugin.getInventorySetups().stream().filter(Objects::nonNull).filter(x -> x.getName().equalsIgnoreCase(name)).findFirst().orElse(null) != null;
+        List<InventorySetup> setups = MInventorySetupsPlugin.getInventorySetups();
+        return setups != null && setups.stream().filter(Objects::nonNull).anyMatch(x -> x.getName().equalsIgnoreCase(name));
     }
 
     /**

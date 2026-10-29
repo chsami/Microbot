@@ -65,29 +65,32 @@ public class JagexAuthService
 
 	public CompletableFuture<Void> loadFromStore()
 	{
-		return CompletableFuture.runAsync(
-			() ->
+		return CompletableFuture.runAsync(this::loadFromStoreNow, executor);
+	}
+
+	/**
+	 * Loads the saved sessions on the calling thread. Code already running on the shared
+	 * executor must use this: joining {@link #loadFromStore()} there waits on itself forever.
+	 */
+	public void loadFromStoreNow()
+	{
+		try
+		{
+			List<Session> sessions = sessionStore.load();
+			synchronized (this)
 			{
-				try
+				this.sessions.clear();
+				this.accounts.clear();
+				for (Session session : sessions)
 				{
-					List<Session> sessions = sessionStore.load();
-					synchronized (this)
-					{
-						this.sessions.clear();
-						this.accounts.clear();
-						for (Session session : sessions)
-						{
-							loadSession(session);
-						}
-					}
+					loadSession(session);
 				}
-				catch (Exception e)
-				{
-					log.error("Unable to load saved Jagex accounts", e);
-				}
-			},
-			executor
-		);
+			}
+		}
+		catch (Exception e)
+		{
+			log.error("Unable to load saved Jagex accounts", e);
+		}
 	}
 
 	public synchronized List<Session> getSessions()
