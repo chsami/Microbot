@@ -3,6 +3,8 @@ package net.runelite.client.plugins.microbot;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.util.Global;
 import net.runelite.client.plugins.microbot.agentserver.handler.ScriptHeartbeatRegistry;
 import net.runelite.client.plugins.microbot.util.antiban.SessionFatigue;
@@ -113,6 +115,8 @@ public abstract class Script extends Global implements IScript {
      * Default pre-loop guard invoked by script schedulers.
      * Returns {@code false} to pause a loop when a blocking event is executing, scripts are paused,
      * tutorial island is incomplete, or the current thread is interrupted.
+     * When logged in, it also turns run on if auto-run is enabled, energy is above
+     * {@link Microbot#runEnergyThreshold} and no blocking interface is open (see {@link #isBlockingInterfaceOpen()}).
      */
     public boolean run() {
         ScriptHeartbeatRegistry.recordHeartbeat(this.getClass().getName());
@@ -142,7 +146,8 @@ public abstract class Script extends Global implements IScript {
 
         if (Microbot.isLoggedIn()) {
             boolean hasRunEnergy = Microbot.getClientThread().runOnClientThreadOptional(() -> Microbot.getClient().getEnergy()).orElse(0) > Microbot.runEnergyThreshold;
-            if (Microbot.enableAutoRunOn && hasRunEnergy)
+            // Clicking the run orb mid-interface steals focus from the script's own dialogue/bank/production flow.
+            if (Microbot.enableAutoRunOn && hasRunEnergy && !isBlockingInterfaceOpen())
                 Rs2Player.toggleRunEnergy(true);
             if (!hasRunEnergy && Microbot.useStaminaPotsIfNeeded && Rs2Player.isMoving()) {
                 Rs2Inventory.useRestoreEnergyItem();
@@ -151,5 +156,33 @@ public abstract class Script extends Global implements IScript {
             Microbot.getConfigManager().setConfiguration(MicrobotConfig.configGroup, MicrobotConfig.keyUseStaminaPotsIfNeeded, Microbot.useStaminaPotsIfNeeded);
         }
         return true;
+    }
+
+    /**
+     * Interfaces during which the automatic run toggle must not click: chat dialogues, banks, shops,
+     * the Grand Exchange and skilling/production menus.
+     */
+    private static final int[] AUTO_RUN_BLOCKING_INTERFACES = {
+            InterfaceID.CHAT_LEFT, InterfaceID.CHAT_RIGHT, InterfaceID.CHATMENU,
+            InterfaceID.OBJECTBOX, InterfaceID.OBJECTBOX_DOUBLE, InterfaceID.LEVELUP_DISPLAY,
+            InterfaceID.BANKMAIN, InterfaceID.BANKPIN_KEYPAD, InterfaceID.BANK_DEPOSITBOX,
+            InterfaceID.SHOPMAIN, InterfaceID.GE_OFFERS,
+            InterfaceID.SKILLMULTI, InterfaceID.SMITHING, InterfaceID.CRAFTING_GOLD, InterfaceID.SILVER_CRAFTING
+    };
+
+    /**
+     * Checks, in one client-thread call, whether any interface in {@link #AUTO_RUN_BLOCKING_INTERFACES}
+     * has a visible root widget.
+     *
+     * @return {@code true} if one is open, or if the client thread couldn't answer (so auto-run skips the click)
+     */
+    static boolean isBlockingInterfaceOpen() {
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            for (int groupId : AUTO_RUN_BLOCKING_INTERFACES) {
+                Widget root = Microbot.getClient().getWidget(groupId, 0);
+                if (root != null && !root.isHidden()) return true;
+            }
+            return false;
+        }).orElse(true);
     }
 }

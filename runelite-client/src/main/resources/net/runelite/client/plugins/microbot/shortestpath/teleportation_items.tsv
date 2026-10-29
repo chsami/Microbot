@@ -73,12 +73,18 @@
 2995 3375 0		11988;11986;11984;11982;11980;20790;20789;20788;20787;20786				Y	T	29	4	Ring of wealth: Falador
 2824 10168 0		11988;11986;11984;11982;11980;20790;20789;20788;20787;20786	Between a Rock...			Y	T	29	4	Ring of wealth: Dondakan
 										
-# Slayer Ring (1-8, eternal)										
-2432 3423 0		11866;11867;11868;11869;11870;11871;11872;11873;21268				Y	T	29	4	Slayer ring: Stronghold Slayer Cave
-3421 3537 0		11866;11867;11868;11869;11870;11871;11872;11873;21268	Priest in Peril			Y	T	29	4	Slayer ring: Slayer Tower
-2802 10000 0		11866;11867;11868;11869;11870;11871;11872;11873;21268				Y	T	29	4	Slayer ring: Fremennik
-3185 4601 0		11866;11867;11868;11869;11870;11871;11872;11873;21268	Haunted Mine			Y	T	29	4	Slayer ring: Tarn's Lair
-2028 4636 0		11866;11867;11868;11869;11870;11871;11872;11873;21268	Mourning's End Part II			Y	T	29	4	Slayer ring: Dark Beasts
+# Slayer Ring (1-8)
+2432 3423 0		11866;11867;11868;11869;11870;11871;11872;11873				Y	T	29	4	Slayer ring: Stronghold Slayer Cave
+3421 3537 0		11866;11867;11868;11869;11870;11871;11872;11873	Priest in Peril			Y	T	29	4	Slayer ring: Slayer Tower
+2802 10000 0		11866;11867;11868;11869;11870;11871;11872;11873				Y	T	29	4	Slayer ring: Fremennik
+3185 4601 0		11866;11867;11868;11869;11870;11871;11872;11873	Haunted Mine			Y	T	29	4	Slayer ring: Tarn's Lair
+2028 4636 0		11866;11867;11868;11869;11870;11871;11872;11873	Mourning's End Part II			Y	T	29	4	Slayer ring: Dark Beasts
+# Eternal Slayer Ring - separate entries keep Inventory (perm) available without allowing charged rings.
+2432 3423 0		21268				Y	F	29	4	Slayer ring: Stronghold Slayer Cave
+3421 3537 0		21268	Priest in Peril			Y	F	29	4	Slayer ring: Slayer Tower
+2802 10000 0		21268				Y	F	29	4	Slayer ring: Fremennik
+3185 4601 0		21268	Haunted Mine			Y	F	29	4	Slayer ring: Tarn's Lair
+2028 4636 0		21268	Mourning's End Part II			Y	F	29	4	Slayer ring: Dark Beasts
 										
 # Digsite Pendant (can't find a varbit for the other location's activation)										
 3341 3445 0		11190;11191;11192;11193;11194				Y	T	19	4	Digsite pendant: Digsite

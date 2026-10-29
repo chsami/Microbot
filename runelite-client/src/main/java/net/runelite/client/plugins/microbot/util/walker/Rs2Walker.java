@@ -2107,25 +2107,7 @@ public class Rs2Walker {
                 }
             }
 
-            // entering desert warning
-            if (Rs2Widget.isWidgetVisible(565, 20) && Rs2Widget.clickWidget(565, 20)) {
-                sleepUntil(() -> {
-                    Widget checkBoxWidget = Rs2Widget.getWidget(565, 20);
-                    if (checkBoxWidget == null) return false;
-                    return checkBoxWidget.getSpriteId() != 941;
-                });
-                Rs2Widget.clickWidget(565, 17);
-            }
-
-            // entering down ladder strong hold of security
-            if (Rs2Widget.isWidgetVisible(579, 20) && Rs2Widget.clickWidget(579, 20)) {
-                sleepUntil(() -> {
-                    Widget checkBoxWidget = Rs2Widget.getWidget(579, 20);
-                    if (checkBoxWidget == null) return false;
-                    return checkBoxWidget.getSpriteId() != 941;
-                });
-                Rs2Widget.clickWidget(579, 17);
-            }
+            acceptCwsWarning();
 
 
             if (Rs2Widget.enterWilderness()) {
@@ -8038,6 +8020,30 @@ public class Rs2Walker {
             Microbot.doInvoke(closeEntry, closeButtonBounds != null && Rs2UiHelper.isRectangleWithinCanvas(closeButtonBounds) ? closeButtonBounds : Rs2UiHelper.getDefaultRectangle());
         }
         return sleepUntil(() -> !Rs2Widget.isWidgetVisible(InterfaceID.Worldmap.CLOSE), 3000);
+    }
+
+    private static final int[] CWS_WARNING_GROUPS = {InterfaceID.CWS_WARNING_10, InterfaceID.CWS_WARNING_4};
+
+    static boolean isCwsWarningVisible() {
+        for (int group : CWS_WARNING_GROUPS) {
+            if (Rs2Widget.isWidgetVisible(group, 20)) return true;
+        }
+        return false;
+    }
+
+    static boolean acceptCwsWarning() {
+        for (int group : CWS_WARNING_GROUPS) {
+            if (!Rs2Widget.isWidgetVisible(group, 20) || !Rs2Widget.clickWidget(group, 20)) continue;
+            sleepUntil(() -> {
+                Widget checkBoxWidget = Rs2Widget.getWidget(group, 20);
+                if (checkBoxWidget == null) return false;
+                return Microbot.getClientThread().runOnClientThreadOptional(() -> checkBoxWidget.getSpriteId() != 941)
+                        .orElse(false);
+            });
+            Rs2Widget.clickWidget(group, 17);
+            return sleepUntil(() -> !Rs2Widget.isWidgetVisible(group, 20), 3000);
+        }
+        return false;
     }
 
 
