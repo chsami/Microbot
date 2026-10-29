@@ -203,6 +203,8 @@ public class Microbot {
 
     public static boolean cantReachTarget = false;
     public static volatile boolean cantHopWorld = false;
+    /** When the game last said "You don't have enough inventory space"; scripts react to it by making room. */
+    public static volatile long inventoryFullMessageAtMs = 0L;
     private static volatile WorldPoint cantHopWorldLocation = null;
 
     public static int cantReachTargetRetries = 0;

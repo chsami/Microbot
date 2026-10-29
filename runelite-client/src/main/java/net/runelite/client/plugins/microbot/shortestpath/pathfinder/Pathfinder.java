@@ -342,8 +342,11 @@ public class Pathfinder implements Runnable {
     /** See {@link #getReachedSealedSubstitute()}. Volatile: written by the search thread, read by the walker. */
     private volatile int reachedSealedSubstitutePacked = -1;
 
+    /** Set by {@link #run()} for the longer on-foot look of a quest walk; replaces the configured cutoff. */
+    private long extendedCutoffMillis = -1L;
+
     private long effectiveCutoffMillis() {
-        long configured = config.getCalculationCutoffMillis();
+        long configured = extendedCutoffMillis > 0 ? extendedCutoffMillis : config.getCalculationCutoffMillis();
         return cutoffOverrideMillis > 0 ? Math.min(cutoffOverrideMillis, configured) : configured;
     }
 
@@ -838,25 +841,144 @@ public class Pathfinder implements Runnable {
                 : PathTerminationReason.SEARCH_EXHAUSTED;
     }
 
+    /** Cost of the unvaried route found by {@link #runVaried()}, or -1: the yardstick for comparing with other routes. */
+    private volatile long unjitteredBaseCost = -1L;
+
     @Override
     public void run() {
-        runInner();
-        if (!QuestWalkRule.isActive() || QuestWalkRule.inFallback() || cancelled
-                || terminationReason == PathTerminationReason.TARGET_REACHED) {
+        runPlanned();
+        recordFare();
+    }
+
+    /**
+     * The coins every currency transport of the route (a ship, a toll gate, a pass) will take, set for this walk's
+     * targets whatever the stage, 0 included. The quest loop makes sure the player carries them.
+     */
+    private void recordFare() {
+        if (cancelled || terminationReason != PathTerminationReason.TARGET_REACHED
+                || !QuestWalkRule.crossingEnabledFor(targets)) {
             return;
         }
-        // quest walking found no route on foot: allow ships and the like, and say which are used
-        QuestWalkRule.allowAll(this::runInner);
-        if (terminationReason == PathTerminationReason.TARGET_REACHED) {
-            Set<String> used = new LinkedHashSet<>();
-            for (PathEdge edge : getPathEdges()) {
-                if (edge.isTransport() && QuestWalkRule.isRestrictedType(edge.getTransport().getType(), edge.getTransport().getOrigin())) {
-                    used.add(edge.getTransport().getType() + " " + edge.getFrom() + " -> " + edge.getTo());
-                }
+        int fare = 0;
+        for (PathEdge edge : getPathEdges()) {
+            if (edge.isTransport() && "coins".equalsIgnoreCase(edge.getTransport().getCurrencyName())) {
+                fare += edge.getTransport().getCurrencyAmount();
             }
-            Microbot.log("Quest walking: no route on foot to " + WorldPointUtil.toString(targets)
-                    + "; falling back to transports: " + used);
         }
+        QuestWalkRule.setFare(targets, fare);
+    }
+
+    private void runPlanned() {
+        unjitteredBaseCost = -1L;
+        runInner();
+        boolean crossing = !cancelled && QuestWalkRule.stage() == QuestWalkRule.Stage.ON_FOOT
+                && QuestWalkRule.crossingEnabledFor(targets);
+        if (QuestWalkRule.shouldRetryOnFootLonger(crossing, terminationReason, sealedTargetMode)) {
+            // no progress for a few seconds proves nothing (a whole landmass takes a while to flood on a busy
+            // client): look on foot for longer before deciding the target needs a crossing
+            extendedCutoffMillis = QuestWalkRule.EXTENDED_CUTOFF_MS;
+            try {
+                runInner();
+            } finally {
+                extendedCutoffMillis = -1L;
+            }
+        }
+        if (crossing && !cancelled && terminationReason == PathTerminationReason.TARGET_REACHED) {
+            preferOwnedJewelleryForLongWalk();
+            return;
+        }
+        boolean widen = QuestWalkRule.shouldWiden(crossing && !cancelled, terminationReason, sealedTargetMode);
+        if (!widen) {
+            return;
+        }
+        // The on-foot search proved the target unreachable: widen to the named routes, then crossings, then
+        // teleports. If none reaches it, the on-foot result stands, never a partial path over a boat or teleport.
+        OnFootResult onFoot = new OnFootResult();
+        boolean ardougne = QuestWalkRule.isArdougneArea(targets);
+        for (QuestWalkRule.Stage stage = QuestWalkRule.Stage.ON_FOOT.next(); stage != null && !cancelled;
+             stage = stage.next()) {
+            if (QuestWalkRule.isLongTravelHeld() && (stage == QuestWalkRule.Stage.OWNED_JEWELLERY
+                    || stage == QuestWalkRule.Stage.TELEPORTS)) {
+                continue; // never teleport away in the middle of a fight
+            }
+            QuestWalkRule.runAt(stage, ardougne, this::runInner);
+            if (terminationReason == PathTerminationReason.TARGET_REACHED) {
+                announceWidenedRoute(stage);
+                return;
+            }
+        }
+        onFoot.restore();
+    }
+
+    /** The state of a finished search, so a failed widened search can put the on-foot result back. */
+    private final class OnFootResult {
+        private final List<WorldPoint> savedPath = path;
+        private final List<WorldPoint> savedSmoothedPath = smoothedPath;
+        private final Node savedMaterializedLastNode = materializedPathLastNode;
+        private final boolean savedSmoothed = smoothed;
+        private final Node savedBestLastNode = bestLastNode;
+        private final List<WorldPoint> savedJoinedPath = joinedPath;
+        private final List<PathEdge> savedJoinedPathEdges = joinedPathEdges;
+        private final PathTerminationReason savedReason = terminationReason;
+        private final long savedCost = selectedPathCost;
+        private final boolean savedSealedMode = sealedTargetMode;
+        private final int savedSealedSubstitute = reachedSealedSubstitutePacked;
+        private final int[] savedSearchTargets = searchTargetsPacked;
+
+        void restore() {
+            path = savedPath;
+            smoothedPath = savedSmoothedPath;
+            materializedPathLastNode = savedMaterializedLastNode;
+            smoothed = savedSmoothed;
+            bestLastNode = savedBestLastNode;
+            joinedPath = savedJoinedPath;
+            joinedPathEdges = savedJoinedPathEdges;
+            terminationReason = savedReason;
+            selectedPathCost = savedCost;
+            sealedTargetMode = savedSealedMode;
+            reachedSealedSubstitutePacked = savedSealedSubstitute;
+            searchTargetsPacked = savedSearchTargets;
+        }
+    }
+
+    /**
+     * A quest walk that reaches its target on foot is still compared with the teleports of jewellery the player owns:
+     * a long walk is replaced by the teleport when that route costs well under the walk, otherwise the walk stands.
+     */
+    private void preferOwnedJewelleryForLongWalk() {
+        // without jitter the two costs are comparable: the walk's own cost includes the penalties of a varied route
+        long onFootCost = unjitteredBaseCost >= 0 ? unjitteredBaseCost : selectedPathCost;
+        if (!QuestWalkRule.jewelleryWorthTrying(onFootCost) || !config.hasUsableTeleport(QuestWalkRule::isJewelleryTeleport)) {
+            return;
+        }
+        if (QuestWalkRule.isLongTravelHeld()) {
+            return;
+        }
+        OnFootResult onFoot = new OnFootResult();
+        QuestWalkRule.runAt(QuestWalkRule.Stage.OWNED_JEWELLERY, QuestWalkRule.isArdougneArea(targets),
+                () -> PathJitter.withoutJitter(this::runInner));
+        if (!cancelled && terminationReason == PathTerminationReason.TARGET_REACHED
+                && QuestWalkRule.jewelleryBeatsWalking(onFootCost, selectedPathCost)) {
+            announceWidenedRoute(QuestWalkRule.Stage.OWNED_JEWELLERY);
+            return;
+        }
+        onFoot.restore();
+    }
+
+    private void announceWidenedRoute(QuestWalkRule.Stage stage) {
+        if (!QuestWalkRule.firstAnnouncement(stage, targets)) {
+            return;
+        }
+        Set<String> used = new LinkedHashSet<>();
+        for (PathEdge edge : getPathEdges()) {
+            if (edge.isTransport() && QuestWalkRule.isRestricted(edge.getTransport())) {
+                Transport transport = edge.getTransport();
+                used.add(stage == QuestWalkRule.Stage.OWNED_JEWELLERY ? transport.getDisplayInfo()
+                        : transport.getType() + " " + transport.getDisplayInfo()
+                        + " (" + edge.getFrom() + " -> " + edge.getTo() + ")");
+            }
+        }
+        Microbot.log(QuestWalkRule.describe(stage, WorldPointUtil.toString(targets), used));
     }
 
     private void runInner() {
@@ -874,11 +996,18 @@ public class Pathfinder implements Runnable {
      */
     private void runVaried() {
         long[] baseCost = {-1L};
+        int[] baseLength = {0};
         Set<String> baseTransports = new HashSet<>();
+        CollisionMap staticMap = config.newStaticMap();
+        Set<String> baseCrossings = new HashSet<>();
         PathJitter.withoutJitter(() -> {
             runSearch();
             if (terminationReason == PathTerminationReason.TARGET_REACHED && !getPath().isEmpty()) {
                 baseCost[0] = selectedPathCost;
+                unjitteredBaseCost = selectedPathCost;
+                baseLength[0] = PathJitter.routeLength(getPath());
+                baseCrossings.addAll(PathJitter.wallCrossings(getPath(), staticMap));
+                baseCrossings.addAll(PathJitter.doorwayCrossings(getPath(), staticMap));
                 for (PathEdge edge : getPathEdges()) {
                     if (edge.isTransport()) {
                         baseTransports.add(transportKey(edge));
@@ -886,8 +1015,8 @@ public class Pathfinder implements Runnable {
                 }
             }
         });
-        if (baseCost[0] < 0 || cancelled) {
-            return; // the base search is the result (failure, cutoff or cancel)
+        if (baseCost[0] < 0 || cancelled || !PathJitter.mayVary(getPath())) {
+            return; // the base search is the result (failure, cutoff, cancel, or a route too short or underground to vary)
         }
         for (int attempt = 0; attempt < 3 && !cancelled; attempt++) {
             if (attempt > 0) {
@@ -898,20 +1027,13 @@ public class Pathfinder implements Runnable {
                 break;
             }
             List<PathEdge> edges = getPathEdges();
-            boolean newLocal = false;
-            boolean newForbidden = false;
+            Set<String> variedTransports = new HashSet<>();
             long penalties = 0;
             for (PathEdge edge : edges) {
                 int to = WorldPointUtil.packWorldPoint(edge.getTo());
                 if (edge.isTransport()) {
                     penalties += PathJitter.transportPenalty(to);
-                    if (!baseTransports.contains(transportKey(edge))) {
-                        if (PathJitter.mayAddTransport(edge.getTransport().getType())) {
-                            newLocal = true;
-                        } else {
-                            newForbidden = true;
-                        }
-                    }
+                    variedTransports.add(transportKey(edge));
                 } else if (targets.contains(to)) {
                     penalties += targets.size() > 1 ? PathJitter.targetPenalty(to) : 0;
                 } else {
@@ -919,7 +1041,12 @@ public class Pathfinder implements Runnable {
                 }
             }
             long variedCost = Math.max(0L, selectedPathCost - penalties);
-            if (!PathJitter.acceptVaried(variedCost, baseCost[0], newLocal, newForbidden)) {
+            // the same transports AND the same doors and gates as the unvaried route, within the cost and length bounds
+            Set<String> variedCrossings = new HashSet<>(PathJitter.wallCrossings(getPath(), staticMap));
+            variedCrossings.addAll(PathJitter.doorwayCrossings(getPath(), staticMap));
+            boolean sameWay = variedTransports.equals(baseTransports) && variedCrossings.equals(baseCrossings);
+            if (!PathJitter.acceptVaried(variedCost, baseCost[0], !sameWay)
+                    || !PathJitter.withinBound(PathJitter.routeLength(getPath()), baseLength[0])) {
                 continue;
             }
             int hash = PathJitter.routeHash(getPath());

@@ -296,6 +296,17 @@ public class PathfinderConfig {
         return map.get();
     }
 
+    /** The shipped map alone, without the live overlay: where walls really are, doors included. */
+    public CollisionMap newStaticMap() {
+        return new CollisionMap(mapData);
+    }
+
+    /** Whether any teleport the player can use right now satisfies {@code test}. */
+    public boolean hasUsableTeleport(java.util.function.Predicate<Transport> test) {
+        Set<Transport> usable = usableTeleports;
+        return usable != null && usable.stream().anyMatch(test);
+    }
+
     /**
      * Diagnostics for the live-collision overlay at one tile, for the agent server's
      * {@code /live-collision} endpoint. Reads only immutable data (the static map and the pinned
@@ -1363,8 +1374,11 @@ public class PathfinderConfig {
             return false;
         }
 
-        // If you don't have the required currency & amount for transport
-        if (transport.getCurrencyAmount() > 0) {
+        // If you don't have the required currency & amount for transport. A quest walk plans the fare of a restricted
+        // transport (a ship) anyway: the quest loop fetches the coins from the bank before the walk reaches it. Toll
+        // gates and passes keep the check, so a walk never relies on coins it will not fetch.
+        if (transport.getCurrencyAmount() > 0
+                && !(QuestWalkRule.crossingEnabled() && QuestWalkRule.isRestricted(transport))) {
             int knownCurrencyQuantity = knownCurrencyQuantity(
                     transport.getCurrencyName(), refreshAvailableItemQuantities);
             if (knownCurrencyQuantity >= 0) {
@@ -2105,6 +2119,7 @@ public class PathfinderConfig {
         boolean inHouse = usePoh && PohPresence.isInHouse();
         long houseDone = System.nanoTime();
         int hash = Objects.hash(
+                QuestWalkRule.crossingEnabled(),
                 packTransportRefreshToggleBits(),
                 useTeleportationItems,
                 ignoreTeleportAndItems,

@@ -1,6 +1,7 @@
 package net.runelite.client.plugins.microbot.questhelper;
 
 import java.util.concurrent.atomic.AtomicBoolean;
+import net.runelite.api.coords.WorldPoint;
 import java.util.function.BooleanSupplier;
 
 /**
@@ -53,6 +54,15 @@ public final class QuestPause
 				return !now;
 			}
 		}
+	}
+
+	/**
+	 * Whether a pause may cancel the walker's current walk: only when the quest script's own loop is the one
+	 * walking. A walk started by the Agent Server or another plugin is left alone.
+	 */
+	public static boolean shouldCancelWalk(boolean questWalkInFlight, WorldPoint currentWalkTarget)
+	{
+		return questWalkInFlight && currentWalkTarget != null;
 	}
 
 	/** Stop beats pause; pause beats run. */

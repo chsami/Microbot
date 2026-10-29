@@ -49,6 +49,17 @@ public class Rs2NpcModel extends ActorModel implements NPC
 		return runeliteNpc.getComposition();
 	}
 
+	/** The actions of the transformed form (varbit/varp), empty when there is none. */
+	public java.util.List<String> getTransformedActions()
+	{
+		return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+			NPCComposition base = runeliteNpc.getComposition();
+			NPCComposition transformed = base == null ? null : base.transform();
+			String[] actions = transformed == null ? null : transformed.getActions();
+			return actions == null ? new java.util.ArrayList<String>() : Arrays.asList(actions);
+		}).orElseGet(java.util.ArrayList::new);
+	}
+
 	@Override
 	public @Nullable NPCComposition getTransformedComposition()
 	{

@@ -88,6 +88,11 @@ public class PiratesTreasure extends BaseQuest {
                 return true;
             }
             if (questStep.getText().contains("Right-click fill the rest of the crate with bananas, then talk to Luthas.")) {
+                if (!needsMoreBananas(Rs2Inventory.count(BANANA))) {
+                    // Ten bananas in hand: the generic object-step handler fills the crate ("Fill").
+                    // Walking to the banana trees here would drag the player away from the crate every tick.
+                    return true;
+                }
                 Rs2Walker.walkTo(2917, 3161, 0);
                 sleep(2000);
                 collectBananas();
@@ -138,6 +143,11 @@ public class PiratesTreasure extends BaseQuest {
 
         }
         return true;
+    }
+
+    /** True while the player holds fewer than the ten bananas the crate needs. */
+    public static boolean needsMoreBananas(int bananasHeld) {
+        return bananasHeld < 10;
     }
 
     public static void collectBananas() {

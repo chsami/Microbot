@@ -207,10 +207,7 @@ public class Rs2NpcModel extends Rs2ActorModel implements IEntity
                 if (!hasLineOfSight()) {
                     if (CantReachTargetRecovery.retryExhausted(
                             Microbot.cantReachTargetRetries, Rs2Random.between(3, 5))) {
-                        int retries = CantReachTargetRecovery.giveUp();
-                        Microbot.pauseAllScripts.compareAndSet(false, true);
-                        Microbot.showMessage("Your bot tried to interact with an NPC for "
-                                + retries + " times but failed. Please take a look at what is happening.");
+                        CantReachTargetRecovery.onExhausted("an NPC");
                         return false;
                     }
                     final WorldPoint npcWorldPoint = getWorldLocation();
@@ -235,7 +232,7 @@ public class Rs2NpcModel extends Rs2ActorModel implements IEntity
             }
 
             final NPCComposition npcComposition = Microbot.getClientThread().runOnClientThreadOptional(
-                    () -> Microbot.getClient().getNpcDefinition(getId())).orElse(null);
+                    this::currentComposition).orElse(null);
             if (npcComposition == null) {
                 log.error("Error interacting with NPC '{}' for action '{}': NPCComposition is null", npcName, action);
                 return false;
@@ -296,6 +293,34 @@ public class Rs2NpcModel extends Rs2ActorModel implements IEntity
             log.error("Error interacting with NPC '{}' for action '{}': ", npcName, action, ex);
             return false;
         }
+    }
+
+    /** The NPC's menu actions as the game shows them, without the empty slots. */
+    public java.util.List<String> getAvailableActions() {
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            NPCComposition composition = currentComposition();
+            java.util.List<String> out = new java.util.ArrayList<>();
+            if (composition != null && composition.getActions() != null) {
+                for (String candidate : composition.getActions()) {
+                    if (candidate != null && !candidate.isEmpty()) {
+                        out.add(candidate);
+                    }
+                }
+            }
+            return out;
+        }).orElseGet(java.util.ArrayList::new);
+    }
+
+    /** The composition the game shows now: a varbit/varp-transformed NPC offers the actions of its current form. Client thread. */
+    private NPCComposition currentComposition() {
+        NPCComposition composition = Microbot.getClient().getNpcDefinition(getId());
+        if (composition != null && composition.getConfigs() != null) {
+            NPCComposition transformed = composition.transform();
+            if (transformed != null) {
+                return transformed;
+            }
+        }
+        return composition;
     }
 
     private MenuAction getMenuAction(int index) {

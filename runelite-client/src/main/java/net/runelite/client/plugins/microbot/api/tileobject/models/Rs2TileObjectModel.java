@@ -278,6 +278,23 @@ public class Rs2TileObjectModel implements TileObject, IEntity {
         return matchesAction(action, true);
     }
 
+    /** The object's menu actions as the game shows them, without the empty slots. */
+    public java.util.List<String> getAvailableActions() {
+        String[] actions = Microbot.getClientThread().invoke(() -> {
+            ObjectComposition composition = getVisibleObjectComposition();
+            return composition != null ? composition.getActions() : null;
+        });
+        java.util.List<String> out = new java.util.ArrayList<>();
+        if (actions != null) {
+            for (String candidate : actions) {
+                if (candidate != null && !candidate.isEmpty()) {
+                    out.add(Rs2UiHelper.stripColTags(candidate));
+                }
+            }
+        }
+        return out;
+    }
+
     public boolean hasActionContaining(String action) {
         return matchesAction(action, false);
     }
@@ -474,10 +491,7 @@ public class Rs2TileObjectModel implements TileObject, IEntity {
         }
         if (CantReachTargetRecovery.retryExhausted(
                 Microbot.cantReachTargetRetries, Rs2Random.between(3, 5))) {
-            int retries = CantReachTargetRecovery.giveUp();
-            Microbot.pauseAllScripts.compareAndSet(false, true);
-            Microbot.showMessage("Your bot tried to interact with an object for "
-                    + retries + " times but failed. Please take a look at what is happening.");
+            CantReachTargetRecovery.onExhausted("an object");
             return false;
         }
         WorldPoint objectLocation = getRuneLiteWorldLocation();

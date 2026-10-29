@@ -42,6 +42,14 @@ public final class KillStepRule {
 		return targetHasAttackAction && isKillText(text);
 	}
 
+	/** How far away a target in sight is attacked at once, without walking to the step's tile first. */
+	public static final int ATTACK_AT_ONCE_TILES = 12;
+
+	/** Whether a visible target is attacked right away, whether or not it is on screen (the click turns the camera). */
+	public static boolean attackAtOnce(int distance, boolean lineOfSight) {
+		return lineOfSight && distance <= ATTACK_AT_ONCE_TILES;
+	}
+
 	/** Click Attack unless we are already fighting the target; rate-limited so a slow server tick is not spammed. */
 	public static boolean shouldClickAttack(boolean interactingWithTarget, long msSinceLastClick, long minIntervalMs) {
 		return !interactingWithTarget && msSinceLastClick >= minIntervalMs;

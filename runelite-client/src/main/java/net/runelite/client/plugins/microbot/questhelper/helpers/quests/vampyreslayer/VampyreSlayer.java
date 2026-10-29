@@ -133,7 +133,8 @@ public class VampyreSlayer extends BasicQuestHelper
 
 		talkToHarlow = new NpcStep(this, NpcID.DR_HARLOW, new WorldPoint(3222, 3399, 0), "Talk to Dr. Harlow in the Blue Moon Inn in Varrock.", beer);
 		((NpcStep) talkToHarlow).addAlternateNpcs(NpcID.DR_HARLOW_VIS);
-		talkToHarlow.addDialogStep("Morgan needs your help!");
+		talkToHarlow.addDialogSteps("Morgan needs your help!", "I need your help dealing with a vampyre.", "Alright, here you go.",
+			"I'd best get going.");
 		talkToHarlowAgain = new NpcStep(this, NpcID.DR_HARLOW, new WorldPoint(3222, 3399, 0), "Talk to Dr. Harlow again with a beer. You can buy one for 2gp in the Blue Moon Inn.", beer);
 		((NpcStep) talkToHarlowAgain).addAlternateNpcs(NpcID.DR_HARLOW_VIS);
 		enterDraynorManor = new ObjectStep(this, ObjectID.HAUNTEDDOORL, new WorldPoint(3108, 3353, 0), "Prepare to fight Count Draynor (level 34), and enter Draynor Manor.", combatGear, stake, hammer, garlic);

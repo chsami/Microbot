@@ -258,6 +258,8 @@ public class RagAndBoneManI extends BasicQuestHelper
 			"Kill a giant bat in the Karamja Volcano Dungeon.");
 		killBat = new NpcStep(this, NpcID.SMALL_BAT, new WorldPoint(2858, 9572, 0),
 			"Kill a giant bat in the Karamja Volcano Dungeon.", true);
+		// the live bats of the Karamja volcano are NPC 2834 (BAT), not only the small bat
+		((NpcStep) killBat).addAlternateNpcs(NpcID.BAT);
 		killBat.addSubSteps(enterKaramjaDungeon);
 
 		ConditionalStep killBatSteps = new ConditionalStep(this, enterKaramjaDungeon);

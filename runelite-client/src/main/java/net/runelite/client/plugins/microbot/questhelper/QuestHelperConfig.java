@@ -501,7 +501,7 @@ public interface QuestHelperConfig extends Config
 	@ConfigItem(
 			keyName = "pathVariationStrength",
 			name = "Path variation strength",
-			description = "How different each walk may be: low, medium or high. Extra distance stays small (about 20 percent at most) and doors, transports, exact-tile steps and the final tile are never changed.",
+			description = "How different each walk may be: low, medium or high. Extra distance stays small (about 10 percent at most); routes under 15 tiles and dungeons are never varied, and transports, doors, exact-tile steps and the final tile are never changed.",
 			section = microbotSection
 	)
 	default PathVariationStrength pathVariationStrength() {

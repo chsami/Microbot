@@ -655,10 +655,7 @@ public class Rs2Npc {
                 // never prints can't-reach, so every trigger here genuinely needs adjacency.
                 if (CantReachTargetRecovery.retryExhausted(
                         Microbot.cantReachTargetRetries, Rs2Random.between(3, 5))) {
-                    int retries = CantReachTargetRecovery.giveUp();
-                    Microbot.pauseAllScripts.compareAndSet(false, true);
-                    Microbot.showMessage("Your bot tried to interact with an NPC for "
-                            + retries + " times but failed. Please take a look at what is happening.");
+                    CantReachTargetRecovery.onExhausted("an NPC");
                     return false;
                 }
                 final WorldPoint npcWorldPoint = npc.getWorldLocation();
@@ -1287,9 +1284,7 @@ public class Rs2Npc {
                 .filter(value -> (value.getComposition() != null
                         && value.getComposition().getActions() != null
                         && Arrays.asList(value.getComposition().getActions()).contains(action))
-                        || (value.getComposition().transform() != null
-                        && value.getComposition().transform().getActions() != null
-                        && Arrays.asList(value.getComposition().transform().getActions()).contains(action)))
+                        || value.getTransformedActions().contains(action))
                 .findFirst()
                 .orElse(null);
     }

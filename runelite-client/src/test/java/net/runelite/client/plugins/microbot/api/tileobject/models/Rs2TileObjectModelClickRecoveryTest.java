@@ -107,6 +107,21 @@ public class Rs2TileObjectModelClickRecoveryTest {
         microbot.verify(() -> Microbot.doInvoke(any(NewMenuEntry.class), any(Rectangle.class)), times(1));
     }
 
+    /** #108: "Climb-down" on a staircase whose first option is "Climb-up" must not click the first option. */
+    @Test
+    public void anActionTheObjectDoesNotOfferIsNeverClickedAsItsFirstOption() {
+        assertFalse(new Rs2TileObjectModel(object).click("Climb-down"));
+
+        microbot.verify(() -> Microbot.doInvoke(any(NewMenuEntry.class), any(Rectangle.class)), never());
+    }
+
+    @Test
+    public void theObjectListsTheActionsItReallyOffers() {
+        Rs2TileObjectModel model = new Rs2TileObjectModel(object);
+        assertEquals(java.util.Collections.singletonList("Open"), model.getAvailableActions());
+        assertTrue(model.getAvailableActions().stream().noneMatch("Climb-down"::equalsIgnoreCase));
+    }
+
     @Test
     public void walksBesideTheObjectThenClicksAfterCantReach() {
         Microbot.cantReachTarget = true;

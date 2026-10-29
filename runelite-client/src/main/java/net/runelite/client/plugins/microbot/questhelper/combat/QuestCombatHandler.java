@@ -616,6 +616,18 @@ public class QuestCombatHandler
 	// ---- gear ----
 
 	private volatile Set<String> questGearSlots = Collections.emptySet();
+	/** Slots a boss-prep step wore a protection item in: the combat loadout must not swap them back. */
+	private final Set<String> extraWornSlots = java.util.concurrent.ConcurrentHashMap.newKeySet();
+
+	public void reserveWornSlot(int itemId)
+	{
+		String slot = slotNameOfItem(itemId);
+		if (!slot.isEmpty())
+		{
+			extraWornSlots.add(slot);
+			questGearSlotsQuest = null;
+		}
+	}
 	private volatile QuestStep questGearSlotsStep;
 	private volatile QuestHelper questGearSlotsQuest;
 
@@ -662,7 +674,7 @@ public class QuestCombatHandler
 		{
 			return questGearSlots;
 		}
-		Set<String> slots = new HashSet<>();
+		Set<String> slots = new HashSet<>(extraWornSlots);
 		try
 		{
 			List<ItemRequirement> requirements = new ArrayList<>();
@@ -1087,11 +1099,39 @@ public class QuestCombatHandler
 			|| (combatRequirements != null && !combatRequirements.isEmpty());
 	}
 
+	/**
+	 * Before a boss ("Prepare to fight X (level N)"): top the inventory up to {@code wanted} food from the bank, once.
+	 *
+	 * @return true when this tick was spent on the bank trip
+	 */
+	public boolean prepareBossFood(QuestStep step, int reservedSlots, int wanted)
+	{
+		if (bossFoodStep == step || Rs2Combat.inCombat() || bankAttempts >= MAX_BANK_ATTEMPTS)
+		{
+			return false;
+		}
+		int held = edibleFood().stream().mapToInt(Rs2ItemModel::getQuantity).sum();
+		if (held >= wanted)
+		{
+			bossFoodStep = step;
+			return false;
+		}
+		bossFoodStep = step;
+		return fetchFood(step, reservedSlots, loadout == null ? 0 : reserveFor(loadout), wanted - held, "food for the boss");
+	}
+
+	private QuestStep bossFoodStep;
+
 	/** Setup is Skip or brings no food, yet fights lie ahead: still carry a small stack of the bank's best food. */
 	private boolean fetchDefaultFood(QuestStep step, int reservedSlots, QuestCombatLoadout current)
 	{
 		defaultFoodTried = true;
-		Microbot.status = "Quest helper: fetching emergency food";
+		return fetchFood(step, reservedSlots, reserveFor(current), DEFAULT_FOOD_QTY, "emergency food");
+	}
+
+	private boolean fetchFood(QuestStep step, int reservedSlots, int loadoutReserve, int quantity, String what)
+	{
+		Microbot.status = "Quest helper: fetching " + what;
 		if (!Rs2Bank.isOpen())
 		{
 			Rs2Bank.walkToBankAndUseBankReturningTo(bankReturnPoint());
@@ -1099,6 +1139,7 @@ public class QuestCombatHandler
 			{
 				bankAttempts++;
 				defaultFoodTried = false;
+				bossFoodStep = null;
 				return true;
 			}
 		}
@@ -1112,8 +1153,8 @@ public class QuestCombatHandler
 		String best = bestBankFood();
 		if (best != null)
 		{
-			int reserved = Math.min(27, reservedSlots + reserveFor(current));
-			withdraw(best, true, carry(DEFAULT_FOOD_QTY, 0, reserved));
+			int reserved = Math.min(27, reservedSlots + loadoutReserve);
+			withdraw(best, true, carry(quantity, 0, reserved));
 		}
 		else
 		{

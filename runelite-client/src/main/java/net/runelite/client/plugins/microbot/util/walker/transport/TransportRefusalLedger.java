@@ -35,6 +35,30 @@ public final class TransportRefusalLedger {
         return strikeCount == STRIKE_LIMIT;
     }
 
+    /** One refusal is enough when the walk can go round on foot instead. */
+    public static boolean isStrikeOut(int strikeCount, boolean onFootRouteExists) {
+        return onFootRouteExists ? strikeCount >= 1 : isStrikeOut(strikeCount);
+    }
+
+    /**
+     * True when the walk target lies on the surface and the transport only takes the player away from it: from the
+     * target's own plane underground or to another plane, or from a plane that is not the target's to one even farther
+     * from it (an upstairs castle staircase on the way to a ground-level target). Such a transport is a detour, so
+     * walking round is possible and one refusal is enough.
+     */
+    public static boolean onFootRouteLikely(WorldPoint origin, WorldPoint destination, WorldPoint target) {
+        if (origin == null || destination == null || target == null) {
+            return false;
+        }
+        final int undergroundY = 6400;
+        boolean surface = target.getY() < undergroundY && origin.getY() < undergroundY;
+        boolean targetOnOriginLevel = target.getPlane() == origin.getPlane();
+        boolean leavesLevel = destination.getPlane() != origin.getPlane() || destination.getY() >= undergroundY;
+        boolean movesAwayFromTargetLevel = !targetOnOriginLevel && destination.getY() < undergroundY
+                && Math.abs(destination.getPlane() - target.getPlane()) > Math.abs(origin.getPlane() - target.getPlane());
+        return surface && ((targetOnOriginLevel && leavesLevel) || movesAwayFromTargetLevel);
+    }
+
     public static boolean isFallThroughStrikeOut(int fallThroughCount) {
         return fallThroughCount == FALL_THROUGH_STRIKE_LIMIT;
     }

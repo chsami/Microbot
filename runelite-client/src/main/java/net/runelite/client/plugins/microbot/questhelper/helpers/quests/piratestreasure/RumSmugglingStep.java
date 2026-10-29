@@ -81,6 +81,8 @@ public class RumSmugglingStep extends ConditionalStep
 	private QuestStep syncStep;
 	private QuestStep talkToCustomsOfficer;
 	private QuestStep getRumFromCrate;
+	private QuestStep talkToWydin;
+	private Requirement gotWydinJob;
 	private QuestStep getWhiteApron;
 	private QuestStep addBananasToCrate;
 	private QuestStep addRumToCrate;
@@ -165,6 +167,7 @@ public class RumSmugglingStep extends ConditionalStep
 		Requirement shippedRumFromChat = new ChatMessageRequirement("There is already some rum in Wydin's store, I should go and get that first.");
 		haveShippedRum = new Conditions(true, LogicType.OR, shippedRumFromWidget, shippedRumFromDialog, shippedRumFromChat);
 
+		gotWydinJob = new Conditions(true, LogicType.OR, new DialogRequirement("Well, can I get a job here?"));
 		verifiedAState = new Conditions(true, LogicType.OR, atStart, employedFromWidget, employedByWydinFromWidget, stashedRumFromWidget, shippedRumFromWidget, lostRum, hadRumOffKaramja, haveRumFromWidget);
 	}
 
@@ -207,6 +210,10 @@ public class RumSmugglingStep extends ConditionalStep
 		getWhiteApron = new DetailedQuestStep(getQuestHelper(), new WorldPoint(3016, 3229, 0),
 			"Grab the white apron from the Fishing Shop.", whiteApronHanging);
 
+		talkToWydin = new NpcStep(getQuestHelper(), new int[]{NpcID.SARIM_WYDIN, NpcID.WYDIN}, new WorldPoint(3014, 3204, 0),
+			"Talk to Wydin in the Port Sarim food shop and ask for a job, so the back room door will open. Wear the white apron.", whiteApronEquipped);
+		talkToWydin.addDialogStep("Well, can I get a job here?");
+
 		getRumFromCrate = new ObjectStep(getQuestHelper(), ObjectID.GROCERYCRATE, new WorldPoint(3009, 3207, 0),
 			"Search the crate in the back room of the Port Sarim food shop. Make sure you're wearing your white apron.", whiteApronEquipped);
 		getRumFromCrate.addDialogStep("Well, can I get a job here?");
@@ -220,7 +227,8 @@ public class RumSmugglingStep extends ConditionalStep
 	{
 		this.addStep(hasRumOffKaramja, bringRumToRedbeard);
 		this.addStep(and(verifiedAState, haveShippedRum, onKaramja), talkToCustomsOfficer);
-		this.addStep(and(verifiedAState, haveShippedRum, whiteApron), getRumFromCrate);
+		this.addStep(and(verifiedAState, haveShippedRum, whiteApron, gotWydinJob), getRumFromCrate);
+		this.addStep(and(verifiedAState, haveShippedRum, whiteApron), talkToWydin);
 		this.addStep(and(verifiedAState, haveShippedRum), getWhiteApron);
 		this.addStep(and(verifiedAState, filledCrateWithBananasAndRum, onKaramja), talkToLuthasAgain);
 		this.addStep(and(verifiedAState, stashedRum, onKaramja), addBananasToCrate);

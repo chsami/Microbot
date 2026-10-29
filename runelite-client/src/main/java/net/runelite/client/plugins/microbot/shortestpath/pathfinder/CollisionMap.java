@@ -283,7 +283,7 @@ public class CollisionMap {
             if (isMoa) moaSeenHere++;
 
             //START microbot variables
-            if (QuestWalkRule.blocks(transport.getType(), transport.getOrigin())) {
+            if (QuestWalkRule.blocks(transport)) {
                 continue;
             }
             if (visited.get(transport.getDestination())) {
@@ -414,7 +414,7 @@ public class CollisionMap {
                 if (config.isLearnedBlockedTransport(originPacked, node.packedPosition)) {
                     continue;
                 }
-                if (QuestWalkRule.blocks(transport.getType(), transport.getOrigin())) {
+                if (QuestWalkRule.blocks(transport)) {
                     continue;
                 }
                 if (TransportType.isTeleport(transport.getType(), transport.getOrigin())) {

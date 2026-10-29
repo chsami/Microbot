@@ -34,7 +34,7 @@ public final class PathJitter
     private static final int DETOUR_PENALTY = 6;
 
     /** Maximum real length of a varied route relative to the base route. */
-    public static final double MAX_LENGTH_FACTOR = 1.2;
+    public static final double MAX_LENGTH_FACTOR = 1.1;
 
     /** Runs {@code body} with jitter off on this thread (used to measure the base route). */
     public static void withoutJitter(Runnable body)
@@ -140,6 +140,79 @@ public final class PathJitter
         }
     }
 
+    /**
+     * The wall edges a route crosses: steps between neighbouring tiles that the shipped map does not allow. The live
+     * overlay lets a route cross a door, so these are the doors and gates a varied route must not swap for others.
+     */
+    public static java.util.Set<String> wallCrossings(java.util.List<net.runelite.api.coords.WorldPoint> path,
+        CollisionMap staticMap)
+    {
+        java.util.Set<String> crossings = new java.util.HashSet<>();
+        for (int i = 1; i < path.size(); i++)
+        {
+            net.runelite.api.coords.WorldPoint a = path.get(i - 1);
+            net.runelite.api.coords.WorldPoint b = path.get(i);
+            int dx = b.getX() - a.getX();
+            int dy = b.getY() - a.getY();
+            if (a.getPlane() != b.getPlane() || Math.abs(dx) + Math.abs(dy) != 1)
+            {
+                continue;
+            }
+            boolean open = dx == 1 ? staticMap.e(a.getX(), a.getY(), a.getPlane())
+                : dx == -1 ? staticMap.w(a.getX(), a.getY(), a.getPlane())
+                : dy == 1 ? staticMap.n(a.getX(), a.getY(), a.getPlane())
+                : staticMap.s(a.getX(), a.getY(), a.getPlane());
+            if (!open)
+            {
+                crossings.add(a.getX() < b.getX() || a.getY() < b.getY() ? a + ">" + b : b + ">" + a);
+            }
+        }
+        return crossings;
+    }
+
+    /**
+     * The doorways a route passes: open steps through a gap in a wall line, that is, with the edges either side of the
+     * step blocked. The shipped map keeps doors passable, so they are not in {@link #wallCrossings}; a varied route
+     * must pass the same ones. A one-tile corridor counts as well, which only makes the comparison stricter.
+     */
+    public static java.util.Set<String> doorwayCrossings(java.util.List<net.runelite.api.coords.WorldPoint> path,
+        CollisionMap staticMap)
+    {
+        java.util.Set<String> crossings = new java.util.HashSet<>();
+        for (int i = 1; i < path.size(); i++)
+        {
+            net.runelite.api.coords.WorldPoint a = path.get(i - 1);
+            net.runelite.api.coords.WorldPoint b = path.get(i);
+            int dx = b.getX() - a.getX();
+            int dy = b.getY() - a.getY();
+            if (a.getPlane() != b.getPlane() || Math.abs(dx) + Math.abs(dy) != 1)
+            {
+                continue;
+            }
+            int x = a.getX();
+            int y = a.getY();
+            int z = a.getPlane();
+            boolean gap;
+            if (dy != 0)
+            {
+                // moving north or south crosses an east-west wall line: a doorway has that wall on both sides, so the
+                // neighbouring columns cannot step between the same two rows
+                int lowY = Math.min(a.getY(), b.getY());
+                gap = !staticMap.n(x - 1, lowY, z) && !staticMap.n(x + 1, lowY, z);
+            }
+            else
+            {
+                int lowX = Math.min(a.getX(), b.getX());
+                gap = !staticMap.e(lowX, y - 1, z) && !staticMap.e(lowX, y + 1, z);
+            }
+            if (gap)
+            {
+                crossings.add("D:" + (a.getX() < b.getX() || a.getY() < b.getY() ? a + ">" + b : b + ">" + a));
+            }
+        }
+        return crossings;
+    }
+
     /** Order-sensitive hash of a route sampled every few points. */
     public static int routeHash(java.util.List<net.runelite.api.coords.WorldPoint> path)
     {
@@ -169,42 +242,51 @@ public final class PathJitter
     }
 
     /** Cost bound: a varied route may cost at most this much more than the base route (pathfinder cost, jumps included). */
-    public static final double MAX_COST_FACTOR = 1.2;
-    /** A transport the base route did not use may only come in when the whole route stays within this factor. */
-    public static final double NEW_TRANSPORT_COST_FACTOR = 1.1;
+    public static final double MAX_COST_FACTOR = 1.1;
 
-    /**
-     * Variation may only add short local transports (doors, stairs, shortcuts); never teleports, quetzals,
-     * charter ships, boats, fairy rings, gliders and the like.
-     */
-    public static boolean mayAddTransport(net.runelite.client.plugins.microbot.shortestpath.TransportType type)
-    {
-        return type == net.runelite.client.plugins.microbot.shortestpath.TransportType.TRANSPORT
-            || type == net.runelite.client.plugins.microbot.shortestpath.TransportType.AGILITY_SHORTCUT
-            || type == net.runelite.client.plugins.microbot.shortestpath.TransportType.GRAPPLE_SHORTCUT;
-    }
+    /** Routes shorter than this are never varied: they are tight spots (rooms, dungeons) where exact tiles matter. */
+    public static final int MIN_VARIED_ROUTE_TILES = 15;
+    /** Tiles from this y up are dungeons and instance templates, never varied. */
+    private static final int UNDERGROUND_Y = 6400;
 
-    /**
-     * Whether a varied route is acceptable against the base route.
-     *
-     * @param variedCost    pathfinder cost of the varied route without the jitter penalties
-     * @param baseCost      pathfinder cost of the base route
-     * @param newLocal      the varied route uses a local transport the base route did not
-     * @param newForbidden  the varied route uses a transport the base route did not and variation may not add
-     */
-    public static boolean acceptVaried(long variedCost, long baseCost, boolean newLocal, boolean newForbidden)
+    /** Whether a base route is eligible for variation at all: long enough and entirely above ground. */
+    public static boolean mayVary(java.util.List<net.runelite.api.coords.WorldPoint> basePath)
     {
-        if (newForbidden)
+        if (basePath == null || basePath.size() < MIN_VARIED_ROUTE_TILES)
         {
             return false;
         }
-        double factor = newLocal ? NEW_TRANSPORT_COST_FACTOR : MAX_COST_FACTOR;
-        return variedCost <= (long) Math.floor(baseCost * factor + 1e-6);
+        for (net.runelite.api.coords.WorldPoint point : basePath)
+        {
+            if (point.getY() >= UNDERGROUND_Y)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Whether a varied route is acceptable against the base route: it must use exactly the transports of the base
+     * route (no added or dropped door, staircase, shortcut, boat or teleport) and cost at most
+     * {@link #MAX_COST_FACTOR} times as much.
+     *
+     * @param variedCost        pathfinder cost of the varied route without the jitter penalties
+     * @param baseCost          pathfinder cost of the base route
+     * @param transportsChanged the varied route's transports differ from the base route's
+     */
+    public static boolean acceptVaried(long variedCost, long baseCost, boolean transportsChanged)
+    {
+        if (transportsChanged)
+        {
+            return false;
+        }
+        return variedCost <= (long) Math.floor(baseCost * MAX_COST_FACTOR + 1e-6);
     }
 
     public static boolean withinBound(int variedLength, int baseLength)
     {
-        return variedLength <= Math.ceil(baseLength * MAX_LENGTH_FACTOR);
+        return variedLength <= (long) Math.floor(baseLength * MAX_LENGTH_FACTOR + 1e-6);
     }
 
 	private PathJitter()

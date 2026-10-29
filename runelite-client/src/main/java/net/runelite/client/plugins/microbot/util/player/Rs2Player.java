@@ -679,10 +679,16 @@ public class Rs2Player {
     public static boolean eatAt(int percentage, boolean fastFood) {
         double threshold = getHealthPercentage();
         if (threshold <= percentage) {
-            if (fastFood && !Rs2Inventory.getInventoryFastFood().isEmpty()) {
-                return useFastFood();
+            // eating cannot wait for a slow human-style mouse move
+            net.runelite.client.plugins.microbot.util.antiban.HumanMouseSpeed.enterTimeCritical();
+            try {
+                if (fastFood && !Rs2Inventory.getInventoryFastFood().isEmpty()) {
+                    return useFastFood();
+                }
+                return useFood(); // default method
+            } finally {
+                net.runelite.client.plugins.microbot.util.antiban.HumanMouseSpeed.exitTimeCritical();
             }
-            return useFood(); // default method
         }
         return false;
     }

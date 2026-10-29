@@ -991,13 +991,14 @@ final class Rs2WalkerTransports {
             return false;
         }
         int strikes = transportRefusalLedger.registerRefusal(origin, destination);
-        if (!TransportRefusalLedger.isStrikeOut(strikes)) {
+        boolean onFoot = TransportRefusalLedger.onFootRouteLikely(origin, destination, Rs2Walker.getCurrentTarget());
+        if (!TransportRefusalLedger.isStrikeOut(strikes, onFoot)) {
             WebWalkLog.spInfo("transport_refused | origin={} dest={} mode={} strike={}/{}",
                     compactWorldPoint(origin), compactWorldPoint(destination), mode,
                     strikes, TransportRefusalLedger.STRIKE_LIMIT);
             return false;
         }
-        strikeOutTransport(origin, destination, mode, TransportRefusalLedger.STRIKE_LIMIT);
+        strikeOutTransport(origin, destination, mode, onFoot ? 1 : TransportRefusalLedger.STRIKE_LIMIT);
         return true;
     }
 

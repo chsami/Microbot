@@ -87,6 +87,8 @@ public class AntibanPlugin extends Plugin {
     private static final int COOK_TIMEOUT = 3;
     private static final int MINING_TIMEOUT = 3;
     private static final int IDLE_TIMEOUT = 1;
+    private static final int MAX_BUSY_HOLD_TICKS = 10;
+    static int busyHoldTicks;
     public static int ticksSinceLogin;
     private static Instant lastCookingAction = Instant.MIN;
     private static Instant lastMiningAction = Instant.MIN;
@@ -148,16 +150,27 @@ public class AntibanPlugin extends Plugin {
     }
 
     public static void performActionBreak() {
-        if (Rs2AntibanSettings.actionCooldownActive) {
-            if (Rs2Antiban.getTIMEOUT() > 0) {
-                if (!Rs2Antiban.getCategory().isBusy()) {
-                    Rs2Antiban.TIMEOUT--;
-                }
+        if (Rs2AntibanSettings.actionCooldownActive)
+            tickActionCooldown(Rs2Antiban.getCategory().isBusy());
+    }
+
+    /**
+     * Advances an active action cooldown by one tick. The countdown waits while the player is busy, but only
+     * for {@link #MAX_BUSY_HOLD_TICKS} consecutive ticks: continuous activities (e.g. combat) stay busy
+     * indefinitely and would otherwise keep every script paused forever.
+     */
+    static void tickActionCooldown(boolean busy) {
+        if (Rs2Antiban.getTIMEOUT() > 0) {
+            if (busy && busyHoldTicks < MAX_BUSY_HOLD_TICKS) {
+                busyHoldTicks++;
             } else {
-                Rs2AntibanSettings.actionCooldownActive = false;
-                if (Rs2AntibanSettings.universalAntiban && !Rs2AntibanSettings.microBreakActive)
-					Microbot.pauseAllScripts.compareAndSet(true, false);
+                Rs2Antiban.TIMEOUT--;
             }
+        } else {
+            busyHoldTicks = 0;
+            Rs2AntibanSettings.actionCooldownActive = false;
+            if (Rs2AntibanSettings.universalAntiban && !Rs2AntibanSettings.microBreakActive)
+                Microbot.pauseAllScripts.compareAndSet(true, false);
         }
     }
 
