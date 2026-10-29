@@ -708,8 +708,10 @@ public class Rs2Widget {
      * @return true if widget exists and is visible
      */
     public static boolean hasVisibleWidgetText(String text) {
-        Widget widget = findWidget(text, null, true);
-        return widget != null && !widget.isHidden();
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            Widget widget = findWidget(text, null, true);
+            return widget != null && !widget.isHidden();
+        }).orElse(false);
     }
 
     /**

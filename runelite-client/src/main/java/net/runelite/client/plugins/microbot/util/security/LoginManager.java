@@ -1,5 +1,7 @@
 package net.runelite.client.plugins.microbot.util.security;
 
+import com.google.inject.Key;
+import com.google.inject.name.Names;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -324,7 +326,7 @@ public final class LoginManager {
         }
         // getLauncherDisplayName() keeps the launch-time name after the account changes, so it does not show
         // which account is selected now: select the launch character again
-        if (username.equalsIgnoreCase(client.getLauncherDisplayName())) {
+        if (username.equalsIgnoreCase(client.getLauncherDisplayName()) || isLaunchProfile(client, profile, username)) {
             JagexCredentials launch = JagexCredentials.fromLaunch();
             if (launch != null) {
                 switchJagexAccount(client, launch.getSessionId(), launch.getCharacterId(), launch.getDisplayName());
@@ -354,6 +356,19 @@ public final class LoginManager {
             switchJagexAccount(client, null, null, null);
         }
         return false;
+    }
+
+    /**
+     * The launcher's "Play With Jagex Account" starts the client on a profile chosen for that character
+     * ({@code -profile=}), and the profile's name need not match the character's. Logging that profile in
+     * means the launch character, not a legacy login under the profile's name.
+     */
+    private static boolean isLaunchProfile(Client client, ConfigProfile profile, String username) {
+        if (profile == null || client.getLauncherDisplayName() == null || !username.equalsIgnoreCase(profile.getName())) {
+            return false;
+        }
+        String launchProfile = Microbot.getInjector().getInstance(Key.get(String.class, Names.named("profile")));
+        return profile.getName().equals(launchProfile);
     }
 
     private static void switchJagexAccount(Client client, String sessionId, String characterId, String displayName) {

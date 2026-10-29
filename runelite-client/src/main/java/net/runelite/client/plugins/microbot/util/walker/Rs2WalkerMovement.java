@@ -14,7 +14,6 @@ import net.runelite.api.gameval.ItemID;
 import net.runelite.api.gameval.NpcID;
 import net.runelite.api.gameval.ObjectID;
 import net.runelite.api.widgets.ComponentID;
-import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.devtools.MovementFlag;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
@@ -125,15 +124,6 @@ final class Rs2WalkerMovement {
     static final SceneClickPolicy SCENE_CLICKS = SceneClickPolicy.create();
     static final int SCENE_WALK_CONFIRM_TIMEOUT_MS = 600;
     static final int SCENE_WALK_CONFIRM_POLL_MS = 25;
-    private static final int[] SCENE_OVERLAY_COMPONENTS = {
-            InterfaceID.ToplevelOsrsStretch.SIDE_MENU,
-            InterfaceID.ToplevelOsrsStretch.CHAT_CONTAINER,
-            InterfaceID.ToplevelOsrsStretch.MAP_CONTAINER,
-            InterfaceID.ToplevelPreEoc.SIDE_CONTAINER,
-            InterfaceID.ToplevelPreEoc.CHAT_CONTAINER,
-            InterfaceID.ToplevelPreEoc.MAP_CONTAINER
-    };
-
     private Rs2WalkerMovement() {
     }
 
@@ -999,7 +989,7 @@ final class Rs2WalkerMovement {
                 Microbot.getClient().getViewportYOffset(), Microbot.getClient().getViewportWidth(),
                 Microbot.getClient().getViewportHeight());
         if (!isCanvasPointInsideViewport(canvasPoint, viewport)
-                || isCanvasPointCoveredByInterface(canvasPoint, visibleSceneOverlayBounds())) {
+                || isCanvasPointCoveredByInterface(canvasPoint, Rs2UiHelper.visibleSceneOverlayBounds())) {
             return null;
         }
         return canvasPoint;
@@ -1020,20 +1010,6 @@ final class Rs2WalkerMovement {
             }
         }
         return false;
-    }
-
-    private static List<Rectangle> visibleSceneOverlayBounds() {
-        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
-            Client client = Microbot.getClient();
-            List<Rectangle> bounds = new ArrayList<>();
-            for (int componentId : SCENE_OVERLAY_COMPONENTS) {
-                Widget widget = client.getWidget(componentId);
-                if (widget != null && !widget.isHidden()) {
-                    bounds.add(widget.getBounds());
-                }
-            }
-            return bounds;
-        }).orElseGet(ArrayList::new);
     }
 
     static LocalPoint localPointForWorld(WorldPoint worldPoint) {

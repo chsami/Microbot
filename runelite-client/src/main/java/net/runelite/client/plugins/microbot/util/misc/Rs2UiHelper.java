@@ -4,6 +4,8 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Point;
 import net.runelite.api.*;
 import net.runelite.api.coords.LocalPoint;
+import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.widgets.Widget;
 import net.runelite.client.RuneLiteProperties;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
@@ -13,6 +15,8 @@ import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
 import net.runelite.client.plugins.microbot.util.text.Rs2TextSanitizer;
 
 import java.awt.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -48,6 +52,100 @@ public class Rs2UiHelper {
         Rectangle visible = rectangle.intersection(new Rectangle(0, 0,
                 Microbot.getClient().getCanvasWidth(), Microbot.getClient().getCanvasHeight()));
         return visible.isEmpty() ? null : visible;
+    }
+
+    private static final int[] SCENE_OVERLAY_COMPONENTS = {
+            InterfaceID.ToplevelOsrsStretch.SIDE_MENU,
+            InterfaceID.ToplevelOsrsStretch.CHAT_CONTAINER,
+            InterfaceID.ToplevelOsrsStretch.MAP_CONTAINER,
+            InterfaceID.ToplevelPreEoc.SIDE_CONTAINER,
+            InterfaceID.ToplevelPreEoc.CHAT_CONTAINER,
+            InterfaceID.ToplevelPreEoc.MAP_CONTAINER
+    };
+
+    static final int INTERFACE_CLEARANCE_PX = 4;
+
+    public static List<Rectangle> visibleSceneOverlayBounds() {
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            Client client = Microbot.getClient();
+            List<Rectangle> bounds = new ArrayList<>();
+            for (int componentId : SCENE_OVERLAY_COMPONENTS) {
+                Widget widget = client.getWidget(componentId);
+                if (widget != null && !widget.isHidden()) {
+                    bounds.add(widget.getBounds());
+                }
+            }
+            return bounds;
+        }).orElseGet(ArrayList::new);
+    }
+
+    public static Rectangle sceneViewportBounds() {
+        Client client = Microbot.getClient();
+        return new Rectangle(client.getViewportXOffset(), client.getViewportYOffset(),
+                client.getViewportWidth(), client.getViewportHeight());
+    }
+
+    public static Rectangle clearOfInterfaces(Rectangle clickbox, Rectangle viewport, List<Rectangle> interfaceBounds) {
+        if (clickbox == null || clickbox.isEmpty()) {
+            return null;
+        }
+        Rectangle visible = viewport == null ? new Rectangle(clickbox) : clickbox.intersection(viewport);
+        if (visible.isEmpty()) {
+            return null;
+        }
+        List<Rectangle> clear = new ArrayList<>();
+        clear.add(visible);
+        if (interfaceBounds != null) {
+            for (Rectangle bounds : interfaceBounds) {
+                if (bounds == null || bounds.isEmpty()) {
+                    continue;
+                }
+                Rectangle cover = new Rectangle(bounds);
+                cover.grow(INTERFACE_CLEARANCE_PX, INTERFACE_CLEARANCE_PX);
+                List<Rectangle> remaining = new ArrayList<>();
+                for (Rectangle area : clear) {
+                    if (!area.intersects(cover)) {
+                        remaining.add(area);
+                        continue;
+                    }
+                    addIfNotEmpty(remaining, new Rectangle(area.x, area.y, cover.x - area.x, area.height));
+                    addIfNotEmpty(remaining, new Rectangle(cover.x + cover.width, area.y,
+                            area.x + area.width - cover.x - cover.width, area.height));
+                    addIfNotEmpty(remaining, new Rectangle(area.x, area.y, area.width, cover.y - area.y));
+                    addIfNotEmpty(remaining, new Rectangle(area.x, cover.y + cover.height,
+                            area.width, area.y + area.height - cover.y - cover.height));
+                }
+                clear = remaining;
+            }
+        }
+        Rectangle largest = null;
+        for (Rectangle area : clear) {
+            Rectangle candidate = awayFromFallbackOrigin(area);
+            if (candidate == null) {
+                continue;
+            }
+            if (largest == null || (long) candidate.width * candidate.height > (long) largest.width * largest.height) {
+                largest = candidate;
+            }
+        }
+        return largest;
+    }
+
+    static final int FALLBACK_ORIGIN_INSET_PX = 2;
+
+    private static Rectangle awayFromFallbackOrigin(Rectangle area) {
+        if (!isFallbackRectangle(area)) {
+            return area;
+        }
+        Rectangle moved = new Rectangle(FALLBACK_ORIGIN_INSET_PX, FALLBACK_ORIGIN_INSET_PX,
+                area.x + area.width - FALLBACK_ORIGIN_INSET_PX, area.y + area.height - FALLBACK_ORIGIN_INSET_PX);
+        return moved.isEmpty() ? null : moved;
+    }
+
+    private static void addIfNotEmpty(List<Rectangle> areas, Rectangle area) {
+        if (!area.isEmpty() && !areas.contains(area)) {
+            areas.add(area);
+        }
     }
 
     public static boolean isRectangleWithinRectangle(Rectangle main, Rectangle sub) {
