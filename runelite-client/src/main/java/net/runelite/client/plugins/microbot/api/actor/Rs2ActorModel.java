@@ -374,7 +374,10 @@ public class Rs2ActorModel implements Actor
     @Override
     public WorldArea getWorldArea()
     {
-        return actor.getWorldArea();
+        if (actor == null) {
+            return null;
+        }
+        return Microbot.getClientThread().invoke(actor::getWorldArea);
     }
 
     @Override

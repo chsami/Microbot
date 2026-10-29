@@ -27,6 +27,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -142,6 +143,29 @@ public class Rs2TileObjectModelClickRecoveryTest {
             assertTrue(Microbot.pauseAllScripts.get());
             walker.verify(() -> Rs2Walker.walkTo(any(WorldPoint.class), anyInt()), never());
             microbot.verify(() -> Microbot.doInvoke(any(NewMenuEntry.class), any(Rectangle.class)), never());
+            microbot.verify(() -> Microbot.showMessage(contains("for 5 times")), times(1));
+        } finally {
+            Microbot.pauseAllScripts.set(savedPause);
+        }
+    }
+
+    @Test
+    public void exhaustedFailsafeDoesNotLatchForLaterClicks() {
+        Microbot.cantReachTarget = true;
+        Microbot.cantReachTargetRetries = 5;
+        boolean savedPause = Microbot.pauseAllScripts.get();
+        try {
+            assertFalse(new Rs2TileObjectModel(object).click("Open"));
+
+            assertFalse(Microbot.cantReachTarget);
+            assertEquals(0, Microbot.cantReachTargetRetries);
+
+            Microbot.pauseAllScripts.set(false);
+            assertTrue(new Rs2TileObjectModel(object).click("Open"));
+
+            microbot.verify(() -> Microbot.showMessage(any(String.class)), times(1));
+            microbot.verify(() -> Microbot.doInvoke(any(NewMenuEntry.class), any(Rectangle.class)), times(1));
+            assertFalse(Microbot.pauseAllScripts.get());
         } finally {
             Microbot.pauseAllScripts.set(savedPause);
         }

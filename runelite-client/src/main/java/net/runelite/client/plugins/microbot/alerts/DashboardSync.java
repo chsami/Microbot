@@ -220,15 +220,19 @@ public class DashboardSync
 			return;
 		}
 		failures = 0;
-		List<Command> commands = commands(gson, body);
+		dispatch(token, commands(gson, body));
+		schedule(NEXT_SYNC_MS);
+	}
+
+	void dispatch(String token, List<Command> commands)
+	{
 		commands.stream()
 			.filter(command -> SCREENSHOT.equals(command.getType()))
 			.findFirst()
 			.ifPresent(command -> takeScreenshot(token, command.getId()));
 		commands.stream()
 			.filter(command -> !SCREENSHOT.equals(command.getType()))
-			.forEach(command -> dashboardControl.run(token, command.getId(), command.getType()));
-		schedule(NEXT_SYNC_MS);
+			.forEach(command -> dashboardControl.run(token, command.getId(), command.getType(), command.getScriptId()));
 	}
 
 	private void retryLater()
@@ -323,7 +327,8 @@ public class DashboardSync
 			for (JsonElement element : entries)
 			{
 				JsonObject command = element.getAsJsonObject();
-				commands.add(new Command(UUID.fromString(command.get("id").getAsString()).toString(), command.get("type").getAsString()));
+				commands.add(new Command(UUID.fromString(command.get("id").getAsString()).toString(), command.get("type").getAsString(),
+					optionalString(command.get("scriptId"))));
 			}
 		}
 		catch (JsonParseException | IllegalStateException | IllegalArgumentException | NullPointerException | ClassCastException e)
@@ -333,11 +338,17 @@ public class DashboardSync
 		return commands;
 	}
 
+	private static String optionalString(JsonElement element)
+	{
+		return element != null && element.isJsonPrimitive() && element.getAsJsonPrimitive().isString() ? element.getAsString() : null;
+	}
+
 	@Value
 	static class Command
 	{
 		String id;
 		String type;
+		String scriptId;
 	}
 
 	static long backoff(int failures)

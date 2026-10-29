@@ -409,7 +409,13 @@ public class Microbot {
             if (Microbot.getClient().getWorld() == worldNumber) {
                 return true;
             }
-            World newWorld = Microbot.getWorldService().getWorlds().findWorld(worldNumber);
+            WorldService service = Microbot.getWorldService();
+            net.runelite.http.api.worlds.WorldResult worlds = service == null ? null : service.getWorlds();
+            if (worlds == null) {
+                log.error("World list not loaded, cannot hop to world {}", worldNumber);
+                return false;
+            }
+            World newWorld = worlds.findWorld(worldNumber);
             if (newWorld == null) {
                 Microbot.getNotifier().notify("Invalid World");
                 System.out.println("Tried to hop to an invalid world");

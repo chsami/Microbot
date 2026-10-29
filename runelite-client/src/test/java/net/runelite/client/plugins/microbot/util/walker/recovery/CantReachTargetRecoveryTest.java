@@ -3,6 +3,7 @@ package net.runelite.client.plugins.microbot.util.walker.recovery;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.client.plugins.microbot.Microbot;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
@@ -44,6 +45,34 @@ public class CantReachTargetRecoveryTest
 			assertEquals("walk failed", expected.getMessage());
 		}
 		assertTrue(CantReachTargetRecovery.shouldStart(true, true));
+	}
+
+	@Test
+	public void givingUpClearsTheLatchAndReportsTheAttempts()
+	{
+		boolean savedCantReach = Microbot.cantReachTarget;
+		int savedRetries = Microbot.cantReachTargetRetries;
+		try
+		{
+			Microbot.cantReachTarget = true;
+			Microbot.cantReachTargetRetries = 4;
+
+			assertEquals(4, CantReachTargetRecovery.giveUp());
+			assertFalse(Microbot.cantReachTarget);
+			assertEquals(0, Microbot.cantReachTargetRetries);
+			assertFalse(CantReachTargetRecovery.shouldStart(true, Microbot.cantReachTarget));
+
+			Microbot.cantReachTarget = true;
+			Microbot.cantReachTargetRetries = 2;
+			CantReachTargetRecovery.reset();
+			assertFalse(Microbot.cantReachTarget);
+			assertEquals(0, Microbot.cantReachTargetRetries);
+		}
+		finally
+		{
+			Microbot.cantReachTarget = savedCantReach;
+			Microbot.cantReachTargetRetries = savedRetries;
+		}
 	}
 
 	private static void assertNestedDoorDispatch(WorldPoint originalTarget)

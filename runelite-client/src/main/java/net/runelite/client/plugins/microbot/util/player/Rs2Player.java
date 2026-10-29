@@ -1731,7 +1731,9 @@ public class Rs2Player {
      * @return {@code true} if the player is inside a cave, {@code false} otherwise.
      */
     public static boolean isInCave() {
-        return Rs2Player.getWorldLocation().getY() >= 6400
+        WorldPoint location = Rs2Player.getWorldLocation();
+        return location != null
+                && location.getY() >= 6400
                 && !Microbot.getClient().getTopLevelWorldView().isInstance();
     }
     

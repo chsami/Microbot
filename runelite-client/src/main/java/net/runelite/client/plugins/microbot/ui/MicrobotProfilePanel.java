@@ -15,7 +15,10 @@ import net.runelite.client.events.ProfileChanged;
 import net.runelite.client.events.RuneScapeProfileChanged;
 import net.runelite.client.events.SessionClose;
 import net.runelite.client.events.SessionOpen;
+import net.runelite.client.plugins.microbot.util.security.Encryption;
+import net.runelite.client.plugins.microbot.util.security.JagexCredentials;
 import net.runelite.client.plugins.microbot.util.security.LoginManager;
+import net.runelite.client.plugins.microbot.util.security.MembershipRecorder;
 import net.runelite.client.plugins.screenmarkers.ScreenMarkerPlugin;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.components.DragAndDropReorderPane;
@@ -26,6 +29,7 @@ import net.runelite.client.util.Text;
 
 import javax.inject.Inject;
 import javax.swing.*;
+import javax.swing.border.Border;
 import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
@@ -52,6 +56,13 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
     private static final Color CARD_HOVER = new Color(50, 50, 50);
     private static final Color ACCENT_COLOR = new Color(255, 140, 0);
     private static final Color TEXT_COLOR = new Color(220, 220, 220);
+    private static final Color MUTED_TEXT_COLOR = new Color(160, 160, 160);
+    private static final Color CARD_BORDER_COLOR = new Color(60, 60, 60);
+    private static final Color FIELD_BACKGROUND = new Color(55, 55, 55);
+    private static final Color FIELD_HOVER_BACKGROUND = new Color(70, 70, 70);
+    private static final Color LOAD_TEXT_COLOR = new Color(30, 30, 30);
+    private static final Border VIEW_FIELD_BORDER = new EmptyBorder(3, 0, 3, 0);
+    private static final Border EDIT_FIELD_BORDER = new CompoundBorder(new LineBorder(new Color(90, 90, 90), 1), new EmptyBorder(2, 6, 2, 6));
 
     private static final ImageIcon ADD_ICON = new ImageIcon(ImageUtil.loadImageResource(ScreenMarkerPlugin.class, "add_icon.png"));
     private static final ImageIcon DELETE_ICON = new ImageIcon(ImageUtil.loadImageResource(MicrobotProfilePanel.class, "mdi_delete.png"));
@@ -61,7 +72,6 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
     private static final ImageIcon CLONE_ICON = new ImageIcon(ImageUtil.loadImageResource(MicrobotProfilePanel.class, "mdi_content-duplicate.png"));
     private static final ImageIcon LINK_ICON;
     private static final ImageIcon LINK_ACTIVE_ICON;
-    private static final ImageIcon ARROW_RIGHT_ICON = new ImageIcon(ImageUtil.loadImageResource(MicrobotProfilePanel.class, "/util/arrow_right.png"));
     private static final ImageIcon SYNC_ICON;
     private static final ImageIcon SYNC_ACTIVE_ICON;
 
@@ -197,6 +207,7 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
         button.setBackground(CARD_BACKGROUND);
         button.setForeground(TEXT_COLOR);
         button.setFocusPainted(false);
+        button.setFont(new Font("Roboto", Font.PLAIN, 12));
         button.setBorder(new CompoundBorder(
                 new LineBorder(new Color(80, 80, 80), 1),
                 new EmptyBorder(8, 16, 8, 16)
@@ -251,6 +262,13 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
             }
             card.setActive(true);
         });
+    }
+
+    @Subscribe
+    private void onMembershipSaved(MembershipRecorder.MembershipSaved ev) {
+        if (active) {
+            reload();
+        }
     }
 
     @Subscribe
@@ -488,54 +506,56 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
     }
 
     private class ProfileCard extends JPanel {
-        private final ConfigProfile profile;
-        private final JButton delete;
-        private final JTextField name;
-        private final JTextField password;
-        private final JTextField bankPin;
-        private final JTextField discordWebhookUrl;
-        private final JCheckBox member;
+        private static final String HIDDEN_VALUE = "••••••";
+        private static final char ECHO_CHAR = '•';
 
-        private final JButton activate;
+        private final ConfigProfile profile;
+        private final boolean jagexAccount;
+        private final JTextField name;
+        private final JLabel summary;
+        private final JLabel activeTag;
+        private final JPasswordField password;
+        private final JPasswordField bankPin;
+        private final JTextField discordWebhookUrl;
+        private final JButton load;
+        private final JButton delete;
         private final JPanel detailsPanel;
         private final JPanel buttonPanel;
-        private final JToggleButton rename;
+        private final JToggleButton edit;
 
+        private Integer selectedWorld;
         private boolean expanded;
         private boolean active;
+        private boolean editing;
 
         private ProfileCard(ConfigProfile profile, boolean isActive, boolean rsProfileDefault, boolean limited, MicrobotProfilePanel.ProfileCard prev) {
             this.profile = profile;
+            this.jagexAccount = profile.getJagexSessionId() != null;
+            this.selectedWorld = profile.getSelectedWorld();
 
-            setLayout(new BorderLayout(0, 8));
+            setLayout(new BorderLayout(0, 10));
             setBackground(CARD_BACKGROUND);
-            setBorder(new CompoundBorder(
-                    new LineBorder(new Color(60, 60, 60), 1),
-                    new EmptyBorder(12, 12, 12, 12)
-            ));
 
-            // Top section with name and activate button
-            JPanel topPanel = new JPanel(new BorderLayout(8, 0));
-            topPanel.setOpaque(false);
-
-            name = new JTextField();
-            name.setText(profile.getName());
-            name.setEditable(false);
-            name.setEnabled(false);
-            name.setOpaque(false);
-            name.setBorder(null);
-            name.setFont(new Font("roboto", Font.BOLD, 12));
-            name.setForeground(TEXT_COLOR);
-            name.addActionListener(ev -> stopRenaming(true));
-            name.addKeyListener(new KeyAdapter() {
+            KeyAdapter escapeCancelsEditing = new KeyAdapter() {
                 @Override
                 public void keyPressed(KeyEvent e) {
                     if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
-                        stopRenaming(false);
+                        stopEditing(false);
                     }
                 }
-            });
+            };
 
+            // Header: name, how the profile logs in, and the active tag
+            name = new JTextField(profile.getName());
+            name.setEditable(false);
+            name.setEnabled(false);
+            name.setOpaque(false);
+            name.setBorder(new EmptyBorder(0, 0, 0, 0));
+            name.setFont(new Font("Roboto", Font.BOLD, 12));
+            name.setForeground(TEXT_COLOR);
+            name.setDisabledTextColor(TEXT_COLOR);
+            name.addActionListener(ev -> stopEditing(true));
+            name.addKeyListener(escapeCancelsEditing);
             ((AbstractDocument) name.getDocument()).setDocumentFilter(new DocumentFilter() {
                 @Override
                 public void insertString(FilterBypass fb, int offset, String string, AttributeSet attr) throws BadLocationException {
@@ -552,116 +572,115 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
                 }
             });
 
-            activate = new JButton(ARROW_RIGHT_ICON);
-            activate.setDisabledIcon(ARROW_RIGHT_ICON);
-            activate.addActionListener(ev -> switchToProfile(profile.getId(), true));
-            SwingUtil.removeButtonDecorations(activate);
-            activate.setPreferredSize(new Dimension(32, 32));
+            summary = new JLabel(summaryText());
+            summary.setFont(new Font("Roboto", Font.PLAIN, 11));
+            summary.setForeground(MUTED_TEXT_COLOR);
 
-            topPanel.add(name, BorderLayout.CENTER);
-            topPanel.add(activate, BorderLayout.EAST);
+            JPanel titles = new JPanel(new BorderLayout(0, 3));
+            titles.setOpaque(false);
+            titles.add(name, BorderLayout.NORTH);
+            titles.add(summary, BorderLayout.SOUTH);
 
-            add(topPanel, BorderLayout.NORTH);
+            activeTag = new JLabel("ACTIVE");
+            activeTag.setFont(new Font("Roboto", Font.BOLD, 10));
+            activeTag.setForeground(ColorScheme.PROGRESS_COMPLETE_COLOR);
+            activeTag.setVerticalAlignment(SwingConstants.TOP);
 
-            // Details Panel (collapsible)
-            detailsPanel = new JPanel();
-            detailsPanel.setLayout(new GridBagLayout());
+            JPanel header = new JPanel(new BorderLayout(8, 0));
+            header.setOpaque(false);
+            header.add(titles, BorderLayout.CENTER);
+            header.add(activeTag, BorderLayout.EAST);
+            add(header, BorderLayout.NORTH);
+
+            // Details (shown when expanded)
+            detailsPanel = new JPanel(new GridBagLayout());
             detailsPanel.setOpaque(false);
             detailsPanel.setVisible(false);
 
             GridBagConstraints gbc = new GridBagConstraints();
             gbc.fill = GridBagConstraints.HORIZONTAL;
-            gbc.insets = new Insets(4, 0, 4, 0);
+            gbc.insets = new Insets(2, 0, 2, 0);
             gbc.weightx = 1.0;
             gbc.gridx = 0;
+            gbc.gridy = 0;
 
-            // Password field
-            password = createDetailField("Password", profile.getPassword());
-            password.addActionListener(ev -> stopRenamingPassword(true));
-            password.addKeyListener(new KeyAdapter() {
-                @Override
-                public void keyPressed(KeyEvent e) {
-                    if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
-                        stopRenamingPassword(true);
-                    }
-                }
-            });
-            detailsPanel.add(createLabeledField("Password:", password), gbc);
+            password = createSecretField();
+            password.addActionListener(ev -> stopEditing(true));
+            password.addKeyListener(escapeCancelsEditing);
+            bankPin = createSecretField();
+            bankPin.addActionListener(ev -> stopEditing(true));
+            bankPin.addKeyListener(escapeCancelsEditing);
+            discordWebhookUrl = createDetailField();
+            discordWebhookUrl.putClientProperty("JTextField.placeholderText", "Discord webhook URL");
+            discordWebhookUrl.addActionListener(ev -> stopEditing(true));
+            discordWebhookUrl.addKeyListener(escapeCancelsEditing);
 
-            // Bank PIN field
-            bankPin = createDetailField("Bank PIN", profile.getBankPin());
-            bankPin.addActionListener(ev -> stopRenamingBankPin(true));
-            bankPin.addKeyListener(new KeyAdapter() {
-                @Override
-                public void keyPressed(KeyEvent e) {
-                    if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
-                        stopRenamingBankPin(true);
-                    }
-                }
-            });
-            gbc.gridy = 1;
-            detailsPanel.add(createLabeledField("Bank PIN:", bankPin), gbc);
+            if (jagexAccount) {
+                JTextField login = createDetailField();
+                login.setText("Jagex Account");
+                detailsPanel.add(createLabeledField("Login", login), gbc);
+            } else {
+                detailsPanel.add(createLabeledField("Password", password), gbc);
+            }
+            gbc.gridy++;
+            detailsPanel.add(createLabeledField("Bank PIN", bankPin), gbc);
+            gbc.gridy++;
+            detailsPanel.add(createLabeledField("Webhook", discordWebhookUrl), gbc);
+            showValues();
 
-            // Discord Webhook field
-            discordWebhookUrl = createDetailField("Discord Webhook", profile.getDiscordWebhookUrl());
-            discordWebhookUrl.addActionListener(ev -> stopRenamingDiscordWebhookUrl(true));
-            discordWebhookUrl.addKeyListener(new KeyAdapter() {
-                @Override
-                public void keyPressed(KeyEvent e) {
-                    if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
-                        stopRenamingDiscordWebhookUrl(true);
-                    }
-                }
-            });
-            gbc.gridy = 2;
-            detailsPanel.add(createLabeledField("Webhook:", discordWebhookUrl), gbc);
-
-            // Member checkbox (kept for backward compatibility)
-            member = new JCheckBox("Is Member");
-            member.setSelected(profile.isMember());
-            member.setOpaque(false);
-            member.setForeground(TEXT_COLOR);
-            member.addActionListener(e -> {
-                configManager.setMember(profile, member.isSelected());
-            });
-            gbc.gridy = 3;
-            detailsPanel.add(member, gbc);
-
-            // World selector button
             JPanel worldPanel = new JPanel(new BorderLayout(4, 0));
             worldPanel.setOpaque(false);
-
-            JLabel worldLabel = new JLabel("World:");
-            worldLabel.setForeground(new Color(180, 180, 180));
-            worldLabel.setFont(new Font("Roboto", Font.PLAIN, 11));
-            worldLabel.setPreferredSize(new Dimension(80, 20));
-
-            JButton worldSelector = createWorldSelectorButton(profile);
-            worldPanel.add(worldLabel, BorderLayout.WEST);
-            worldPanel.add(worldSelector, BorderLayout.CENTER);
-
-            gbc.gridy = 4;
+            worldPanel.add(createLabel("World"), BorderLayout.WEST);
+            worldPanel.add(createWorldSelectorButton(), BorderLayout.CENTER);
+            gbc.gridy++;
+            gbc.insets = new Insets(6, 0, 2, 0);
             detailsPanel.add(worldPanel, gbc);
+
+            // Read from the game at each login; see MembershipRecorder
+            JTextField membership = createDetailField();
+            membership.setText(MembershipRecorder.describe(profile, System.currentTimeMillis()));
+            membership.setToolTipText("Updated from the game each time this profile logs in");
+            gbc.gridy++;
+            gbc.insets = new Insets(2, 0, 2, 0);
+            detailsPanel.add(createLabeledField("Account", membership), gbc);
+
+            load = new JButton();
+            load.setBackground(ACCENT_COLOR);
+            load.setForeground(LOAD_TEXT_COLOR);
+            load.setFocusPainted(false);
+            load.setFont(new Font("Roboto", Font.BOLD, 12));
+            load.setBorder(new EmptyBorder(6, 8, 6, 8));
+            load.setCursor(new Cursor(Cursor.HAND_CURSOR));
+            load.addActionListener(ev -> {
+                if (active) {
+                    initiateLogin();
+                } else {
+                    switchToProfile(profile.getId(), true);
+                }
+            });
+            gbc.gridy++;
+            gbc.insets = new Insets(8, 0, 0, 0);
+            detailsPanel.add(load, gbc);
 
             add(detailsPanel, BorderLayout.CENTER);
 
-            // Button Panel
-            buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+            // Profile actions (shown when expanded)
+            buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 4, 0));
             buttonPanel.setOpaque(false);
             buttonPanel.setVisible(false);
 
-            rename = new JToggleButton(RENAME_ICON);
-            rename.setSelectedIcon(RENAME_ACTIVE_ICON);
-            rename.setToolTipText("Edit profile");
-            SwingUtil.removeButtonDecorations(rename);
-            rename.addActionListener(ev -> {
-                if (rename.isSelected()) {
-                    startRenaming();
+            edit = new JToggleButton(RENAME_ICON);
+            edit.setSelectedIcon(RENAME_ACTIVE_ICON);
+            edit.setToolTipText("Edit profile");
+            SwingUtil.removeButtonDecorations(edit);
+            edit.addActionListener(ev -> {
+                if (edit.isSelected()) {
+                    startEditing();
                 } else {
-                    stopRenaming(true);
+                    stopEditing(true);
                 }
             });
-            buttonPanel.add(rename);
+            buttonPanel.add(edit);
 
             JButton clone = new JButton(CLONE_ICON);
             clone.setToolTipText("Duplicate profile");
@@ -757,20 +776,12 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
 
             add(buttonPanel, BorderLayout.SOUTH);
 
-            // Mouse listeners for card interaction
+            // A click on the card opens or closes it; loading is only done with the Load button
             MouseAdapter cardListener = new MouseDragEventForwarder(profilesList) {
                 @Override
                 public void mouseClicked(MouseEvent ev) {
-                    if (disabled(ev)) {
-                        if (ev.getClickCount() == 2) {
-                            if (!active) {
-                                switchToProfile(profile.getId(), true);
-                            } else {
-                                initiateLogin();
-                            }
-                        } else {
-                            setExpanded(!expanded);
-                        }
+                    if (disabled(ev) && !editing && ev.getClickCount() == 1) {
+                        setExpanded(!expanded);
                     }
                 }
 
@@ -790,9 +801,6 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
 
                 private boolean disabled(MouseEvent ev) {
                     Component target = ev.getComponent();
-                    if (target instanceof JButton) {
-                        return !target.isEnabled();
-                    }
                     if (target instanceof JTextField) {
                         return !((JTextField) target).isEditable();
                     }
@@ -802,65 +810,102 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
 
             addMouseListener(cardListener);
             addMouseMotionListener(cardListener);
-            name.addMouseListener(cardListener);
-            name.addMouseMotionListener(cardListener);
-            password.addMouseListener(cardListener);
-            password.addMouseMotionListener(cardListener);
-            discordWebhookUrl.addMouseListener(cardListener);
-            discordWebhookUrl.addMouseMotionListener(cardListener);
-            bankPin.addMouseListener(cardListener);
-            bankPin.addMouseMotionListener(cardListener);
-            activate.addMouseListener(cardListener);
-            activate.addMouseMotionListener(cardListener);
+            addCardListener(this, cardListener);
 
             setActive(isActive);
             setExpanded(prev != null && prev.expanded);
         }
 
+        // Text fields take their own mouse events, so they need the card listener too
+        private void addCardListener(Container container, MouseAdapter listener) {
+            for (Component component : container.getComponents()) {
+                if (component instanceof JTextField) {
+                    component.addMouseListener(listener);
+                    component.addMouseMotionListener(listener);
+                } else if (component instanceof JPanel) {
+                    addCardListener((Container) component, listener);
+                }
+            }
+        }
+
+                private String summaryText() {
+            String login = jagexAccount ? "Jagex Account" : "Legacy account";
+            String world;
+            if (selectedWorld == null) {
+                world = "no world set";
+            } else if (selectedWorld == -1) {
+                world = "random members";
+            } else if (selectedWorld == -2) {
+                world = "random F2P";
+            } else {
+                world = "World " + selectedWorld;
+            }
+            return login + " · " + world;
+        }
+
+        private JLabel createLabel(String text) {
+            JLabel label = new JLabel(text);
+            label.setForeground(MUTED_TEXT_COLOR);
+            label.setFont(new Font("Roboto", Font.PLAIN, 11));
+            label.setPreferredSize(new Dimension(64, 20));
+            return label;
+        }
+
         private JPanel createLabeledField(String label, JTextField field) {
             JPanel panel = new JPanel(new BorderLayout(4, 0));
             panel.setOpaque(false);
-
-            JLabel lblComponent = new JLabel(label);
-            lblComponent.setForeground(new Color(180, 180, 180));
-            lblComponent.setFont(new Font("Roboto", Font.PLAIN, 11));
-            lblComponent.setPreferredSize(new Dimension(80, 20));
-
-            panel.add(lblComponent, BorderLayout.WEST);
+            panel.add(createLabel(label), BorderLayout.WEST);
             panel.add(field, BorderLayout.CENTER);
-
             return panel;
         }
 
-        private JTextField createDetailField(String placeholder, String value) {
+        private JTextField createDetailField() {
             JTextField field = new JTextField();
-            if (value == null || value.isEmpty()) {
-                field.setText("**" + placeholder.toLowerCase() + "**");
-                field.setForeground(new Color(120, 120, 120));
-            } else {
-                field.setText(value);
-                field.setForeground(TEXT_COLOR);
-            }
-            field.setEditable(false);
-            field.setEnabled(false);
-            field.setOpaque(false);
-            field.setBorder(new CompoundBorder(
-                    new LineBorder(new Color(60, 60, 60), 1),
-                    new EmptyBorder(4, 8, 4, 8)
-            ));
-            field.setFont(new Font("Monospaced", Font.PLAIN, 11));
+            styleDetailField(field);
             return field;
         }
 
-        private JButton createWorldSelectorButton(net.runelite.client.config.ConfigProfile profile) {
-            JButton button = new JButton(getWorldDisplayText(profile.getSelectedWorld()));
-            button.setBackground(new Color(60, 60, 60));
+        private JPasswordField createSecretField() {
+            JPasswordField field = new JPasswordField();
+            styleDetailField(field);
+            field.putClientProperty("JTextField.placeholderText", "Keep current");
+            return field;
+        }
+
+        private void styleDetailField(JTextField field) {
+            field.setEditable(false);
+            field.setEnabled(false);
+            field.setOpaque(false);
+            field.setBorder(VIEW_FIELD_BORDER);
+            field.setFont(new Font("Roboto", Font.PLAIN, 11));
+            field.setForeground(TEXT_COLOR);
+            field.setDisabledTextColor(TEXT_COLOR);
+        }
+
+        // Read-only view: secrets are never shown, empty values say so
+        private void showValues() {
+            showSecret(password, profile.getPassword());
+            showSecret(bankPin, profile.getBankPin());
+            String webhook = profile.getDiscordWebhookUrl();
+            boolean set = !Strings.isNullOrEmpty(webhook);
+            discordWebhookUrl.setText(set ? webhook : "Not set");
+            discordWebhookUrl.setDisabledTextColor(set ? TEXT_COLOR : MUTED_TEXT_COLOR);
+            discordWebhookUrl.setCaretPosition(0);
+        }
+
+        private void showSecret(JPasswordField field, String stored) {
+            boolean set = !Strings.isNullOrEmpty(stored) && !stored.isBlank();
+            field.setEchoChar((char) 0);
+            field.setText(set ? HIDDEN_VALUE : "Not set");
+            field.setDisabledTextColor(set ? TEXT_COLOR : MUTED_TEXT_COLOR);
+        }
+
+        private JButton createWorldSelectorButton() {
+            JButton button = new JButton(getWorldDisplayText(selectedWorld));
+            button.setBackground(FIELD_BACKGROUND);
             button.setForeground(TEXT_COLOR);
             button.setFocusPainted(false);
-            button.setBorder(new CompoundBorder(
-                    new LineBorder(new Color(60, 60, 60), 1),
-                    new EmptyBorder(4, 8, 4, 8)
-            ));
+            button.setBorder(new EmptyBorder(4, 8, 4, 8));
             button.setFont(new Font("Roboto", Font.PLAIN, 11));
             button.setCursor(new Cursor(Cursor.HAND_CURSOR));
             button.setHorizontalAlignment(SwingConstants.LEFT);
@@ -869,30 +914,24 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
                 WorldSelectorDialog dialog = new WorldSelectorDialog((JFrame) SwingUtilities.getWindowAncestor(this));
                 dialog.setVisible(true);
 
-                Integer selectedWorld = dialog.getSelectedWorld();
-                if (selectedWorld != null) {
-                    configManager.setSelectedWorld(profile, selectedWorld);
-                    button.setText(getWorldDisplayText(selectedWorld));
-                    // Update member status based on world selection if needed
-                    if (selectedWorld == -1) {
-                        configManager.setMember(profile, true);
-                        member.setSelected(true);
-                    } else if (selectedWorld == -2) {
-                        configManager.setMember(profile, false);
-                        member.setSelected(false);
-                    }
+                Integer world = dialog.getSelectedWorld();
+                if (world != null) {
+                    selectedWorld = world;
+                    configManager.setSelectedWorld(profile, world);
+                    button.setText(getWorldDisplayText(world));
+                    summary.setText(summaryText());
                 }
             });
 
             button.addMouseListener(new MouseAdapter() {
                 @Override
                 public void mouseEntered(MouseEvent e) {
-                    button.setBackground(new Color(80, 80, 80));
+                    button.setBackground(FIELD_HOVER_BACKGROUND);
                 }
 
                 @Override
                 public void mouseExited(MouseEvent e) {
-                    button.setBackground(new Color(60, 60, 60));
+                    button.setBackground(FIELD_BACKGROUND);
                 }
             });
 
@@ -901,11 +940,11 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
 
         private String getWorldDisplayText(Integer worldId) {
             if (worldId == null) {
-                return "Click to select world...";
+                return "Select a world...";
             } else if (worldId == -1) {
-                return "[Random] Members World";
+                return "Random members";
             } else if (worldId == -2) {
-                return "[Random] F2P World";
+                return "Random F2P";
             } else {
                 return "World " + worldId;
             }
@@ -913,156 +952,91 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
 
         void setActive(boolean active) {
             this.active = active;
-            if (active) {
-                setBorder(new CompoundBorder(
-                        new LineBorder(ACCENT_COLOR, 2),
-                        new EmptyBorder(11, 11, 11, 11)
-                ));
-            } else {
-                setBorder(new CompoundBorder(
-                        new LineBorder(new Color(60, 60, 60), 1),
-                        new EmptyBorder(12, 12, 12, 12)
-                ));
-            }
+            setBorder(new CompoundBorder(
+                    new LineBorder(active ? ACCENT_COLOR : CARD_BORDER_COLOR, 1),
+                    new EmptyBorder(12, 12, 12, 12)
+            ));
+            activeTag.setVisible(active);
+            load.setText("Load profile");
+            load.setToolTipText("Fill in this profile's login and log in");
             delete.setEnabled(!active);
-            activate.setEnabled(expanded && !active);
         }
 
         void setExpanded(boolean expanded) {
             this.expanded = expanded;
             detailsPanel.setVisible(expanded);
             buttonPanel.setVisible(expanded);
-            activate.setEnabled(expanded && !active);
-            if (rename.isSelected()) {
-                stopRenaming(true);
+            if (editing) {
+                stopEditing(true);
             }
             revalidate();
         }
 
-        private void startRenaming() {
-            name.setEnabled(true);
-            name.setEditable(true);
-            name.setOpaque(true);
-            name.setBackground(new Color(100, 100, 100));
+        private void startEditing() {
+            editing = true;
+            for (JTextField field : editableFields()) {
+                field.setEnabled(true);
+                field.setEditable(true);
+                field.setOpaque(true);
+                field.setBackground(FIELD_BACKGROUND);
+                field.setBorder(EDIT_FIELD_BORDER);
+            }
+            // Secrets start empty; leaving them empty keeps the saved value
+            password.setText("");
+            password.setEchoChar(ECHO_CHAR);
+            bankPin.setText("");
+            bankPin.setEchoChar(ECHO_CHAR);
+            discordWebhookUrl.setText(Strings.nullToEmpty(profile.getDiscordWebhookUrl()));
             name.requestFocusInWindow();
             name.selectAll();
-            startRenamingPassword();
-            startRenamingBankPin();
-            startRenamingDiscordWebhookUrl();
         }
 
-        private void stopRenaming(boolean save) {
-            name.setEditable(false);
-            name.setEnabled(false);
-            name.setOpaque(false);
-
-            rename.setSelected(false);
+        private void stopEditing(boolean save) {
+            if (!editing) {
+                return;
+            }
+            editing = false;
+            edit.setSelected(false);
+            for (JTextField field : editableFields()) {
+                field.setEditable(false);
+                field.setEnabled(false);
+                field.setOpaque(false);
+                field.setBorder(VIEW_FIELD_BORDER);
+            }
+            name.setBorder(new EmptyBorder(0, 0, 0, 0));
 
             if (save) {
-                renameProfile(profile.getId(), name.getText().trim());
+                save();
             } else {
                 name.setText(profile.getName());
-            }
-            stopRenamingPassword(save);
-            stopRenamingBankPin(save);
-            stopRenamingDiscordWebhookUrl(save);
-        }
-
-        private void startRenamingPassword() {
-            password.setEnabled(true);
-            password.setEditable(true);
-            password.setOpaque(true);
-            password.setBackground(new Color(100, 100, 100));
-            password.setForeground(TEXT_COLOR);
-            password.requestFocusInWindow();
-            password.selectAll();
-        }
-
-        private void startRenamingBankPin() {
-            bankPin.setEnabled(true);
-            bankPin.setEditable(true);
-            bankPin.setOpaque(true);
-            bankPin.setBackground(new Color(100, 100, 100));
-            bankPin.setForeground(TEXT_COLOR);
-            bankPin.requestFocusInWindow();
-            bankPin.selectAll();
-        }
-
-        private void startRenamingDiscordWebhookUrl() {
-            discordWebhookUrl.setEnabled(true);
-            discordWebhookUrl.setEditable(true);
-            discordWebhookUrl.setOpaque(true);
-            discordWebhookUrl.setBackground(new Color(100, 100, 100));
-            discordWebhookUrl.setForeground(TEXT_COLOR);
-            discordWebhookUrl.requestFocusInWindow();
-            discordWebhookUrl.selectAll();
-        }
-
-        private void stopRenamingDiscordWebhookUrl(boolean save) {
-            discordWebhookUrl.setEditable(false);
-            discordWebhookUrl.setEnabled(false);
-            discordWebhookUrl.setOpaque(false);
-
-            if (discordWebhookUrl.getText() == null || discordWebhookUrl.getText().isEmpty()) {
-                return;
-            }
-
-            rename.setSelected(false);
-
-            if (save) {
-                configManager.setDiscordWebhookUrl(profile, discordWebhookUrl.getText());
-            } else {
-                String currentWebhookUrl = profile.getDiscordWebhookUrl();
-                discordWebhookUrl.setText(currentWebhookUrl != null ? currentWebhookUrl : "**discord webhook**");
+                showValues();
             }
         }
 
-        private void stopRenamingPassword(boolean save) {
-            password.setEditable(false);
-            password.setEnabled(false);
-            password.setOpaque(false);
+        private JTextField[] editableFields() {
+            return new JTextField[]{name, password, bankPin, discordWebhookUrl};
+        }
 
-            rename.setSelected(false);
-
-            if (password.getText().isEmpty()) {
-                return;
-            }
-
+        private void save() {
             try {
-                configManager.setPassword(profile, net.runelite.client.plugins.microbot.util.security.Encryption.encrypt(password.getText()));
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-
-            if (save) {
-                renameProfile(profile.getId(), name.getText().trim());
-            } else {
-                password.setText(profile.getPassword());
-            }
-        }
-
-        private void stopRenamingBankPin(boolean save) {
-            bankPin.setEditable(false);
-            bankPin.setEnabled(false);
-            bankPin.setOpaque(false);
-
-            rename.setSelected(false);
-
-            try {
-                if (bankPin.getText().isBlank()) {
-                    configManager.setBankPin(profile,"");
-                } else {
-                    configManager.setBankPin(profile, net.runelite.client.plugins.microbot.util.security.Encryption.encrypt(bankPin.getText()));
+                String newPassword = new String(password.getPassword());
+                if (!newPassword.isEmpty()) {
+                    configManager.setPassword(profile, Encryption.encrypt(newPassword));
+                }
+                String newBankPin = new String(bankPin.getPassword()).trim();
+                if (!newBankPin.isEmpty()) {
+                    configManager.setBankPin(profile, Encryption.encrypt(newBankPin));
                 }
             } catch (Exception e) {
-                throw new RuntimeException(e);
+                log.error("Unable to encrypt profile credentials", e);
             }
-
-            if (save) {
-                renameProfile(profile.getId(), name.getText().trim());
-            } else {
-                bankPin.setText(profile.getBankPin());
+            String webhook = discordWebhookUrl.getText().trim();
+            if (!webhook.equals(Strings.nullToEmpty(profile.getDiscordWebhookUrl()))) {
+                configManager.setDiscordWebhookUrl(profile, webhook.isEmpty() ? null : webhook);
             }
+            String newName = name.getText().trim();
+            // Renaming reloads the cards, which also shows the saved values
+            renameProfile(profile.getId(), newName.isEmpty() ? profile.getName() : newName);
         }
     }
 
@@ -1070,6 +1044,10 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
         log.info("Importing profile from {}", file);
 
         executor.execute(() -> {
+            if (importJagexCredentials(file)) {
+                return;
+            }
+
             try (ProfileManager.Lock lock = profileManager.lock()) {
                 String name = "Imported Profile";
                 int number = 1;
@@ -1085,6 +1063,40 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
                 configManager.importAndMigrate(lock, file, profile);
             }
         });
+    }
+
+    /**
+     * Saves the Jagex Account character in a credentials.properties file to the profile named after
+     * it, creating that profile if needed. Logging in with the profile then switches to that character.
+     *
+     * @return false if the file is not a Jagex credentials file
+     */
+    private boolean importJagexCredentials(File file) {
+        JagexCredentials credentials;
+        String encryptedSessionId;
+        try {
+            credentials = JagexCredentials.load(file);
+            if (credentials == null) {
+                return false;
+            }
+            encryptedSessionId = Encryption.encrypt(credentials.getSessionId());
+        } catch (Exception e) {
+            log.error("Unable to read Jagex credentials from {}", file, e);
+            return false;
+        }
+
+        try (ProfileManager.Lock lock = profileManager.lock()) {
+            ConfigProfile profile = lock.findProfile(credentials.getDisplayName());
+            if (profile == null) {
+                profile = lock.createProfile(credentials.getDisplayName());
+            }
+            profile.setJagexSessionId(encryptedSessionId);
+            profile.setJagexCharacterId(credentials.getCharacterId());
+            lock.dirty();
+            reload(lock.getProfiles());
+        }
+        log.info("Imported Jagex Account character into profile {}", credentials.getDisplayName());
+        return true;
     }
 
     private void cloneProfile(ConfigProfile profile) {

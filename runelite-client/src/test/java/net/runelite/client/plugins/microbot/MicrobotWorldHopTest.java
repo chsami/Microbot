@@ -1,6 +1,7 @@
 package net.runelite.client.plugins.microbot;
 
 import net.runelite.api.Client;
+import net.runelite.api.GameState;
 import net.runelite.api.World;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.InterfaceID;
@@ -9,8 +10,10 @@ import net.runelite.client.callback.ClientThread;
 import net.runelite.client.game.WorldService;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
+import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.security.HopBudget;
+import net.runelite.client.plugins.microbot.util.shop.Rs2Shop;
 import net.runelite.http.api.worlds.WorldResult;
 import net.runelite.http.api.worlds.WorldType;
 import org.junit.After;
@@ -223,6 +226,43 @@ public class MicrobotWorldHopTest {
         }
 
         verify(client, never()).hopToWorld(any());
+    }
+
+    @Test
+    public void refusesHopWhenWorldListIsNotLoaded() {
+        WorldService worldService = mock(WorldService.class);
+        when(worldService.getWorlds()).thenReturn(null);
+        microbot.when(Microbot::getWorldService).thenReturn(worldService);
+
+        assertFalse(hopWithNoBlockers(302));
+
+        verify(client, never()).createWorld();
+        verify(client, never()).hopToWorld(any());
+    }
+
+    @Test
+    public void refusesHopWhenWorldServiceIsMissing() {
+        microbot.when(Microbot::getWorldService).thenReturn(null);
+
+        assertFalse(hopWithNoBlockers(302));
+
+        verify(client, never()).createWorld();
+        verify(client, never()).hopToWorld(any());
+    }
+
+    private boolean hopWithNoBlockers(int worldNumber) {
+        microbot.when(Microbot::isLoggedIn).thenReturn(true);
+        when(client.getWorld()).thenReturn(301);
+        when(client.getGameState()).thenReturn(GameState.LOGGED_IN);
+        HopBudget budget = mock(HopBudget.class);
+        try (MockedStatic<HopBudget> hopBudget = Mockito.mockStatic(HopBudget.class);
+             MockedStatic<Rs2Combat> combat = Mockito.mockStatic(Rs2Combat.class);
+             MockedStatic<Rs2Bank> bank = Mockito.mockStatic(Rs2Bank.class);
+             MockedStatic<Rs2Shop> shop = Mockito.mockStatic(Rs2Shop.class);
+             MockedStatic<Rs2Dialogue> dialogue = Mockito.mockStatic(Rs2Dialogue.class)) {
+            hopBudget.when(HopBudget::getInstance).thenReturn(budget);
+            return Microbot.hopToWorld(worldNumber);
+        }
     }
 
     @Test

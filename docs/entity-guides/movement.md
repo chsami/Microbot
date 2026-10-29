@@ -613,7 +613,28 @@ if (!isCanvasPointInsideViewport(canvasPoint, viewport)
 
 **Defensive check:** Assert points inside, touching and outside overlay rectangles against `isCanvasPointCoveredByInterface`, as in `Rs2WalkerUnitTest.sceneClickRejectsPointsCoveredByVisibleInterfaces`.
 
-## 31. Minigame teleports make a far bank look free to "nearest bank"
+## 31. The player location can be `null` right after a transport
+
+`Rs2Player.getWorldLocation()` returns `null` while the local player is missing, which happens while the destination area loads after a teleport, ladder or region-crossing door. Location-derived predicates such as `Rs2Player.isInCave()` must answer `false` for a missing location instead of dereferencing it.
+
+**Why this matters:** `Rs2WalkerTransports.finishHandledTransport` restarts pathfinding immediately after a transport, and `Rs2WalkerLifecycleRuntime.restartPathfinding` passes `Rs2Player.isInCave()` to the route request. Telemetry for 2.6.43 recorded a `NullPointerException` from `isInCave` that aborted the walk after the transport had already succeeded.
+
+**Pattern to follow:**
+
+```java
+// Wrong: the location is null while the new area loads.
+return Rs2Player.getWorldLocation().getY() >= 6400;
+
+// Right: no location means no cave.
+WorldPoint location = Rs2Player.getWorldLocation();
+return location != null && location.getY() >= 6400;
+```
+
+**Where this applies:** `Rs2Player.isInCave` and any helper that reads `Rs2Player.getWorldLocation()` during a walk or transport handoff.
+
+**Defensive check:** Mock `Rs2PlayerStateCache.getLocalPlayerPosition()` to return `null` and assert the predicate is `false`, as in `Rs2PlayerIsInCaveTest`.
+
+## 32. Minigame teleports make a far bank look free to "nearest bank"
 
 The pathfinder prices minigame teleports (Soul Wars, Clan Wars) as nearly free, so a multi-target search for the nearest bank can pick `ISLE_OF_SOULS` from Falador and walk to a portal.
 
@@ -623,7 +644,7 @@ The pathfinder prices minigame teleports (Soul Wars, Clan Wars) as nearly free, 
 
 **Where this applies:** any "nearest X" chosen from pathfinder cost alone.
 
-## 32. A conversation opened by the walker is answered by the walker, not by the caller's tick
+## 33. A conversation opened by the walker is answered by the walker, not by the caller's tick
 
 Opening a guarded door can raise a dialogue menu (Black Knights' Fortress: "[2] I don't care. I'm going in anyway."). While the walker loop runs, the quest driver's tick that applies the step's choices is not reached, so nothing answered and the door retried forever.
 
@@ -631,7 +652,7 @@ Opening a guarded door can raise a dialogue menu (Black Knights' Fortress: "[2] 
 
 **Where this applies:** `Rs2WalkerAwaits`, `Rs2WalkerDoors`, `QuestScript`.
 
-## 33. An enclosed start tile is not "no bank exists"
+## 34. An enclosed start tile is not "no bank exists"
 
 Inside the Black Knights' Fortress the only exits are push-walls and ladders that were missing from `transports.tsv`, so the search expanded one tile and "nearest bank" returned null on every quester tick.
 
@@ -639,7 +660,7 @@ Inside the Black Knights' Fortress the only exits are push-walls and ladders tha
 
 **Where this applies:** any helper that treats a failed/partial pathfinder result as "unreachable".
 
-## 34. A walled-recovery replan that returns the same hop must be blacklisted, not repeated
+## 35. A walled-recovery replan that returns the same hop must be blacklisted, not repeated
 
 `recovery_target_walled` replans the route when the recovery click target is unreachable. If the planner hands back the same walled hop from the same tile, replanning never converges. `WalledReplanLedger` counts consecutive replans per (player tile, target) and at 5 the walker calls `Rs2PathApi.learnBlockedEdge` for the target edge and first hop (session-only), then recomputes. Permanent map gaps still belong in `blocked_edges.tsv`.
 
@@ -649,7 +670,7 @@ Inside the Black Knights' Fortress the only exits are push-walls and ladders tha
 
 **Where this applies:** `Rs2Walker` recovery block, `blocked_edges.tsv`, ladder rows in `transports.tsv` whose plane-1 side has empty collision.
 
-## 35. A no-progress walk budget must abort, not just log, and a paused quest must cancel its walk from a second thread
+## 36. A no-progress walk budget must abort, not just log, and a paused quest must cancel its walk from a second thread
 
 `Rs2Walker.reportWalkBudgetIfExhausted` used to only warn after 300 s without a 10-tile distance gain (Lumbridge stairs livelock, exempt exits refunding the tail cap). It now aborts at `WalkLivelockPolicy.getAbortMs()` (45 s default, `<=0` disables) via `setTarget(null, "...livelock-abort...")`; `WalkLivelockPolicy.getLastAbortReason()` tells callers why. A script whose main loop blocks inside a walk cannot observe its own pause flag: cancel from a separate scheduled task (see `QuestScript.supervisorTick`), and drive stuck recovery from `QuestStuckWatchdog`.
 
@@ -657,6 +678,6 @@ Inside the Black Knights' Fortress the only exits are push-walls and ladders tha
 
 **Where this applies:** `Rs2Walker.abortLivelockedWalk`, `QuestScript.supervisorTick`, `QuestStuckRecovery`.
 
-## 36. Quest-locked gates need a Quests column in transports.tsv
+## 37. Quest-locked gates need a Quests column in transports.tsv
 
 The Varrock museum guard gate (3261,3446/3447, object 24536) refuses entry without The Dig Site; the walker only learned that after ~20 s of dialogue. Put the quest name (e.g. `The Dig Site`, column 7) on the transport rows so the planner never uses it unmet.

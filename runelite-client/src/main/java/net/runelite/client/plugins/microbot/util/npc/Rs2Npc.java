@@ -655,9 +655,10 @@ public class Rs2Npc {
                 // never prints can't-reach, so every trigger here genuinely needs adjacency.
                 if (CantReachTargetRecovery.retryExhausted(
                         Microbot.cantReachTargetRetries, Rs2Random.between(3, 5))) {
+                    int retries = CantReachTargetRecovery.giveUp();
                     Microbot.pauseAllScripts.compareAndSet(false, true);
                     Microbot.showMessage("Your bot tried to interact with an NPC for "
-                            + Microbot.cantReachTargetRetries + " times but failed. Please take a look at what is happening.");
+                            + retries + " times but failed. Please take a look at what is happening.");
                     return false;
                 }
                 final WorldPoint npcWorldPoint = npc.getWorldLocation();

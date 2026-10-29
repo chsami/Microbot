@@ -3,6 +3,7 @@ package net.runelite.client.plugins.microbot.util.walker.recovery;
 import java.util.Objects;
 import java.util.function.BiPredicate;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 
 /**
@@ -29,6 +30,19 @@ public final class CantReachTargetRecovery
 	public static boolean retryExhausted(int retries, int retryLimit)
 	{
 		return retries >= retryLimit;
+	}
+
+	public static int giveUp()
+	{
+		int retries = Microbot.cantReachTargetRetries;
+		reset();
+		return retries;
+	}
+
+	public static void reset()
+	{
+		Microbot.cantReachTarget = false;
+		Microbot.cantReachTargetRetries = 0;
 	}
 
 	public static boolean walkTo(WorldPoint target, int distance)

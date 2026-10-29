@@ -149,6 +149,23 @@ final class Rs2WalkerTransports {
                 && pl.distanceTo2D(dest) <= maxInclusiveChebyshev;
     }
 
+    private static void waitForSamePlaneTransportStart(Transport transport, WorldPoint before) {
+        WorldPoint dest = transport.getDestination();
+        boolean landsFar = dest != null && before != null && before.distanceTo2D(dest) > OFFSET;
+        boolean started = sleepUntilTrue(() -> Rs2Player.isMoving()
+                || (landsFar && isPlayerWithinChebyshevInclusive(dest, OFFSET))
+                || isCwsWarningVisible(), 100, 5000);
+        if (started && Rs2Player.isMoving()) {
+            sleepUntil(() -> !Rs2Player.isMoving());
+            if (landsFar) {
+                sleepUntilTrue(() -> isPlayerWithinChebyshevInclusive(dest, OFFSET) || isCwsWarningVisible(), 100, 1800);
+            }
+        }
+        if (acceptCwsWarning() && landsFar) {
+            sleepUntilTrue(() -> isPlayerWithinChebyshevInclusive(dest, OFFSET), 100, 5000);
+        }
+    }
+
 
 
 
@@ -1242,7 +1259,7 @@ final class Rs2WalkerTransports {
             } else if (transport.getType() == TransportType.TELEPORTATION_PORTAL) {
                 sleepTickJitter(2); // wait extra 2 game ticks before moving
             } else {
-                Rs2Player.waitForWalking();
+                waitForSamePlaneTransportStart(transport, before);
                 Rs2Dialogue.clickOption("Yes please"); //shillo village cart
                 if (isAdjacentSamePlaneTransport(transport)) {
                     sleepUntil(() -> {
