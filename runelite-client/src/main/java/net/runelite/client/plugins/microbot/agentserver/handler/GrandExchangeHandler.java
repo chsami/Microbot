@@ -16,6 +16,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
+
 public class GrandExchangeHandler extends AgentHandler {
 
 	private static final String BASE_PATH = "/ge";
@@ -54,7 +56,9 @@ public class GrandExchangeHandler extends AgentHandler {
 					break;
 				case "/abort":
 					requirePost(exchange);
-					sendResult(exchange, Rs2GrandExchange.abortOffer(requireName(readJsonBody(exchange)), true));
+					String name = requireName(readJsonBody(exchange));
+					sendResult(exchange, Rs2GrandExchange.abortOffer(name, true)
+							&& sleepUntil(() -> !hasOffer(name), 5000));
 					break;
 				case "/close":
 					requirePost(exchange);
@@ -108,6 +112,10 @@ public class GrandExchangeHandler extends AgentHandler {
 		sendJson(exchange, success ? 200 : 409, result);
 	}
 
+	private boolean hasOffer(String name) {
+		return slots().stream().anyMatch(slot -> name.equalsIgnoreCase(String.valueOf(slot.get("item"))));
+	}
+
 	private static String requireName(Map<String, Object> body) {
 		String name = getStringField(body, "name");
 		if (Strings.isNullOrEmpty(name)) {
@@ -117,6 +125,13 @@ public class GrandExchangeHandler extends AgentHandler {
 	}
 
 	private Map<String, Object> offers() {
+		Map<String, Object> result = new LinkedHashMap<>();
+		result.put("open", Rs2GrandExchange.isOpen());
+		result.put("offers", slots());
+		return result;
+	}
+
+	private List<Map<String, Object>> slots() {
 		List<Map<String, Object>> slots = new ArrayList<>();
 		GrandExchangeOffer[] offers = Microbot.getClient().getGrandExchangeOffers();
 		for (int i = 0; i < offers.length; i++) {
@@ -138,10 +153,6 @@ public class GrandExchangeHandler extends AgentHandler {
 			slot.put("spent", offer.getSpent());
 			slots.add(slot);
 		}
-
-		Map<String, Object> result = new LinkedHashMap<>();
-		result.put("open", Rs2GrandExchange.isOpen());
-		result.put("offers", slots);
-		return result;
+		return slots;
 	}
 }

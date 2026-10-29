@@ -134,6 +134,11 @@ public class PluginHubHandler extends AgentHandler {
 		if (!awaitTask(exchange, pluginManager.removePlugin(manifest), timeout)) {
 			return;
 		}
+		if (pluginManager.isLoaded(manifest.getInternalName())) {
+			sendJson(exchange, 409, errorResponse(manifest.getInternalName()
+					+ " is still loaded; it was not loaded through the Plugin Hub, so restart the client to unload it"));
+			return;
+		}
 		sendJson(exchange, 200, describe(manifest));
 	}
 

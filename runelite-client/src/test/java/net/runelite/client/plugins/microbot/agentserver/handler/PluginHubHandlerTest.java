@@ -101,6 +101,14 @@ public class PluginHubHandlerTest {
 	}
 
 	@Test
+	public void removeThatLeavesThePluginLoadedReportsConflict() throws IOException {
+		when(manager.isLoaded("AutoMiner")).thenReturn(true);
+		when(manager.removePlugin(any())).thenReturn(CompletableFuture.completedFuture(null));
+
+		assertEquals(409, post("/plugins/remove", "{\"name\":\"AutoMiner\"}"));
+	}
+
+	@Test
 	public void unknownPluginNameIsBadRequest() throws IOException {
 		when(manager.findManifest("Nope")).thenReturn(Optional.empty());
 

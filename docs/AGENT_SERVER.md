@@ -851,7 +851,7 @@ curl -X POST -H "Content-Type: application/json" \
 | `POST /ge/buy` | `{"name", "quantity", "price"}` | Place a buy offer (exact item name) |
 | `POST /ge/sell` | `{"name", "quantity", "price"}` | Place a sell offer for an item in the inventory. Withdraw it first with `POST /bank/withdraw` and `"noted": true` |
 | `POST /ge/collect` | `{"toBank": true}` | Collect every finished offer |
-| `POST /ge/abort` | `{"name"}` | Abort the offer for that item and collect it to the bank |
+| `POST /ge/abort` | `{"name"}` | Abort the offer for that item and collect it to the bank. Succeeds once the offer is gone (waits up to 5 seconds) |
 | `POST /ge/close` | `{}` | Close the Grand Exchange interface |
 
 ### Plugin Hub
@@ -895,7 +895,7 @@ Body: `{"name": "AutoMiner", "version": "2.0.0", "timeout": 60}`. `name` accepts
 
 #### POST /plugins/remove
 
-Stops, unloads and deletes a plugin. Body: `{"name": "AutoMiner", "timeout": 60}`. Returns `404` when the plugin is not installed.
+Stops, unloads and deletes a plugin. Body: `{"name": "AutoMiner", "timeout": 60}`. Returns `404` when the plugin is not installed, and `409` when it is still loaded afterwards (a plugin the Plugin Hub did not load stays until the client restarts).
 
 ### Script Lifecycle
 
