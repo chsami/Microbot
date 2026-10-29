@@ -87,6 +87,7 @@ public class PluginHubHandler extends AgentHandler {
 		Map<String, Object> body = readJsonBody(exchange);
 		MicrobotPluginManifest manifest = requireManifest(body);
 		String version = getStringField(body, "version");
+		int timeout = timeoutSeconds(body);
 		String internalName = manifest.getInternalName();
 		String targetVersion = Strings.isNullOrEmpty(version) ? manifest.getVersion() : version;
 		boolean loaded = pluginManager.isLoaded(internalName);
@@ -94,6 +95,11 @@ public class PluginHubHandler extends AgentHandler {
 		if (loaded && pluginManager.getInstalledPluginVersion(internalName).filter(targetVersion::equals).isPresent()) {
 			sendJson(exchange, 200, describe(manifest));
 			return;
+		}
+
+		if (!Strings.isNullOrEmpty(version) && !manifest.getAvailableVersions().isEmpty()
+				&& !manifest.getAvailableVersions().contains(version)) {
+			throw new BadRequestException(internalName + " has no version " + version + "; available: " + manifest.getAvailableVersions());
 		}
 
 		MicrobotPluginHealth health = pluginManager.getPluginHealth(manifest, version);
@@ -105,7 +111,7 @@ public class PluginHubHandler extends AgentHandler {
 		Future<?> task = loaded
 				? pluginManager.updatePlugin(manifest, version)
 				: pluginManager.installPlugin(manifest, version);
-		if (!awaitTask(exchange, task, body)) {
+		if (!awaitTask(exchange, task, timeout)) {
 			return;
 		}
 
@@ -119,12 +125,13 @@ public class PluginHubHandler extends AgentHandler {
 	private void handleRemove(HttpExchange exchange) throws IOException {
 		Map<String, Object> body = readJsonBody(exchange);
 		MicrobotPluginManifest manifest = requireManifest(body);
+		int timeout = timeoutSeconds(body);
 		if (!pluginManager.isLoaded(manifest.getInternalName())) {
 			sendJson(exchange, 404, errorResponse(manifest.getInternalName() + " is not installed"));
 			return;
 		}
 
-		if (!awaitTask(exchange, pluginManager.removePlugin(manifest), body)) {
+		if (!awaitTask(exchange, pluginManager.removePlugin(manifest), timeout)) {
 			return;
 		}
 		sendJson(exchange, 200, describe(manifest));
@@ -142,9 +149,7 @@ public class PluginHubHandler extends AgentHandler {
 	/**
 	 * Sends a 202 or 500 itself when the task did not finish, and returns false in that case.
 	 */
-	private boolean awaitTask(HttpExchange exchange, Future<?> task, Map<String, Object> body) throws IOException {
-		Integer requested = getIntField(body, "timeout");
-		int timeout = Math.max(1, Math.min(requested == null ? DEFAULT_TIMEOUT_SECONDS : requested, MAX_TIMEOUT_SECONDS));
+	private boolean awaitTask(HttpExchange exchange, Future<?> task, int timeout) throws IOException {
 		try {
 			task.get(timeout, TimeUnit.SECONDS);
 			return true;
@@ -160,6 +165,11 @@ public class PluginHubHandler extends AgentHandler {
 			sendJson(exchange, 500, errorResponse("Plugin task failed: " + e.getCause()));
 		}
 		return false;
+	}
+
+	private static int timeoutSeconds(Map<String, Object> body) {
+		Integer requested = getIntField(body, "timeout");
+		return Math.max(1, Math.min(requested == null ? DEFAULT_TIMEOUT_SECONDS : requested, MAX_TIMEOUT_SECONDS));
 	}
 
 	private static boolean matches(MicrobotPluginManifest manifest, String query) {

@@ -90,7 +90,7 @@ The **Agent Server** plugin (port 8081, localhost) must be enabled for any CLI/H
 | `bank close` | Close bank interface |
 | `bank deposit <name> [--all]` | Deposit items |
 | `bank deposit-all` | Deposit entire inventory |
-| `bank withdraw <name> <qty>` | Withdraw items |
+| `bank withdraw <name> <qty> [--noted\|--items]` | Withdraw items, optionally as notes or as items |
 | `dialogue continue` | Click continue in dialogue |
 | `dialogue select <option>` | Select a dialogue option by text |
 | `widgets click <group> <child>` | Click a widget by group/child ID |

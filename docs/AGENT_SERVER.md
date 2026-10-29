@@ -578,7 +578,7 @@ Body: `{"all": true}` or `{"name": "Logs"}`
 
 Body: `{"name": "Pure essence", "quantity": 28}`
 
-Add `"noted": true` to withdraw as notes, or `"noted": false` to switch back to items. Without `noted`, the current bank setting stays.
+Add `"noted": true` to withdraw as notes, or `"noted": false` to switch back to items. Without `noted`, the current bank setting stays. When the bank does not switch mode, the call returns `409` and withdraws nothing.
 
 ```bash
 ./microbot-cli bank withdraw "Pure essence" 28
@@ -843,7 +843,7 @@ curl -X POST -H "Content-Type: application/json" \
 
 ### Grand Exchange
 
-All write calls walk to and open the Grand Exchange when it is not open, and return the current offers. A write that fails returns `409` with `"success": false`.
+`buy`, `sell` and `abort` walk to the Grand Exchange and open it when needed. `collect` opens it but does not walk, and `close` only closes it, so call those near a Grand Exchange clerk. Every write returns the current offers; a write that fails returns `409` with `"success": false`. Item names match exactly.
 
 | Endpoint | Body | Effect |
 |----------|------|--------|
@@ -883,12 +883,12 @@ Lists Plugin Hub entries.
 
 Downloads and loads a plugin, and waits for the result. When the plugin is loaded at another version, it is reinstalled at the requested version.
 
-Body: `{"name": "AutoMiner", "version": "2.0.0", "timeout": 60}`. `name` accepts the internal name or the display name. `version` defaults to the latest Hub version. `timeout` is in seconds (max 300).
+Body: `{"name": "AutoMiner", "version": "2.0.0", "timeout": 60}`. `name` accepts the internal name or the display name. `version` defaults to the latest Hub version and must be one of the manifest's available versions (`400` otherwise). `timeout` is in seconds (max 300).
 
 | Status | Meaning |
 |--------|---------|
 | `200` | Plugin is loaded. The body is the plugin entry from `GET /plugins` |
-| `202` | Still running when `timeout` elapsed; poll `GET /plugins?installed=true` |
+| `202` | Still running when `timeout` elapsed. Poll `GET /plugins?q=<name>` until `loaded` is `true` and `installedVersion` equals the requested version; the old version can still be loaded while an update runs |
 | `400` | No Plugin Hub entry with that name |
 | `409` | Health blocks the install (disabled upstream, broken version, or needs a newer client) |
 | `502` | Download or load failed; the client log has the cause |

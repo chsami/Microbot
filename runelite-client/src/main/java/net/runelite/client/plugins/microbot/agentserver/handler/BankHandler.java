@@ -167,8 +167,9 @@ public class BankHandler extends AgentHandler {
 		}
 
 		Boolean noted = getBooleanField(body, "noted");
-		if (noted != null) {
-			Rs2Bank.setWithdrawAs(noted);
+		if (noted != null && !Rs2Bank.setWithdrawAs(noted)) {
+			sendJson(exchange, 409, errorResponse("Bank did not switch to withdrawing " + (noted ? "notes" : "items")));
+			return;
 		}
 
 		boolean success;

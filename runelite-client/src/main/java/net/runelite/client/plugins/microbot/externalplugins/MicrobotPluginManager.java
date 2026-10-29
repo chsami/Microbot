@@ -207,7 +207,8 @@ public class MicrobotPluginManager {
     }
 
     public boolean isLoaded(String internalName) {
-        return loaders.containsKey(internalName);
+        return getInstalledPlugins().stream()
+                .anyMatch(plugin -> plugin.getClass().getSimpleName().equalsIgnoreCase(internalName));
     }
 
     /**

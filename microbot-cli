@@ -109,7 +109,7 @@ Banking:
   bank close                             Close bank
   bank deposit <name> [--all]            Deposit items
   bank deposit-all                       Deposit entire inventory
-  bank withdraw <name> <quantity> [--noted]        Withdraw items
+  bank withdraw <name> <quantity> [--noted|--items]        Withdraw items
 
 Dialogue:
   dialogue                               Current dialogue state
@@ -581,11 +581,12 @@ case "$1" in
                 do_post "${BASE}/bank/deposit" "{\"name\":\"${escaped_name}\"}"
                 ;;
             withdraw)
-                [[ $# -lt 4 ]] && { echo '{"error":"Usage: microbot-cli bank withdraw <name> <quantity> [--noted]"}'; exit 1; }
+                [[ $# -lt 4 ]] && { echo '{"error":"Usage: microbot-cli bank withdraw <name> <quantity> [--noted|--items]"}'; exit 1; }
                 escaped_name=$(json_escape "$3")
-                noted="false"
-                [[ "${5:-}" == "--noted" ]] && noted="true"
-                do_post "${BASE}/bank/withdraw" "{\"name\":\"${escaped_name}\",\"quantity\":$4,\"noted\":${noted}}"
+                mode=""
+                [[ "${5:-}" == "--noted" ]] && mode=",\"noted\":true"
+                [[ "${5:-}" == "--items" ]] && mode=",\"noted\":false"
+                do_post "${BASE}/bank/withdraw" "{\"name\":\"${escaped_name}\",\"quantity\":$4${mode}}"
                 ;;
             *) usage ;;
         esac

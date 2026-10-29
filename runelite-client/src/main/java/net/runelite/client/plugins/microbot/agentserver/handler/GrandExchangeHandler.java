@@ -6,6 +6,8 @@ import com.sun.net.httpserver.HttpExchange;
 import net.runelite.api.GrandExchangeOffer;
 import net.runelite.api.GrandExchangeOfferState;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.util.grandexchange.GrandExchangeAction;
+import net.runelite.client.plugins.microbot.util.grandexchange.GrandExchangeRequest;
 import net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange;
 
 import java.io.IOException;
@@ -57,7 +59,7 @@ public class GrandExchangeHandler extends AgentHandler {
 				case "/close":
 					requirePost(exchange);
 					Rs2GrandExchange.closeExchange();
-					sendResult(exchange, true);
+					sendResult(exchange, !Rs2GrandExchange.isOpen());
 					break;
 				default:
 					sendJson(exchange, 404, errorResponse("Unknown endpoint: " + BASE_PATH + sub));
@@ -70,16 +72,34 @@ public class GrandExchangeHandler extends AgentHandler {
 	private void handleOffer(HttpExchange exchange, boolean buying) throws IOException {
 		Map<String, Object> body = readJsonBody(exchange);
 		String name = requireName(body);
-		Integer quantity = getIntField(body, "quantity");
-		Integer price = getIntField(body, "price");
-		if (quantity == null || quantity <= 0 || price == null || price <= 0) {
-			throw new BadRequestException("Fields 'quantity' and 'price' must be positive numbers");
-		}
+		int quantity = requirePositiveWholeNumber(body, "quantity");
+		int price = requirePositiveWholeNumber(body, "price");
 
-		boolean placed = buying
-				? Rs2GrandExchange.buyItem(name, price, quantity)
-				: Rs2GrandExchange.sellItem(name, quantity, price);
+		boolean placed = Rs2GrandExchange.processOffer(GrandExchangeRequest.builder()
+				.action(buying ? GrandExchangeAction.BUY : GrandExchangeAction.SELL)
+				.itemName(name)
+				.exact(true)
+				.quantity(quantity)
+				.price(price)
+				.build());
 		sendResult(exchange, placed);
+	}
+
+	/**
+	 * JSON numbers arrive as doubles, so 1.9 would otherwise become a price of 1.
+	 */
+	static int requirePositiveWholeNumber(Map<String, Object> body, String key) {
+		Object value = body.get(key);
+		double number;
+		try {
+			number = value instanceof Number ? ((Number) value).doubleValue() : Double.parseDouble(String.valueOf(value).trim());
+		} catch (NumberFormatException e) {
+			number = Double.NaN;
+		}
+		if (number != Math.rint(number) || number < 1 || number > Integer.MAX_VALUE) {
+			throw new BadRequestException("Field '" + key + "' must be a whole number of at least 1");
+		}
+		return (int) number;
 	}
 
 	private void sendResult(HttpExchange exchange, boolean success) throws IOException {

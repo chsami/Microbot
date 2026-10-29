@@ -215,6 +215,10 @@ Plan a route without moving, to see why a walk fails or takes a strange route:
 # Withdraw items (name + quantity)
 ./microbot-cli bank withdraw "Pure essence" 28
 ./microbot-cli bank withdraw "Coins" 1000
+
+# Withdraw as notes (to sell), or switch back to items
+./microbot-cli bank withdraw "Gold ring" 0 --noted
+./microbot-cli bank withdraw "Gold bar" 27 --items
 ```
 
 ### Dialogue
@@ -356,6 +360,8 @@ These endpoints are designed for the Microbot-Hub automated testing loop: the Hu
 # Unload and delete
 ./microbot-cli plugins remove AutoMiner
 ```
+
+When the install is still running at `--timeout`, the command prints `{"status": "pending", ...}` and exits with status 0. Check the output, and wait until `plugins --search <name>` shows `loaded: true` with the requested `installedVersion` before you start the plugin.
 
 An installed plugin is not started. Start it with `./microbot-cli scripts start --name <name>`.
 

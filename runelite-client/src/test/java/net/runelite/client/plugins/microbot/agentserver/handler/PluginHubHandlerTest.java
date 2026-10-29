@@ -17,6 +17,7 @@ import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -104,6 +105,20 @@ public class PluginHubHandlerTest {
 		when(manager.findManifest("Nope")).thenReturn(Optional.empty());
 
 		assertEquals(400, post("/plugins/install", "{\"name\":\"Nope\"}"));
+	}
+
+	@Test
+	public void installRejectsVersionTheHubDoesNotOffer() throws IOException {
+		manifest.setAvailableVersions(List.of("1.0.0", "2.0.0"));
+
+		assertEquals(400, post("/plugins/install", "{\"name\":\"AutoMiner\",\"version\":\"9.9.9\"}"));
+		verify(manager, never()).installPlugin(any(), any());
+	}
+
+	@Test
+	public void invalidTimeoutIsRejectedBeforeAnyInstallStarts() throws IOException {
+		assertEquals(400, post("/plugins/install", "{\"name\":\"AutoMiner\",\"timeout\":\"soon\"}"));
+		verify(manager, never()).installPlugin(any(), any());
 	}
 
 	@Test
