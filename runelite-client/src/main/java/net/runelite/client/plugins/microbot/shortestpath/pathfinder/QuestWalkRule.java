@@ -433,6 +433,48 @@ public final class QuestWalkRule
 	}
 
 	private static volatile boolean longTravelHeld;
+
+	/** Charter ships (hundreds of coins, a bank trip) are never part of a quest walk unless this is switched on. */
+	private static volatile boolean allowCharterShips;
+
+	/** Set while a transport struck out this walk; the last-resort teleport stage waits for the transport's retry. */
+	private static volatile boolean transportBlockLearned;
+
+	/** Largest fare a quest walk fetches coins for; ordinary ships and gates, never a charter. */
+	static final int MAX_FETCHED_FARE = 200;
+
+	public static void setAllowCharterShips(boolean allow)
+	{
+		allowCharterShips = allow;
+	}
+
+	public static void setTransportBlockLearned(boolean learned)
+	{
+		transportBlockLearned = learned;
+	}
+
+	/** Pure: the last-resort stage never replaces a transport that was only refused this walk. */
+	static boolean stageSkipped(Stage stage, boolean transportBlocked)
+	{
+		return stage == Stage.TELEPORTS && transportBlocked;
+	}
+
+	public static boolean skipsStage(Stage stage)
+	{
+		return stageSkipped(stage, transportBlockLearned);
+	}
+
+	/** Pure: whether a charter ship may be used by the last-resort stage. */
+	static boolean charterPermitted(boolean allowed)
+	{
+		return allowed;
+	}
+
+	/** Pure: whether a quest walk may go to the bank for coins to pay this fare. */
+	public static boolean fareFetchAllowed(int fare)
+	{
+		return fare <= MAX_FETCHED_FARE;
+	}
 	/** How long after a fight a quest walk still does not teleport or travel far. */
 	public static final long COMBAT_HOLD_MS = 15_000;
 
@@ -485,6 +527,7 @@ public final class QuestWalkRule
 				// only the owned jewellery's. When nothing else reaches, the walk gives up and says so.
 				return transport.getType() != TransportType.TELEPORTATION_SPELL
 					&& transport.getType() != TransportType.TELEPORTATION_MINIGAME
+					&& (transport.getType() != TransportType.CHARTER_SHIP || charterPermitted(allowCharterShips))
 					&& (transport.getType() != TransportType.TELEPORTATION_ITEM
 						|| isOwnedJewellery(transport) || isSkillsNecklaceToFishingGuild(transport));
 			default:

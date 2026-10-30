@@ -83,6 +83,8 @@ import net.runelite.client.plugins.microbot.util.walker.puzzles.DraynorBasementS
 import net.runelite.client.plugins.microbot.util.walker.stall.Rs2WalkerStallPolicy;
 import net.runelite.client.plugins.microbot.util.walker.transport.Rs2WalkerTransportAwaits;
 import net.runelite.client.plugins.microbot.util.walker.transport.TransportDispatchTrace;
+import net.runelite.client.plugins.microbot.util.walker.transport.TransportLandingRules;
+import net.runelite.client.plugins.microbot.shortestpath.pathfinder.QuestWalkRule;
 import net.runelite.client.plugins.microbot.util.walker.transport.TransportRefusalLedger;
 import net.runelite.client.plugins.microbot.util.walker.lifecycle.Rs2WalkerLifecycleRuntime;
 import net.runelite.client.plugins.skillcalculator.skills.MagicAction;
@@ -945,6 +947,16 @@ final class Rs2WalkerTransports {
                         }
                         boolean landedAfterObject = waitForPostHandleObjectLanding(transport, destWait, maxInclusive);
                         if (!landedAfterObject) {
+                            Optional<String> talkFirst = TransportLandingRules.talkFirstNpc(object.getId());
+                            if (talkFirst.isPresent() && talkToPrerequisiteNpc(talkFirst.get())) {
+                                prepareTransportObjectForInteraction(object);
+                                if (handleObject(transport, object, interactionAction)) {
+                                    sleepUntil(() -> !Rs2Player.isAnimating());
+                                    landedAfterObject = waitForPostHandleObjectLanding(transport, destWait, maxInclusive);
+                                }
+                            }
+                        }
+                        if (!landedAfterObject) {
                             WorldPoint afterInteraction = Rs2Player.getWorldLocation();
                             // Adjacent same-plane transports demand landing on the EXACT destination
                             // tile (maxInclusive == 0), and agility shortcuts routinely deposit the
@@ -1025,6 +1037,7 @@ final class Rs2WalkerTransports {
     private static void strikeOutTransport(WorldPoint origin, WorldPoint destination, String mode, int limit) {
         if (Rs2PathApi.learnBlockedEdge(origin, destination, "transport-refused (" + mode + ")")) {
             transportRefusalLedger.recordWalkScopedBlock(origin, destination);
+            QuestWalkRule.setTransportBlockLearned(true);
         }
         WebWalkLog.spInfo("transport_strike_out | origin={} dest={} mode={} — {} refusals; "
                         + "blocking transport for this walk and replanning",
@@ -1033,6 +1046,7 @@ final class Rs2WalkerTransports {
     }
 
     static void withdrawWalkScopedTransportBlocks() {
+        QuestWalkRule.setTransportBlockLearned(false);
         for (WorldPoint[] edge : transportRefusalLedger.drainWalkScopedBlocks()) {
             Rs2PathApi.unlearnBlockedEdge(edge[0], edge[1], "walk-scoped transport strike-out expired");
         }
@@ -1071,6 +1085,10 @@ final class Rs2WalkerTransports {
             return false;
         }, POST_HANDLE_OBJECT_LANDING_WAIT_MS);
 
+        if (!completed && !settledNearAdjacentDestination.get() && !settledAwayFromAdjacentDestination.get()) {
+            completed = waitOutLandingActivity(destWait, maxInclusive, waitStartedAt);
+        }
+
         if (settledNearAdjacentDestination.get()) {
             WebWalkLog.spInfo("post-handleObject adjacent landing accepted | dest={} at={}",
                     compactWorldPoint(destWait), compactWorldPoint(Rs2Player.getWorldLocation()));
@@ -1082,6 +1100,66 @@ final class Rs2WalkerTransports {
             return false;
         }
         return completed;
+    }
+
+    /**
+     * A landing that is late while a dialogue is open or the player is moving or animating is not a refusal: story
+     * transports (the Holy barrier) play a dialogue first. The dialogue is continued, never answered, and the wait
+     * runs up to {@link TransportLandingRules#EXTENDED_LANDING_WAIT_MS} from the interaction.
+     */
+    private static boolean waitOutLandingActivity(WorldPoint destWait, int maxInclusive, long waitStartedAt) {
+        while (true) {
+            if (isPlayerWithinChebyshevInclusive(destWait, maxInclusive)) {
+                return true;
+            }
+            boolean dialogue = Rs2Dialogue.isInDialogue();
+            boolean animating = Rs2Player.isAnimating();
+            boolean moving = Rs2Player.isMoving();
+            if (TransportLandingRules.showsActivity(dialogue, animating, moving)) {
+                TransportDispatchTrace trace = DISPATCH_TRACE.get();
+                if (trace != null) {
+                    trace.activityObserved();
+                }
+            }
+            long elapsed = System.currentTimeMillis() - waitStartedAt;
+            if (!TransportLandingRules.keepWaiting(dialogue, animating, moving, elapsed)) {
+                return false;
+            }
+            if (Rs2Dialogue.hasContinue()) {
+                Rs2Dialogue.clickContinue();
+            }
+            sleep(600);
+        }
+    }
+
+    /**
+     * Data-driven recovery (see {@link TransportLandingRules#talkFirstNpc}): a transport object that gated on a
+     * conversation is retried after talking to the named NPC and finishing the dialogue (continue only).
+     */
+    private static boolean talkToPrerequisiteNpc(String npcName) {
+        TransportDispatchTrace trace = DISPATCH_TRACE.get();
+        if (trace != null) {
+            trace.activityObserved();
+        }
+        WebWalkLog.spInfo("transport prerequisite | talking to {} before retrying", npcName);
+        if (!Rs2Npc.interact(npcName, "Talk-to")) {
+            return false;
+        }
+        sleepUntil(Rs2Dialogue::isInDialogue, 10_000);
+        long deadline = System.currentTimeMillis() + 30_000;
+        while (Rs2Dialogue.isInDialogue() && System.currentTimeMillis() < deadline) {
+            if (Rs2Dialogue.hasContinue()) {
+                Rs2Dialogue.clickContinue();
+            } else if (Rs2Dialogue.hasSelectAnOption()
+                    && Rs2Dialogue.getDialogueOptions().stream().filter(w -> w.getText() != null).count() == 1) {
+                Rs2Dialogue.clickOption(Rs2Dialogue.getDialogueOptions().stream()
+                        .filter(w -> w.getText() != null).findFirst().get().getText());
+            } else if (!Rs2Dialogue.hasContinue()) {
+                sleep(300);
+            }
+            sleep(600);
+        }
+        return !Rs2Dialogue.isInDialogue();
     }
 
     static boolean isSettledNearAdjacentSamePlaneLanding(Transport transport,

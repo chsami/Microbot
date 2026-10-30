@@ -146,7 +146,7 @@ public class QuestWalkStageTest
 		assertTrue(QuestWalkRule.permits(Stage.CROSSINGS, npc(TransportType.SHIP, "Captain Tobias", A, B), ARDOUGNE));
 		assertFalse("a charter costs hundreds of coins: last resort only",
 			QuestWalkRule.permits(Stage.CROSSINGS, npc(TransportType.CHARTER_SHIP, "Trader Crewmember", A, B), ARDOUGNE));
-		assertTrue(QuestWalkRule.permits(Stage.TELEPORTS, npc(TransportType.CHARTER_SHIP, "Trader Crewmember", A, B), ARDOUGNE));
+		assertFalse("charter ships are off in quest walks", QuestWalkRule.permits(Stage.TELEPORTS, npc(TransportType.CHARTER_SHIP, "Trader Crewmember", A, B), ARDOUGNE));
 		assertTrue(QuestWalkRule.permits(Stage.CROSSINGS, plain(TransportType.BOAT), ARDOUGNE));
 		assertFalse(QuestWalkRule.permits(Stage.CROSSINGS, item("Ring of wealth: Grand Exchange"), ARDOUGNE));
 		assertFalse(QuestWalkRule.permits(Stage.CROSSINGS, plain(TransportType.FAIRY_RING), ARDOUGNE));

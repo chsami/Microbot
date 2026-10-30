@@ -33,11 +33,21 @@ public final class TransportDispatchTrace {
     }
 
     private boolean interacted;
+    private boolean activity;
     private DeliberateSkip deliberateSkip;
     private Refusal refusal;
 
     public void interacted() {
         interacted = true;
+    }
+
+    /** The player moved, animated or had a dialogue open after the interaction: it was not ignored. */
+    public void activityObserved() {
+        activity = true;
+    }
+
+    public boolean hasActivity() {
+        return activity;
     }
 
     public void skip(DeliberateSkip reason) {
@@ -65,17 +75,23 @@ public final class TransportDispatchTrace {
     }
 
     public Verdict verdict(boolean handled, WorldPoint player, WorldPoint origin, WorldPoint destination) {
-        return classify(handled, interacted, deliberateSkip, refusal,
+        return classify(handled, interacted, activity, deliberateSkip, refusal,
                 TransportRefusalLedger.isStillAtOrigin(player, origin, destination));
     }
 
     public static Verdict classify(boolean handled, boolean interacted, DeliberateSkip deliberateSkip,
                                    Refusal refusal, boolean stillAtOrigin) {
+        return classify(handled, interacted, false, deliberateSkip, refusal, stillAtOrigin);
+    }
+
+    /** A refusal needs the interaction to have produced nothing: no movement, animation or dialogue. */
+    public static Verdict classify(boolean handled, boolean interacted, boolean activity, DeliberateSkip deliberateSkip,
+                                   Refusal refusal, boolean stillAtOrigin) {
         if (handled) {
             return Verdict.HANDLED;
         }
         if (interacted) {
-            return stillAtOrigin ? Verdict.REFUSED_AFTER_INTERACTION : Verdict.INTERACTION_LEFT_ORIGIN;
+            return stillAtOrigin && !activity ? Verdict.REFUSED_AFTER_INTERACTION : Verdict.INTERACTION_LEFT_ORIGIN;
         }
         if (deliberateSkip != null) {
             return Verdict.DELIBERATE_SKIP;

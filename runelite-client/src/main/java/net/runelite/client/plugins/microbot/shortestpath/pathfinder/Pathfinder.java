@@ -901,6 +901,9 @@ public class Pathfinder implements Runnable {
                     || stage == QuestWalkRule.Stage.TELEPORTS)) {
                 continue; // never teleport away in the middle of a fight
             }
+            if (QuestWalkRule.skipsStage(stage)) {
+                continue; // retry the refused transport on the next walk before any teleport plan
+            }
             QuestWalkRule.runAt(stage, ardougne, this::runInner);
             if (terminationReason == PathTerminationReason.TARGET_REACHED) {
                 announceWidenedRoute(stage);

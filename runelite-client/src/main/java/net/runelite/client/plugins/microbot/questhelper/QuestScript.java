@@ -997,6 +997,12 @@ public class QuestScript extends Script {
 			fareAttempts = 0;
 			return false;
 		}
+		if (!QuestWalkRule.fareFetchAllowed(fare))
+		{
+			QuestWalkRule.clearFare();
+			stopQuesterWithReason("The route needs a " + fare + " coin fare; not fetching coins for it. Walk there or retry");
+			return true;
+		}
 		long bankCoins = bankCoinSnapshot();
 		long take = QuestCoins.toWithdraw(fare, coins, bankCoins);
 		if (take < 0) {
