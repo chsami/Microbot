@@ -71,6 +71,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -1519,6 +1520,7 @@ public class QuestScript extends Script {
 
 		Map<Integer, Boolean> tradableByPrimaryId = new HashMap<>();
 		List<QuestPreflight.Need> needs = new ArrayList<>();
+		Map<QuestUntradableRecipes.Recipe, Integer> recipeTokens = new LinkedHashMap<>();
 		if (steps != null && steps.stream().anyMatch(step -> QuestCombatDetector.isKillStep(step)
 				&& QuestFightSupport.isDragonFight(QuestCombatDetector.fightKeyOf(step), step.getText()))) {
 			needs.add(QuestPreflight.antifireNeed());
@@ -1542,11 +1544,29 @@ public class QuestScript extends Script {
 			if (ir.getQuantity() <= 0 || ids.isEmpty() || ids.contains(ItemID.COINS_995)) {
 				continue;
 			}
+			QuestUntradableRecipes.Recipe recipe = QuestUntradableRecipes.find(ids);
+			if (recipe != null) {
+				// earned by the bot: the tradeable inputs are stocked instead
+				recipeTokens.merge(recipe, ir.getQuantity(), Math::max);
+				continue;
+			}
 			boolean tradable = tradableByPrimaryId.computeIfAbsent(ids.get(0), k -> isItemRequirementTradable(ir));
 			if (!tradable) {
 				continue;
 			}
 			needs.add(new QuestPreflight.Need(ir.getName(), ids, ir.getQuantity(), ir.isConsumed()));
+		}
+		for (Map.Entry<QuestUntradableRecipes.Recipe, Integer> earned : recipeTokens.entrySet()) {
+			QuestUntradableRecipes.Recipe recipe = earned.getKey();
+			Map<Integer, Integer> owned = new HashMap<>();
+			addContainer(owned, QuestContainerManager.getInventoryData());
+			addContainer(owned, QuestContainerManager.getBankData());
+			int rounds = recipe.roundsFor(earned.getValue(), owned.getOrDefault(recipe.itemId, 0));
+			for (QuestUntradableRecipes.Input input : recipe.inputs) {
+				if (rounds > 0) {
+					needs.add(new QuestPreflight.Need(input.name, input.ids, rounds * input.perRound, true));
+				}
+			}
 		}
 		return QuestPreflight.widen(needs, this::chargedFamily);
 	}
@@ -4053,6 +4073,10 @@ public class QuestScript extends Script {
 	private boolean attemptToAcquireRequirementItem(DetailedQuestStep questStep, ItemRequirement itemRequirement) {
 		notifyMissingRequirement(itemRequirement);
 
+		if (earnUntradableItem(questStep, itemRequirement)) {
+			return true;
+		}
+
 		WorldPoint worldPoint = questStep.getDefinedPoint() != null ? questStep.getDefinedPoint().getWorldPoint() : null;
 		int targetItemId = itemRequirement.getAllIds().stream().findFirst().orElse(itemRequirement.getId());
 
@@ -4069,6 +4093,61 @@ public class QuestScript extends Script {
 		}
 
 		return true;
+	}
+
+	private final EctofuntusRunner ectofuntus = new EctofuntusRunner(this::fetchEctofuntusInputs);
+	private QuestStep ectofuntusStep;
+
+	/**
+	 * An untradeable item the current step needs and a recipe can earn (Ecto-tokens): runs the recipe one action per
+	 * tick. Returns false when the item has no recipe, or does not belong to this step, so the old ground-item path runs.
+	 */
+	private boolean earnUntradableItem(DetailedQuestStep questStep, ItemRequirement itemRequirement) {
+		QuestUntradableRecipes.Recipe recipe = QuestUntradableRecipes.find(itemRequirement.getAllIds());
+		if (recipe == null || recipe != QuestUntradableRecipes.ECTO_TOKEN || !isOwnRequirement(questStep, itemRequirement)) {
+			return false;
+		}
+		if (ectofuntusStep != questStep) {
+			ectofuntusStep = questStep;
+			ectofuntus.reset();
+		}
+		switch (ectofuntus.step(itemRequirement.getQuantity())) {
+			case FAILED:
+				stopQuesterWithReason(ectofuntus.failure());
+				return true;
+			case DONE:
+				// the step's requirement check sees the tokens on the next tick
+			default:
+				return true;
+		}
+	}
+
+	private static boolean isOwnRequirement(DetailedQuestStep questStep, ItemRequirement itemRequirement) {
+		for (Requirement own : questStep.getRequirements()) {
+			if (own instanceof ItemRequirement
+					&& !Collections.disjoint(((ItemRequirement) own).getAllIds(), itemRequirement.getAllIds())) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/** Brings the Ectofuntus inputs to the inventory, bank first, then the Grand Exchange. */
+	private boolean fetchEctofuntusInputs(Map<Integer, Integer> wantedTotals) {
+		List<ItemRequirement> wanted = new ArrayList<>();
+		for (QuestUntradableRecipes.Input input : QuestUntradableRecipes.ECTO_TOKEN.inputs) {
+			int total = wantedTotals.getOrDefault(input.ids.get(0), 0);
+			if (total > Rs2Inventory.count(input.ids.get(0))) {
+				wanted.add(new ItemRequirement(input.name, input.ids.get(0), total));
+			}
+		}
+		if (wanted.isEmpty()) {
+			return false;
+		}
+		// the inputs are protected from the bank's make-room step like any quest item
+		currentRequirements = new ArrayList<Requirement>(currentRequirements);
+		currentRequirements.addAll(wanted);
+		return acquireMissingTradableItems(wanted);
 	}
 
 	private void notifyMissingRequirement(ItemRequirement itemRequirement) {
