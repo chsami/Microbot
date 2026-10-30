@@ -4145,6 +4145,11 @@ public class QuestScript extends Script {
 		}
 
 		@Override
+		public int reclaimableSlots() {
+			return ectofuntusDeposited ? 0 : ectofuntusDepositCandidates().size();
+		}
+
+		@Override
 		public boolean ghostspeakReady() {
 			return ectofuntusGhostspeakReady();
 		}
@@ -4164,6 +4169,7 @@ public class QuestScript extends Script {
 			ectofuntusStep = questStep;
 			ectofuntus.reset();
 			ectofuntusBuyCalls = 0;
+			ectofuntusDeposited = false;
 		}
 		switch (ectofuntus.step(itemRequirement.getQuantity())) {
 			case FAILED:
@@ -4188,6 +4194,8 @@ public class QuestScript extends Script {
 
 	private final EctofuntusSupply ectofuntusSupply = new EctofuntusSupply();
 	private int ectofuntusBuyCalls;
+	/** The one bank visit that clears room for all the sets has been made this step. */
+	private boolean ectofuntusDeposited;
 	private String ectofuntusBlocked;
 	/** Whether a recipe is working on the step the quest is on now: its inputs must survive every bank visit. */
 	private boolean recipeActiveForCurrentStep() {
@@ -4279,6 +4287,7 @@ public class QuestScript extends Script {
 			Rs2Bank.closeBank();
 			return;
 		}
+		makeRoomForEctofuntus(shortfall);
 		for (Map.Entry<Integer, Integer> entry : shortfall.entrySet()) {
 			int id = entry.getKey();
 			int missing = entry.getValue();
@@ -4306,6 +4315,71 @@ public class QuestScript extends Script {
 		}
 		Rs2Bank.closeBank();
 		sleepUntil(() -> !Rs2Bank.isOpen(), 3_000);
+	}
+
+	/**
+	 * Inventory items that can go to the bank for the Ectofuntus trip: not needed by the current step or the recipe,
+	 * and never coins, the ghostspeak amulet, run potions, food, untradeables, teleports the user ticked or anything
+	 * from the user's setup. Whatever later steps need is fetched again when they come.
+	 */
+	private List<Rs2ItemModel> ectofuntusDepositCandidates() {
+		Set<Integer> keep = new HashSet<>();
+		keep.add(ItemID.COINS_995);
+		keep.add(552);  // ghostspeak amulet
+		keep.add(4250); // enchanted ghostspeak amulet
+		keep.add(ItemID.ECTOTOKEN);
+		for (QuestUntradableRecipes.Input input : QuestUntradableRecipes.ECTO_TOKEN.inputs) {
+			keep.addAll(input.ids);
+		}
+		keep.add(4286); // bucket of slime
+		if (currentRequirements != null) {
+			for (Requirement requirement : currentRequirements) {
+				if (requirement instanceof ItemRequirement) {
+					for (Integer id : ((ItemRequirement) requirement).getAllIds()) {
+						if (id != null) {
+							keep.add(id);
+						}
+					}
+				}
+			}
+		}
+		return Rs2Inventory.items().filter(item -> {
+			String name = item.getName() == null ? "" : item.getName().toLowerCase(java.util.Locale.ROOT);
+			return !keep.contains(item.getId()) && item.isTradeable() && !item.isFood()
+					&& !name.endsWith("bonemeal") && !name.contains("ghostspeak")
+					&& net.runelite.client.plugins.microbot.questhelper.combat.QuestPotions.kindOfItem(item.getName()) == null
+					&& !combat.isUserBroughtProtected(item) && !combat.isUserOrSetupItem(item)
+					&& !QuestEquipSwap.isTeleportJewellery(item.getName());
+		}).collect(Collectors.toList());
+	}
+
+	/** With the bank open: banks just enough unneeded items that all the inputs and the token stack fit. */
+	private void makeRoomForEctofuntus(Map<Integer, Integer> shortfall) {
+		ectofuntusDeposited = true;
+		int toWithdraw = shortfall.values().stream().mapToInt(Integer::intValue).sum();
+		int toFree = EctofuntusSupply.slotsToFree(toWithdraw, Rs2Inventory.emptySlotCount());
+		if (toFree <= 0) {
+			return;
+		}
+		List<String> deposited = new ArrayList<>();
+		Set<Integer> done = new HashSet<>();
+		int freed = 0;
+		for (Rs2ItemModel item : ectofuntusDepositCandidates()) {
+			if (freed >= toFree) {
+				break;
+			}
+			if (!done.add(item.getId())) {
+				continue;
+			}
+			int before = Rs2Inventory.emptySlotCount();
+			Rs2Bank.depositAll(item.getId());
+			if (sleepUntil(() -> Rs2Inventory.emptySlotCount() > before, 2_000)) {
+				freed += Rs2Inventory.emptySlotCount() - before;
+				deposited.add(item.getName());
+			}
+		}
+		Microbot.log("Ectofuntus: needed " + toFree + " more free slots for " + toWithdraw + " inputs; banked "
+				+ (deposited.isEmpty() ? "nothing" : String.join(", ", deposited)) + " (freed " + freed + ")", Level.INFO);
 	}
 
 	private static String describeInputs(Map<Integer, Integer> shortfall) {

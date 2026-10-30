@@ -88,4 +88,10 @@ public final class EctofuntusSupply
 	{
 		return inBank < shortfall;
 	}
+
+	/** Slots to empty so {@code toWithdraw} items and the Ecto-token stack fit. */
+	public static int slotsToFree(int toWithdraw, int freeSlots)
+	{
+		return Math.max(0, toWithdraw + 1 - Math.max(0, freeSlots));
+	}
 }

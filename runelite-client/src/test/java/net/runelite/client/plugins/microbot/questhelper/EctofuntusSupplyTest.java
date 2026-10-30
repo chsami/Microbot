@@ -71,4 +71,22 @@ public class EctofuntusSupplyTest
 		assertTrue(EctofuntusSupply.bankFallsShort(4, 0));
 		assertFalse(EctofuntusSupply.bankFallsShort(4, 4));
 	}
+
+	@Test
+	public void roomIsMadeForTheInputsAndTheTokenStack()
+	{
+		assertEquals(0, EctofuntusSupply.slotsToFree(6, 12));
+		assertEquals(1, EctofuntusSupply.slotsToFree(6, 6));
+		assertEquals(7, EctofuntusSupply.slotsToFree(12, 6));
+		assertEquals(0, EctofuntusSupply.slotsToFree(0, 3));
+	}
+
+	@Test
+	public void fourSetsTakeOneTripOnceTheInventoryIsCleared()
+	{
+		// 12 free slots: 3 sets a trip, so 4 sets need two trips
+		assertEquals(3, EctofuntusPlan.tripCapacity(12, 0));
+		// after banking the unneeded items 13+ slots are free: all 4 sets in one trip
+		assertEquals(4, EctofuntusPlan.tripCapacity(13, 0));
+	}
 }

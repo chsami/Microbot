@@ -61,6 +61,9 @@ public final class EctofuntusRunner
 
 		String blockedReason();
 
+		/** Inventory slots a bank visit could free by banking what the step and the recipe do not need. */
+		int reclaimableSlots();
+
 		/** True when the ghostspeak amulet is worn (or nothing can be done about it); otherwise acts and says false. */
 		boolean ghostspeakReady();
 	}
@@ -147,7 +150,7 @@ public final class EctofuntusRunner
 		reconcileWorship();
 		state.pending = pending;
 		state.remaining = EctofuntusPlan.setsNeeded(tokensNeeded, held + pending * 5);
-		state.maxSets = EctofuntusPlan.tripCapacity(Rs2Inventory.emptySlotCount(),
+		state.maxSets = EctofuntusPlan.tripCapacity(Rs2Inventory.emptySlotCount() + host.reclaimableSlots(),
 			state.bones + state.emptyPots + state.bonemeal + state.emptyBuckets + state.slime);
 		state.where = locate();
 
