@@ -155,6 +155,7 @@ public final class EctofuntusRunner
 			hopperLoaded = false;
 		}
 		lastAction = action;
+		logDecision(action, held, tokensNeeded);
 		int limit = action == Action.GRIND || action == Action.FILL_BUCKETS || action == Action.WORSHIP
 			? MAX_STALLS : MAX_WALK_STALLS;
 		if (stalls > limit && action != Action.DONE)
@@ -207,6 +208,26 @@ public final class EctofuntusRunner
 				break;
 		}
 		return Progress.WORKING;
+	}
+
+	private long lastLogAt;
+	private String lastLogKey = "";
+
+	/** One INFO line per change of decision, and at most one every 10 s otherwise, so a live run can be traced. */
+	private void logDecision(Action action, int held, int tokensNeeded)
+	{
+		String key = action + "/" + state.remaining + "/" + state.where;
+		long now = System.currentTimeMillis();
+		if (key.equals(lastLogKey) && now - lastLogAt < 10_000)
+		{
+			return;
+		}
+		lastLogKey = key;
+		lastLogAt = now;
+		Microbot.log("Ectofuntus: need " + tokensNeeded + " tokens (hold " + held + ", " + pending
+			+ " set(s) waiting with the disciples) = " + state.remaining + " set(s) to worship; carrying bones "
+			+ state.bones + ", pots " + state.emptyPots + ", bonemeal " + state.bonemeal + ", buckets "
+			+ state.emptyBuckets + ", slime " + state.slime + "; at " + state.where + "; next " + action, Level.INFO);
 	}
 
 	private Progress fetch()

@@ -2235,6 +2235,8 @@ public class QuestScript extends Script {
 		// a bank trip that brought nothing is not repeated at once: the step waits for its own item; items only
 		// gathered ahead of time for later steps are skipped, as before
 		missing.removeIf(ir -> bankFetchBackedOff(ir) && !isStepOwn(ir));
+		// bones, pots and buckets of a running recipe belong to the recipe, never to the generic bank trip
+		missing.removeIf(ir -> QuestUntradableRecipes.ownedByRecipe(ir.getAllIds(), ectofuntusStep == questStep, isStepOwn(ir)));
 		// an item only a later step earns (Ecto-tokens listed on the quest) never holds a step that does not use it
 		missing.removeIf(ir -> {
 			if (!QuestInventoryRules.deferToLaterStep(isItemRequirementTradable(ir), isStepOwn(ir), isHeldInBank(ir))) {
@@ -4202,7 +4204,9 @@ public class QuestScript extends Script {
 		}
 		Map<Integer, Integer> shortfall = EctofuntusSupply.shortfall(trip, carried);
 		long now = System.currentTimeMillis();
-		switch (ectofuntusSupply.stage(shortfall, now)) {
+		EctofuntusSupply.Stage stage = ectofuntusSupply.stage(shortfall, now);
+		Microbot.log("Ectofuntus: inputs short " + describeInputs(shortfall) + "; source " + stage, Level.INFO);
+		switch (stage) {
 			case NONE:
 				return EctofuntusRunner.Fetch.NOTHING;
 			case BANK:
@@ -4280,6 +4284,8 @@ public class QuestScript extends Script {
 					Microbot.log("Ectofuntus: the bank withdrawal of item " + id + " did not land in time", Level.WARN);
 				}
 			}
+			Microbot.log("Ectofuntus: item " + id + " short " + missing + ", bank has " + inBank + ", took " + take
+					+ (EctofuntusSupply.bankFallsShort(missing, inBank) ? "; will buy the rest" : ""), Level.INFO);
 			if (EctofuntusSupply.bankFallsShort(missing, inBank)) {
 				ectofuntusSupply.markNotInBank(id, now);
 			}

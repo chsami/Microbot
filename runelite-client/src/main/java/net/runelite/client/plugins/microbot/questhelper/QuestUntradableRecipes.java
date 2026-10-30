@@ -65,6 +65,29 @@ public final class QuestUntradableRecipes
 
 	private static final List<Recipe> ALL = Collections.singletonList(ECTO_TOKEN);
 
+	/**
+	 * Whether the generic missing-item handler must leave these ids alone: they are an input of a recipe that is running
+	 * for the current step and the step itself does not ask for them.
+	 */
+	public static boolean ownedByRecipe(Collection<Integer> itemIds, boolean recipeActive, boolean stepOwn)
+	{
+		if (!recipeActive || stepOwn || itemIds == null)
+		{
+			return false;
+		}
+		for (Recipe recipe : ALL)
+		{
+			for (Input input : recipe.inputs)
+			{
+				if (itemIds.contains(input.ids.get(0)))
+				{
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
 	/** The recipe that produces any of these item ids, or null when nothing can be earned for them. */
 	public static Recipe find(Collection<Integer> itemIds)
 	{

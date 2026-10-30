@@ -132,4 +132,16 @@ public class EctofuntusPlanTest
 		s.pending = 1;
 		assertEquals(Action.COLLECT, EctofuntusPlan.next(s));
 	}
+
+	@Test
+	public void recipeInputsBelongToTheRecipeNotTheGenericHandler()
+	{
+		java.util.List<Integer> pots = Arrays.asList(1931);
+		assertEquals(true, QuestUntradableRecipes.ownedByRecipe(pots, true, false));
+		// a step that itself asks for pots keeps them
+		assertEquals(false, QuestUntradableRecipes.ownedByRecipe(pots, true, true));
+		// no recipe running: ordinary handling
+		assertEquals(false, QuestUntradableRecipes.ownedByRecipe(pots, false, false));
+		assertEquals(false, QuestUntradableRecipes.ownedByRecipe(Arrays.asList(995), true, false));
+	}
 }
