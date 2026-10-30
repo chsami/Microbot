@@ -116,4 +116,21 @@ public class QuestBuyRulesTest
 		List<QuestPreflight.Need> widened = QuestPreflight.widen(needs, Collections::singletonList);
 		assertEquals(Arrays.asList(2347), widened.get(0).ids);
 	}
+
+	@Test
+	public void optionalItemsAreDroppedBeforeGoldStopsTheQuest()
+	{
+		java.util.List<String> toBuy = java.util.Arrays.asList("req", "opt");
+		java.util.function.ToLongFunction<String> cost = s -> s.equals("req") ? 100 : 500;
+		assertEquals(java.util.Arrays.asList("opt"), QuestBuyRules.optionalToDrop(toBuy, s -> s.equals("opt"), cost, 300));
+		assertTrue(QuestBuyRules.optionalToDrop(toBuy, s -> s.equals("opt"), cost, 600).isEmpty());
+		assertTrue(QuestBuyRules.optionalToDrop(java.util.Arrays.asList("req"), s -> false, cost, 10).isEmpty());
+	}
+
+	@Test
+	public void onlyAnAllOptionalListMayIgnoreAGrandExchangeProblem()
+	{
+		assertTrue(QuestBuyRules.onlyOptional(java.util.Arrays.asList("opt"), s -> true));
+		assertFalse(QuestBuyRules.onlyOptional(java.util.Arrays.asList("opt", "req"), s -> s.equals("opt")));
+	}
 }

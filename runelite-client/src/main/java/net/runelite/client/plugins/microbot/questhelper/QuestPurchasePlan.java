@@ -8,6 +8,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Predicate;
 
 /**
  * What the quest preflight is about to buy and whether the player can pay for it. Pure data and decisions, plus the
@@ -36,12 +37,20 @@ public final class QuestPurchasePlan
 		public final String name;
 		public final int quantity;
 		public final int unitPrice;
+		/** An optional item never stops a quest: it is dropped before the plan is judged unaffordable. */
+		public final boolean optional;
 
 		public Line(String name, int quantity, int unitPrice)
+		{
+			this(name, quantity, unitPrice, false);
+		}
+
+		public Line(String name, int quantity, int unitPrice, boolean optional)
 		{
 			this.name = name;
 			this.quantity = quantity;
 			this.unitPrice = unitPrice;
+			this.optional = optional;
 		}
 
 		public long total()
@@ -60,6 +69,38 @@ public final class QuestPurchasePlan
 		this.lines = Collections.unmodifiableList(new ArrayList<>(lines));
 		this.coinsInventory = Math.max(0, coinsInventory);
 		this.coinsBank = coinsBank < 0 ? -1 : coinsBank;
+	}
+
+	public boolean hasOptional()
+	{
+		return lines.stream().anyMatch(line -> line.optional);
+	}
+
+	/** The same plan with only the required lines. */
+	public QuestPurchasePlan withoutOptional()
+	{
+		List<Line> required = new ArrayList<>();
+		for (Line line : lines)
+		{
+			if (!line.optional)
+			{
+				required.add(line);
+			}
+		}
+		return new QuestPurchasePlan(required, coinsInventory, coinsBank);
+	}
+
+	/**
+	 * Pure: the plan to judge. The full plan when it passes; otherwise, if it holds optional lines, the required lines
+	 * alone, so an unaffordable optional item never stops the quest. The caller still checks the result.
+	 */
+	public static QuestPurchasePlan shrinkToAcceptable(QuestPurchasePlan plan, Predicate<QuestPurchasePlan> acceptable)
+	{
+		if (acceptable.test(plan) || !plan.hasOptional())
+		{
+			return plan;
+		}
+		return plan.withoutOptional();
 	}
 
 	/** The price an offer for an item with the given reference price is placed at. */

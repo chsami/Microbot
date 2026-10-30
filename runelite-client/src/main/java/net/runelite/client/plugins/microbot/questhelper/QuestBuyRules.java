@@ -6,7 +6,9 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.function.ToIntFunction;
+import java.util.function.ToLongFunction;
 import net.runelite.client.plugins.microbot.questhelper.combat.ChargedItemNames;
 
 /** Pure rules for the preflight's Grand Exchange buying: what may stop a quest, and which variant gets bought. */
@@ -45,6 +47,32 @@ public final class QuestBuyRules
 			return false;
 		}
 		return JEWELLERY.contains(ChargedItemNames.baseName(name));
+	}
+
+	/** Pure: every item to buy is optional (so a Grand Exchange problem need not stop the quest). */
+	public static <T> boolean onlyOptional(List<T> toBuy, Predicate<? super T> optional)
+	{
+		return toBuy.stream().allMatch(optional);
+	}
+
+	/**
+	 * Pure: the optional items to drop when the buy list costs more than the gp on hand. An optional item never stops a
+	 * quest, so all of them go before the required items are judged; nothing is dropped when the whole list is affordable.
+	 */
+	public static <T> List<T> optionalToDrop(List<T> toBuy, Predicate<? super T> optional, ToLongFunction<? super T> cost,
+		long availableGp)
+	{
+		long total = 0L;
+		List<T> dropped = new ArrayList<>();
+		for (T item : toBuy)
+		{
+			total += cost.applyAsLong(item);
+			if (optional.test(item))
+			{
+				dropped.add(item);
+			}
+		}
+		return total > availableGp ? dropped : new ArrayList<>();
 	}
 
 	/** Whether a failed purchase stops the quest: only when nothing was placed and a required item is among them. */

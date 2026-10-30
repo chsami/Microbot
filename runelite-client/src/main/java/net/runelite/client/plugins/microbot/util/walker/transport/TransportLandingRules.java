@@ -22,6 +22,12 @@ public final class TransportLandingRules {
         return dialogueOpen || animating || moving;
     }
 
+    /** Only choices on screen and nothing moving: a question the extended wait cannot answer, so waiting is pointless. */
+    public static boolean optionsOnly(boolean dialogueOpen, boolean hasContinue, boolean hasOptions,
+                                      boolean animating, boolean moving) {
+        return dialogueOpen && !hasContinue && hasOptions && !animating && !moving;
+    }
+
     /** Keep waiting for the landing while something is happening and the extended budget lasts. */
     public static boolean keepWaiting(boolean dialogueOpen, boolean animating, boolean moving, long elapsedMs) {
         return showsActivity(dialogueOpen, animating, moving) && elapsedMs < EXTENDED_LANDING_WAIT_MS;

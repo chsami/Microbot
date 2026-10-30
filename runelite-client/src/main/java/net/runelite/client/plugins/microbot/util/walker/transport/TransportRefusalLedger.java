@@ -5,6 +5,7 @@ import net.runelite.api.coords.WorldPoint;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -15,6 +16,7 @@ public final class TransportRefusalLedger {
 
     private final Map<List<WorldPoint>, Integer> strikes = new ConcurrentHashMap<>();
     private final Map<List<WorldPoint>, Integer> fallThroughs = new ConcurrentHashMap<>();
+    private final Set<List<WorldPoint>> talkFirstTried = ConcurrentHashMap.newKeySet();
     private final ConcurrentLinkedQueue<WorldPoint[]> walkScopedBlocks = new ConcurrentLinkedQueue<>();
 
     public int registerRefusal(WorldPoint origin, WorldPoint destination) {
@@ -103,7 +105,13 @@ public final class TransportRefusalLedger {
         walkScopedBlocks.add(new WorldPoint[]{origin, destination});
     }
 
+    /** True the first time per walk for this edge: the talk-first recovery runs once, never in a loop. */
+    public boolean claimTalkFirst(WorldPoint origin, WorldPoint destination) {
+        return origin != null && destination != null && talkFirstTried.add(List.of(origin, destination));
+    }
+
     public List<WorldPoint[]> drainWalkScopedBlocks() {
+        talkFirstTried.clear();
         strikes.clear();
         fallThroughs.clear();
         List<WorldPoint[]> drained = new ArrayList<>();

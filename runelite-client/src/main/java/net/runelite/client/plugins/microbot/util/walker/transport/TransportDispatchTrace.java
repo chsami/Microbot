@@ -41,9 +41,12 @@ public final class TransportDispatchTrace {
         interacted = true;
     }
 
-    /** The player moved, animated or had a dialogue open after the interaction: it was not ignored. */
-    public void activityObserved() {
-        activity = true;
+    /**
+     * What the extended landing wait last saw: a dialogue open, or the player moving or animating. Only activity still
+     * going when the wait ended can rescue a transport from a refusal, so each observation replaces the one before.
+     */
+    public void activityOngoing(boolean ongoing) {
+        activity = ongoing;
     }
 
     public boolean hasActivity() {
@@ -84,7 +87,11 @@ public final class TransportDispatchTrace {
         return classify(handled, interacted, false, deliberateSkip, refusal, stillAtOrigin);
     }
 
-    /** A refusal needs the interaction to have produced nothing: no movement, animation or dialogue. */
+    /**
+     * A refusal is an interaction that left the player at the origin with nothing still going on. A walk-up to the
+     * object or a plain message box that has run its course is not activity; one still going, or one that moved the
+     * player off the origin, is.
+     */
     public static Verdict classify(boolean handled, boolean interacted, boolean activity, DeliberateSkip deliberateSkip,
                                    Refusal refusal, boolean stillAtOrigin) {
         if (handled) {

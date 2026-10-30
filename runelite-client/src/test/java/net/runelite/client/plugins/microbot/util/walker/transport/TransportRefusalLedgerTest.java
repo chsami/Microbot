@@ -41,4 +41,18 @@ public class TransportRefusalLedgerTest
 		assertFalse(TransportRefusalLedger.onFootRouteLikely(
 			new WorldPoint(3010, 3338, 0), new WorldPoint(3011, 3337, 1), new WorldPoint(3011, 3340, 1)));
 	}
+
+	@Test
+	public void theTalkFirstRecoveryRunsOncePerWalk()
+	{
+		TransportRefusalLedger ledger = new TransportRefusalLedger();
+		WorldPoint origin = new WorldPoint(3000, 3000, 0);
+		WorldPoint destination = new WorldPoint(3003, 3000, 0);
+		assertTrue(ledger.claimTalkFirst(origin, destination));
+		assertFalse(ledger.claimTalkFirst(origin, destination));
+		assertTrue(ledger.claimTalkFirst(destination, origin));
+		ledger.drainWalkScopedBlocks();
+		assertTrue(ledger.claimTalkFirst(origin, destination));
+		assertFalse(ledger.claimTalkFirst(null, destination));
+	}
 }

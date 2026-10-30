@@ -3,8 +3,11 @@ package net.runelite.client.plugins.microbot.shortestpath.pathfinder;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
@@ -440,6 +443,15 @@ public final class QuestWalkRule
 	/** Set while a transport struck out this walk; the last-resort teleport stage waits for the transport's retry. */
 	private static volatile boolean transportBlockLearned;
 
+	/** Set when an edge that struck out this walk had already struck out in an earlier walk. */
+	private static volatile boolean transportRepeatedlyBlocked;
+
+	/** Walks in which each origin-destination edge struck out; cleared when the edge works. */
+	private static final Map<List<WorldPoint>, Integer> edgeStrikeOutWalks = new ConcurrentHashMap<>();
+
+	/** Walks in which the same transport must strike out before the teleport stage may replace it. */
+	static final int TELEPORT_FALLBACK_WALKS = 2;
+
 	/** Largest fare a quest walk fetches coins for; ordinary ships and gates, never a charter. */
 	static final int MAX_FETCHED_FARE = 200;
 
@@ -448,20 +460,55 @@ public final class QuestWalkRule
 		allowCharterShips = allow;
 	}
 
+	/** Cleared at every walk start; the per-edge strike-out memory lives on across walks. */
 	public static void setTransportBlockLearned(boolean learned)
 	{
 		transportBlockLearned = learned;
+		if (!learned)
+		{
+			transportRepeatedlyBlocked = false;
+		}
 	}
 
-	/** Pure: the last-resort stage never replaces a transport that was only refused this walk. */
-	static boolean stageSkipped(Stage stage, boolean transportBlocked)
+	/** A transport edge struck out in this walk; remembered across walks so a transport that always refuses is replaced. */
+	public static void recordTransportStrikeOut(WorldPoint origin, WorldPoint destination)
 	{
-		return stage == Stage.TELEPORTS && transportBlocked;
+		if (origin == null || destination == null)
+		{
+			return;
+		}
+		int walks = edgeStrikeOutWalks.merge(List.of(origin, destination), 1, Integer::sum);
+		transportBlockLearned = true;
+		if (teleportFallbackEarned(walks))
+		{
+			transportRepeatedlyBlocked = true;
+		}
+	}
+
+	/** The edge works again: forget its earlier strike-outs. */
+	public static void forgetTransportStrikeOuts(WorldPoint origin, WorldPoint destination)
+	{
+		if (origin != null && destination != null)
+		{
+			edgeStrikeOutWalks.remove(List.of(origin, destination));
+		}
+	}
+
+	/** Pure: the second walk in which one edge strikes out earns the teleport fallback. */
+	static boolean teleportFallbackEarned(int strikeOutWalks)
+	{
+		return strikeOutWalks >= TELEPORT_FALLBACK_WALKS;
+	}
+
+	/** Pure: the last-resort stage never replaces a transport that was only refused this walk, until it keeps refusing. */
+	static boolean stageSkipped(Stage stage, boolean transportBlocked, boolean repeatedlyBlocked)
+	{
+		return stage == Stage.TELEPORTS && transportBlocked && !repeatedlyBlocked;
 	}
 
 	public static boolean skipsStage(Stage stage)
 	{
-		return stageSkipped(stage, transportBlockLearned);
+		return stageSkipped(stage, transportBlockLearned, transportRepeatedlyBlocked);
 	}
 
 	/** Pure: whether a charter ship may be used by the last-resort stage. */

@@ -214,6 +214,7 @@ final class Rs2WalkerTransports {
         boolean struckOut = false;
         if (verdict == TransportDispatchTrace.Verdict.HANDLED) {
             transportRefusalLedger.clear(origin, destination);
+            QuestWalkRule.forgetTransportStrikeOuts(origin, destination);
         } else if (verdict == TransportDispatchTrace.Verdict.REFUSED_AFTER_INTERACTION) {
             struckOut = registerTransportRefusal(origin, destination, "interaction-refused");
         }
@@ -948,7 +949,9 @@ final class Rs2WalkerTransports {
                         boolean landedAfterObject = waitForPostHandleObjectLanding(transport, destWait, maxInclusive);
                         if (!landedAfterObject) {
                             Optional<String> talkFirst = TransportLandingRules.talkFirstNpc(object.getId());
-                            if (talkFirst.isPresent() && talkToPrerequisiteNpc(talkFirst.get())) {
+                            if (talkFirst.isPresent()
+                                    && transportRefusalLedger.claimTalkFirst(transport.getOrigin(), transport.getDestination())
+                                    && talkToPrerequisiteNpc(talkFirst.get())) {
                                 prepareTransportObjectForInteraction(object);
                                 if (handleObject(transport, object, interactionAction)) {
                                     sleepUntil(() -> !Rs2Player.isAnimating());
@@ -1037,7 +1040,7 @@ final class Rs2WalkerTransports {
     private static void strikeOutTransport(WorldPoint origin, WorldPoint destination, String mode, int limit) {
         if (Rs2PathApi.learnBlockedEdge(origin, destination, "transport-refused (" + mode + ")")) {
             transportRefusalLedger.recordWalkScopedBlock(origin, destination);
-            QuestWalkRule.setTransportBlockLearned(true);
+            QuestWalkRule.recordTransportStrikeOut(origin, destination);
         }
         WebWalkLog.spInfo("transport_strike_out | origin={} dest={} mode={} — {} refusals; "
                         + "blocking transport for this walk and replanning",
@@ -1115,11 +1118,13 @@ final class Rs2WalkerTransports {
             boolean dialogue = Rs2Dialogue.isInDialogue();
             boolean animating = Rs2Player.isAnimating();
             boolean moving = Rs2Player.isMoving();
-            if (TransportLandingRules.showsActivity(dialogue, animating, moving)) {
-                TransportDispatchTrace trace = DISPATCH_TRACE.get();
-                if (trace != null) {
-                    trace.activityObserved();
-                }
+            TransportDispatchTrace trace = DISPATCH_TRACE.get();
+            if (trace != null) {
+                trace.activityOngoing(TransportLandingRules.showsActivity(dialogue, animating, moving));
+            }
+            if (TransportLandingRules.optionsOnly(dialogue, Rs2Dialogue.hasContinue(),
+                    Rs2Dialogue.hasSelectAnOption(), animating, moving)) {
+                return false; // a question this wait will not answer: the caller decides
             }
             long elapsed = System.currentTimeMillis() - waitStartedAt;
             if (!TransportLandingRules.keepWaiting(dialogue, animating, moving, elapsed)) {
@@ -1137,10 +1142,6 @@ final class Rs2WalkerTransports {
      * conversation is retried after talking to the named NPC and finishing the dialogue (continue only).
      */
     private static boolean talkToPrerequisiteNpc(String npcName) {
-        TransportDispatchTrace trace = DISPATCH_TRACE.get();
-        if (trace != null) {
-            trace.activityObserved();
-        }
         WebWalkLog.spInfo("transport prerequisite | talking to {} before retrying", npcName);
         if (!Rs2Npc.interact(npcName, "Talk-to")) {
             return false;

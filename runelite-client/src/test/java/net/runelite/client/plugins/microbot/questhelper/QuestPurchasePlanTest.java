@@ -52,4 +52,16 @@ public class QuestPurchasePlanTest
 		assertTrue(p.affordable());
 		assertTrue(plan(10, -1).insufficientMessage().contains("bank not checked"));
 	}
+
+	@Test
+	public void anUnaffordableOptionalLineIsDroppedAndTheRequiredOnesJudged()
+	{
+		QuestPurchasePlan p = new QuestPurchasePlan(Arrays.asList(
+			new QuestPurchasePlan.Line("Rope", 1, 30), new QuestPurchasePlan.Line("Cape", 1, 5000, true)), 100, 0);
+		QuestPurchasePlan shrunk = QuestPurchasePlan.shrinkToAcceptable(p, QuestPurchasePlan::affordable);
+		assertTrue(shrunk.affordable());
+		assertEquals("Rope x1", shrunk.describeItems());
+		QuestPurchasePlan poor = new QuestPurchasePlan(p.lines(), 10, 0);
+		assertFalse(QuestPurchasePlan.shrinkToAcceptable(poor, QuestPurchasePlan::affordable).affordable());
+	}
 }

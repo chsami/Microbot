@@ -110,4 +110,16 @@ public class Rs2WalkerStaminaTest {
 		assertTrue("hardcore bucket should produce several distinct values; saw " + hardcoreValues,
 				hardcoreValues.size() >= 5);
 	}
+
+	@Test
+	public void anOverrideOfZeroOrLessIsNoOverride() {
+		try {
+			Rs2Walker.setStaminaThresholdOverride(40);
+			assertEquals(40, Rs2Walker.staminaThresholdOverride);
+			Rs2Walker.setStaminaThresholdOverride(0);
+			assertEquals(-1, Rs2Walker.staminaThresholdOverride);
+		} finally {
+			Rs2Walker.setStaminaThresholdOverride(-1);
+		}
+	}
 }

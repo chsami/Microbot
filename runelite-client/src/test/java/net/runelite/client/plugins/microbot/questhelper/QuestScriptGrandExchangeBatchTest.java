@@ -62,4 +62,12 @@ public class QuestScriptGrandExchangeBatchTest
 		assertTrue(QuestScript.trimToGrandExchangeSlots(toBuy, 1));
 		assertEquals(Arrays.asList("a"), toBuy);
 	}
+
+	@Test
+	public void requiredItemsAreKeptBeforeOptionalOnes()
+	{
+		List<String> toBuy = new ArrayList<>(Arrays.asList("opt1", "req1", "opt2", "req2"));
+		assertTrue(QuestScript.trimToGrandExchangeSlots(toBuy, 2, item -> item.startsWith("opt")));
+		assertEquals(Arrays.asList("req1", "req2"), toBuy);
+	}
 }
