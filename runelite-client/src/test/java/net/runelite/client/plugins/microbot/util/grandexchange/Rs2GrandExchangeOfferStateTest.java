@@ -61,6 +61,33 @@ public class Rs2GrandExchangeOfferStateTest {
 	}
 
 	@Test
+	public void offerPriceFallsBackToTheIntGetterWhenTheVarpIsStoredAsAnInt() {
+		when(client.getVarpLongValue(Rs2GrandExchange.GE_NEWOFFER_PRICE_VARP))
+			.thenThrow(new IllegalArgumentException("varp 5753 is an int"));
+		when(client.getVarpValue(Rs2GrandExchange.GE_NEWOFFER_PRICE_VARP)).thenReturn(1_500_000);
+
+		assertEquals(1_500_000L, Rs2GrandExchange.getOfferPrice());
+	}
+
+	@Test
+	public void offerPriceDoesNotReadTheIntGetterWhenTheVarpIsStoredAsALong() {
+		when(client.getVarpLongValue(Rs2GrandExchange.GE_NEWOFFER_PRICE_VARP)).thenReturn(1234L);
+
+		assertEquals(1234L, Rs2GrandExchange.getOfferPrice());
+		verify(client, never()).getVarpValue(anyInt());
+	}
+
+	@Test
+	public void offerPriceChangeIsMeasuredAgainstTheIntVarp() {
+		when(client.getVarpLongValue(Rs2GrandExchange.GE_NEWOFFER_PRICE_VARP))
+			.thenThrow(new IllegalArgumentException("varp 5753 is an int"));
+		when(client.getVarpValue(Rs2GrandExchange.GE_NEWOFFER_PRICE_VARP)).thenReturn(1234);
+
+		assertFalse(GrandExchangeWidget.hasOfferPriceChanged(1234L));
+		assertTrue(GrandExchangeWidget.hasOfferPriceChanged(1175L));
+	}
+
+	@Test
 	public void offerPriceChangeIsMeasuredAgainstTheVarp() {
 		when(client.getVarpLongValue(Rs2GrandExchange.GE_NEWOFFER_PRICE_VARP)).thenReturn(1234L);
 

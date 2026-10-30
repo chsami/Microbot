@@ -16,6 +16,8 @@ import net.runelite.client.RuneLite;
  */
 @Value
 public class JagexCredentials {
+    private static volatile JagexCredentials launch;
+
     @ToString.Exclude
     String sessionId;
     String characterId;
@@ -35,11 +37,21 @@ public class JagexCredentials {
 
     /**
      * The character the client was launched with. Like the client, this reads the {@code JX_*} environment
-     * variables first and then the credentials file in the RuneLite directory.
+     * variables first and then the credentials file in the RuneLite directory. It is read once, so a file
+     * rewritten by a later launch does not change this client's character.
      *
      * @return null if the client was not launched with a Jagex Account
      */
     public static JagexCredentials fromLaunch() {
+        JagexCredentials credentials = launch;
+        if (credentials == null) {
+            credentials = readLaunch();
+            launch = credentials;
+        }
+        return credentials;
+    }
+
+    private static JagexCredentials readLaunch() {
         JagexCredentials fromEnvironment = of(System.getenv("JX_SESSION_ID"), System.getenv("JX_CHARACTER_ID"),
             System.getenv("JX_DISPLAY_NAME"));
         if (fromEnvironment != null) {

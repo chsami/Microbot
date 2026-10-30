@@ -1722,8 +1722,13 @@ public class Rs2GrandExchange {
     }
 
     static long getOfferPrice() {
-        return Microbot.getClientThread().runOnClientThreadOptional(() ->
-                Microbot.getClient().getVarpLongValue(GE_NEWOFFER_PRICE_VARP)).orElse(0L);
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            try {
+                return Microbot.getClient().getVarpLongValue(GE_NEWOFFER_PRICE_VARP);
+            } catch (IllegalArgumentException e) {
+                return (long) Microbot.getClient().getVarpValue(GE_NEWOFFER_PRICE_VARP);
+            }
+        }).orElse(0L);
     }
 
     public static void setChatboxValue(int value) {
