@@ -1127,7 +1127,8 @@ public class Rs2Walker {
     // Trapdoor and manhole mappings for open/closed states
     static final Map<Integer, Integer> OPEN_TO_CLOSED_MAPPINGS = Map.of(
         1581, 1579, // open trapdoor -> closed trapdoor
-        882, 881    // open manhole -> closed manhole
+        882, 881,   // open manhole -> closed manhole
+        16114, 16113 // Ectofuntus open trapdoor -> closed trapdoor
     );
 
     public static boolean walkTo(int x, int y, int plane) {

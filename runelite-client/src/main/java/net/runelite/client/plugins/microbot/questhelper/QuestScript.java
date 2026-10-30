@@ -2503,7 +2503,7 @@ public class QuestScript extends Script {
 
 	/** With the bank open, banks what the rest of the quest no longer needs before any carry cap is computed. */
 	private void clearInventoryForQuest() {
-		if (recipeFetchActive) {
+		if (recipeFetchActive || recipeActiveForCurrentStep()) {
 			return; // the recipe's bones, pots and buckets are not on the quest's list
 		}
 		QuestHelper quest = getQuestHelperPlugin().getSelectedQuest();
@@ -2516,7 +2516,7 @@ public class QuestScript extends Script {
 
 	/** With the bank open, clears unrelated items when a carry-limited item has no room at all. Returns true if it deposited. */
 	private boolean makeRoomForCarryLimited(List<ItemRequirement> candidates) {
-		if (recipeFetchActive) {
+		if (recipeFetchActive || recipeActiveForCurrentStep()) {
 			return false;
 		}
 		boolean noRoom = candidates.stream().anyMatch(ir -> isCarryLimited(ir)
@@ -4189,6 +4189,20 @@ public class QuestScript extends Script {
 	private final EctofuntusSupply ectofuntusSupply = new EctofuntusSupply();
 	private int ectofuntusBuyCalls;
 	private String ectofuntusBlocked;
+	/** Whether a recipe is working on the step the quest is on now: its inputs must survive every bank visit. */
+	private boolean recipeActiveForCurrentStep() {
+		if (ectofuntusStep == null) {
+			return false;
+		}
+		try {
+			QuestHelper selected = getQuestHelperPlugin().getSelectedQuest();
+			QuestStep step = selected == null || selected.getCurrentStep() == null ? null : selected.getCurrentStep().getActiveStep();
+			return step == ectofuntusStep;
+		} catch (RuntimeException e) {
+			return false;
+		}
+	}
+
 	/** While a recipe fetch runs, the bank visit must not deposit the recipe's own inputs as "unneeded". */
 	private boolean recipeFetchActive;
 

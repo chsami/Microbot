@@ -9,6 +9,7 @@ import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.api.gameval.NpcID;
 import net.runelite.api.gameval.ObjectID;
+import net.runelite.api.gameval.VarbitID;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.questhelper.EctofuntusPlan.Action;
 import net.runelite.client.plugins.microbot.questhelper.EctofuntusPlan.State;
@@ -85,6 +86,13 @@ public final class EctofuntusRunner
 	private int stalls;
 	private int ticks;
 	private int fetchTicks;
+	private int collectMisses;
+	private boolean grinderDirty;
+	private boolean grinderFailed;
+	private int grinderClears;
+	static final int MAX_GRINDER_CLEARS = 6;
+	private boolean collectFailed;
+	static final int MAX_COLLECT_MISSES = 3;
 	private String lastSignature = "";
 	private Action lastAction;
 	private String failure;
@@ -104,6 +112,11 @@ public final class EctofuntusRunner
 		stalls = 0;
 		ticks = 0;
 		fetchTicks = 0;
+		collectMisses = 0;
+		collectFailed = false;
+		grinderDirty = false;
+		grinderFailed = false;
+		grinderClears = 0;
 		lastSignature = "";
 		lastAction = null;
 		failure = null;
@@ -120,6 +133,14 @@ public final class EctofuntusRunner
 		if (++ticks > MAX_TICKS)
 		{
 			return fail("ran " + MAX_TICKS + " ticks without finishing");
+		}
+		if (grinderFailed)
+		{
+			return fail("the bone grinder would not clear after " + MAX_GRINDER_CLEARS + " tries");
+		}
+		if (collectFailed)
+		{
+			return fail("the ghost disciples paid no tokens after " + MAX_COLLECT_MISSES + " tries");
 		}
 		int held = Rs2Inventory.itemQuantity(ItemID.ECTOTOKEN);
 		readInventory(state);
@@ -268,6 +289,14 @@ public final class EctofuntusRunner
 		status("grinding bones");
 		int bonemealBefore = state.bonemeal;
 		int bonesBefore = state.bones;
+		int grinder = Microbot.getVarbitValue(VarbitID.AHOY_GRINDER_STATUS);
+		Microbot.log("Ectofuntus: grinder status " + grinder + ", hopper loaded by us " + hopperLoaded
+			+ ", needs clearing " + grinderDirty, Level.INFO);
+		if (grinderDirty)
+		{
+			clearGrinder();
+			return;
+		}
 		if (!hopperLoaded)
 		{
 			if (Rs2Inventory.useItemOnObject(ItemID.BONES, ObjectID.AHOY_GRINDER_LOADER)
@@ -277,7 +306,11 @@ public final class EctofuntusRunner
 			}
 			else
 			{
+				// "There are already some bones in the grinder's hopper": left over from an earlier load
 				Rs2Inventory.deselect();
+				grinderDirty = true;
+				Microbot.log("Ectofuntus: the loader took no bone (status " + grinder + "); clearing the grinder first",
+					Level.WARN);
 			}
 			return;
 		}
@@ -286,38 +319,77 @@ public final class EctofuntusRunner
 		{
 			return;
 		}
-		// nothing moved: turn the wheel and empty the bin by hand
-		Microbot.log("Ectofuntus: grinder idle, winding and emptying by hand", Level.WARN);
+		Microbot.log("Ectofuntus: the grinder stopped by itself; clearing it by hand", Level.WARN);
+		hopperLoaded = false;
+		grinderDirty = true;
+	}
+
+	/**
+	 * Gets rid of whatever an earlier load left in the grinder: empty the bin (ground bones may be waiting), wind the
+	 * wheel, empty again. Clean once a bonemeal shows in the inventory; bounded by {@link #MAX_GRINDER_CLEARS}.
+	 */
+	private void clearGrinder()
+	{
+		if (++grinderClears > MAX_GRINDER_CLEARS)
+		{
+			grinderFailed = true;
+			return;
+		}
+		Microbot.log("Ectofuntus: clearing the grinder (attempt " + grinderClears + "/" + MAX_GRINDER_CLEARS + ")",
+			Level.INFO);
+		int before = countBonemeal();
+		if (emptyBin(before))
+		{
+			grinderClean();
+			return;
+		}
+		int statusBefore = Microbot.getVarbitValue(VarbitID.AHOY_GRINDER_STATUS);
 		if (Rs2GameObject.interact(ObjectID.AHOY_GRINDER_HANDLE, "Wind"))
 		{
-			sleepUntil(() -> countBonemeal() != bonemealBefore, 4_000);
+			sleepUntil(() -> countBonemeal() != before
+				|| Microbot.getVarbitValue(VarbitID.AHOY_GRINDER_STATUS) != statusBefore, 4_000);
+			// the wheel takes a few seconds to turn
+			sleepUntil(() -> !Rs2Player.isAnimating(), 4_000);
 		}
-		if (Rs2GameObject.interact(ObjectID.AHOY_GRINDER_CHUTE, "Empty"))
+		if (emptyBin(before))
 		{
-			sleepUntil(() -> countBonemeal() != bonemealBefore, 4_000);
+			grinderClean();
 		}
-		if (Rs2Inventory.count(ItemID.BONES) == bonesBefore)
-		{
-			hopperLoaded = false; // load it again next tick
-		}
+	}
+
+	/** Empties the bin into a pot; true when a bonemeal arrived. */
+	private boolean emptyBin(int bonemealBefore)
+	{
+		return Rs2GameObject.interact(ObjectID.AHOY_GRINDER_CHUTE, "Empty")
+			&& sleepUntil(() -> countBonemeal() > bonemealBefore, 4_000);
+	}
+
+	private void grinderClean()
+	{
+		Microbot.log("Ectofuntus: the grinder is clear, loading the next bone", Level.INFO);
+		grinderDirty = false;
+		grinderClears = 0;
+		hopperLoaded = false;
 	}
 
 	private void fillBuckets()
 	{
 		status("filling buckets with slime");
 		int slimeBefore = state.slime;
-		boolean used = false;
+		// the first pool object actually in the scene, used once: trying each id in turn would click bucket-on-bucket
+		int poolId = -1;
 		for (int id : POOL_IDS)
 		{
-			if (Rs2Inventory.useItemOnObject(ItemID.BUCKET_EMPTY, id))
+			if (Rs2GameObject.exists(id))
 			{
-				used = true;
+				poolId = id;
 				break;
 			}
 		}
-		if (!used)
+		if (poolId < 0 || !Rs2Inventory.useItemOnObject(ItemID.BUCKET_EMPTY, poolId))
 		{
 			Rs2Inventory.deselect();
+			Microbot.log("Ectofuntus: no pool of slime to use the bucket on (object " + poolId + ")", Level.WARN);
 			return;
 		}
 		// the pool fills every bucket carried, one after another
@@ -429,13 +501,18 @@ public final class EctofuntusRunner
 			}
 		}
 		sleepUntil(() -> Rs2Inventory.itemQuantity(ItemID.ECTOTOKEN) > heldBefore, 1_500);
-		if (Rs2Inventory.itemQuantity(ItemID.ECTOTOKEN) > heldBefore || optionsShown)
+		if (Rs2Inventory.itemQuantity(ItemID.ECTOTOKEN) > heldBefore)
 		{
 			pending = 0;
+			collectMisses = 0;
+			return;
 		}
-		else
+		collectMisses++;
+		Microbot.log("Ectofuntus: the disciple gave no tokens (attempt " + collectMisses + "/" + MAX_COLLECT_MISSES
+			+ (optionsShown ? ", only chat options" : "") + "); is the ghostspeak amulet worn?", Level.WARN);
+		if (collectMisses >= MAX_COLLECT_MISSES)
 		{
-			Microbot.log("Ectofuntus: the disciple gave no tokens (is the ghostspeak amulet worn?)", Level.WARN);
+			collectFailed = true;
 		}
 	}
 
