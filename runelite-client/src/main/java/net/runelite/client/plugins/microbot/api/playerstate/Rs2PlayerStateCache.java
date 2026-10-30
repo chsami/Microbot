@@ -98,7 +98,12 @@ public final class Rs2PlayerStateCache {
 			varbits.put(event.getVarbitId(), event.getValue());
 		}
 		if (event.getVarpId() != -1) {
-			varps.put(event.getVarpId(), event.getValue());
+			// A varbit event carries only the bitfield value, even when it identifies its parent varp.
+			// A separate varp event is not guaranteed, so refresh the complete parent value here.
+			int value = event.getVarbitId() == -1
+					? event.getValue()
+					: client.getVarpValue(event.getVarpId());
+			varps.put(event.getVarpId(), value);
 		}
 	}
 
