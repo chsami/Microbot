@@ -53,6 +53,7 @@ import net.runelite.client.plugins.microbot.util.gameobject.Rs2ObjectOcclusion;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.walker.WalkerState;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
+import net.runelite.client.plugins.microbot.questhelper.combat.ChargedItemNames;
 import net.runelite.client.plugins.microbot.api.npc.models.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.questhelper.helpers.quests.priestinperil.MonumentKeyStep;
@@ -116,6 +117,10 @@ public class QuestScript extends Script {
 	private boolean preflightSummaryLogged;
 	private int preflightBankAttempts;
 	private int preflightBuyRounds;
+	/** Recommended/supply items that could not be priced or bought; never retried and never fatal. */
+	private final Set<String> skippedOptionalBuys = new HashSet<>();
+	/** The requirements of the current buy list that only a selected supply asked for. */
+	private final Set<ItemRequirement> optionalBuys = Collections.newSetFromMap(new java.util.IdentityHashMap<>());
 	private QuestPurchasePlan preflightPlan;
 	private static final int SUPPLY_WITHDRAW_MAX_ATTEMPTS = 3;
 	private boolean supplyWithdrawDone;
@@ -1064,6 +1069,7 @@ public class QuestScript extends Script {
 			preflightSummaryLogged = false;
 			preflightBankAttempts = 0;
 			preflightBuyRounds = 0;
+			skippedOptionalBuys.clear();
 			preflightPlan = null;
 			supplyWithdrawDone = false;
 			supplyWithdrawAttempts = 0;
@@ -1137,15 +1143,24 @@ public class QuestScript extends Script {
 
 		List<QuestPreflight.Shortfall> shortfalls = QuestPreflight.compute(needs, owned);
 		List<ItemRequirement> toBuy = new ArrayList<>();
+		optionalBuys.clear();
 		StringBuilder summary = new StringBuilder();
 		for (QuestPreflight.Shortfall shortfall : shortfalls) {
+			if (shortfall.missing > 0 && !shortfall.required
+					&& skippedOptionalBuys.contains(QuestBuyRules.key(shortfall.ids))) {
+				continue; // an optional item that could not be bought is not asked for again
+			}
 			if (summary.length() > 0) {
 				summary.append(", ");
 			}
 			summary.append(shortfall.name).append(" x").append(shortfall.needed);
 			if (shortfall.missing > 0) {
 				summary.append(shortfall.owned > 0 ? " (buying " + shortfall.missing + " more)" : " (buying)");
-				toBuy.add(new ItemRequirement(QuestPreflight.purchaseLabel(shortfall), shortfall.ids, shortfall.missing));
+				ItemRequirement buy = new ItemRequirement(QuestPreflight.purchaseLabel(shortfall), shortfall.ids, shortfall.missing);
+				toBuy.add(buy);
+				if (!shortfall.required) {
+					optionalBuys.add(buy);
+				}
 				if (shortfall.supply && !preflightSummaryLogged) {
 					Microbot.log("Quest helper: selected supply " + QuestPreflight.purchaseLabel(shortfall)
 							+ " (not enough in the bank or on you)", Level.WARN);
@@ -1207,6 +1222,7 @@ public class QuestScript extends Script {
 		}
 		List<QuestPreflight.Need> wanted = new ArrayList<>(combat.supplyPreflightNeeds(id -> true));
 		wanted.addAll(combat.boostPreflightNeeds(new ArrayList<>()));
+		wanted = QuestPreflight.widen(wanted, this::chargedFamily);
 		if (wanted.isEmpty()) {
 			supplyWithdrawDone = true;
 			return false;
@@ -1333,7 +1349,12 @@ public class QuestScript extends Script {
 							+ "not buying it (the quest steps will obtain it in game)", Level.WARN);
 					continue;
 				}
-				int basePrice = fetchInstabuyReferencePrice(primaryId);
+				boolean optional = optionalBuys.contains(ir);
+				int basePrice = optional ? lookupPrice(primaryId) : fetchInstabuyReferencePrice(primaryId);
+				if (optional && basePrice <= 0) {
+					skipOptionalBuy(ir, "no Grand Exchange price");
+					continue;
+				}
 				if (basePrice <= 0) {
 					stopQuesterWithReason("Failed to fetch Grand Exchange price for: " + ir.getName());
 					return PurchaseGate.STOPPED;
@@ -1521,7 +1542,74 @@ public class QuestScript extends Script {
 			}
 			needs.add(new QuestPreflight.Need(ir.getName(), ids, ir.getQuantity(), ir.isConsumed()));
 		}
-		return needs;
+		return QuestPreflight.widen(needs, this::chargedFamily);
+	}
+
+	/**
+	 * Every charge of a charged jewellery item, fullest first (Games necklace(8) down to (1)), so any charge in the
+	 * bank or on the player counts as having it. Just the id itself for everything else.
+	 */
+	private List<Integer> chargedFamily(int id) {
+		String name = canonicalItemName(id);
+		if (!QuestBuyRules.isChargedJewellery(name)) {
+			return Collections.singletonList(id);
+		}
+		List<Integer> family = new ArrayList<>();
+		for (Integer variant : net.runelite.client.game.ItemVariationMapping
+				.getVariations(net.runelite.client.game.ItemVariationMapping.map(id))) {
+			String variantName = variant == null ? null : canonicalItemName(variant);
+			if (variantName != null && QuestBuyRules.isChargedJewellery(variantName)
+					&& ChargedItemNames.sameFamily(variantName, name)) {
+				family.add(variant);
+			}
+		}
+		if (!family.contains(id)) {
+			family.add(id);
+		}
+		family.sort(java.util.Comparator.comparingInt(
+				(Integer v) -> ChargedItemNames.charge(canonicalItemName(v))).reversed());
+		return family;
+	}
+
+	/** Closes the GE item search and the offer screen left behind by a buy that did not go through. */
+	private void abandonOfferSetup(boolean closeExchange) {
+		for (int tries = 0; tries < 3; tries++) {
+			boolean searchOpen = Rs2Widget.hasWidget("What would you like to buy?");
+			if (!searchOpen && !Rs2GrandExchange.isOfferScreenOpen()) {
+				break;
+			}
+			if (searchOpen) {
+				Rs2Keyboard.keyPress(java.awt.event.KeyEvent.VK_ESCAPE);
+				sleepUntil(() -> !Rs2Widget.hasWidget("What would you like to buy?"), 1_500);
+			}
+			if (Rs2GrandExchange.isOfferScreenOpen()) {
+				Rs2GrandExchange.backToOverview();
+			}
+		}
+		if (closeExchange && Rs2GrandExchange.isOpen()) {
+			Rs2GrandExchange.closeExchange();
+		}
+		if (Rs2Widget.hasWidget("What would you like to buy?") || Rs2GrandExchange.isOfferScreenOpen()) {
+			Microbot.log("Quest helper: the Grand Exchange offer screen did not close", Level.WARN);
+		}
+	}
+
+	/** Records an optional item as not buyable and says so once. */
+	private void skipOptionalBuy(ItemRequirement ir, String reason) {
+		if (skippedOptionalBuys.add(QuestBuyRules.key(ir.getAllIds()))) {
+			Microbot.log("Quest helper: skipping optional item " + ir.getName() + " (" + reason + ")", Level.WARN);
+		}
+	}
+
+	/** A price with no fallback: 0 or less when the Grand Exchange has no data for the item. */
+	private int lookupPrice(int itemId) {
+		return QuestPriceLookup.withRetry(() -> {
+			WikiPrice priceData = Rs2GrandExchange.getRealTimePrices(itemId);
+			if (priceData != null && priceData.buyPrice > 0 && priceData.buyPrice < Integer.MAX_VALUE) {
+				return priceData.buyPrice;
+			}
+			return Rs2GrandExchange.getPrice(itemId);
+		}, 3, 500L, ms -> sleep((int) ms), -1);
 	}
 
     private HumanizedTiming humanTiming;
@@ -2507,6 +2595,7 @@ public class QuestScript extends Script {
 		Map<ItemRequirement, Integer> buyQuantities = new HashMap<>();
 		Map<ItemRequirement, Integer> buyPrimaryIds = new HashMap<>();
 
+		List<ItemRequirement> unbuyable = new ArrayList<>();
 		for (ItemRequirement ir : toBuy) {
 			if (isCoinsRequirement(ir.getAllIds())) {
 				Rs2Bank.closeBank();
@@ -2522,14 +2611,25 @@ public class QuestScript extends Script {
 				continue;
 			}
 
+			boolean optional = optionalBuys.contains(ir);
 			if (isMembersItem(primaryId) && !isOnMembersWorld()) {
+				if (optional) {
+					skipOptionalBuy(ir, "members-only on a free-to-play world");
+					unbuyable.add(ir);
+					continue;
+				}
 				Rs2Bank.closeBank();
 				stopQuesterWithReason(ir.getName()
 						+ " is members-only and can't be bought on the Grand Exchange from a free-to-play world.", Level.WARN);
 				return true;
 			}
 
-			int basePrice = fetchInstabuyReferencePrice(primaryId);
+			int basePrice = optional ? lookupPrice(primaryId) : fetchInstabuyReferencePrice(primaryId);
+			if (optional && basePrice <= 0) {
+				skipOptionalBuy(ir, "no Grand Exchange price");
+				unbuyable.add(ir);
+				continue;
+			}
 			if (basePrice <= 0) {
 				Rs2Bank.closeBank();
 				stopQuesterWithReason("No Grand Exchange price for " + ir.getName()
@@ -2546,6 +2646,8 @@ public class QuestScript extends Script {
 			buyQuantities.put(ir, qty);
 			totalBuyCost += (long) offerPrice * qty;
 		}
+
+		toBuy.removeAll(unbuyable);
 
 		long invCoins = Rs2Inventory.itemQuantity(ItemID.COINS_995);
 		long bankCoins = Rs2Bank.count(ItemID.COINS_995);
@@ -2699,6 +2801,10 @@ public class QuestScript extends Script {
 				placedOffers++;
 			} else {
 				Microbot.log("Quest helper: could not place an offer for " + canonicalName + ", skipping it", Level.WARN);
+				if (optionalBuys.contains(ir)) {
+					skippedOptionalBuys.add(QuestBuyRules.key(ir.getAllIds()));
+				}
+				abandonOfferSetup(false);
 			}
 			sleep(800, 1500);
 		}
@@ -2707,7 +2813,13 @@ public class QuestScript extends Script {
 			return true;
 		}
 		if (placedOffers == 0) {
-			stopQuesterWithReason("Failed to place any Grand Exchange offers for missing quest items");
+			abandonOfferSetup(true);
+			boolean requiredWanted = toBuy.stream().anyMatch(ir -> !optionalBuys.contains(ir));
+			if (QuestBuyRules.mustStop(placedOffers, requiredWanted)) {
+				stopQuesterWithReason("Failed to place any Grand Exchange offers for missing quest items");
+			} else {
+				Microbot.log("Quest helper: none of the optional items could be bought, continuing without them", Level.WARN);
+			}
 			return true;
 		}
 
@@ -2957,17 +3069,13 @@ public class QuestScript extends Script {
 			return -1;
 		}
 
-		// Pick the cheapest tradable variant to avoid league/cosmetic items priced at MAX_VALUE
-		int bestId = tradableIds.get(0);
-		int bestPrice = Integer.MAX_VALUE;
+		// Jewellery buys the fullest charge that is traded; anything else the cheapest priced variant, which
+		// avoids league/cosmetic items priced at MAX_VALUE
+		List<QuestBuyRules.Candidate> candidates = new ArrayList<>();
 		for (int id : tradableIds) {
-			int price = fetchInstabuyReferencePrice(id);
-			if (price > 0 && price < bestPrice) {
-				bestPrice = price;
-				bestId = id;
-			}
+			candidates.add(new QuestBuyRules.Candidate(id, canonicalItemName(id)));
 		}
-		return bestId;
+		return QuestBuyRules.pickBuyId(candidates, this::lookupPrice);
 	}
 
 	static boolean isCoinsRequirement(Collection<Integer> itemIds) {
@@ -3728,13 +3836,7 @@ public class QuestScript extends Script {
 	}
 
 	private int fetchInstabuyReferencePrice(int itemId) {
-		int price = QuestPriceLookup.withRetry(() -> {
-			WikiPrice priceData = Rs2GrandExchange.getRealTimePrices(itemId);
-			if (priceData != null && priceData.buyPrice > 0 && priceData.buyPrice < Integer.MAX_VALUE) {
-				return priceData.buyPrice;
-			}
-			return Rs2GrandExchange.getPrice(itemId);
-		}, 3, 500L, ms -> sleep((int) ms), -1);
+		int price = lookupPrice(itemId);
 		if (price > 0) {
 			return price;
 		}
@@ -4144,7 +4246,7 @@ public class QuestScript extends Script {
 		ItemAndLastUpdated bank = QuestContainerManager.getBankData();
 		QuestPreflight.setStatus(QuestPreflight.CHECKING);
 		Microbot.status = "Quest queue: counting what the quests need";
-		if (bank.getLastUpdated() < 0 && bank.getItems().length == 0) {
+		if (!QuestPreflight.bankScanned(bank.getLastUpdated())) {
 			if (queuePreflightBankAttempts >= PREFLIGHT_MAX_BANK_ATTEMPTS) {
 				QuestPreflight.setStatus(QuestPreflight.DONE);
 				return false;
@@ -4181,14 +4283,16 @@ public class QuestScript extends Script {
 					}
 				}
 				if (!ids.isEmpty()) {
-					needs.add(new QuestPreflight.Need(supply.name, ids, supply.qty, true));
+					needs.add(QuestPreflight.supplyNeed(supply.name, ids, supply.qty, true));
 				}
 			}
 			for (QuestPreflight.Need need : needs) {
 				String key = need.name.toLowerCase();
 				QuestPreflight.Need old = merged.get(key);
 				merged.put(key, old == null ? need
-						: new QuestPreflight.Need(old.name, old.ids, old.quantity + need.quantity, old.consumed || need.consumed));
+						: (old.supply && need.supply
+								? QuestPreflight.supplyNeed(old.name, old.ids, old.quantity + need.quantity, old.consumed || need.consumed)
+								: new QuestPreflight.Need(old.name, old.ids, old.quantity + need.quantity, old.consumed || need.consumed)));
 			}
 		}
 		List<QuestPreflight.Need> needs = new ArrayList<>(merged.values());
@@ -4200,9 +4304,18 @@ public class QuestScript extends Script {
 		QuestPreflight.foldNoted(needs, this::notedVariantId, onPlayer, owned);
 
 		List<ItemRequirement> toBuy = new ArrayList<>();
-		for (QuestPreflight.Shortfall shortfall : QuestPreflight.compute(needs, owned)) {
+		optionalBuys.clear();
+		for (QuestPreflight.Shortfall shortfall : QuestPreflight.compute(QuestPreflight.widen(needs, this::chargedFamily), owned)) {
+			if (shortfall.missing > 0 && !shortfall.required
+					&& skippedOptionalBuys.contains(QuestBuyRules.key(shortfall.ids))) {
+				continue;
+			}
 			if (shortfall.missing > 0) {
-				toBuy.add(new ItemRequirement(shortfall.name, shortfall.ids, shortfall.missing));
+				ItemRequirement buy = new ItemRequirement(shortfall.name, shortfall.ids, shortfall.missing);
+				toBuy.add(buy);
+				if (!shortfall.required) {
+					optionalBuys.add(buy);
+				}
 			}
 		}
 		if (toBuy.isEmpty()) {
@@ -4214,8 +4327,12 @@ public class QuestScript extends Script {
 			List<String> names = new ArrayList<>();
 			for (ItemRequirement ir : toBuy) {
 				int primaryId = tradablePrimaryId(ir);
-				int price = primaryId == -1 ? -1 : fetchInstabuyReferencePrice(primaryId);
+				boolean optional = optionalBuys.contains(ir);
+				int price = primaryId == -1 ? -1 : (optional ? lookupPrice(primaryId) : fetchInstabuyReferencePrice(primaryId));
 				if (price <= 0) {
+					if (optional) {
+						skipOptionalBuy(ir, "no Grand Exchange price");
+					}
 					Microbot.log("Quest queue: no price for " + ir.getName() + ", not buying it up front", Level.WARN);
 					continue;
 				}

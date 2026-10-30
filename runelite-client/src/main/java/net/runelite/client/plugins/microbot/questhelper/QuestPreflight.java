@@ -149,10 +149,13 @@ public final class QuestPreflight
 		public final int owned;
 		public final int missing;
 		public final boolean supply;
+		/** False when only selected supplies asked for it: such an item that cannot be bought is skipped, never fatal. */
+		public final boolean required;
 
-		Shortfall(String name, List<Integer> ids, int needed, int owned, boolean supply)
+		Shortfall(String name, List<Integer> ids, int needed, int owned, boolean supply, boolean required)
 		{
 			this.supply = supply;
+			this.required = required;
 			this.name = name;
 			this.ids = ids;
 			this.needed = needed;
@@ -178,6 +181,7 @@ public final class QuestPreflight
 		List<Set<Integer>> idSets = new ArrayList<>();
 		List<Integer> quantities = new ArrayList<>();
 		List<Boolean> supplies = new ArrayList<>();
+		List<Boolean> requireds = new ArrayList<>();
 
 		for (Need need : needs)
 		{
@@ -201,6 +205,7 @@ public final class QuestPreflight
 			String name = need.name;
 			int quantity = need.quantity;
 			boolean supply = need.supply;
+			boolean required = !need.supply;
 			// Absorb every earlier group that shares an id, which also joins groups an alternate bridges
 			for (int i = idSets.size() - 1; i >= 0; i--)
 			{
@@ -209,7 +214,9 @@ public final class QuestPreflight
 					ids.addAll(idSets.get(i));
 					quantity = Math.max(quantity, quantities.get(i));
 					supply = supply || supplies.get(i);
+					required = required || requireds.get(i);
 					supplies.remove(i);
+					requireds.remove(i);
 					name = names.get(i) != null ? names.get(i) : name;
 					idSets.remove(i);
 					quantities.remove(i);
@@ -220,13 +227,45 @@ public final class QuestPreflight
 			quantities.add(quantity);
 			names.add(name);
 			supplies.add(supply);
+			requireds.add(required);
 		}
 
 		List<Shortfall> out = new ArrayList<>();
 		for (int i = 0; i < idSets.size(); i++)
 		{
 			out.add(new Shortfall(names.get(i), new ArrayList<>(idSets.get(i)), quantities.get(i),
-				countOwned(idSets.get(i), owned), supplies.get(i)));
+				countOwned(idSets.get(i), owned), supplies.get(i), requireds.get(i)));
+		}
+		return out;
+	}
+
+	/**
+	 * Lets any variant of an item satisfy its need: each id is replaced by its family (every charge of a games
+	 * necklace, fullest first), so what the player already holds in any charge counts before anything is bought.
+	 *
+	 * @param family ids of the same item as the given id, itself included; just that id for items without variants
+	 */
+	public static List<Need> widen(List<Need> needs, java.util.function.IntFunction<List<Integer>> family)
+	{
+		List<Need> out = new ArrayList<>(needs.size());
+		for (Need need : needs)
+		{
+			if (need == null || need.ids == null)
+			{
+				out.add(need);
+				continue;
+			}
+			Set<Integer> ids = new LinkedHashSet<>();
+			for (Integer id : need.ids)
+			{
+				if (id == null || id <= 0)
+				{
+					continue;
+				}
+				ids.addAll(family.apply(id));
+				ids.add(id);
+			}
+			out.add(new Need(need.name, new ArrayList<>(ids), need.quantity, need.consumed, need.supply));
 		}
 		return out;
 	}
