@@ -355,8 +355,8 @@ public final class LoginManager {
         if (client.getLauncherDisplayName() != null) {
             if (encryptedPassword == null || encryptedPassword.isBlank()) {
                 JagexCredentials launch = JagexCredentials.fromLaunch();
-                if (launch != null) {
-                    log.debug("Profile has no password: logging in with the launch Jagex Account character");
+                if (launch != null && launch.getDisplayName().equalsIgnoreCase(client.getLauncherDisplayName())) {
+                    log.info("Profile {} has no password: logging in with the launch Jagex Account character {}", username, launch.getDisplayName());
                     switchJagexAccount(client, launch.getSessionId(), launch.getCharacterId(), launch.getDisplayName());
                     return true;
                 }

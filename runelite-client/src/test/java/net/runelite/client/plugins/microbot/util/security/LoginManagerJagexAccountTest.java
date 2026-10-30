@@ -156,6 +156,24 @@ public class LoginManagerJagexAccountTest {
         verify(client, never()).setUsername(any());
     }
 
+    @Test public void passwordlessProfileWithoutLaunchCredentialsLogsInLegacy() {
+        try (var keyboard = mockStatic(Rs2Keyboard.class); var launch = mockStatic(JagexCredentials.class)) {
+            launch.when(JagexCredentials::fromLaunch).thenReturn(null);
+            assertTrue(LoginManager.login("default", "", 301));
+        }
+        verify(client).switchJagexAccount(null, null, null);
+        verify(client).setUsername("default");
+    }
+
+    @Test public void passwordlessProfileIgnoresCredentialsOfAnotherCharacter() {
+        try (var keyboard = mockStatic(Rs2Keyboard.class); var launch = mockStatic(JagexCredentials.class)) {
+            launch.when(JagexCredentials::fromLaunch).thenReturn(new JagexCredentials("other-session", "8", "Other character"));
+            assertTrue(LoginManager.login("default", "", 301));
+        }
+        verify(client, never()).switchJagexAccount("other-session", "8", "Other character");
+        verify(client).switchJagexAccount(null, null, null);
+    }
+
     @Test public void loginStopsWhenTheAccountSwitchDoesNotRun() {
         doThrow(new IllegalStateException("client thread busy")).when(client).switchJagexAccount(null, null, null);
 

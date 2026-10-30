@@ -1,7 +1,5 @@
 package net.runelite.client.plugins.microbot.util.security;
 
-import com.google.common.base.Supplier;
-import com.google.common.base.Suppliers;
 import java.io.File;
 import java.io.IOException;
 import java.io.Reader;
@@ -18,7 +16,7 @@ import net.runelite.client.RuneLite;
  */
 @Value
 public class JagexCredentials {
-    private static final Supplier<JagexCredentials> LAUNCH = Suppliers.memoize(JagexCredentials::readLaunch);
+    private static volatile JagexCredentials launch;
 
     @ToString.Exclude
     String sessionId;
@@ -45,7 +43,12 @@ public class JagexCredentials {
      * @return null if the client was not launched with a Jagex Account
      */
     public static JagexCredentials fromLaunch() {
-        return LAUNCH.get();
+        JagexCredentials credentials = launch;
+        if (credentials == null) {
+            credentials = readLaunch();
+            launch = credentials;
+        }
+        return credentials;
     }
 
     private static JagexCredentials readLaunch() {
