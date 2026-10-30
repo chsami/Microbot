@@ -1830,7 +1830,7 @@ public class Rs2Inventory {
      * Method will search for restore energy items in inventory & use them
      */
     public static void useRestoreEnergyItem() {
-        Rs2ItemModel restoreItem = getPotionsInInventory(Rs2Potion.getStaminaPotion()).findFirst().orElse(null);
+        Rs2ItemModel restoreItem = getStaminaPotionsInInventory().findFirst().orElse(null);
         if (restoreItem == null || Rs2Player.hasStaminaBuffActive()) {
             restoreItem = getPotionsInInventory(Rs2Potion.getRestoreEnergyPotionsVariants().toArray(String[]::new)).findFirst().orElse(null);
             if (restoreItem == null) return;
@@ -1848,6 +1848,18 @@ public class Rs2Inventory {
      */
     public static List<Rs2ItemModel> getFilteredPotionItemsInInventory(String potionName) {
         return getFilteredPotionItemsInInventory(Collections.singletonList(potionName));
+    }
+
+    /** True for "Stamina potion(n)" and "Extended stamina potion(n)": the name without its dose ends in the stamina potion name. */
+    static boolean isStaminaPotionName(String itemName) {
+        if (itemName == null) return false;
+        String base = itemName.replaceAll("\\s*\\(\\d+\\)\\s*$", "").trim().toLowerCase(java.util.Locale.ROOT);
+        return base.endsWith(Rs2Potion.getStaminaPotion().toLowerCase(java.util.Locale.ROOT));
+    }
+
+    /** Stamina potions of every kind (plain and extended), any dose. */
+    private static Stream<Rs2ItemModel> getStaminaPotionsInInventory() {
+        return getPotions().stream().filter(item -> isStaminaPotionName(item.getName()));
     }
 
     private static final Pattern usesRegexPattern = Pattern.compile("^(.*?)(?:\\(\\d+\\))?$");

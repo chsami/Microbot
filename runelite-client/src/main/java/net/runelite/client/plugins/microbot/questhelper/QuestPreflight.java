@@ -283,6 +283,113 @@ public final class QuestPreflight
 		return needed > 0 && (inBank >= needed || (inBank > 0 && carryLimited));
 	}
 
+	/** One bank withdrawal the supply pass wants to make. */
+	public static final class Take
+	{
+		public final String name;
+		public final int id;
+		public final int quantity;
+
+		Take(String name, int id, int quantity)
+		{
+			this.name = name;
+			this.id = id;
+			this.quantity = quantity;
+		}
+	}
+
+	/** What the supply pass will withdraw, and what it cannot (no room, or none in the bank). */
+	public static final class WithdrawPlan
+	{
+		public final List<Take> takes = new ArrayList<>();
+		/** Supplies the bank holds but that do not fit in the inventory next to the quest items. */
+		public final List<String> leftForSpace = new ArrayList<>();
+		/** Supplies the bank does not hold enough of. */
+		public final List<String> notInBank = new ArrayList<>();
+	}
+
+	/**
+	 * Works out which selected supplies to withdraw from the bank before the quest starts. Pure.
+	 * <p>
+	 * A supply is satisfied by any of its ids summed over what is on the player (so every stamina dose and the
+	 * extended variants count). Bank ids are drawn in the order the need lists them (highest dose first). Quest items
+	 * come first: {@code reservedSlots} stay free for them, and a supply that does not fit is left behind and reported.
+	 *
+	 * @param supplies the selected supplies (stamina count, food, potions, ticked items)
+	 * @param onPlayer inventory + equipment counts per id
+	 * @param inBank bank counts per id
+	 * @param emptySlots free inventory slots right now
+	 * @param reservedSlots slots to keep free for quest items
+	 * @param stackable whether an id stacks, so it needs one slot at most
+	 */
+	public static WithdrawPlan planWithdrawals(List<Need> supplies, Map<Integer, Integer> onPlayer,
+		Map<Integer, Integer> inBank, int emptySlots, int reservedSlots, java.util.function.IntPredicate stackable)
+	{
+		WithdrawPlan plan = new WithdrawPlan();
+		int free = Math.max(0, emptySlots - Math.max(0, reservedSlots));
+		Map<Integer, Integer> bankLeft = new java.util.HashMap<>(inBank);
+		for (Need need : supplies)
+		{
+			if (need == null || need.quantity <= 0 || need.ids == null)
+			{
+				continue;
+			}
+			int missing = need.quantity - countOwned(need.ids, onPlayer);
+			if (missing <= 0)
+			{
+				continue;
+			}
+			final int stillWanted = missing;
+			Set<Integer> seen = new LinkedHashSet<>();
+			for (Integer id : need.ids)
+			{
+				if (id == null || id <= 0 || !seen.add(id))
+				{
+					continue;
+				}
+				int available = bankLeft.getOrDefault(id, 0);
+				if (missing <= 0 || available <= 0)
+				{
+					continue;
+				}
+				int take = Math.min(missing, available);
+				if (stackable.test(id))
+				{
+					if (onPlayer.getOrDefault(id, 0) <= 0)
+					{
+						if (free < 1)
+						{
+							continue;
+						}
+						free--;
+					}
+				}
+				else
+				{
+					take = Math.min(take, free);
+					free -= take;
+				}
+				if (take <= 0)
+				{
+					continue;
+				}
+				plan.takes.add(new Take(need.name, id, take));
+				bankLeft.merge(id, -take, Integer::sum);
+				missing -= take;
+			}
+			if (missing > 0)
+			{
+				int unused = 0;
+				for (Integer id : seen)
+				{
+					unused += bankLeft.getOrDefault(id, 0);
+				}
+				(unused > 0 ? plan.leftForSpace : plan.notInBank).add(need.name + " x" + missing + " of " + stillWanted);
+			}
+		}
+		return plan;
+	}
+
 	/** Total held of the given ids (each id counted once). */
 	public static int countOwned(Iterable<Integer> ids, Map<Integer, Integer> owned)
 	{

@@ -117,6 +117,9 @@ public class QuestScript extends Script {
 	private int preflightBankAttempts;
 	private int preflightBuyRounds;
 	private QuestPurchasePlan preflightPlan;
+	private static final int SUPPLY_WITHDRAW_MAX_ATTEMPTS = 3;
+	private boolean supplyWithdrawDone;
+	private int supplyWithdrawAttempts;
 	private boolean purchaseApproved;
 	private Boolean purchaseConfirmOverride;
 	/** One buy at a time: a second script loop (after a plugin restart) must never run the Grand Exchange too. */
@@ -1056,6 +1059,8 @@ public class QuestScript extends Script {
 			preflightBankAttempts = 0;
 			preflightBuyRounds = 0;
 			preflightPlan = null;
+			supplyWithdrawDone = false;
+			supplyWithdrawAttempts = 0;
 			purchaseApproved = false;
 			QuestPurchasePlan.setCurrent(null);
 			Boolean confirmOverride = freshStart ? QuestPurchasePlan.consumeOverride() : null;
@@ -1083,6 +1088,9 @@ public class QuestScript extends Script {
 				return true; // the consent prompt is still open
 			}
 			Microbot.log("Quest helper preflight: not buying quest items (Obtain Missing Items is off)", Level.INFO);
+			if (withdrawSelectedSupplies(quest)) {
+				return true;
+			}
 			finishPreflight(QuestPreflight.DONE);
 			return false;
 		}
@@ -1148,6 +1156,10 @@ public class QuestScript extends Script {
 		}
 
 		if (toBuy.isEmpty()) {
+			// everything is owned: what sits in the bank still has to come out before the first step
+			if (withdrawSelectedSupplies(quest)) {
+				return true;
+			}
 			finishPreflight(QuestPreflight.DONE);
 			return false;
 		}
@@ -1174,6 +1186,130 @@ public class QuestScript extends Script {
 		Microbot.status = "Quest helper: buying missing quest items";
 		acquireMissingTradableItems(toBuy, true);
 		return true;
+	}
+
+	/**
+	 * Before the first step: withdraws every selected supply (stamina up to the keep-at-least count, food, potions,
+	 * ticked items) that the bank holds, reusing the preflight's bank visit. Quest items keep their slots first; what
+	 * does not fit is reported. A withdrawal is only reported once it shows in the inventory.
+	 *
+	 * @return true while this tick was used (walking, banking or retrying); false once the pass is over
+	 */
+	private boolean withdrawSelectedSupplies(QuestHelper quest) {
+		if (supplyWithdrawDone) {
+			return false;
+		}
+		List<QuestPreflight.Need> wanted = new ArrayList<>(combat.supplyPreflightNeeds(id -> true));
+		wanted.addAll(combat.boostPreflightNeeds(new ArrayList<>()));
+		if (wanted.isEmpty()) {
+			supplyWithdrawDone = true;
+			return false;
+		}
+		Map<Integer, Integer> onPlayer = new HashMap<>();
+		addContainer(onPlayer, QuestContainerManager.getEquippedData());
+		addContainer(onPlayer, QuestContainerManager.getInventoryData());
+		int reserved = 0;
+		try {
+			QuestStep current = quest.getCurrentStep() == null ? null : quest.getCurrentStep().getActiveStep();
+			reserved = slotsReservedForStep(current);
+		} catch (RuntimeException ignored) {
+			// no reserve is the safe fallback: the quest-item logic frees room itself
+		}
+
+		if (!Rs2Bank.isOpen()) {
+			ItemAndLastUpdated cached = QuestContainerManager.getBankData();
+			if (QuestPreflight.bankScanned(cached.getLastUpdated())) {
+				Map<Integer, Integer> inBank = new HashMap<>();
+				addContainer(inBank, cached);
+				QuestPreflight.WithdrawPlan plan = QuestPreflight.planWithdrawals(wanted, onPlayer, inBank,
+						Rs2Inventory.emptySlotCount(), reserved, id -> false);
+				if (plan.takes.isEmpty()) {
+					reportSupplyGaps(plan);
+					supplyWithdrawDone = true;
+					return false;
+				}
+			}
+			if (supplyWithdrawAttempts >= SUPPLY_WITHDRAW_MAX_ATTEMPTS) {
+				Microbot.log("Quest helper: could not fetch the selected supplies from the bank, starting without them",
+						Level.WARN);
+				supplyWithdrawDone = true;
+				return false;
+			}
+			supplyWithdrawAttempts++;
+			QuestPreflight.setStatus(QuestPreflight.CHECKING);
+			Microbot.status = "Quest helper: fetching selected supplies from the bank";
+			Rs2Bank.walkToBankAndUseBankReturningTo(bankReturnPoint());
+			if (!sleepUntil(Rs2Bank::isOpen, 15_000)) {
+				return true;
+			}
+		}
+
+		// the bank's items load a moment after it opens
+		if (!sleepUntil(() -> {
+			List<Rs2ItemModel> items = Rs2Bank.bankItems();
+			return items != null && !items.isEmpty();
+		}, 3_000)) {
+			Microbot.log("Quest helper: the bank showed no items, retrying the supply pass", Level.WARN);
+			Rs2Bank.closeBank();
+			return true;
+		}
+		if (!Rs2Bank.setWithdrawAsItem()) {
+			Microbot.log("Quest helper: could not set the bank to withdraw items, starting without the selected supplies",
+					Level.WARN);
+			Rs2Bank.closeBank();
+			supplyWithdrawDone = true;
+			return true;
+		}
+		Map<Integer, Integer> inBank = new HashMap<>();
+		Set<Integer> stackable = new HashSet<>();
+		for (Rs2ItemModel item : Rs2Bank.bankItems()) {
+			if (item != null && !item.isNoted() && item.getQuantity() > 0) {
+				inBank.merge(item.getId(), item.getQuantity(), Integer::sum);
+				if (item.isStackable()) {
+					stackable.add(item.getId());
+				}
+			}
+		}
+		QuestPreflight.WithdrawPlan plan = QuestPreflight.planWithdrawals(wanted, onPlayer, inBank,
+				Rs2Inventory.emptySlotCount(), reserved, stackable::contains);
+		List<String> landed = new ArrayList<>();
+		int failed = 0;
+		for (QuestPreflight.Take take : plan.takes) {
+			Microbot.status = "Withdrawing " + take.name + " x" + take.quantity;
+			final int before = Rs2Inventory.itemQuantity(take.id);
+			Rs2Bank.withdrawX(take.id, take.quantity);
+			if (sleepUntil(() -> Rs2Inventory.itemQuantity(take.id) > before, 5_000)) {
+				landed.add(take.name + " x" + (Rs2Inventory.itemQuantity(take.id) - before));
+			} else {
+				failed++;
+				Microbot.log("Quest helper: withdrawing " + take.name + " did not land in the inventory", Level.WARN);
+			}
+		}
+		Rs2Bank.closeBank();
+		if (!sleepUntil(() -> !Rs2Bank.isOpen(), 3_000)) {
+			Microbot.log("Quest helper: the bank did not close after the supply pass", Level.WARN);
+		}
+		if (!landed.isEmpty()) {
+			Microbot.log("Quest helper: withdrew selected supplies: " + String.join(", ", landed), Level.INFO);
+		}
+		if (failed > 0 && supplyWithdrawAttempts < SUPPLY_WITHDRAW_MAX_ATTEMPTS) {
+			supplyWithdrawAttempts++;
+			return true; // the next tick re-plans from what the inventory really holds
+		}
+		reportSupplyGaps(plan);
+		supplyWithdrawDone = true;
+		return true;
+	}
+
+	private static void reportSupplyGaps(QuestPreflight.WithdrawPlan plan) {
+		if (!plan.leftForSpace.isEmpty()) {
+			Microbot.log("Quest helper: no room in the inventory (quest items come first), left in the bank: "
+					+ String.join(", ", plan.leftForSpace), Level.WARN);
+		}
+		if (!plan.notInBank.isEmpty()) {
+			Microbot.log("Quest helper: not enough in the bank for the selected supplies: "
+					+ String.join(", ", plan.notInBank), Level.WARN);
+		}
 	}
 
 	/**
@@ -1483,7 +1619,12 @@ public class QuestScript extends Script {
             if (config == null || !config.startStopQuestHelper() || !Microbot.isLoggedIn()) return;
             if (Microbot.pauseAllScripts.get()) return;
             QuestHelper selected = getQuestHelperPlugin().getSelectedQuest();
-            if (selected == null || selected.getCurrentStep() == null) return;
+            if (selected == null || selected.getCurrentStep() == null) {
+                Rs2Walker.setStaminaThresholdOverride(-1);
+                return;
+            }
+            // quest walks drink at the quest's own "drink at energy %" instead of the walker's seeded default
+            Rs2Walker.setStaminaThresholdOverride(combat.staminaDrinkEnergy());
             combat.fightTick(selected.getCurrentStep().getActiveStep());
         } catch (Exception ex) {
             Microbot.log("Quest helper combat support: " + ex.getMessage(), Level.WARN);
@@ -4487,6 +4628,7 @@ public class QuestScript extends Script {
 
 	@Override
 	public void shutdown() {
+		Rs2Walker.setStaminaThresholdOverride(-1);
 		QuestWalkRule.setActive(false);
 		DialogueChoiceProvider.clear();
 		if (combatSupportFuture != null) {

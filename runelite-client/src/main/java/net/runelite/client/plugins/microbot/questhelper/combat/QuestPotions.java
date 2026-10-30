@@ -232,6 +232,12 @@ public final class QuestPotions
 		return n.equals("energy potion") || n.equals("super energy") || n.endsWith("stamina potion");
 	}
 
+	/** True for "Extended stamina potion(n)": stamina for run purposes, but a different item family from the plain potion. */
+	public static boolean isExtendedStamina(String itemName)
+	{
+		return ChargedItemNames.baseName(itemName).equals("extended stamina potion");
+	}
+
 	/** True when {@code base} satisfies the wanted run-potion name, counting stamina variants as stamina. */
 	public static boolean runPotionMatches(String base, String wanted)
 	{

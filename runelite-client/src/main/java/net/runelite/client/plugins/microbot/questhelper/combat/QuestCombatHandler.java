@@ -1543,8 +1543,8 @@ public class QuestCombatHandler
 		else if (current.wantsLegacyStamina())
 		{
 			int held = staminaCount(current);
-			// with no fights left the free slots go to the quest items, so a single run potion is all that is kept
-			int target = carry(fights ? current.getStaminaQty() : 1, held, reserved);
+			// the reserved slots already keep room for the quest items, so the full keep-at-least count is carried
+			int target = carry(current.getStaminaQty(), held, reserved);
 			withdrawPotion(current.getStaminaType().getItemName(), target - held);
 		}
 		if (!fights)
@@ -1633,6 +1633,14 @@ public class QuestCombatHandler
 		List<Rs2ItemModel> options = ChargedItemNames.ordered(
 			bank.stream().filter(i -> i != null && !i.isNoted() && i.getQuantity() > 0).collect(Collectors.toList()),
 			Rs2ItemModel::getId, Rs2ItemModel::getName, 0, itemName);
+		if (options.isEmpty() && itemName.equalsIgnoreCase("Stamina potion"))
+		{
+			// no plain stamina potion in the bank: the extended variant is stamina too
+			options = ChargedItemNames.ordered(
+				bank.stream().filter(i -> i != null && !i.isNoted() && i.getQuantity() > 0 && i.getName() != null
+					&& QuestPotions.isExtendedStamina(i.getName())).collect(Collectors.toList()),
+				Rs2ItemModel::getId, Rs2ItemModel::getName, 0, "Extended stamina potion");
+		}
 		int remaining = missing;
 		for (Rs2ItemModel option : options)
 		{
@@ -1654,7 +1662,9 @@ public class QuestCombatHandler
 
 	private static int potionFamilyCount(String itemName)
 	{
-		return Rs2Inventory.items(i -> !i.isNoted() && ChargedItemNames.sameFamily(i.getName(), itemName))
+		boolean stamina = itemName.equalsIgnoreCase("Stamina potion");
+		return Rs2Inventory.items(i -> !i.isNoted() && (ChargedItemNames.sameFamily(i.getName(), itemName)
+				|| stamina && QuestPotions.isExtendedStamina(i.getName())))
 			.mapToInt(Rs2ItemModel::getQuantity).sum();
 	}
 
@@ -2209,7 +2219,7 @@ public class QuestCombatHandler
 		}
 		for (QuestPotions.Row row : current.potionRows())
 		{
-			out.add(new net.runelite.client.plugins.microbot.questhelper.QuestPreflight.Need(row.kind().itemName(),
+			out.add(net.runelite.client.plugins.microbot.questhelper.QuestPreflight.supplyNeed(row.kind().itemName(),
 				row.kind().doseIds(), row.getQty(), true));
 		}
 		return out;
@@ -3104,6 +3114,13 @@ public class QuestCombatHandler
 				net.runelite.client.plugins.microbot.util.npc.Rs2Npc.interact(npc, "Attack");
 			}
 		}
+	}
+
+	/** The run energy below which the setup drinks stamina, or -1 when the setup brings no run potions. */
+	public int staminaDrinkEnergy()
+	{
+		QuestCombatLoadout current = loadout;
+		return phase == Phase.ACTIVE && current != null && current.wantsStamina() ? current.getDrinkStaminaAtEnergy() : -1;
 	}
 
 	/** Eat, drink and pray for the current fight. Runs on its own task, not the quest script loop. */

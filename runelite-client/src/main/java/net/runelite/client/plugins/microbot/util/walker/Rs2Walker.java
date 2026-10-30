@@ -3666,6 +3666,14 @@ public class Rs2Walker {
     private static final long STAMINA_MIN_INTERVAL_MS = 10_000;
 
     static volatile String staminaSeedName = null;
+    /** A script's own "drink below this run energy" value; negative leaves the per-player seeded threshold. */
+    static volatile int staminaThresholdOverride = -1;
+
+    /** Lets a script (the quest helper) set the run energy below which the walker drinks; a negative value clears it. */
+    public static void setStaminaThresholdOverride(int energyPercent) {
+        staminaThresholdOverride = energyPercent < 0 ? -1 : Math.min(100, energyPercent);
+    }
+
     static volatile int staminaThresholdCached = STAMINA_THRESHOLD_FALLBACK;
 
 	// Door-scan cooldown state migrated to WalkerRouteState; the fallback/LOS timestamps that
