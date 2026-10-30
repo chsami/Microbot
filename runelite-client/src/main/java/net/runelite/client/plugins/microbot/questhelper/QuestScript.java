@@ -1366,11 +1366,25 @@ public class QuestScript extends Script {
 					stopQuesterWithReason("Failed to fetch Grand Exchange price for: " + ir.getName());
 					return PurchaseGate.STOPPED;
 				}
-				lines.add(new QuestPurchasePlan.Line(ir.getName(), ir.getQuantity(), QuestPurchasePlan.offerPrice(basePrice)));
+				lines.add(new QuestPurchasePlan.Line(ir.getName(), ir.getQuantity(), QuestPurchasePlan.offerPrice(basePrice), optional));
 			}
 			long invCoins = onPlayer.getOrDefault(ItemID.COINS_995, 0);
 			long bankCoins = bankKnown ? Math.max(0, owned.getOrDefault(ItemID.COINS_995, 0) - invCoins) : -1;
-			preflightPlan = new QuestPurchasePlan(lines, invCoins, bankCoins);
+			QuestPurchasePlan full = new QuestPurchasePlan(lines, invCoins, bankCoins);
+			boolean gated = queueRunner.hasApproval() || config.fullyAutomated();
+			// an optional item never stops a quest: when the plan is refused, judge the required items alone
+			preflightPlan = QuestPurchasePlan.shrinkToAcceptable(full, p -> planAcceptable(p, gated));
+			if (preflightPlan != full) {
+				for (QuestPurchasePlan.Line dropped : full.lines()) {
+					if (dropped.optional) {
+						toBuy.stream().filter(ir -> optionalBuys.contains(ir) && ir.getName().equals(dropped.name))
+								.findFirst().ifPresent(ir -> {
+									skipOptionalBuy(ir, "over budget or not enough gp");
+									toBuy.remove(ir);
+								});
+					}
+				}
+			}
 			QuestPurchasePlan.setCurrent(preflightPlan);
 		}
 
@@ -1407,6 +1421,22 @@ public class QuestScript extends Script {
 		Microbot.log(String.format("Quest helper: buying %s (~%,d gp, have %,d gp)", preflightPlan.describeItems(),
 				preflightPlan.total(), preflightPlan.coins()), Level.INFO);
 		return PurchaseGate.PROCEED;
+	}
+
+	/** Whether a purchase plan passes the checks that would stop the quest: coins, the queue budget, the max spend. */
+	private boolean planAcceptable(QuestPurchasePlan plan, boolean gated) {
+		if (!plan.affordable()) {
+			return false;
+		}
+		if (!gated) {
+			return true;
+		}
+		List<String> planned = plan.lines().stream().map(l -> l.name).collect(Collectors.toList());
+		if (queueRunner.hasApproval() && !queueRunner.covers(planned, plan.total())) {
+			return false;
+		}
+		return !config.fullyAutomated() || QuestSpendRules.decide(plan.total(), config.maxSpendPerQuest(),
+				plan.coins()) != QuestSpendRules.Decision.OVER_MAX_SPEND;
 	}
 
 	/**
@@ -4432,7 +4462,9 @@ public class QuestScript extends Script {
 		}
 		if (!queuePreflightPlanned) {
 			long total = 0;
+			long requiredTotal = 0;
 			List<String> names = new ArrayList<>();
+			List<String> requiredNames = new ArrayList<>();
 			for (ItemRequirement ir : toBuy) {
 				int primaryId = tradablePrimaryId(ir);
 				boolean optional = optionalBuys.contains(ir);
@@ -4444,8 +4476,25 @@ public class QuestScript extends Script {
 					Microbot.log("Quest queue: no price for " + ir.getName() + ", not buying it up front", Level.WARN);
 					continue;
 				}
-				total += (long) ir.getQuantity() * QuestPurchasePlan.offerPrice(price);
+				long cost = (long) ir.getQuantity() * QuestPurchasePlan.offerPrice(price);
+				total += cost;
 				names.add(ir.getName());
+				if (!optional) {
+					requiredTotal += cost;
+					requiredNames.add(ir.getName());
+				}
+			}
+			if (queueRunner.hasApproval() && !queueRunner.covers(names, total) && requiredNames.size() < names.size()
+					&& queueRunner.covers(requiredNames, requiredTotal)) {
+				// an optional item never costs the quest its up-front buy: drop the optional items and go on
+				for (ItemRequirement ir : new ArrayList<>(toBuy)) {
+					if (optionalBuys.contains(ir)) {
+						skipOptionalBuy(ir, "over the queue budget");
+						toBuy.remove(ir);
+					}
+				}
+				names = requiredNames;
+				total = requiredTotal;
 			}
 			if (queueRunner.hasApproval() && !queueRunner.covers(names, total)) {
 				Microbot.log("Quest queue: not buying up front, " + queueRunner.refusal(names, total), Level.WARN);
