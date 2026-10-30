@@ -1,5 +1,7 @@
 package net.runelite.client.plugins.microbot.util.security;
 
+import com.google.common.base.Supplier;
+import com.google.common.base.Suppliers;
 import java.io.File;
 import java.io.IOException;
 import java.io.Reader;
@@ -16,6 +18,8 @@ import net.runelite.client.RuneLite;
  */
 @Value
 public class JagexCredentials {
+    private static final Supplier<JagexCredentials> LAUNCH = Suppliers.memoize(JagexCredentials::readLaunch);
+
     @ToString.Exclude
     String sessionId;
     String characterId;
@@ -35,11 +39,16 @@ public class JagexCredentials {
 
     /**
      * The character the client was launched with. Like the client, this reads the {@code JX_*} environment
-     * variables first and then the credentials file in the RuneLite directory.
+     * variables first and then the credentials file in the RuneLite directory. It is read once, so a file
+     * rewritten by a later launch does not change this client's character.
      *
      * @return null if the client was not launched with a Jagex Account
      */
     public static JagexCredentials fromLaunch() {
+        return LAUNCH.get();
+    }
+
+    private static JagexCredentials readLaunch() {
         JagexCredentials fromEnvironment = of(System.getenv("JX_SESSION_ID"), System.getenv("JX_CHARACTER_ID"),
             System.getenv("JX_DISPLAY_NAME"));
         if (fromEnvironment != null) {
