@@ -8,6 +8,7 @@ import net.runelite.api.widgets.Widget;
 import net.runelite.api.worldmap.WorldMap;
 import net.runelite.api.worldmap.WorldMapData;
 import net.runelite.client.plugins.microbot.questhelper.util.worldmap.WorldMapArea;
+import net.runelite.client.ui.overlay.worldmap.WorldMapPoint;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -16,6 +17,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -77,6 +79,28 @@ public class ShortestPathWorldMapTargetTest {
         WorldPoint display = new WorldPoint(3116, 9696, 0);
         assertEquals(display, ShortestPathPlugin.toRealWorldPoint(display, null));
         assertEquals(display, ShortestPathPlugin.toRealWorldPoint(display, WorldMapArea.ANY));
+    }
+
+    @Test
+    public void motherlodeTargetMarkerIsDrawnWhereTheMapShowsTheMine() {
+        WorldMapPoint marker = ShortestPathPlugin.createTargetMarker(new WorldPoint(3756, 5664, 0));
+        assertEquals(new WorldPoint(3116, 9696, 0), marker.getWorldPoint());
+        assertEquals(new WorldPoint(3116, 9696, 0), marker.getTarget());
+        assertEquals("Target", marker.getName());
+        assertTrue(marker.isJumpOnClick());
+    }
+
+    @Test
+    public void dungeonClickRoundTripsToTheClickedMarkerPosition() throws Exception {
+        WorldPoint target = clickMap("Dwarven Mines", 3116, 9696);
+        assertEquals(new WorldPoint(3116, 9696, 0), ShortestPathPlugin.createTargetMarker(target).getWorldPoint());
+    }
+
+    @Test
+    public void surfaceTargetMarkerIsUnchanged() {
+        WorldMapPoint marker = ShortestPathPlugin.createTargetMarker(new WorldPoint(3222, 3218, 0));
+        assertEquals(new WorldPoint(3222, 3218, 0), marker.getWorldPoint());
+        assertEquals(new WorldPoint(3222, 3218, 0), marker.getTarget());
     }
 
     private WorldPoint clickMap(String mapName, int x, int y) throws Exception {
