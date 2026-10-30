@@ -105,4 +105,18 @@ public class QuestInventoryRulesTest
 		assertEquals(0, QuestInventoryRules.slotsNeeded(true, true, 500));
 		assertEquals(0, QuestInventoryRules.slotsNeeded(false, false, 0));
 	}
+
+	@Test
+	public void untradableItemOfALaterStepDoesNotHoldTheStep()
+	{
+		assertTrue(QuestInventoryRules.deferToLaterStep(false, false, false));
+	}
+
+	@Test
+	public void itemsTheStepCanActOnStillHoldIt()
+	{
+		assertFalse(QuestInventoryRules.deferToLaterStep(false, true, false));
+		assertFalse(QuestInventoryRules.deferToLaterStep(false, false, true));
+		assertFalse(QuestInventoryRules.deferToLaterStep(true, false, false));
+	}
 }

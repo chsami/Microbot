@@ -1940,6 +1940,14 @@ public class QuestScript extends Script {
 		// a bank trip that brought nothing is not repeated at once: the step waits for its own item; items only
 		// gathered ahead of time for later steps are skipped, as before
 		missing.removeIf(ir -> bankFetchBackedOff(ir) && !isStepOwn(ir));
+		// an item only a later step earns (Ecto-tokens listed on the quest) never holds a step that does not use it
+		missing.removeIf(ir -> {
+			if (!QuestInventoryRules.deferToLaterStep(isItemRequirementTradable(ir), isStepOwn(ir), isHeldInBank(ir))) {
+				return false;
+			}
+			notifyMissingRequirement(ir);
+			return true;
+		});
 		if (missing.stream().anyMatch(this::bankFetchBackedOff)) {
 			Microbot.status = "Quest helper: waiting before the next bank trip";
 			return true;

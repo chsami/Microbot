@@ -129,4 +129,14 @@ public final class QuestInventoryRules
 		}
 		return Math.min(qty, Math.max(0, freeSlots));
 	}
+
+	/**
+	 * Whether a missing item is left for a later step. An item that cannot be bought, is not this step's own
+	 * and is not in the bank has nowhere to be fetched from now, so it must not hold the step (such as the
+	 * Ecto-tokens a quest lists up front, which only a later step earns).
+	 */
+	public static boolean deferToLaterStep(boolean tradable, boolean stepOwn, boolean heldInBank)
+	{
+		return !tradable && !stepOwn && !heldInBank;
+	}
 }
