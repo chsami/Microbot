@@ -1,6 +1,8 @@
 package net.runelite.client.plugins.microbot.util.tabs;
 
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.Client;
+import net.runelite.api.GameState;
 import net.runelite.api.events.VarClientIntChanged;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.VarClientID;
@@ -70,10 +72,15 @@ public class Rs2Tab {
 
         int varcIntIndex = tab.getVarcIntIndex();
         if (varcIntIndex != -1) {
-            Microbot.getClientThread().runOnClientThreadOptional(() -> {
-                Microbot.getClient().runScript(TAB_SWITCH_SCRIPT, varcIntIndex);
+            boolean scriptRan = Microbot.getClientThread().runOnClientThreadOptional(() -> {
+                Client client = Microbot.getClient();
+                if (client.getGameState() != GameState.LOGGED_IN || client.getTopLevelInterfaceId() == -1) {
+                    return false;
+                }
+                client.runScript(TAB_SWITCH_SCRIPT, varcIntIndex);
                 return true;
-            });
+            }).orElse(false);
+            if (!scriptRan) return false;
         } else {
             int hotkey = tab.getHotkey();
             if (hotkey == -1) {
