@@ -225,7 +225,7 @@ public final class LoginManager {
                 log.warn("Login aborted - could not select world {}", worldId);
                 return false;
             }
-            boolean jagexAccount = selectAccount(client, username);
+            boolean jagexAccount = selectAccount(client, username, encryptedPassword);
             triggerLoginScreen();
             if (!jagexAccount) {
                 setCredentials(client, username, encryptedPassword);
@@ -312,12 +312,13 @@ public final class LoginManager {
     /**
      * Puts the login screen in the mode the profile needs. If the active profile holds an imported
      * Jagex Account session, or {@code username} matches a saved Jagex Account character, that
-     * character is selected. Otherwise the active Jagex Account is cleared so the username and
-     * password fields can be filled in.
+     * character is selected. A profile without a password cannot log in as a legacy account, so a client
+     * launched with a Jagex Account keeps its launch character. Otherwise the active Jagex Account is
+     * cleared so the username and password fields can be filled in.
      *
      * @return true if a Jagex Account character was selected
      */
-    private static boolean selectAccount(Client client, String username) throws Exception {
+    private static boolean selectAccount(Client client, String username, String encryptedPassword) throws Exception {
         ConfigProfile profile = Microbot.getConfigManager() != null ? getActiveProfile() : null;
         if (profile != null && profile.getJagexSessionId() != null && username.equalsIgnoreCase(profile.getName())) {
             log.debug("Switching to the profile's imported Jagex Account character");
@@ -352,6 +353,14 @@ public final class LoginManager {
             }
         }
         if (client.getLauncherDisplayName() != null) {
+            if (encryptedPassword == null || encryptedPassword.isBlank()) {
+                JagexCredentials launch = JagexCredentials.fromLaunch();
+                if (launch != null && launch.getDisplayName().equalsIgnoreCase(client.getLauncherDisplayName())) {
+                    log.info("Profile {} has no password: logging in with the launch Jagex Account character {}", username, launch.getDisplayName());
+                    switchJagexAccount(client, launch.getSessionId(), launch.getCharacterId(), launch.getDisplayName());
+                    return true;
+                }
+            }
             log.debug("Clearing the active Jagex Account for a legacy account login");
             switchJagexAccount(client, null, null, null);
         }

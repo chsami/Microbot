@@ -33,6 +33,8 @@ public class LoginManagerJagexAccountTest {
     // A rule (not @Test(timeout)) keeps @Before, the test and @After on one thread, where the static mocks live
     @Rule public Timeout timeout = Timeout.seconds(20);
 
+    private static final String LEGACY_PASSWORD = encrypt("legacy-password");
+
     private MockedStatic<Microbot> microbot;
     private Client client;
     private Injector injector;
@@ -80,7 +82,7 @@ public class LoginManagerJagexAccountTest {
 
     @Test public void legacyProfileClearsTheJagexAccountWithoutWaitingOnTheSharedExecutor() {
         try (var keyboard = mockStatic(Rs2Keyboard.class)) {
-            assertTrue(LoginManager.login("legacy-user", "", 301));
+            assertTrue(LoginManager.login("legacy-user", LEGACY_PASSWORD, 301));
         }
         verify(client).switchJagexAccount(null, null, null);
         verify(client).setUsername("legacy-user");
@@ -134,19 +136,59 @@ public class LoginManagerJagexAccountTest {
         when(injector.getInstance(Key.get(String.class, Names.named("profile")))).thenReturn("Main#");
 
         try (var keyboard = mockStatic(Rs2Keyboard.class)) {
-            assertTrue(LoginManager.login("legacy-user", "", 301));
+            assertTrue(LoginManager.login("legacy-user", LEGACY_PASSWORD, 301));
         }
         verify(client).switchJagexAccount(null, null, null);
         verify(client).setUsername("legacy-user");
+    }
+
+    @Test public void passwordlessProfileKeepsTheLaunchCharacter() {
+        ConfigProfile profile = mock(ConfigProfile.class);
+        when(profile.getName()).thenReturn("default");
+        when(configManager.getProfile()).thenReturn(profile);
+
+        try (var keyboard = mockStatic(Rs2Keyboard.class); var launch = mockStatic(JagexCredentials.class)) {
+            launch.when(JagexCredentials::fromLaunch).thenReturn(new JagexCredentials("launch-session", "7", "Jagex character"));
+            assertTrue(LoginManager.login("default", "", 301));
+        }
+        verify(client).switchJagexAccount("launch-session", "7", "Jagex character");
+        verify(client, never()).switchJagexAccount(null, null, null);
+        verify(client, never()).setUsername(any());
+    }
+
+    @Test public void passwordlessProfileWithoutLaunchCredentialsLogsInLegacy() {
+        try (var keyboard = mockStatic(Rs2Keyboard.class); var launch = mockStatic(JagexCredentials.class)) {
+            launch.when(JagexCredentials::fromLaunch).thenReturn(null);
+            assertTrue(LoginManager.login("default", "", 301));
+        }
+        verify(client).switchJagexAccount(null, null, null);
+        verify(client).setUsername("default");
+    }
+
+    @Test public void passwordlessProfileIgnoresCredentialsOfAnotherCharacter() {
+        try (var keyboard = mockStatic(Rs2Keyboard.class); var launch = mockStatic(JagexCredentials.class)) {
+            launch.when(JagexCredentials::fromLaunch).thenReturn(new JagexCredentials("other-session", "8", "Other character"));
+            assertTrue(LoginManager.login("default", "", 301));
+        }
+        verify(client, never()).switchJagexAccount("other-session", "8", "Other character");
+        verify(client).switchJagexAccount(null, null, null);
     }
 
     @Test public void loginStopsWhenTheAccountSwitchDoesNotRun() {
         doThrow(new IllegalStateException("client thread busy")).when(client).switchJagexAccount(null, null, null);
 
         try (var keyboard = mockStatic(Rs2Keyboard.class)) {
-            assertFalse(LoginManager.login("legacy-user", "", 301));
+            assertFalse(LoginManager.login("legacy-user", LEGACY_PASSWORD, 301));
             keyboard.verifyNoInteractions();
         }
         verify(client, never()).setUsername(any());
+    }
+
+    private static String encrypt(String password) {
+        try {
+            return Encryption.encrypt(password);
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
     }
 }
