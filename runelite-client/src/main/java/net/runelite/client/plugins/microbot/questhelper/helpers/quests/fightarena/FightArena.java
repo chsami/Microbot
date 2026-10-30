@@ -113,9 +113,9 @@ public class FightArena extends BasicQuestHelper
 	{
 		inCell = new ZoneRequirement(cell);
 		inArena = new ZoneRequirement(arena1);
-		inArenaWithOgre = and(inArena, new NpcCondition(NpcID.ARENA_OGRE, arena1));
-		inArenaWithScorpion = and(inArena, new NpcCondition(NpcID.ARENA_SCORPION, arena1));
-		inArenaWithBouncer = and(inArena, new NpcCondition(NpcID.ARENA_BOUNCER, arena1));
+		inArenaWithOgre = and(inArena, new NpcCondition(NpcID.ARENA_OGRE, arena1).addAlternateNpcs(NpcID.ARENA_OGRE_VIS));
+		inArenaWithScorpion = and(inArena, new NpcCondition(NpcID.ARENA_SCORPION, arena1).addAlternateNpcs(NpcID.ARENA_SCORPION_VIS));
+		inArenaWithBouncer = and(inArena, new NpcCondition(NpcID.ARENA_BOUNCER, arena1).addAlternateNpcs(NpcID.ARENA_BOUNCER_VIS));
 
 		coins = new ItemRequirement("Coins", ItemCollections.COINS, 5);
 
@@ -156,6 +156,7 @@ public class FightArena extends BasicQuestHelper
 		talkToSammy = new NpcStep(this, NpcID.SAMMY_SERVIL_VIS_NOOP, new WorldPoint(2602, 3153, 0), "Talk to Sammy, then fight the ogre.");
 
 		killOgre = new NpcStep(this, NpcID.ARENA_OGRE, new WorldPoint(2601, 3163, 0), "Kill the Ogre. You can lure it behind a skeleton to safespot it.", combatGear);
+		((NpcStep) killOgre).addAlternateNpcs(NpcID.ARENA_OGRE_VIS);
 		killOgre.addSubSteps(talkToSammy);
 		killOgre.addSafeSpots(new WorldPoint(2598, 3162, 0));
 
@@ -168,12 +169,14 @@ public class FightArena extends BasicQuestHelper
 
 		killScorpion = new NpcStep(this, NpcID.ARENA_SCORPION, new WorldPoint(2601, 3163, 0),
 			"Kill the Scorpion. You can lure it behind a skeleton to safespot it.", combatGear);
+			((NpcStep) killScorpion).addAlternateNpcs(NpcID.ARENA_SCORPION_VIS);
 		killScorpion.addSafeSpots(new WorldPoint(2598, 3162, 0));
 		killScorpion.addSubSteps(talkToSammyForScorpion);
 
 		talkToSammyForBouncer = new NpcStep(this, NpcID.SAMMY_SERVIL_VIS_NOOP, new WorldPoint(2602, 3153, 0), "Talk to Sammy, then fight Bouncer.");
 
 		killBouncer = new NpcStep(this, NpcID.ARENA_BOUNCER, new WorldPoint(2601, 3163, 0), "Kill Bouncer. You can lure it behind a skeleton to safespot it. Warning: After Bouncer is killed, you will be unable to re-enter the arena.", combatGear);
+		((NpcStep) killBouncer).addAlternateNpcs(NpcID.ARENA_BOUNCER_VIS);
 		killBouncer.addSafeSpots(new WorldPoint(2598, 3162, 0));
 		killBouncer.addSubSteps(talkToSammyForBouncer);
 

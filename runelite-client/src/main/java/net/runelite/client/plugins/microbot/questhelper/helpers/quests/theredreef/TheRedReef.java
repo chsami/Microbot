@@ -271,6 +271,7 @@ public class TheRedReef extends BasicQuestHelper
 		cInspectCases.addStep(needToInspectCase3, inspectCase3);
 
 		talkToTheodorePaxton = new NpcStep(this, NpcID.TRR_THEODORE_PAXTON, new WorldPoint(2795, 2517, 0), "Talk to Theodore Paxton.");
+		((NpcStep) talkToTheodorePaxton).addAlternateNpcs(NpcID.TRR_THEODORE_PAXTON_VIS);
 
 		// TODO: add all pirate npc ids
 		sinkBlackEyeBethelBoats = new NpcStep(this, new int[]{NpcID.TRR_PIRATE_1, NpcID.TRR_PIRATE_2, NpcID.TRR_PIRATE_3, NpcID.TRR_PIRATE_4}, new WorldPoint(2834, 2357, 0),
@@ -295,6 +296,7 @@ public class TheRedReef extends BasicQuestHelper
 		climbDownToF0.addDialogStep("Climb down.");
 		boardYourShip = new ObjectStep(this, ObjectID.SAILING_MOORING_EMBARK, new WorldPoint(2849, 2327, 0), "Board your boat.");
 		talkToTheodorePaxtonAgain = new NpcStep(this, NpcID.TRR_THEODORE_PAXTON, new WorldPoint(2795, 2517, 0), "Talk to Theodore Paxton.");
+		((NpcStep) talkToTheodorePaxtonAgain).addAlternateNpcs(NpcID.TRR_THEODORE_PAXTON_VIS);
 		cReturnToTheodorePaxton = new ConditionalStep(this, sailToRedRock2, "Return to Theodore Paxton on Red Rock with the good news.");
 		cReturnToTheodorePaxton.addStep(onRedRock, talkToTheodorePaxtonAgain);
 		cReturnToTheodorePaxton.addStep(onLastLightF2, climbDownToF1);

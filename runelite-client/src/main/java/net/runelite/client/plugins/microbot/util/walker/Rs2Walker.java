@@ -17,6 +17,7 @@ import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.devtools.MovementFlag;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.shortestpath.pathfinder.QuestWalkRule;
 import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
 import net.runelite.client.plugins.microbot.shortestpath.*;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
@@ -71,6 +72,8 @@ import net.runelite.client.plugins.microbot.util.walker.obstacle.ObstacleResolut
 import net.runelite.client.plugins.microbot.util.walker.obstacle.PlannedEdge;
 import net.runelite.client.plugins.microbot.util.walker.recovery.FrontierDecision;
 import net.runelite.client.plugins.microbot.util.walker.recovery.RouteRecovery;
+import net.runelite.client.plugins.microbot.util.walker.recovery.WalkLivelockPolicy;
+import net.runelite.client.plugins.microbot.util.walker.recovery.WalledReplanLedger;
 import net.runelite.client.plugins.microbot.util.walker.segment.SegmentGate;
 import net.runelite.client.plugins.microbot.util.walker.recovery.TailDecision;
 import net.runelite.client.plugins.microbot.util.walker.state.WalkExit;
@@ -310,6 +313,31 @@ public class Rs2Walker {
      * cohesive clusters; first cluster: transport handoff. See {@link WalkerRouteState}.
      */
     static final WalkerRouteState routeState = new WalkerRouteState();
+    private static final WalledReplanLedger walledReplanLedger = new WalledReplanLedger();
+
+    /**
+     * Counts consecutive walled-recovery replans for the same tile/target and, at the strike limit,
+     * blacklists the walled target edge and first hop for this session (live bug #45: a decorative
+     * ladder platform replanned forever). Kept outside processWalk so that method cannot grow.
+     */
+    private static void blacklistRepeatedWalledReplan(WorldPoint playerLoc, WorldPoint recoverTarget,
+                                                      List<WorldPoint> path, int i) {
+        if (!walledReplanLedger.record(playerLoc, recoverTarget, WalledReplanLedger.DEFAULT_STRIKE_LIMIT)) {
+            return;
+        }
+        WorldPoint nextHop = path.get(Math.min(i, path.size() - 1));
+        if (nextHop.equals(playerLoc) && i + 1 < path.size()) {
+            nextHop = path.get(i + 1);
+        }
+        String reason = "recovery-target-walled x" + WalledReplanLedger.DEFAULT_STRIKE_LIMIT;
+        boolean learned = Rs2PathApi.learnBlockedEdge(playerLoc, recoverTarget, reason);
+        if (!nextHop.equals(playerLoc)) {
+            learned |= Rs2PathApi.learnBlockedEdge(playerLoc, nextHop, reason);
+        }
+        WebWalkLog.spInfo("recovery_walled_strike_out | from={} target={} next={} newlyBlocked={}",
+                compactWorldPoint(playerLoc), compactWorldPoint(recoverTarget), compactWorldPoint(nextHop), learned);
+    }
+
     // idle-nudge state migrated to WalkerRouteState (see routeState)
     // route-progress state migrated to WalkerRouteState (see routeState)
     static final java.util.Deque<WorldPoint> expectedTransportDestinations = new ArrayDeque<>();
@@ -1241,7 +1269,7 @@ public class Rs2Walker {
         try {
 			return withShadowExecutionEvidence(() -> config.walkWithBankedTransports()
 					? walkWithBankedTransportsAndStateLocked(target, distance, false)
-					: walkWithStateInternal(target, distance));
+					: walkMarkingQuestWalk(target, distance));
         } finally {
             walkerLock.unlock();
         }
@@ -1302,13 +1330,41 @@ public class Rs2Walker {
         {
 			return withShadowExecutionEvidence(() -> config.walkWithBankedTransports()
 					? walkWithBankedTransportsAndStateLocked(target, distance, false)
-					: walkWithStateInternal(target, distance));
+					: walkMarkingQuestWalk(target, distance));
         }
         finally
         {
             walkerLock.unlock();
         }
     }
+    /** Quest walking only: no stage of the search reached the tile, so say so once and back off. */
+    private static void reportQuestWalkUnreachable(WorldPoint target) {
+        if (QuestWalkRule.crossingEnabled() && QuestWalkRule.reportUnreachable(target, Rs2Player.getWorldLocation())) {
+            Microbot.log("Quest walk: " + target + " is not reachable on foot, by crossing or by teleport;"
+                    + " not retrying for " + QuestWalkRule.unreachableRetryInMs() / 1000 + "s");
+        }
+    }
+
+    /**
+     * Every blocking walk runs through here. Walks made by the quest script's loop are marked as quest walks (the
+     * only ones allowed to cross water) and skipped while their target is backed off as unreachable.
+     */
+    private static WalkerState walkMarkingQuestWalk(WorldPoint target, int distance) {
+        boolean questWalk = QuestWalkRule.beginQuestWalk(target);
+        try {
+            if (questWalk && QuestWalkRule.isBackedOff(target, Rs2Player.getWorldLocation())) {
+                return WalkerState.UNREACHABLE;
+            }
+            WalkerState state = walkWithStateInternal(target, distance);
+            if (questWalk && state == WalkerState.ARRIVED) {
+                QuestWalkRule.walkArrived(target);
+            }
+            return state;
+        } finally {
+            QuestWalkRule.endQuestWalk(questWalk);
+        }
+    }
+
     /**
      * Replaces the walkTo method
      *
@@ -1566,6 +1622,10 @@ public class Rs2Walker {
                 walkBudgetLastProgressAtMs = nowMs;
             }
         }
+        if (WalkLivelockPolicy.shouldAbort(walkBudgetLastProgressAtMs, nowMs, WalkLivelockPolicy.getAbortMs())) {
+            abortLivelockedWalk(target, nowMs);
+            return;
+        }
         if (!TailDecision.isWallClockExhausted(walkBudgetLastProgressAtMs, nowMs, WALK_WALL_CLOCK_BUDGET_MS)
                 || walkBudgetReportedForSessionAtMs == startedAt) {
             return;
@@ -1576,6 +1636,20 @@ public class Rs2Walker {
                         + " cap cannot catch this because exempt exits refund it",
                 WALK_WALL_CLOCK_BUDGET_MS, nowMs - walkBudgetLastProgressAtMs, nowMs - startedAt,
                 target, Rs2Player.getWorldLocation(), processWalkTail);
+    }
+
+    /**
+     * Aborts a walk that has not closed distance on its goal for the livelock window so the caller
+     * (quest watchdog, scripts) can recover. The loop's next cancel check observes the cleared target.
+     */
+    private static void abortLivelockedWalk(WorldPoint target, long nowMs) {
+        WorldPoint at = Rs2Player.getWorldLocation();
+        String reason = "livelock-abort: no distance gain for " + (nowMs - walkBudgetLastProgressAtMs)
+                + "ms target=" + target + " at=" + at;
+        log.warn("[Walker] {} — aborting walk so the caller can recover", reason);
+        WalkLivelockPolicy.recordAbort(reason, nowMs);
+        walkBudgetLastProgressAtMs = nowMs;
+        setTarget(null, "rs2walker:processWalk:" + reason);
     }
 
     /** How long the route progress index may hold still before the route is declared stagnant. */
@@ -1874,7 +1948,7 @@ public class Rs2Walker {
                     return WalkerState.EXIT;
                 }
                 if (!routeStatus.isReady()) {
-                    if (System.currentTimeMillis() - pathfinderPendingSinceMs > 10_000L) {
+                    if (System.currentTimeMillis() - pathfinderPendingSinceMs > QuestWalkRule.pathfinderTimeoutMs(target)) {
                         traceProcessWalkExit("pathfinder-timeout-not-done", target, processWalkTail);
                         setTarget(null, "rs2walker:processWalk:pathfinder-timeout-not-done");
                         return WalkerState.EXIT;
@@ -1926,6 +2000,7 @@ public class Rs2Walker {
                     Telemetry.recordUnreachable("no-walkable-path", walkLoop.playerLoc,
                             target, dst, path == null ? 0 : path.size(), distance,
                             routeStatus.getMetrics().orElse(null));
+                    reportQuestWalkUnreachable(target);
                     setTarget(null, "rs2walker:processWalk:no-walkable-path");
                     return WalkerState.UNREACHABLE;
                 }
@@ -2752,6 +2827,7 @@ public class Rs2Walker {
                                 routeState.lastWalledRecoveryReplanAtMs = System.currentTimeMillis();
                                 WebWalkLog.spInfo("recovery_target_walled | to={} player={} replanning",
                                         compactWorldPoint(recoverTarget), compactWorldPoint(playerLoc));
+                                blacklistRepeatedWalledReplan(playerLoc, recoverTarget, path, i);
 								recalculatePathForRecovery();
                             }
                             WalkExit recoveryClickExit = FrontierDecision.exitForRecoveryClick(clickAction);
@@ -6165,6 +6241,9 @@ public class Rs2Walker {
         WalledDoorClaimPolicy.Decision decision = WalledDoorClaimPolicy.decide(
                 from, to, claimedAtMs, now, playerLoc, Rs2Player.isMoving(),
                 from != null && Rs2Tile.isTileReachable(from), maxAgeMs);
+        if (decision != WalledDoorClaimPolicy.Decision.HANDLE_AT_EDGE) {
+            unfulfilledDoorClaims.reset();
+        }
         switch (decision) {
             case CROSSED:
                 if (attempted != null) {
@@ -6197,6 +6276,25 @@ public class Rs2Walker {
                     clearWalledDoorClaim();
                     return WalkExit.RECENT_DOOR_EDGE_NUDGE;
                 }
+                int fruitlessRuns = unfulfilledDoorClaims.note(from, to, now);
+                if (WalledDoorClaimPolicy.shouldDropUnfulfilledClaim(fruitlessRuns, unfulfilledDoorClaims.spanMs(now),
+                        net.runelite.client.plugins.microbot.util.walker.door.DoorEdgeGeometry.doorOnEdge(from, to))) {
+                    // The claim came from a door beside the edge; the edge itself is a plain wall. Stop waiting on it
+                    // and route around it, for this walk only.
+                    WebWalkLog.spInfo("walled_door_dropped | edge={}->{} — no door on the edge after repeated runs",
+                            compactWorldPoint(from), compactWorldPoint(to));
+                    if (attempted != null) {
+                        doorAttemptLedger.clearLatestAttempt();
+                    } else {
+                        clearWalledDoorClaim();
+                    }
+                    if (Rs2PathApi.learnBlockedEdge(from, to, "door-claim-without-door")) {
+                        doorAttemptLedger.recordWalkScopedBlock(from, to);
+                        doorAttemptLedger.recordWalkScopedBlock(to, from);
+                    }
+                    recalculatePathForRecovery();
+                    return null;
+                }
                 routeState.doorRecoverySuppressedAtMs = now;
                 WebWalkLog.spInfo("walled_door_owned | edge={}->{} player={} state=await-door-handler",
                         compactWorldPoint(from), compactWorldPoint(to), compactWorldPoint(playerLoc));
@@ -6223,7 +6321,11 @@ public class Rs2Walker {
         }
     }
 
+    private static final WalledDoorClaimPolicy.UnfulfilledClaims unfulfilledDoorClaims =
+            new WalledDoorClaimPolicy.UnfulfilledClaims();
+
     private static void clearWalledDoorClaim() {
+        unfulfilledDoorClaims.reset();
         routeState.walledDoorEdgeFrom = null;
         routeState.walledDoorEdgeTo = null;
         routeState.walledDoorEdgeAtMs = 0L;
@@ -7661,7 +7763,7 @@ public class Rs2Walker {
                     && Rs2WalkerBankingPlanner.hasCarriedConsumablesForRoute(directProbe)) {
                 WebWalkLog.spInfo("bank_walk | skip_compare_short_distance dist={} directTiles={} goal={}",
                         chebyshevToTarget, directProbeTiles, target);
-                return walkWithStateInternal(target, distance);
+                return walkMarkingQuestWalk(target, distance);
             }
             WebWalkLog.spInfo("bank_walk | short_distance_detour dist={} directTiles={} ceiling={} goal={} — running bank compare",
                     chebyshevToTarget,
@@ -7706,7 +7808,7 @@ public class Rs2Walker {
         // If no missing transport items, go directly
         if (transportLoadout.isEmpty() && !forceBanking && comparison.getDirectDistance() >= 0) {
             WebWalkLog.spInfo("bank_walk | direct_no_missing_items goal={}", target);
-            WalkerState state = walkWithStateInternal(target, distance);
+            WalkerState state = walkMarkingQuestWalk(target, distance);
             if (state == WalkerState.ARRIVED) {
                 WebWalkLog.bankWalkDebug("arrived goal={}", target);
             } else if (state != WalkerState.MOVING) {
@@ -7750,7 +7852,7 @@ public class Rs2Walker {
             WebWalkLog.spWarn("bank_walk | direct route cannot fund selected transports goal={}", target);
             return WalkerState.UNREACHABLE;
         }
-        return walkWithStateInternal(target, distance);
+        return walkMarkingQuestWalk(target, distance);
     }
 
 
@@ -7782,7 +7884,7 @@ public class Rs2Walker {
         WebWalkLog.spInfo("bank_cache_bootstrap | epoch={} start={} bank={}",
                 Rs2Bank.getBankLiveEpoch(), start, bankLocation);
 
-        WalkerState walkToBank = walkWithStateInternal(bankLocation, distance);
+        WalkerState walkToBank = walkMarkingQuestWalk(bankLocation, distance);
         if (walkToBank != WalkerState.ARRIVED) {
             WebWalkLog.spWarn("bank_cache_bootstrap | walk_to_bank_failed state={} bank={}",
                     walkToBank, bankLocation);
@@ -7829,7 +7931,7 @@ public class Rs2Walker {
                 return WalkerState.EXIT;
             }
             // Step 1: Walk to bank
-            WalkerState bankWalkResult = walkWithStateInternal(bankLocation, distance);
+            WalkerState bankWalkResult = walkMarkingQuestWalk(bankLocation, distance);
             if (bankWalkResult != WalkerState.ARRIVED) {
                 log.warn("Failed to arrive at bank at: " + bankLocation + ", state: " + bankWalkResult);
                 return bankWalkResult;
@@ -7900,7 +8002,7 @@ public class Rs2Walker {
             }
             // Step 5: Continue to final target
             log.debug("Banking complete, continuing to final target: " + finalTarget);
-            return walkWithStateInternal(finalTarget, distance);
+            return walkMarkingQuestWalk(finalTarget, distance);
 
         } catch (Exception e) {
             log.error("Error in banking workflow: " + e.getMessage(), e);
@@ -8000,7 +8102,7 @@ public class Rs2Walker {
         boolean prepared = Rs2PathApi.prepareInventoryOnlyRoute(finalTarget);
         WebWalkLog.spWarn("bank_walk | direct_fallback reason={} prepared={} goal={}",
                 reason, prepared, finalTarget);
-        return prepared ? walkWithStateInternal(finalTarget, distance) : WalkerState.EXIT;
+        return prepared ? walkMarkingQuestWalk(finalTarget, distance) : WalkerState.EXIT;
     }
 
     public static boolean closeWorldMap() {

@@ -93,6 +93,7 @@ public class DetailedQuestStep extends QuestStep
 	@Setter
 	protected List<WorldPoint> worldLinePoints;
 
+	@Getter
 	private final List<QuestTile> markedTiles = new ArrayList<>();
 
 	@Getter

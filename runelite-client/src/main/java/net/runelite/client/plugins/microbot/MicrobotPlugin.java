@@ -568,6 +568,10 @@ public class MicrobotPlugin extends Plugin
 		if (event.getType() == ChatMessageType.GAMEMESSAGE)
 		{
 			String msg = event.getMessage();
+			if (msg != null && containsIgnoreCase(msg, "enough inventory space"))
+			{
+				Microbot.inventoryFullMessageAtMs = System.currentTimeMillis();
+			}
 			if (msg != null && containsIgnoreCase(msg, "you can't log into a non-members"))
 			{
 				Microbot.markNonMembersHopRefused(Rs2Player.getWorldLocation());

@@ -249,6 +249,7 @@ public class QuestHelperPanel extends PluginPanel
 
 
 		titlePanel.add(viewControls, BorderLayout.EAST);
+		titlePanel.add(new QuestAutomationControls(questHelperPlugin, configManager), BorderLayout.SOUTH);
 
 		JTextArea questsCompletedLabel = JGenerator.makeJTextArea();
 		questsCompletedLabel.setForeground(Color.GRAY);
@@ -741,6 +742,7 @@ public class QuestHelperPanel extends PluginPanel
 		if ("true".equals(configManager.getConfiguration(QuestHelperConfig.QUEST_BACKGROUND_GROUP, "selected-assist-level")))
 		{
 			searchQuestsPanel.setVisible(true);
+			net.runelite.client.plugins.microbot.questhelper.combat.QuestCombatHandler.noteQuestStarted();
 			questManager.startUpQuest(questHelper, true);
 		}
 		else

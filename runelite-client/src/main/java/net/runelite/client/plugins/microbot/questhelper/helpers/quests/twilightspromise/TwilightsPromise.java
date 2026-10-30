@@ -294,8 +294,9 @@ public class TwilightsPromise extends BasicQuestHelper
 
 		talkToPubKnights = new NpcStep(this, NpcID.VMQ2_KNIGHT_5_DRUNK, new WorldPoint(1721, 3075, 0),
 			"Talk to the Knights of Varlamore in the pub OUTSIDE the walls of the city to the south.", varlamoreCrest);
-		takePubKnightsToFountain = new DetailedQuestStep(this, new WorldPoint(1757, 3069, 0),
-			"Lead the knight to the fountain to the east. Whenever they stop following you, talk to them again.");
+		takePubKnightsToFountain = new EscortStep(this, new WorldPoint(1757, 3069, 0),
+			"Lead the knight to the fountain to the east. Whenever they stop following you, talk to them again.",
+			new int[] {NpcID.VMQ2_KNIGHT_5_DRUNK, NpcID.VMQ2_KNIGHT_5_VIS});
 		// 9834 1->2 when following you
 		talkToPubKnightAtFountain = new NpcStep(this, NpcID.VMQ2_KNIGHT_5_VIS, new WorldPoint(1756, 3069, 0),
 			"Talk to the sobered knight at the fountain.");

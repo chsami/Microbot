@@ -633,3 +633,51 @@ return location != null && location.getY() >= 6400;
 **Where this applies:** `Rs2Player.isInCave` and any helper that reads `Rs2Player.getWorldLocation()` during a walk or transport handoff.
 
 **Defensive check:** Mock `Rs2PlayerStateCache.getLocalPlayerPosition()` to return `null` and assert the predicate is `false`, as in `Rs2PlayerIsInCaveTest`.
+
+## 32. Minigame teleports make a far bank look free to "nearest bank"
+
+The pathfinder prices minigame teleports (Soul Wars, Clan Wars) as nearly free, so a multi-target search for the nearest bank can pick `ISLE_OF_SOULS` from Falador and walk to a portal.
+
+**Why this matters:** a quester short of items walked from Falador to Edgeville to take the Soul Wars portal to a bank 1000 tiles away.
+
+**Pattern to follow:** `Rs2Bank.getPathAndBankToNearestBank` drops minigame-only banks unless within 40 tiles and re-plans without a bank whose route uses a minigame teleport, or whose tile distance is over 3x the nearest bank, unless the route uses an item or spell teleport (`NearestBankPolicy`).
+
+**Where this applies:** any "nearest X" chosen from pathfinder cost alone.
+
+## 33. A conversation opened by the walker is answered by the walker, not by the caller's tick
+
+Opening a guarded door can raise a dialogue menu (Black Knights' Fortress: "[2] I don't care. I'm going in anyway."). While the walker loop runs, the quest driver's tick that applies the step's choices is not reached, so nothing answered and the door retried forever.
+
+**Pattern to follow:** the quest driver publishes the active step's wanted options with `DialogueChoiceProvider.set(...)`; `Rs2WalkerAwaits.awaitDoorInteractionProgress` calls `DialogueChoiceProvider.answerOpenDialogue(...)` after a door interaction. Without a published match nothing is clicked, so quest-lock detection still reads the dialogue text. Continues are only clicked after an option was answered.
+
+**Where this applies:** `Rs2WalkerAwaits`, `Rs2WalkerDoors`, `QuestScript`.
+
+## 34. An enclosed start tile is not "no bank exists"
+
+Inside the Black Knights' Fortress the only exits are push-walls and ladders that were missing from `transports.tsv`, so the search expanded one tile and "nearest bank" returned null on every quester tick.
+
+**Pattern to follow:** `Rs2Bank.getPathAndBankToNearestBank` re-seeds the search from nearby standable tiles (`Rs2PathApi.isStandable`), then falls back to the straight-line nearest bank (the walker handles doors/ladders via the scene) and backs off 45 s for the same tile (`NearestBankPolicy`). Missing object transports (push walls, ladders) belong in the TSV.
+
+**Where this applies:** any helper that treats a failed/partial pathfinder result as "unreachable".
+
+## 35. A walled-recovery replan that returns the same hop must be blacklisted, not repeated
+
+`recovery_target_walled` replans the route when the recovery click target is unreachable. If the planner hands back the same walled hop from the same tile, replanning never converges. `WalledReplanLedger` counts consecutive replans per (player tile, target) and at 5 the walker calls `Rs2PathApi.learnBlockedEdge` for the target edge and first hop (session-only), then recomputes. Permanent map gaps still belong in `blocked_edges.tsv`.
+
+**Why this matters:** Live bug #45 (Twilight's Promise): the four decorative ladders around 2664,3334 (Ardougne) lead to a roof with no plane-1 collision data, and the walker looped on `recovery_target_walled` at 2665,3334,p1 for minutes.
+
+**Pattern to follow:** Pure counter in `recovery/WalledReplanLedger`, call site in `Rs2Walker.blacklistRepeatedWalledReplan` (outside `processWalk`, which is line-capped by `WalkerArchitectureGuardTest`). Dead-end platforms get bidirectional rows in `blocked_edges.tsv` for every plane-1 neighbour edge.
+
+**Where this applies:** `Rs2Walker` recovery block, `blocked_edges.tsv`, ladder rows in `transports.tsv` whose plane-1 side has empty collision.
+
+## 36. A no-progress walk budget must abort, not just log, and a paused quest must cancel its walk from a second thread
+
+`Rs2Walker.reportWalkBudgetIfExhausted` used to only warn after 300 s without a 10-tile distance gain (Lumbridge stairs livelock, exempt exits refunding the tail cap). It now aborts at `WalkLivelockPolicy.getAbortMs()` (45 s default, `<=0` disables) via `setTarget(null, "...livelock-abort...")`; `WalkLivelockPolicy.getLastAbortReason()` tells callers why. A script whose main loop blocks inside a walk cannot observe its own pause flag: cancel from a separate scheduled task (see `QuestScript.supervisorTick`), and drive stuck recovery from `QuestStuckWatchdog`.
+
+**Why this matters:** a 300 s livelock or a paused quest that keeps transporting for minutes defeats hands-off automation.
+
+**Where this applies:** `Rs2Walker.abortLivelockedWalk`, `QuestScript.supervisorTick`, `QuestStuckRecovery`.
+
+## 37. Quest-locked gates need a Quests column in transports.tsv
+
+The Varrock museum guard gate (3261,3446/3447, object 24536) refuses entry without The Dig Site; the walker only learned that after ~20 s of dialogue. Put the quest name (e.g. `The Dig Site`, column 7) on the transport rows so the planner never uses it unmet.

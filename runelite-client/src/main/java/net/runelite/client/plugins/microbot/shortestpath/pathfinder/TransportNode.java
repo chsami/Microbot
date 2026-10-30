@@ -14,7 +14,8 @@ public class TransportNode extends Node implements Comparable<TransportNode> {
         // because its distance fallback returns Integer.MAX_VALUE across planes.
         super(net.runelite.client.plugins.microbot.shortestpath.WorldPointUtil.packWorldPoint(point),
                 previous,
-                (previous != null ? previous.cost : 0) + travelTime);
+                (previous != null ? previous.cost : 0) + travelTime
+                        + PathJitter.transportPenalty(net.runelite.client.plugins.microbot.shortestpath.WorldPointUtil.packWorldPoint(point)));
         this.transport = transport;
     }
 

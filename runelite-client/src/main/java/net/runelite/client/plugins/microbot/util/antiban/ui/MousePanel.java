@@ -19,7 +19,14 @@ public class MousePanel extends JPanel
     private final JLabel moveMouseOffScreenChanceLabel = new JLabel("Move Mouse Off Screen (%): " + (int) (Rs2AntibanSettings.moveMouseOffScreenChance * 100));
     private final JCheckBox moveMouseRandomly = new JCheckBox("Move Mouse Randomly");
     private final JSlider moveMouseRandomlyChance = new JSlider(0, 100, (int) (Rs2AntibanSettings.moveMouseRandomlyChance * 100));
-    private final JLabel moveMouseRandomlyChanceLabel = new JLabel("Random Mouse Movement (%): " + (int) (Rs2AntibanSettings.moveMouseRandomlyChance * 100));
+    private final JLabel moveMouseRandomlyChanceLabel = new JLabel("Random move max (%): " + (int) (Rs2AntibanSettings.moveMouseRandomlyChance * 100));
+    private final JSlider moveMouseRandomlyChanceMin = new JSlider(0, 100, (int) (Rs2AntibanSettings.moveMouseRandomlyChanceMin * 100));
+    private final JLabel moveMouseRandomlyChanceMinLabel = new JLabel("Random move min (%): " + (int) (Rs2AntibanSettings.moveMouseRandomlyChanceMin * 100));
+    private final JCheckBox humanMouseSpeed = new JCheckBox("Human mouse speed");
+    private final JSlider mouseSpeedMin = new JSlider(40, 800, Rs2AntibanSettings.mouseSpeedMinMs);
+    private final JLabel mouseSpeedMinLabel = new JLabel("Move time min (ms): " + Rs2AntibanSettings.mouseSpeedMinMs);
+    private final JSlider mouseSpeedMax = new JSlider(40, 800, Rs2AntibanSettings.mouseSpeedMaxMs);
+    private final JLabel mouseSpeedMaxLabel = new JLabel("Move time max (ms): " + Rs2AntibanSettings.mouseSpeedMaxMs);
 
     // 1) Add new components for Activity Intensity
     private final JLabel mouseSpeedLabel = new JLabel();
@@ -32,7 +39,11 @@ public class MousePanel extends JPanel
         moveMouseOffScreen.setToolTipText("Move the mouse off screen if activity cooldown is active");
         moveMouseOffScreenChance.setToolTipText("Chance to move the mouse off screen when activity cooldown is active");
         moveMouseRandomly.setToolTipText("Move the mouse randomly when activity cooldown is active");
-        moveMouseRandomlyChance.setToolTipText("Chance to move the mouse randomly when activity cooldown is active");
+        moveMouseRandomlyChance.setToolTipText("Highest chance to move the mouse randomly when activity cooldown is active");
+        moveMouseRandomlyChanceMin.setToolTipText("Lowest chance to move the mouse randomly; the chance used is picked between min and max every ten minutes");
+        humanMouseSpeed.setToolTipText("Every mouse move takes a different time from the range below, curves a little differently and sometimes overshoots");
+        mouseSpeedMin.setToolTipText("Shortest base time of a mouse move; a move takes between one and two times its base time");
+        mouseSpeedMax.setToolTipText("Longest base time of a mouse move");
 
         // Configure the new mouseSpeedSlider
         mouseSpeedSlider.setToolTipText("Controls the overall mouse speed/intensity");
@@ -44,6 +55,9 @@ public class MousePanel extends JPanel
         setLayout(new GridBagLayout());
         setBackground(ColorScheme.DARK_GRAY_HOVER_COLOR);
         setupSlider(moveMouseRandomlyChance, 20, 100, 10);
+        setupSlider(moveMouseRandomlyChanceMin, 20, 100, 10);
+        setupSlider(mouseSpeedMin, 200, 40, 800, 50);
+        setupSlider(mouseSpeedMax, 200, 40, 800, 50);
 
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(5, 5, 5, 5);
@@ -71,8 +85,18 @@ public class MousePanel extends JPanel
         add(moveMouseRandomly, gbc);
 
         gbc.fill = GridBagConstraints.HORIZONTAL;
+        add(moveMouseRandomlyChanceMinLabel, gbc);
+        add(moveMouseRandomlyChanceMin, gbc);
         add(moveMouseRandomlyChanceLabel, gbc);
         add(moveMouseRandomlyChance, gbc);
+
+        gbc.fill = GridBagConstraints.NONE;
+        add(humanMouseSpeed, gbc);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        add(mouseSpeedMinLabel, gbc);
+        add(mouseSpeedMin, gbc);
+        add(mouseSpeedMaxLabel, gbc);
+        add(mouseSpeedMax, gbc);
 
         // 2) Add new label and slider for "Mouse Speed" (ActivityIntensity)
         gbc.fill = GridBagConstraints.NONE;
@@ -114,8 +138,33 @@ public class MousePanel extends JPanel
         });
         moveMouseRandomlyChance.addChangeListener(e -> {
             Rs2AntibanSettings.moveMouseRandomlyChance = moveMouseRandomlyChance.getValue() / 100.0;
-            moveMouseRandomlyChanceLabel.setText("Random Mouse Movement (%): " + moveMouseRandomlyChance.getValue());
+            moveMouseRandomlyChanceLabel.setText("Random move max (%): " + moveMouseRandomlyChance.getValue());
             if (!moveMouseRandomlyChance.getValueIsAdjusting()) {
+                Rs2AntibanSettings.saveToProfile();
+            }
+        });
+        moveMouseRandomlyChanceMin.addChangeListener(e -> {
+            Rs2AntibanSettings.moveMouseRandomlyChanceMin = moveMouseRandomlyChanceMin.getValue() / 100.0;
+            moveMouseRandomlyChanceMinLabel.setText("Random move min (%): " + moveMouseRandomlyChanceMin.getValue());
+            if (!moveMouseRandomlyChanceMin.getValueIsAdjusting()) {
+                Rs2AntibanSettings.saveToProfile();
+            }
+        });
+        humanMouseSpeed.addActionListener(e -> {
+            Rs2AntibanSettings.humanMouseSpeed = humanMouseSpeed.isSelected();
+            Rs2AntibanSettings.saveToProfile();
+        });
+        mouseSpeedMin.addChangeListener(e -> {
+            Rs2AntibanSettings.mouseSpeedMinMs = mouseSpeedMin.getValue();
+            mouseSpeedMinLabel.setText("Move time min (ms): " + mouseSpeedMin.getValue());
+            if (!mouseSpeedMin.getValueIsAdjusting()) {
+                Rs2AntibanSettings.saveToProfile();
+            }
+        });
+        mouseSpeedMax.addChangeListener(e -> {
+            Rs2AntibanSettings.mouseSpeedMaxMs = mouseSpeedMax.getValue();
+            mouseSpeedMaxLabel.setText("Move time max (ms): " + mouseSpeedMax.getValue());
+            if (!mouseSpeedMax.getValueIsAdjusting()) {
                 Rs2AntibanSettings.saveToProfile();
             }
         });
@@ -136,7 +185,14 @@ public class MousePanel extends JPanel
         moveMouseOffScreenChance.setValue((int) (Rs2AntibanSettings.moveMouseOffScreenChance * 100));
         moveMouseRandomly.setSelected(Rs2AntibanSettings.moveMouseRandomly);
         moveMouseRandomlyChance.setValue((int) (Rs2AntibanSettings.moveMouseRandomlyChance * 100));
-        moveMouseRandomlyChanceLabel.setText("Random Mouse Movement (%): " + moveMouseRandomlyChance.getValue());
+        moveMouseRandomlyChanceLabel.setText("Random move max (%): " + moveMouseRandomlyChance.getValue());
+        moveMouseRandomlyChanceMin.setValue((int) (Rs2AntibanSettings.moveMouseRandomlyChanceMin * 100));
+        moveMouseRandomlyChanceMinLabel.setText("Random move min (%): " + moveMouseRandomlyChanceMin.getValue());
+        humanMouseSpeed.setSelected(Rs2AntibanSettings.humanMouseSpeed);
+        mouseSpeedMin.setValue(Rs2AntibanSettings.mouseSpeedMinMs);
+        mouseSpeedMinLabel.setText("Move time min (ms): " + mouseSpeedMin.getValue());
+        mouseSpeedMax.setValue(Rs2AntibanSettings.mouseSpeedMaxMs);
+        mouseSpeedMaxLabel.setText("Move time max (ms): " + mouseSpeedMax.getValue());
 
         // 4) Sync the ActivityIntensity slider + label with current settings
         ActivityIntensity currentIntensity = Rs2Antiban.getActivityIntensity();

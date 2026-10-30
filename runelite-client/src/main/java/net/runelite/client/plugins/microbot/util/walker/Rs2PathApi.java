@@ -1670,6 +1670,15 @@ public final class Rs2PathApi
 		return false;
 	}
 
+	/** Whether {@code tile} is mapped and standable in the static collision map (false when unknown). */
+	public static boolean isStandable(WorldPoint tile)
+	{
+		PathfinderConfig config = getPathfinderConfig();
+		CollisionMap map = config == null ? null : config.getMap();
+		return map != null && tile != null && map.hasRegion(tile.getX(), tile.getY())
+			&& !map.isBlocked(tile.getX(), tile.getY(), tile.getPlane());
+	}
+
 	/** Nearest mapped standable tile to {@code target} within {@code maxRadius}, or {@code null}. */
 	public static WorldPoint nearestWalkableTile(WorldPoint target, int maxRadius)
 	{

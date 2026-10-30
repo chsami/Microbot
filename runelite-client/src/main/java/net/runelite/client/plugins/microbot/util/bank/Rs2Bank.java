@@ -2366,7 +2366,7 @@ public class Rs2Bank {
 
     /** Select a bank using only currently carried transport items and retain the chosen route. */
     public static NearestBankRoute getNearestBankRoute(WorldPoint worldPoint) {
-        return getPathAndBankToNearestBank(worldPoint, 20, false);
+        return resolveNearestBankRoute(worldPoint, 20, false, null);
     }
 
     /**
@@ -2377,12 +2377,62 @@ public class Rs2Bank {
      * @return the path, bank and selected route, or null if no bank could be reached
      */
     private static NearestBankRoute getPathAndBankToNearestBank(WorldPoint worldPoint, int maxObjectSearchRadius) {
-        return getPathAndBankToNearestBank(worldPoint, maxObjectSearchRadius, null);
+        return resolveNearestBankRoute(worldPoint, maxObjectSearchRadius, null, null);
+    }
+
+    private static volatile WorldPoint lastBankFailureTile;
+    private static volatile long lastBankFailureMs;
+
+    /**
+     * Plans the nearest bank. When planning fails (start tile enclosed, e.g. standing on a pushed secret wall,
+     * or an area only connected by object transports) it re-seeds from nearby standable tiles and finally falls
+     * back to the straight-line nearest bank so the walker (doors, ladders, scene interaction) can try.
+     * Repeated failures from the same tile back off instead of re-running the search every loop.
+     */
+    private static NearestBankRoute resolveNearestBankRoute(
+            WorldPoint worldPoint, int maxObjectSearchRadius, Boolean useBankItems, WorldPoint returnPoint) {
+        if (worldPoint == null) return null;
+        long now = System.currentTimeMillis();
+        if (NearestBankPolicy.shouldBackOff(lastBankFailureTile, lastBankFailureMs, now, worldPoint)) {
+            return straightLineBankRoute(worldPoint);
+        }
+        NearestBankRoute route = getPathAndBankToNearestBank(worldPoint, maxObjectSearchRadius, useBankItems, returnPoint);
+        if (route != null) {
+            lastBankFailureTile = null;
+            return route;
+        }
+        for (WorldPoint seed : NearestBankPolicy.seedTiles(worldPoint, Rs2PathApi::isStandable,
+                NearestBankPolicy.SEED_RADIUS, NearestBankPolicy.MAX_SEEDS)) {
+            route = getPathAndBankToNearestBank(seed, maxObjectSearchRadius, useBankItems, returnPoint == null ? worldPoint : returnPoint);
+            if (route != null) {
+                Microbot.log("Nearest bank found by re-seeding the search from " + seed);
+                lastBankFailureTile = null;
+                return route;
+            }
+        }
+        lastBankFailureTile = worldPoint;
+        lastBankFailureMs = now;
+        NearestBankRoute fallback = straightLineBankRoute(worldPoint);
+        Microbot.log("No pathfinder route to a bank from " + worldPoint + "; falling back to "
+                + (fallback == null ? "nothing" : fallback.getBank() + " by straight-line distance")
+                + " (retrying the search in " + NearestBankPolicy.BACKOFF_MS / 1000 + "s)");
+        return fallback;
+    }
+
+    private static NearestBankRoute straightLineBankRoute(WorldPoint worldPoint) {
+        Set<BankLocation> accessible = Arrays.stream(BankLocation.values())
+                .filter(BankLocation::hasRequirements)
+                .collect(Collectors.toSet());
+        BankLocation bank = NearestBankPolicy.nearestByDistance(worldPoint, accessible,
+                NearestBankPolicy.FALLBACK_MAX_TILES);
+        if (bank == null) {
+            return null;
+        }
+        return new NearestBankRoute(new ArrayList<>(Collections.singletonList(bank.getWorldPoint())), bank, null);
     }
 
     private static NearestBankRoute getPathAndBankToNearestBank(
-            WorldPoint worldPoint, int maxObjectSearchRadius, Boolean useBankItems) {
-        if (worldPoint == null) return null;
+            WorldPoint worldPoint, int maxObjectSearchRadius, Boolean useBankItems, WorldPoint returnPoint) {
         Microbot.log("Finding nearest bank...");
 
         Set<BankLocation> allBanks = Arrays.stream(BankLocation.values())
@@ -2432,30 +2482,76 @@ public class Rs2Bank {
             Microbot.log("No accessible banks found");
             return null;
         }
-        Set<WorldPoint> targets = accessibleBanks.stream()
+        // Minigame-only banks (Isle of Souls, Clan Hall, ...) are priced as near-free by minigame teleports,
+        // so they only compete when the player is already standing near them. See NearestBankPolicy.
+        Set<BankLocation> candidates = accessibleBanks.stream()
+                .filter(b -> NearestBankPolicy.isEligibleTarget(worldPoint, b))
+                .collect(Collectors.toCollection(HashSet::new));
+        Set<WorldPoint> allCandidatePoints = candidates.stream()
                 .map(BankLocation::getWorldPoint)
                 .collect(Collectors.toSet());
 
-        Rs2RouteRequest request = Rs2RouteRequest.toAny(worldPoint, targets);
-        if (useBankItems != null) {
-            request = request.withBankItems(useBankItems);
+        Rs2RouteResult route = null;
+        List<WorldPoint> path = Collections.emptyList();
+        Optional<BankLocation> byPath = Optional.empty();
+        // Re-plan without a rejected bank a few times: a route that is implausible versus the straight-line
+        // nearest bank (and not a genuine item/spell teleport) is dropped rather than walked.
+        NearestBankRoute travelFallback = null;
+        for (int attempt = 0; attempt < 8 && !candidates.isEmpty(); attempt++) {
+            Set<WorldPoint> targets = candidates.stream()
+                    .map(BankLocation::getWorldPoint)
+                    .collect(Collectors.toSet());
+            Rs2RouteRequest request = Rs2RouteRequest.toAny(worldPoint, targets);
+            if (useBankItems != null) {
+                request = request.withBankItems(useBankItems);
+            }
+            route = Rs2PathApi.plan(request);
+            path = route.getPath();
+            if (path.isEmpty()) {
+                Microbot.log("Unable to find path to nearest bank");
+                return null;
+            }
+            // Create a WorldArea around the final tile to be more generous
+            WorldPoint endTile = path.get(path.size() - 1);
+            WorldArea endTileArea = new WorldArea(endTile, 2, 2);
+            byPath = candidates.stream()
+                    .filter(b -> new WorldArea(b.getWorldPoint(), 2, 2).intersectsWith2D(endTileArea))
+                    .findFirst();
+            if (!byPath.isPresent()) {
+                break;
+            }
+            if (NearestBankPolicy.usesTravelTransport(route)) {
+                // never sail or fly to a bank while another one may be reachable on foot
+                if (travelFallback == null) {
+                    travelFallback = new NearestBankRoute(path, byPath.get(), route);
+                }
+                Microbot.log("Rejecting bank " + byPath.get() + " from " + worldPoint + ": its route needs a ship or similar transport");
+                candidates.remove(byPath.get());
+                byPath = Optional.empty();
+                route = null;
+                path = Collections.emptyList();
+                continue;
+            }
+            if (NearestBankPolicy.isPlausible(worldPoint, byPath.get().getWorldPoint(), allCandidatePoints,
+                    NearestBankPolicy.usesMinigameTransport(route),
+                    NearestBankPolicy.usesItemOrSpellTeleport(route))) {
+                break;
+            }
+            Microbot.log("Rejecting implausible nearest bank " + byPath.get() + " from " + worldPoint + "; trying others");
+            candidates.remove(byPath.get());
+            byPath = Optional.empty();
+            route = null;
+            path = Collections.emptyList();
         }
-        Rs2RouteResult route = Rs2PathApi.plan(request);
-        List<WorldPoint> path = route.getPath();
-
-        if (path.isEmpty()) {
-            Microbot.log("Unable to find path to nearest bank");
+        if (route == null && travelFallback != null) {
+            Microbot.log("No bank is reachable on foot from " + worldPoint + "; using " + travelFallback.getBank() + " by transport");
+            return travelFallback;
+        }
+        if (route == null) {
+            Microbot.log("No plausible bank route from " + worldPoint);
             return null;
         }
-        // Create a WorldArea around the final tile to be more generous
         WorldPoint nearestTile = path.get(path.size() - 1);
-        WorldArea nearestTileArea = new WorldArea(nearestTile, 2, 2);
-        Optional<BankLocation> byPath = accessibleBanks.stream()
-                .filter(b -> {
-                    WorldArea accessibleBankArea = new WorldArea(b.getWorldPoint(), 2, 2);
-                    return accessibleBankArea.intersectsWith2D(nearestTileArea);
-                })
-                .findFirst();
         if (!byPath.isPresent()) {
             // The pathfinder returns its BEST EFFORT, not only complete routes: with no reachable bank
             // it hands back a partial path that stops short — sometimes one or two tiles from the start,
@@ -2469,8 +2565,67 @@ public class Rs2Bank {
                     + " after " + path.size() + " tiles (partial route)");
             return null;
         }
-        Microbot.log("Found nearest bank (shortest path): " + byPath.get());
-        return new NearestBankRoute(path, byPath.get(), route);
+        NearestBankRoute planned = new NearestBankRoute(path, byPath.get(), route);
+        NearestBankRoute best = rescoreForRoundTrip(worldPoint, returnPoint == null ? worldPoint : returnPoint,
+                candidates, planned, useBankItems);
+        Microbot.log("Found nearest bank (round-trip score): " + best.getBank());
+        return best;
+    }
+
+    private static long routeCost(Rs2RouteResult route, List<WorldPoint> path) {
+        return route != null && route.getMetrics().hasPathCost() ? route.getMetrics().getPathCost() : path.size();
+    }
+
+    /**
+     * Re-scores the pathfinder's pick against the closest few banks by round trip (player to bank plus bank to
+     * {@code returnPoint}), so a near-free teleport to a far bank cannot beat a short walk to a nearby one.
+     */
+    private static NearestBankRoute rescoreForRoundTrip(WorldPoint worldPoint, WorldPoint returnPoint,
+                                                        Set<BankLocation> candidates, NearestBankRoute planned,
+                                                        Boolean useBankItems) {
+        Map<BankLocation, NearestBankRoute> routes = new HashMap<>();
+        List<NearestBankPolicy.BankOption> options = new ArrayList<>();
+        routes.put(planned.getBank(), planned);
+        options.add(new NearestBankPolicy.BankOption(planned.getBank(),
+                routeCost(planned.getRoute(), planned.getPath()),
+                NearestBankPolicy.usesHomeTeleport(planned.getRoute()),
+                NearestBankPolicy.usesTravelTransport(planned.getRoute())));
+        List<BankLocation> near = candidates.stream()
+                .filter(b -> b != planned.getBank() && b.getWorldPoint().distanceTo2D(worldPoint) <= 80)
+                .sorted(Comparator.comparingInt(b -> b.getWorldPoint().distanceTo2D(worldPoint)))
+                .limit(3)
+                .collect(Collectors.toList());
+        for (BankLocation b : near) {
+            Rs2RouteRequest request = Rs2RouteRequest.to(worldPoint, b.getWorldPoint());
+            if (useBankItems != null) {
+                request = request.withBankItems(useBankItems);
+            }
+            Rs2RouteResult r = Rs2PathApi.plan(request);
+            List<WorldPoint> p = r.getPath();
+            if (p.isEmpty()) {
+                continue;
+            }
+            WorldArea end = new WorldArea(p.get(p.size() - 1), 2, 2);
+            if (!new WorldArea(b.getWorldPoint(), 2, 2).intersectsWith2D(end)) {
+                continue;
+            }
+            routes.put(b, new NearestBankRoute(p, b, r));
+            options.add(new NearestBankPolicy.BankOption(b, routeCost(r, p), NearestBankPolicy.usesHomeTeleport(r),
+                    NearestBankPolicy.usesTravelTransport(r)));
+        }
+        NearestBankPolicy.BankOption pick = NearestBankPolicy.choose(worldPoint, returnPoint, options);
+        return pick == null ? planned : routes.get(pick.bank);
+    }
+
+    /** Nearest bank by round trip: reach it from {@code worldPoint}, then get back to {@code returnPoint}. */
+    public static BankLocation getNearestBankForRoundTrip(WorldPoint worldPoint, WorldPoint returnPoint) {
+        NearestBankRoute r = resolveNearestBankRoute(worldPoint, 20, null, returnPoint);
+        return r != null ? r.getBank() : null;
+    }
+
+    /** Like {@link #walkToBankAndUseBank()}, but picks the bank that is cheapest to come back from. */
+    public static boolean walkToBankAndUseBankReturningTo(WorldPoint returnPoint) {
+        return walkToBankAndUseBank(getNearestBankForRoundTrip(Rs2Player.getWorldLocation(), returnPoint));
     }
 
     /**

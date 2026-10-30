@@ -105,15 +105,26 @@ public class NpcHandler extends AgentHandler {
 
 		String name = getStringField(body, "name");
 		Integer idNum = getIntField(body, "id");
+		// index, or x and y (and plane), pick one exact NPC among several with the same id or name
+		Integer wantIndex = getIntField(body, "index");
+		Integer wantX = getIntField(body, "x");
+		Integer wantY = getIntField(body, "y");
+		Integer wantPlane = getIntField(body, "plane");
+		if (TargetFilter.halfATile(wantX, wantY)) {
+			sendJson(exchange, 400, errorResponse("Give x and y together"));
+			return;
+		}
 
 		Rs2NpcModel npc = null;
 		if (name != null && !name.isEmpty()) {
 			npc = Microbot.getRs2NpcCache().query()
 					.withName(name)
+					.where(n -> TargetFilter.matchesNpc(n.getIndex(), n.getWorldLocation(), wantIndex, wantX, wantY, wantPlane))
 					.nearestOnClientThread();
 		} else if (idNum != null) {
 			npc = Microbot.getRs2NpcCache().query()
 					.withId(idNum.intValue())
+					.where(n -> TargetFilter.matchesNpc(n.getIndex(), n.getWorldLocation(), wantIndex, wantX, wantY, wantPlane))
 					.nearestOnClientThread();
 		} else {
 			sendJson(exchange, 400, errorResponse("Provide either name or id"));
@@ -123,7 +134,14 @@ public class NpcHandler extends AgentHandler {
 		Map<String, Object> response = new LinkedHashMap<>();
 		if (npc == null) {
 			response.put("success", false);
-			response.put("reason", "NPC not found");
+			response.put("reason", TargetFilter.isSpecific(wantIndex, wantX, wantY)
+					? "filtered: no matching NPC for the given index or tile" : "NPC not found");
+		} else if (npc.getAvailableActions().stream().noneMatch(action::equalsIgnoreCase)) {
+			Map<String, Object> bad = errorResponse("NPC has no action \"" + action + "\"");
+			bad.put("availableActions", npc.getAvailableActions());
+			bad.put("npc", serializeNpc(npc));
+			sendJson(exchange, 400, bad);
+			return;
 		} else {
 			boolean clicked = npc.click(action);
 			response.put("success", clicked);

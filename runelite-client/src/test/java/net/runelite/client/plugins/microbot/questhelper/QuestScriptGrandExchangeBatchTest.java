@@ -21,6 +21,25 @@ public class QuestScriptGrandExchangeBatchTest
 	}
 
 	@Test
+	public void eighteenItemsOnEightSlotsTakeThreeRounds()
+	{
+		List<String> left = new ArrayList<>();
+		for (int i = 0; i < 18; i++)
+		{
+			left.add("item" + i);
+		}
+		int rounds = 0;
+		while (!left.isEmpty())
+		{
+			List<String> batch = new ArrayList<>(left);
+			QuestScript.trimToGrandExchangeSlots(batch, 8);
+			left.removeAll(batch);
+			rounds++;
+		}
+		assertEquals(3, rounds);
+	}
+
+	@Test
 	public void enoughSlotsKeepsEveryItem()
 	{
 		List<String> toBuy = new ArrayList<>(Arrays.asList("a", "b", "c"));

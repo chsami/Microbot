@@ -1130,8 +1130,9 @@
 # Varrock museum guard barrier (vm_barrier_guard_gate) - MEASURED 2026-08-08 via agent server:
 # clicking Open MOVES the player through (3447<->3446, reproduced 3x) and the gate never enters
 # an open state, so the runtime door pipeline can never resolve it - it needs catalog rows.
-3261 3446 0	3261 3447 0	Open;Gate;24536									
-3261 3447 0	3261 3446 0	Open;Gate;24536									
+# Requires The Dig Site: the guard refuses entry otherwise ("unless you've completed the Dig Site quest").
+3261 3446 0	3261 3447 0	Open;Gate;24536				The Dig Site				
+3261 3447 0	3261 3446 0	Open;Gate;24536				The Dig Site				
 3011 3184 0	3011 3184 1	Climb-up;Ladder;9558									
 3011 3184 1	3011 3184 0	Climb-down;Ladder;9559									
 3012 3235 0	3012 3235 1	Climb-up;Ladder;16683									
@@ -1156,8 +1157,8 @@
 3026 3247 1	3025 3248 0	Climb-down;Staircase;9584									
 3025 3248 0	3026 3247 1	Climb-up;Staircase;9582									
 3025 3249 0	3026 3247 1	Climb-up;Staircase;9582									
-3018 3231 0	2962 9650 0	Climb-down;Manhole;10321							Y		
-2962 9650 0	3018 3233 0	Climb-up;Ladder;10309							Y		
+3018 3231 0	2962 9650 0	Climb-down;Manhole;10321				Ratcatchers			Y		
+2962 9650 0	3018 3233 0	Climb-up;Ladder;10309				Ratcatchers			Y		
 											
 # Wizard Tower											
 3105 3162 0	3104 9576 0	Climb-down;Ladder;2147									
@@ -6008,3 +6009,10 @@
 3546 9686 3	3567 3274 0	Climb-up;Staircase;20670							Y	1	Karil's Barrow exit
 3566 9683 3	3553 3281 0	Climb-up;Staircase;20671							Y	1	Torag's Barrow exit
 3578 9704 3	3556 3297 0	Climb-up;Staircase;20672							Y	1	Verac's Barrow exit
+# Black Knights' Fortress (ladder pair at 3022 3517 and the wall at 3030 3510 measured live; other fortress ladders/walls unmeasured, left to scene interaction)
+3030 3510 1	3031 3508 1	Push;Wall;2341									
+3031 3508 1	3030 3510 1	Push;Wall;2341									
+3022 3517 0	3022 3517 1	Climb-up;Ladder;17159									
+3022 3517 1	3022 3517 0	Climb-down;Ladder;17160									
+# Dragon Slayer I: out of the Dwarven Mines magic-door room (the ritual that opened it is done if you are inside)
+3051 9839 0	3049 9839 0	Open;Magic door;25115								2	

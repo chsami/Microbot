@@ -837,6 +837,7 @@ public class TheFinalDawn extends BasicQuestHelper
 		climbStairsF1ToF2Palace = new ObjectStep(this, ObjectID.CIVITAS_PALACE_STAIRS_UP, new WorldPoint(1671, 3169, 1), "Climb up the stairs to the top of " +
 				"the Sunrise Palace to talk to the queen.");
 		talkToQueen = new NpcStep(this, NpcID.VMQ4_QUEEN_PALACE, new WorldPoint(1673, 3156, 2), "Talk to the queen on the top floor of the Sunrise Palace.");
+		((NpcStep) talkToQueen).addAlternateNpcs(NpcID.VMQ4_QUEEN_PALACE_VIS);
 		talkToQueen.addSubSteps(climbStairsF0ToF1Palace, climbStairsF1ToF2Palace);
 		talkToCaptainVibia = new NpcStep(this, NpcID.VMQ4_CAPTAIN_VIBIA_OUTSIDE_HOUSE, new WorldPoint(1652, 3088, 0), "Talk to Captain Vibia south of Civitas" +
 				" illa Fortis' west bank.");
@@ -895,12 +896,14 @@ public class TheFinalDawn extends BasicQuestHelper
 		enterCamTorum = new ObjectStep(this, ObjectID.PMOON_TELEBOX, new WorldPoint(1436, 3129, 0), "Enter Cam Torum.");
 
 		talkToAttala = new NpcStep(this, NpcID.CAM_TORUM_ATTALA, new WorldPoint(1442, 9550, 1), "Talk to Attala in Cam Torum's marketplace.");
+		((NpcStep) talkToAttala).addAlternateNpcs(NpcID.CAM_TORUM_ATTALA_VIS);
 		talkToServiusInCamTorum = new NpcStep(this, NpcID.VMQ4_SERVIUS_TEUMO_HOUSE, new WorldPoint(1466, 9570, 1), "Talk to Servius in the house east of the " +
 				"bank in Cam Torum.");
 		goUpstairsPub = new ObjectStep(this, ObjectID.STAIRS_IMCANDO01_LOWER01, new WorldPoint(1467, 9572, 1), "Go upstairs in the house.");
 		takeBeer = new ItemStep(this, "Take the beer. Hop worlds if it's missing.", beer);
 		goDownstairsPub = new ObjectStep(this, ObjectID.STAIRS_IMCANDO01_UPPER01, new WorldPoint(1468, 9572, 2), "Go downstairs in the house.");
 		useBeerOnGalna = new NpcStep(this, NpcID.VMQ4_TEUMO_WIFE, new WorldPoint(1466, 9570, 1), "Use the beer on Galna.", beer.highlighted());
+		((NpcStep) useBeerOnGalna).addAlternateNpcs(NpcID.VMQ4_TEUMO_WIFE_VIS);
 		useBeerOnGalna.addIcon(ItemID.BEER);
 		enterCamTorumHouseBasement = new ObjectStep(this, ObjectID.VMQ4_TEUMO_HOUSE_STAIRS_DOWN, new WorldPoint(1470, 9571, 1), "Enter the house's basement.");
 		takeBeerCabinet = new ObjectStep(this, ObjectID.VMQ4_TEUMO_BASEMENT_SHELF, new WorldPoint(1464, 9569, 0), "Search the south-west cabinet for a beer.")
@@ -957,6 +960,7 @@ public class TheFinalDawn extends BasicQuestHelper
 		enterNeypotzli.addSubSteps(climbUpFromTeumoBasement);
 		talkToEyatalli = new NpcStep(this, NpcID.VMQ4_EYATLALLI, new WorldPoint(1440, 9628, 1),
 				"Talk to Eyatlalli.");
+				((NpcStep) talkToEyatalli).addAlternateNpcs(NpcID.VMQ4_EYATLALLI_VIS);
 
 		locateKeystone = new DetailedQuestStep(this, "Use the keystone fragment to locate the keystone.", keystoneFragment.highlighted());
 

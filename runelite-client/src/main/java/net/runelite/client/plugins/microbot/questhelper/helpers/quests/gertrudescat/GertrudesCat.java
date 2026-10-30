@@ -162,7 +162,7 @@ public class GertrudesCat extends BasicQuestHelper
 
 		//Need to find to ways to hide arrow
 		searchNearbyCrates = new NpcStep(this, NpcID.KITTENS_MEW, new WorldPoint(3306, 3505, 0),
-			"Search different crates downstairs in the Lumberyard until you find the kitten.", true, bucketOfMilk);
+			"Search different crates downstairs in the Lumberyard until you find the kitten.", true);
 		searchNearbyCrates.setHideWorldArrow(true);
 		climbDownLadderStep = new ObjectStep(this, ObjectID.FAI_VARROCK_LADDERTOP, new WorldPoint(3310, 3509, 1), "Climb down ladder in the Lumberyard.");
 		climbUpLadderStep = new ObjectStep(this, ObjectID.FAI_VARROCK_LADDER, new WorldPoint(3310, 3509, 0), "Climb up the ladder in the Lumberyard.", kitten);

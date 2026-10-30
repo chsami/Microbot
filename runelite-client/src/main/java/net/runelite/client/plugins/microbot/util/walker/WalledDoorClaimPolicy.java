@@ -60,6 +60,57 @@ final class WalledDoorClaimPolicy {
         return nearSideReachable ? Decision.APPROACH : Decision.INVALID;
     }
 
+    /** Consecutive door-handler runs on one claimed edge that found nothing to open before the claim is dropped. */
+    static final int UNFULFILLED_CLAIM_LIMIT = 3;
+
+    /**
+     * Counts consecutive door-handler runs that did nothing on the same claimed edge. A claim can come from a door
+     * beside the edge (a double-gate wing) that the exact edge does not have; the handler then finds nothing, again and
+     * again, and the walker waits on a door that does not exist.
+     */
+    static final class UnfulfilledClaims {
+        private WorldPoint from;
+        private WorldPoint to;
+        private int count;
+        private long firstAtMs;
+
+        /** Notes one fruitless run on the edge; returns how many in a row there have been. */
+        int note(WorldPoint edgeFrom, WorldPoint edgeTo, long nowMs) {
+            if (edgeFrom.equals(from) && edgeTo.equals(to)) {
+                count++;
+            } else {
+                from = edgeFrom;
+                to = edgeTo;
+                count = 1;
+                firstAtMs = nowMs;
+            }
+            return count;
+        }
+
+        /** How long the current edge has been fruitless. */
+        long spanMs(long nowMs) {
+            return count == 0 ? 0L : nowMs - firstAtMs;
+        }
+
+        void reset() {
+            from = null;
+            to = null;
+            count = 0;
+            firstAtMs = 0L;
+        }
+    }
+
+    /** The claim must stay fruitless for at least this long, so a handler that is merely throttled is not mistaken for one that found nothing. */
+    static final long UNFULFILLED_CLAIM_MIN_SPAN_MS = 4_000L;
+
+    /**
+     * Whether the claimed edge should be given up on: repeatedly fruitless over a few seconds, and no door geometry sits
+     * on the exact edge, open or shut.
+     */
+    static boolean shouldDropUnfulfilledClaim(int fruitlessRuns, long spanMs, boolean doorGeometryOnEdge) {
+        return fruitlessRuns >= UNFULFILLED_CLAIM_LIMIT && spanMs >= UNFULFILLED_CLAIM_MIN_SPAN_MS && !doorGeometryOnEdge;
+    }
+
     static boolean ownsTraversalEdge(WorldPoint doorFrom, WorldPoint doorTo,
                                      WorldPoint routeFrom, WorldPoint routeTo) {
         if (doorFrom == null || doorTo == null || routeFrom == null || routeTo == null

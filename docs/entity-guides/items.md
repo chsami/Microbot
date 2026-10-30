@@ -299,3 +299,22 @@ While a shop, bank, deposit box or Grand Exchange inventory is open or rebuildin
 An owning script can set `withMissingSupplyHandler` on its Inventory Setup loader to keep its scheduled loop alive while `TerminalLogoutPrompt` closes the bank and requests logout. Do not show a blocking shortage notification or cancel that loop until `LOGGED_OUT` is observed. The default loader policy stays unchanged when no handler is supplied; ordinary breaks and world hops do not arm terminal Auto Login suppression.
 
 The observed terminal state is `LOGIN_SCREEN`; loading, hopping, connection loss and login transitions are not successful logout. A terminal prompt requests Auto Login suppression once across its retries so an explicit script/Auto Login restart is not repeatedly re-blocked by the old prompt.
+
+## 18. Charged items and dosed potions are one item per charge, so match by name family
+
+Glories, rings of wealth, games necklaces, combat bracelets and potions are separate item ids per charge or dose, named like `Ring of wealth (4)` or `Prayer potion(3)`. Matching a saved item by its recorded id (or exact name) misses the same item at another charge.
+
+**Why this matters:** a quest-setup snapshot recorded `Ring of wealth (4)`; the player owned a different charge and the restore logged `is not in the bank, continuing without it`.
+
+**Pattern to follow:** compare names with the trailing `(n)` stripped (`ChargedItemNames.sameFamily`) and pick the exact id, else the highest charge, else the uncharged base (`ChargedItemNames.pick`).
+
+**Where this applies:** questhelper/combat gear restore and custom-item withdrawals.
+
+
+## Bank mid-task with a return point, not just the nearest bank
+
+Pick banks by round trip (player to bank plus bank back to where the task resumes), never by cost to the bank alone. Callers that bank mid-task (quest missing-item flow, combat restock) use `Rs2Bank.walkToBankAndUseBankReturningTo(returnPoint)` or `getNearestBankForRoundTrip`; the plain overloads use the player's tile.
+
+**Why this matters:** the planner prices the Lumbridge home teleport as near free, so a quest at the Ardougne mud patch teleported to Lumbridge for 4 buckets of water and then walked back for minutes (live bug #42). Home teleports now cost a cast plus cooldown and are dropped for banks within 150 tiles; a bank within 40 tiles wins unless another is strictly cheaper (`NearestBankPolicy.choose`).
+
+**Where this applies:** `Rs2Bank.getNearestBank*`, `QuestScript`, `QuestCombatHandler`.

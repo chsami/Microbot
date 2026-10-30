@@ -251,6 +251,13 @@ public final class Rs2WalkerAwaits {
         }, (int) traversalBudgetMs(clickDistance));
         long traversalWaitMs = System.currentTimeMillis() - traversalPhaseAt;
 
+        // A conversation the questing layer has choices for is answered here, not on its slower tick,
+        // which is not reached while the walker loop runs. No published choices => no-op.
+        if (conversationOpened()
+                && net.runelite.client.plugins.microbot.util.dialogues.DialogueChoiceProvider.answerOpenDialogue(10_000L)) {
+            WebWalkLog.spInfo("door_dialogue_answered | from={} to={}", fromWp, toWp);
+        }
+
         if (startWaitMs + traversalWaitMs >= DOOR_AWAIT_SLOW_LOG_MS) {
             String saw = "-";
             if (doorObservation != null && !"door-opened".equals(releasedBy[0])) {

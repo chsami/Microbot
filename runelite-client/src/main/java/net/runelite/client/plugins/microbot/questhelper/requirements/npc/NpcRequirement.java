@@ -42,6 +42,7 @@ public class NpcRequirement extends AbstractRequirement
 {
 	private final int npcID;
 	private final String npcName;
+	private int[] alternateNpcIDs = new int[0];
 
 	@Setter
 	short[] npcColorOverrides;
@@ -128,11 +129,38 @@ public class NpcRequirement extends AbstractRequirement
 		this("DO NOT DISPLAY", npcID, npcName, false, null);
 	}
 
+	/**
+	 * Also accept these NPC ids (for example the {@code _VIS} sibling of the base id).
+	 *
+	 * @return this requirement
+	 */
+	public NpcRequirement addAlternateNpcs(int... ids)
+	{
+		this.alternateNpcIDs = ids == null ? new int[0] : ids.clone();
+		return this;
+	}
+
+	private boolean matchesId(int id)
+	{
+		if (id == npcID)
+		{
+			return true;
+		}
+		for (int alternate : alternateNpcIDs)
+		{
+			if (id == alternate)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
 	@Override
 	public boolean check(Client client)
 	{
 		List<NPC> found = client.getTopLevelWorldView().npcs().stream()
-			.filter(npc -> npc.getId() == npcID || npc.getComposition().getId() == npcID)
+			.filter(npc -> matchesId(npc.getId()) || matchesId(npc.getComposition().getId()))
 			.filter(npc -> npcName == null || (npc.getName() != null && npc.getName().equals(npcName)))
 			.collect(Collectors.toList());
 

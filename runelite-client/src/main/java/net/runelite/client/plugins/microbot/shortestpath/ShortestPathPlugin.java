@@ -50,6 +50,7 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.CollisionMap;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.Pathfinder;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.PathfinderConfig;
+import net.runelite.client.plugins.microbot.shortestpath.pathfinder.QuestWalkRule;
 import net.runelite.client.plugins.microbot.util.walker.WebWalkLog;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionCapture;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionConflicts;
@@ -1027,7 +1028,7 @@ public class ShortestPathPlugin extends Plugin {
 				return (boolean) value;
 			}
 		}
-		return defaultValue;
+		return defaultValue || QuestWalkRule.forcesToggle(configOverrideKey);
 	}
 
 	private Color override(String configOverrideKey, Color defaultValue) {
@@ -1059,6 +1060,10 @@ public class ShortestPathPlugin extends Plugin {
 					return teleportationItem;
 				}
 			}
+		}
+		if (defaultValue == TeleportationItem.NONE && "useTeleportationItems".equals(configOverrideKey)
+				&& QuestWalkRule.forcesTeleportItems()) {
+			return TeleportationItem.INVENTORY;
 		}
 		return defaultValue;
 	}

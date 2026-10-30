@@ -35,3 +35,33 @@
 2709 3495 0	2709 3496 0	true	Elemental Workshop odd-looking wall
 2649 3469 0	2649 3470 0	true	Hemenster enclosure north gate - never opens
 2650 3469 0	2650 3470 0	true	Hemenster enclosure north gate - never opens
+# Ardougne (2664,3334) roof reached by four ladders is a decorative dead end: the planner chained walking
+# edges off it toward Varlamore and the walker replanned forever. Only the ladders down are valid.
+2663 3334 1	2662 3333 1	true	Ardougne ladder roof platform dead end (bug #45)
+2663 3334 1	2662 3334 1	true	Ardougne ladder roof platform dead end (bug #45)
+2663 3334 1	2662 3335 1	true	Ardougne ladder roof platform dead end (bug #45)
+2663 3334 1	2663 3333 1	true	Ardougne ladder roof platform dead end (bug #45)
+2663 3334 1	2663 3335 1	true	Ardougne ladder roof platform dead end (bug #45)
+2663 3334 1	2664 3333 1	true	Ardougne ladder roof platform dead end (bug #45)
+2663 3334 1	2664 3334 1	true	Ardougne ladder roof platform dead end (bug #45)
+2663 3334 1	2664 3335 1	true	Ardougne ladder roof platform dead end (bug #45)
+2664 3333 1	2663 3332 1	true	Ardougne ladder roof platform dead end (bug #45)
+2664 3333 1	2663 3333 1	true	Ardougne ladder roof platform dead end (bug #45)
+2664 3333 1	2664 3332 1	true	Ardougne ladder roof platform dead end (bug #45)
+2664 3333 1	2664 3334 1	true	Ardougne ladder roof platform dead end (bug #45)
+2664 3333 1	2665 3332 1	true	Ardougne ladder roof platform dead end (bug #45)
+2664 3333 1	2665 3333 1	true	Ardougne ladder roof platform dead end (bug #45)
+2664 3333 1	2665 3334 1	true	Ardougne ladder roof platform dead end (bug #45)
+2664 3335 1	2663 3335 1	true	Ardougne ladder roof platform dead end (bug #45)
+2664 3335 1	2663 3336 1	true	Ardougne ladder roof platform dead end (bug #45)
+2664 3335 1	2664 3334 1	true	Ardougne ladder roof platform dead end (bug #45)
+2664 3335 1	2664 3336 1	true	Ardougne ladder roof platform dead end (bug #45)
+2664 3335 1	2665 3334 1	true	Ardougne ladder roof platform dead end (bug #45)
+2664 3335 1	2665 3335 1	true	Ardougne ladder roof platform dead end (bug #45)
+2664 3335 1	2665 3336 1	true	Ardougne ladder roof platform dead end (bug #45)
+2665 3334 1	2664 3334 1	true	Ardougne ladder roof platform dead end (bug #45)
+2665 3334 1	2665 3333 1	true	Ardougne ladder roof platform dead end (bug #45)
+2665 3334 1	2665 3335 1	true	Ardougne ladder roof platform dead end (bug #45)
+2665 3334 1	2666 3333 1	true	Ardougne ladder roof platform dead end (bug #45)
+2665 3334 1	2666 3334 1	true	Ardougne ladder roof platform dead end (bug #45)
+2665 3334 1	2666 3335 1	true	Ardougne ladder roof platform dead end (bug #45)

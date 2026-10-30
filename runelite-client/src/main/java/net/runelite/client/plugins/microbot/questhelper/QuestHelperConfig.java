@@ -238,7 +238,7 @@ public interface QuestHelperConfig extends Config
 
 	@ConfigSection(
 			position = 0,
-			name = "Microbot",
+			name = "Automation",
 			description = "Microbot Options",
 			closedByDefault = false
 	)
@@ -253,6 +253,276 @@ public interface QuestHelperConfig extends Config
 	)
 	default boolean startStopQuestHelper() {
 		return true;
+	}
+
+	@ConfigItem(
+			keyName = "dismissRandomEvents",
+			name = "Dismiss random events",
+			description = "Automatically dismiss random-event NPCs that target you while the quest helper is running.",
+			section = microbotSection
+	)
+	default boolean dismissRandomEvents() {
+		return true;
+	}
+
+	@ConfigItem(
+			keyName = "takeShortBreaks",
+			name = "Take short breaks",
+			description = "Now and then idle for a few seconds, never during a fight, dialogue or kill step.",
+			section = microbotSection
+	)
+	default boolean takeShortBreaks() {
+		return false;
+	}
+
+	@ConfigItem(
+			keyName = "breakEveryMinMinutes",
+			name = "Break every min (minutes)",
+			description = "Shortest time between short breaks.",
+			section = microbotSection
+	)
+	default int breakEveryMinMinutes() {
+		return 5;
+	}
+
+	@ConfigItem(
+			keyName = "breakEveryMaxMinutes",
+			name = "Break every max (minutes)",
+			description = "Longest time between short breaks.",
+			section = microbotSection
+	)
+	default int breakEveryMaxMinutes() {
+		return 30;
+	}
+
+	@ConfigItem(
+			keyName = "breakLengthSeconds",
+			name = "Break length (seconds)",
+			description = "How long a short break lasts, varied by about 25 percent.",
+			section = microbotSection
+	)
+	default int breakLengthSeconds() {
+		return 20;
+	}
+
+	@ConfigItem(
+			keyName = "humanizedTiming",
+			name = "Humanized timing",
+			description = "Vary the delay between actions with a skewed random distribution instead of fixed pauses.",
+			section = microbotSection
+	)
+	default boolean humanizedTiming() {
+		return true;
+	}
+
+	@ConfigItem(
+			keyName = "humanizedFatigue",
+			name = "Fatigue",
+			description = "Delays and hesitations grow with continuous play time and recover during short breaks.",
+			section = microbotSection
+	)
+	default boolean humanizedFatigue() {
+		return true;
+	}
+
+	@ConfigItem(
+			keyName = "hesitationChancePercent",
+			name = "Hesitation chance (%)",
+			description = "Chance per action of a 10-20 second pause, tripled at full fatigue. Never during combat, kill steps, low health or dialogue.",
+			section = microbotSection
+	)
+	default int hesitationChancePercent() {
+		return 1;
+	}
+
+	@ConfigItem(
+			keyName = "askCombatSetup",
+			name = "Ask for quest setup",
+			description = "Ask which gear, food, potions, prayer, stamina potions, extra items and combat styles to use the first time a quest runs.",
+			section = microbotSection
+	)
+	default boolean askCombatSetup() {
+		return true;
+	}
+
+	@ConfigItem(
+			keyName = "setupPrompt",
+			name = "Quest setup prompt",
+			description = "When to show the quest setup dialog. Only when needed asks for quests with fights the last used setup cannot answer; Never always uses the last used setup.",
+			section = microbotSection
+	)
+	default SetupPromptOption setupPrompt() {
+		return SetupPromptOption.ONLY_WHEN_NEEDED;
+	}
+
+	@Getter
+	enum SetupPromptOption
+	{
+		ONLY_WHEN_NEEDED("Only when needed"),
+		ALWAYS("Always"),
+		NEVER("Never");
+
+		private final String display;
+
+		SetupPromptOption(String display)
+		{
+			this.display = display;
+		}
+
+		@Override
+		public String toString()
+		{
+			return display;
+		}
+	}
+
+	@ConfigItem(
+			keyName = "preflightQuestItems",
+			name = "Check and buy all quest items before starting",
+			description = "Before each quest, check that the items the whole quest needs are on you or in your bank, and buy what is missing from the Grand Exchange.",
+			section = microbotSection
+	)
+	default boolean preflightQuestItems() {
+		return true;
+	}
+
+	@ConfigItem(
+			keyName = "confirmPurchases",
+			name = "Confirm purchases before buying",
+			description = "Show the items and estimated cost, and ask before the quest helper buys quest items from the Grand Exchange. When off, it still stops before walking there if you cannot afford them.",
+			section = microbotSection
+	)
+	default boolean confirmPurchases() {
+		return true;
+	}
+
+	@ConfigItem(
+			keyName = "resetCombatSetups",
+			name = "Reset quest setups",
+			description = "Turn on to forget every saved quest setup (including skipped ones). Switches itself back off.",
+			section = microbotSection
+	)
+	default boolean resetCombatSetups() {
+		return false;
+	}
+
+	@ConfigItem(
+			keyName = "eatAtHealthPercent",
+			name = "Eat at HP %",
+			description = "Eat the chosen food when health drops below this percentage (varied by about 5 percent each meal). A quest's own setup value overrides it for that quest.",
+			section = microbotSection
+	)
+	@net.runelite.client.config.Range(min = 10, max = 90)
+	default int eatAtHealthPercent() {
+		return 50;
+	}
+
+	@ConfigItem(
+			keyName = "openCombatSetup",
+			name = "Open quest setup window",
+			description = "Turn on to open the setup window (gear, food, potions, stamina, prayer, combat styles) for the selected quest. Switches itself back off.",
+			section = microbotSection
+	)
+	default boolean openCombatSetup() {
+		return false;
+	}
+
+	@ConfigItem(
+			keyName = "fullyAutomated",
+			name = "Fully automated: auto-approve purchases",
+			description = "Never show a dialog: use each quest's saved profile (or the defaults), take what the bank has first, buy only the shortfall at the Grand Exchange without asking, and answer setup prompts from saved choices. A quest whose purchases would pass the max spend is skipped and logged.",
+			section = microbotSection
+	)
+	default boolean fullyAutomated() {
+		return false;
+	}
+
+	@ConfigItem(
+			keyName = "maxSpendPerQuest",
+			name = "Max spend per quest (gp)",
+			description = "Used by Fully automated: a quest whose Grand Exchange purchases would cost more than this is skipped instead of asking.",
+			section = microbotSection
+	)
+	default int maxSpendPerQuest() {
+		return 100_000;
+	}
+
+	@ConfigItem(
+			keyName = "skillPlugins",
+			name = "Skill training plugins",
+			description = "When a quest needs a skill level, train it with a Hub plugin: Skill=Plugin name pairs separated by semicolons, for example Fishing=Auto Fishing;Mining=Motherlode Mine. The plugin is started and stopped when the level is reached. Skills without an entry use the built-in trainers, else the quest is left out with a blocker.",
+			section = microbotSection
+	)
+	default String skillPlugins() {
+		return "";
+	}
+
+	@ConfigItem(
+			keyName = "minStaminaPotions",
+			name = "Keep at least N stamina potions (0-4)",
+			description = "Default for every quest: keep this many stamina potions in the inventory when the step allows items. A quest profile can override it. Banked for steps that forbid carrying items and fetched again at the next bank visit.",
+			section = microbotSection
+	)
+	@Range(min = 0, max = 4)
+	default int minStaminaPotions() {
+		return 0;
+	}
+
+	@ConfigItem(
+			keyName = "pauseHotkey",
+			name = "Pause / resume hotkey",
+			description = "Press to pause the quest automation where it is, and again to resume. Keeps the quest, step, queue and purchase progress.",
+			section = microbotSection
+	)
+	default Keybind pauseHotkey() {
+		return new Keybind(java.awt.event.KeyEvent.VK_P, java.awt.event.InputEvent.CTRL_DOWN_MASK);
+	}
+
+	@ConfigItem(
+			keyName = "openPlanner",
+			name = "Open quest planner",
+			description = "Turn on to open the quest planner: pick quests (fixed order or random), review each one and start the queue. Switches itself back off.",
+			section = microbotSection
+	)
+	default boolean openPlanner() {
+		return false;
+	}
+
+	@ConfigItem(
+			keyName = "pathVariation",
+			name = "Vary walking paths",
+			description = "Click slightly different intermediate route tiles each walk so a quest is not walked identically every time. Never changes the final tile, doors, transports or exact-tile steps.",
+			section = microbotSection
+	)
+	default boolean pathVariation() {
+		return true;
+	}
+
+	@ConfigItem(
+			keyName = "pathVariationStrength",
+			name = "Path variation strength",
+			description = "How different each walk may be: low, medium or high. Extra distance stays small (about 10 percent at most); routes under 15 tiles and dungeons are never varied, and transports, doors, exact-tile steps and the final tile are never changed.",
+			section = microbotSection
+	)
+	default PathVariationStrength pathVariationStrength() {
+		return PathVariationStrength.MEDIUM;
+	}
+
+	enum PathVariationStrength
+	{
+		LOW(1), MEDIUM(2), HIGH(3);
+
+		private final int level;
+
+		PathVariationStrength(int level)
+		{
+			this.level = level;
+		}
+
+		public int getLevel()
+		{
+			return level;
+		}
 	}
 
 	@ConfigItem(

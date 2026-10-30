@@ -256,9 +256,9 @@ public class DragonSlayer extends BasicQuestHelper
 		melzarRoom2 = new Zone(new WorldPoint(2931, 9646, 0), new WorldPoint( 2931, 9651, 0));
 
 		demonRoom1 = new Zone(new WorldPoint(2924, 9652, 0), new WorldPoint( 2933, 9655, 0));
-		demonRoom2 = new Zone(new WorldPoint(2934, 9647, 0), new WorldPoint( 2933, 9658, 0));
+		demonRoom2 = new Zone(new WorldPoint(2934, 9647, 0), new WorldPoint(2942, 9655, 0));
 		melzarsMaze = new Zone(new WorldPoint(2922, 3237, 0), new WorldPoint(2942, 9658, 0));
-		melzarsBasement = new Zone(new WorldPoint(2920, 9639, 0), new WorldPoint(1,2,0));
+		melzarsBasement = new Zone(new WorldPoint(2920, 9639, 0), new WorldPoint(2942, 9660, 0));
 
 		lastMelzarRoom1 = new Zone(new WorldPoint(2924, 9656, 0), new WorldPoint(2942, 9656, 0));
 		lastMelzarRoom2 = new Zone(new WorldPoint(2926, 9657, 0), new WorldPoint(2942, 9657, 0));
@@ -342,19 +342,19 @@ public class DragonSlayer extends BasicQuestHelper
 		talkToOziach.addDialogStep("A dragon, that sounds like fun.");
 
 		returnToGuildmaster = new NpcStep(this, NpcID.GUILDMASTER, new WorldPoint(3190, 3360, 0), "Return to the Guildmaster and ask him all the available questions.");
-		returnToGuildmaster.addDialogSteps("About my quest to kill the dragon...", "I talked to Oziach...", "Where can I find the right ship?");
+		returnToGuildmaster.addDialogSteps("About my quest to kill the dragon...", "I talked to Oziach...", "What kind of ship do I need?");
 
 		askAboutShield = new NpcStep(this, NpcID.GUILDMASTER, new WorldPoint(3190, 3360, 0), "Return to the Guildmaster and ask him all the available questions.");
 		askAboutShield.addDialogSteps("About my quest to kill the dragon...", "I talked to Oziach...", "How can I protect myself from the dragon's breath?");
 
 		askAboutMelzar = new NpcStep(this, NpcID.GUILDMASTER, new WorldPoint(3190, 3360, 0), "Return to the Guildmaster and ask him all the available questions.");
-		askAboutMelzar.addDialogSteps("About my quest to kill the dragon...", "I talked to Oziach...", "How can I find the route to Crandor?", "Where is Melzar's map piece?");
+		askAboutMelzar.addDialogSteps("About my quest to kill the dragon...", "I talked to Oziach...", "Where can I find a map to Crandor?", "Where is Melzar's map piece?");
 
 		askAboutThalzar = new NpcStep(this, NpcID.GUILDMASTER, new WorldPoint(3190, 3360, 0), "Return to the Guildmaster and ask him all the available questions.");
-		askAboutThalzar.addDialogSteps("About my quest to kill the dragon...", "I talked to Oziach...", "How can I find the route to Crandor?", "Where is Thalzar's map piece?");
+		askAboutThalzar.addDialogSteps("About my quest to kill the dragon...", "I talked to Oziach...", "Where can I find a map to Crandor?", "Where is Thalzar's map piece?");
 
 		askAboutLozar = new NpcStep(this, NpcID.GUILDMASTER, new WorldPoint(3190, 3360, 0), "Return to the Guildmaster and ask him all the available questions.");
-		askAboutLozar.addDialogSteps("About my quest to kill the dragon...", "I talked to Oziach...", "How can I find the route to Crandor?", "Where is Lozar's map piece?");
+		askAboutLozar.addDialogSteps("About my quest to kill the dragon...", "I talked to Oziach...", "Where can I find a map to Crandor?", "Where is Lozar's map piece?");
 
 		returnToGuildmaster.addSubSteps(askAboutShield, askAboutMelzar, askAboutLozar, askAboutThalzar);
 
@@ -363,13 +363,13 @@ public class DragonSlayer extends BasicQuestHelper
 
 		goIntoDwarvenMine = new ObjectStep(this, ObjectID.FAI_DWARF_TRAPDOOR_DOWN, new WorldPoint(3019, 3450,0), "Go down the ladder in the dwarven camp to the south into the Dwarven Mines.", silk, lobsterPot, mindBomb, unfiredBowl);
 
-		useSilkOnDoor = new ObjectStep(this, ObjectID.DRAGON_SLAYER_QIP_MAGIC_DOOR, new WorldPoint(3050, 9840, 0), "Go to the north east of the Dwarven Mines and use the silk on the magic door.", silk, lobsterPot, mindBomb, unfiredBowl);
+		useSilkOnDoor = new ObjectStep(this, ObjectID.DRAGON_SLAYER_QIP_MAGIC_DOOR, new WorldPoint(3050, 9840, 0), "Go to the north east of the Dwarven Mines and use the silk on the magic door.", silk);
 		useSilkOnDoor.addIcon(ItemID.SILK);
-		usePotOnDoor = new ObjectStep(this, ObjectID.DRAGON_SLAYER_QIP_MAGIC_DOOR, new WorldPoint(3050, 9840, 0), "Go to the north east of the Dwarven Mines and use the lobster pot on the magic door.", lobsterPot, mindBomb, unfiredBowl);
+		usePotOnDoor = new ObjectStep(this, ObjectID.DRAGON_SLAYER_QIP_MAGIC_DOOR, new WorldPoint(3050, 9840, 0), "Go to the north east of the Dwarven Mines and use the lobster pot on the magic door.", lobsterPot);
 		usePotOnDoor.addIcon(ItemID.LOBSTER_POT);
-		useUnfiredBowlOnDoor = new ObjectStep(this, ObjectID.DRAGON_SLAYER_QIP_MAGIC_DOOR, new WorldPoint(3050, 9840, 0), "Go to the north east of the Dwarven Mines and use the unfired bowl on the magic door.",  mindBomb, unfiredBowl);
+		useUnfiredBowlOnDoor = new ObjectStep(this, ObjectID.DRAGON_SLAYER_QIP_MAGIC_DOOR, new WorldPoint(3050, 9840, 0), "Go to the north east of the Dwarven Mines and use the unfired bowl on the magic door.", unfiredBowl);
 		useUnfiredBowlOnDoor.addIcon(ItemID.BOWL_UNFIRED);
-		useMindBombOnDoor = new ObjectStep(this, ObjectID.DRAGON_SLAYER_QIP_MAGIC_DOOR, new WorldPoint(3050, 9840, 0), "Go to the north east of the Dwarven Mines and use the wizard's mind bomb on the magic door (BE CAREFUL NOT TO DRINK IT).", lobsterPot, mindBomb, unfiredBowl);
+		useMindBombOnDoor = new ObjectStep(this, ObjectID.DRAGON_SLAYER_QIP_MAGIC_DOOR, new WorldPoint(3050, 9840, 0), "Go to the north east of the Dwarven Mines and use the wizard's mind bomb on the magic door (BE CAREFUL NOT TO DRINK IT).", mindBomb);
 		useMindBombOnDoor.addIcon(ItemID.WIZARDS_MIND_BOMB);
 
 		searchThalzarChest = new ObjectStep(this, ObjectID.ORACLECHESTSHUT, new WorldPoint(3057, 9841, 0), "Search the chest for Thalzar's map piece.");
@@ -382,9 +382,9 @@ public class DragonSlayer extends BasicQuestHelper
 		optionsForLozarPiece.addDialogStep("Alright then, 10,000 it is.");
 
 		enterMelzarsMaze = new ObjectStep(this, ObjectID.MELZARDOOR, new WorldPoint(2941, 3248, 0), "Enter Melzar's Maze north of Rimmington. Be prepared to fight multiple monsters up to a level 82 lesser demon.", melzarsKey);
-		enterMelzarsMaze.addDialogSteps("About my quest to kill the dragon...", "I talked to Oziach...", "How can I find the route to Crandor?", "Where is Melzar's map piece?");
+		enterMelzarsMaze.addDialogSteps("About my quest to kill the dragon...", "I talked to Oziach...", "Where can I find a map to Crandor?", "Where is Melzar's map piece?");
 
-		killRat = new NpcStep(this, NpcID.DRAGONSLAYER_GIANTRAT_1_KEY, new WorldPoint(2933, 3250, 0), "Kill the marked zombie rat for a key.");
+		killRat = new NpcStep(this, NpcID.DRAGONSLAYER_GIANTRAT_1_KEY, new WorldPoint(2933, 3250, 0), "Kill the marked zombie rat for a key.", ratKey);
 		openRedDoor = new ObjectStep(this, ObjectID.REDDOOR, new WorldPoint(2926, 3253, 0), "Go through the north west red door", ratKey);
 		goUpRatLadder = new ObjectStep(this, ObjectID.LADDER, new WorldPoint(2928, 3256, 0), "Climb up the ladder.");
 
@@ -435,7 +435,7 @@ public class DragonSlayer extends BasicQuestHelper
 		repairShip3 = new ObjectStep(this, ObjectID.DRAGONSLAYER_SHIPHOLE, new WorldPoint(3047, 9639, 1), "Repair the hole in the hull 1 more time.", nails30, planks1, hammer);
 		repairShip.addSubSteps(repairShip2, repairShip3);
 
-		repairMap = new DetailedQuestStep(this, "Use the three map parts together to repair the map.", mapPart1, mapPart2, mapPart3);
+		repairMap = new DetailedQuestStep(this, "Use the three map parts together to repair the map.", mapPart1.highlighted(), mapPart2.highlighted(), mapPart3.highlighted());
 		talkToNed = new NpcStep(this, NpcID.NED, new WorldPoint(3098, 3257, 0), "Bring Ned your map and ask him to be your captain.", fullMap);
 		talkToNed.addDialogStep("You're a sailor? Could you take me to Crandor?");
 

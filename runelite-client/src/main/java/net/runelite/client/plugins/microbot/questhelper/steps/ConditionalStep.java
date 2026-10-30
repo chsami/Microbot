@@ -316,6 +316,25 @@ public class ConditionalStep extends QuestStep implements OwnerStep
 		}
 	}
 
+	/**
+	 * The step this conditional step is on, followed down to a leaf, whether or not it was started: re-evaluates the
+	 * conditions first. {@link #getActiveStep()} answers with the conditional step itself (no text, nothing to act on)
+	 * when it was not started, which left the automation idle on Rag and Bone Man's nested bat step.
+	 */
+	public QuestStep resolveActiveStep()
+	{
+		if (currentStep == null)
+		{
+			updateSteps();
+		}
+		if (currentStep == null)
+		{
+			return this;
+		}
+		return currentStep instanceof ConditionalStep
+			? ((ConditionalStep) currentStep).resolveActiveStep() : currentStep.getActiveStep();
+	}
+
 	protected void updateSteps()
 	{
 		Requirement lastPossibleCondition = null;

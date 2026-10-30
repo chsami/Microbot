@@ -18,6 +18,9 @@ import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.devtools.MovementFlag;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.api.tileobject.models.Rs2TileObjectModel;
+import net.runelite.client.plugins.microbot.api.tileobject.models.TileObjectType;
+import net.runelite.client.plugins.microbot.util.walker.door.Rs2BlockedPathDoors;
 import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
 import net.runelite.client.plugins.microbot.shortestpath.*;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
@@ -2934,22 +2937,129 @@ final class Rs2WalkerDoors {
 
     static boolean walkReachableMiniMapToward(WorldPoint target, WorldPoint playerLoc, int maxEuclidean) {
         int currentDistance = euclideanSq(playerLoc, target);
-        return Rs2Tile.getReachableTilesFromTile(playerLoc, Math.max(2, maxEuclidean)).keySet().stream()
+        Optional<WorldPoint> fallback = Rs2Tile.getReachableTilesFromTile(playerLoc, Math.max(2, maxEuclidean)).keySet().stream()
                 .filter(tile -> tile != null
                         && tile.getPlane() == playerLoc.getPlane()
                         && !tile.equals(playerLoc)
+                        && !Rs2BlockedPathDoors.fallbackIsNoProgress(playerLoc, tile)
                         && euclideanSq(playerLoc, tile) <= maxEuclidean * maxEuclidean
                         && euclideanSq(tile, target) < currentDistance)
                 .sorted(Comparator
                         .comparingInt((WorldPoint tile) -> euclideanSq(tile, target))
                         .thenComparing(Comparator.comparingInt((WorldPoint tile) -> euclideanSq(playerLoc, tile)).reversed()))
-                .filter(Rs2Walker::walkMiniMap)
-                .findFirst()
-                .map(tile -> {
-                    log.info("[Walker] Minimap click target {} was outside clip; used reachable fallback {}", target, tile);
-                    return true;
-                })
-                .orElse(false);
+                .findFirst();
+        if (fallback.isEmpty()) {
+            return false;
+        }
+        WorldPoint tile = fallback.get();
+        FALLBACK_LOOP_GUARD.record(tile);
+        if (!Rs2Walker.walkMiniMap(tile)) {
+            return false;
+        }
+        log.info("[Walker] Minimap click target {} was outside clip; used reachable fallback {}", target, tile);
+        return true;
+    }
+
+    private static final Rs2BlockedPathDoors.FallbackLoopGuard FALLBACK_LOOP_GUARD =
+            new Rs2BlockedPathDoors.FallbackLoopGuard();
+    private static final int BLOCKED_PATH_DOOR_RADIUS = 10;
+    private static final int BLOCKED_PATH_DOOR_MAX_ATTEMPTS = 3;
+    private static final long BLOCKED_PATH_DOOR_RETRY_MS = 1_800L;
+    private static final Map<WorldPoint, long[]> BLOCKED_PATH_DOOR_ATTEMPTS = new ConcurrentHashMap<>();
+
+    /**
+     * Opens the closed wall door (WALL object with an "Open" action) on the path before any minimap or
+     * fallback click, when the next path tiles are unreachable. One door per call, so a chain of doors
+     * is opened in order over successive ticks. Also runs the wider door scan once the fallback click
+     * has looped without progress.
+     *
+     * @return true when a door was interacted with
+     */
+    static boolean tryOpenClosedDoorOnBlockedPath(List<WorldPoint> rawPath, WorldPoint playerLoc) {
+        if (rawPath == null || rawPath.size() < 2 || playerLoc == null) {
+            return false;
+        }
+        int startIdx = nearestPathIndex(rawPath, playerLoc);
+        final Set<WorldPoint> reachable = Rs2Tile
+                .getReachableTilesFromTile(playerLoc, BLOCKED_PATH_DOOR_RADIUS + 2).keySet();
+        if (reachable.isEmpty()) {
+            return false;
+        }
+        int blockedIdx = Rs2BlockedPathDoors.firstBlockedPathIndex(rawPath, startIdx + 1, playerLoc,
+                BLOCKED_PATH_DOOR_RADIUS, reachable::contains);
+        boolean looping = FALLBACK_LOOP_GUARD.looping();
+        if (blockedIdx < 0) {
+            if (!looping) {
+                return false;
+            }
+            FALLBACK_LOOP_GUARD.reset();
+            log.info("[Walker] fallback click looped without progress near {}; scanning path for doors", playerLoc);
+            return tryHandleNearbyDoorsWithTimeout(rawPath, startIdx, BLOCKED_PATH_DOOR_RADIUS, 4_000L);
+        }
+
+        final List<Rs2TileObjectModel> walls = Microbot.getRs2TileObjectCache().query()
+                .within(playerLoc, BLOCKED_PATH_DOOR_RADIUS + 2)
+                .where(o -> o.getTileObjectType() == TileObjectType.WALL)
+                .toListOnClientThread();
+        List<Rs2BlockedPathDoors.DoorSnapshot> doors = new ArrayList<>();
+        {
+            for (Rs2TileObjectModel wall : walls) {
+                if (!(wall.getTileObject() instanceof WallObject) || !wall.hasAction("Open")) {
+                    continue;
+                }
+                WallObject w = (WallObject) wall.getTileObject();
+                WorldPoint at = wall.getWorldLocation();
+                long[] attempts = BLOCKED_PATH_DOOR_ATTEMPTS.get(at);
+                if (attempts != null && attempts[0] >= BLOCKED_PATH_DOOR_MAX_ATTEMPTS) {
+                    continue;
+                }
+                doors.add(new Rs2BlockedPathDoors.DoorSnapshot(at, w.getOrientationA(), w.getOrientationB(), wall));
+            }
+        }
+        Rs2BlockedPathDoors.DoorSnapshot door = Rs2BlockedPathDoors.selectDoorForEdge(rawPath, blockedIdx, playerLoc,
+                doors == null ? List.<Rs2BlockedPathDoors.DoorSnapshot>of() : doors);
+        if (door == null) {
+            return looping && tryHandleNearbyDoorsWithTimeout(rawPath, startIdx, BLOCKED_PATH_DOOR_RADIUS, 4_000L);
+        }
+        long now = System.currentTimeMillis();
+        long[] attempts = BLOCKED_PATH_DOOR_ATTEMPTS.computeIfAbsent(door.getTile(), k -> new long[] {0L, 0L});
+        if (now - attempts[1] < BLOCKED_PATH_DOOR_RETRY_MS) {
+            return true; // just clicked it; let it open before doing anything else
+        }
+        attempts[0]++;
+        attempts[1] = now;
+        log.info("[Walker] Path edge {} -> {} is blocked; opening closed door at {}",
+                rawPath.get(blockedIdx - 1), rawPath.get(blockedIdx), door.getTile());
+        Rs2TileObjectModel model = (Rs2TileObjectModel) door.getHandle();
+        if (!model.click("Open")) {
+            return false;
+        }
+        FALLBACK_LOOP_GUARD.reset();
+        Rs2Player.waitForWalking();
+        sleepUntil(() -> !model.hasAction("Open") || Rs2Player.isMoving(), 1_500);
+        return true;
+    }
+
+    static void resetBlockedPathDoorState() {
+        BLOCKED_PATH_DOOR_ATTEMPTS.clear();
+        FALLBACK_LOOP_GUARD.reset();
+    }
+
+    private static int nearestPathIndex(List<WorldPoint> path, WorldPoint playerLoc) {
+        int best = 0;
+        int bestDist = Integer.MAX_VALUE;
+        for (int i = 0; i < path.size(); i++) {
+            WorldPoint p = path.get(i);
+            if (p == null || p.getPlane() != playerLoc.getPlane()) {
+                continue;
+            }
+            int d = p.distanceTo2D(playerLoc);
+            if (d < bestDist) {
+                bestDist = d;
+                best = i;
+            }
+        }
+        return best;
     }
 
     static HashMap<WorldPoint, Integer> nearbyTilesIgnoringCollision(

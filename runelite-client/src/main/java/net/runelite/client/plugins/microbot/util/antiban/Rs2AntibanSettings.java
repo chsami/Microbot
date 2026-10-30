@@ -116,7 +116,11 @@ public class Rs2AntibanSettings {
         private Double actionCooldownChance;
         private Double microBreakChance;
         private Double moveMouseRandomlyChance;
+        private Double moveMouseRandomlyChanceMin;
         private Double moveMouseOffScreenChance;
+        private Boolean humanMouseSpeed;
+        private Integer mouseSpeedMinMs;
+        private Integer mouseSpeedMaxMs;
     }
 
     public static void saveToProfile() {
@@ -184,7 +188,11 @@ public class Rs2AntibanSettings {
         settings.actionCooldownChance = actionCooldownChance;
         settings.microBreakChance = microBreakChance;
         settings.moveMouseRandomlyChance = moveMouseRandomlyChance;
+        settings.moveMouseRandomlyChanceMin = moveMouseRandomlyChanceMin;
         settings.moveMouseOffScreenChance = moveMouseOffScreenChance;
+        settings.humanMouseSpeed = humanMouseSpeed;
+        settings.mouseSpeedMinMs = mouseSpeedMinMs;
+        settings.mouseSpeedMaxMs = mouseSpeedMaxMs;
         return settings;
     }
 
@@ -267,8 +275,24 @@ public class Rs2AntibanSettings {
         if (settings.moveMouseRandomlyChance != null) {
             moveMouseRandomlyChance = settings.moveMouseRandomlyChance;
         }
+        if (settings.moveMouseRandomlyChanceMin != null) {
+            moveMouseRandomlyChanceMin = settings.moveMouseRandomlyChanceMin;
+        }
         if (settings.moveMouseOffScreenChance != null) {
             moveMouseOffScreenChance = settings.moveMouseOffScreenChance;
+        }
+        // a saved upper chance below the new default lower end (0 percent, say) is honoured as a 0 to 0 range
+        if (moveMouseRandomlyChanceMin > moveMouseRandomlyChance) {
+            moveMouseRandomlyChanceMin = moveMouseRandomlyChance;
+        }
+        if (settings.humanMouseSpeed != null) {
+            humanMouseSpeed = settings.humanMouseSpeed;
+        }
+        if (settings.mouseSpeedMinMs != null) {
+            mouseSpeedMinMs = settings.mouseSpeedMinMs;
+        }
+        if (settings.mouseSpeedMaxMs != null) {
+            mouseSpeedMaxMs = settings.mouseSpeedMaxMs;
         }
     }
 
@@ -300,8 +324,22 @@ public class Rs2AntibanSettings {
     public static int microBreakDurationHigh = AntibanPlugin.MICRO_BREAK_DURATION_HIGH_DEFAULT; // 15 minutes
     public static double actionCooldownChance = 0.1; // 10% chance of activating the action cooldown by default
     public static double microBreakChance = 0.1; // 10% chance of taking a micro break by default
-    public static double moveMouseRandomlyChance = 0.1; // 10% chance of moving the mouse randomly by default
+    /** Upper end of the random mouse movement chance range (the lower end is {@link #moveMouseRandomlyChanceMin}). */
+    public static double moveMouseRandomlyChance = 0.20;
+    public static double moveMouseRandomlyChanceMin = 0.05;
     public static double moveMouseOffScreenChance = 0.1; // 10% chance of moving the mouse off screen by default
+    /** Mouse moves take a different time each, sampled from this range, whatever the activity intensity says. */
+    public static boolean humanMouseSpeed = true;
+    public static int mouseSpeedMinMs = 150;
+    public static int mouseSpeedMaxMs = 300;
+
+    private static final RangeSampler RANDOM_MOUSE_CHANCE = new RangeSampler(10 * 60_000L);
+
+    /** The random mouse movement chance for now: a value from the configured range, kept for ten minutes. */
+    public static double currentMoveMouseRandomlyChance() {
+        return RANDOM_MOUSE_CHANCE.get(moveMouseRandomlyChanceMin, moveMouseRandomlyChance,
+                System.currentTimeMillis(), new java.util.Random());
+    }
 
     // reset method to reset all settings to default values
     public static void reset() {
@@ -331,7 +369,11 @@ public class Rs2AntibanSettings {
         microBreakDurationHigh = 15;
         actionCooldownChance = 0.1;
         microBreakChance = 0.1;
-        moveMouseRandomlyChance = 0.1;
+        moveMouseRandomlyChance = 0.20;
+        moveMouseRandomlyChanceMin = 0.05;
         moveMouseOffScreenChance = 0.1;
+        humanMouseSpeed = true;
+        mouseSpeedMinMs = 150;
+        mouseSpeedMaxMs = 300;
     }
 }

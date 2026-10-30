@@ -240,7 +240,8 @@ public class PriestInPeril extends BasicQuestHelper
 
 	public void setupSteps()
 	{
-		talkToRoald = new NpcStep(this, NpcID.KING_ROALD_CUTSCENE, new WorldPoint(3222, 3473, 0), "Speak to King Roald in Varrock Castle.");
+		talkToRoald = new NpcStep(this, NpcID.KING_ROALD, new WorldPoint(3222, 3473, 0), "Speak to King Roald in Varrock Castle.");
+		((NpcStep) talkToRoald).addAlternateNpcs(NpcID.KING_ROALD_CUTSCENE);
 		talkToRoald.addDialogStep("I'm looking for a quest!");
 		talkToRoald.addDialogStep("Yes.");
 		goToTemple = new ObjectStep(this, ObjectID.PRIESTPERILTEMPLEDOORR, new WorldPoint(3408, 3488, 0),
@@ -253,16 +254,20 @@ public class PriestInPeril extends BasicQuestHelper
 			"Kill the Temple Guardian (level 30). It is immune to magic so you will need to use either ranged or melee.");
 		climbUpAfterKillingDog = new ObjectStep(this, ObjectID.LADDER_FROM_CELLAR, new WorldPoint(3405, 9907, 0),
 			"Climb back up the ladder and return to King Roald.");
-		returnToKingRoald = new NpcStep(this, NpcID.KING_ROALD_CUTSCENE, new WorldPoint(3222, 3473, 0),
+		returnToKingRoald = new NpcStep(this, NpcID.KING_ROALD, new WorldPoint(3222, 3473, 0),
 			"Return to King Roald.");
+		((NpcStep) returnToKingRoald).addAlternateNpcs(NpcID.KING_ROALD_CUTSCENE);
 		returnToKingRoald.addSubSteps(climbUpAfterKillingDog);
 
 		returnToTemple = new ObjectStep(this, ObjectID.PRIESTPERILTEMPLEDOORR, new WorldPoint(3408, 3488, 0),
 			"Return to the temple.", bucket, lotsOfRuneEssence, rangedMagedGear);
 		killMonk = new NpcStep(this, NpcID.PRIESTPERILEVILMONK3, new WorldPoint(3412, 3488, 0), "Kill a Monk of Zamorak (level 30) for a golden key. You can safespot using the pews.", true, goldenKey);
+		((NpcStep) killMonk).addAlternateNpcs(NpcID.PRIESTPERILEVILMONK3_VIS);
 
 		goUpToFloorOneTemple = new ObjectStep(this, ObjectID.SPIRALSTAIRS, new WorldPoint(3418, 3493, 0), "Go upstairs.");
+		((ObjectStep) goUpToFloorOneTemple).addAlternateObjects(61189, 61190); // live Staircase ids after game update
 		goUpToFloorTwoTemple = new ObjectStep(this, ObjectID.LADDER, new WorldPoint(3410, 3485, 1), "Climb up the ladder.");
+		((ObjectStep) goUpToFloorTwoTemple).addAlternateObjects(ObjectID.LADDERTOP); // 16679, live ladder id
 		talkToDrezel = new NpcStep(this, NpcID.PRIESTPERILTRAPPEDMONK_VIS, new WorldPoint(3418, 3489, 2), "Talk to Drezel on the top floor of the temple.");
 		talkToDrezel.addDialogSteps("So, what now?", "Yes, of course.");
 		talkToDrezel.addSubSteps(goUpToFloorOneTemple, goUpToFloorTwoTemple);
@@ -270,7 +275,7 @@ public class PriestInPeril extends BasicQuestHelper
 		fillBucket = new ObjectStep(this, ObjectID.PRIESTPERIL_WELL, new WorldPoint(3423, 9890, 0), "Use the bucket on the well in the central room.", bucketHighlighted);
 		fillBucket.addIcon(ItemID.BUCKET_EMPTY);
 
-		useKeyForKey = new DetailedQuestStep(this, "Go to the central room, and study the monuments to find which has a key on it. Use the Golden Key on it.", goldenKeyHighlighted);
+		useKeyForKey = new MonumentKeyStep(this, new WorldPoint(3421, 9888, 0), "Go to the central room, and study the monuments to find which has a key on it. Use the Golden Key on it.", goldenKeyHighlighted);
 
 		goDownToFloorOneTemple = new ObjectStep(this, ObjectID.LADDERTOP, new WorldPoint(3410, 3485, 2), "Go down to the underground of the temple.", bucket);
 		goDownToGroundFloorTemple = new ObjectStep(this, ObjectID.SPIRALSTAIRSTOP, new WorldPoint(3417, 3485, 0), "Go down to the underground of the temple.", bucket);
@@ -282,8 +287,10 @@ public class PriestInPeril extends BasicQuestHelper
 			"Go back up to the top floor of the temple.");
 		goUpWithWaterToFirstFloor = new ObjectStep(this, ObjectID.SPIRALSTAIRS, new WorldPoint(3418, 3493, 0),
 			"Go back up to the top floor of the temple.");
+		((ObjectStep) goUpWithWaterToFirstFloor).addAlternateObjects(61189, 61190); // live Staircase ids after game update
 		goUpWithWaterToSecondFloor = new ObjectStep(this, ObjectID.LADDER, new WorldPoint(3410, 3485, 1),
 			"Go back up to the top floor of the temple.");
+		((ObjectStep) goUpWithWaterToSecondFloor).addAlternateObjects(ObjectID.LADDERTOP); // 16679, live ladder id
 		goUpWithWaterToSecondFloor.addSubSteps(goUpWithWaterToSurface, goUpWithWaterToFirstFloor);
 
 		openDoor = new ObjectStep(this, ObjectID.PIP_PRISONDOOR, new WorldPoint(3415, 3489, 2), "Open the cell door.", ironKey);

@@ -379,7 +379,8 @@ public class DefenderOfVarrock extends BasicQuestHelper
 
 		talkToRoald = new NpcStep(this, NpcID.DOV_ROALD, new WorldPoint(3926, 4945, 0),
 			"Talk to King Roald.", shieldOfArrav);
-		talkToRoaldOutsideInstance = new NpcStep(this, NpcID.KING_ROALD_CUTSCENE, new WorldPoint(3221, 3473, 0), "Talk to King Roald.", shieldOfArrav);
+		talkToRoaldOutsideInstance = new NpcStep(this, NpcID.KING_ROALD, new WorldPoint(3221, 3473, 0), "Talk to King Roald.", shieldOfArrav);
+		((NpcStep) talkToRoaldOutsideInstance).addAlternateNpcs(NpcID.KING_ROALD_CUTSCENE);
 		talkToRoald.addSubSteps(talkToRoaldOutsideInstance);
 
 		talkToAeonisig = new NpcStep(this, NpcID.DOV_AEONISIG, new WorldPoint(3926, 4945, 0),

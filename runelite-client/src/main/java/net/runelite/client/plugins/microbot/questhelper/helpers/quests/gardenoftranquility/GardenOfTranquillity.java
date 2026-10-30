@@ -571,9 +571,10 @@ public class GardenOfTranquillity extends BasicQuestHelper
 
 		talkToEllmariaAfterGrown = new NpcStep(this, NpcID.QUEEN_ELLAMARIA, new WorldPoint(3230, 3478, 0),
 		"Talk to Ellamaria once everything's finished growing.");
-		talkToRoald = new NpcStep(this, NpcID.KING_ROALD_CUTSCENE, new WorldPoint(3221, 3473, 0),
+		talkToRoald = new NpcStep(this, NpcID.KING_ROALD, new WorldPoint(3221, 3473, 0),
 			"Talk to King Roald in Varrock Castle, watch the cutscene, then finish the dialog with Ellamaria to finish" +
 				" the quest!",	ringOfCharosA.equipped());
+		((NpcStep) talkToRoald).addAlternateNpcs(NpcID.KING_ROALD_CUTSCENE);
 		talkToRoald.addDialogSteps("Ask King Roald to follow me.", "[Charm] Of course, your majesty - please forgive " +
 			"me.", "[Charm] The Queen asked me to bring you.", "Would you like to follow me for a minute?");
 	}

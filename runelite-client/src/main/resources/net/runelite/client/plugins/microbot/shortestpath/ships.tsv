@@ -1,6 +1,7 @@
 # Origin	Destination	menuOption menuTarget objectID	Skills	Currency	Quests	isMembers	Duration	Display info
 # Port Sarim, Musa Point								
 3029 3217 0	2956 3143 1	Musa Point;Captain Tobias;3644		30 Coins			10	Musa Point
+3029 3217 0	2956 3143 1	Musa Point;Seaman Lorris;14980		30 Coins			10	Musa Point
 2956 3146 0	3032 3217 1	Port Sarim;Customs officer;3648		30 Coins			10	Port Sarim
 # Port Sarim, Musa Point, Pandemonium
 3029 3217 0	3064 3003 0	The Pandemonium;Captain Tobias;14979		30 Coins	Pandemonium	Y	10	Pandemonium

@@ -132,8 +132,11 @@ public class VampyreSlayer extends BasicQuestHelper
 		ifNeedGarlic.addSubSteps(goUpstairsMorgan, getGarlic);
 
 		talkToHarlow = new NpcStep(this, NpcID.DR_HARLOW, new WorldPoint(3222, 3399, 0), "Talk to Dr. Harlow in the Blue Moon Inn in Varrock.", beer);
-		talkToHarlow.addDialogStep("Morgan needs your help!");
+		((NpcStep) talkToHarlow).addAlternateNpcs(NpcID.DR_HARLOW_VIS);
+		talkToHarlow.addDialogSteps("Morgan needs your help!", "I need your help dealing with a vampyre.", "Alright, here you go.",
+			"I'd best get going.");
 		talkToHarlowAgain = new NpcStep(this, NpcID.DR_HARLOW, new WorldPoint(3222, 3399, 0), "Talk to Dr. Harlow again with a beer. You can buy one for 2gp in the Blue Moon Inn.", beer);
+		((NpcStep) talkToHarlowAgain).addAlternateNpcs(NpcID.DR_HARLOW_VIS);
 		enterDraynorManor = new ObjectStep(this, ObjectID.HAUNTEDDOORL, new WorldPoint(3108, 3353, 0), "Prepare to fight Count Draynor (level 34), and enter Draynor Manor.", combatGear, stake, hammer, garlic);
 		goDownToBasement = new ObjectStep(this, ObjectID.CRYPTSTAIRSDOWN, new WorldPoint(3116, 3358, 0), "Enter Draynor Manor's basement.", combatGear, stake, hammer, garlic);
 		openCoffin = new ObjectStep(this, ObjectID.VAMPCOFFIN, new WorldPoint(3078, 9776, 0), "Open the coffin and kill Count Draynor.", combatGear, stake, hammer, garlic);

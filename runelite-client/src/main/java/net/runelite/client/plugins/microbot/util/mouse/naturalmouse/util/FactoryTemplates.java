@@ -2,6 +2,7 @@ package net.runelite.client.plugins.microbot.util.mouse.naturalmouse.util;
 
 
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
+import net.runelite.client.plugins.microbot.util.antiban.RangeSampler;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.mouse.naturalmouse.api.MouseMotionFactory;
 import net.runelite.client.plugins.microbot.util.mouse.naturalmouse.api.SpeedManager;
@@ -189,6 +190,49 @@ public class FactoryTemplates {
             overshootManager.setOvershoots(0);
         overshootManager.setMinDistanceForOvershoots(3);
         overshootManager.setMinOvershootMovementMs(130);
+
+        factory.setSpeedManager(manager);
+        return factory;
+    }
+
+    /**
+     * <h1>A person moving the mouse.</h1>
+     * Each move takes a different time, sampled from the configured range; the path curves a little by a different
+     * amount each time, and now and then overshoots the target and corrects.
+     *
+     * @param nature      the nature for the template to be configured on
+     * @param minBaseMs   shortest base movement time
+     * @param maxBaseMs   longest base movement time
+     * @param random      source of the per-move variation
+     * @return the factory
+     */
+    public static MouseMotionFactory createHumanMotionFactory(MouseMotionNature nature, int minBaseMs, int maxBaseMs,
+                                                              java.util.Random random) {
+        int baseTime = RangeSampler.betweenInclusive(minBaseMs, maxBaseMs, random);
+        if (Rs2AntibanSettings.simulateFatigue)
+            baseTime = Rs2Antiban.mouseFatigue.calculateBaseTimeWithNoise(baseTime, Math.max(minBaseMs, maxBaseMs) + 100);
+        MouseMotionFactory factory = new MouseMotionFactory(nature);
+        List<Flow> flows = new ArrayList<>(Arrays.asList(
+                new Flow(FlowTemplates.variatingFlow()),
+                new Flow(FlowTemplates.slowStartupFlow()),
+                new Flow(FlowTemplates.slowStartup2Flow()),
+                new Flow(FlowTemplates.adjustingFlow()),
+                new Flow(FlowTemplates.jaggedFlow())
+        ));
+        DefaultSpeedManager manager = new DefaultSpeedManager(flows);
+        manager.setMouseMovementBaseTimeMs(baseTime);
+        // a different, small curvature each move: the slope divider is the path's straightness
+        double curvature = 0.8 + 0.5 * random.nextDouble();
+        factory.setDeviationProvider(new SinusoidalDeviationProvider(
+                SinusoidalDeviationProvider.DEFAULT_SLOPE_DIVIDER * curvature));
+        factory.setNoiseProvider(new DefaultNoiseProvider(DefaultNoiseProvider.DEFAULT_NOISINESS_DIVIDER));
+        factory.getNature().setReactionTimeVariationMs(100);
+
+        DefaultOvershootManager overshootManager = (DefaultOvershootManager) factory.getOvershootManager();
+        // about one move in five overshoots once or twice and corrects
+        overshootManager.setOvershoots(random.nextInt(5) == 0 ? 1 + random.nextInt(2) : 0);
+        overshootManager.setMinDistanceForOvershoots(60);
+        overshootManager.setMinOvershootMovementMs(Math.max(120, baseTime / 2));
 
         factory.setSpeedManager(manager);
         return factory;

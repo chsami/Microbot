@@ -644,7 +644,8 @@ public class WalkerRouteCorpusTest {
      */
     @Test
     public void varrockMuseumGuardBarrierIsATransport() {
-        PathfinderConfig config = configWith(WalkerRouteCorpusTest::unrestricted);
+        // The barrier now requires The Dig Site (the guard refuses entry otherwise); model a player who has it.
+        PathfinderConfig config = configWith(t -> unrestricted(t) || t.getObjectId() == 24536);
         Pathfinder pf = runPathfinder(config,
                 new WorldPoint(3261, 3449, 0), new WorldPoint(3261, 3443, 0));
         assertTrue("route across the museum barrier must select gate 24536",
