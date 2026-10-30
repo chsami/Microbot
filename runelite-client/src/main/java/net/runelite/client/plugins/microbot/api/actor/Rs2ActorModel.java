@@ -9,6 +9,7 @@ import net.runelite.api.coords.WorldArea;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.api.IEntity;
+import net.runelite.client.plugins.microbot.util.coords.InstanceCoordinates;
 import org.jetbrains.annotations.Nullable;
 
 import java.awt.*;
@@ -87,6 +88,17 @@ public class Rs2ActorModel implements Actor
             }
             return actor.getWorldLocation();
         });
+    }
+
+    /**
+     * Opt-in: {@link #getWorldLocation()} in template space, the space of the player's position and the quest helper's
+     * step points (inside an instanced region the actor reports the instance tile). Same tile outside an instance.
+     */
+    public WorldPoint getTemplateWorldLocation()
+    {
+        WorldPoint raw = getWorldLocation();
+        // an actor in an instance is in the top-level view (boats are never instanced)
+        return actor == null ? raw : InstanceCoordinates.toTemplate(Microbot.getRs2PlayerStateCache().getLocalPlayerWorldView(), raw);
     }
 
     @Override

@@ -2,6 +2,7 @@ package net.runelite.client.plugins.microbot.util.mouse;
 
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Point;
+import net.runelite.api.TileObject;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.input.AwtEmitter;
 import net.runelite.client.plugins.microbot.util.input.InputArbiter;
@@ -9,6 +10,7 @@ import net.runelite.client.plugins.microbot.util.input.InputLoop;
 import net.runelite.client.plugins.microbot.util.input.PointerState;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
+import net.runelite.client.plugins.microbot.util.gameobject.Rs2ObjectOcclusion;
 import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
 
 import javax.inject.Inject;
@@ -130,7 +132,7 @@ public class VirtualMouse extends Mouse {
                 }
 
                 if (Rs2UiHelper.isGameObject(entry)) {
-                    newPoint = retarget(Rs2UiHelper.getObjectClickbox(entry.getGameObject()), newPoint);
+                    newPoint = retargetObject(entry.getGameObject(), newPoint);
                 }
             }
 
@@ -149,6 +151,20 @@ public class VirtualMouse extends Mouse {
         if (visible == null || visible.contains(Microbot.getMouse().getMousePosition())) {
             return current;
         }
+        return aimAt(visible);
+    }
+
+    /** Moves again only when the mouse stopped on a part of the object that a nearer object covers. */
+    private static Point retargetObject(TileObject object, Point current) {
+        if (Rs2ObjectOcclusion.visibleAt(object, Microbot.getMouse().getMousePosition())) {
+            return current;
+        }
+        Rectangle area = Rs2ObjectOcclusion.visibleClickArea(object);
+        Rectangle visible = area == null || Rs2UiHelper.isFallbackRectangle(area) ? null : Rs2UiHelper.clipToCanvas(area);
+        return visible == null ? current : aimAt(visible);
+    }
+
+    private static Point aimAt(Rectangle visible) {
         Point target = Rs2UiHelper.getClickingPoint(visible, true, false);
         Microbot.naturalMouse.moveTo(target.getX(), target.getY());
         return target;

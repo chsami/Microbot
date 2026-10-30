@@ -681,3 +681,9 @@ Inside the Black Knights' Fortress the only exits are push-walls and ladders tha
 ## 37. Quest-locked gates need a Quests column in transports.tsv
 
 The Varrock museum guard gate (3261,3446/3447, object 24536) refuses entry without The Dig Site; the walker only learned that after ~20 s of dialogue. Put the quest name (e.g. `The Dig Site`, column 7) on the transport rows so the planner never uses it unmet.
+
+## 32. Inside an instance, objects and actors report instance tiles, the player reports template tiles
+
+`TileObject#getWorldLocation()` and `Actor#getWorldLocation()` give the raw scene tile of an instanced region (a quest cave at 3164,9676 reports 10523,8524), while `Rs2Player.getWorldLocation()`, quest-helper zones and step points and the pathfinder use template coordinates. `Rs2TileObjectModel.getWorldLocation()` and the actor models deliberately keep the raw tile (ground items, raids, line of sight and camera code rely on it); a caller that compares with the player or a quest point opts in with `getTemplateWorldLocation()` / `getTemplateWorldArea()` (`InstanceCoordinates`). Chunks can be rotated and duplicated and unloaded chunks hold -1, so convert instance to template (unique), never the reverse for matching.
+
+**Where this applies:** `InstanceCoordinates`, `QuestScript` object/NPC steps, `Rs2SceneWalker` (quest-only walking on live collision).

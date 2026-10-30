@@ -193,6 +193,12 @@ public final class QuestWalkRule
 		return questActive;
 	}
 
+	/** Whether the calling thread is the quest script's loop thread and the quest automation is running. */
+	public static boolean isQuestThread()
+	{
+		return questActive && QUEST_THREAD.get();
+	}
+
 	/** Other plugins: keep the walker on foot while they run. Never touches the quest script's state. */
 	public static void setOnFootOnly(boolean on)
 	{

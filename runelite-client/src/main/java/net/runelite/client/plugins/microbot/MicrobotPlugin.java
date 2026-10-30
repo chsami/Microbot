@@ -568,7 +568,7 @@ public class MicrobotPlugin extends Plugin
 		if (event.getType() == ChatMessageType.GAMEMESSAGE)
 		{
 			String msg = event.getMessage();
-			if (msg != null && containsIgnoreCase(msg, "enough inventory space"))
+			if (msg != null && (containsIgnoreCase(msg, "enough inventory space") || containsIgnoreCase(msg, "inventory is too full")))
 			{
 				Microbot.inventoryFullMessageAtMs = System.currentTimeMillis();
 			}

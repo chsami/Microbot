@@ -8,6 +8,7 @@ import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldArea;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.util.coords.InstanceCoordinates;
 import net.runelite.client.plugins.microbot.api.player.models.Rs2PlayerModel;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
@@ -15,6 +16,7 @@ import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.walker.recovery.CantReachTargetRecovery;
 import net.runelite.client.plugins.microbot.util.coords.Rs2WorldArea;
+import net.runelite.client.plugins.microbot.util.gameobject.Rs2ObjectOcclusion;
 import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
 import net.runelite.client.plugins.microbot.api.IEntity;
 import net.runelite.client.plugins.microbot.api.boat.Rs2BoatCache;
@@ -251,6 +253,26 @@ public class Rs2TileObjectModel implements TileObject, IEntity {
         GameObject gameObject = (GameObject) tileObject;
         Integer size = Microbot.getClientThread().invoke(() -> gameObject.sizeY());
         return size != null ? size : 1;
+    }
+
+    /**
+     * Opt-in: {@link #getWorldLocation()} in template space, the space of the player's position and the quest helper's
+     * step points. {@code getWorldLocation()} itself stays the raw tile RuneLite reports, which inside an instanced
+     * region is the instance tile. Outside an instance this is the same tile.
+     */
+    public @NotNull WorldPoint getTemplateWorldLocation() {
+        return InstanceCoordinates.toTemplate(getWorldView(), getWorldLocation());
+    }
+
+    /** Opt-in: {@link #getWorldArea()} in template space (both corners converted, so rotated chunks keep their shape). */
+    public @Nullable WorldArea getTemplateWorldArea() {
+        WorldArea raw = getWorldArea();
+        if (raw == null) {
+            return null;
+        }
+        WorldArea template = InstanceCoordinates.toTemplateArea(getWorldView(),
+                new WorldPoint(raw.getX(), raw.getY(), raw.getPlane()), raw.getWidth(), raw.getHeight());
+        return template != null ? template : raw;
     }
 
     public @Nullable WorldArea getWorldArea() {
@@ -666,6 +688,13 @@ public class Rs2TileObjectModel implements TileObject, IEntity {
             }
 
 
+            // click where the object is visible and on top: a menu entry injected through a tree in front would still go through
+            Rectangle clickArea = Rs2ObjectOcclusion.findClickArea(tileObject);
+            if (clickArea == null) {
+                log.warn("Failed to interact with object {} - it stays covered by a nearer object", getId());
+                return false;
+            }
+
             Microbot.doInvoke(new NewMenuEntry()
                             .param0(param0)
                             .param1(param1)
@@ -677,7 +706,7 @@ public class Rs2TileObjectModel implements TileObject, IEntity {
                             .setWorldViewId(worldView.getId())
                             .gameObject(tileObject)
                     ,
-                    Rs2UiHelper.getObjectClickbox(tileObject));
+                    clickArea);
 // MenuEntryImpl(getOption=Use, getTarget=Barrier, getIdentifier=43700, getType=GAME_OBJECT_THIRD_OPTION, getParam0=53, getParam1=51, getItemId=-1, isForceLeftClick=true, getWorldViewId=-1, isDeprioritized=false)
             //Rs2Reflection.invokeMenu(param0, param1, menuAction.getId(), object.getId(),-1, "", "", -1, -1);
 

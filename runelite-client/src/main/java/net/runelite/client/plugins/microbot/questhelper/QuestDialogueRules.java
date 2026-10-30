@@ -33,6 +33,14 @@ public final class QuestDialogueRules {
 	/** Lines that move a conversation on: "Alright, here you go.", "Yes.", "I need your help ...". */
 	private static final Pattern AFFIRM = Pattern.compile(
 		"^(?:yes|yeah|yep|ok|okay|alright|all right|sure|please|accept|i need|i would|i'?d like|i want)\\b.*|.*\\bhere you go\\b.*");
+	/** Lines that end a conversation politely: "That'll be all for now.", "Goodbye.", "I'll be going." */
+	private static final Pattern EXIT_OPTION = Pattern.compile(
+		"^(?:that'?ll be all|that will be all|that'?s all|that is all|goodbye|bye|i'?ll be going|never ?mind)\\b.*"
+			+ "|[^?]*\\bfor now[.!\\s]*$");
+	/** "Can I have another pair of ...", "I lost my ...": asking for a replacement item, never needed unless the step wants it. */
+	private static final Pattern ITEM_REREQUEST = Pattern.compile(
+		"^(?:can|could|may) i (?:have|get|borrow|take) (?:another|a new|a replacement|a spare)\\b.*|.*\\banother (?:pair|set|copy) of\\b.*"
+			+ "|^i (?:lost|dropped|broke) (?:my|the)\\b.*|.*\\bi lost (?:my|the)\\b.*");
 	private static final Pattern BUY_TEXT = Pattern.compile("(?i)(?<![a-z])(?:buy|purchase)(?![a-z])");
 	private static final Set<String> STOP_WORDS = new HashSet<>(List.of(
 		"talk", "speak", "with", "that", "this", "them", "then", "from", "into", "your", "have", "about", "there",
@@ -132,6 +140,67 @@ public final class QuestDialogueRules {
 		return attempt < 0 || attempt >= ranked.size() ? null : ranked.get(attempt);
 	}
 
+	/**
+	 * Whether an option politely ends the conversation ("That'll be all for now."). A refusal such as "No." or
+	 * "Nothing" or "Cancel" is not one: it answers a question instead of leaving the NPC.
+	 */
+	public static boolean isExitOption(String option) {
+		String plain = normalize(option);
+		return !plain.isEmpty() && EXIT_OPTION.matcher(plain).matches();
+	}
+
+	/** Whether picking this option confirms something ("Yes", "Alright, here you go"): it may be chosen again. */
+	public static boolean isConfirmOption(String option) {
+		return AFFIRM.matcher(normalize(option)).matches();
+	}
+
+	/** The first exit option of the menu, preferring one that says it is all ("That'll be all"), or null. */
+	public static String firstExitOption(List<String> options) {
+		String fallback = null;
+		if (options == null) {
+			return null;
+		}
+		for (String option : options) {
+			if (option == null || !isExitOption(option)) {
+				continue;
+			}
+			if (normalize(option).startsWith("that")) {
+				return option;
+			}
+			if (fallback == null) {
+				fallback = option;
+			}
+		}
+		return fallback;
+	}
+
+	/**
+	 * The fallback pick for a menu none of the step's choices matched, with a way out. An informational option already
+	 * chosen in this conversation is not chosen again (confirmations such as "Yes" may be); when none is left and the
+	 * menu has a polite exit ("That'll be all"), the exit ends the conversation; with no exit the answer is the
+	 * {@code attempt}-th ranked option or null, as before. {@code preferExit} takes the exit at once.
+	 * Replacement-item requests ("Can I have another ...") are only candidates when {@code missingItems} names the item.
+	 *
+	 * @param alreadyChosen normalised texts of the informational options chosen so far in this conversation
+	 */
+	public static String pickOptionOrExit(List<String> options, List<String> hintTexts, List<String> weakHints,
+		List<String> missingItems, int attempt, String lastLine, Set<String> alreadyChosen, boolean preferExit) {
+		String exit = firstExitOption(options);
+		if (preferExit && exit != null) {
+			return exit;
+		}
+		List<String> ranked = rankOptions(options, hintTexts, weakHints, missingItems, lastLine);
+		for (String option : ranked) {
+			if (isConfirmOption(option) || !alreadyChosen.contains(normalize(option))) {
+				return option;
+			}
+		}
+		if (exit != null) {
+			return exit;
+		}
+		return attempt < 0 || attempt >= ranked.size() ? null : ranked.get(attempt);
+	}
+
 	public static List<String> rankOptions(List<String> options, List<String> hintTexts) {
 		return rankOptions(options, hintTexts, null);
 	}
@@ -147,6 +216,21 @@ public final class QuestDialogueRules {
 
 	public static List<String> rankOptions(List<String> options, List<String> hintTexts, List<String> weakHints,
 		String lastLine) {
+		return rankOptions(options, hintTexts, weakHints, Collections.emptyList(), lastLine);
+	}
+
+	/** As above; {@code missingItems} (names of required items the player lacks) unlock replacement-item requests only. */
+	public static List<String> rankOptions(List<String> options, List<String> hintTexts, List<String> weakHints,
+		List<String> missingItems, String lastLine) {
+		Set<String> itemWords = new HashSet<>();
+		if (missingItems != null) {
+			for (String item : missingItems) {
+				var matcher = WORD.matcher(normalize(item));
+				while (matcher.find()) {
+					itemWords.add(matcher.group());
+				}
+			}
+		}
 		boolean riskyContext = lastLine != null && RISKY_CONTEXT.matcher(normalize(lastLine)).matches();
 		List<String> ranked = new ArrayList<>();
 		if (options == null || options.isEmpty()) {
@@ -199,7 +283,18 @@ public final class QuestDialogueRules {
 			// a bare go-ahead is fine after an NPC line that carries one of the step's own words (the step says
 			// Karamja and the sailor talks about Karamja)
 			boolean goAheadOk = goAhead && lineMatchesStep;
-			if (!hinted && (RISKY_OPTION.matcher(plain).matches() || (goAhead && riskyContext && !goAheadOk))) {
+			if (ITEM_REREQUEST.matcher(plain).matches()) {
+				// only the names of missing items unlock this, never a hint word (and never a risky option)
+				boolean wanted = false;
+				for (String word : itemWords) {
+					wanted |= containsWord(plain, word);
+				}
+				if (!wanted) {
+					continue;
+				}
+			}
+			if (!hinted && (RISKY_OPTION.matcher(plain).matches() || EXIT_OPTION.matcher(plain).matches()
+				|| (goAhead && riskyContext && !goAheadOk))) {
 				continue;
 			}
 			int score = hintScore + (goAhead ? 1 : 0);

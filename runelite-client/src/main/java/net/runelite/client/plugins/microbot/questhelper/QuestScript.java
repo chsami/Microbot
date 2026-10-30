@@ -8,6 +8,8 @@ import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.api.gameval.InterfaceID;
+import net.runelite.client.plugins.microbot.questhelper.tools.QuestWidgets;
 import net.runelite.client.util.Text;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
@@ -17,6 +19,7 @@ import net.runelite.client.plugins.microbot.api.tileobject.models.TileObjectType
 import net.runelite.client.plugins.microbot.questhelper.combat.QuestCombatDetector;
 import net.runelite.client.plugins.microbot.questhelper.combat.QuestCombatHandler;
 import net.runelite.client.plugins.microbot.questhelper.combat.QuestFightSupport;
+import net.runelite.client.plugins.microbot.questhelper.combat.QuestPotions;
 import net.runelite.client.plugins.microbot.questhelper.logic.PiratesTreasure;
 import net.runelite.client.plugins.microbot.questhelper.logic.QuestRegistry;
 import net.runelite.client.plugins.microbot.questhelper.questinfo.QuestHelperQuest;
@@ -46,6 +49,7 @@ import net.runelite.client.plugins.microbot.util.shop.Rs2Shop;
 import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
 import net.runelite.client.plugins.microbot.util.walker.Rs2PathApi;
 import net.runelite.client.plugins.microbot.util.walker.Rs2RouteRequest;
+import net.runelite.client.plugins.microbot.util.gameobject.Rs2ObjectOcclusion;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.walker.WalkerState;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
@@ -83,6 +87,7 @@ import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import org.slf4j.event.Level;
 import net.runelite.api.coords.WorldArea;
+import net.runelite.client.plugins.microbot.util.coords.InstanceCoordinates;
 
 public class QuestScript extends Script {
     public static double version = 0.6;
@@ -118,6 +123,8 @@ public class QuestScript extends Script {
 	private static final TickGuard BUY_GUARD = new TickGuard();
 	private static final TickGuard TICK_GUARD = new TickGuard();
 	private volatile boolean stopInterruptSent;
+	/** Whether the last main-loop tick had automation on; a window is only dismissed on the running-to-stopped edge. */
+	private boolean wasRunning;
 	private int windowNonce = Integer.MIN_VALUE;
 	private String windowQuestKey;
 	private boolean windowDone = true;
@@ -170,6 +177,7 @@ public class QuestScript extends Script {
     /** Last NPC/player dialogue line seen; used to gate choices that carry an expected previous line. */
     private volatile String lastDialogueLine = "";
     private long lastCombatAtMs;
+    private long lastJournalSyncAtMs;
 
     /**
      * Whether a fight is really on: the player's target, or an NPC attacking the player, shows a health bar (it appears
@@ -198,9 +206,10 @@ public class QuestScript extends Script {
     private QuestStep combinedOnStep;
     private Set<Integer> combinedIds = new HashSet<>();
     private QuestStep menuStep;
+    /** Conversation key (step text) the chosen options belong to; a new step starts a fresh conversation. */
+    private String menuConversationKey;
     /** Menu options the fallback chose during the current step, so it rotates to the ones not yet asked. */
     private final Set<String> chosenFallbackOptions = new HashSet<>();
-    private Set<String> chosenMenuOptions = new HashSet<>();
     private boolean menuWasVisible;
     private final Map<String, Integer> menuAppearances = new HashMap<>();
     private String menuLoggedKey;
@@ -231,11 +240,18 @@ public class QuestScript extends Script {
                 net.runelite.client.plugins.microbot.util.walker.WalkPathVariation.configure(
                         config.pathVariation() && !escortActive, config.pathVariationStrength().getLevel());
                 QuestWalkRule.setActive(config.startStopQuestHelper() && !QuestPause.isPaused());
-                if (!config.startStopQuestHelper()) {
+                boolean running = config.startStopQuestHelper();
+                boolean justStopped = QuestRunEdge.justStopped(wasRunning, running);
+                wasRunning = running;
+                if (!running) {
                     net.runelite.client.plugins.microbot.util.walker.WalkPathVariation.configure(false, 2);
                     restoreAutoRetaliate();
                     combat.reset();
                     resetPreflightOnStop();
+                    if (justStopped) {
+                        // only on the edge: the planner is opened while automation is off and must stay open
+                        net.runelite.client.plugins.microbot.questhelper.planner.QuestWindow.dismiss();
+                    }
                     return;
                 }
                 if (QuestPause.isPaused()) {
@@ -358,10 +374,11 @@ public class QuestScript extends Script {
                         //if there is no quest option in the dialogue, just click player location to remove
                         // the dialogue to avoid getting stuck in an infinite loop of dialogues
                         if (!hasOption) {
-                            if (pickFallbackMenuOption(questStep)) {
+                            // a quest-start question is answered before any fallback guesses
+                            if (Rs2Dialogue.acceptQuestStartDialogue()) {
                                 return;
                             }
-                            if (Rs2Dialogue.acceptQuestStartDialogue()) {
+                            if (pickFallbackMenuOption(questStep)) {
                                 return;
                             }
                             if (selectedQuest != null &&
@@ -487,6 +504,10 @@ public class QuestScript extends Script {
 					 * If we do not prioritize this, the script will think we are missing items
 					 */
 					if (manageAutoRetaliate(questStep)) {
+						return;
+					}
+
+					if (questStep instanceof DetailedQuestStep && handleJournalSync(selectedQuest, (DetailedQuestStep) questStep)) {
 						return;
 					}
 
@@ -807,11 +828,16 @@ public class QuestScript extends Script {
 		String key = options.stream().map(QuestDialogueRules::normalize).collect(Collectors.joining("|"));
 		// Count how often this menu has appeared since the step began, across the box closing and the NPC being
 		// talked to again: a conversation that loops without progress then tries the next-best option.
+		String conversationKey = step == null || step.getText() == null ? "" : String.join(" ", step.getText());
 		if (step != menuStep) {
 			menuStep = step;
 			menuAppearances.clear();
+		}
+		// The options picked are remembered per step (by its text, not the object, which can be rebuilt) so an
+		// informational option is never asked twice, however the menu changes between asks.
+		if (!conversationKey.equals(menuConversationKey)) {
+			menuConversationKey = conversationKey;
 			chosenFallbackOptions.clear();
-			chosenMenuOptions = new HashSet<>();
 		}
 		if (!menuWasVisible) {
 			menuWasVisible = true;
@@ -834,25 +860,34 @@ public class QuestScript extends Script {
 				}
 			}
 		}
-		Set<String> menuOptions = options.stream().map(QuestDialogueRules::normalize).collect(Collectors.toSet());
-		if (!chosenMenuOptions.isEmpty() && java.util.Collections.disjoint(chosenMenuOptions, menuOptions)) {
-			// a different menu altogether: what was chosen in the last one says nothing about this one
-			chosenFallbackOptions.clear();
+		// a missing required item makes "Can I have another ..." a wanted option (and nothing else)
+		List<String> missingItems = new ArrayList<>();
+		if (step instanceof DetailedQuestStep) {
+			for (Requirement requirement : ((DetailedQuestStep) step).getRequirements()) {
+				if (requirement instanceof ItemRequirement && ((ItemRequirement) requirement).getName() != null
+						&& !Microbot.getClientThread().runOnClientThreadOptional(
+						() -> requirement.check(Microbot.getClient())).orElse(true)) {
+					missingItems.add(((ItemRequirement) requirement).getName());
+				}
+			}
 		}
-		chosenMenuOptions = menuOptions;
-		String pick = QuestDialogueRules.pickFallbackOption(options, hints, questName, attempt, lastDialogueLine,
-				chosenFallbackOptions);
+		// on a talk step, once something informational was asked, a polite exit ("That'll be all") ends it
+		boolean preferExit = step instanceof NpcStep && !chosenFallbackOptions.isEmpty()
+				&& QuestDialogueRules.firstExitOption(options) != null;
+		String pick = QuestDialogueRules.pickOptionOrExit(options, hints, questName, missingItems, attempt,
+				lastDialogueLine, chosenFallbackOptions, preferExit);
 		if (pick == null) {
 			return false;
 		}
 		if (!key.equals(menuLoggedKey)) {
 			menuLoggedKey = key;
-			Microbot.log("Quest helper: no configured dialogue option matched, choosing \"" + normalizeDialogText(pick)
-					+ "\" (try " + (attempt + 1) + ")", Level.INFO);
+            Microbot.log("Quest helper: no configured dialogue option matched, choosing \"" + normalizeDialogText(pick)
+					+ "\" (try " + (attempt + 1) + (QuestDialogueRules.isExitOption(pick) ? ", exit" : "") + ")", Level.INFO);
 		}
 		Widget[] children = Rs2Widget.getWidget(ComponentID.DIALOG_OPTION_OPTIONS).getDynamicChildren();
 		boolean chose = children != null && selectDialogChoice(children, normalizeDialogText(pick));
-		if (chose) {
+		// only informational options are remembered: a "Yes" may have to be chosen again
+		if (chose && !QuestDialogueRules.isConfirmOption(pick) && !QuestDialogueRules.isExitOption(pick)) {
 			chosenFallbackOptions.add(QuestDialogueRules.normalize(pick));
 		}
 		return chose;
@@ -1671,6 +1706,136 @@ public class QuestScript extends Script {
 		var held = Rs2Inventory.get(invId);
 		return held != null && held.getInventoryActions() != null && Arrays.stream(held.getInventoryActions())
 				.anyMatch(a -> a != null && (a.equalsIgnoreCase("Wear") || a.equalsIgnoreCase("Wield")));
+	}
+
+	/**
+	 * Steps like "Open the quest's journal to sync your current quest state" clear only while the
+	 * journal is open, so nothing else the script does can finish them. Opens it, gives the helper
+	 * a tick to read it, and closes it again. Returns true when this tick was spent on the journal.
+	 */
+	private boolean handleJournalSync(QuestHelper quest, DetailedQuestStep step) {
+		if (!QuestJournalSync.isSyncStep(step.getText())) {
+			return false;
+		}
+		String syncKey = quest.getQuest().getName() + "|" + String.join(" ", step.getText());
+		if (!syncKey.equals(journalTabKey)) {
+			journalTabKey = syncKey;
+			journalTabAttempts = 0;
+		}
+		long now = System.currentTimeMillis();
+		boolean gaveUp = journalTabAttempts >= JOURNAL_TAB_MAX_ATTEMPTS;
+		if (!QuestJournalSync.mayRetry(now, lastJournalSyncAtMs, gaveUp)) {
+			return false;
+		}
+		if (gaveUp) {
+			journalTabAttempts = 0; // a new round of tries after the backoff
+		}
+		lastJournalSyncAtMs = now;
+		String name = quest.getQuest().getName();
+		Microbot.status = "Quest helper: reading the " + name + " journal";
+
+		if (!Rs2Tab.switchTo(InterfaceTab.QUESTS) || !openQuestList()) {
+			Microbot.log("[QuestHelper] journal sync: the quest list did not open", Level.WARN);
+			return true;
+		}
+		if (!scrollQuestListTo(name)) {
+			Microbot.log("[QuestHelper] journal sync: " + name + " is not in the quest list", Level.WARN);
+			return true;
+		}
+		// the scroll script moves the entry on the next client tick
+		sleep(300, 500);
+		Widget entry = Microbot.getClientThread().runOnClientThreadOptional(() -> findQuestListEntry(name)).orElse(null);
+		if (entry == null || !Rs2Widget.clickWidget(entry)) {
+			Microbot.log("[QuestHelper] journal sync: could not click the " + name + " entry", Level.WARN);
+			return true;
+		}
+		boolean open = sleepUntil(() -> Microbot.getClientThread().runOnClientThreadOptional(() -> {
+			Widget title = Microbot.getClient().getWidget(InterfaceID.Questjournal.TITLE);
+			return title != null && !title.isHidden() && name.equals(Text.removeTags(title.getText()));
+		}).orElse(false), 3_000);
+		if (!open) {
+			Microbot.log("[QuestHelper] journal sync: the " + name + " journal did not open", Level.WARN);
+			return true;
+		}
+		// the helper reads the journal text on its own tick: wait for the step to move on or change its text
+		List<String> textBefore = step.getText() == null ? null : new ArrayList<>(step.getText());
+		boolean advanced = sleepUntil(() -> {
+			QuestStep active = quest.getCurrentStep() == null ? null : quest.getCurrentStep().getActiveStep();
+			return active != step || !Objects.equals(textBefore, step.getText());
+		}, 1_500);
+		if (!advanced) {
+			Microbot.log("[QuestHelper] journal sync: the step did not advance after the " + name + " journal opened", Level.INFO);
+		}
+		Rs2Widget.clickWidget(InterfaceID.Questjournal.CLOSE >>> 16, InterfaceID.Questjournal.CLOSE & 0xFFFF);
+		if (!sleepUntil(() -> !Rs2Widget.isWidgetVisible(InterfaceID.Questjournal.TITLE), 2_000)) {
+			Microbot.log("[QuestHelper] journal sync: the " + name + " journal did not close", Level.WARN);
+		}
+		return true;
+	}
+
+	private static boolean questListVisible() {
+		return Rs2Widget.isWidgetVisible(QuestWidgets.QUEST_CONTAINER.getGroupId(), QuestWidgets.QUEST_CONTAINER.getChildId());
+	}
+
+	private static final int JOURNAL_TAB_MAX_ATTEMPTS = 3;
+	/** The quest and step the attempts below belong to; a different one starts again. */
+	private String journalTabKey;
+	private int journalTabAttempts;
+
+	/**
+	 * The quest tab remembers its last sub-tab (Character Summary, Achievement Diaries), which hides the quest list:
+	 * clicks the "Quest List" button of the side journal (interface 629). After {@link #JOURNAL_TAB_MAX_ATTEMPTS}
+	 * failed tries for the same step it gives up with one warning, and handleJournalSync stops running.
+	 */
+	private boolean openQuestList() {
+		if (sleepUntil(QuestScript::questListVisible, 1_500)) {
+			journalTabAttempts = 0;
+			return true;
+		}
+		if (journalTabAttempts >= JOURNAL_TAB_MAX_ATTEMPTS) {
+			return false;
+		}
+		journalTabAttempts++;
+		int button = InterfaceID.SideJournal.QUEST_LIST;
+		Rs2Widget.clickWidget(button >>> 16, button & 0xFFFF);
+		if (sleepUntil(QuestScript::questListVisible, 3_000)) {
+			journalTabAttempts = 0;
+			return true;
+		}
+		if (journalTabAttempts >= JOURNAL_TAB_MAX_ATTEMPTS) {
+			Microbot.log("[QuestHelper] journal sync: the Quest List button did not open the quest list; trying again in a minute", Level.WARN);
+		}
+		return false;
+	}
+
+	/** Client thread only. */
+	private static Widget findQuestListEntry(String name) {
+		Widget list = Microbot.getClient().getWidget(QuestWidgets.QUEST_CONTAINER.getPackedId());
+		Widget[] entries = list == null ? null : list.getDynamicChildren();
+		if (entries == null) {
+			return null;
+		}
+		for (Widget entry : entries) {
+			if (entry != null && entry.getText() != null && name.equals(Text.removeTags(entry.getText()))) {
+				return entry;
+			}
+		}
+		return null;
+	}
+
+	/** Scrolls the quest list so the quest's entry is in view; false when the list has no such entry. */
+	private static boolean scrollQuestListTo(String name) {
+		return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+			Widget entry = findQuestListEntry(name);
+			Widget view = Microbot.getClient().getWidget(QuestWidgets.QUESTLIST_CONTAINER.getPackedId());
+			if (entry == null || view == null) {
+				return false;
+			}
+			int scroll = QuestJournalSync.scrollToCentre(entry.getRelativeY(), entry.getHeight(), view.getHeight(), view.getScrollHeight());
+			Microbot.getClient().runScript(ScriptID.UPDATE_SCROLLBAR,
+					QuestWidgets.QUESTLIST_SCROLLBAR.getId(), QuestWidgets.QUESTLIST_CONTAINER.getId(), scroll);
+			return true;
+		}).orElse(false);
 	}
 
 	/** After the bank trips: buys a style-swap kit the bank lacked, or stops the quest when it cannot be had. */
@@ -2794,6 +2959,148 @@ public class QuestScript extends Script {
 	private final Set<Integer> failedRoomItems = new HashSet<>();
 
 	/**
+	 * Coins and the item ids the rest of the quest still lists: the steps ahead and the quest's own requirements. With
+	 * {@code strict} it returns null when the steps ahead cannot be read, since nothing can then be called unneeded.
+	 */
+	private Set<Integer> neededItemIds(QuestHelper quest, boolean strict) {
+		Set<Integer> needed = new HashSet<>();
+		needed.add(ItemID.COINS_995);
+		List<DetailedQuestStep> ahead = quest == null ? null : QuestCombatDetector.remainingDetailedSteps(quest);
+		if (strict && ahead == null) {
+			return null;
+		}
+		if (ahead != null) {
+			for (DetailedQuestStep ahead1 : ahead) {
+				QuestCombatDetector.addItemIds(ahead1.getRequirements(), needed);
+			}
+		}
+		if (quest != null) {
+			QuestCombatDetector.addItemIds(quest.getItemRequirements(), needed);
+		}
+		return needed;
+	}
+
+	private static final long JUNK_WARN_INTERVAL_MS = 60_000;
+	private long junkWarnedAtMs;
+	private long junkIdleUntilMs;
+	private String junkBankQuest;
+	private boolean junkBankGaveUp;
+
+	/**
+	 * A full inventory blocks an object or NPC step that gains an item (a dig spot, a pan, a kill drop). Only when the
+	 * game refused a pickup lately, or a kill step waits for its drop: drops what the quest and the player do not need,
+	 * cheapest first (one slot, or a few after a refused pickup). Never an item the quest lists now or later, recommends
+	 * or the step needs, anything the player started with (gear too) or set up for the fight, food, potions, teleports,
+	 * a stack, a noted or untradeable item, an unpriced one, one worth {@link QuestJunkPicker#VALUABLE_VALUE} gp or
+	 * more, or one with no Drop action. Without the starting inventory or the quest's step list it drops nothing.
+	 *
+	 * @return true when this tick was spent making room
+	 */
+	private boolean freeJunkForStep(DetailedQuestStep step, boolean killStepWantsDrop) {
+		if (!Rs2Inventory.isFull()) {
+			return false;
+		}
+		long now = System.currentTimeMillis();
+		if (now < junkIdleUntilMs
+				|| !QuestJunkPicker.pickupBlocked(now, Microbot.inventoryFullMessageAtMs, killStepWantsDrop)) {
+			return false;
+		}
+		QuestHelper quest = getQuestHelperPlugin().getSelectedQuest();
+		Set<Integer> protectedIds = quest == null || !combat.hasUserSnapshot() ? null : neededItemIds(quest, true);
+		if (protectedIds == null) {
+			return nothingToFree(now, "the starting inventory or the quest's steps are unknown", null);
+		}
+		QuestCombatDetector.addItemIds(step.getRequirements(), protectedIds);
+		QuestCombatDetector.addItemIds(currentRequirements, protectedIds);
+		QuestCombatDetector.addItemIds(quest.getItemRecommended(), protectedIds);
+		net.runelite.client.plugins.microbot.questhelper.planner.QuestProfile profile =
+				quest.getQuest() == null ? null : activeProfile(quest);
+		Set<String> supplies = QuestInventoryRules.selectedSupplyNames(profile == null ? null : profile.getSupplies());
+		List<QuestJunkPicker.Item> slots = new ArrayList<>();
+		Rs2Inventory.items().forEach(item -> {
+			String name = item.getName();
+			String lower = name == null ? "" : name.toLowerCase(java.util.Locale.ROOT);
+			if (item.isFood() || QuestEquipSwap.isTeleportJewellery(name) || combat.isUserOrSetupItem(item)
+					|| combat.isUserBroughtProtected(item) || QuestPotions.kindOfItem(name) != null
+					|| lower.contains("teleport") || lower.contains("rune")
+					|| supplies.contains(QuestInventoryRules.baseName(name))) {
+				protectedIds.add(item.getId());
+			}
+			slots.add(new QuestJunkPicker.Item(item.getId(), name, item.getPrice(), item.isStackable(), item.isNoted(),
+					item.isTradeable(), item.getAction("drop") != null));
+		});
+		int targetFree = QuestJunkPicker.pickupRefused(now, Microbot.inventoryFullMessageAtMs)
+				? QuestJunkPicker.TARGET_FREE_SLOTS : 1;
+		List<QuestJunkPicker.Item> junk = QuestJunkPicker.pickJunk(slots, protectedIds, Rs2Inventory.emptySlotCount(), targetFree);
+		if (junk.isEmpty()) {
+			return nothingToFree(now, "nothing is safe to drop", QuestJunkPicker.bankable(slots, protectedIds));
+		}
+		boolean droppedAny = false;
+		for (QuestJunkPicker.Item item : junk) {
+			int before = Rs2Inventory.emptySlotCount();
+			Rs2Inventory.drop(item.id());
+			// the game says nothing about a drop: only the slot count shows it went
+			if (!sleepUntil(() -> Rs2Inventory.emptySlotCount() > before, 2_500)) {
+				Microbot.log("Quest helper: dropping " + item.name() + " did not free a slot", Level.WARN);
+				junkIdleUntilMs = System.currentTimeMillis() + QuestJunkPicker.IDLE_COOLDOWN_MS;
+				break;
+			}
+			Microbot.log("Quest helper: inventory full, dropped " + item.name() + " (not needed by the quest)", Level.INFO);
+			droppedAny = true;
+		}
+		return droppedAny;
+	}
+
+	/** Nothing may be dropped: backs off for a while, warns once a minute and banks valuables if that can help. */
+	private boolean nothingToFree(long now, String why, List<QuestJunkPicker.Item> bankable) {
+		junkIdleUntilMs = now + QuestJunkPicker.IDLE_COOLDOWN_MS;
+		if (now - junkWarnedAtMs > JUNK_WARN_INTERVAL_MS) {
+			junkWarnedAtMs = now;
+			Microbot.log("Quest helper: inventory full and " + why, Level.WARN);
+		}
+		return bankable != null && bankValuablesForRoom(bankable);
+	}
+
+	/**
+	 * Banks the valuable tradeable items nothing claims (never untradeables: they may be quest items). A trip that
+	 * frees no slot is not tried again for the rest of the quest.
+	 */
+	private boolean bankValuablesForRoom(List<QuestJunkPicker.Item> bankable) {
+		QuestHelper quest = getQuestHelperPlugin().getSelectedQuest();
+		String questName = quest == null || quest.getQuest() == null ? null : quest.getQuest().getName();
+		if (!java.util.Objects.equals(questName, junkBankQuest)) {
+			junkBankQuest = questName;
+			junkBankGaveUp = false;
+		}
+		if (bankable.isEmpty() || junkBankGaveUp || Rs2Combat.inCombat()) {
+			return false;
+		}
+		Microbot.log("Quest helper: inventory full, banking " + bankable.stream().map(QuestJunkPicker.Item::name)
+				.collect(Collectors.joining(", ")), Level.INFO);
+		Microbot.status = "Quest helper: banking valuables to make room";
+		int before = Rs2Inventory.emptySlotCount();
+		if (!Rs2Bank.isOpen()) {
+			Rs2Bank.walkToBankAndUseBankReturningTo(bankReturnPoint());
+			if (!sleepUntil(Rs2Bank::isOpen, 15_000)) {
+				Microbot.log("Quest helper: could not open the bank to make room; not trying again this quest", Level.WARN);
+				junkBankGaveUp = true;
+				return true;
+			}
+		}
+		for (QuestJunkPicker.Item item : bankable) {
+			Rs2Bank.depositAll(item.id());
+		}
+		if (!sleepUntil(() -> Rs2Inventory.emptySlotCount() > before, 3_000)) {
+			Microbot.log("Quest helper: the bank trip freed no slot; not trying again this quest", Level.WARN);
+			junkBankGaveUp = true;
+		}
+		if (!Rs2Bank.closeBank() || !sleepUntil(() -> !Rs2Bank.isOpen(), 3_000)) {
+			Microbot.log("Quest helper: the bank did not close after making room", Level.WARN);
+		}
+		return true;
+	}
+
+	/**
 	 * Frees one inventory slot when it is full: eats if hurt, otherwise drops junk (bones, vials, jugs...) or, at full
 	 * health, food. Never a quest item, an untradeable or unpriced item, a noted item or a stack. A drop that did not
 	 * free a slot is remembered and not tried again.
@@ -2804,29 +3111,7 @@ public class QuestScript extends Script {
 		if (!Rs2Inventory.isFull()) {
 			return false;
 		}
-		Set<Integer> needed = new HashSet<>();
-		needed.add(ItemID.COINS_995);
-		QuestHelper quest = getQuestHelperPlugin().getSelectedQuest();
-		List<DetailedQuestStep> ahead = quest == null ? null : QuestCombatDetector.remainingDetailedSteps(quest);
-		if (ahead != null) {
-			for (DetailedQuestStep ahead1 : ahead) {
-				if (ahead1.getRequirements() == null) {
-					continue;
-				}
-				for (Requirement requirement : ahead1.getRequirements()) {
-					if (requirement instanceof ItemRequirement) {
-						needed.addAll(((ItemRequirement) requirement).getAllIds());
-					}
-				}
-			}
-		}
-		if (quest != null && quest.getItemRequirements() != null) {
-			for (ItemRequirement requirement : quest.getItemRequirements()) {
-				if (requirement != null) {
-					needed.addAll(requirement.getAllIds());
-				}
-			}
-		}
+		Set<Integer> needed = neededItemIds(getQuestHelperPlugin().getSelectedQuest(), false);
 		boolean hurt = Rs2Player.getHealthPercentage() < 100;
 		List<QuestMakeRoom.Slot> slots = new ArrayList<>();
 		Rs2Inventory.items().forEach(item -> {
@@ -3848,7 +4133,7 @@ public class QuestScript extends Script {
 		return QuestPause.awaitResume(() -> config != null && config.startStopQuestHelper(), 150);
 	}
 
-	/** Stop: the preflight goes back to idle and any plan or window of the run is dropped. */
+	/** Stop: the preflight goes back to idle and the plan of the run is dropped (idempotent, runs every stopped tick). */
 	private void resetPreflightOnStop() {
 		QuestPause.resume();
 		QuestPreflight.resetToIdle();
@@ -3864,7 +4149,6 @@ public class QuestScript extends Script {
 		windowQuestKey = null;
 		queueRunner.setWindowResult(null, null);
 		QuestPurchasePlan.setCurrent(null);
-		net.runelite.client.plugins.microbot.questhelper.planner.QuestWindow.dismiss();
 	}
 
 	/** While automation is switched off, a main loop still inside the preflight or a Grand Exchange routine is interrupted. */
@@ -4236,6 +4520,9 @@ public class QuestScript extends Script {
 
     public boolean applyStep(QuestStep step) {
         if (step == null) return false;
+        // a new step forgets which instance passages the scene walker used for the last one
+        net.runelite.client.plugins.microbot.util.walker.Rs2SceneWalker.onQuestStep(
+                step.getText() == null ? "" : String.join(" ", step.getText()));
 
         if (step instanceof ObjectStep) {
             return applyObjectStep((ObjectStep) step);
@@ -4258,6 +4545,9 @@ public class QuestScript extends Script {
         if (killStep && killStepWantsDrop(step) && makeRoom()) {
             return true; // a free slot first: the drop could not be picked up otherwise
         }
+        if (freeJunkForStep(step, killStep && killStepWantsDrop(step))) {
+            return true;
+        }
         if (killStep && lootKillDrop(step)) {
             return true;
         }
@@ -4277,7 +4567,7 @@ public class QuestScript extends Script {
             // citizens) must not be held to it.
             WorldPoint me = Rs2Player.getWorldLocation();
             npcs = QuestObjectApproach.orderForSearch(npcs, QuestScript::showsMew,
-                    Comparator.comparingInt(n -> me.distanceTo(n.getWorldLocation())));
+                    Comparator.comparingInt(n -> me.distanceTo(n.getTemplateWorldLocation())));
         }
         if (killStep) {
             // a target another player is fighting answers "Someone else is fighting that"
@@ -4304,7 +4594,7 @@ public class QuestScript extends Script {
 
         if (step.isAllowMultipleHighlights()) {
             npc = multiNpcTarget.select(step, npcs, Rs2NpcModel::getIndex, npcsHandled,
-                    Comparator.comparing(x -> Rs2Player.getWorldLocation().distanceTo(x.getWorldLocation())),
+                    Comparator.comparing(x -> Rs2Player.getWorldLocation().distanceTo(x.getTemplateWorldLocation())),
                     System.currentTimeMillis());
         }
 
@@ -4319,22 +4609,22 @@ public class QuestScript extends Script {
         // A kill target already in melee range is attacked even when pathfinding says "unreachable" (arena gates,
         // fight cages): otherwise we walk at it forever while it hits us and never click Attack.
         boolean npcOnScreen = npc != null && npc.getLocalLocation() != null && Rs2Camera.isTileOnScreen(npc.getLocalLocation());
-        int npcDistance = npc == null || npc.getWorldLocation() == null
-                ? Integer.MAX_VALUE : npc.getWorldLocation().distanceTo(Rs2Player.getWorldLocation());
+        int npcDistance = npc == null || npc.getTemplateWorldLocation() == null
+                ? Integer.MAX_VALUE : npc.getTemplateWorldLocation().distanceTo(Rs2Player.getWorldLocation());
         // A kill target in sight is attacked at once, on screen or not: walking back to the step's tile with the
         // monkeys right there only ever took the player away from them.
         boolean killClickFailed = npc != null && npc.getIndex() == failedClickNpcIndex
                 && System.currentTimeMillis() < failedClickUntilMs;
         boolean closeKillTarget = killStep && !killClickFailed && npc != null && npc.getLocalLocation() != null
-                && npc.getWorldLocation() != null
-                && KillStepRule.attackAtOnce(npc.getWorldLocation().distanceTo(Rs2Player.getWorldLocation()),
+                && npc.getTemplateWorldLocation() != null
+                && KillStepRule.attackAtOnce(npc.getTemplateWorldLocation().distanceTo(Rs2Player.getWorldLocation()),
                 npc.hasLineOfSight());
         boolean npcKnown = npc != null && npc.getLocalLocation() != null;
         if (npcKnown && kittenSearch && !Microbot.getClient().isInInstancedRegion()
                 && !standsBesideWithoutWall(npc.getWorldLocation())) {
             // Search each from a tile that touches it with no wall or fence between: a crate on the far side of a wall
             // answers "I can't reach that!" however close it looks.
-            WorldPoint at = npc.getWorldLocation();
+            WorldPoint at = npc.getTemplateWorldLocation();
             WorldPoint stand = chooseObjectApproachTile(at, Collections.singletonList(at));
             if (stand == null) {
                 npcsHandled.add(npc.getIndex()); // no way to reach it: skip it
@@ -4347,7 +4637,7 @@ public class QuestScript extends Script {
                 && System.currentTimeMillis() < failedClickUntilMs;
         boolean inSight = npcKnown && npc.hasLineOfSight();
         boolean reachable = inSight && !clickFailedRecently && npcDistance > QuestNpcApproach.POINT_BLANK
-                && Rs2Walker.canReach(npc.getWorldLocation());
+                && Rs2Walker.canReach(npc.getTemplateWorldLocation());
         if (npcKnown && (QuestNpcApproach.decide(inSight, reachable, npcDistance, clickFailedRecently)
                 == QuestNpcApproach.Move.INTERACT
                 || closeKillTarget || (npcOnScreen && Microbot.getClient().isInInstancedRegion()))) {
@@ -4377,8 +4667,8 @@ public class QuestScript extends Script {
             }
 
             if (step.getIconItemID() == -1 && hasNoActions(npc)) {
-                if (npc.getWorldLocation().distanceTo(Rs2Player.getWorldLocation()) > 3) {
-                    Rs2Walker.walkTo(npc.getWorldLocation(), 2);
+                if (npc.getTemplateWorldLocation().distanceTo(Rs2Player.getWorldLocation()) > 3) {
+                    Rs2Walker.walkTo(npc.getTemplateWorldLocation(), 2);
                 }
                 return true;
             }
@@ -4412,9 +4702,9 @@ public class QuestScript extends Script {
                 sleepUntil(Rs2Dialogue::isInDialogue);
             }
         } else if (npc != null && npc.getLocalLocation() != null && !npcOnScreen) {
-            Rs2Walker.walkTo(npc.getWorldLocation(), 2);
-        } else if (npc != null && (!npc.hasLineOfSight() || !Rs2Walker.canReach(npc.getWorldLocation()))) {
-            Rs2Walker.walkTo(npc.getWorldLocation(), 2);
+            Rs2Walker.walkTo(npc.getTemplateWorldLocation(), 2);
+        } else if (npc != null && (!npc.hasLineOfSight() || !Rs2Walker.canReach(npc.getTemplateWorldLocation()))) {
+            Rs2Walker.walkTo(npc.getTemplateWorldLocation(), 2);
         } else {
             if (step.getDefinedPoint().getWorldPoint().distanceTo(Rs2Player.getWorldLocation()) > 3) {
                 Rs2Walker.walkTo(step.getDefinedPoint().getWorldPoint(), 2);
@@ -4442,7 +4732,7 @@ public class QuestScript extends Script {
             return false;
         }
         WorldPoint home = step.getDefinedPoint().getWorldPoint();
-        WorldPoint at = npc.getWorldLocation();
+        WorldPoint at = npc.getTemplateWorldLocation();
         return at != null && home.getPlane() == at.getPlane() && home.distanceTo(at) > KILL_AREA_RADIUS;
     }
 
@@ -4547,7 +4837,7 @@ public class QuestScript extends Script {
                 .min(Comparator
                         .comparingInt((Rs2NpcModel n) -> wantedLevel > 0 && n.getCombatLevel() == wantedLevel ? 0 : 1)
                         .thenComparingInt((Rs2NpcModel n) -> -n.getCombatLevel())
-                        .thenComparingInt(n -> n.getWorldLocation() == null ? Integer.MAX_VALUE : me.distanceTo(n.getWorldLocation())))
+                        .thenComparingInt(n -> n.getTemplateWorldLocation() == null ? Integer.MAX_VALUE : me.distanceTo(n.getTemplateWorldLocation())))
                 .orElse(null);
     }
 
@@ -4687,6 +4977,11 @@ public class QuestScript extends Script {
     private final StepCommitment<QuestStep> conditionalCommitment = new StepCommitment<>(2);
 
     public boolean applyObjectStep(ObjectStep step) {
+        if (freeJunkForStep(step, false)) {
+            return true; // a full inventory would swallow the step's pickup
+        }
+        // a step without a point (Cut off Sourhog's foot) has no defined point at all: it uses whatever object is visible
+        final WorldPoint definedWp = step.getDefinedPoint() == null ? null : step.getDefinedPoint().getWorldPoint();
         Rs2TileObjectModel object = step.getObjects().stream()
                 .filter(Objects::nonNull)
                 .map(Rs2TileObjectModel::new)
@@ -4703,7 +4998,7 @@ public class QuestScript extends Script {
             WorldPoint me = Rs2Player.getWorldLocation();
             object = QuestObjectApproach.nextToSearch(stepObjects, x -> objectsHandeled.contains(x.getHash()),
                     Comparator.comparingInt((Rs2TileObjectModel x) -> x.isReachable() ? 0 : 1)
-                            .thenComparingInt(x -> me.distanceTo(x.getWorldLocation())));
+                            .thenComparingInt(x -> me.distanceTo(x.getTemplateWorldLocation())));
         }
 
         // Stale object id (game update): nothing tracked near the step's point, so look the object up by name.
@@ -4721,8 +5016,11 @@ public class QuestScript extends Script {
                     .where(x -> x.getTileObjectType() == TileObjectType.WALL)
                     .toList();
 
-            for (var tile : Rs2Tile.getWalkableTilesAroundTile(object.getWorldLocation(), unreachableTargetCheckDist)) {
-                if (tileObjects.stream().noneMatch(x -> x.getWorldLocation().equals(tile))) {
+            // the tile lookup works on the object's raw tile; its results are converted to template space
+            var view = Microbot.getRs2PlayerStateCache().getLocalPlayerWorldView();
+            for (var rawTile : Rs2Tile.getWalkableTilesAroundTile(object.getWorldLocation(), unreachableTargetCheckDist)) {
+                final WorldPoint tile = InstanceCoordinates.toTemplate(view, rawTile);
+                if (tileObjects.stream().noneMatch(x -> x.getTemplateWorldLocation().equals(tile))) {
                     if (!Rs2Walker.walkTo(tile) && !Rs2PathApi.getActiveRouteStatus().isPresent())
                         return false;
 
@@ -4743,9 +5041,9 @@ public class QuestScript extends Script {
         // with it. The object's own tile is never the question (a boat on water or a door in a wall is never
         // walkable), and a closed door or a wall between us still makes it unreachable, so the walker gets us
         // to the right side before we interact.
-        if (step.getDefinedPoint().getWorldPoint() != null && Rs2Player.getWorldLocation().distanceTo2D(step.getDefinedPoint().getWorldPoint()) > 1
+        if (definedWp != null && Rs2Player.getWorldLocation().distanceTo2D(definedWp) > 1
                 && (object == null || !isInteractableFromReachableTile(step, object))) {
-            WorldPoint stepLocation = object == null ? step.getDefinedPoint().getWorldPoint() : object.getWorldLocation();
+            WorldPoint stepLocation = object == null ? definedWp : object.getTemplateWorldLocation();
             WorldPoint targetTile = chooseObjectApproachTile(stepLocation, objectFootprint(object, stepLocation));
             if (targetTile == null) {
                 // Nowhere to stand that the planner can reach: let the walker path as close as it can (it opens
@@ -4762,7 +5060,7 @@ public class QuestScript extends Script {
             if (activeRoute.isPresent()) {
                 var endpoint = activeRoute.getEndpoint();
                 if (endpoint.isPresent()
-                        && endpoint.get().distanceTo(step.getDefinedPoint().getWorldPoint()) <= 1)
+                        && endpoint.get().distanceTo(definedWp) <= 1)
                     return false;
             } else if (walkState == WalkerState.ARRIVED || mainScheduledFuture.isCancelled() || !hasLineOfSightToObject(object))
                 return false;
@@ -4775,13 +5073,20 @@ public class QuestScript extends Script {
             Rs2Walker.clearWalkingRoute("quest-helper:object-step-interact");
 
             final Rs2TileObjectModel clickedObject = object;
+            boolean clicked;
             if (itemId == -1) {
                 String option = fallbackUsed ? chooseFallbackObjectOption(step, object) : chooseCorrectObjectOption(step, object);
-                clickVerified(step, () -> clickedObject.click(option), () -> turnCameraTo(clickedObject), "object " + option);
+                clicked = clickVerified(step, () -> clickedObject.click(option), () -> turnCameraUnlessRefused(clickedObject), "object " + option);
             } else {
                 // the item is selected inside the click, so the verified retry selects it again
-                clickVerified(step, () -> Rs2Inventory.use(itemId) && clickedObject.click(""),
-                        () -> turnCameraTo(clickedObject), "object");
+                clicked = clickVerified(step, () -> Rs2Inventory.use(itemId) && clickedObject.click(""),
+                        () -> turnCameraUnlessRefused(clickedObject), "object");
+            }
+            // off screen or covered by another object with the camera turned every way: not clicked, so not handled.
+            // Look at it from elsewhere and try again next tick.
+            if (!clicked && Rs2ObjectOcclusion.recentlyRefused(clickedObject.getTileObject())) {
+                walkForClearView(clickedObject);
+                return false;
             }
 
             sleepUntil(() -> Rs2Player.isMoving() || Rs2Player.isAnimating());
@@ -4791,11 +5096,36 @@ public class QuestScript extends Script {
             // inventory change) must not make a multi-object search step pick the same crate forever.
             objectsHandeled.add(object.getHash());
         } else if (object != null) {
-            Rs2Walker.walkTo(object.getWorldLocation(), 1);
+            Rs2Walker.walkTo(object.getTemplateWorldLocation(), 1);
             return false;
         }
 
         return true;
+    }
+
+    private static final long CLEAR_VIEW_WALK_INTERVAL_MS = 15_000;
+    private long lastClearViewWalkAt;
+
+    /** The verified retry's camera turn is skipped for an object the click refused: the click already turned it every way. */
+    private void turnCameraUnlessRefused(Rs2TileObjectModel object) {
+        if (!Rs2ObjectOcclusion.recentlyRefused(object.getTileObject())) {
+            turnCameraTo(object);
+        }
+    }
+
+    /** Walks to a tile that sees a covered object from another side; at most once per interval. */
+    private void walkForClearView(Rs2TileObjectModel object) {
+        long now = System.currentTimeMillis();
+        if (now - lastClearViewWalkAt < CLEAR_VIEW_WALK_INTERVAL_MS) {
+            return;
+        }
+        WorldPoint spot = Rs2ObjectOcclusion.findClearViewTile(object.getTileObject());
+        if (spot == null) {
+            return;
+        }
+        lastClearViewWalkAt = now;
+        Microbot.log("Quest helper: " + object.getName() + " is covered by another object, walking to " + spot + " for a clear view", Level.INFO);
+        Rs2Walker.walkTo(spot, 0);
     }
 
     private static final int APPROACH_MAX_CANDIDATES = 8;
@@ -4828,7 +5158,7 @@ public class QuestScript extends Script {
 
     /** Every tile the object stands on (a staircase covers several), or just its defined tile when unknown. */
     private static List<WorldPoint> objectFootprint(Rs2TileObjectModel object, WorldPoint fallbackTile) {
-        WorldArea area = object == null ? null : object.getWorldArea();
+        WorldArea area = object == null ? null : object.getTemplateWorldArea();
         return area == null ? Collections.singletonList(fallbackTile) : area.toWorldPointList();
     }
 
@@ -4986,9 +5316,9 @@ public class QuestScript extends Script {
         if (me == null || me.getPlane() != point.getPlane()) {
             return false;
         }
-        return tracked.stream().noneMatch(o -> o.getWorldLocation() != null
-                && o.getWorldLocation().getPlane() == point.getPlane()
-                && o.getWorldLocation().distanceTo(point) <= TRACKED_OBJECT_RADIUS);
+        return tracked.stream().noneMatch(o -> o.getTemplateWorldLocation() != null
+                && o.getTemplateWorldLocation().getPlane() == point.getPlane()
+                && o.getTemplateWorldLocation().distanceTo(point) <= TRACKED_OBJECT_RADIUS);
     }
 
     private List<String> resolveStepObjectNames(ObjectStep step) {
@@ -5025,15 +5355,16 @@ public class QuestScript extends Script {
         String stepText = String.join(" ", step.getText());
         String wantedAction = wantedObjectAction(step);
         for (String name : resolveStepObjectNames(step)) {
+            // compared in template space, the space of the step's point and the player (an instance reports raw tiles)
             List<Rs2TileObjectModel> candidates = Microbot.getRs2TileObjectCache().query()
                     .withName(name)
-                    .within(point, FALLBACK_OBJECT_RADIUS)
                     .toListOnClientThread();
             candidates = candidates.stream()
-                    .filter(o -> o.getWorldLocation() != null && o.getWorldLocation().getPlane() == point.getPlane())
+                    .filter(o -> o.getTemplateWorldLocation() != null && o.getTemplateWorldLocation().getPlane() == point.getPlane()
+                            && o.getTemplateWorldLocation().distanceTo(point) <= FALLBACK_OBJECT_RADIUS)
                     .sorted(Comparator.comparingInt((Rs2TileObjectModel o) ->
                                     wantedAction != null && o.hasAction(wantedAction) ? 0 : 1)
-                            .thenComparingInt(o -> o.getWorldLocation().distanceTo(point)))
+                            .thenComparingInt(o -> o.getTemplateWorldLocation().distanceTo(point)))
                     .collect(Collectors.toList());
             if (!candidates.isEmpty()) {
                 Rs2TileObjectModel found = candidates.get(0);
@@ -5154,19 +5485,8 @@ public class QuestScript extends Script {
         if (trade != null)
             return trade;
 
-        for (var action : actions) {
-            if (action != null && step.getText().stream().anyMatch(x -> x.toLowerCase().contains(action.toLowerCase())))
-                return action;
-        }
-
-        // Fallback: prefer Talk-to if the NPC has it, otherwise the first non-empty action.
-        String fallback = null;
-        for (var action : actions) {
-            if (action == null || action.isEmpty()) continue;
-            if ("Talk-to".equalsIgnoreCase(action)) return action;
-            if (fallback == null) fallback = action;
-        }
-        return fallback != null ? fallback : "Talk-to";
+        // An action named in the text (or a synonym such as Steal-from for pickpocket), else Talk-to.
+        return QuestNpcActions.choose(step.getText(), actions);
     }
 
 	private String chooseCorrectItemOption(QuestStep step, int itemId) {
@@ -5201,6 +5521,11 @@ public class QuestScript extends Script {
 
 		WorldArea objectArea = object.getWorldLocation().toWorldArea();
 		WorldArea playerArea = Rs2Player.getWorldLocation().toWorldArea();
+		if (InstanceCoordinates.isTopLevelInstance(Microbot.getClient().getTopLevelWorldView())) {
+			// line of sight reads the scene's collision: both ends in instance space (the object already is)
+			playerArea = Microbot.getClientThread().runOnClientThreadOptional(() -> WorldPoint.fromLocal(Microbot.getClient(),
+					Microbot.getClient().getLocalPlayer().getLocalLocation()).toWorldArea()).orElse(playerArea);
+		}
 
 		return Microbot.getClient().getTopLevelWorldView() != null
 				&& playerArea.hasLineOfSightTo(Microbot.getClient().getTopLevelWorldView(), objectArea);

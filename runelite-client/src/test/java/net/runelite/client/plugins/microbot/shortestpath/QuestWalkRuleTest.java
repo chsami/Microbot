@@ -331,6 +331,37 @@ public class QuestWalkRuleTest
 		QuestWalkRule.clearFare();
 	}
 
+	/**
+	 * Seaman Thresnor (NPC 14982) now runs the Port Sarim crossing and only offers "Talk-to" and "Travel" (the old
+	 * "Pay-fare" is gone). With the older seamen out of the picture the route must still be found through his row.
+	 */
+	@Test
+	public void karamjaCrossesByThresnorWhenTheOlderSeamenAreGone() throws Exception
+	{
+		QuestWalkRule.setActive(true);
+		QuestWalkRule.clearFare();
+		excluded = t -> needsSomethingAFreshAccountLacks(t)
+			|| (t.getType() == TransportType.SHIP && t.getName() != null
+			&& (t.getName().equals("Captain Tobias") || t.getName().equals("Seaman Lorris")));
+		Pathfinder pf = run(new WorldPoint(2923, 3206, 0), new WorldPoint(2879, 3161, 0));
+		assertEquals(PathTerminationReason.TARGET_REACHED, pf.getTerminationReason());
+		Transport used = null;
+		for (PathEdge e : pf.getPathEdges())
+		{
+			if (e.isTransport() && e.getTransport().getType() == TransportType.SHIP)
+			{
+				used = e.getTransport();
+			}
+		}
+		assertNotEquals("no ship used in " + pf.getPathEdges(), null, used);
+		assertEquals("Seaman Thresnor", used.getName());
+		assertEquals(14982, used.getObjectId());
+		assertEquals("Travel", used.getAction());
+		assertEquals(30, used.getCurrencyAmount());
+		assertEquals(30, QuestWalkRule.pendingFare());
+		QuestWalkRule.clearFare();
+	}
+
 	/** From Karamja to Draynor Village the owned Amulet of glory is the way off the island. */
 	@Test
 	public void draynorFromKaramjaUsesTheOwnedGlory() throws Exception

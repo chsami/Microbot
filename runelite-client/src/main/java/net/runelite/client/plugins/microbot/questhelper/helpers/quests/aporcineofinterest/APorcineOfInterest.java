@@ -53,13 +53,13 @@ public class APorcineOfInterest extends BasicQuestHelper
 	//Items Recommended
 	ItemRequirement draynorTeleport, faladorFarmTeleport;
 
-	Requirement inCave;
+	Requirement inCave, inNorthCave;
 
-	DetailedQuestStep readNotice, talkToSarah, useRopeOnHole, enterHole, investigateSkeleton, talkToSpria, enterHoleAgain, killSourhog,
+	DetailedQuestStep readNotice, talkToSarah, useRopeOnHole, enterHole, climbBlockage, investigateSkeleton, talkToSpria, enterHoleAgain, killSourhog,
 		enterHoleForFoot, cutOffFoot, returnToSarah, returnToSpria;
 
 	//Zones
-	Zone cave;
+	Zone cave, northCave;
 
 	@Override
 	public Map<Integer, QuestStep> loadSteps()
@@ -74,6 +74,9 @@ public class APorcineOfInterest extends BasicQuestHelper
 		steps.put(10, useRopeOnHole);
 
 		ConditionalStep investigateCave = new ConditionalStep(this, enterHole);
+		// the skeleton is past a blockage; the entrance side of the cave is y >= 9704. Climbing it a second time would
+		// put the player back, so the step only shows on the entrance side.
+		investigateCave.addStep(inNorthCave, climbBlockage);
 		investigateCave.addStep(inCave, investigateSkeleton);
 
 		steps.put(15, investigateCave);
@@ -122,11 +125,13 @@ public class APorcineOfInterest extends BasicQuestHelper
 	protected void setupZones()
 	{
 		cave = new Zone(new WorldPoint(3152, 9669, 0), new WorldPoint(3181, 9720, 0));
+		northCave = new Zone(new WorldPoint(3152, 9704, 0), new WorldPoint(3181, 9720, 0));
 	}
 
 	public void setupConditions()
 	{
 		inCave = new ZoneRequirement(cave);
+		inNorthCave = new ZoneRequirement(northCave);
 	}
 
 	public void setupSteps()
@@ -143,6 +148,9 @@ public class APorcineOfInterest extends BasicQuestHelper
 		useRopeOnHole.addDialogSteps("I think that'll be all for now.");
 
 		enterHole = new ObjectStep(this, ObjectID.PORCINE_HOLE, new WorldPoint(3151, 3348, 0), "Climb down into the Strange Hole east of Draynor Manor.");
+		climbBlockage = new ObjectStep(this, ObjectID.PORCINE_CAVE_BLOCKAGE, "Climb over the blockage in the cave to reach the skeleton at the end.");
+		// the climb asks "Climb over the blockage?" after a line of the player's
+		climbBlockage.addDialogStep("Yes");
 		investigateSkeleton = new ObjectStep(this, ObjectID.PORCINE_SKELETON, new WorldPoint(3164, 9676, 0), "Go to the end of the cave and investigate the skeleton there.");
 
 		talkToSpria = new NpcStep(this, NpcID.PORCINE_SPRIA, new WorldPoint(3092, 3267, 0), "Talk to Spria in Draynor Village.");
@@ -209,7 +217,7 @@ public class APorcineOfInterest extends BasicQuestHelper
 	{
 		List<PanelDetails> allSteps = new ArrayList<>();
 		allSteps.add(new PanelDetails("Starting off", Arrays.asList(readNotice, talkToSarah, useRopeOnHole,
-			enterHole, investigateSkeleton, talkToSpria, enterHoleAgain, killSourhog, cutOffFoot, returnToSarah,
+			enterHole, climbBlockage, investigateSkeleton, talkToSpria, enterHoleAgain, killSourhog, cutOffFoot, returnToSarah,
 			returnToSpria), rope, slashItem, combatGear));
 		return allSteps;
 	}

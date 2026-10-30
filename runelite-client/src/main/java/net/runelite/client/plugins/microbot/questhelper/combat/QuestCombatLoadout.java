@@ -471,6 +471,37 @@ public class QuestCombatLoadout
 		return skip ? new GearSpec() : new GearSpec(gearSetup, gearItems);
 	}
 
+	/** Whether the main gear or any fight's gear lists the item, by id or (without an id) by name. */
+	public boolean listsGearItem(int itemId, String itemName)
+	{
+		List<GearItem> all = new ArrayList<>(gearItems == null ? new ArrayList<>() : gearItems);
+		for (FightSetup fight : fights.values())
+		{
+			if (fight != null && fight.getGearItems() != null)
+			{
+				all.addAll(fight.getGearItems());
+			}
+		}
+		return gearItemListed(all, itemId, itemName);
+	}
+
+	static boolean gearItemListed(List<GearItem> items, int itemId, String itemName)
+	{
+		for (GearItem wanted : items)
+		{
+			if (wanted == null)
+			{
+				continue;
+			}
+			if (wanted.getId() > 0 ? wanted.getId() == itemId
+				: itemName != null && wanted.getName() != null && wanted.getName().equalsIgnoreCase(itemName))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
 	/** Gear for one fight: its own override when it sets one, else the main gear. */
 	public GearSpec gearFor(String fightKey)
 	{

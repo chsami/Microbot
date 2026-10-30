@@ -21,6 +21,7 @@ import net.runelite.client.plugins.microbot.questhelper.questhelpers.BasicQuestH
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
+import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirements;
 import net.runelite.client.plugins.microbot.questhelper.steps.DetailedQuestStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.NpcStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.OwnerStep;
@@ -193,6 +194,33 @@ public final class QuestCombatDetector
 		}
 	}
 
+	/** Adds the ids of the item requirements, including the children of an "X and Y" / "X or Y" requirement. */
+	public static void addItemIds(Collection<? extends Requirement> requirements, Set<Integer> out)
+	{
+		if (requirements == null)
+		{
+			return;
+		}
+		for (Requirement requirement : requirements)
+		{
+			if (!(requirement instanceof ItemRequirement))
+			{
+				continue;
+			}
+			for (Integer id : ((ItemRequirement) requirement).getAllIds())
+			{
+				if (id != null && id > 0)
+				{
+					out.add(id);
+				}
+			}
+			if (requirement instanceof ItemRequirements)
+			{
+				addItemIds(((ItemRequirements) requirement).getItemRequirements(), out);
+			}
+		}
+	}
+
 	private static void collectItemIds(Collection<QuestStep> steps, Set<QuestStep> seen, Set<Integer> out)
 	{
 		for (QuestStep step : steps)
@@ -201,21 +229,9 @@ public final class QuestCombatDetector
 			{
 				continue;
 			}
-			if (step instanceof DetailedQuestStep && ((DetailedQuestStep) step).getRequirements() != null)
+			if (step instanceof DetailedQuestStep)
 			{
-				for (Requirement requirement : ((DetailedQuestStep) step).getRequirements())
-				{
-					if (requirement instanceof ItemRequirement)
-					{
-						for (Integer id : ((ItemRequirement) requirement).getAllIds())
-						{
-							if (id != null && id > 0)
-							{
-								out.add(id);
-							}
-						}
-					}
-				}
+				addItemIds(((DetailedQuestStep) step).getRequirements(), out);
 			}
 			if (step instanceof OwnerStep)
 			{

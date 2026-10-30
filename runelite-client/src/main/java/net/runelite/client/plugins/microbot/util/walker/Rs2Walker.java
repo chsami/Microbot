@@ -42,6 +42,7 @@ import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+import net.runelite.client.plugins.microbot.util.walker.scene.SceneNavigator;
 import net.runelite.client.plugins.microbot.util.player.Rs2Pvp;
 import net.runelite.client.plugins.microbot.util.leaguetransport.Rs2LeaguesTransport;
 import net.runelite.client.plugins.microbot.util.leaguetransport.SeasonalTransportHandler;
@@ -1374,6 +1375,7 @@ public class Rs2Walker {
      */
     private static WalkerState walkWithStateInternal(WorldPoint target, int distance) {
         Objects.requireNonNull(target, "walk target");
+        sceneWalkUsed = false;
         currentWalkDistance = Math.max(0, distance);
         if (isClientThread()) {
             log.warn("Please do not call the walker from the main thread");
@@ -1839,7 +1841,31 @@ public class Rs2Walker {
             }
             setTarget(target, "rs2walker:basement-solve-restore");
         }
-        return processWalk(target, distance, 0);
+        // a target the pathfinder has no map for inside an instance (quest cave, boss room): walk the live scene
+        WalkerState sceneResult = Rs2PathApi.hasWalkableTileWithin(target, distance) ? null : sceneWalk(target, distance);
+        return sceneResult != null ? sceneResult : processWalk(target, distance, 0);
+    }
+
+    /** Set once the current walkTo has used its scene walk; reset when the next walkTo starts. */
+    private static volatile boolean sceneWalkUsed;
+
+    /** Cancel test of the scene walk (a method reference, so no lambda shifts the numbering of the walker's lambdas). */
+    private static boolean sceneWalkCancelled() {
+        WorldPoint target = currentTarget;
+        return target == null || isWalkCancelled(target);
+    }
+
+    /** Quest automation inside an instance: walks it on the live collision; null (carry on as before) otherwise. */
+    private static WalkerState sceneWalk(WorldPoint target, int distance) {
+        if (sceneWalkUsed) {
+            return null; // one scene walk (one 30 s budget) per walkTo call
+        }
+        sceneWalkUsed = true;
+        WalkerState result = Rs2SceneWalker.tryWalk(target, distance, Rs2Walker::sceneWalkCancelled);
+        if (result == WalkerState.ARRIVED || result == WalkerState.EXIT) {
+            setTarget(null, "rs2walker:processWalk:scene-walker");
+        }
+        return result;
     }
 
     private static WalkerState settleReachedPathEndpoint(WorldPoint target, WorldPoint endpoint, WorldPoint playerLoc,
@@ -1872,8 +1898,7 @@ public class Rs2Walker {
             setTarget(null, "rs2walker:processWalk:target-not-walkable");
             return WalkerState.UNREACHABLE;
         }
-        int partialRetriesWorking = partialRetries;
-        int clientThreadTimeoutRetries = 0;
+        int partialRetriesWorking = partialRetries; int clientThreadTimeoutRetries = 0;
         // When the last partial retry was spent, so route progress made after it can refill the
         // budget. Without this the counter is monotonic for the entire walk.
         long lastPartialRetryAtMs = 0L;
@@ -1991,6 +2016,7 @@ public class Rs2Walker {
 
             boolean partialPath = false;
             if (dst == null || dst.distanceTo(target) > distance) {
+                final WalkerState sceneResult = sceneWalk(target, distance); if (sceneResult != null) { return sceneResult; }
                 final WorldPoint sealedRim = consumeSealedRimRetarget(target, dst);
                 if (sealedRim != null) { return processWalk(sealedRim, distance, partialRetries); }
                 if (path != null && path.size() > 1) {

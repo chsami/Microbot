@@ -282,7 +282,7 @@ public class TheDigSite extends BasicQuestHelper
 			new DialogRequirement("Hey! Excellent!"));
 
 		syncedUp3 = new Conditions(true, LogicType.OR, knowStateAsJustCompletedSecondExam,
-			new WidgetTextRequirement(119,	2, "The Dig Site"),
+			new WidgetTextRequirement(InterfaceID.Questjournal.TITLE, "The Dig Site"),
 			new DialogRequirement("You got all the questions correct, well done!"),
 			new DialogRequirement("Great, I'm getting good at this."));
 

@@ -176,6 +176,15 @@ public class NpcHandler extends AgentHandler {
 			position.put("y", loc.getY());
 			position.put("plane", loc.getPlane());
 			map.put("position", position);
+			// inside an instance "position" is the raw scene tile; "templatePosition" is in the player's space
+			WorldPoint template = npc.getTemplateWorldLocation();
+			if (template != null && !template.equals(loc)) {
+				Map<String, Integer> templatePosition = new LinkedHashMap<>();
+				templatePosition.put("x", template.getX());
+				templatePosition.put("y", template.getY());
+				templatePosition.put("plane", template.getPlane());
+				map.put("templatePosition", templatePosition);
+			}
 		}
 		return map;
 	}
