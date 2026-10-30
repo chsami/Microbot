@@ -64,6 +64,7 @@ import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveRou
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.SplitFlagMap;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
+import net.runelite.client.plugins.microbot.util.walker.Rs2PathApi;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.walker.Rs2TransportPlanningPolicy;
 import net.runelite.client.ui.ClientToolbar;
@@ -1103,17 +1104,24 @@ public class ShortestPathPlugin extends Plugin {
 
     private void onMenuOptionClicked(MenuEntry entry) {
         if (entry.getOption().equals(SET) && entry.getTarget().equals(TARGET)) {
-            WorldPoint worldPoint = getSelectedWorldPoint();
-            shortestPathScript.setTriggerWalker(worldPoint);
+            WorldPoint worldPoint = getClickedWalkablePoint("Target");
+            if (worldPoint != null) {
+                shortestPathScript.setTriggerWalker(worldPoint);
+            }
         }
         if (entry.getOption().equals(SET) && entry.getTarget().equals(TEST)) {
             //For debugging you can use setTarget, it will calculate path without walking
-            WorldPoint worldPoint = getSelectedWorldPoint();
-            setTarget(worldPoint);
+            WorldPoint worldPoint = getClickedWalkablePoint("Target");
+            if (worldPoint != null) {
+                setTarget(worldPoint);
+            }
         }
 
         if (entry.getOption().equals(SET) && entry.getTarget().equals(START)) {
-            setStart(getSelectedWorldPoint());
+            WorldPoint worldPoint = getClickedWalkablePoint("Start");
+            if (worldPoint != null) {
+                setStart(worldPoint);
+            }
         }
 
         if (entry.getOption().equals(CLEAR) && entry.getTarget().equals(PATH)) {
@@ -1133,9 +1141,8 @@ public class ShortestPathPlugin extends Plugin {
             if (mapPoint != null) {
                 WorldMapData worldMapData = client.getWorldMap().getWorldMapData();
                 if (worldMapData != null && !worldMapData.surfaceContainsPosition(mapPoint.getX(), mapPoint.getY())) {
-                    log.warn("[ShortestPath] World map target {} is a dungeon display coordinate (not on surface map). " +
-                            "The actual game tiles may be at different coordinates. " +
-                            "For accurate dungeon navigation, close the world map and right-click a tile in the game view instead.",
+                    // debug: this also runs on every menu rebuild; the click itself tells the player
+                    log.debug("[ShortestPath] World map target {} is a dungeon display coordinate (not on surface map)",
                             mapPoint);
                     return null;
                 }
@@ -1143,6 +1150,45 @@ public class ShortestPathPlugin extends Plugin {
             return toRealWorldPoint(mapPoint, getViewedWorldMapArea());
         }
         return null;
+    }
+
+    /** How far from a clicked tile to look for ground; covers object tiles and near-misses into walls. */
+    private static final int CLICK_SNAP_RADIUS = 16;
+    /** Snaps further than this are told to the player, since the target is no longer where they clicked. */
+    private static final int CLICK_SNAP_NOTICE_TILES = 2;
+
+    /**
+     * The clicked tile, moved onto walkable ground if it is an object or wall tile. Returns null after
+     * telling the player why, so callers keep the current route instead of clearing it.
+     */
+    private WorldPoint getClickedWalkablePoint(String label) {
+        WorldPoint clicked = getSelectedWorldPoint();
+        if (clicked == null) {
+            if (client.getWidget(ComponentID.WORLD_MAP_MAPVIEW) != null) {
+                chatMessage("Web Walker: Can't set a target in this dungeon from the world map. "
+                        + "Close the map and Shift + right-click a tile in the game view instead.");
+            }
+            return null;
+        }
+        if (Rs2Walker.isWalkableInCollisionMap(clicked)) {
+            return clicked;
+        }
+        WorldPoint snapped = Rs2PathApi.nearestWalkableTile(clicked, CLICK_SNAP_RADIUS);
+        if (snapped == null) {
+            log.debug("[ShortestPath] {} {} has no walkable tile within {}", label, clicked, CLICK_SNAP_RADIUS);
+            chatMessage("Web Walker: No walkable ground near that spot. Pick a tile closer to a path or floor.");
+            return null;
+        }
+        int moved = clicked.distanceTo2D(snapped);
+        log.debug("[ShortestPath] {} {} is not walkable; snapped to {} ({} tiles)", label, clicked, snapped, moved);
+        if (moved > CLICK_SNAP_NOTICE_TILES) {
+            chatMessage("Web Walker: " + label + " moved " + moved + " tiles to the nearest walkable spot.");
+        }
+        return snapped;
+    }
+
+    private void chatMessage(String message) {
+        client.addChatMessage(net.runelite.api.ChatMessageType.GAMEMESSAGE, "", message, "");
     }
 
     private WorldMapArea getViewedWorldMapArea() {
