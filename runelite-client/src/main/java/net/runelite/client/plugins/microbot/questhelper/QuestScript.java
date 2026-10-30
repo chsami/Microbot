@@ -2501,6 +2501,9 @@ public class QuestScript extends Script {
 
 	/** With the bank open, banks what the rest of the quest no longer needs before any carry cap is computed. */
 	private void clearInventoryForQuest() {
+		if (recipeFetchActive) {
+			return; // the recipe's bones, pots and buckets are not on the quest's list
+		}
 		QuestHelper quest = getQuestHelperPlugin().getSelectedQuest();
 		if (quest == null) {
 			return;
@@ -2511,6 +2514,9 @@ public class QuestScript extends Script {
 
 	/** With the bank open, clears unrelated items when a carry-limited item has no room at all. Returns true if it deposited. */
 	private boolean makeRoomForCarryLimited(List<ItemRequirement> candidates) {
+		if (recipeFetchActive) {
+			return false;
+		}
 		boolean noRoom = candidates.stream().anyMatch(ir -> isCarryLimited(ir)
 				&& remainingQuantityNeeded(ir) <= 0
 				&& inventoryQuantity(ir) == 0);
@@ -4125,7 +4131,22 @@ public class QuestScript extends Script {
 		return true;
 	}
 
-	private final EctofuntusRunner ectofuntus = new EctofuntusRunner(this::fetchEctofuntusInputs);
+	private final EctofuntusRunner ectofuntus = new EctofuntusRunner(new EctofuntusRunner.Host() {
+		@Override
+		public EctofuntusRunner.Fetch fetchInputs(Map<Integer, Integer> trip, Map<Integer, Integer> all) {
+			return fetchEctofuntusInputs(trip, all);
+		}
+
+		@Override
+		public String blockedReason() {
+			return ectofuntusBlocked;
+		}
+
+		@Override
+		public boolean ghostspeakReady() {
+			return ectofuntusGhostspeakReady();
+		}
+	});
 	private QuestStep ectofuntusStep;
 
 	/**
@@ -4140,6 +4161,7 @@ public class QuestScript extends Script {
 		if (ectofuntusStep != questStep) {
 			ectofuntusStep = questStep;
 			ectofuntus.reset();
+			ectofuntusBuyCalls = 0;
 		}
 		switch (ectofuntus.step(itemRequirement.getQuantity())) {
 			case FAILED:
@@ -4162,22 +4184,137 @@ public class QuestScript extends Script {
 		return false;
 	}
 
-	/** Brings the Ectofuntus inputs to the inventory, bank first, then the Grand Exchange. */
-	private boolean fetchEctofuntusInputs(Map<Integer, Integer> wantedTotals) {
-		List<ItemRequirement> wanted = new ArrayList<>();
+	private final EctofuntusSupply ectofuntusSupply = new EctofuntusSupply();
+	private int ectofuntusBuyCalls;
+	private String ectofuntusBlocked;
+	/** While a recipe fetch runs, the bank visit must not deposit the recipe's own inputs as "unneeded". */
+	private boolean recipeFetchActive;
+
+	/**
+	 * Gets the Ectofuntus inputs: the bank once (taking exactly what is short, depositing nothing), then, for what the
+	 * bank could not cover, a Grand Exchange purchase through the usual bank-then-buy path. "Not in the bank" is
+	 * remembered per item so the bank is not visited again for it.
+	 */
+	private EctofuntusRunner.Fetch fetchEctofuntusInputs(Map<Integer, Integer> trip, Map<Integer, Integer> all) {
+		Map<Integer, Integer> carried = new HashMap<>();
+		for (Integer id : trip.keySet()) {
+			carried.put(id, Rs2Inventory.count(id));
+		}
+		Map<Integer, Integer> shortfall = EctofuntusSupply.shortfall(trip, carried);
+		long now = System.currentTimeMillis();
+		switch (ectofuntusSupply.stage(shortfall, now)) {
+			case NONE:
+				return EctofuntusRunner.Fetch.NOTHING;
+			case BANK:
+				withdrawEctofuntusInputs(shortfall, now);
+				return EctofuntusRunner.Fetch.WORKED;
+			default:
+				break;
+		}
+		if (!shouldObtainMissingItems()) {
+			ectofuntusBlocked = "Ectofuntus: the bank has no " + describeInputs(shortfall)
+					+ " and buying quest items is off (Obtain Missing Items)";
+			return EctofuntusRunner.Fetch.BLOCKED;
+		}
+		if (++ectofuntusBuyCalls > 6) {
+			ectofuntusBlocked = "Ectofuntus: could not buy " + describeInputs(shortfall) + " from the Grand Exchange";
+			return EctofuntusRunner.Fetch.BLOCKED;
+		}
+		List<ItemRequirement> toBuy = new ArrayList<>();
 		for (QuestUntradableRecipes.Input input : QuestUntradableRecipes.ECTO_TOKEN.inputs) {
-			int total = wantedTotals.getOrDefault(input.ids.get(0), 0);
-			if (total > Rs2Inventory.count(input.ids.get(0))) {
-				wanted.add(new ItemRequirement(input.name, input.ids.get(0), total));
+			int id = input.ids.get(0);
+			if (shortfall.getOrDefault(id, 0) > 0) {
+				// the purchase covers every set still to do, not only this trip's
+				toBuy.add(new ItemRequirement(input.name, id, Math.max(all.getOrDefault(id, 0), trip.get(id))));
 			}
 		}
-		if (wanted.isEmpty()) {
-			return false;
+		Microbot.log("Ectofuntus: the bank has no " + describeInputs(shortfall) + ", buying it", Level.INFO);
+		recipeFetchActive = true;
+		try {
+			currentRequirements = new ArrayList<Requirement>(currentRequirements);
+			currentRequirements.addAll(toBuy);
+			acquireMissingTradableItems(toBuy);
+		} finally {
+			recipeFetchActive = false;
 		}
-		// the inputs are protected from the bank's make-room step like any quest item
-		currentRequirements = new ArrayList<Requirement>(currentRequirements);
-		currentRequirements.addAll(wanted);
-		return acquireMissingTradableItems(wanted);
+		for (QuestUntradableRecipes.Input input : QuestUntradableRecipes.ECTO_TOKEN.inputs) {
+			int id = input.ids.get(0);
+			if (Rs2Inventory.count(id) > carried.getOrDefault(id, 0)) {
+				ectofuntusSupply.forget(id);
+				ectofuntusBuyCalls = 0;
+			}
+		}
+		return EctofuntusRunner.Fetch.WORKED;
+	}
+
+	/** One bank visit: takes exactly the shortfall of each input, deposits nothing, and notes what the bank lacks. */
+	private void withdrawEctofuntusInputs(Map<Integer, Integer> shortfall, long now) {
+		Microbot.status = "Quest helper: fetching bones, pots and buckets from the bank";
+		if (!Rs2Bank.isOpen()) {
+			Rs2Bank.walkToBankAndUseBankReturningTo(bankReturnPoint());
+			sleepUntil(Rs2Bank::isOpen, 15_000);
+			if (!Rs2Bank.isOpen()) {
+				return;
+			}
+		}
+		if (!Rs2Bank.setWithdrawAsItem()) {
+			Rs2Bank.closeBank();
+			return;
+		}
+		for (Map.Entry<Integer, Integer> entry : shortfall.entrySet()) {
+			int id = entry.getKey();
+			int missing = entry.getValue();
+			if (missing <= 0 || ectofuntusSupply.knownNotInBank(id, now)) {
+				continue;
+			}
+			if (isHeldInBank(new ItemRequirement("input", id, 1))) {
+				// the bank's items load a moment after it opens: a count of 0 straight away proves nothing
+				sleepUntil(() -> Rs2Bank.count(id) > 0, 3_000);
+			}
+			int inBank = Rs2Bank.count(id);
+			int take = EctofuntusSupply.withdrawCount(missing, inBank, Rs2Inventory.emptySlotCount());
+			if (take > 0) {
+				final int before = Rs2Inventory.count(id);
+				Rs2Bank.withdrawX(id, take);
+				if (!sleepUntil(() -> Rs2Inventory.count(id) > before, 4_000)) {
+					Microbot.log("Ectofuntus: the bank withdrawal of item " + id + " did not land in time", Level.WARN);
+				}
+			}
+			if (EctofuntusSupply.bankFallsShort(missing, inBank)) {
+				ectofuntusSupply.markNotInBank(id, now);
+			}
+		}
+		Rs2Bank.closeBank();
+		sleepUntil(() -> !Rs2Bank.isOpen(), 3_000);
+	}
+
+	private static String describeInputs(Map<Integer, Integer> shortfall) {
+		List<String> parts = new ArrayList<>();
+		for (QuestUntradableRecipes.Input input : QuestUntradableRecipes.ECTO_TOKEN.inputs) {
+			int missing = shortfall.getOrDefault(input.ids.get(0), 0);
+			if (missing > 0) {
+				parts.add(input.name.toLowerCase(java.util.Locale.ROOT) + " x" + missing);
+			}
+		}
+		return String.join(", ", parts);
+	}
+
+	/** The ghost disciples only answer a worn ghostspeak amulet: puts it on from the inventory when needed. */
+	private boolean ectofuntusGhostspeakReady() {
+		int[] amulets = {552, 4250}; // ghostspeak amulet, enchanted
+		if (Rs2Equipment.isWearing(amulets)) {
+			return true;
+		}
+		for (int id : amulets) {
+			if (Rs2Inventory.contains(id)) {
+				Microbot.status = "Quest helper: putting on the ghostspeak amulet";
+				Rs2Inventory.wear(id);
+				sleepUntil(() -> Rs2Equipment.isWearing(amulets), 3_000);
+				return Rs2Equipment.isWearing(amulets);
+			}
+		}
+		Microbot.log("Ectofuntus: no ghostspeak amulet on you; trying anyway (Morytania legs also work)", Level.WARN);
+		return true;
 	}
 
 	private void notifyMissingRequirement(ItemRequirement itemRequirement) {

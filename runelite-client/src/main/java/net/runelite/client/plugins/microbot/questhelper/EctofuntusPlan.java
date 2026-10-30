@@ -72,7 +72,8 @@ public final class EctofuntusPlan
 	/** Sets the inventory can carry: 3 slots per set, counting the slots the loop's own items already hold. */
 	public static int tripCapacity(int freeSlots, int slotsHeldByInputs)
 	{
-		return Math.max(1, Math.min(MAX_SETS_PER_TRIP, (freeSlots + slotsHeldByInputs) / 3));
+		// one slot stays free for the Ecto-tokens
+		return Math.max(1, Math.min(MAX_SETS_PER_TRIP, (freeSlots + slotsHeldByInputs - 1) / 3));
 	}
 
 	/** Sets that bones + pots (and buckets) on hand could still make. */
@@ -101,9 +102,8 @@ public final class EctofuntusPlan
 	 * Totals of each input wanted on the player to finish the trip: {bones, pots, buckets}. Items already turned into
 	 * bonemeal or slime no longer count.
 	 */
-	public static int[] inputsWanted(State s)
+	public static int[] inputsWanted(State s, int target)
 	{
-		int target = Math.min(s.remaining, s.maxSets);
 		int boneSets = Math.max(0, target - s.bonemeal);
 		int slimeSets = Math.max(0, target - s.slime);
 		return new int[] {boneSets, boneSets, slimeSets};

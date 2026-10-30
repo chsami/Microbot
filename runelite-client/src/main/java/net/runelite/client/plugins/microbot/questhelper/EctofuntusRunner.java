@@ -39,14 +39,29 @@ public final class EctofuntusRunner
 		FAILED
 	}
 
-	/** The quest script's side: gets inputs from the bank or the Grand Exchange. */
+	public enum Fetch
+	{
+		/** This tick was spent fetching. */
+		WORKED,
+		/** Everything wanted is already carried. */
+		NOTHING,
+		/** Cannot be fetched (buying is off, or the purchase keeps failing); {@link Host#blockedReason()} says why. */
+		BLOCKED
+	}
+
+	/** The quest script's side: gets inputs from the bank or the Grand Exchange, and wears the ghostspeak amulet. */
 	public interface Host
 	{
 		/**
-		 * @param wantedTotals item id to the total wanted on the player
-		 * @return true when this tick was spent fetching
+		 * @param trip item id to the total wanted on the player for this trip
+		 * @param all  item id to the total wanted for every set still to do (what a purchase should cover)
 		 */
-		boolean fetchInputs(Map<Integer, Integer> wantedTotals);
+		Fetch fetchInputs(Map<Integer, Integer> trip, Map<Integer, Integer> all);
+
+		String blockedReason();
+
+		/** True when the ghostspeak amulet is worn (or nothing can be done about it); otherwise acts and says false. */
+		boolean ghostspeakReady();
 	}
 
 	private static final WorldPoint GRINDER_SPOT = new WorldPoint(3659, 3523, 1);
@@ -203,17 +218,28 @@ public final class EctofuntusRunner
 			Microbot.log("Ectofuntus: could not get all the bones, pots and buckets; using what is carried", Level.WARN);
 			return Progress.WORKING;
 		}
-		int[] wanted = EctofuntusPlan.inputsWanted(state);
-		Map<Integer, Integer> totals = new LinkedHashMap<>();
-		totals.put(ItemID.POT_EMPTY, Math.max(wanted[1], state.emptyPots));
-		totals.put(ItemID.BUCKET_EMPTY, Math.max(wanted[2], state.emptyBuckets));
-		totals.put(ItemID.BONES, Math.max(wanted[0], state.bones));
+		int[] trip = EctofuntusPlan.inputsWanted(state, Math.min(state.remaining, state.maxSets));
+		int[] all = EctofuntusPlan.inputsWanted(state, state.remaining);
 		status("getting bones, pots and buckets");
-		if (!host.fetchInputs(totals))
+		switch (host.fetchInputs(totals(trip, state), totals(all, state)))
 		{
-			state.fetchFailed = true;
+			case BLOCKED:
+				return fail(host.blockedReason());
+			case NOTHING:
+				state.fetchFailed = true;
+				return Progress.WORKING;
+			default:
+				return Progress.WORKING;
 		}
-		return Progress.WORKING;
+	}
+
+	private static Map<Integer, Integer> totals(int[] wanted, State s)
+	{
+		Map<Integer, Integer> totals = new LinkedHashMap<>();
+		totals.put(ItemID.BONES, Math.max(wanted[0], s.bones));
+		totals.put(ItemID.POT_EMPTY, Math.max(wanted[1], s.emptyPots));
+		totals.put(ItemID.BUCKET_EMPTY, Math.max(wanted[2], s.emptyBuckets));
+		return totals;
 	}
 
 	private void grind()
@@ -344,6 +370,10 @@ public final class EctofuntusRunner
 
 	private void collect(int heldBefore)
 	{
+		if (!host.ghostspeakReady())
+		{
+			return;
+		}
 		status("collecting Ecto-tokens from a ghost disciple");
 		state.collectProbed = true;
 		if (!Rs2Npc.interact(NpcID.AHOY_DISCIPLE, "Talk-to"))

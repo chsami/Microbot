@@ -49,8 +49,9 @@ public class EctofuntusPlanTest
 	public void tripCapacityIsThreeSlotsPerSetAndNeverBelowOne()
 	{
 		assertEquals(8, EctofuntusPlan.tripCapacity(28, 0));
-		assertEquals(4, EctofuntusPlan.tripCapacity(12, 0));
-		assertEquals(4, EctofuntusPlan.tripCapacity(0, 12));
+		assertEquals(3, EctofuntusPlan.tripCapacity(12, 0)); // one slot stays free for the tokens
+		assertEquals(4, EctofuntusPlan.tripCapacity(13, 0));
+		assertEquals(3, EctofuntusPlan.tripCapacity(0, 12));
 		assertEquals(1, EctofuntusPlan.tripCapacity(0, 0));
 	}
 
@@ -97,7 +98,7 @@ public class EctofuntusPlanTest
 		State s = state(12, 0, 0, 0, 0, 0, Where.ELSEWHERE);
 		s.maxSets = 4;
 		assertEquals(Action.FETCH_INPUTS, EctofuntusPlan.next(s));
-		assertArrayEquals(new int[] {4, 4, 4}, EctofuntusPlan.inputsWanted(s));
+		assertArrayEquals(new int[] {4, 4, 4}, EctofuntusPlan.inputsWanted(s, 4));
 		s = state(12, 4, 4, 0, 4, 0, Where.GRINDER);
 		s.maxSets = 4;
 		assertEquals(Action.GRIND, EctofuntusPlan.next(s));
@@ -107,7 +108,8 @@ public class EctofuntusPlanTest
 	public void inputsWantedIgnoreWhatIsAlreadyGroundOrFilled()
 	{
 		State s = state(4, 2, 2, 2, 2, 2, Where.ELSEWHERE);
-		assertArrayEquals(new int[] {2, 2, 2}, EctofuntusPlan.inputsWanted(s));
+		assertArrayEquals(new int[] {2, 2, 2}, EctofuntusPlan.inputsWanted(s, 4));
+		assertArrayEquals(new int[] {0, 0, 0}, EctofuntusPlan.inputsWanted(s, 2));
 	}
 
 	@Test
