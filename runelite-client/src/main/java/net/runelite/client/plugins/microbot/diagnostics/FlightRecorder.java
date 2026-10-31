@@ -111,7 +111,8 @@ public class FlightRecorder
 		originalOut = System.out;
 		originalErr = System.err;
 		teeOut = new PrintStream(new Tee(originalOut, "out", StandardCharsets.UTF_8), true, StandardCharsets.UTF_8);
-		teeErr = new PrintStream(new Tee(originalErr, "err", Charset.defaultCharset()), true, Charset.defaultCharset());
+		Charset errCharset = stderrCharset();
+		teeErr = new PrintStream(new Tee(originalErr, "err", errCharset), true, errCharset);
 		System.setOut(teeOut);
 		System.setErr(teeErr);
 		active = this;
@@ -400,6 +401,19 @@ public class FlightRecorder
 			}
 		}
 		return out.toString();
+	}
+
+	private static Charset stderrCharset()
+	{
+		try
+		{
+			String name = System.getProperty("sun.stderr.encoding");
+			return name == null ? Charset.defaultCharset() : Charset.forName(name);
+		}
+		catch (RuntimeException e)
+		{
+			return Charset.defaultCharset();
+		}
 	}
 
 	static boolean isLogLine(String chunk)

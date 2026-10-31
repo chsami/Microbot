@@ -160,7 +160,8 @@ public abstract class Script extends Global implements IScript {
     }
 
     protected void trace(String key, Object value) {
-        FlightRecorder.trace(getClass().getSimpleName() + "." + key, value);
+        String name = getClass().getName();
+        FlightRecorder.trace(name.substring(name.lastIndexOf('.') + 1) + "." + key, value);
     }
 
     /**

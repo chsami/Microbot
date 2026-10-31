@@ -249,13 +249,17 @@ public class FlightRecorderTest
 		try
 		{
 			System.out.println("Pas de barres d'adamantite trouvées");
+			for (byte b : "Barre trouvée\n".getBytes(java.nio.charset.StandardCharsets.UTF_8))
+			{
+				System.out.write(b);
+			}
 		}
 		finally
 		{
 			recorder.stop();
 		}
 
-		assertEquals(List.of("out=\"Pas de barres d'adamantite trouvées\""), lines());
+		assertEquals(List.of("out=\"Pas de barres d'adamantite trouvées\"", "out=\"Barre trouvée\""), lines());
 	}
 
 	@Test
