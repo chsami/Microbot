@@ -1,7 +1,9 @@
 package net.runelite.client.plugins.microbot.diagnostics;
 
+import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -42,6 +44,7 @@ import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.agentserver.handler.ScriptHeartbeatRegistry;
+import net.runelite.client.plugins.microbot.util.input.InputArbiter;
 import net.runelite.client.util.Text;
 
 @Singleton
@@ -50,15 +53,18 @@ public class FlightRecorder
 	static final int MAX_CHARS = 240 * 1024;
 	static final int MAX_LINE_CHARS = 300;
 	static final int MAX_VARS_PER_TICK = 30;
+	static final int MAX_TRACES = 500;
 	static final int STUCK_TICKS = 50;
 	static final int MAX_STACK_FRAMES = 2;
 	static final String LEGEND = "# tick time | p=x,y,plane a=animation t=target hp pr=prayer run gs=game state | inv/eq +id*n -id*n"
-		+ " | v<id>/vp<id>=varbit/varp | w+/w- interface | msg game message | click option>target | st=Microbot status"
-		+ " | scripts+/- | trace:<script>.<key> | out/err script prints | ! no game change while a script runs";
+		+ " | v<id>/vp<id>=varbit/varp | w+/w- interface | msg game message | click option>target (w<group> = interface click, player = another player)"
+		+ " | st=Microbot status | scripts+/- | trace:<script>.<key> | out/err script prints | ! no game change while a script runs";
 	private static final Pattern LOG_LINE = Pattern.compile("^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}");
 	private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm:ss.S");
 	private static final Set<ChatMessageType> GAME_MESSAGES = Set.of(ChatMessageType.GAMEMESSAGE, ChatMessageType.SPAM,
 		ChatMessageType.ENGINE, ChatMessageType.MESBOX, ChatMessageType.DIALOG);
+	private static final String[] NAMED_TARGETS = {"NPC_", "GAME_OBJECT_", "GROUND_ITEM_", "EXAMINE_NPC", "EXAMINE_OBJECT",
+		"EXAMINE_ITEM_GROUND", "WIDGET_TARGET_ON_NPC", "WIDGET_TARGET_ON_GAME_OBJECT", "WIDGET_TARGET_ON_GROUND_ITEM", "WALK"};
 
 	private static volatile FlightRecorder active;
 
@@ -66,7 +72,14 @@ public class FlightRecorder
 	private final EventBus eventBus;
 	private final Deque<String> lines = new ArrayDeque<>();
 	private final Map<String, Integer> vars = new LinkedHashMap<>();
-	private final Map<String, String> traces = new HashMap<>();
+	private final Map<String, String> traces = new LinkedHashMap<String, String>(16, 0.75f, true)
+	{
+		@Override
+		protected boolean removeEldestEntry(Map.Entry<String, String> eldest)
+		{
+			return size() > MAX_TRACES;
+		}
+	};
 	private final Map<Integer, Map<Integer, Integer>> containers = new HashMap<>();
 	private int chars;
 	private int tick;
@@ -93,11 +106,12 @@ public class FlightRecorder
 
 	public void start()
 	{
+		reset();
 		eventBus.register(this);
 		originalOut = System.out;
 		originalErr = System.err;
-		teeOut = new PrintStream(new Tee(originalOut, "out"), true, StandardCharsets.UTF_8);
-		teeErr = new PrintStream(new Tee(originalErr, "err"), true, StandardCharsets.UTF_8);
+		teeOut = new PrintStream(new Tee(originalOut, "out", StandardCharsets.UTF_8), true, StandardCharsets.UTF_8);
+		teeErr = new PrintStream(new Tee(originalErr, "err", Charset.defaultCharset()), true, Charset.defaultCharset());
 		System.setOut(teeOut);
 		System.setErr(teeErr);
 		active = this;
@@ -115,6 +129,7 @@ public class FlightRecorder
 		{
 			System.setErr(originalErr);
 		}
+		reset();
 	}
 
 	public static void trace(String key, Object value)
@@ -122,7 +137,7 @@ public class FlightRecorder
 		FlightRecorder recorder = active;
 		if (recorder != null && key != null)
 		{
-			recorder.recordTrace(key, value);
+			recorder.recordTrace(key, clip(String.valueOf(value)));
 		}
 	}
 
@@ -140,7 +155,8 @@ public class FlightRecorder
 	@Subscribe
 	public void onGameTick(GameTick event)
 	{
-		tick(client.getTickCount(), readPlayer(), Microbot.status, simpleNames(ScriptHeartbeatRegistry.getAllHealth().keySet()));
+		tick(client.getTickCount(), readPlayer(), Microbot.status, simpleNames(ScriptHeartbeatRegistry.scriptNames()),
+			Microbot.pauseAllScripts.get() || InputArbiter.isHuman());
 	}
 
 	@Subscribe
@@ -154,15 +170,16 @@ public class FlightRecorder
 	{
 		if (GAME_MESSAGES.contains(event.getType()))
 		{
-			record("msg=\"" + Text.removeTags(event.getMessage()) + "\"", true);
+			record("msg=\"" + clip(Text.removeTags(event.getMessage())) + "\"", true);
 		}
 	}
 
 	@Subscribe
 	public void onMenuOptionClicked(MenuOptionClicked event)
 	{
-		recordClick(Text.removeTags(event.getMenuOption()), Text.removeTags(event.getMenuTarget()), event.getId(),
-			event.getMenuAction() == null ? "?" : event.getMenuAction().name());
+		String action = event.getMenuAction() == null ? "?" : event.getMenuAction().name();
+		recordClick(Text.removeTags(event.getMenuOption()), clickTarget(action, event.getItemId(), event.getParam1(),
+			Text.removeTags(event.getMenuTarget())), event.getId(), action);
 	}
 
 	@Subscribe
@@ -193,7 +210,27 @@ public class FlightRecorder
 		}
 	}
 
-	synchronized void tick(int tick, PlayerState player, String status, Set<String> running)
+	static String clickTarget(String action, int itemId, int widgetId, String target)
+	{
+		if (action.contains("PLAYER"))
+		{
+			return "player";
+		}
+		for (String prefix : NAMED_TARGETS)
+		{
+			if (action.startsWith(prefix))
+			{
+				return target;
+			}
+		}
+		if (itemId > 0)
+		{
+			return target;
+		}
+		return widgetId > 0 ? "w" + (widgetId >>> 16) : "-";
+	}
+
+	synchronized void tick(int tick, PlayerState player, String status, Set<String> running, boolean paused)
 	{
 		this.tick = tick;
 		flushVars();
@@ -247,6 +284,7 @@ public class FlightRecorder
 			if (!scripts.contains(name))
 			{
 				parts.add("scripts+" + name);
+				markChange();
 			}
 		}
 		for (String name : scripts)
@@ -254,6 +292,7 @@ public class FlightRecorder
 			if (!running.contains(name))
 			{
 				parts.add("scripts-" + name);
+				traces.keySet().removeIf(key -> key.startsWith(name + "."));
 			}
 		}
 		scripts = new TreeSet<>(running);
@@ -261,7 +300,11 @@ public class FlightRecorder
 		{
 			append(String.join(" ", parts));
 		}
-		if (!scripts.isEmpty() && !stuckMarked && tick - lastChangeTick >= STUCK_TICKS)
+		if (paused)
+		{
+			markChange();
+		}
+		else if (!scripts.isEmpty() && !stuckMarked && tick - lastChangeTick >= STUCK_TICKS)
 		{
 			append("! no game change for " + (tick - lastChangeTick) + " ticks while " + String.join(",", scripts) + " runs, "
 				+ clicksSinceChange + " clicks meanwhile");
@@ -278,7 +321,7 @@ public class FlightRecorder
 	synchronized void recordClick(String option, String target, int id, String action)
 	{
 		clicksSinceChange++;
-		append("click=" + option + ">" + (action.startsWith("PLAYER_") ? "player" : target) + "(" + id + "," + action + ")");
+		append("click=" + option + ">" + target + "(" + id + "," + action + ")");
 	}
 
 	synchronized void recordContainer(String label, int containerId, Map<Integer, Integer> now)
@@ -297,12 +340,11 @@ public class FlightRecorder
 		}
 	}
 
-	synchronized void recordTrace(String key, Object value)
+	synchronized void recordTrace(String key, String text)
 	{
-		String text = String.valueOf(value);
 		if (!text.equals(traces.put(key, text)))
 		{
-			append("trace:" + key + "=" + clip(text));
+			append("trace:" + key + "=" + text);
 		}
 	}
 
@@ -341,7 +383,7 @@ public class FlightRecorder
 		}
 		flushRepeats();
 		lastPrint = entry;
-		append(entry);
+		appendLine(entry);
 	}
 
 	static String diff(Map<Integer, Integer> before, Map<Integer, Integer> now)
@@ -363,6 +405,22 @@ public class FlightRecorder
 	static boolean isLogLine(String chunk)
 	{
 		return LOG_LINE.matcher(chunk).find();
+	}
+
+	private synchronized void reset()
+	{
+		vars.clear();
+		traces.clear();
+		containers.clear();
+		last = null;
+		status = null;
+		scripts = new TreeSet<>();
+		lastChangeTick = tick;
+		clicksSinceChange = 0;
+		stuckMarked = false;
+		flushRepeats();
+		lastPrint = null;
+		stackFrames = 0;
 	}
 
 	private void flushVars()
@@ -390,7 +448,7 @@ public class FlightRecorder
 	{
 		if (repeats > 0)
 		{
-			append("(previous line repeated " + repeats + " more times)");
+			appendLine("(previous line repeated " + repeats + " more times)");
 			repeats = 0;
 		}
 	}
@@ -403,6 +461,13 @@ public class FlightRecorder
 	}
 
 	private void append(String text)
+	{
+		flushRepeats();
+		lastPrint = null;
+		appendLine(text);
+	}
+
+	private void appendLine(String text)
 	{
 		String line = tick + " " + LocalTime.now().format(TIME) + " " + text;
 		lines.addLast(line);
@@ -480,27 +545,29 @@ public class FlightRecorder
 	{
 		private final PrintStream target;
 		private final String stream;
-		private final StringBuilder pending = new StringBuilder();
-		private boolean skipping;
+		private final Charset charset;
+		private final ThreadLocal<ByteArrayOutputStream> pending = ThreadLocal.withInitial(ByteArrayOutputStream::new);
+		private final ThreadLocal<Boolean> skipping = ThreadLocal.withInitial(() -> false);
 
-		Tee(PrintStream target, String stream)
+		Tee(PrintStream target, String stream, Charset charset)
 		{
 			this.target = target;
 			this.stream = stream;
+			this.charset = charset;
 		}
 
 		@Override
 		public void write(int b)
 		{
 			target.write(b);
-			capture(new String(new byte[]{(byte) b}, StandardCharsets.UTF_8));
+			capture(new byte[]{(byte) b}, 0, 1);
 		}
 
 		@Override
 		public void write(byte[] b, int off, int len)
 		{
 			target.write(b, off, len);
-			capture(new String(b, off, len, StandardCharsets.UTF_8));
+			capture(b, off, len);
 		}
 
 		@Override
@@ -509,40 +576,42 @@ public class FlightRecorder
 			target.flush();
 		}
 
-		private void capture(String chunk)
+		private void capture(byte[] b, int off, int len)
 		{
 			if (active != FlightRecorder.this)
 			{
 				return;
 			}
+			ByteArrayOutputStream line = pending.get();
 			List<String> done = new ArrayList<>();
-			synchronized (pending)
+			if (isLogLine(new String(b, off, Math.min(len, 32), StandardCharsets.ISO_8859_1)))
 			{
-				if (pending.length() == 0 && isLogLine(chunk))
+				if (line.size() > 0)
 				{
-					skipping = true;
+					done.add(line.toString(charset));
+					line.reset();
 				}
-				for (int i = 0; i < chunk.length(); i++)
+				skipping.set(true);
+			}
+			for (int i = off; i < off + len; i++)
+			{
+				if (b[i] == '\n')
 				{
-					char c = chunk.charAt(i);
-					if (c == '\n')
+					if (!skipping.get())
 					{
-						if (!skipping)
-						{
-							done.add(pending.toString());
-						}
-						pending.setLength(0);
-						skipping = i + 1 < chunk.length() && skipping;
+						done.add(line.toString(charset));
 					}
-					else if (pending.length() < MAX_LINE_CHARS * 2)
-					{
-						pending.append(c);
-					}
+					line.reset();
+					skipping.set(skipping.get() && i + 1 < off + len);
+				}
+				else if (line.size() < MAX_LINE_CHARS * 4)
+				{
+					line.write(b[i]);
 				}
 			}
-			for (String line : done)
+			for (String text : done)
 			{
-				recordPrint(stream, line);
+				recordPrint(stream, text);
 			}
 		}
 	}

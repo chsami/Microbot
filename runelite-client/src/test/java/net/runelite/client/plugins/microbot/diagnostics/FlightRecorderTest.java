@@ -42,9 +42,9 @@ public class FlightRecorderTest
 	@Test
 	public void recordsOnlyWhatChangedEachTick()
 	{
-		recorder.tick(1, at("3361,11500,0", -1), "IDLE", NONE);
-		recorder.tick(2, at("3361,11500,0", -1), "IDLE", NONE);
-		recorder.tick(3, at("3362,11500,0", 899), "Filling crucible", NONE);
+		recorder.tick(1, at("3361,11500,0", -1), "IDLE", NONE, false);
+		recorder.tick(2, at("3361,11500,0", -1), "IDLE", NONE, false);
+		recorder.tick(3, at("3362,11500,0", 899), "Filling crucible", NONE, false);
 
 		assertEquals(List.of("p=3361,11500,0 a=-1 hp=50 pr=45 run=100 st=\"IDLE\"", "p=3362,11500,0 a=899 st=\"Filling crucible\""), lines());
 	}
@@ -65,12 +65,12 @@ public class FlightRecorderTest
 		recorder.recordVar("v13914", 1);
 		recorder.recordVar("v13914", 2);
 		recorder.recordVar("vp281", 7);
-		recorder.tick(5, null, null, NONE);
+		recorder.tick(5, null, null, NONE, false);
 		for (int i = 0; i < FlightRecorder.MAX_VARS_PER_TICK + 4; i++)
 		{
 			recorder.recordVar("v" + i, i);
 		}
-		recorder.tick(6, null, null, NONE);
+		recorder.tick(6, null, null, NONE, false);
 
 		List<String> lines = lines();
 		assertEquals("v13914=2 vp281=7", lines.get(0));
@@ -80,16 +80,16 @@ public class FlightRecorderTest
 	@Test
 	public void marksAStallOnceWhileAScriptRunsAndResetsOnChange()
 	{
-		recorder.tick(100, at("1,1,0", -1), null, FOUNDRY);
+		recorder.tick(100, at("1,1,0", -1), null, FOUNDRY, false);
 		recorder.recordClick("Fill", "Crucible", 44776, "GAME_OBJECT_FIRST_OPTION");
 		for (int t = 101; t <= 100 + FlightRecorder.STUCK_TICKS + 10; t++)
 		{
-			recorder.tick(t, at("1,1,0", -1), null, FOUNDRY);
+			recorder.tick(t, at("1,1,0", -1), null, FOUNDRY, false);
 		}
-		recorder.tick(200, at("1,2,0", -1), null, FOUNDRY);
+		recorder.tick(200, at("1,2,0", -1), null, FOUNDRY, false);
 		for (int t = 201; t <= 200 + FlightRecorder.STUCK_TICKS; t++)
 		{
-			recorder.tick(t, at("1,2,0", -1), null, FOUNDRY);
+			recorder.tick(t, at("1,2,0", -1), null, FOUNDRY, false);
 		}
 
 		List<String> stalls = lines().stream().filter(l -> l.startsWith("!")).collect(Collectors.toList());
@@ -101,8 +101,8 @@ public class FlightRecorderTest
 	@Test
 	public void recordsScriptStartAndStop()
 	{
-		recorder.tick(1, null, null, FOUNDRY);
-		recorder.tick(2, null, null, NONE);
+		recorder.tick(1, null, null, FOUNDRY, false);
+		recorder.tick(2, null, null, NONE, false);
 
 		assertEquals(List.of("scripts+GiantsFoundryScript", "scripts-GiantsFoundryScript"), lines());
 	}
@@ -159,12 +159,103 @@ public class FlightRecorderTest
 	}
 
 	@Test
-	public void clicksOnOtherPlayersDoNotRecordTheirName()
+	public void clickTargetsKeepThingsButNotOtherPlayersOrInterfaceText()
 	{
-		recorder.recordClick("Trade with", "Zezima  (level-126)", 1234, "PLAYER_FOURTH_OPTION");
-		recorder.recordClick("Take", "Iron ore", 440, "GROUND_ITEM_THIRD_OPTION");
+		assertEquals("player", FlightRecorder.clickTarget("PLAYER_FOURTH_OPTION", -1, -1, "Zezima  (level-126)"));
+		assertEquals("player", FlightRecorder.clickTarget("WIDGET_TARGET_ON_PLAYER", -1, -1, "Bones -> Zezima  (level-126)"));
+		assertEquals("player", FlightRecorder.clickTarget("ITEM_USE_ON_PLAYER", 526, -1, "Bones -> Zezima  (level-126)"));
+		assertEquals("Iron ore", FlightRecorder.clickTarget("GROUND_ITEM_THIRD_OPTION", -1, -1, "Iron ore"));
+		assertEquals("Crucible", FlightRecorder.clickTarget("GAME_OBJECT_FIRST_OPTION", -1, -1, "Crucible"));
+		assertEquals("Adamantite bar", FlightRecorder.clickTarget("CC_OP", 2361, 983043, "Adamantite bar"));
+		assertEquals("w429", FlightRecorder.clickTarget("CC_OP", -1, 429 << 16 | 11, "Zezima"));
+		assertEquals("-", FlightRecorder.clickTarget("CANCEL", -1, -1, ""));
+	}
 
-		assertEquals(List.of("click=Trade with>player(1234,PLAYER_FOURTH_OPTION)", "click=Take>Iron ore(440,GROUND_ITEM_THIRD_OPTION)"), lines());
+	@Test
+	public void traceValuesAreTurnedIntoTextOutsideTheRecorderLock()
+	{
+		recorder.start();
+		try
+		{
+			Object value = new Object()
+			{
+				@Override
+				public String toString()
+				{
+					assertFalse(Thread.holdsLock(recorder));
+					return "Crucible";
+				}
+			};
+			FlightRecorder.trace("GiantsFoundryScript.target", value);
+		}
+		finally
+		{
+			recorder.stop();
+		}
+		assertTrue(recorder.dump().contains("trace:GiantsFoundryScript.target=Crucible"));
+	}
+
+	@Test
+	public void aScriptStartingIsAChangeSoTheStallClockStartsThere()
+	{
+		recorder.tick(1, at("1,1,0", -1), null, NONE, false);
+		recorder.tick(80, at("1,1,0", -1), null, FOUNDRY, false);
+		recorder.tick(81, at("1,1,0", -1), null, FOUNDRY, false);
+
+		assertFalse(lines().stream().anyMatch(l -> l.startsWith("!")));
+	}
+
+	@Test
+	public void noStallIsMarkedWhileScriptsArePaused()
+	{
+		recorder.tick(1, at("1,1,0", -1), null, FOUNDRY, false);
+		for (int t = 2; t <= FlightRecorder.STUCK_TICKS + 10; t++)
+		{
+			recorder.tick(t, at("1,1,0", -1), null, FOUNDRY, true);
+		}
+
+		assertFalse(lines().stream().anyMatch(l -> l.startsWith("!")));
+	}
+
+	@Test
+	public void aRepeatCountStaysWithItsOwnLine()
+	{
+		recorder.recordPrint("out", "Waiting for bank");
+		recorder.recordPrint("out", "Waiting for bank");
+		recorder.recordClick("Bank", "Bank chest", 44630, "GAME_OBJECT_FIRST_OPTION");
+		recorder.recordPrint("out", "Waiting for bank");
+
+		assertEquals(List.of("out=\"Waiting for bank\"", "(previous line repeated 1 more times)",
+			"click=Bank>Bank chest(44630,GAME_OBJECT_FIRST_OPTION)", "out=\"Waiting for bank\""), lines());
+	}
+
+	@Test
+	public void stoppingForgetsTheStateSoARestartDiffsFromScratch()
+	{
+		recorder.start();
+		recorder.recordContainer("inv", 93, Map.of(2361, 14));
+		recorder.stop();
+		recorder.start();
+		recorder.recordContainer("inv", 93, Map.of(2361, 13));
+		recorder.stop();
+
+		assertEquals(List.of("inv=2361*14", "inv=2361*13"), lines());
+	}
+
+	@Test
+	public void keepsMultiBytePrintsIntact()
+	{
+		recorder.start();
+		try
+		{
+			System.out.println("Pas de barres d'adamantite trouvées");
+		}
+		finally
+		{
+			recorder.stop();
+		}
+
+		assertEquals(List.of("out=\"Pas de barres d'adamantite trouvées\""), lines());
 	}
 
 	@Test
