@@ -239,14 +239,20 @@ public class Rs2Combat {
      * <p>
      * It looks up the weapon-styles enum to map varbit indices to style names.
      *
-     * @return the human-readable attack style name (e.g., "Slash", "Magic")
+     * @return the human-readable attack style name (e.g., "Slash", "Magic"), or {@code null} if it cannot be resolved
      */
     public static String getWeaponAttackStyle() {
         final int attackStyleVarbit = Microbot.getVarbitPlayerValue(VarPlayerID.COM_MODE);
         final int weaponTypeVarbit = Microbot.getVarbitValue(VarbitID.COMBAT_WEAPON_CATEGORY);
-        int weaponStyleEnum = Microbot.getEnum(EnumID.WEAPON_STYLES).getIntValue(weaponTypeVarbit);
-        int[] weaponStyleStructs = Microbot.getEnum(weaponStyleEnum).getIntVals();
+        EnumComposition weaponStyles = Microbot.getEnum(EnumID.WEAPON_STYLES);
+        if (weaponStyles == null) return null;
+        int weaponStyleEnum = weaponStyles.getIntValue(weaponTypeVarbit);
+        if (weaponStyleEnum == -1) return null;
+        EnumComposition weaponStyleComposition = Microbot.getEnum(weaponStyleEnum);
+        if (weaponStyleComposition == null) return null;
+        int[] weaponStyleStructs = weaponStyleComposition.getIntVals();
+        if (weaponStyleStructs == null || attackStyleVarbit < 0 || attackStyleVarbit >= weaponStyleStructs.length) return null;
         StructComposition attackStylesStruct = Microbot.getStructComposition(weaponStyleStructs[attackStyleVarbit]);
-        return attackStylesStruct.getStringValue(ParamID.ATTACK_STYLE_NAME);
+        return attackStylesStruct == null ? null : attackStylesStruct.getStringValue(ParamID.ATTACK_STYLE_NAME);
     }
 }

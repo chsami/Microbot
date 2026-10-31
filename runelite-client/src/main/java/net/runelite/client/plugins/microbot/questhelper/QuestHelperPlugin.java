@@ -398,11 +398,11 @@ public class QuestHelperPlugin extends Plugin
 		{
 			if ("true".equals(event.getNewValue()))
 			{
-				questManager.activateShortestPath();
+				clientThread.invokeLater(questManager::activateShortestPath);
 			}
 			else
 			{
-				questManager.disableShortestPath();
+				clientThread.invokeLater(questManager::disableShortestPath);
 			}
 		}
 

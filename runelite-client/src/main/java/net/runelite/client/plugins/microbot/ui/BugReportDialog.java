@@ -142,6 +142,7 @@ class BugReportDialog extends JDialog
 	public void dispose()
 	{
 		connectionCheck.stop();
+		snapshot = null;
 		super.dispose();
 	}
 
@@ -228,6 +229,12 @@ class BugReportDialog extends JDialog
 			"The settings of the chosen plugin. Secret settings are left out.");
 		addSection(panel, BugReportSection.GAME_STATE, "Game state (location, inventory, gear)", true,
 			"World, location, levels, inventory, equipment and which scripts are running.");
+		addSection(panel, BugReportSection.RECORDER, "Recent activity (movement, clicks, game messages)", true,
+			"<html>A short record of the last 20 minutes at most. It stays on your computer and is only sent with a report.<br>"
+				+ "Where you walked, animations, what you attacked, HP/prayer/run, items gained or lost (as item numbers),<br>"
+				+ "game messages, what you clicked, windows opened, game settings, the script's status and anything it printed.<br>"
+				+ "Players you click or target show as \"player\" and other players' chat is not included,<br>"
+				+ "but anything a script prints is included as it is. Error output is left out when Recent log and errors is unticked.</html>");
 		addSection(panel, BugReportSection.SCREENSHOT, "Screenshot of the game (shows your chat and name)", false,
 			"Your game screen as it was when you opened this window.");
 		panel.add(Box.createVerticalStrut(8));
@@ -331,6 +338,10 @@ class BugReportDialog extends JDialog
 
 	private void onCaptured(BugReportSnapshot result)
 	{
+		if (!isDisplayable())
+		{
+			return;
+		}
 		snapshot = result;
 		if (snapshot == null)
 		{

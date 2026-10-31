@@ -13,6 +13,6 @@ public class ManualCastable extends Weapon
 	public int getRange(String attackStyle, boolean showWhileManualCasting)
 	{
 		// Only display while auto-casting, unless user wants to see it always
-		return attackStyle.equals("Casting") || showWhileManualCasting ? range : 0;
+		return "Casting".equals(attackStyle) || showWhileManualCasting ? range : 0;
 	}
 }

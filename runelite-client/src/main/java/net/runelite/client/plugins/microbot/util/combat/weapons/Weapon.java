@@ -28,6 +28,6 @@ public class Weapon
 
 	public int getRange(String attackStyle)
 	{
-		return attackStyle.equals("Longrange") ? range + longRangeModifier : range;
+		return "Longrange".equals(attackStyle) ? range + longRangeModifier : range;
 	}
 }

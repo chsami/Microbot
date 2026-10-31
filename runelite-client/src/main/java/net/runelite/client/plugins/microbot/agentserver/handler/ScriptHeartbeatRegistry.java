@@ -1,8 +1,10 @@
 package net.runelite.client.plugins.microbot.agentserver.handler;
 
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -26,6 +28,10 @@ public final class ScriptHeartbeatRegistry {
 			return null;
 		}
 		return record.toMap();
+	}
+
+	public static Set<String> scriptNames() {
+		return new HashSet<>(registry.keySet());
 	}
 
 	public static Map<String, Map<String, Object>> getAllHealth() {
