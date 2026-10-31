@@ -183,12 +183,42 @@ public class Rs2InventorySetup {
 		}
 	}
 
+	private static boolean itemFillsSetupRow(Rs2ItemModel held, InventorySetupsItem setupItem) {
+		String heldName = held.getName().toLowerCase(Locale.ROOT);
+		String setupName = setupItem.getName().toLowerCase(Locale.ROOT);
+		boolean barrows = InventorySetupsItem.isBarrowsItem(setupName);
+		if (barrows && heldName.endsWith(" 0")) {
+			return false;
+		}
+		return setupItem.isFuzzy() || barrows ? heldName.contains(setupName) : heldName.equals(setupName);
+	}
+
+	private static boolean isBrokenBarrowsPiece(Rs2ItemModel held) {
+		String heldName = held.getName().toLowerCase(Locale.ROOT);
+		return heldName.endsWith(" 0") && InventorySetupsItem.isBarrowsItem(heldName.substring(0, heldName.length() - 2));
+	}
+
+	private static boolean isBrokenCopyOfSetupRow(Rs2ItemModel held, InventorySetupsItem setupItem) {
+		String setupName = setupItem.getName().toLowerCase(Locale.ROOT);
+		return InventorySetupsItem.isBarrowsItem(setupName) && isBrokenBarrowsPiece(held)
+			&& held.getName().toLowerCase(Locale.ROOT).contains(setupName);
+	}
+
+	private static boolean isWearingSetupRow(InventorySetupsItem setupItem) {
+		return Rs2Equipment.isWearing(worn -> itemFillsSetupRow(worn, setupItem));
+	}
+
+	private static List<Rs2ItemModel> bankItemsOrEmpty() {
+		List<Rs2ItemModel> bankItems = Rs2Bank.bankItems();
+		return bankItems == null ? Collections.emptyList() : bankItems;
+	}
+
 	private static void addRuneLikePouchRows(List<InventorySetupsItem> out, List<InventorySetupsItem> pouch) {
 		if (pouch == null) {
 			return;
 		}
 		for (InventorySetupsItem x : pouch) {
-			if (x != null && x.getId() != -1 && x.getQuantity() > 0 && !InventorySetupsItem.itemIsDummy(x)) {
+			if (!InventorySetupsItem.isEmptySlot(x) && x.getQuantity() > 0) {
 				out.add(x);
 			}
 		}
@@ -292,6 +322,12 @@ public class Rs2InventorySetup {
 	private static int bankQtyForPresetRow(InventorySetupsItem item, String lowerCaseName, boolean isFuzzy) {
 		assert item != null;
 		assert lowerCaseName != null;
+		if (InventorySetupsItem.isBarrowsItem(lowerCaseName)) {
+			return bankItemsOrEmpty().stream()
+				.filter(bankItem -> itemFillsSetupRow(bankItem, item))
+				.mapToInt(Rs2ItemModel::getQuantity)
+				.sum();
+		}
 		if (isFuzzy) {
 			return Rs2Bank.count(lowerCaseName);
 		}
@@ -372,7 +408,7 @@ public class Rs2InventorySetup {
 		Set<String> withdrewInventoryGroups = new HashSet<>();
 		for (InventorySetupsItem item : setupItems) {
 			if (isMainSchedulerCancelled()) break;
-			if (InventorySetupsItem.itemIsDummy(item)) continue;
+			if (InventorySetupsItem.isEmptySlot(item)) continue;
 
 			String withdrawGroupKey = item.isFuzzy()
 				? "f:" + item.getName().toLowerCase(Locale.ROOT)
@@ -454,14 +490,23 @@ public class Rs2InventorySetup {
 		}
 
 		List<InventorySetupsItem> itemsWithSlots = setupItems.stream()
-			.filter(item -> !InventorySetupsItem.itemIsDummy(item) && item.getSlot() >= 0)
+			.filter(item -> !InventorySetupsItem.isEmptySlot(item) && item.getSlot() >= 0)
 			.collect(Collectors.toList());
 
 		sortInventoryItems(itemsWithSlots);
 
         if (inventorySetup.getRune_pouch() != null) {
+			String unsupportedRunes = inventorySetup.getRune_pouch().stream()
+				.filter(item -> item.getId() != -1 && item.getQuantity() > 0 && Runes.byItemId(item.getId()) == null)
+				.map(InventorySetupsItem::getName)
+				.distinct()
+				.collect(Collectors.joining(", "));
+			if (!unsupportedRunes.isEmpty()) {
+				logSetup(Level.WARN, "%s in your setup's rune pouch is not supported yet and was skipped. Fill the pouch yourself or remove %s from the setup.",
+						unsupportedRunes, unsupportedRunes);
+			}
 			Map<Runes, InventorySetupsItem> inventorySetupRunes = inventorySetup.getRune_pouch().stream()
-				.filter(item -> item.getId() != -1 && item.getQuantity() > 0)
+				.filter(item -> item.getId() != -1 && item.getQuantity() > 0 && Runes.byItemId(item.getId()) != null)
 				.collect(Collectors.toMap(
 					item -> Runes.byItemId(item.getId()),
 					item -> item
@@ -531,7 +576,7 @@ public class Rs2InventorySetup {
 
 		for (InventorySetupsItem item : all)
 		{
-			if (item == null || InventorySetupsItem.itemIsDummy(item))
+			if (item == null || InventorySetupsItem.isEmptySlot(item))
 			{
 				continue;
 			}
@@ -570,7 +615,7 @@ public class Rs2InventorySetup {
 		Set<Integer> warnedNonStackableQty = new HashSet<>();
 		for (InventorySetupsItem item : inv)
 		{
-			if (InventorySetupsItem.itemIsDummy(item) || item.isFuzzy())
+			if (InventorySetupsItem.isEmptySlot(item) || item.isFuzzy())
 			{
 				continue;
 			}
@@ -606,21 +651,21 @@ public class Rs2InventorySetup {
 		}
 		if (inventorySetup.getInventory() != null) {
 			for (InventorySetupsItem x : inventorySetup.getInventory()) {
-				if (x != null && !InventorySetupsItem.itemIsDummy(x)) {
+				if (x != null && !InventorySetupsItem.isEmptySlot(x)) {
 					out.add(x);
 				}
 			}
 		}
 		if (inventorySetup.getEquipment() != null) {
 			for (InventorySetupsItem x : inventorySetup.getEquipment()) {
-				if (x != null && !InventorySetupsItem.itemIsDummy(x)) {
+				if (x != null && !InventorySetupsItem.isEmptySlot(x)) {
 					out.add(x);
 				}
 			}
 		}
 		if (inventorySetup.getAdditionalFilteredItems() != null) {
 			for (InventorySetupsItem x : inventorySetup.getAdditionalFilteredItems().values()) {
-				if (x != null && !InventorySetupsItem.itemIsDummy(x)) {
+				if (x != null && !InventorySetupsItem.isEmptySlot(x)) {
 					out.add(x);
 				}
 			}
@@ -682,7 +727,7 @@ public class Rs2InventorySetup {
 		List<InventorySetupsItem> setupItems = inventorySetup.getInventory();
 		Set<String> seenGroup = new HashSet<>();
 		for (InventorySetupsItem item : setupItems) {
-			if (InventorySetupsItem.itemIsDummy(item)) {
+			if (InventorySetupsItem.isEmptySlot(item)) {
 				continue;
 			}
 			String key = item.isFuzzy()
@@ -850,21 +895,31 @@ public class Rs2InventorySetup {
             Check if we have extra equipment already equipped before attempting to gear
             For example, player is wearing full graceful set but your desired inventory setup does not contain boots, keeping the graceful boots equipped
          */
-        boolean hasExtraGearEquipped = Rs2Equipment.isWearing(equip ->
-                inventorySetup.getEquipment().stream().noneMatch(setup -> setup.isFuzzy() ?
-					equip.getName().toLowerCase().contains(setup.getName().toLowerCase()) :
-					equip.getName().equalsIgnoreCase(setup.getName()))
-        );
+        List<Rs2ItemModel> extraGear = Rs2Equipment.all(equip ->
+                inventorySetup.getEquipment().stream().filter(setup -> !InventorySetupsItem.isEmptySlot(setup)).noneMatch(setup -> itemFillsSetupRow(equip, setup))
+        ).collect(Collectors.toList());
 
-        if (hasExtraGearEquipped) {
-            logSetup(Level.DEBUG, "extra gear not in setup — deposit equipment");
-            Rs2Bank.depositEquipment();
-            sleepUntil(() -> Rs2Equipment.items().stream().noneMatch(Objects::nonNull));
+        if (!extraGear.isEmpty()) {
+            String extraNames = extraGear.stream().map(Rs2ItemModel::getName).collect(Collectors.joining(", "));
+            if (extraGear.stream().allMatch(Rs2InventorySetup::isBrokenBarrowsPiece)) {
+                logSetup(Level.INFO, "broken gear not in setup (%s) — deposit it", extraNames);
+                boolean deposited = false;
+                for (Rs2ItemModel broken : extraGear) {
+                    deposited |= Rs2Bank.depositEquippedItem(broken.getId());
+                }
+                if (deposited) {
+                    sleepUntil(() -> extraGear.stream().noneMatch(broken -> Rs2Equipment.isWearing(broken.getId())));
+                }
+            } else {
+                logSetup(Level.INFO, "extra gear not in setup (%s) — deposit equipment", extraNames);
+                Rs2Bank.depositEquipment();
+                sleepUntil(() -> Rs2Equipment.items().stream().noneMatch(Objects::nonNull));
+            }
         }
 
 		for (InventorySetupsItem item : inventorySetup.getEquipment()) {
 			if (isMainSchedulerCancelled()) break;
-			if (InventorySetupsItem.itemIsDummy(item)) continue;
+			if (InventorySetupsItem.isEmptySlot(item)) continue;
 
 			String lowerCaseName = item.getName().toLowerCase();
 
@@ -872,7 +927,7 @@ public class Rs2InventorySetup {
 			Object identifier = isFuzzy ? item.getName().toLowerCase() : item.getId();
 
 			// Check if already equipped
-			if (Rs2Equipment.isWearing(item.getName())) continue;
+			if (isWearingSetupRow(item)) continue;
 
 			// Check in inventory
 			boolean inInventory = isFuzzy
@@ -886,8 +941,23 @@ public class Rs2InventorySetup {
 			if (!inBank && !isFuzzy) {
 				inBank = Rs2Bank.hasBankItem(lowerCaseName, item.getQuantity(), false);
 			}
+			Rs2ItemModel barrowsInInventory = null;
+			Rs2ItemModel barrowsInBank = null;
+			if (InventorySetupsItem.isBarrowsItem(lowerCaseName)) {
+				barrowsInInventory = Rs2Inventory.items().filter(held -> itemFillsSetupRow(held, item)).findFirst().orElse(null);
+				barrowsInBank = bankItemsOrEmpty().stream().filter(held -> itemFillsSetupRow(held, item)).findFirst().orElse(null);
+				inInventory = inInventory && barrowsInInventory != null;
+				inBank = inBank && barrowsInBank != null;
+			}
 
 			if (!inInventory && !inBank) {
+				Stream.of(bankItemsOrEmpty().stream(), Rs2Inventory.items(), Rs2Equipment.all())
+					.flatMap(held -> held)
+					.filter(held -> isBrokenCopyOfSetupRow(held, item))
+					.findFirst()
+					.ifPresent(broken -> logSetup(Level.WARN,
+							"%s is broken (%s). Repair it (Bob in Lumbridge, Perdu, or an armour stand in your house) or remove it from the setup.",
+							item.getName(), broken.getName()));
 				int bankGear = bankQtyForPresetRow(item, lowerCaseName, isFuzzy);
 				int invGear = isFuzzy ? Rs2Inventory.itemQuantity((String) identifier) : Rs2Inventory.itemQuantity((int) identifier);
 				boolean stopLoad = missingSupplyHandler != null || missingSupplyPolicy == MissingSupplyPolicy.LOGOUT_AND_STOP;
@@ -901,16 +971,20 @@ public class Rs2InventorySetup {
 			}
 
 			if (inInventory) {
-				if (isFuzzy) {
+				if (barrowsInInventory != null) {
+					Rs2Bank.wearItem(barrowsInInventory.getId());
+				} else if (isFuzzy) {
 					Rs2Bank.wearItem((String) identifier);
 				} else {
 					Rs2Bank.wearItem((int) identifier);
 				}
-				sleepUntil(() -> Rs2Equipment.isWearing(item.getName()));
+				sleepUntil(() -> isWearingSetupRow(item));
 				continue;
 			}
 
-			if (item.getQuantity() > 1) {
+			if (barrowsInBank != null) {
+				Rs2Bank.withdrawAndEquip(barrowsInBank.getId());
+			} else if (item.getQuantity() > 1) {
 				if (isFuzzy) {
 					Rs2Bank.withdrawXAndEquip((String) identifier, item.getQuantity());
 				} else {
@@ -924,7 +998,7 @@ public class Rs2InventorySetup {
 				}
 			}
 
-			sleepUntil(() -> Rs2Equipment.isWearing(item.getName()));
+			sleepUntil(() -> isWearingSetupRow(item));
 		}
 
         sleep(800, 1200);
@@ -1114,11 +1188,9 @@ public class Rs2InventorySetup {
             return false;
         }
         for (InventorySetupsItem inventorySetupsItem : inventorySetup.getEquipment()) {
-            if (InventorySetupsItem.itemIsDummy(inventorySetupsItem)) continue;
+            if (InventorySetupsItem.isEmptySlot(inventorySetupsItem)) continue;
 
-			boolean exact = !inventorySetupsItem.isFuzzy() && !InventorySetupsItem.isBarrowsItem(inventorySetupsItem.getName().toLowerCase());
-
-			if (!Rs2Equipment.isWearing(inventorySetupsItem.getName(), exact)) {
+			if (!isWearingSetupRow(inventorySetupsItem)) {
 				int needEq = Math.max(1, inventorySetupsItem.getQuantity());
 				boolean fuzzyEq = inventorySetupsItem.isFuzzy();
 				String lowEq = inventorySetupsItem.getName().toLowerCase(Locale.ROOT);
@@ -1642,12 +1714,12 @@ public class Rs2InventorySetup {
 
 		// Get all setup item IDs and names for comparison
 		Set<Integer> setupItemIds = inventorySetup.getInventory().stream()
-			.filter(item -> !InventorySetupsItem.itemIsDummy(item))
+			.filter(item -> !InventorySetupsItem.isEmptySlot(item))
 			.map(InventorySetupsItem::getId)
 			.collect(Collectors.toSet());
 
 		Set<String> setupItemNames = inventorySetup.getInventory().stream()
-			.filter(item -> !InventorySetupsItem.itemIsDummy(item) && item.isFuzzy())
+			.filter(item -> !InventorySetupsItem.isEmptySlot(item) && item.isFuzzy())
 			.map(item -> item.getName().toLowerCase())
 			.collect(Collectors.toSet());
 
@@ -1690,12 +1762,12 @@ public class Rs2InventorySetup {
 
 		// Get all setup equipment IDs and names for comparison
 		Set<Integer> setupEquipmentIds = inventorySetup.getEquipment().stream()
-			.filter(item -> !InventorySetupsItem.itemIsDummy(item))
+			.filter(item -> !InventorySetupsItem.isEmptySlot(item))
 			.map(InventorySetupsItem::getId)
 			.collect(Collectors.toSet());
 
 		Set<String> setupEquipmentNames = inventorySetup.getEquipment().stream()
-			.filter(item -> !InventorySetupsItem.itemIsDummy(item) && item.isFuzzy())
+			.filter(item -> !InventorySetupsItem.isEmptySlot(item) && item.isFuzzy())
 			.map(item -> item.getName().toLowerCase())
 			.collect(Collectors.toSet());
 
