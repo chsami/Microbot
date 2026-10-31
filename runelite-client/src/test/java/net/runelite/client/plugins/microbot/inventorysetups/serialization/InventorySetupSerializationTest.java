@@ -281,4 +281,19 @@ public class InventorySetupSerializationTest
 		assertTrue(imported.getAdditionalFilteredItems().get(ItemID.ANGLERFISH).isFuzzy());
 		assertEquals(28, imported.getInventory().size());
 	}
+
+	@Test(timeout = 10000)
+	public void nullItemFieldsLoadAsDefaults()
+	{
+		String json = "{\"id\":" + ItemID.SHARK + ",\"q\":null,\"f\":null,\"sc\":null,\"l\":null,\"s\":null}";
+
+		InventorySetupsItem loaded = InventorySetupItemSerializable.convertToInventorySetupItem(RuneLiteAPI.GSON.fromJson(json, InventorySetupItemSerializable.class));
+
+		assertEquals(ItemID.SHARK, loaded.getId());
+		assertEquals(1, loaded.getQuantity());
+		assertFalse(loaded.isFuzzy());
+		assertFalse(loaded.isLocked());
+		assertEquals(InventorySetupsStackCompareID.None, loaded.getStackCompare());
+		assertEquals(-1, loaded.getSlot());
+	}
 }

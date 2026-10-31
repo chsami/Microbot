@@ -75,6 +75,11 @@ public class InventorySetupItemSerializableTypeAdapter extends TypeAdapter<Inven
 			{
 				//get the current token
 				String fieldName = in.nextName();
+				if (in.peek() == JsonToken.NULL)
+				{
+					in.nextNull();
+					continue;
+				}
 				switch (fieldName)
 				{
 					case "id":
