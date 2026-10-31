@@ -23,8 +23,8 @@ final class BanReportDialog
 	static final String DONT_SEND = "Don't send";
 	static final String KIND_TITLE = "What does your message centre on runescape.com say?";
 	static final String KIND_HINT = "Log in on the website to check. If you're not sure, leave \"I don't know yet\".";
-	static final String REMEMBER = "<html>Do this every time. Send: future reports go out without asking. Don't send: nothing is sent,<br>"
-		+ "including runtime totals. Change it under 'Ban reports and script runtime' in the Microbot settings.</html>";
+	static final String REMEMBER = "<html>Do this every time. Send: future reports go out without asking. Don't send: no ban reports<br>"
+		+ "or runtime totals are ever sent. Change it under 'Ban reports and script runtime' in the Microbot settings.</html>";
 	static final String CLOSE_HINT = "Closing this window decides nothing: you are asked again after the client restarts.";
 
 	@Value

@@ -342,8 +342,8 @@ public class BanTelemetry
 	private void sendFailed(String accountKey)
 	{
 		handledThisRun.remove(accountKey);
-		clientThread.invokeLater(() -> notifier.notify("The ban report couldn't be sent. Microbot will try again the next time "
-			+ "this account shows the screen."));
+		clientThread.invokeLater(() -> notifier.notify("The ban report couldn't be sent. You'll get another chance to send it "
+			+ "the next time this account shows the screen."));
 	}
 
 	CompletableFuture<?> flushRuntime()
