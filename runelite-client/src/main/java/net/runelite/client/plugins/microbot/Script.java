@@ -7,6 +7,7 @@ import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.util.Global;
 import net.runelite.client.plugins.microbot.agentserver.handler.ScriptHeartbeatRegistry;
+import net.runelite.client.plugins.microbot.diagnostics.FlightRecorder;
 import net.runelite.client.plugins.microbot.util.antiban.SessionFatigue;
 import net.runelite.client.plugins.microbot.util.input.InputArbiter;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
@@ -156,6 +157,11 @@ public abstract class Script extends Global implements IScript {
             Microbot.getConfigManager().setConfiguration(MicrobotConfig.configGroup, MicrobotConfig.keyUseStaminaPotsIfNeeded, Microbot.useStaminaPotsIfNeeded);
         }
         return true;
+    }
+
+    protected void trace(String key, Object value) {
+        String name = getClass().getName();
+        FlightRecorder.trace(name.substring(name.lastIndexOf('.') + 1) + "." + key, value);
     }
 
     /**

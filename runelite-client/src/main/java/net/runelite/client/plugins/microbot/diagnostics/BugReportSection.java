@@ -5,5 +5,6 @@ public enum BugReportSection
 	LOG,
 	PLUGIN_SETTINGS,
 	GAME_STATE,
+	RECORDER,
 	SCREENSHOT
 }
