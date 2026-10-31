@@ -57,4 +57,18 @@ public class InventorySetupsVariationMappingTest
 	{
 		assertTrue(InventorySetupsVariationMapping.getVariations(ItemID.ABYSSAL_WHIP).contains(ItemID.ABYSSAL_WHIP));
 	}
+
+	@Test
+	public void graniteCannonballsCountAsCannonballs()
+	{
+		assertEquals(ItemID.STEEL_CANNONBALL, InventorySetupsVariationMapping.map(ItemID.GRANITE_CANNONBALL));
+		assertTrue(InventorySetupsVariationMapping.getVariations(ItemID.STEEL_CANNONBALL).contains(ItemID.GRANITE_CANNONBALL));
+	}
+
+	@Test
+	public void headlessArrowsAreNotACannonballVariant()
+	{
+		assertEquals(ItemID.HEADLESS_ARROW, InventorySetupsVariationMapping.map(ItemID.HEADLESS_ARROW));
+		assertFalse(InventorySetupsVariationMapping.getVariations(ItemID.HEADLESS_ARROW).contains(ItemID.GRANITE_CANNONBALL));
+	}
 }
