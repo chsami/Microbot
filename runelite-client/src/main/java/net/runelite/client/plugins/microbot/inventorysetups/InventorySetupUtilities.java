@@ -23,6 +23,10 @@ public class InventorySetupUtilities
 			return Integer.MAX_VALUE;
 		}
 		input = input.toLowerCase();
+		if (input.isEmpty())
+		{
+			return 1;
+		}
 
 		char finalChar = input.charAt(input.length() - 1);
 		int factor = 1;
@@ -41,6 +45,11 @@ public class InventorySetupUtilities
 					factor = 1000000000;
 					break;
 			}
+		}
+
+		if (input.isEmpty())
+		{
+			return 1;
 		}
 
 		// limit to max int value

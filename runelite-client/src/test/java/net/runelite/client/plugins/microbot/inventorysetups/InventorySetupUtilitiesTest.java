@@ -70,4 +70,16 @@ public class InventorySetupUtilitiesTest
 		assertEquals(MInventorySetupsPlugin.MAX_SETUP_NAME_LENGTH, renamed.length());
 		assertEquals(fifty.substring(0, 49) + "1", renamed);
 	}
+
+	@Test
+	public void emptyAmountFallsBackToOne()
+	{
+		assertEquals(1, InventorySetupUtilities.parseTextInputAmount(""));
+	}
+
+	@Test
+	public void suffixWithoutDigitsFallsBackToOne()
+	{
+		assertEquals(1, InventorySetupUtilities.parseTextInputAmount("k"));
+	}
 }
