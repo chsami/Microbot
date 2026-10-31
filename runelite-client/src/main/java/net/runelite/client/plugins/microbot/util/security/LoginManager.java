@@ -381,6 +381,7 @@ public final class LoginManager {
     }
 
     private static void switchJagexAccount(Client client, String sessionId, String characterId, String displayName) {
+        JagexAuthService.noteAccountSwitch();
         // Waits for the switch to finish. getLauncherDisplayName() keeps the launch-time name, so it cannot confirm it.
         boolean switched = Microbot.getClientThread().runOnClientThreadOptional(() -> {
             client.switchJagexAccount(sessionId, characterId, displayName);

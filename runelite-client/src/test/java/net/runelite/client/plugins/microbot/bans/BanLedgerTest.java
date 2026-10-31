@@ -11,7 +11,6 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Stream;
 import org.junit.Before;
 import org.junit.Rule;
@@ -81,8 +80,39 @@ public class BanLedgerTest
 	{
 		ledger.record(account, identity, 60, List.of("AIOFighterPlugin"), true, 1200, false);
 
-		assertEquals(Optional.of(account), ledger.accountFor(identity));
-		assertFalse(ledger.accountFor(BanLedger.identityKey("someone else").orElseThrow()).isPresent());
+		assertEquals(IdentityMatch.of(account), ledger.accountFor(identity));
+		assertEquals(IdentityMatch.UNKNOWN, ledger.accountFor(BanLedger.identityKey("someone else").orElseThrow()));
+	}
+
+	@Test
+	public void anIdentitySeenOnTwoAccountsIsNeverUsedAgain()
+	{
+		String other = BanLedger.accountKey(987654321L);
+		ledger.record(account, identity, 60, List.of("PluginX"), true, 1200, false);
+		ledger.record(other, identity, 60, List.of("PluginX"), true, 1200, false);
+		ledger.record(account, identity, 60, List.of("PluginX"), true, 1200, false);
+
+		assertEquals(IdentityMatch.AMBIGUOUS, ledger.accountFor(identity));
+		BanLedger reopened = new BanLedger(folder.getRoot().toPath(), new Gson(), clock);
+		assertEquals(IdentityMatch.AMBIGUOUS, reopened.accountFor(identity));
+	}
+
+	@Test
+	public void timeIsSplitBetweenScriptsRunningTogether()
+	{
+		assertEquals(java.util.Map.of("A", 31L, "B", 30L), BanLedger.split(List.of("A", "B", "A"), 61));
+		assertTrue(BanLedger.split(List.of(), 60).isEmpty());
+	}
+
+	@Test
+	public void levelAndIdleTimeAreRounded()
+	{
+		ledger.record(account, identity, 60, List.of("PluginX"), true, 1249, false);
+		clock.advance(Duration.ofSeconds(1000));
+
+		JsonObject report = ledger.report(account, "unknown", "2.6.48").orElseThrow();
+		assertEquals(1200, report.get("totalLevel").getAsInt());
+		assertEquals(900, report.get("secondsSinceLastBotting").getAsLong());
 	}
 
 	@Test
@@ -100,7 +130,7 @@ public class BanLedgerTest
 		assertEquals(account, report.get("accountKey").getAsString());
 		assertEquals("permanent", report.get("banKind").getAsString());
 		assertTrue(report.get("member").getAsBoolean());
-		assertEquals(1201, report.get("totalLevel").getAsInt());
+		assertEquals(1200, report.get("totalLevel").getAsInt());
 		assertEquals(10, report.get("trackedDays").getAsInt());
 		assertEquals(2, report.get("activeDays30").getAsInt());
 		assertEquals(120, report.get("botSeconds7d").getAsLong());
@@ -113,6 +143,11 @@ public class BanLedgerTest
 		assertEquals("OldPlugin", top.get("plugin").getAsString());
 		assertEquals(0, top.get("seconds7d").getAsLong());
 		assertEquals(3600, top.get("seconds30d").getAsLong());
+		JsonObject aio = report.getAsJsonArray("plugins").get(1).getAsJsonObject();
+		assertEquals("AIOFighterPlugin", aio.get("plugin").getAsString());
+		assertEquals(90, aio.get("seconds7d").getAsLong());
+		JsonObject x = report.getAsJsonArray("plugins").get(2).getAsJsonObject();
+		assertEquals(30, x.get("seconds30d").getAsLong());
 	}
 
 	@Test
@@ -170,7 +205,7 @@ public class BanLedgerTest
 		ledger.record("../../evil", identity, 60, List.of("PluginX"), true, 1200, false);
 
 		assertFalse(ledger.report("../../evil", "unknown", "2.6.48").isPresent());
-		assertFalse(ledger.accountFor(identity).isPresent());
+		assertEquals(IdentityMatch.UNKNOWN, ledger.accountFor(identity));
 	}
 
 	private static final class MutableClock extends Clock

@@ -7,6 +7,7 @@ import java.util.function.Consumer;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
+import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
@@ -20,12 +21,10 @@ final class BanReportDialog
 	static final String TITLE = "Share an anonymous ban report?";
 	static final String SEND = "Send report";
 	static final String DONT_SEND = "Don't send";
-	static final String MESSAGE = "<html><body style='width: 340px'>"
-		+ "<b>This account shows the \"account disabled\" login screen.</b><br><br>"
-		+ "Sharing an anonymous report helps every Microbot player see which scripts and habits get accounts banned.<br><br>"
-		+ "The report contains the scripts this account ran in the last 30 days and for how long, membership, total level, "
-		+ "the longest session and whether breaks were on. It never contains your account name, email, IP or location."
-		+ "</body></html>";
+	static final String KIND_TITLE = "What does your message centre on runescape.com say?";
+	static final String KIND_HINT = "Log in on the website to check. If you're not sure, leave \"I don't know yet\".";
+	static final String REMEMBER = "Remember my choice (change it later under 'Ban reports' in the Microbot settings)";
+	static final String CLOSE_HINT = "Closing this window asks again the next time this account shows the screen.";
 
 	@Value
 	static class Answer
@@ -39,14 +38,34 @@ final class BanReportDialog
 	{
 	}
 
-	static void ask(Component parent, Consumer<Answer> onAnswer)
+	static String message(String accountName)
+	{
+		String who = accountName == null || accountName.isBlank()
+			? "This account shows"
+			: "<b>" + escapeHtml(accountName.trim()) + "</b> shows";
+		return "<html><body style='width: 360px'>"
+			+ who + " the \"account disabled\" login screen. The name stays on this computer.<br><br>"
+			+ "Sharing an anonymous report helps every Microbot player see which scripts and habits get accounts banned.<br><br>"
+			+ "The report contains the scripts this account ran in the last 30 days and for how long, membership, total level "
+			+ "(rounded), the longest session and whether breaks were on. It never contains your account name, email, IP or "
+			+ "location, just a scrambled ID so the same ban isn't counted twice."
+			+ "</body></html>";
+	}
+
+	private static String escapeHtml(String value)
+	{
+		return value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;");
+	}
+
+	static void ask(Component parent, String accountName, Consumer<Answer> onAnswer)
 	{
 		JPanel panel = new JPanel(new BorderLayout(0, 10));
-		panel.add(new JLabel(MESSAGE), BorderLayout.NORTH);
+		panel.add(new JLabel(message(accountName)), BorderLayout.NORTH);
 
 		JPanel kinds = new JPanel();
 		kinds.setLayout(new BoxLayout(kinds, BoxLayout.Y_AXIS));
-		kinds.setBorder(BorderFactory.createTitledBorder("What did the message centre say?"));
+		kinds.setBorder(BorderFactory.createTitledBorder(KIND_TITLE));
+		kinds.add(new JLabel(KIND_HINT));
 		ButtonGroup group = new ButtonGroup();
 		JRadioButton[] buttons = new JRadioButton[BanKind.values().length];
 		for (BanKind kind : BanKind.values())
@@ -58,22 +77,50 @@ final class BanReportDialog
 		}
 		panel.add(kinds, BorderLayout.CENTER);
 
-		JCheckBox remember = new JCheckBox("Remember my choice (change it later under Microbot > General > Ban reports)");
-		panel.add(remember, BorderLayout.SOUTH);
+		JPanel footer = new JPanel();
+		footer.setLayout(new BoxLayout(footer, BoxLayout.Y_AXIS));
+		JCheckBox remember = new JCheckBox(REMEMBER);
+		footer.add(remember);
+		footer.add(new JLabel(CLOSE_HINT));
+		panel.add(footer, BorderLayout.SOUTH);
 
-		Object[] options = {SEND, DONT_SEND};
-		JOptionPane pane = new JOptionPane(panel, JOptionPane.QUESTION_MESSAGE, JOptionPane.YES_NO_OPTION, null, options, SEND);
+		JButton send = new JButton(SEND);
+		JButton dontSend = new JButton(DONT_SEND);
+		JOptionPane pane = new JOptionPane(panel, JOptionPane.QUESTION_MESSAGE, JOptionPane.DEFAULT_OPTION, null,
+			new Object[]{send, dontSend}, send);
 		JDialog dialog = pane.createDialog(parent, TITLE);
 		dialog.setModal(false);
-		AtomicBoolean answered = new AtomicBoolean();
-		pane.addPropertyChangeListener(JOptionPane.VALUE_PROPERTY, e ->
+
+		Runnable syncButtons = () ->
 		{
-			if (e.getNewValue() == JOptionPane.UNINITIALIZED_VALUE || !answered.compareAndSet(false, true))
+			boolean notABan = buttons[BanKind.NOT_A_BAN.ordinal()].isSelected();
+			send.setEnabled(!notABan);
+			remember.setEnabled(!notABan);
+			dontSend.setText(notABan ? "Close" : DONT_SEND);
+		};
+		for (JRadioButton button : buttons)
+		{
+			button.addActionListener(e -> syncButtons.run());
+		}
+
+		AtomicBoolean answered = new AtomicBoolean();
+		Consumer<Object> finish = choice ->
+		{
+			if (!answered.compareAndSet(false, true))
 			{
 				return;
 			}
 			dialog.dispose();
-			onAnswer.accept(answer(e.getNewValue(), selected(buttons), remember.isSelected()));
+			onAnswer.accept(answer(choice, selected(buttons), remember.isSelected()));
+		};
+		send.addActionListener(e -> finish.accept(SEND));
+		dontSend.addActionListener(e -> finish.accept(DONT_SEND));
+		pane.addPropertyChangeListener(JOptionPane.VALUE_PROPERTY, e ->
+		{
+			if (e.getNewValue() != JOptionPane.UNINITIALIZED_VALUE)
+			{
+				finish.accept(null);
+			}
 		});
 		dialog.setVisible(true);
 	}

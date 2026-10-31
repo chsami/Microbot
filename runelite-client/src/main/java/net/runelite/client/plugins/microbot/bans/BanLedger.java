@@ -18,12 +18,15 @@ import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -33,6 +36,9 @@ class BanLedger
 	static final int RECENT_DAYS = 7;
 	static final long SESSION_GAP_MILLIS = TimeUnit.MINUTES.toMillis(5);
 	static final long REPORT_COOLDOWN_MILLIS = TimeUnit.DAYS.toMillis(14);
+	static final int LEVEL_STEP = 50;
+	static final long IDLE_STEP_SECONDS = 15 * 60;
+	static final String AMBIGUOUS = "ambiguous";
 	private static final Pattern KEY = Pattern.compile("[0-9a-f]{64}");
 
 	private final Path accountsDir;
@@ -94,20 +100,64 @@ class BanLedger
 		day.botSeconds += elapsedSeconds;
 		day.longestSession = Math.max(day.longestSession, (now - activity.sessionStart) / 1000);
 		day.breaks |= breaks;
-		for (String plugin : plugins)
-		{
-			day.plugins.merge(plugin, elapsedSeconds, Long::sum);
-		}
+		split(plugins, elapsedSeconds).forEach((plugin, seconds) -> day.plugins.merge(plugin, seconds, Long::sum));
 		prune(activity);
 		save(accountsDir.resolve(accountKey + ".json"), gson.toJson(activity));
-		if (identityKey != null && !accountKey.equals(writtenIdentities.get(identityKey)))
-		{
-			save(identitiesDir.resolve(identityKey), accountKey);
-			writtenIdentities.put(identityKey, accountKey);
-		}
+		rememberIdentity(identityKey, accountKey);
 	}
 
-	synchronized Optional<String> accountFor(String identityKey)
+	static Map<String, Long> split(Collection<String> plugins, long elapsedSeconds)
+	{
+		Map<String, Long> shares = new LinkedHashMap<>();
+		List<String> distinct = plugins.stream().distinct().collect(Collectors.toList());
+		if (distinct.isEmpty() || elapsedSeconds <= 0)
+		{
+			return shares;
+		}
+		long share = elapsedSeconds / distinct.size();
+		long remainder = elapsedSeconds % distinct.size();
+		for (int i = 0; i < distinct.size(); i++)
+		{
+			long seconds = share + (i < remainder ? 1 : 0);
+			if (seconds > 0)
+			{
+				shares.put(distinct.get(i), seconds);
+			}
+		}
+		return shares;
+	}
+
+	private void rememberIdentity(String identityKey, String accountKey)
+	{
+		if (identityKey == null || !KEY.matcher(identityKey).matches())
+		{
+			return;
+		}
+		String known = writtenIdentities.computeIfAbsent(identityKey, k -> readIdentity(k).orElse(""));
+		if (known.equals(accountKey) || known.equals(AMBIGUOUS))
+		{
+			return;
+		}
+		String value = known.isEmpty() ? accountKey : AMBIGUOUS;
+		save(identitiesDir.resolve(identityKey), value);
+		writtenIdentities.put(identityKey, value);
+	}
+
+	synchronized IdentityMatch accountFor(String identityKey)
+	{
+		Optional<String> value = KEY.matcher(identityKey).matches() ? readIdentity(identityKey) : Optional.empty();
+		if (value.isEmpty())
+		{
+			return IdentityMatch.UNKNOWN;
+		}
+		if (value.get().equals(AMBIGUOUS))
+		{
+			return IdentityMatch.AMBIGUOUS;
+		}
+		return KEY.matcher(value.get()).matches() ? IdentityMatch.of(value.get()) : IdentityMatch.UNKNOWN;
+	}
+
+	private Optional<String> readIdentity(String identityKey)
 	{
 		try
 		{
@@ -116,8 +166,7 @@ class BanLedger
 			{
 				return Optional.empty();
 			}
-			String key = Files.readString(file, StandardCharsets.UTF_8).trim();
-			return KEY.matcher(key).matches() ? Optional.of(key) : Optional.empty();
+			return Optional.of(Files.readString(file, StandardCharsets.UTF_8).trim());
 		}
 		catch (IOException e)
 		{
@@ -183,14 +232,15 @@ class BanLedger
 		json.addProperty("banKind", banKind);
 		json.addProperty("microbotVersion", microbotVersion);
 		json.addProperty("member", activity.member);
-		json.addProperty("totalLevel", activity.totalLevel);
+		json.addProperty("totalLevel", activity.totalLevel == null ? null : activity.totalLevel / LEVEL_STEP * LEVEL_STEP);
 		json.addProperty("trackedDays", ChronoUnit.DAYS.between(dayOf(activity.firstSeen), today));
 		json.addProperty("activeDays30", activeDays);
 		json.addProperty("botSeconds7d", bot7d);
 		json.addProperty("botSeconds30d", bot30d);
 		json.addProperty("longestSessionSeconds", longest);
 		json.addProperty("breakHandlerUsed", breaks);
-		json.addProperty("secondsSinceLastBotting", Math.max(0, (clock.millis() - activity.lastBot) / 1000));
+		long idle = Math.max(0, (clock.millis() - activity.lastBot) / 1000);
+		json.addProperty("secondsSinceLastBotting", idle / IDLE_STEP_SECONDS * IDLE_STEP_SECONDS);
 		JsonArray pluginArray = new JsonArray();
 		plugins.entrySet().stream()
 			.sorted((a, b) -> Long.compare(b.getValue()[1], a.getValue()[1]))

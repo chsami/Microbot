@@ -154,17 +154,17 @@ public class MicrobotApi {
         });
     }
 
-    public boolean submitBanReport(JsonObject payload)
+    public CompletableFuture<Boolean> submitBanReport(JsonObject payload)
     {
         return postTelemetry("/plugintelemetry/ban-reports", payload, "Ban report");
     }
 
-    public boolean submitPluginRuntime(JsonObject payload)
+    public CompletableFuture<Boolean> submitPluginRuntime(JsonObject payload)
     {
         return postTelemetry("/plugintelemetry/runtime", payload, "Plugin runtime");
     }
 
-    private boolean postTelemetry(String path, JsonObject payload, String what)
+    private CompletableFuture<Boolean> postTelemetry(String path, JsonObject payload, String what)
     {
         Request request = new Request.Builder()
                 .url(microbotApiUrl + path)
@@ -172,19 +172,30 @@ public class MicrobotApi {
                 .post(RequestBody.create(RuneLiteAPI.JSON, gson.toJson(payload)))
                 .build();
 
-        try (Response response = client.newCall(request).execute())
+        CompletableFuture<Boolean> result = new CompletableFuture<>();
+        client.newCall(request).enqueue(new Callback()
         {
-            if (!response.isSuccessful())
+            @Override
+            public void onFailure(Call call, IOException e)
             {
-                log.debug("{} upload rejected: HTTP {}", what, response.code());
+                log.debug("{} upload failed", what, e);
+                result.complete(false);
             }
-            return response.isSuccessful();
-        }
-        catch (IOException e)
-        {
-            log.debug("{} upload failed", what, e);
-            return false;
-        }
+
+            @Override
+            public void onResponse(Call call, Response response)
+            {
+                boolean successful = response.isSuccessful();
+                int code = response.code();
+                response.close();
+                if (!successful)
+                {
+                    log.debug("{} upload rejected: HTTP {}", what, code);
+                }
+                result.complete(successful);
+            }
+        });
+        return result;
     }
 
     public CompletableFuture<BugReportReceipt> submitBugReport(JsonObject payload)

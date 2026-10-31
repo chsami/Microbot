@@ -40,6 +40,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.atomic.AtomicInteger;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.RequiredArgsConstructor;
@@ -53,6 +54,8 @@ import net.runelite.client.util.OSType;
 @RequiredArgsConstructor(onConstructor_ = @Inject)
 public class JagexAuthService
 {
+	private static final AtomicInteger ACCOUNT_SWITCHES = new AtomicInteger();
+
 	private final Client client;
 	private final ClientThread clientThread;
 	private final JagexAuthClient authClient;
@@ -222,7 +225,18 @@ public class JagexAuthService
 
 	public void switchJagexAccount(String sessionId, String sub, String displayName)
 	{
+		noteAccountSwitch();
 		clientThread.invoke(() -> client.switchJagexAccount(sessionId, sub, displayName));
+	}
+
+	public static void noteAccountSwitch()
+	{
+		ACCOUNT_SWITCHES.incrementAndGet();
+	}
+
+	public static int accountSwitches()
+	{
+		return ACCOUNT_SWITCHES.get();
 	}
 
 	private static URL getJagexAuthURL()

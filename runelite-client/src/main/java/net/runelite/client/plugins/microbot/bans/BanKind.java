@@ -8,7 +8,7 @@ enum BanKind
 	PERMANENT("permanent", "Permanent ban"),
 	TEMPORARY("temporary", "Temporary ban"),
 	UNKNOWN("unknown", "I don't know yet"),
-	NOT_A_BAN(null, "Not a ban (locked, or something else)");
+	NOT_A_BAN(null, "Not a ban (locked, or something else): nothing is sent");
 
 	final String value;
 	private final String label;

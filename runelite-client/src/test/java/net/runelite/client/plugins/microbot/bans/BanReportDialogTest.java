@@ -47,6 +47,15 @@ public class BanReportDialogTest
 	}
 
 	@Test
+	public void messageNamesTheAccountSafely()
+	{
+		assertTrue(BanReportDialog.message("Zezima").contains("<b>Zezima</b> shows"));
+		assertTrue(BanReportDialog.message("<i>x</i>").contains("&lt;i&gt;x&lt;/i&gt;"));
+		assertTrue(BanReportDialog.message(null).contains("This account shows"));
+		assertTrue(BanReportDialog.message(" ").contains("This account shows"));
+	}
+
+	@Test
 	public void banReportsAskByDefault()
 	{
 		assertEquals(BanReportMode.ASK, new net.runelite.client.plugins.microbot.MicrobotConfig() { }.banReports());

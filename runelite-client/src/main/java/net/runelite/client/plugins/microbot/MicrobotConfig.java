@@ -253,9 +253,12 @@ public interface MicrobotConfig extends Config
 		keyName = keyBanReports,
 		name = "Ban reports",
 		description = "When an account Microbot botted on shows the \"account disabled\" login screen, share an anonymous report: " +
-				"scripts run in the last 30 days and for how long, membership, total level, longest session and whether breaks were on. " +
-				"Never your account name, email, IP or location.",
-		position = 6,
+				"scripts run in the last 30 days and for how long, membership, rounded total level, longest session and whether breaks were on. " +
+				"Never your account name, email, IP or location, just a scrambled ID so the same ban isn't counted twice. " +
+				"Ask me and Always send also share hourly script runtime totals (no account info) so ban rates per script can be worked out; " +
+				"Never send stops both. Always send sends the ban type as unknown, so locked accounts may be counted. " +
+				"Ignored while Disable telemetry is on.",
+		position = 5,
 		section = generalSection
 	)
 	default BanReportMode banReports() {
