@@ -21,6 +21,8 @@ import net.runelite.client.plugins.microbot.shortestpath.PurchasableItemCatalog;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.TransportItemRequirement;
 import net.runelite.client.plugins.microbot.shortestpath.TransportType;
+import net.runelite.client.plugins.microbot.shortestpath.pathfinder.CollisionMap;
+import net.runelite.client.plugins.microbot.shortestpath.pathfinder.PathfinderConfig;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
@@ -1294,8 +1296,37 @@ public final class Rs2WalkerBankingPlanner {
         if (route == null) {
             return -1;
         }
-        return comparableRouteDistance(route.getPath(), target, route.getTerminationReason(),
+        int tiles = comparableRouteDistance(route.getPath(), target, route.getTerminationReason(),
                 route.isTargetReached(0));
+        if (tiles < 0) {
+            return tiles;
+        }
+        // A teleport is one step of the path but costs far more; price it the way the pathfinder does.
+        int surcharge = 0;
+        for (Rs2RouteStep step : route.getTransportSteps()) {
+            surcharge += step.getTransport().map(edge -> transportHopCost(edge) - 1).orElse(0);
+        }
+        return tiles + surcharge;
+    }
+
+    /** Tile-equivalent cost of one transport hop: the pathfinder's teleport price, or 1 for anything else. */
+    static int transportHopCost(Rs2TransportEdge edge) {
+        if (edge == null) {
+            return 1;
+        }
+        TransportType type;
+        try {
+            type = TransportType.valueOf(edge.getType().name());
+        } catch (IllegalArgumentException | NullPointerException e) {
+            return 1;
+        }
+        if (!TransportType.isTeleport(type, edge.getOrigin())) {
+            return 1;
+        }
+        PathfinderConfig config = Rs2PathApi.getPathfinderConfig();
+        int distanceBeforeTeleport = config == null ? 0 : config.getDistanceBeforeUsingTeleport();
+        return CollisionMap.teleportCost(distanceBeforeTeleport, edge.getDuration(),
+                type == TransportType.TELEPORTATION_MINIGAME);
     }
 
     static int comparableRouteDistance(List<WorldPoint> path, WorldPoint target,
@@ -1476,7 +1507,7 @@ public final class Rs2WalkerBankingPlanner {
 
 		int destinationIndex = transportStepIndex + 1;
 		int walkToTransport = isImmediateBankTeleport(transport) ? 0 : transportStepIndex;
-        int transportHop = 1;
+        int transportHop = transportHopCost(transport);
         int postTransportTail = Math.max(0, pathFromBankToTarget.size() - destinationIndex);
         return walkToTransport + transportHop + postTransportTail;
     }

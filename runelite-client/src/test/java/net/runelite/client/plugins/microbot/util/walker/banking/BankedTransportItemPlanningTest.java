@@ -4,6 +4,7 @@ import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.TransportType;
+import net.runelite.client.plugins.microbot.shortestpath.pathfinder.CollisionMap;
 import net.runelite.client.plugins.microbot.util.walker.Rs2TerminalTravelMode;
 import net.runelite.client.plugins.microbot.util.walker.Rs2RouteStep;
 import net.runelite.client.plugins.microbot.util.walker.Rs2RouteTermination;
@@ -175,6 +176,46 @@ public class BankedTransportItemPlanningTest {
 
 		assertEquals(1, Rs2WalkerBankingPlanner.effectiveDistanceFromBank(
 			path, List.of(Rs2RouteStep.walk(bank, target)), 1));
+	}
+
+	private static Rs2TransportEdge edgeOfType(Rs2TransportType type, Rs2TransportExecutor executor, int duration) {
+		return new Rs2TransportEdge(
+			null,
+			new WorldPoint(2914, 10193, 0),
+			type,
+			executor,
+			Rs2TerminalTravelMode.UNSUPPORTED,
+			"Rat Pits: Keldagrim",
+			"",
+			"",
+			-1,
+			duration,
+			true,
+			false,
+			false,
+			0,
+			"",
+			0,
+			List.of());
+	}
+
+	@Test
+	public void minigameTeleportIsPricedForItsCooldownNotAsOneTile() {
+		// Grouping teleports were scored as a single path step, so GotR->bank->ring beat a 140-tile walk.
+		Rs2TransportEdge grouping = edgeOfType(
+			Rs2TransportType.TELEPORTATION_MINIGAME, Rs2TransportExecutor.MINIGAME_TELEPORT, 23);
+		int cost = Rs2WalkerBankingPlanner.transportHopCost(grouping);
+		assertEquals(CollisionMap.teleportCost(0, 23, true), cost);
+		assertTrue("a Grouping teleport must only win when it saves a long walk, got " + cost, cost > 200);
+	}
+
+	@Test
+	public void itemTeleportCostsItsDurationAndObjectTransportsStayOneStep() {
+		assertEquals(4, Rs2WalkerBankingPlanner.transportHopCost(
+			edgeOfType(Rs2TransportType.TELEPORTATION_ITEM, Rs2TransportExecutor.ITEM_TELEPORT, 4)));
+		assertEquals(1, Rs2WalkerBankingPlanner.transportHopCost(
+			edgeOfType(Rs2TransportType.MINECART, Rs2TransportExecutor.OBJECT, 10)));
+		assertEquals(1, Rs2WalkerBankingPlanner.transportHopCost(null));
 	}
 
 	@Test

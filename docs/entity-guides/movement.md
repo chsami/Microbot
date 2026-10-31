@@ -633,3 +633,37 @@ return location != null && location.getY() >= 6400;
 **Where this applies:** `Rs2Player.isInCave` and any helper that reads `Rs2Player.getWorldLocation()` during a walk or transport handoff.
 
 **Defensive check:** Mock `Rs2PlayerStateCache.getLocalPlayerPosition()` to return `null` and assert the predicate is `false`, as in `Rs2PlayerIsInCaveTest`.
+
+## 32. Click a dropdown row on the row, not with a placeholder rectangle
+
+`Microbot.doInvoke(entry, new Rectangle(1, 1))` clicks wherever the pointer already rests. After a dropdown toggle that is the toggle itself, so the "row" click toggles the list shut before `Select` lands. Click inside the row's visible bounds, clipped to the scrolling list, and give up when there is no visible list.
+
+**Why this matters:** The Grouping (minigame) teleport opened the dropdown, clicked the toggle again instead of the destination row, and retried every walker pass. The repeated dropdown clicking was noticed in the field. None of those clicks were recorded as transport interactions, so the edge never struck out.
+
+**Pattern to follow:**
+
+```java
+// Wrong: clicks the resting pointer, which is the toggle just clicked.
+Microbot.doInvoke(destinationMenuEntry, new Rectangle(1, 1));
+
+// Right: click the visible part of the row (bounds read on the client thread) and record the interaction.
+Rectangle rowArea = Microbot.getClientThread().runOnClientThreadOptional(
+        () -> visibleRowArea(destinationWidget.getBounds(), minigameWidgetParent.getBounds())).orElse(null);
+if (rowArea == null) return false;
+Microbot.doInvoke(destinationMenuEntry, rowArea);
+noteTransportInteraction();
+```
+
+**Where this applies:** `Rs2WalkerTransports.handleMinigameTeleport` and any widget-list selection dispatched through `Microbot.doInvoke`.
+
+**Defensive check:** `Rs2WalkerTransportsMinigameTeleportTest` covers a row inside the list, a row scrolled out of view and a missing list.
+
+## 33. Price teleport hops the same way in bank-vs-direct as in the pathfinder
+
+The pathfinder charges a teleport edge `distanceBeforeUsingTeleport + duration`, plus `CollisionMap.MINIGAME_TELEPORT_PENALTY` for a Grouping teleport. The bank-vs-direct comparison counts path tiles, where a teleport is a single step. Add the same price through `CollisionMap.teleportCost`, or the comparison sees a teleport as one tile while the search sees forty.
+
+**Why this matters:** Minigame teleports were priced at their raw duration and won nearly every comparison, so the walker reached for Grouping, which has a 20-minute cooldown and needs several interface clicks, even on short trips.
+
+**Where this applies:** `CollisionMap` teleport neighbours, `Rs2WalkerBankingPlanner.transportHopCost` and every route-distance comparison that mixes walking tiles and transports.
+
+**Defensive check:** `BankedTransportItemPlanningTest.minigameTeleportIsPricedForItsCooldownNotAsOneTile` and `itemTeleportCostsItsDurationAndObjectTransportsStayOneStep`.
