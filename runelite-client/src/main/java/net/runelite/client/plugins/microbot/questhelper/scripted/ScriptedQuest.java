@@ -23,6 +23,18 @@ public interface ScriptedQuest
 	 */
 	boolean tick(ScriptedQuestHost host);
 
+	/** Forgets everything remembered between ticks; called when the quest helper is stopped. */
+	void reset();
+
+	/**
+	 * True while the preflight, the fare and the supply pass must wait (the generic bank trip would pick a bank the
+	 * script must not use, such as the Port Phasmatys bank in Morytania).
+	 */
+	default boolean deferGates()
+	{
+		return false;
+	}
+
 	/** Items the preflight must find in the inventory, the bank or the Grand Exchange, on top of Quest Helper's own list. */
 	default List<QuestPreflight.Need> preflightNeeds()
 	{

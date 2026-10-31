@@ -3,6 +3,7 @@ package net.runelite.client.plugins.microbot.questhelper.scripted.animalmagnetis
 import static net.runelite.client.plugins.microbot.util.Global.sleepGaussian;
 import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 
+import java.awt.event.KeyEvent;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -10,6 +11,7 @@ import net.runelite.api.Quest;
 import net.runelite.api.QuestState;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.api.npc.models.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.api.tileobject.models.Rs2TileObjectModel;
@@ -23,6 +25,7 @@ import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
+import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.walker.WalkerState;
@@ -47,6 +50,20 @@ final class AnimalMagnetismActions
 	private int translationClicks;
 	private int patternResultId = -1;
 	private boolean preflightRearmed;
+	/** The puzzle was opened by this script, so its switches are all untouched. */
+	private boolean puzzleFresh;
+	/** The player stepped from the stand tile to the one north of it, so they face north. */
+	private boolean facingNorth;
+
+	/** Forgets everything remembered between ticks (the quest helper was stopped). */
+	void reset()
+	{
+		translationClicks = 0;
+		patternResultId = -1;
+		preflightRearmed = false;
+		puzzleFresh = false;
+		facingNorth = false;
+	}
 
 	// ---- reading the game ----
 
@@ -74,6 +91,7 @@ final class AnimalMagnetismActions
 		if (!open)
 		{
 			translationClicks = 0;
+			puzzleFresh = false;
 		}
 		return s.translationOpen(open)
 			.ghostsAhoyDone(Rs2Player.getQuestState(Quest.GHOSTS_AHOY) == QuestState.FINISHED)
@@ -99,10 +117,25 @@ final class AnimalMagnetismActions
 		return burthorpe ? Place.BURTHORPE : Place.ELSEWHERE;
 	}
 
-	/** The manor's ground floor, the hidden room behind the library included. */
+	/**
+	 * The manor building (ground floor), the hidden room behind the library included, and the tile the trees are left
+	 * at: from all of these the front doors are the only way out on foot, and they do not open from inside.
+	 */
 	static boolean insideManor(WorldPoint me)
 	{
-		return me.getPlane() == 0 && me.getX() >= 3084 && me.getX() <= 3128 && me.getY() >= 3354 && me.getY() <= 3382;
+		if (me.getPlane() != 0)
+		{
+			return false;
+		}
+		boolean building = me.getX() >= 3097 && me.getX() <= 3125 && me.getY() >= 3355 && me.getY() <= 3381;
+		boolean hiddenRoom = me.getX() >= 3090 && me.getX() <= 3096 && me.getY() >= 3354 && me.getY() <= 3360;
+		return building || hiddenRoom || me.distanceTo2D(AnimalMagnetismPlan.AWAY_FROM_TREES) <= 2;
+	}
+
+	/** Which side of the Holy barrier the player is on. */
+	static boolean inMorytania(WorldPoint at)
+	{
+		return at != null && at.getX() >= 3400 && at.getY() >= 3400;
 	}
 
 	/** True when the dialogue is handled this tick; false hands a menu this script has no answer for to the generic code. */
@@ -115,7 +148,15 @@ final class AnimalMagnetismActions
 		}
 		if (Rs2Dialogue.hasSelectAnOption())
 		{
-			return !options.isEmpty() && Rs2Dialogue.clickOption(false, options.toArray(new String[0]));
+			for (String option : options)
+			{
+				Widget widget = Rs2Dialogue.getDialogueOption(option, true);
+				if (widget != null)
+				{
+					return Rs2Widget.clickWidget(widget);
+				}
+			}
+			return false;
 		}
 		if (Rs2Dialogue.hasContinue())
 		{
@@ -193,15 +234,20 @@ final class AnimalMagnetismActions
 
 	boolean makeMagnet()
 	{
-		if (distanceTo(AnimalMagnetismPlan.IRON_MINE_STAND) > 0 && distanceTo(AnimalMagnetismPlan.IRON_MINE_FACE_NORTH) > 0)
+		boolean north = distanceTo(AnimalMagnetismPlan.IRON_MINE_FACE_NORTH) == 0;
+		boolean stand = distanceTo(AnimalMagnetismPlan.IRON_MINE_STAND) == 0;
+		if (!stand && !(north && facingNorth))
 		{
+			// always from the stand tile: being on the north tile says nothing about which way the player faces
+			facingNorth = false;
 			return walk(AnimalMagnetismPlan.IRON_MINE_STAND, 0);
 		}
-		if (distanceTo(AnimalMagnetismPlan.IRON_MINE_FACE_NORTH) > 0)
+		if (stand)
 		{
 			// one tile north so the player faces north, which the hammer on the iron needs
 			Rs2Walker.walkFastCanvas(AnimalMagnetismPlan.IRON_MINE_FACE_NORTH);
-			return sleepUntil(() -> distanceTo(AnimalMagnetismPlan.IRON_MINE_FACE_NORTH) == 0, WAIT_MS / 2);
+			facingNorth = sleepUntil(() -> distanceTo(AnimalMagnetismPlan.IRON_MINE_FACE_NORTH) == 0, WAIT_MS / 2);
+			return facingNorth;
 		}
 		return Rs2Inventory.combine(AnimalMagnetismPlan.HAMMER, AnimalMagnetismPlan.SELECTED_IRON)
 			&& sleepUntil(() -> Rs2Inventory.hasItem(AnimalMagnetismPlan.BAR_MAGNET), WAIT_MS);
@@ -291,21 +337,30 @@ final class AnimalMagnetismActions
 	boolean translateNotes()
 	{
 		translationClicks = 0;
-		return Rs2Inventory.interact(AnimalMagnetismPlan.RESEARCH_NOTES, "Translate")
+		boolean opened = Rs2Inventory.interact(AnimalMagnetismPlan.RESEARCH_NOTES, "Translate")
 			&& sleepUntil(() -> Rs2Widget.isWidgetVisible(AnimalMagnetismPlan.TRANSLATION_GROUP,
 				AnimalMagnetismPlan.TRANSLATION_CLICKS[0]), WAIT_MS);
+		puzzleFresh = opened;
+		return opened;
 	}
 
 	/** One switch of the fixed answer per call. */
 	boolean clickTranslation()
 	{
-		int[] clicks = AnimalMagnetismPlan.TRANSLATION_CLICKS;
-		if (translationClicks >= clicks.length)
+		if (!puzzleFresh)
+		{
+			// found open after a restart: its switches may be half set, so close it and open it afresh
+			Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE);
+			return sleepUntil(() -> !Rs2Widget.isWidgetVisible(AnimalMagnetismPlan.TRANSLATION_GROUP,
+				AnimalMagnetismPlan.TRANSLATION_CLICKS[0]), WAIT_MS / 2);
+		}
+		int child = AnimalMagnetismPlan.nextTranslationClick(translationClicks);
+		if (child < 0)
 		{
 			sleepGaussian(600, 150);
 			return true;
 		}
-		boolean clicked = Rs2Widget.clickWidget(AnimalMagnetismPlan.TRANSLATION_GROUP, clicks[translationClicks]);
+		boolean clicked = Rs2Widget.clickWidget(AnimalMagnetismPlan.TRANSLATION_GROUP, child);
 		if (clicked)
 		{
 			translationClicks++;
@@ -352,8 +407,12 @@ final class AnimalMagnetismActions
 		}
 		if (!Rs2Bank.isOpen())
 		{
-			Me me = new Me(Rs2Player.getWorldLocation());
-			BankLocation bank = me.inMorytania() ? BankLocation.CANIFIS : BankLocation.DRAYNOR_VILLAGE;
+			if (s.place() == Place.INSIDE_MANOR)
+			{
+				return leaveManor(s);
+			}
+			BankLocation bank = inMorytania(Rs2Player.getWorldLocation())
+				? BankLocation.CANIFIS : BankLocation.DRAYNOR_VILLAGE;
 			return Rs2Bank.walkToBankAndUseBank(bank) && sleepUntil(Rs2Bank::isOpen, WAIT_MS);
 		}
 		boolean allFound = Rs2Bank.setWithdrawAsItem();
@@ -363,7 +422,8 @@ final class AnimalMagnetismActions
 		}
 		Rs2Bank.closeBank();
 		sleepUntil(() -> !Rs2Bank.isOpen(), WAIT_MS / 2);
-		if (!allFound && !preflightRearmed)
+		// never in Morytania: the preflight bank trip would pick the Port Phasmatys bank and pay its toll again
+		if (!allFound && !preflightRearmed && !inMorytania(Rs2Player.getWorldLocation()))
 		{
 			preflightRearmed = true;
 			Microbot.log("AnimalMagnetism: the bank is short of items, asking the preflight to buy them", Level.INFO);
@@ -391,24 +451,23 @@ final class AnimalMagnetismActions
 		return want <= 0 || s.count(entry) >= entry.min;
 	}
 
+	/** Out of the manor by a teleport, never on foot: the front doors do not open from inside. */
+	private boolean leaveManor(Snapshot s)
+	{
+		switch (AnimalMagnetismPlan.exitRoute(s))
+		{
+			case TAB:
+				return breakDraynorTab(true);
+			case NECKLACE:
+				return rubNecklace();
+			default:
+				Microbot.log("AnimalMagnetism: no way out of the manor without its doors", Level.WARN);
+				return false;
+		}
+	}
+
 	void resupplyDone()
 	{
 		preflightRearmed = false;
-	}
-
-	/** Which side of the Holy barrier the player is on. */
-	private static final class Me
-	{
-		private final WorldPoint at;
-
-		Me(WorldPoint at)
-		{
-			this.at = at;
-		}
-
-		boolean inMorytania()
-		{
-			return at != null && at.getX() >= 3400 && at.getY() >= 3400;
-		}
 	}
 }

@@ -16,6 +16,7 @@ import net.runelite.client.plugins.microbot.questhelper.scripted.ScriptedQuestHo
 import net.runelite.client.plugins.microbot.questhelper.scripted.animalmagnetism.AnimalMagnetismPlan.Action;
 import net.runelite.client.plugins.microbot.questhelper.scripted.animalmagnetism.AnimalMagnetismPlan.Snapshot;
 import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
+import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import org.slf4j.event.Level;
 
 /**
@@ -42,6 +43,21 @@ public final class AnimalMagnetismScript implements ScriptedQuest
 	}
 
 	@Override
+	public void reset()
+	{
+		budget.reset();
+		warned.clear();
+		lastLogged = null;
+		actions.reset();
+	}
+
+	@Override
+	public boolean deferGates()
+	{
+		return AnimalMagnetismActions.inMorytania(Rs2Player.getWorldLocation());
+	}
+
+	@Override
 	public List<QuestPreflight.Need> preflightNeeds()
 	{
 		int varbit = Microbot.getVarbitValue(AnimalMagnetismPlan.VARBIT);
@@ -58,6 +74,10 @@ public final class AnimalMagnetismScript implements ScriptedQuest
 		{
 			return actions.answerDialogue(dialogueOptions(varbit, snapshot));
 		}
+		if (AnimalMagnetismPlan.missing(varbit, snapshot).isEmpty())
+		{
+			actions.resupplyDone();
+		}
 		Action action = AnimalMagnetismPlan.next(varbit, snapshot);
 		if (!budget.tryUse(action.name(), snapshot.progress(varbit), attemptsFor(action)))
 		{
@@ -72,6 +92,11 @@ public final class AnimalMagnetismScript implements ScriptedQuest
 		{
 			lastLogged = action;
 			Microbot.log("AnimalMagnetism: stage " + varbit + " -> " + action, Level.INFO);
+			if (action == Action.GET_TOKENS)
+			{
+				Microbot.log("AnimalMagnetism: earning Ecto-tokens, holding "
+					+ AnimalMagnetismPlan.tokensToHold(snapshot.ghostsAhoyDone()) + " counting the entry toll", Level.INFO);
+			}
 		}
 		if (!run(action, varbit, snapshot, host))
 		{
@@ -83,10 +108,7 @@ public final class AnimalMagnetismScript implements ScriptedQuest
 	private static List<String> dialogueOptions(int varbit, Snapshot snapshot)
 	{
 		List<String> options = new ArrayList<>(AnimalMagnetismPlan.dialogueOptions(varbit, snapshot.count(AnimalMagnetismPlan.CHICKEN)));
-		if (varbit >= 150 && varbit <= 180)
-		{
-			options.add("Burthorpe");
-		}
+		options.add("Burthorpe."); // the Games necklace menu, for the Turael trip and the way out of the manor
 		return options;
 	}
 

@@ -282,6 +282,7 @@ public class QuestScript extends Script {
                 humanizePause();
 
                 // a quest with its own script plays itself; the generic step handling below is its fallback
+                scriptedGatesRan = false;
                 ScriptedQuest scripted = scriptedQuests.overrideFor(
                         getQuestHelperPlugin().getSelectedQuest().getQuest(), config.useScriptedQuests());
                 if (scripted != null && scriptedTick(scripted, getQuestHelperPlugin().getSelectedQuest())) {
@@ -452,19 +453,20 @@ public class QuestScript extends Script {
                         return;
                     }
 
-					if (questWindowGate(selectedQuest)) {
+					// a scripted quest that fell back this tick has already run these gates
+					if (!scriptedGatesRan && questWindowGate(selectedQuest)) {
 						return;
 					}
 
-					if (combat.beginStep(selectedQuest)) {
+					if (!scriptedGatesRan && combat.beginStep(selectedQuest)) {
 						return;
 					}
 
-					if (runPreflight(selectedQuest)) {
+					if (!scriptedGatesRan && runPreflight(selectedQuest)) {
 						return;
 					}
 
-					if (ensureFare(selectedQuest)) {
+					if (!scriptedGatesRan && ensureFare(selectedQuest)) {
 						return;
 					}
 
@@ -500,7 +502,7 @@ public class QuestScript extends Script {
 						return;
 					}
 
-					if (combat.prepareQuestSupplies(slotsReservedForStep(questStep))) {
+					if (!scriptedGatesRan && combat.prepareQuestSupplies(slotsReservedForStep(questStep))) {
 						return;
 					}
 
@@ -4768,6 +4770,8 @@ public class QuestScript extends Script {
 	private final ScriptedQuestRegistry scriptedQuests = ScriptedQuestRegistry.shared();
 	private boolean scriptedEctoActive;
 	private boolean staminaSeen;
+	/** The gates of a scripted quest already ran this tick; the generic path must not run them again. */
+	private boolean scriptedGatesRan;
 
 	private final ScriptedQuestHost scriptedHost = new ScriptedQuestHost() {
 		@Override
@@ -4792,13 +4796,30 @@ public class QuestScript extends Script {
 	 */
 	private boolean scriptedTick(ScriptedQuest scripted, QuestHelper quest) {
 		if (!selectedIsCompleted(quest)) {
-			if (questWindowGate(quest) || combat.beginStep(quest) || runPreflight(quest) || ensureFare(quest)) {
+			if (Microbot.getVarbitValue(4606) > 0) { // a cutscene: nothing to do until it ends
+				if (Rs2PathApi.getMarker() != null) {
+					Rs2PathApi.exit();
+				}
 				return true;
 			}
-			if (staminaSpent()) {
-				rearmQuestPreflight();
+			scriptedGatesRan = true;
+			QuestStep step = activeStepOf(quest);
+			int reserved = slotsReservedForStep(step);
+			if (questWindowGate(quest) || combat.beginStep(quest)) {
+				return true;
 			}
-			if (combat.prepareQuestSupplies(0)) {
+			if (!scripted.deferGates()) {
+				if (runPreflight(quest) || ensureFare(quest)) {
+					return true;
+				}
+				if (staminaSpent()) {
+					rearmQuestPreflight();
+				}
+				if (combat.prepareQuestSupplies(reserved)) {
+					return true;
+				}
+			}
+			if (combat.recoverHealth(step, reserved)) {
 				return true;
 			}
 		}
@@ -4907,6 +4928,9 @@ public class QuestScript extends Script {
 
 	/** Stop: the preflight goes back to idle and the plan of the run is dropped (idempotent, runs every stopped tick). */
 	private void resetPreflightOnStop() {
+		scriptedQuests.all().forEach(ScriptedQuest::reset);
+		scriptedEctoActive = false;
+		staminaSeen = false;
 		loggedBuyingOff = false;
 		QuestPause.resume();
 		QuestPreflight.resetToIdle();

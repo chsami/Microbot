@@ -123,7 +123,15 @@ public final class AnimalMagnetismPlan
 		COMBINE_BUTTONS
 	}
 
-	/** Where the player stands, as far as the plan cares. */
+	/** How to get out of the manor without its front doors, which never open from inside. */
+	public enum Exit
+	{
+		TAB,
+		NECKLACE,
+		NONE
+	}
+
+	/** Where the player stands, as far as the plan cares. INSIDE_MANOR is the building and the tile the trees are left at. */
 	public enum Place
 	{
 		INSIDE_MANOR,
@@ -356,14 +364,10 @@ public final class AnimalMagnetismPlan
 		return list;
 	}
 
-	/** Draynor manor teleports still to break: one to leave the manor at 150, one to come back at 180. */
+	/** Draynor manor teleports to hold: one to leave the manor at 150, one to come back at 180, one spare to leave again. */
 	static int draynorTabs(int varbit, Snapshot held)
 	{
-		if (varbit <= 150)
-		{
-			return 2;
-		}
-		return varbit <= 180 && !held.has(TWIGS) ? 1 : 0;
+		return varbit <= 150 || (varbit <= 180 && !held.has(TWIGS)) ? 2 : 0;
 	}
 
 	/** What to carry now: only the amulet in Morytania (the inventory is for the Ectofuntus), the whole list after. */
@@ -385,13 +389,48 @@ public final class AnimalMagnetismPlan
 		return morytania;
 	}
 
+	/** The way out of the manor: a Draynor manor teleport, else the Games necklace, never the doors. */
+	public static Exit exitRoute(Snapshot s)
+	{
+		if (s.has(DRAYNOR_MANOR_TAB))
+		{
+			return Exit.TAB;
+		}
+		for (int id : GAMES_NECKLACES)
+		{
+			if (s.has(id))
+			{
+				return Exit.NECKLACE;
+			}
+		}
+		return Exit.NONE;
+	}
+
+	/**
+	 * The least of an item that still lets the quest go on. A tablet is only a must where the player cannot walk on
+	 * (inside the manor, or in Burthorpe); at the trees or outside it is spare, so breaking one never sends the bot
+	 * back to the bank for another.
+	 */
+	private static int minimum(Carry entry, Snapshot held)
+	{
+		boolean tab = entry.ids.contains(DRAYNOR_MANOR_TAB);
+		boolean mustHave = held.place() == Place.INSIDE_MANOR || held.place() == Place.BURTHORPE;
+		return tab && !mustHave ? 0 : entry.min;
+	}
+
+	/** The next switch of the translation puzzle after {@code done} clicks, or -1 when the sequence is finished. */
+	public static int nextTranslationClick(int done)
+	{
+		return done >= 0 && done < TRANSLATION_CLICKS.length ? TRANSLATION_CLICKS[done] : -1;
+	}
+
 	/** The carried items below their minimum. */
 	public static List<Carry> missing(int varbit, Snapshot held)
 	{
 		List<Carry> out = new ArrayList<>();
 		for (Carry entry : carryList(varbit, held))
 		{
-			if (held.count(entry) < entry.min)
+			if (held.count(entry) < minimum(entry, held))
 			{
 				out.add(entry);
 			}
@@ -447,7 +486,8 @@ public final class AnimalMagnetismPlan
 			return Action.WEAR_GHOSTSPEAK;
 		}
 		int stage = stageOf(varbit);
-		if (stage == 180 && !s.has(TWIGS) && s.hitpoints() < EAT_BELOW_HP)
+		boolean underAttack = stage == 150 || (stage == 180 && !s.has(TWIGS));
+		if (underAttack && s.hitpoints() < EAT_BELOW_HP)
 		{
 			if (s.has(LOBSTER))
 			{
