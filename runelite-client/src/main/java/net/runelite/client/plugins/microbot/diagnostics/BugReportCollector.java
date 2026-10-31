@@ -8,7 +8,6 @@ import com.google.gson.JsonObject;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Base64;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -62,6 +61,11 @@ public class BugReportCollector
 	static final int MAX_SETTING_CHARS = 500;
 	static final long CAPTURE_TIMEOUT_SECONDS = 3;
 	static final int PREVIEW_LOG_LINES = 40;
+	static final int COPY_ACTIVITY_LINES = 15;
+	static final String ACTIVITY_EXPLANATION = "Shorthand for the Microbot team: your position (p), animation (a), target (t), items gained (+) or lost (-) by item number,"
+		+ " game settings (v), windows opened (w+) and closed (w-), game messages, your clicks and the script's status and messages."
+		+ " A line starting with ! marks a stretch where nothing changed in the game while a script was running."
+		+ " Players you click or target show as \"player\"; script messages are shown as the script printed them.";
 	static final Pattern NAME_SETTING = Pattern.compile(
 		"(?i)(player|teammate|mate|mule|partner|friend|leader|master|follower|buddy|clan|account|user|display|character).*names?|^(rsn|rsns|username|teammate|mule|partner|leader|master)$");
 
@@ -76,6 +80,7 @@ public class BugReportCollector
 	private final DrawManager drawManager;
 	private final ClientSessionManager clientSessionManager;
 	private final MicrobotApi microbotApi;
+	private final FlightRecorder flightRecorder;
 	private final Gson gson;
 	private final boolean disableTelemetry;
 
@@ -83,7 +88,7 @@ public class BugReportCollector
 	BugReportCollector(Client client, ClientThread clientThread, ItemManager itemManager, ConfigManager configManager,
 		PluginManager pluginManager, MicrobotPluginManager microbotPluginManager, DiagnosticReportCollector diagnosticReportCollector,
 		ScriptErrorReporter scriptErrorReporter, DrawManager drawManager, ClientSessionManager clientSessionManager,
-		MicrobotApi microbotApi, Gson gson, @Named("disableTelemetry") boolean disableTelemetry)
+		MicrobotApi microbotApi, FlightRecorder flightRecorder, Gson gson, @Named("disableTelemetry") boolean disableTelemetry)
 	{
 		this.client = client;
 		this.clientThread = clientThread;
@@ -96,6 +101,7 @@ public class BugReportCollector
 		this.drawManager = drawManager;
 		this.clientSessionManager = clientSessionManager;
 		this.microbotApi = microbotApi;
+		this.flightRecorder = flightRecorder;
 		this.disableTelemetry = disableTelemetry;
 		this.gson = gson.newBuilder().setPrettyPrinting().disableHtmlEscaping().create();
 	}
@@ -103,6 +109,7 @@ public class BugReportCollector
 	public CompletableFuture<BugReportSnapshot> capture()
 	{
 		String diagnostics = diagnosticReportCollector.collectReport();
+		String recorder = flightRecorder.dump();
 		CompletableFuture<JsonObject> gameState = gameState();
 		CompletableFuture<byte[]> screenshot = screenshot();
 		CompletableFuture<String> rawLog = CompletableFuture.supplyAsync(this::readLog)
@@ -119,6 +126,7 @@ public class BugReportCollector
 				.loggedIn(state != null && state.has("location"))
 				.screenshot(screenshot.join())
 				.log(raw == null ? null : scriptErrorReporter.scrubLogNames(raw, names))
+				.recorder(recorder)
 				.names(names)
 				.build();
 		});
@@ -167,6 +175,11 @@ public class BugReportCollector
 				payload.addProperty("log", ScriptErrorReporter.scrubNames(snapshot.getLog(), names));
 			}
 		}
+		if (include.contains(BugReportSection.RECORDER) && snapshot.getRecorder() != null)
+		{
+			String recorder = include.contains(BugReportSection.LOG) ? snapshot.getRecorder() : FlightRecorder.withoutErrors(snapshot.getRecorder());
+			payload.addProperty("recorder", ScriptErrorReporter.scrubNames(recorder, names));
+		}
 		if (include.contains(BugReportSection.SCREENSHOT) && snapshot.getScreenshot() != null)
 		{
 			payload.addProperty("screenshot", Base64.getEncoder().encodeToString(snapshot.getScreenshot()));
@@ -200,6 +213,11 @@ public class BugReportCollector
 		{
 			section(out, "Recent log", lastLines(text(payload, "log"), PREVIEW_LOG_LINES, forCopy));
 		}
+		if (payload.has("recorder"))
+		{
+			section(out, "Recent activity", ACTIVITY_EXPLANATION + "\n" + lastLines(FlightRecorder.withoutLegend(text(payload, "recorder")),
+				forCopy ? COPY_ACTIVITY_LINES : PREVIEW_LOG_LINES, forCopy));
+		}
 		if (payload.has("screenshot"))
 		{
 			int bytes = Base64.getDecoder().decode(text(payload, "screenshot")).length;
@@ -213,14 +231,32 @@ public class BugReportCollector
 
 	static String lastLines(String text, int count, boolean forCopy)
 	{
-		String[] lines = text.split("\n");
-		if (lines.length <= count)
+		int end = text.length();
+		while (end > 0 && text.charAt(end - 1) == '\n')
+		{
+			end--;
+		}
+		int lines = 1;
+		for (int i = text.indexOf('\n'); i >= 0 && i < end; i = text.indexOf('\n', i + 1))
+		{
+			lines++;
+		}
+		if (lines <= count)
 		{
 			return text;
 		}
-		int earlier = lines.length - count;
-		return "... and " + earlier + (forCopy ? " earlier lines, left out here\n" : " earlier lines, which are also sent\n")
-			+ String.join("\n", Arrays.copyOfRange(lines, earlier, lines.length));
+		int earlier = lines - count;
+		String prefix = "... and " + earlier + (forCopy ? " earlier lines, left out here\n" : " earlier lines, which are also sent\n");
+		if (count <= 0)
+		{
+			return prefix;
+		}
+		int start = 0;
+		for (int skipped = 0; skipped < earlier; skipped++)
+		{
+			start = text.indexOf('\n', start) + 1;
+		}
+		return prefix + text.substring(start, end);
 	}
 
 	String readable(String json)

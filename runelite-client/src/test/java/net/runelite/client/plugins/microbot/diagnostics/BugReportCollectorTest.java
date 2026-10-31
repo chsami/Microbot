@@ -86,6 +86,7 @@ public class BugReportCollectorTest
 		.diagnostics("Microbot diagnostics")
 		.gameState("{\"world\": 360}")
 		.log("2026-10-24 line\n")
+		.recorder("# legend\n812 08:13:02.4 click=Fill>Crucible(44776,GAME_OBJECT_FIRST_OPTION)\n")
 		.screenshot(new byte[]{(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, 1, 2, 3})
 		.loggedIn(true)
 		.build();
@@ -119,7 +120,7 @@ public class BugReportCollectorTest
 
 		collector = new BugReportCollector(mock(Client.class), mock(ClientThread.class), mock(ItemManager.class), configManager,
 			pluginManager, microbotPluginManager, mock(DiagnosticReportCollector.class), errors, mock(DrawManager.class),
-			sessions, api, new Gson(), false);
+			sessions, api, mock(FlightRecorder.class), new Gson(), false);
 	}
 
 	private static ConfigDescriptor descriptor() throws Exception
@@ -146,6 +147,7 @@ public class BugReportCollectorTest
 		assertEquals("Microbot diagnostics", payload.get("diagnostics").getAsString());
 		assertEquals("{\"world\": 360}", payload.get("gameState").getAsString());
 		assertEquals("2026-10-24 line\n", payload.get("log").getAsString());
+		assertTrue(payload.get("recorder").getAsString().contains("click=Fill>Crucible"));
 		assertEquals("2x FurnacePlugin: loop failed\n", payload.get("error").getAsString());
 		assertEquals("/9j/AQID", payload.get("screenshot").getAsString());
 		assertTrue(payload.has("pluginConfig"));
@@ -157,11 +159,56 @@ public class BugReportCollectorTest
 		JsonObject payload = collector.payload(SNAPSHOT, plugin, "broken", EnumSet.noneOf(BugReportSection.class));
 
 		assertEquals("Microbot diagnostics", payload.get("diagnostics").getAsString());
-		for (String key : new String[]{"gameState", "log", "error", "screenshot", "pluginConfig"})
+		for (String key : new String[]{"gameState", "log", "error", "screenshot", "pluginConfig", "recorder"})
 		{
 			assertFalse(key, payload.has(key));
 		}
 		verify(errors, never()).recentErrors(any());
+	}
+
+	@Test
+	public void recorderLeavesOutScriptErrorsWhenTheLogIsUnticked()
+	{
+		BugReportSnapshot snapshot = BugReportSnapshot.builder()
+			.diagnostics("d")
+			.recorder("# legend\n1 08:00:00.0 out=\"Waiting\"\n2 08:00:00.6 err=\"java.lang.NullPointerException\"\n")
+			.build();
+
+		JsonObject payload = collector.payload(snapshot, plugin, "broken", EnumSet.of(BugReportSection.RECORDER));
+
+		assertEquals("# legend\n1 08:00:00.0 out=\"Waiting\"\n", payload.get("recorder").getAsString());
+	}
+
+	@Test
+	public void previewExplainsTheActivityShorthandAndCopiesFewerLines()
+	{
+		StringBuilder recorder = new StringBuilder(FlightRecorder.LEGEND + "\n");
+		for (int i = 0; i < 60; i++)
+		{
+			recorder.append(i).append(" 08:00:00.0 p=3200,").append(i).append(",0\n");
+		}
+		JsonObject payload = new JsonObject();
+		payload.addProperty("description", "stuck");
+		payload.addProperty("microbotVersion", "2.6.48");
+		payload.addProperty("recorder", recorder.toString());
+
+		String shown = collector.preview(payload, "Blast Furnace", false);
+		String copied = collector.preview(payload, "Blast Furnace", true);
+
+		assertTrue(shown.contains(BugReportCollector.ACTIVITY_EXPLANATION));
+		assertFalse(shown.contains(FlightRecorder.LEGEND));
+		assertTrue(shown.contains("... and 20 earlier lines, which are also sent"));
+		assertTrue(copied.contains("... and 45 earlier lines, left out here"));
+	}
+
+	@Test
+	public void lastLinesKeepsTheTailAndCountsWhatWasLeftOut()
+	{
+		assertEquals("... and 1 earlier lines, which are also sent\nb\nc", BugReportCollector.lastLines("a\nb\nc\n", 2, false));
+		assertEquals("... and 2 earlier lines, left out here\nc", BugReportCollector.lastLines("a\n\nc\n\n", 1, true));
+		assertEquals("a\nb\n", BugReportCollector.lastLines("a\nb\n", 2, false));
+		assertEquals("", BugReportCollector.lastLines("", 2, false));
+		assertEquals("... and 2 earlier lines, left out here\n", BugReportCollector.lastLines("a\nb\n", 0, true));
 	}
 
 	@Test
