@@ -246,4 +246,39 @@ public class InventorySetupSerializationTest
 		assertEquals(ItemID.SHARK, loaded.getInventory().get(0).getId());
 		assertEquals(0, loaded.getInventory().get(0).getSlot());
 	}
+
+	@Test(timeout = 10000)
+	public void importedSetupWithoutSlotsLoadsItemsUnslotted()
+	{
+		String portable = "{\"setup\":{\"inv\":[{\"id\":" + ItemID.SHARK + "},{\"id\":" + ItemID.LAWRUNE + ",\"q\":100},null],"
+			+ "\"eq\":[{\"id\":" + ItemID.ABYSSAL_WHIP + "}],\"name\":\"Shared\"},\"layout\":[" + ItemID.SHARK + "]}";
+
+		InventorySetup imported = RuneLiteAPI.GSON.fromJson(portable, InventorySetupPortable.class).getSerializedSetup();
+
+		assertEquals(-1, imported.getInventory().get(0).getSlot());
+		assertEquals(-1, imported.getInventory().get(1).getSlot());
+		assertEquals(100, imported.getInventory().get(1).getQuantity());
+		assertEquals(-1, imported.getEquipment().get(0).getSlot());
+		assertTrue(InventorySetupsItem.itemIsDummy(imported.getInventory().get(2)));
+	}
+
+	@Test(timeout = 10000)
+	public void exportedSetupImportsWithTheSameItems()
+	{
+		InventorySetup setup = fullSetup();
+		setup.getInventory().set(5, emptiedSlot(5, true));
+		InventorySetupPortable exported = new InventorySetupPortable(InventorySetupSerializable.convertFromInventorySetup(setup), new int[]{ItemID.SHARK});
+
+		InventorySetup imported = RuneLiteAPI.GSON.fromJson(RuneLiteAPI.GSON.toJson(exported), InventorySetupPortable.class).getSerializedSetup();
+
+		assertEquals(1, imported.getInventory().get(1).getSlot());
+		assertTrue(imported.getInventory().get(1).isFuzzy());
+		assertTrue(imported.getInventory().get(1).isLocked());
+		assertEquals(InventorySetupsStackCompareID.Less_Than, imported.getInventory().get(2).getStackCompare());
+		assertEquals(5, imported.getInventory().get(5).getSlot());
+		assertTrue(imported.getInventory().get(5).isFuzzy());
+		assertTrue(InventorySetupsItem.itemIsDummy(imported.getInventory().get(27)));
+		assertTrue(imported.getAdditionalFilteredItems().get(ItemID.ANGLERFISH).isFuzzy());
+		assertEquals(28, imported.getInventory().size());
+	}
 }
