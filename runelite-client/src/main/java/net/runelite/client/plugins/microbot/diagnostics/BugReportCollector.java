@@ -65,6 +65,7 @@ public class BugReportCollector
 	static final int COPY_ACTIVITY_LINES = 15;
 	static final String ACTIVITY_EXPLANATION = "Shorthand for the Microbot team: your position (p), animation (a), target (t), items gained (+) or lost (-) by item number,"
 		+ " game settings (v), windows opened (w+) and closed (w-), game messages, your clicks and the script's status and messages."
+		+ " A line starting with ! marks a stretch where nothing changed in the game while a script was running."
 		+ " Other players show as \"player\".";
 	static final Pattern NAME_SETTING = Pattern.compile(
 		"(?i)(player|teammate|mate|mule|partner|friend|leader|master|follower|buddy|clan|account|user|display|character).*names?|^(rsn|rsns|username|teammate|mule|partner|leader|master)$");

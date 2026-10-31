@@ -278,9 +278,9 @@ public class FlightRecorderTest
 	@Test
 	public void errorLinesAndTheLegendCanBeLeftOut()
 	{
-		String dump = FlightRecorder.LEGEND + "\n1 08:00:00.0 out=\"Waiting\"\n2 08:00:00.6 err=\"java.lang.NullPointerException\"\n3 08:00:01.2 err=\"at Foo.bar(Foo.java:1)\"\n";
+		String dump = FlightRecorder.LEGEND + "\n1 08:00:00.0 out=\"Waiting\"\n2 08:00:00.6 err=\"java.lang.NullPointerException\"\n3 08:00:01.2 err=\"at Foo.bar(Foo.java:1)\"\n4 08:00:01.8 (previous line repeated 3 more times)\n5 08:00:02.4 msg=\"Done\"\n";
 
-		assertEquals("1 08:00:00.0 out=\"Waiting\"\n", FlightRecorder.withoutErrors(FlightRecorder.withoutLegend(dump)));
+		assertEquals("1 08:00:00.0 out=\"Waiting\"\n5 08:00:02.4 msg=\"Done\"\n", FlightRecorder.withoutErrors(FlightRecorder.withoutLegend(dump)));
 	}
 
 	@Test

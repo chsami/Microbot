@@ -63,6 +63,7 @@ public class FlightRecorder
 		+ " | v<id>/vp<id>=varbit/varp | w+/w- interface | msg game message | click option>target (w<group> = interface click, player = another player)"
 		+ " | st=Microbot status | scripts+/- | trace:<script>.<key> | out/err script prints | ! no game change while a script runs";
 	private static final Pattern ERR_LINE = Pattern.compile("^\\d+ \\S+ err=\"");
+	private static final Pattern REPEAT_LINE = Pattern.compile("^\\d+ \\S+ \\(previous line repeated ");
 	private static final Pattern LOG_LINE = Pattern.compile("^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}");
 	private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm:ss.S");
 	private static final Set<ChatMessageType> GAME_MESSAGES = Set.of(ChatMessageType.GAMEMESSAGE, ChatMessageType.SPAM,
@@ -167,12 +168,17 @@ public class FlightRecorder
 	public static String withoutErrors(String dump)
 	{
 		StringBuilder out = new StringBuilder(dump.length());
+		boolean dropped = false;
 		for (String line : dump.split("\n"))
 		{
-			if (!ERR_LINE.matcher(line).find())
+			boolean repeat = REPEAT_LINE.matcher(line).find();
+			if (ERR_LINE.matcher(line).find() || (repeat && dropped))
 			{
-				out.append(line).append('\n');
+				dropped = true;
+				continue;
 			}
+			dropped = false;
+			out.append(line).append('\n');
 		}
 		return out.toString();
 	}
