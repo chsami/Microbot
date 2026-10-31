@@ -2570,6 +2570,9 @@ final class Rs2WalkerTransports {
 
         if (!Arrays.equals(groupingBtn.getOnOpListener(), selectedOpListener)) {
             Rs2Widget.clickWidget(groupingBtn);
+            // Clicks below count as an interaction, so a failure earns a strike instead of a silent retry
+            // every pass - repeated dropdown clicking is exactly what got noticed in the field.
+            noteTransportInteraction();
             sleepUntil(() -> Arrays.equals(groupingBtn.getOnOpListener(), selectedOpListener));
         }
 
@@ -2586,11 +2589,13 @@ final class Rs2WalkerTransports {
 
             if (dropdownBtn.getSpriteId() != DROPDOWN_SELECTED_SPRITE_ID) {
                 Rs2Widget.clickWidget(dropdownBtn);
-                sleepUntil(() -> {
+                noteTransportInteraction();
+                boolean opened = sleepUntil(() -> {
                     Widget currentDropdownBtn = Rs2Widget.getWidget(DROPDOWN_BUTTON_COMPONENT_ID);
                     return currentDropdownBtn != null
                             && Rs2Widget.findWidget(DROPDOWN_SELECTED_SPRITE_ID, List.of(currentDropdownBtn)) != null;
                 });
+                if (!opened) return false;
             }
 
             Widget minigameWidgetParent = Rs2Widget.getWidget(MINIGAME_LIST);
@@ -2611,7 +2616,14 @@ final class Rs2WalkerTransports {
                     .param1(minigameWidgetParent.getId())
                     .forceLeftClick(false);
 
-            Microbot.doInvoke(destinationMenuEntry, new Rectangle(1, 1));
+            // Click ON the row: a placeholder rectangle clicks at the resting pointer, which is the
+            // dropdown toggle just clicked, and that second toggle closes the list before Select lands.
+            Rectangle rowArea = Microbot.getClientThread().runOnClientThreadOptional(
+                    () -> visibleRowArea(destinationWidget.getBounds(), minigameWidgetParent.getBounds()))
+                    .orElse(null);
+            if (rowArea == null) return false;
+            Microbot.doInvoke(destinationMenuEntry, rowArea);
+            noteTransportInteraction();
             boolean selected = sleepUntil(() -> widgetTextMatches(Rs2Widget.getWidget(SELECTED_MINIGAME), destination));
             if (!selected) return false;
         }
@@ -2619,6 +2631,7 @@ final class Rs2WalkerTransports {
         Widget teleportBtn = Rs2Widget.getWidget(TELEPORT_BUTTON);
         if (teleportBtn == null) return false;
         Rs2Widget.clickWidget(teleportBtn);
+        noteTransportInteraction();
 
         if (transport.getDisplayInfo().toLowerCase().contains("rat pits")) {
             Rs2Dialogue.sleepUntilSelectAnOption();
@@ -2627,6 +2640,13 @@ final class Rs2WalkerTransports {
 
         sleepUntil(Rs2Player::isAnimating);
         return sleepUntilTrue(() -> !Rs2Player.isAnimating() && teleportGraphics.stream().noneMatch(Rs2Player::hasSpotAnimation), 100, 20000);
+    }
+
+    /** The part of a dropdown row inside the list's visible area; the list itself when the row is scrolled off. */
+    static Rectangle visibleRowArea(Rectangle row, Rectangle list) {
+        if (list == null || list.isEmpty()) return null;
+        if (row == null || !row.intersects(list)) return list;
+        return row.intersection(list);
     }
 
     static boolean widgetTextMatches(Widget widget, String text) {
