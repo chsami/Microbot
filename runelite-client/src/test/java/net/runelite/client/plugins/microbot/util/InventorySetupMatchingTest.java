@@ -437,4 +437,30 @@ public class InventorySetupMatchingTest
 		assertFalse(requested.getValue().containsKey(null));
 		assertEquals(ItemID.LAWRUNE, requested.getValue().get(Runes.LAW).getId());
 	}
+
+	@Test
+	public void degradedBarrowsGearStaysOnWhileLoading()
+	{
+		bankReadyForLoading();
+		worn.add(held(ItemID.BARROWS_DHAROK_HEAD_100, "Dharok's helm 100", 1, 0));
+		worn.add(held(ItemID.BARROWS_DHAROK_BODY_75, "Dharok's platebody 75", 1, 4));
+		InventorySetup setup = gearSetup(item(ItemID.BARROWS_DHAROK_HEAD, "Dharok's helm", 1, 0),
+			item(ItemID.BARROWS_DHAROK_BODY_100, "Dharok's platebody 100", 1, 4));
+
+		assertTrue(loader(setup).loadEquipment(false));
+		rs2Bank.verify(Rs2Bank::depositEquipment, never());
+	}
+
+	@Test
+	public void wornItemOutsideTheSetupIsStillBankedFirst()
+	{
+		bankReadyForLoading();
+		worn.add(held(ItemID.BARROWS_DHAROK_HEAD_100, "Dharok's helm 100", 1, 0));
+		worn.add(held(ItemID.GRACEFUL_BOOTS, "Graceful boots", 1, 10));
+		InventorySetup setup = gearSetup(item(ItemID.BARROWS_DHAROK_HEAD, "Dharok's helm", 1, 0));
+
+		loader(setup).loadEquipment(false);
+
+		rs2Bank.verify(Rs2Bank::depositEquipment);
+	}
 }
