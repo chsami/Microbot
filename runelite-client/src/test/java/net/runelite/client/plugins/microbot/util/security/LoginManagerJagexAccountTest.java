@@ -80,7 +80,9 @@ public class LoginManagerJagexAccountTest {
         microbot.close();
     }
 
-    @Test public void legacyProfileClearsTheJagexAccountWithoutWaitingOnTheSharedExecutor() {
+    @Test public void profileSwitchedToAfterLaunchWithAPasswordClearsTheJagexAccountWithoutWaitingOnTheSharedExecutor() {
+        switchedToProfile("legacy-user", LEGACY_PASSWORD);
+
         try (var keyboard = mockStatic(Rs2Keyboard.class)) {
             assertTrue(LoginManager.login("legacy-user", LEGACY_PASSWORD, 301));
         }
@@ -130,9 +132,7 @@ public class LoginManagerJagexAccountTest {
 
     /** Switching in-client to a different, legacy profile still clears the launch character. */
     @Test public void otherProfileThanTheLaunchOneStillLogsInLegacy() {
-        ConfigProfile profile = mock(ConfigProfile.class);
-        when(profile.getName()).thenReturn("legacy-user");
-        when(configManager.getProfile()).thenReturn(profile);
+        switchedToProfile("legacy-user", LEGACY_PASSWORD);
         when(injector.getInstance(Key.get(String.class, Names.named("profile")))).thenReturn("Main#");
 
         try (var keyboard = mockStatic(Rs2Keyboard.class)) {
@@ -174,6 +174,41 @@ public class LoginManagerJagexAccountTest {
         verify(client).switchJagexAccount(null, null, null);
     }
 
+    @Test public void startupProfileWithASavedPasswordKeepsTheLaunchCharacter() {
+        ConfigProfile profile = startupProfile("Main", LEGACY_PASSWORD);
+
+        try (var keyboard = mockStatic(Rs2Keyboard.class); var launch = mockStatic(JagexCredentials.class)) {
+            launch.when(JagexCredentials::fromLaunch).thenReturn(new JagexCredentials("launch-session", "7", "Jagex character"));
+            assertTrue(LoginManager.login(profile.getName(), profile.getPassword(), 301));
+        }
+        verify(client).switchJagexAccount("launch-session", "7", "Jagex character");
+        verify(client, never()).switchJagexAccount(null, null, null);
+        verify(client, never()).setUsername(any());
+        verify(client, never()).setPassword(any());
+    }
+
+    @Test public void startupProfileWithASavedPasswordKeepsTheJagexAccountWhenTheCredentialsFileNamesAnotherCharacter() {
+        ConfigProfile profile = startupProfile("Main", LEGACY_PASSWORD);
+
+        try (var keyboard = mockStatic(Rs2Keyboard.class); var launch = mockStatic(JagexCredentials.class)) {
+            launch.when(JagexCredentials::fromLaunch).thenReturn(new JagexCredentials("other-session", "8", "Other character"));
+            assertTrue(LoginManager.login(profile.getName(), profile.getPassword(), 301));
+        }
+        verify(client, never()).switchJagexAccount(any(), any(), any());
+        verify(client, never()).setUsername(any());
+    }
+
+    @Test public void explicitCredentialsOnTheStartupProfileAreTypedForAnotherUsername() {
+        startupProfile("Main", LEGACY_PASSWORD);
+
+        try (var keyboard = mockStatic(Rs2Keyboard.class); var launch = mockStatic(JagexCredentials.class)) {
+            launch.when(JagexCredentials::fromLaunch).thenReturn(new JagexCredentials("launch-session", "7", "Jagex character"));
+            assertTrue(LoginManager.login("legacy-user", LEGACY_PASSWORD, 301));
+        }
+        verify(client).switchJagexAccount(null, null, null);
+        verify(client).setUsername("legacy-user");
+    }
+
     @Test public void loginStopsWhenTheAccountSwitchDoesNotRun() {
         doThrow(new IllegalStateException("client thread busy")).when(client).switchJagexAccount(null, null, null);
 
@@ -182,6 +217,26 @@ public class LoginManagerJagexAccountTest {
             keyboard.verifyNoInteractions();
         }
         verify(client, never()).setUsername(any());
+    }
+
+    private ConfigProfile startupProfile(String name, String password) {
+        ConfigProfile profile = profile(1L, name, password);
+        when(configManager.getStartupProfileId()).thenReturn(1L);
+        return profile;
+    }
+
+    private void switchedToProfile(String name, String password) {
+        profile(2L, name, password);
+        when(configManager.getStartupProfileId()).thenReturn(1L);
+    }
+
+    private ConfigProfile profile(long id, String name, String password) {
+        ConfigProfile profile = mock(ConfigProfile.class);
+        when(profile.getId()).thenReturn(id);
+        when(profile.getName()).thenReturn(name);
+        when(profile.getPassword()).thenReturn(password);
+        when(configManager.getProfile()).thenReturn(profile);
+        return profile;
     }
 
     private static String encrypt(String password) {

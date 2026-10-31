@@ -7,8 +7,10 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
+import net.runelite.client.config.ConfigManager;
 import net.runelite.client.config.ConfigProfile;
 import net.runelite.client.config.ProfileManager;
+import net.runelite.client.config.RuneScapeProfileType;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.rs.auth.Account;
@@ -312,9 +314,9 @@ public final class LoginManager {
     /**
      * Puts the login screen in the mode the profile needs. If the active profile holds an imported
      * Jagex Account session, or {@code username} matches a saved Jagex Account character, that
-     * character is selected. A profile without a password cannot log in as a legacy account, so a client
-     * launched with a Jagex Account keeps its launch character. Otherwise the active Jagex Account is
-     * cleared so the username and password fields can be filled in.
+     * character is selected. A client launched with a Jagex Account keeps its launch character for the
+     * profile it started on, for a profile linked to that character, and for a profile without a password.
+     * Otherwise the active Jagex Account is cleared so the username and password fields can be filled in.
      *
      * @return true if a Jagex Account character was selected
      */
@@ -353,6 +355,14 @@ public final class LoginManager {
             }
         }
         if (client.getLauncherDisplayName() != null) {
+            if (isLaunchCharacterProfile(client, profile, username)) {
+                JagexCredentials launch = JagexCredentials.fromLaunch();
+                if (launch != null && launch.getDisplayName().equalsIgnoreCase(client.getLauncherDisplayName())) {
+                    switchJagexAccount(client, launch.getSessionId(), launch.getCharacterId(), launch.getDisplayName());
+                }
+                log.info("Keeping the launch Jagex Account character: the active profile is the one this client started on or is linked to that character");
+                return true;
+            }
             if (encryptedPassword == null || encryptedPassword.isBlank()) {
                 JagexCredentials launch = JagexCredentials.fromLaunch();
                 if (launch != null && launch.getDisplayName().equalsIgnoreCase(client.getLauncherDisplayName())) {
@@ -361,10 +371,25 @@ public final class LoginManager {
                     return true;
                 }
             }
-            log.debug("Clearing the active Jagex Account for a legacy account login");
+            log.info("Clearing the active Jagex Account to log in with a username and password");
             switchJagexAccount(client, null, null, null);
         }
         return false;
+    }
+
+    private static boolean isLaunchCharacterProfile(Client client, ConfigProfile profile, String username) {
+        if (profile == null || !username.equalsIgnoreCase(profile.getName())) {
+            return false;
+        }
+        ConfigManager configManager = Microbot.getConfigManager();
+        if (Long.valueOf(profile.getId()).equals(configManager.getStartupProfileId())) {
+            return true;
+        }
+        List<String> linkedRsProfiles = profile.getDefaultForRsProfiles();
+        return linkedRsProfiles != null && configManager.getRSProfiles().stream()
+                .anyMatch(rsProfile -> rsProfile.getType() == RuneScapeProfileType.STANDARD
+                        && linkedRsProfiles.contains(rsProfile.getKey())
+                        && client.getLauncherDisplayName().equals(rsProfile.getDisplayName()));
     }
 
     /**
