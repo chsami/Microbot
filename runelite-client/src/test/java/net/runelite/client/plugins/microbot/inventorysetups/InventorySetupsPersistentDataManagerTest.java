@@ -93,7 +93,7 @@ public class InventorySetupsPersistentDataManagerTest
 		imported.getInventory().set(5, fuzzy(ItemID._4DOSEPRAYERRESTORE, "Prayer potion(4)", 1, 0));
 		imported.getInventory().set(9, emptiedSlot(9, true));
 
-		assertTrue(InventorySetupsPersistentDataManager.repairSharedFirstInventorySlot(imported));
+		assertTrue(InventorySetupsPersistentDataManager.repairSharedInventorySlot(imported));
 
 		assertEquals(0, imported.getInventory().get(0).getSlot());
 		assertEquals(3, imported.getInventory().get(3).getSlot());
@@ -103,7 +103,7 @@ public class InventorySetupsPersistentDataManagerTest
 		assertEquals(ItemID.LAWRUNE, imported.getInventory().get(3).getId());
 		assertEquals(100, imported.getInventory().get(3).getQuantity());
 		assertTrue(InventorySetupsItem.itemIsDummy(imported.getInventory().get(1)));
-		assertFalse(InventorySetupsPersistentDataManager.repairSharedFirstInventorySlot(imported));
+		assertFalse(InventorySetupsPersistentDataManager.repairSharedInventorySlot(imported));
 	}
 
 	@Test
@@ -117,13 +117,46 @@ public class InventorySetupsPersistentDataManagerTest
 		unslotted.getInventory().set(4, item(ItemID.SHARK, "Shark", 1, -1));
 		unslotted.getInventory().set(6, item(ItemID.SHARK, "Shark", 1, 0));
 
-		assertFalse(InventorySetupsPersistentDataManager.repairSharedFirstInventorySlot(normal));
-		assertFalse(InventorySetupsPersistentDataManager.repairSharedFirstInventorySlot(unslotted));
+		assertFalse(InventorySetupsPersistentDataManager.repairSharedInventorySlot(normal));
+		assertFalse(InventorySetupsPersistentDataManager.repairSharedInventorySlot(unslotted));
 
 		assertEquals(0, normal.getInventory().get(0).getSlot());
 		assertEquals(3, normal.getInventory().get(3).getSlot());
 		assertEquals(0, normal.getEquipment().get(3).getSlot());
 		assertEquals(-1, unslotted.getInventory().get(4).getSlot());
 		assertEquals(0, unslotted.getInventory().get(6).getSlot());
+	}
+
+	@Test
+	public void setupWhoseItemsAllShareAnotherSlotIsRepaired()
+	{
+		InventorySetup updated = setup("Updated", emptyContainer(28), emptyContainer(14));
+		for (int slot = 3; slot <= 5; slot++)
+		{
+			updated.getInventory().set(slot, item(ItemID.MANTARAY, "Manta ray", 1, 3));
+		}
+
+		assertTrue(InventorySetupsPersistentDataManager.repairSharedInventorySlot(updated));
+
+		assertEquals(3, updated.getInventory().get(3).getSlot());
+		assertEquals(4, updated.getInventory().get(4).getSlot());
+		assertEquals(5, updated.getInventory().get(5).getSlot());
+	}
+
+	@Test
+	public void setupWithOnlySomeItemsSharingASlotIsLeftAlone()
+	{
+		InventorySetup partly = setup("Partly", emptyContainer(28), emptyContainer(14));
+		partly.getInventory().set(3, item(ItemID.MANTARAY, "Manta ray", 1, 3));
+		partly.getInventory().set(4, item(ItemID.MANTARAY, "Manta ray", 1, 3));
+		partly.getInventory().set(8, item(ItemID.SHARK, "Shark", 1, 8));
+		InventorySetup single = setup("Single", emptyContainer(28), emptyContainer(14));
+		single.getInventory().set(6, item(ItemID.SHARK, "Shark", 1, 0));
+
+		assertFalse(InventorySetupsPersistentDataManager.repairSharedInventorySlot(partly));
+		assertFalse(InventorySetupsPersistentDataManager.repairSharedInventorySlot(single));
+
+		assertEquals(3, partly.getInventory().get(4).getSlot());
+		assertEquals(0, single.getInventory().get(6).getSlot());
 	}
 }

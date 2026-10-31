@@ -86,11 +86,11 @@ public class InventorySetupsPersistentDataManager
 		boolean repairedSlots = false;
 		for (final InventorySetup setup : setupsFromConfig)
 		{
-			repairedSlots |= repairSharedFirstInventorySlot(setup);
+			repairedSlots |= repairSharedInventorySlot(setup);
 		}
 		if (repairedSlots)
 		{
-			log.info("Repaired inventory slots of setups imported without slot data");
+			log.info("Repaired inventory slots of setups whose items all shared one slot");
 			updateConfig(true, false);
 		}
 		processSetupsFromConfig();
@@ -252,10 +252,24 @@ public class InventorySetupsPersistentDataManager
 		return loadedSetups;
 	}
 
-	static boolean repairSharedFirstInventorySlot(final InventorySetup setup)
+	static boolean repairSharedInventorySlot(final InventorySetup setup)
 	{
 		final List<InventorySetupsItem> inventory = setup.getInventory();
-		if (inventory == null || inventory.stream().filter(item -> !InventorySetupsItem.isEmptySlot(item) && item.getSlot() == 0).count() < 2)
+		if (inventory == null)
+		{
+			return false;
+		}
+		final List<Integer> slots = new ArrayList<>();
+		boolean misplaced = false;
+		for (int i = 0; i < inventory.size(); i++)
+		{
+			if (!InventorySetupsItem.isEmptySlot(inventory.get(i)))
+			{
+				slots.add(inventory.get(i).getSlot());
+				misplaced |= inventory.get(i).getSlot() != i;
+			}
+		}
+		if (slots.size() < 2 || slots.get(0) < 0 || slots.stream().distinct().count() != 1 || !misplaced)
 		{
 			return false;
 		}
