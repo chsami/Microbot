@@ -25,6 +25,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -51,6 +52,8 @@ public class Rs2TabSwitchToTest
 		microbot = Mockito.mockStatic(Microbot.class);
 		microbot.when(Microbot::getClient).thenReturn(client);
 		microbot.when(Microbot::getClientThread).thenReturn(clientThread);
+		microbot.when(Microbot::isLoggedIn).thenAnswer(inv -> client.getGameState() == GameState.LOGGED_IN);
+		when(client.getGameState()).thenReturn(GameState.LOGGED_IN);
 	}
 
 	@After
@@ -81,7 +84,23 @@ public class Rs2TabSwitchToTest
 
 		assertFalse(Rs2Tab.switchTo(InterfaceTab.SKILLS));
 
+		verify(client, never()).getVarcIntValue(anyInt());
 		verify(client, never()).runScript(anyInt(), any());
+	}
+
+	@Test
+	public void liveTabReadReturnsTheCachedTabWhenTheClientLeavesTheLoggedInState()
+	{
+		when(client.getVarcIntValue(VarClientID.TOPLEVEL_PANEL)).thenReturn(InterfaceTab.INVENTORY.getVarcIntIndex());
+		when(client.getGameState()).thenReturn(GameState.LOGGED_IN, GameState.LOGGED_IN, GameState.LOGGED_IN, GameState.LOADING);
+		when(client.getTopLevelInterfaceId()).thenReturn(InterfaceID.TOPLEVEL_OSRS_STRETCH);
+		assertTrue(Rs2Tab.switchTo(InterfaceTab.INVENTORY));
+
+		assertFalse(Rs2Tab.switchTo(InterfaceTab.PRAYER));
+
+		verify(client, times(1)).getVarcIntValue(VarClientID.TOPLEVEL_PANEL);
+		verify(client, never()).runScript(anyInt(), any());
+		assertEquals(InterfaceTab.INVENTORY, Rs2Tab.getCurrentTab());
 	}
 
 	@Test

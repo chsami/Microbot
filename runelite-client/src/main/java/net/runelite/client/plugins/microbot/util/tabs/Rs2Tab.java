@@ -57,7 +57,9 @@ public class Rs2Tab {
 
     private static InterfaceTab readCurrentTab() {
         return Microbot.getClientThread().runOnClientThreadOptional(() -> {
-            int value = Microbot.getClient().getVarcIntValue(VarClientID.TOPLEVEL_PANEL);
+            Client client = Microbot.getClient();
+            if (client.getGameState() != GameState.LOGGED_IN) return cachedTab;
+            int value = client.getVarcIntValue(VarClientID.TOPLEVEL_PANEL);
             InterfaceTab current = INDEX_TO_TAB.getOrDefault(value, InterfaceTab.NOTHING_SELECTED);
             cachedTab = current;
             return current;
@@ -65,6 +67,7 @@ public class Rs2Tab {
     }
 
     public static boolean switchTo(InterfaceTab tab) {
+        if (!Microbot.isLoggedIn()) return false;
         if (readCurrentTab() == tab) return true;
 
         if (tab == InterfaceTab.NOTHING_SELECTED && Microbot.getVarbitValue(VarbitID.RESIZABLE_STONE_ARRANGEMENT) == 0)
