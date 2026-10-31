@@ -25,6 +25,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
+import org.slf4j.event.Level;
 import static net.runelite.client.plugins.microbot.inventorysetups.InventorySetupTestData.emptiedSlot;
 import static net.runelite.client.plugins.microbot.inventorysetups.InventorySetupTestData.emptyContainer;
 import static net.runelite.client.plugins.microbot.inventorysetups.InventorySetupTestData.fuzzy;
@@ -36,6 +37,9 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -436,6 +440,7 @@ public class InventorySetupMatchingTest
 		rs2RunePouch.verify(() -> Rs2RunePouch.loadFromInventorySetup(requested.capture()));
 		assertFalse(requested.getValue().containsKey(null));
 		assertEquals(ItemID.LAWRUNE, requested.getValue().get(Runes.LAW).getId());
+		microbot.verify(() -> Microbot.log(eq(Level.WARN), contains("rune pouch is not supported yet"), eq("Aether rune"), eq("Aether rune")));
 	}
 
 	@Test
@@ -462,6 +467,7 @@ public class InventorySetupMatchingTest
 		loader(setup).loadEquipment(false);
 
 		rs2Bank.verify(Rs2Bank::depositEquipment);
+		microbot.verify(() -> Microbot.log(eq(Level.INFO), contains("extra gear not in setup"), eq("Graceful boots")));
 	}
 
 	@Test
@@ -478,10 +484,9 @@ public class InventorySetupMatchingTest
 	{
 		bankReadyForLoading();
 		worn.add(held(ItemID.BARROWS_DHAROK_HEAD_BROKEN, "Dharok's helm 0", 1, 0));
-		rs2Bank.when(Rs2Bank::depositEquipment).thenAnswer(call -> {
-			worn.clear();
-			return true;
-		});
+		rs2Bank.when(() -> Rs2Bank.depositEquippedItem(ItemID.BARROWS_DHAROK_HEAD_BROKEN)).thenAnswer(call -> worn.removeIf(piece -> piece.getId() == ItemID.BARROWS_DHAROK_HEAD_BROKEN));
+		List<Rs2ItemModel> bank = Arrays.asList(held(ItemID.BARROWS_DHAROK_HEAD, "Dharok's helm", 1, 0), held(ItemID.BARROWS_DHAROK_BODY, "Dharok's platebody", 1, 1));
+		rs2Bank.when(Rs2Bank::bankItems).thenReturn(bank);
 		rs2Bank.when(() -> Rs2Bank.hasItem(org.mockito.ArgumentMatchers.anyInt())).thenReturn(true);
 		rs2Bank.when(() -> Rs2Bank.withdrawAndEquip(ItemID.BARROWS_DHAROK_HEAD)).thenAnswer(call -> worn.add(held(ItemID.BARROWS_DHAROK_HEAD, "Dharok's helm", 1, 0)));
 		rs2Bank.when(() -> Rs2Bank.withdrawAndEquip(ItemID.BARROWS_DHAROK_BODY)).thenAnswer(call -> worn.add(held(ItemID.BARROWS_DHAROK_BODY, "Dharok's platebody", 1, 4)));
@@ -490,7 +495,8 @@ public class InventorySetupMatchingTest
 
 		assertTrue(loader(setup).loadEquipment());
 
-		rs2Bank.verify(Rs2Bank::depositEquipment);
+		rs2Bank.verify(() -> Rs2Bank.depositEquippedItem(ItemID.BARROWS_DHAROK_HEAD_BROKEN));
+		rs2Bank.verify(Rs2Bank::depositEquipment, never());
 		rs2Bank.verify(() -> Rs2Bank.withdrawAndEquip(ItemID.BARROWS_DHAROK_HEAD));
 		rs2Bank.verify(() -> Rs2Bank.withdrawAndEquip(ItemID.BARROWS_DHAROK_BODY));
 		assertEquals(Arrays.asList("Dharok's helm", "Dharok's platebody"), worn.stream().map(Rs2ItemModel::getName).collect(Collectors.toList()));
@@ -507,5 +513,60 @@ public class InventorySetupMatchingTest
 		loader(setup).loadEquipment(false);
 
 		rs2Bank.verify(Rs2Bank::depositEquipment);
+	}
+
+	@Test
+	public void brokenBarrowsPieceWithoutAWorkingCopyStopsWithABrokenMessage()
+	{
+		boolean paused = Microbot.pauseAllScripts.getAndSet(false);
+		try
+		{
+			bankReadyForLoading();
+			List<Rs2ItemModel> bank = new ArrayList<>();
+			rs2Bank.when(Rs2Bank::bankItems).thenAnswer(call -> new ArrayList<>(bank));
+			rs2Bank.when(() -> Rs2Bank.hasBankItem(anyString(), org.mockito.ArgumentMatchers.anyInt(), anyBoolean()))
+				.thenAnswer(call -> bank.stream().anyMatch(b -> b.getName().toLowerCase().contains(((String) call.getArgument(0)).toLowerCase())));
+			worn.add(held(ItemID.BARROWS_DHAROK_HEAD_BROKEN, "Dharok's helm 0", 1, 0));
+			worn.add(held(ItemID.BARROWS_DHAROK_BODY_100, "Dharok's platebody 100", 1, 4));
+			rs2Bank.when(() -> Rs2Bank.depositEquippedItem(ItemID.BARROWS_DHAROK_HEAD_BROKEN)).thenAnswer(call -> {
+				worn.removeIf(piece -> piece.getId() == ItemID.BARROWS_DHAROK_HEAD_BROKEN);
+				return bank.add(held(ItemID.BARROWS_DHAROK_HEAD_BROKEN, "Dharok's helm 0", 1, 0));
+			});
+			InventorySetup setup = gearSetup(item(ItemID.BARROWS_DHAROK_HEAD, "Dharok's helm", 1, 0),
+				item(ItemID.BARROWS_DHAROK_BODY, "Dharok's platebody", 1, 4));
+
+			assertFalse(loader(setup).loadEquipment());
+
+			assertTrue(Microbot.pauseAllScripts.get());
+			rs2Bank.verify(() -> Rs2Bank.withdrawAndEquip(ItemID.BARROWS_DHAROK_HEAD), never());
+			microbot.verify(() -> Microbot.log(eq(Level.WARN), contains("is broken"), eq("Dharok's helm"), eq("Dharok's helm 0")));
+			microbot.verify(() -> Microbot.log(eq(Level.WARN), contains("missing gear"), eq("Dharok's helm"), eq(0), eq(0), eq(1), eq("pausing")));
+		}
+		finally
+		{
+			Microbot.pauseAllScripts.set(paused);
+		}
+	}
+
+	@Test
+	public void onlyTheBrokenPieceIsBankedSoDegradedPiecesStayOn()
+	{
+		bankReadyForLoading();
+		worn.add(held(ItemID.BARROWS_GUTHAN_HEAD_BROKEN, "Guthan's helm 0", 1, 0));
+		worn.add(held(ItemID.BARROWS_GUTHAN_BODY_50, "Guthan's platebody 50", 1, 4));
+		rs2Bank.when(() -> Rs2Bank.depositEquippedItem(ItemID.BARROWS_GUTHAN_HEAD_BROKEN)).thenAnswer(call -> worn.removeIf(piece -> piece.getId() == ItemID.BARROWS_GUTHAN_HEAD_BROKEN));
+		List<Rs2ItemModel> bank = Collections.singletonList(held(ItemID.BARROWS_GUTHAN_HEAD, "Guthan's helm", 1, 0));
+		rs2Bank.when(Rs2Bank::bankItems).thenReturn(bank);
+		rs2Bank.when(() -> Rs2Bank.hasItem(ItemID.BARROWS_GUTHAN_HEAD)).thenReturn(true);
+		rs2Bank.when(() -> Rs2Bank.withdrawAndEquip(ItemID.BARROWS_GUTHAN_HEAD)).thenAnswer(call -> worn.add(held(ItemID.BARROWS_GUTHAN_HEAD, "Guthan's helm", 1, 0)));
+		InventorySetup setup = gearSetup(item(ItemID.BARROWS_GUTHAN_HEAD, "Guthan's helm", 1, 0),
+			item(ItemID.BARROWS_GUTHAN_BODY_100, "Guthan's platebody 100", 1, 4));
+
+		assertTrue(loader(setup).loadEquipment());
+
+		rs2Bank.verify(Rs2Bank::depositEquipment, never());
+		rs2Bank.verify(() -> Rs2Bank.depositEquippedItem(ItemID.BARROWS_GUTHAN_BODY_50), never());
+		assertEquals(Arrays.asList("Guthan's platebody 50", "Guthan's helm"), worn.stream().map(Rs2ItemModel::getName).collect(Collectors.toList()));
+		microbot.verify(() -> Microbot.log(eq(Level.INFO), contains("broken gear not in setup"), eq("Guthan's helm 0")));
 	}
 }
