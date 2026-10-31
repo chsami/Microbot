@@ -263,6 +263,27 @@ public class FlightRecorderTest
 	}
 
 	@Test
+	public void keepsNoMoreThanTheLastTwentyMinutes()
+	{
+		java.time.Instant start = java.time.Instant.parse("2026-10-31T08:00:00Z");
+		recorder.clock = java.time.Clock.fixed(start, java.time.ZoneOffset.UTC);
+		recorder.record("msg=\"old\"", true);
+		recorder.clock = java.time.Clock.fixed(start.plusSeconds(19 * 60), java.time.ZoneOffset.UTC);
+		recorder.record("msg=\"recent\"", true);
+		recorder.clock = java.time.Clock.fixed(start.plusSeconds(21 * 60), java.time.ZoneOffset.UTC);
+
+		assertEquals(List.of("msg=\"recent\""), lines());
+	}
+
+	@Test
+	public void errorLinesAndTheLegendCanBeLeftOut()
+	{
+		String dump = FlightRecorder.LEGEND + "\n1 08:00:00.0 out=\"Waiting\"\n2 08:00:00.6 err=\"java.lang.NullPointerException\"\n3 08:00:01.2 err=\"at Foo.bar(Foo.java:1)\"\n";
+
+		assertEquals("1 08:00:00.0 out=\"Waiting\"\n", FlightRecorder.withoutErrors(FlightRecorder.withoutLegend(dump)));
+	}
+
+	@Test
 	public void diffListsAddedAndRemovedItemsById()
 	{
 		assertEquals("+995*100 -2361*3", FlightRecorder.diff(Map.of(2361, 3, 995, 50), Map.of(995, 150)));

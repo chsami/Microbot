@@ -5,6 +5,8 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayDeque;
@@ -51,6 +53,7 @@ import net.runelite.client.util.Text;
 public class FlightRecorder
 {
 	static final int MAX_CHARS = 240 * 1024;
+	static final long MAX_AGE_MILLIS = 20 * 60 * 1000L;
 	static final int MAX_LINE_CHARS = 300;
 	static final int MAX_VARS_PER_TICK = 30;
 	static final int MAX_TRACES = 500;
@@ -59,6 +62,7 @@ public class FlightRecorder
 	static final String LEGEND = "# tick time | p=x,y,plane a=animation t=target hp pr=prayer run gs=game state | inv/eq +id*n -id*n"
 		+ " | v<id>/vp<id>=varbit/varp | w+/w- interface | msg game message | click option>target (w<group> = interface click, player = another player)"
 		+ " | st=Microbot status | scripts+/- | trace:<script>.<key> | out/err script prints | ! no game change while a script runs";
+	private static final Pattern ERR_LINE = Pattern.compile("^\\d+ \\S+ err=\"");
 	private static final Pattern LOG_LINE = Pattern.compile("^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}");
 	private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm:ss.S");
 	private static final Set<ChatMessageType> GAME_MESSAGES = Set.of(ChatMessageType.GAMEMESSAGE, ChatMessageType.SPAM,
@@ -70,7 +74,8 @@ public class FlightRecorder
 
 	private final Client client;
 	private final EventBus eventBus;
-	private final Deque<String> lines = new ArrayDeque<>();
+	private final Deque<Line> lines = new ArrayDeque<>();
+	Clock clock = Clock.systemDefaultZone();
 	private final Map<String, Integer> vars = new LinkedHashMap<>();
 	private final Map<String, String> traces = new LinkedHashMap<String, String>(16, 0.75f, true)
 	{
@@ -145,10 +150,29 @@ public class FlightRecorder
 	public synchronized String dump()
 	{
 		flushRepeats();
+		dropOld();
 		StringBuilder out = new StringBuilder(chars + LEGEND.length() + 1).append(LEGEND).append('\n');
-		for (String line : lines)
+		for (Line line : lines)
 		{
-			out.append(line).append('\n');
+			out.append(line.text).append('\n');
+		}
+		return out.toString();
+	}
+
+	public static String withoutLegend(String dump)
+	{
+		return dump.startsWith("#") && dump.indexOf('\n') >= 0 ? dump.substring(dump.indexOf('\n') + 1) : dump;
+	}
+
+	public static String withoutErrors(String dump)
+	{
+		StringBuilder out = new StringBuilder(dump.length());
+		for (String line : dump.split("\n"))
+		{
+			if (!ERR_LINE.matcher(line).find())
+			{
+				out.append(line).append('\n');
+			}
 		}
 		return out.toString();
 	}
@@ -483,12 +507,23 @@ public class FlightRecorder
 
 	private void appendLine(String text)
 	{
-		String line = tick + " " + LocalTime.now().format(TIME) + " " + text;
+		long now = clock.millis();
+		Line line = new Line(now, tick + " " + LocalTime.ofInstant(Instant.ofEpochMilli(now), clock.getZone()).format(TIME) + " " + text);
 		lines.addLast(line);
-		chars += line.length() + 1;
+		chars += line.text.length() + 1;
 		while (chars > MAX_CHARS && lines.size() > 1)
 		{
-			chars -= lines.removeFirst().length() + 1;
+			chars -= lines.removeFirst().text.length() + 1;
+		}
+		dropOld();
+	}
+
+	private void dropOld()
+	{
+		long cutoff = clock.millis() - MAX_AGE_MILLIS;
+		while (!lines.isEmpty() && lines.peekFirst().at < cutoff)
+		{
+			chars -= lines.removeFirst().text.length() + 1;
 		}
 	}
 
@@ -542,6 +577,13 @@ public class FlightRecorder
 			names.add(name.substring(name.lastIndexOf('.') + 1));
 		}
 		return names;
+	}
+
+	@Value
+	private static class Line
+	{
+		long at;
+		String text;
 	}
 
 	@Value

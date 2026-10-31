@@ -62,6 +62,10 @@ public class BugReportCollector
 	static final int MAX_SETTING_CHARS = 500;
 	static final long CAPTURE_TIMEOUT_SECONDS = 3;
 	static final int PREVIEW_LOG_LINES = 40;
+	static final int COPY_ACTIVITY_LINES = 15;
+	static final String ACTIVITY_EXPLANATION = "Shorthand for the Microbot team: your position (p), animation (a), target (t), items gained (+) or lost (-) by item number,"
+		+ " game settings (v), windows opened (w+) and closed (w-), game messages, your clicks and the script's status and messages."
+		+ " Other players show as \"player\".";
 	static final Pattern NAME_SETTING = Pattern.compile(
 		"(?i)(player|teammate|mate|mule|partner|friend|leader|master|follower|buddy|clan|account|user|display|character).*names?|^(rsn|rsns|username|teammate|mule|partner|leader|master)$");
 
@@ -173,7 +177,8 @@ public class BugReportCollector
 		}
 		if (include.contains(BugReportSection.RECORDER) && snapshot.getRecorder() != null)
 		{
-			payload.addProperty("recorder", ScriptErrorReporter.scrubNames(snapshot.getRecorder(), names));
+			String recorder = include.contains(BugReportSection.LOG) ? snapshot.getRecorder() : FlightRecorder.withoutErrors(snapshot.getRecorder());
+			payload.addProperty("recorder", ScriptErrorReporter.scrubNames(recorder, names));
 		}
 		if (include.contains(BugReportSection.SCREENSHOT) && snapshot.getScreenshot() != null)
 		{
@@ -210,7 +215,8 @@ public class BugReportCollector
 		}
 		if (payload.has("recorder"))
 		{
-			section(out, "Recent activity", lastLines(text(payload, "recorder"), PREVIEW_LOG_LINES, forCopy));
+			section(out, "Recent activity", ACTIVITY_EXPLANATION + "\n" + lastLines(FlightRecorder.withoutLegend(text(payload, "recorder")),
+				forCopy ? COPY_ACTIVITY_LINES : PREVIEW_LOG_LINES, forCopy));
 		}
 		if (payload.has("screenshot"))
 		{

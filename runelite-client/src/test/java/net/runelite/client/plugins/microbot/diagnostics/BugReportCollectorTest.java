@@ -167,6 +167,41 @@ public class BugReportCollectorTest
 	}
 
 	@Test
+	public void recorderLeavesOutScriptErrorsWhenTheLogIsUnticked()
+	{
+		BugReportSnapshot snapshot = BugReportSnapshot.builder()
+			.diagnostics("d")
+			.recorder("# legend\n1 08:00:00.0 out=\"Waiting\"\n2 08:00:00.6 err=\"java.lang.NullPointerException\"\n")
+			.build();
+
+		JsonObject payload = collector.payload(snapshot, plugin, "broken", EnumSet.of(BugReportSection.RECORDER));
+
+		assertEquals("# legend\n1 08:00:00.0 out=\"Waiting\"\n", payload.get("recorder").getAsString());
+	}
+
+	@Test
+	public void previewExplainsTheActivityShorthandAndCopiesFewerLines()
+	{
+		StringBuilder recorder = new StringBuilder(FlightRecorder.LEGEND + "\n");
+		for (int i = 0; i < 60; i++)
+		{
+			recorder.append(i).append(" 08:00:00.0 p=3200,").append(i).append(",0\n");
+		}
+		JsonObject payload = new JsonObject();
+		payload.addProperty("description", "stuck");
+		payload.addProperty("microbotVersion", "2.6.48");
+		payload.addProperty("recorder", recorder.toString());
+
+		String shown = collector.preview(payload, "Blast Furnace", false);
+		String copied = collector.preview(payload, "Blast Furnace", true);
+
+		assertTrue(shown.contains(BugReportCollector.ACTIVITY_EXPLANATION));
+		assertFalse(shown.contains(FlightRecorder.LEGEND));
+		assertTrue(shown.contains("... and 20 earlier lines, which are also sent"));
+		assertTrue(copied.contains("... and 45 earlier lines, left out here"));
+	}
+
+	@Test
 	public void clientReportHasNoPluginAndListsEveryError()
 	{
 		when(errors.recentErrors(null)).thenReturn("1x client: walker failed\n");
