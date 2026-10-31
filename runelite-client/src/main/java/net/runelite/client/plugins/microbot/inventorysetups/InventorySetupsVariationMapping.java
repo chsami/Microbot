@@ -9,7 +9,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static net.runelite.api.GraphicID.CANNONBALL;
 import static net.runelite.api.ItemID.*;
 
 import com.google.common.collect.ImmutableMap;
@@ -146,7 +145,7 @@ public class InventorySetupsVariationMapping
 		mappings = new HashMap<>();
 
 		// Granite Cannonball -> Cannonball
-		mappings.put(GRANITE_CANNONBALL, CANNONBALL);
+		mappings.put(GRANITE_CANNONBALL, STEEL_CANNONBALL);
 
 		// Smith Gloves (i) act as ice gloves
 		mappings.put(SMITHS_GLOVES_I, ICE_GLOVES);

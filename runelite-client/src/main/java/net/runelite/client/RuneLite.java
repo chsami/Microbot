@@ -86,6 +86,7 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.externalplugins.MicrobotPluginManager;
 import net.runelite.client.plugins.microbot.recovery.RecoveryPrompt;
 import net.runelite.client.plugins.microbot.recovery.StartupRecovery;
+import net.runelite.client.plugins.microbot.util.security.JagexCredentials;
 import net.runelite.client.proxy.ProxyChecker;
 import net.runelite.client.proxy.ProxyConfiguration;
 import net.runelite.client.rs.ClientLoader;
@@ -497,6 +498,7 @@ public class RuneLite
 
 		// Load user configuration
 		configManager.load();
+		JagexCredentials.fromLaunch();
 
 		for (String plugin : StartupRecovery.takePendingDisables())
 		{
