@@ -956,7 +956,7 @@ public class Rs2InventorySetup {
 					.filter(held -> isBrokenCopyOfSetupRow(held, item))
 					.findFirst()
 					.ifPresent(broken -> logSetup(Level.WARN,
-							"%s is broken (%s). Repair it (Bob in Lumbridge, Perdu, or an armour stand in your house) or remove it from the setup.",
+							"%s is broken (%s). Repair it (Bob in Lumbridge or an armour stand in your house) or remove it from the setup.",
 							item.getName(), broken.getName()));
 				int bankGear = bankQtyForPresetRow(item, lowerCaseName, isFuzzy);
 				int invGear = isFuzzy ? Rs2Inventory.itemQuantity((String) identifier) : Rs2Inventory.itemQuantity((int) identifier);
