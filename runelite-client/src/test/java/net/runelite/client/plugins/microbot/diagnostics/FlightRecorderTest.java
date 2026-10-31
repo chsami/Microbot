@@ -286,7 +286,7 @@ public class FlightRecorderTest
 	@Test
 	public void errorFilterKeepsLinesOutsideTheRecorderFormat()
 	{
-		String dump = "# legend err=\"x\"\nnot a line err=\"x\"\n7 08:00:00.0 err=\"boom\"\n8 08:00:00.6 out=\"ok\"";
+		String dump = "# legend err=\"x\"\nnot a line err=\"x\"\n7 08:00:00.0 err=\"boom\"\n8 08:00:00.6 out=\"ok\"\n\n";
 
 		assertEquals("# legend err=\"x\"\nnot a line err=\"x\"\n8 08:00:00.6 out=\"ok\"\n", FlightRecorder.withoutErrors(dump));
 	}

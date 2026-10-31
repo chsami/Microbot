@@ -19,7 +19,6 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.EnumSet;
@@ -106,9 +105,6 @@ class BugReportDialog extends JDialog
 	private JPanel doneCard;
 	private final Timer connectionCheck;
 	private BugReportSnapshot snapshot;
-	private BugReportSnapshot cachedSnapshot;
-	private JsonObject cachedPayload;
-	private List<Object> cachedPayloadKey;
 	private boolean sending;
 	private boolean failed;
 	private boolean done;
@@ -147,9 +143,6 @@ class BugReportDialog extends JDialog
 	{
 		connectionCheck.stop();
 		snapshot = null;
-		cachedSnapshot = null;
-		cachedPayload = null;
-		cachedPayloadKey = null;
 		super.dispose();
 	}
 
@@ -433,17 +426,7 @@ class BugReportDialog extends JDialog
 
 	private JsonObject payload()
 	{
-		Plugin plugin = selectedPlugin();
-		String text = description.getText();
-		Set<BugReportSection> include = included();
-		List<Object> key = Arrays.asList(plugin, text, include);
-		if (cachedPayload == null || cachedSnapshot != snapshot || !key.equals(cachedPayloadKey))
-		{
-			cachedPayload = collector.payload(snapshot, plugin, text, include);
-			cachedSnapshot = snapshot;
-			cachedPayloadKey = key;
-		}
-		return cachedPayload;
+		return collector.payload(snapshot, selectedPlugin(), description.getText(), included());
 	}
 
 	private void showPreview()
@@ -491,7 +474,6 @@ class BugReportDialog extends JDialog
 
 	private void send()
 	{
-		cachedPayload = null;
 		JsonObject payload = payload();
 		String plugin = pluginLabel();
 		Plugin selected = selectedPlugin();

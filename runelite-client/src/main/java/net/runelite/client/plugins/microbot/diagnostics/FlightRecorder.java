@@ -176,6 +176,11 @@ public class FlightRecorder
 			int text = textStart(dump, start, end < 0 ? dump.length() : end);
 			boolean error = text >= 0 && dump.startsWith("err=\"", text);
 			boolean repeat = text >= 0 && dump.startsWith("(previous line repeated ", text);
+			if (start == (end < 0 ? dump.length() : end))
+			{
+				start = next;
+				continue;
+			}
 			if (error || (repeat && dropped))
 			{
 				dropped = true;
