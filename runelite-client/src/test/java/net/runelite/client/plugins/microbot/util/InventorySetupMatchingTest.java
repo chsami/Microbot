@@ -1,0 +1,365 @@
+package net.runelite.client.plugins.microbot.util;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
+import net.runelite.api.gameval.ItemID;
+import net.runelite.api.gameval.VarbitID;
+import net.runelite.client.callback.ClientThread;
+import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.inventorysetups.InventorySetup;
+import net.runelite.client.plugins.microbot.inventorysetups.InventorySetupsItem;
+import net.runelite.client.plugins.microbot.inventorysetups.InventorySetupsStackCompareID;
+import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
+import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2RunePouch;
+import net.runelite.client.plugins.microbot.util.magic.Runes;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.MockedStatic;
+import static net.runelite.client.plugins.microbot.inventorysetups.InventorySetupTestData.emptiedSlot;
+import static net.runelite.client.plugins.microbot.inventorysetups.InventorySetupTestData.emptyContainer;
+import static net.runelite.client.plugins.microbot.inventorysetups.InventorySetupTestData.fuzzy;
+import static net.runelite.client.plugins.microbot.inventorysetups.InventorySetupTestData.item;
+import static net.runelite.client.plugins.microbot.inventorysetups.InventorySetupTestData.setup;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.when;
+
+public class InventorySetupMatchingTest
+{
+	private final List<Rs2ItemModel> inventory = new ArrayList<>();
+	private final List<Rs2ItemModel> worn = new ArrayList<>();
+	private MockedStatic<Microbot> microbot;
+	private MockedStatic<Global> global;
+	private MockedStatic<Rs2Inventory> rs2Inventory;
+	private MockedStatic<Rs2Equipment> rs2Equipment;
+	private MockedStatic<Rs2Bank> rs2Bank;
+	private MockedStatic<Rs2RunePouch> rs2RunePouch;
+
+	@Before
+	public void setUp()
+	{
+		ClientThread clientThread = mock(ClientThread.class);
+		when(clientThread.runOnClientThreadOptional(any())).thenReturn(Optional.empty());
+		microbot = mockStatic(Microbot.class);
+		microbot.when(Microbot::getClientThread).thenReturn(clientThread);
+		global = mockStatic(Global.class);
+		rs2Inventory = mockStatic(Rs2Inventory.class, CALLS_REAL_METHODS);
+		rs2Inventory.when(Rs2Inventory::items).thenAnswer(call -> new ArrayList<>(inventory).stream());
+		rs2Equipment = mockStatic(Rs2Equipment.class, CALLS_REAL_METHODS);
+		rs2Equipment.when(Rs2Equipment::items).thenAnswer(call -> new ArrayList<>(worn));
+		rs2Bank = mockStatic(Rs2Bank.class);
+		rs2RunePouch = mockStatic(Rs2RunePouch.class);
+	}
+
+	@After
+	public void tearDown()
+	{
+		rs2RunePouch.close();
+		rs2Bank.close();
+		rs2Equipment.close();
+		rs2Inventory.close();
+		global.close();
+		microbot.close();
+	}
+
+	private static Rs2ItemModel held(int id, String name, int quantity, int slot)
+	{
+		Rs2ItemModel model = mock(Rs2ItemModel.class);
+		when(model.getId()).thenReturn(id);
+		when(model.getName()).thenReturn(name);
+		when(model.getQuantity()).thenReturn(quantity);
+		when(model.getSlot()).thenReturn(slot);
+		return model;
+	}
+
+	private static InventorySetup gearSetup(InventorySetupsItem... gear)
+	{
+		List<InventorySetupsItem> equipment = emptyContainer(14);
+		for (InventorySetupsItem piece : gear)
+		{
+			equipment.set(piece.getSlot(), piece);
+		}
+		return setup("Gear", emptyContainer(28), equipment);
+	}
+
+	private static InventorySetup inventorySetup(InventorySetupsItem... items)
+	{
+		List<InventorySetupsItem> inv = emptyContainer(28);
+		int unslotted = 27;
+		for (InventorySetupsItem setupItem : items)
+		{
+			inv.set(setupItem.getSlot() >= 0 ? setupItem.getSlot() : unslotted--, setupItem);
+		}
+		return setup("Supplies", inv, emptyContainer(14));
+	}
+
+	private static Rs2InventorySetup loader(InventorySetup setup)
+	{
+		return new Rs2InventorySetup(setup, null);
+	}
+
+	private static InventorySetupsItem withStack(InventorySetupsItem setupItem, InventorySetupsStackCompareID stackCompare)
+	{
+		setupItem.setStackCompare(stackCompare);
+		return setupItem;
+	}
+
+	@Test
+	public void equipmentMatchesWhenEveryPieceIsWorn()
+	{
+		worn.add(held(ItemID.ABYSSAL_WHIP, "Abyssal whip", 1, 3));
+		worn.add(held(ItemID.DRAGON_PARRYINGDAGGER, "Dragon defender", 1, 5));
+
+		assertTrue(loader(gearSetup(item(ItemID.ABYSSAL_WHIP, "Abyssal whip", 1, 3),
+			item(ItemID.DRAGON_PARRYINGDAGGER, "Dragon defender", 1, 5))).doesEquipmentMatch());
+	}
+
+	@Test
+	public void equipmentDoesNotMatchWhenAPieceIsMissing()
+	{
+		worn.add(held(ItemID.ABYSSAL_WHIP, "Abyssal whip", 1, 3));
+
+		assertFalse(loader(gearSetup(item(ItemID.ABYSSAL_WHIP, "Abyssal whip", 1, 3),
+			item(ItemID.DRAGON_PARRYINGDAGGER, "Dragon defender", 1, 5))).doesEquipmentMatch());
+	}
+
+	@Test
+	public void strictEquipmentNeedsTheExactName()
+	{
+		worn.add(held(ItemID.RING_OF_DUELING_3, "Ring of dueling(3)", 1, 12));
+
+		assertFalse(loader(gearSetup(item(ItemID.RING_OF_DUELING_8, "Ring of dueling(8)", 1, 12))).doesEquipmentMatch());
+		assertTrue(loader(gearSetup(fuzzy(ItemID.RING_OF_DUELING_8, "Ring of dueling(8)", 1, 12))).doesEquipmentMatch());
+	}
+
+	@Test
+	public void degradedBarrowsPieceSatisfiesTheSetup()
+	{
+		worn.add(held(ItemID.BARROWS_DHAROK_BODY_75, "Dharok's platebody 75", 1, 4));
+
+		assertTrue(loader(gearSetup(item(ItemID.BARROWS_DHAROK_BODY, "Dharok's platebody", 1, 4))).doesEquipmentMatch());
+		assertTrue(loader(gearSetup(item(ItemID.BARROWS_DHAROK_BODY_100, "Dharok's platebody 100", 1, 4))).doesEquipmentMatch());
+	}
+
+	@Test
+	public void equipmentCheckWithoutASetupFails()
+	{
+		boolean paused = Microbot.pauseAllScripts.get();
+		try
+		{
+			Rs2InventorySetup missing = new Rs2InventorySetup((InventorySetup) null, null);
+			assertFalse(missing.doesEquipmentMatch());
+			assertFalse(missing.doesInventoryMatch());
+			assertFalse(missing.loadInventory());
+			assertFalse(missing.loadEquipment());
+		}
+		finally
+		{
+			Microbot.pauseAllScripts.set(paused);
+		}
+	}
+
+	@Test
+	public void loadEquipmentSkipsTheBankWhenAlreadyGeared()
+	{
+		worn.add(held(ItemID.ABYSSAL_WHIP, "Abyssal whip", 1, 3));
+
+		assertTrue(loader(gearSetup(item(ItemID.ABYSSAL_WHIP, "Abyssal whip", 1, 3))).loadEquipment());
+		rs2Bank.verify(Rs2Bank::openBank, never());
+	}
+
+	@Test
+	public void slottedItemMustBeInItsSlot()
+	{
+		InventorySetup setup = inventorySetup(item(ItemID.SHARK, "Shark", 1, 0));
+
+		inventory.add(held(ItemID.SHARK, "Shark", 1, 0));
+		assertTrue(loader(setup).doesInventoryMatch());
+
+		inventory.clear();
+		inventory.add(held(ItemID.SHARK, "Shark", 1, 1));
+		assertFalse(loader(setup).doesInventoryMatch());
+	}
+
+	@Test
+	public void lowerDoseInAStrictSlotStillMatches()
+	{
+		inventory.add(held(ItemID._3DOSEPRAYERRESTORE, "Prayer potion(3)", 1, 2));
+
+		assertTrue(loader(inventorySetup(item(ItemID._4DOSEPRAYERRESTORE, "Prayer potion(4)", 1, 2))).doesInventoryMatch());
+	}
+
+	@Test
+	public void differentPotionInASlotDoesNotMatch()
+	{
+		inventory.add(held(ItemID._4DOSE2RESTORE, "Super restore(4)", 1, 2));
+
+		assertFalse(loader(inventorySetup(item(ItemID._4DOSEPRAYERRESTORE, "Prayer potion(4)", 1, 2))).doesInventoryMatch());
+	}
+
+	@Test
+	public void fuzzySlotAcceptsAnyDose()
+	{
+		inventory.add(held(ItemID._1DOSEPRAYERRESTORE, "Prayer potion(1)", 1, 2));
+
+		assertTrue(loader(inventorySetup(fuzzy(ItemID._4DOSEPRAYERRESTORE, "Prayer potion(4)", 1, 2))).doesInventoryMatch());
+	}
+
+	@Test
+	public void stackWithoutCompareNeedsTheExactAmount()
+	{
+		InventorySetup setup = inventorySetup(item(ItemID.LAWRUNE, "Law rune", 100, 0));
+
+		inventory.add(held(ItemID.LAWRUNE, "Law rune", 99, 0));
+		assertFalse(loader(setup).doesInventoryMatch());
+
+		inventory.clear();
+		inventory.add(held(ItemID.LAWRUNE, "Law rune", 100, 0));
+		assertTrue(loader(setup).doesInventoryMatch());
+	}
+
+	@Test
+	public void greaterThanStackAcceptsUpToTheSavedAmount()
+	{
+		InventorySetup setup = inventorySetup(withStack(item(ItemID.LAWRUNE, "Law rune", 100, 0), InventorySetupsStackCompareID.Greater_Than));
+
+		inventory.add(held(ItemID.LAWRUNE, "Law rune", 40, 0));
+		assertTrue(loader(setup).doesInventoryMatch());
+
+		inventory.clear();
+		inventory.add(held(ItemID.LAWRUNE, "Law rune", 101, 0));
+		assertFalse(loader(setup).doesInventoryMatch());
+	}
+
+	@Test
+	public void lessThanAndNotEqualStacksOnlyNeedTheItem()
+	{
+		inventory.add(held(ItemID.LAWRUNE, "Law rune", 3, 0));
+
+		assertTrue(loader(inventorySetup(withStack(item(ItemID.LAWRUNE, "Law rune", 100, 0), InventorySetupsStackCompareID.Less_Than))).doesInventoryMatch());
+		assertTrue(loader(inventorySetup(withStack(item(ItemID.LAWRUNE, "Law rune", 100, 0), InventorySetupsStackCompareID.Standard))).doesInventoryMatch());
+	}
+
+	@Test
+	public void unslottedRowsAreCountedTogether()
+	{
+		InventorySetup setup = inventorySetup(item(ItemID.SHARK, "Shark", 1, -1), item(ItemID.SHARK, "Shark", 1, -1),
+			item(ItemID.SHARK, "Shark", 1, -1));
+
+		inventory.add(held(ItemID.SHARK, "Shark", 1, 5));
+		inventory.add(held(ItemID.SHARK, "Shark", 1, 9));
+		assertFalse(loader(setup).doesInventoryMatch());
+
+		inventory.add(held(ItemID.SHARK, "Shark", 1, 20));
+		assertTrue(loader(setup).doesInventoryMatch());
+	}
+
+	@Test
+	public void runePouchNeedsAFifthOfEachSavedRune()
+	{
+		InventorySetup setup = inventorySetup();
+		setup.updateRunePouch(Arrays.asList(item(ItemID.AIRRUNE, "Air rune", 1000, -1), InventorySetupsItem.getDummyItem(),
+			item(ItemID.LAWRUNE, "Law rune", 3, -1)));
+		rs2RunePouch.when(() -> Rs2RunePouch.contains(anyMap(), anyBoolean())).thenReturn(true);
+
+		assertTrue(loader(setup).doesInventoryMatch());
+
+		@SuppressWarnings("unchecked")
+		ArgumentCaptor<Map<Runes, Integer>> required = ArgumentCaptor.forClass(Map.class);
+		rs2RunePouch.verify(() -> Rs2RunePouch.contains(required.capture(), org.mockito.ArgumentMatchers.eq(false)));
+		assertEquals(Integer.valueOf(200), required.getValue().get(Runes.AIR));
+		assertEquals(Integer.valueOf(1), required.getValue().get(Runes.LAW));
+		assertEquals(2, required.getValue().size());
+	}
+
+	@Test
+	public void missingRunePouchContentsFailTheCheck()
+	{
+		InventorySetup setup = inventorySetup();
+		setup.updateRunePouch(Arrays.asList(item(ItemID.AIRRUNE, "Air rune", 1000, -1)));
+		rs2RunePouch.when(() -> Rs2RunePouch.contains(anyMap(), anyBoolean())).thenReturn(false);
+
+		assertFalse(loader(setup).doesInventoryMatch());
+	}
+
+	@Test
+	public void itemsOutsideTheSetupAreReported()
+	{
+		InventorySetup setup = inventorySetup(item(ItemID.SHARK, "Shark", 1, 0), fuzzy(ItemID._4DOSEPRAYERRESTORE, "Prayer potion(4)", 1, 1));
+		inventory.add(held(ItemID.SHARK, "Shark", 1, 0));
+		inventory.add(held(ItemID._2DOSEPRAYERRESTORE, "Prayer potion(2)", 1, 1));
+		inventory.add(held(ItemID.BONES, "Bones", 1, 2));
+
+		List<Rs2ItemModel> extra = loader(setup).getItemsNotInInventorySetup(false);
+
+		assertEquals(Collections.singletonList("Bones"), extra.stream().map(Rs2ItemModel::getName).collect(Collectors.toList()));
+		assertTrue(loader(setup).hasNotInventorySetup(false));
+	}
+
+	@Test
+	public void wornItemsOutsideTheSetupAreReported()
+	{
+		InventorySetup setup = gearSetup(item(ItemID.ABYSSAL_WHIP, "Abyssal whip", 1, 3));
+		worn.add(held(ItemID.ABYSSAL_WHIP, "Abyssal whip", 1, 3));
+		worn.add(held(ItemID.GRACEFUL_BOOTS, "Graceful boots", 1, 10));
+
+		List<Rs2ItemModel> extra = loader(setup).getEquipmentNotInSetup(false);
+
+		assertEquals(Collections.singletonList("Graceful boots"), extra.stream().map(Rs2ItemModel::getName).collect(Collectors.toList()));
+	}
+
+	@Test
+	public void anySpellbookSettingAcceptsEverySpellbook()
+	{
+		InventorySetup setup = inventorySetup();
+		setup.updateSpellbook(4);
+		microbot.when(() -> Microbot.getVarbitValue(VarbitID.SPELLBOOK)).thenReturn(2);
+		assertTrue(loader(setup).hasSpellBook());
+
+		setup.updateSpellbook(1);
+		assertFalse(loader(setup).hasSpellBook());
+		setup.updateSpellbook(2);
+		assertTrue(loader(setup).hasSpellBook());
+	}
+
+	@Test
+	public void setupItemListsLeaveOutEmptySlots()
+	{
+		InventorySetup setup = inventorySetup(item(ItemID.SHARK, "Shark", 1, 0));
+		setup.getEquipment().set(3, item(ItemID.ABYSSAL_WHIP, "Abyssal whip", 1, 3));
+
+		assertEquals(1, loader(setup).getInventoryItems().size());
+		assertEquals(1, loader(setup).getEquipmentItems().size());
+		assertTrue(loader(setup).getAdditionalItems().isEmpty());
+	}
+
+	@Test
+	public void keepListMarksNamesFuzzyWhenAnyRowIsFuzzy()
+	{
+		InventorySetup setup = inventorySetup(item(ItemID.SHARK, "Shark", 1, 0), fuzzy(ItemID._4DOSEPRAYERRESTORE, "Prayer potion(4)", 1, 1));
+
+		Map<String, Boolean> keep = loader(setup).itemsToNotDeposit();
+
+		assertEquals(Boolean.FALSE, keep.get("Shark"));
+		assertEquals(Boolean.TRUE, keep.get("Prayer potion"));
+		assertEquals(2, keep.size());
+	}
+}
