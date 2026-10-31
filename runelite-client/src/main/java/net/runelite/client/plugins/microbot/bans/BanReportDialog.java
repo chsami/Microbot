@@ -23,7 +23,8 @@ final class BanReportDialog
 	static final String DONT_SEND = "Don't send";
 	static final String KIND_TITLE = "What does your message centre on runescape.com say?";
 	static final String KIND_HINT = "Log in on the website to check. If you're not sure, leave \"I don't know yet\".";
-	static final String REMEMBER = "Remember my choice (change it later under 'Ban reports' in the Microbot settings)";
+	static final String REMEMBER = "<html>Do this every time. Send: future reports go out without asking. Don't send: nothing is sent,<br>"
+		+ "including runtime totals. Change it under 'Ban reports and script runtime' in the Microbot settings.</html>";
 	static final String CLOSE_HINT = "Closing this window decides nothing: you are asked again after the client restarts.";
 
 	@Value
@@ -32,6 +33,7 @@ final class BanReportDialog
 		boolean send;
 		BanKind kind;
 		boolean remember;
+		boolean answered;
 	}
 
 	private BanReportDialog()
@@ -44,11 +46,13 @@ final class BanReportDialog
 			? "This account shows"
 			: "<b>" + escapeHtml(accountName.trim()) + "</b> shows";
 		return "<html><body style='width: 360px'>"
-			+ who + " the \"account disabled\" login screen. The name stays on this computer.<br><br>"
+			+ who + " the \"account disabled\" login screen. The name stays on this computer. "
+			+ "This screen can also mean the account is locked, for example after a suspicious login.<br><br>"
 			+ "Sharing an anonymous report helps every Microbot player see which scripts and habits get accounts banned.<br><br>"
 			+ "The report contains the scripts this account ran in the last 30 days and for how long, membership, total level "
-			+ "(rounded), the longest session and whether breaks were on. It never contains your account name, email, IP or "
-			+ "location, just a scrambled ID so the same ban isn't counted twice."
+			+ "(rounded), active days, the longest session, whether breaks were on, time since it last botted and your "
+			+ "Microbot version. It doesn't include your account name, email or location, only a scrambled ID so the same "
+			+ "ban isn't counted twice."
 			+ "</body></html>";
 	}
 
@@ -129,10 +133,10 @@ final class BanReportDialog
 	{
 		if (!SEND.equals(choice) && !DONT_SEND.equals(choice))
 		{
-			return new Answer(false, BanKind.UNKNOWN, false);
+			return new Answer(false, BanKind.UNKNOWN, false, false);
 		}
 		boolean send = SEND.equals(choice) && kind != BanKind.NOT_A_BAN;
-		return new Answer(send, kind, remember && kind != BanKind.NOT_A_BAN);
+		return new Answer(send, kind, remember && kind != BanKind.NOT_A_BAN, true);
 	}
 
 	private static BanKind selected(JRadioButton[] buttons)

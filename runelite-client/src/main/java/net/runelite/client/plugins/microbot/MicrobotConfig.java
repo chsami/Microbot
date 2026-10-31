@@ -251,13 +251,12 @@ public interface MicrobotConfig extends Config
 	String keyBanReports = "banReports";
 	@ConfigItem(
 		keyName = keyBanReports,
-		name = "Ban reports",
-		description = "When an account Microbot botted on shows the \"account disabled\" login screen, share an anonymous report: " +
-				"scripts run in the last 30 days and for how long, membership, rounded total level, longest session and whether breaks were on. " +
-				"Never your account name, email, IP or location, just a scrambled ID so the same ban isn't counted twice. " +
-				"Ask me and Always send also share hourly script runtime totals (no account info) so ban rates per script can be worked out; " +
-				"Never send stops both. Always send sends the ban type as unknown, so locked accounts may be counted. " +
-				"Ignored while Disable telemetry is on.",
+		name = "Ban reports and script runtime",
+		description = "Ask me and Always send share hourly script runtime totals (script names and minutes, no account info) " +
+				"so ban rates per script can be worked out. When a botted account shows the \"account disabled\" screen: " +
+				"Ask me shows a prompt, Always send sends a report without asking (the ban type is sent as unknown, so locked " +
+				"accounts may be counted), Never send sends neither. Reports don't include your account name, email or location, " +
+				"only a scrambled ID. Ignored while Disable telemetry is on.",
 		position = 5,
 		section = generalSection
 	)

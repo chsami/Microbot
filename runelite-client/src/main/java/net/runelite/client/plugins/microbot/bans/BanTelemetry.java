@@ -277,6 +277,8 @@ public class BanTelemetry
 			send(key, BanKind.UNKNOWN);
 			return;
 		}
+		clientThread.invokeLater(() -> notifier.notify("A botted account shows the \"account disabled\" screen. "
+			+ "Microbot is asking whether to share an anonymous ban report."));
 		SwingUtilities.invokeLater(() ->
 		{
 			try
@@ -301,7 +303,7 @@ public class BanTelemetry
 		{
 			executor.execute(() -> send(key, answer.getKind()));
 		}
-		else if (answer.getKind() == BanKind.NOT_A_BAN || answer.isRemember())
+		else if (answer.isAnswered())
 		{
 			executor.execute(() -> ledger.markReported(key));
 		}
@@ -324,6 +326,11 @@ public class BanTelemetry
 				executor.execute(() -> ledger.markReported(accountKey));
 				log.info("Sent an anonymous ban report");
 				clientThread.invokeLater(() -> notifier.notify("Ban report sent. Thank you for helping other Microbot players."));
+			}
+			else
+			{
+				handledThisRun.remove(accountKey);
+				clientThread.invokeLater(() -> notifier.notify("The ban report couldn't be sent. You'll be asked again next time."));
 			}
 		});
 	}

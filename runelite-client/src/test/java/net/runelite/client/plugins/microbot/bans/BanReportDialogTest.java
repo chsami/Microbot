@@ -35,6 +35,7 @@ public class BanReportDialogTest
 
 		assertFalse(answer.isSend());
 		assertFalse(answer.isRemember());
+		assertFalse(answer.isAnswered());
 	}
 
 	@Test
@@ -44,6 +45,7 @@ public class BanReportDialogTest
 
 		assertFalse(answer.isSend());
 		assertTrue(answer.isRemember());
+		assertTrue(answer.isAnswered());
 	}
 
 	@Test
@@ -53,6 +55,7 @@ public class BanReportDialogTest
 		assertTrue(BanReportDialog.message("<i>x</i>").contains("&lt;i&gt;x&lt;/i&gt;"));
 		assertTrue(BanReportDialog.message(null).contains("This account shows"));
 		assertTrue(BanReportDialog.message(" ").contains("This account shows"));
+		assertTrue(BanReportDialog.message("Zezima").contains("can also mean the account is locked"));
 	}
 
 	@Test
