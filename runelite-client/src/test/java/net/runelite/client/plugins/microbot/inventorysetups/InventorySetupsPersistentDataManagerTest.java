@@ -83,4 +83,47 @@ public class InventorySetupsPersistentDataManagerTest
 		assertTrue(setupJson.contains("\"s\":1"));
 		assertFalse(setupJson.contains("\"slot\""));
 	}
+
+	@Test
+	public void setupImportedWithEveryItemInTheFirstSlotIsRepaired()
+	{
+		InventorySetup imported = setup("Imported", emptyContainer(28), emptyContainer(14));
+		imported.getInventory().set(0, item(ItemID.SHARK, "Shark", 1, 0));
+		imported.getInventory().set(3, item(ItemID.LAWRUNE, "Law rune", 100, 0));
+		imported.getInventory().set(5, fuzzy(ItemID._4DOSEPRAYERRESTORE, "Prayer potion(4)", 1, 0));
+		imported.getInventory().set(9, emptiedSlot(9, true));
+
+		assertTrue(InventorySetupsPersistentDataManager.repairSharedFirstInventorySlot(imported));
+
+		assertEquals(0, imported.getInventory().get(0).getSlot());
+		assertEquals(3, imported.getInventory().get(3).getSlot());
+		assertEquals(5, imported.getInventory().get(5).getSlot());
+		assertEquals(9, imported.getInventory().get(9).getSlot());
+		assertEquals(28, imported.getInventory().size());
+		assertEquals(ItemID.LAWRUNE, imported.getInventory().get(3).getId());
+		assertEquals(100, imported.getInventory().get(3).getQuantity());
+		assertTrue(InventorySetupsItem.itemIsDummy(imported.getInventory().get(1)));
+		assertFalse(InventorySetupsPersistentDataManager.repairSharedFirstInventorySlot(imported));
+	}
+
+	@Test
+	public void correctlySlottedSetupIsLeftAlone()
+	{
+		InventorySetup normal = setup("Normal", emptyContainer(28), emptyContainer(14));
+		normal.getInventory().set(0, item(ItemID.SHARK, "Shark", 1, 0));
+		normal.getInventory().set(3, item(ItemID.LAWRUNE, "Law rune", 100, 3));
+		normal.getEquipment().set(3, item(ItemID.ABYSSAL_WHIP, "Abyssal whip", 1, 0));
+		InventorySetup unslotted = setup("Unslotted", emptyContainer(28), emptyContainer(14));
+		unslotted.getInventory().set(4, item(ItemID.SHARK, "Shark", 1, -1));
+		unslotted.getInventory().set(6, item(ItemID.SHARK, "Shark", 1, 0));
+
+		assertFalse(InventorySetupsPersistentDataManager.repairSharedFirstInventorySlot(normal));
+		assertFalse(InventorySetupsPersistentDataManager.repairSharedFirstInventorySlot(unslotted));
+
+		assertEquals(0, normal.getInventory().get(0).getSlot());
+		assertEquals(3, normal.getInventory().get(3).getSlot());
+		assertEquals(0, normal.getEquipment().get(3).getSlot());
+		assertEquals(-1, unslotted.getInventory().get(4).getSlot());
+		assertEquals(0, unslotted.getInventory().get(6).getSlot());
+	}
 }

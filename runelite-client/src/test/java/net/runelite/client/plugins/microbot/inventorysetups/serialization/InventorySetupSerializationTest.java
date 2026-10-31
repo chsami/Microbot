@@ -248,18 +248,31 @@ public class InventorySetupSerializationTest
 	}
 
 	@Test(timeout = 10000)
-	public void importedSetupWithoutSlotsLoadsItemsUnslotted()
+	public void importedSetupWithoutSlotsUsesTheListPositions()
 	{
-		String portable = "{\"setup\":{\"inv\":[{\"id\":" + ItemID.SHARK + "},{\"id\":" + ItemID.LAWRUNE + ",\"q\":100},null],"
+		String portable = "{\"setup\":{\"inv\":[{\"id\":" + ItemID.SHARK + "},null,{\"id\":" + ItemID.LAWRUNE + ",\"q\":100},null],"
 			+ "\"eq\":[{\"id\":" + ItemID.ABYSSAL_WHIP + "}],\"name\":\"Shared\"},\"layout\":[" + ItemID.SHARK + "]}";
 
 		InventorySetup imported = RuneLiteAPI.GSON.fromJson(portable, InventorySetupPortable.class).getSerializedSetup();
 
-		assertEquals(-1, imported.getInventory().get(0).getSlot());
-		assertEquals(-1, imported.getInventory().get(1).getSlot());
-		assertEquals(100, imported.getInventory().get(1).getQuantity());
-		assertEquals(-1, imported.getEquipment().get(0).getSlot());
-		assertTrue(InventorySetupsItem.itemIsDummy(imported.getInventory().get(2)));
+		assertEquals(0, imported.getInventory().get(0).getSlot());
+		assertEquals(2, imported.getInventory().get(2).getSlot());
+		assertEquals(100, imported.getInventory().get(2).getQuantity());
+		assertTrue(InventorySetupsItem.itemIsDummy(imported.getInventory().get(1)));
+		assertTrue(InventorySetupsItem.itemIsDummy(imported.getInventory().get(3)));
+		assertEquals(4, imported.getInventory().size());
+	}
+
+	@Test(timeout = 10000)
+	public void importedSetupKeepsTheSlotsItWasExportedWith()
+	{
+		String portable = "{\"setup\":{\"inv\":[{\"id\":" + ItemID.SHARK + ",\"s\":4},{\"id\":" + ItemID.LAWRUNE + ",\"s\":7}],"
+			+ "\"eq\":[],\"name\":\"Shared\"},\"layout\":[]}";
+
+		InventorySetup imported = RuneLiteAPI.GSON.fromJson(portable, InventorySetupPortable.class).getSerializedSetup();
+
+		assertEquals(4, imported.getInventory().get(0).getSlot());
+		assertEquals(7, imported.getInventory().get(1).getSlot());
 	}
 
 	@Test(timeout = 10000)

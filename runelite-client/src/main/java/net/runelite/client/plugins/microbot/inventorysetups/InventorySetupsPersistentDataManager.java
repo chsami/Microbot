@@ -83,6 +83,16 @@ public class InventorySetupsPersistentDataManager
 
 		final List<InventorySetup> setupsFromConfig = loadV3Setups();
 		inventorySetups.addAll(setupsFromConfig);
+		boolean repairedSlots = false;
+		for (final InventorySetup setup : setupsFromConfig)
+		{
+			repairedSlots |= repairSharedFirstInventorySlot(setup);
+		}
+		if (repairedSlots)
+		{
+			log.info("Repaired inventory slots of setups imported without slot data");
+			updateConfig(true, false);
+		}
 		processSetupsFromConfig();
 
 		cleanSetupLayouts();
@@ -240,6 +250,23 @@ public class InventorySetupsPersistentDataManager
 			loadedSetups.add(setup);
 		}
 		return loadedSetups;
+	}
+
+	static boolean repairSharedFirstInventorySlot(final InventorySetup setup)
+	{
+		final List<InventorySetupsItem> inventory = setup.getInventory();
+		if (inventory == null || inventory.stream().filter(item -> !InventorySetupsItem.isEmptySlot(item) && item.getSlot() == 0).count() < 2)
+		{
+			return false;
+		}
+		for (int i = 0; i < inventory.size(); i++)
+		{
+			if (!InventorySetupsItem.isEmptySlot(inventory.get(i)))
+			{
+				inventory.get(i).setSlot(i);
+			}
+		}
+		return true;
 	}
 
 	private void processSetupsFromConfig()
