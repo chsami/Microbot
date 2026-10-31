@@ -24,7 +24,7 @@ final class BanReportDialog
 	static final String KIND_TITLE = "What does your message centre on runescape.com say?";
 	static final String KIND_HINT = "Log in on the website to check. If you're not sure, leave \"I don't know yet\".";
 	static final String REMEMBER = "Remember my choice (change it later under 'Ban reports' in the Microbot settings)";
-	static final String CLOSE_HINT = "Closing this window asks again the next time this account shows the screen.";
+	static final String CLOSE_HINT = "Closing this window decides nothing: you are asked again after the client restarts.";
 
 	@Value
 	static class Answer

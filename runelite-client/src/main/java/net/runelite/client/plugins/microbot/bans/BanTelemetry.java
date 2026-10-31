@@ -19,6 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -45,6 +46,7 @@ import net.runelite.client.plugins.microbot.MicrobotApi;
 import net.runelite.client.plugins.microbot.MicrobotConfig;
 import net.runelite.client.plugins.microbot.alerts.ClientAlertReporter;
 import net.runelite.client.plugins.microbot.externalplugins.MicrobotPluginManager;
+import net.runelite.client.plugins.microbot.util.security.JagexCredentials;
 import net.runelite.client.rs.auth.JagexAuthService;
 import net.runelite.client.util.RunnableExceptionLogger;
 
@@ -83,10 +85,12 @@ public class BanTelemetry
 	private long cachedHash = -1;
 	private String cachedKey;
 	private String cachedIdentity;
+	private final Supplier<String> selection;
+	private volatile String launchSelection;
+	private volatile boolean launchSelectionKnown;
 	private String cachedIdentityKey;
 	private String lastLoggedInKey;
 	private String identityKeyAtLastLogin;
-	private int accountSwitchesAtLastLogin;
 	private String playerNameAtLastLogin;
 	private boolean onBanScreen;
 
@@ -96,12 +100,12 @@ public class BanTelemetry
 		ConfigManager configManager, Notifier notifier, Gson gson, @Named("disableTelemetry") boolean disableTelemetry)
 	{
 		this(client, clientThread, pluginManager, microbotPluginManager, microbotApi, clientSessionManager, executor, config,
-			configManager, notifier, gson, disableTelemetry, new File(new File(RuneLite.RUNELITE_DIR, "microbot"), "ban-ledger").toPath());
+			configManager, notifier, gson, disableTelemetry, new File(new File(RuneLite.RUNELITE_DIR, "microbot"), "ban-ledger").toPath(), null);
 	}
 
 	BanTelemetry(Client client, ClientThread clientThread, PluginManager pluginManager, MicrobotPluginManager microbotPluginManager,
 		MicrobotApi microbotApi, ClientSessionManager clientSessionManager, ScheduledExecutorService executor, MicrobotConfig config,
-		ConfigManager configManager, Notifier notifier, Gson gson, boolean disableTelemetry, Path ledgerDir)
+		ConfigManager configManager, Notifier notifier, Gson gson, boolean disableTelemetry, Path ledgerDir, Supplier<String> selection)
 	{
 		this.client = client;
 		this.clientThread = clientThread;
@@ -115,6 +119,7 @@ public class BanTelemetry
 		this.notifier = notifier;
 		this.disableTelemetry = disableTelemetry;
 		this.ledger = new BanLedger(ledgerDir, gson, Clock.systemUTC());
+		this.selection = selection != null ? selection : () -> JagexAuthService.selectedAccount().orElseGet(this::launchSelection);
 	}
 
 	public void start()
@@ -125,6 +130,11 @@ public class BanTelemetry
 			int generation = ++watcherGeneration;
 			clientThread.invokeLater(() -> watchLoginScreen(generation));
 		}
+		executor.execute(RunnableExceptionLogger.wrap(() ->
+		{
+			JagexCredentials.fromLaunch();
+			ledger.pruneStale();
+		}));
 		if (flushTask == null)
 		{
 			flushTask = executor.scheduleWithFixedDelay(RunnableExceptionLogger.wrap(() -> flushRuntime()),
@@ -172,7 +182,6 @@ public class BanTelemetry
 		{
 			lastLoggedInKey = accountKey;
 			identityKeyAtLastLogin = identityKey;
-			accountSwitchesAtLastLogin = JagexAuthService.accountSwitches();
 			if (client.getLocalPlayer() != null && client.getLocalPlayer().getName() != null)
 			{
 				playerNameAtLastLogin = client.getLocalPlayer().getName();
@@ -195,7 +204,6 @@ public class BanTelemetry
 		{
 			return;
 		}
-		String trustedIdentity = BanAttribution.identityTrusted(JagexAuthService.accountSwitches()) ? identityKey : null;
 		boolean member = client.getVarpValue(VarPlayerID.ACCOUNT_CREDIT) > 0;
 		int totalLevel = client.getTotalLevel();
 		boolean breaks = breakHandlerActive();
@@ -203,7 +211,7 @@ public class BanTelemetry
 		{
 			addPendingRuntime(BanLedger.split(scripts, elapsed));
 		}
-		executor.execute(() -> ledger.record(accountKey, trustedIdentity, elapsed, scripts, member, totalLevel, breaks));
+		executor.execute(() -> ledger.record(accountKey, identityKey, elapsed, scripts, member, totalLevel, breaks));
 	}
 
 	private boolean watchLoginScreen(int generation)
@@ -234,11 +242,9 @@ public class BanTelemetry
 				.identityKey(currentIdentityKey())
 				.identityKeyAtLastLogin(identityKeyAtLastLogin)
 				.lastLoggedInKey(lastLoggedInKey)
-				.accountSwitches(JagexAuthService.accountSwitches())
-				.accountSwitchesAtLastLogin(accountSwitchesAtLastLogin)
 				.build();
 			Component parent = client.getCanvas();
-			String loginName = loginIdentity();
+			String loginName = displayLoginName();
 			String playerName = playerNameAtLastLogin;
 			executor.execute(RunnableExceptionLogger.wrap(() -> onBanDetected(context, loginName, playerName, parent)));
 		}
@@ -324,6 +330,14 @@ public class BanTelemetry
 
 	CompletableFuture<?> flushRuntime()
 	{
+		if (config.banReports() == BanReportMode.NEVER)
+		{
+			synchronized (pendingRuntime)
+			{
+				pendingRuntime.clear();
+			}
+			return CompletableFuture.completedFuture(null);
+		}
 		UUID sessionId = clientSessionManager.getMicrobotSessionId();
 		if (sessionId == null || isDisabled())
 		{
@@ -419,12 +433,31 @@ public class BanTelemetry
 	@SuppressWarnings("deprecation")
 	private String loginIdentity()
 	{
-		String launcherName = client.getLauncherDisplayName();
-		if (launcherName != null)
+		return BanAttribution.identity(selection.get(), client.getUsername());
+	}
+
+	@SuppressWarnings("deprecation")
+	private String displayLoginName()
+	{
+		return JagexAuthService.LEGACY_SELECTION.equals(selection.get()) ? client.getUsername() : null;
+	}
+
+	private String launchSelection()
+	{
+		if (!launchSelectionKnown)
 		{
-			return launcherName;
+			JagexCredentials launch = JagexCredentials.fromLaunch();
+			if (launch != null)
+			{
+				launchSelection = launch.getCharacterId();
+			}
+			else
+			{
+				launchSelection = client.getLauncherDisplayName() == null ? JagexAuthService.LEGACY_SELECTION : null;
+			}
+			launchSelectionKnown = true;
 		}
-		return client.getUsername();
+		return launchSelection;
 	}
 
 	private boolean isDisabled()

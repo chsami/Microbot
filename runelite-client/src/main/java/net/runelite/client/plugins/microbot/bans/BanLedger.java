@@ -6,6 +6,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -27,6 +28,7 @@ import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -39,6 +41,7 @@ class BanLedger
 	static final int LEVEL_STEP = 50;
 	static final long IDLE_STEP_SECONDS = 15 * 60;
 	static final String AMBIGUOUS = "ambiguous";
+	static final long STALE_FILE_MILLIS = TimeUnit.DAYS.toMillis(60);
 	private static final Pattern KEY = Pattern.compile("[0-9a-f]{64}");
 
 	private final Path accountsDir;
@@ -296,16 +299,87 @@ class BanLedger
 
 	private void save(Path file, String content)
 	{
+		Path temp = null;
 		try
 		{
 			Files.createDirectories(file.getParent());
-			Path temp = Files.createTempFile(file.getParent(), file.getFileName().toString(), ".tmp");
+			temp = Files.createTempFile(file.getParent(), file.getFileName().toString(), ".tmp");
 			Files.writeString(temp, content, StandardCharsets.UTF_8);
-			Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+			try
+			{
+				Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+			}
+			catch (AtomicMoveNotSupportedException e)
+			{
+				Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING);
+			}
+			temp = null;
 		}
 		catch (IOException e)
 		{
 			log.debug("Could not write the ban ledger", e);
+		}
+		finally
+		{
+			deleteQuietly(temp);
+		}
+	}
+
+	synchronized void pruneStale()
+	{
+		long cutoff = clock.millis() - STALE_FILE_MILLIS;
+		try (Stream<Path> files = listFiles(accountsDir))
+		{
+			files.filter(file -> lastModified(file) < cutoff).forEach(BanLedger::deleteQuietly);
+		}
+		try (Stream<Path> files = listFiles(identitiesDir))
+		{
+			files.filter(file -> readIdentity(file.getFileName().toString())
+					.filter(KEY.asPredicate())
+					.map(key -> !Files.isRegularFile(accountsDir.resolve(key + ".json")))
+					.orElse(lastModified(file) < cutoff))
+				.forEach(BanLedger::deleteQuietly);
+		}
+		writtenIdentities.clear();
+	}
+
+	private static Stream<Path> listFiles(Path dir)
+	{
+		try
+		{
+			return Files.isDirectory(dir) ? Files.list(dir).filter(Files::isRegularFile) : Stream.empty();
+		}
+		catch (IOException e)
+		{
+			return Stream.empty();
+		}
+	}
+
+	private static long lastModified(Path file)
+	{
+		try
+		{
+			return Files.getLastModifiedTime(file).toMillis();
+		}
+		catch (IOException e)
+		{
+			return Long.MAX_VALUE;
+		}
+	}
+
+	private static void deleteQuietly(Path file)
+	{
+		if (file == null)
+		{
+			return;
+		}
+		try
+		{
+			Files.deleteIfExists(file);
+		}
+		catch (IOException e)
+		{
+			log.debug("Could not delete a ban ledger file", e);
 		}
 	}
 

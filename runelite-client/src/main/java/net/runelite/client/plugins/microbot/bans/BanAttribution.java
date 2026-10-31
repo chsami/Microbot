@@ -5,6 +5,7 @@ import java.util.Optional;
 import java.util.function.Function;
 import lombok.Builder;
 import lombok.Value;
+import net.runelite.client.rs.auth.JagexAuthService;
 
 final class BanAttribution
 {
@@ -15,30 +16,34 @@ final class BanAttribution
 		String identityKey;
 		String identityKeyAtLastLogin;
 		String lastLoggedInKey;
-		int accountSwitches;
-		int accountSwitchesAtLastLogin;
 	}
 
 	private BanAttribution()
 	{
 	}
 
-	static boolean identityTrusted(int accountSwitches)
+	static String identity(String selection, String username)
 	{
-		return accountSwitches == 0;
+		if (selection == null)
+		{
+			return null;
+		}
+		if (JagexAuthService.LEGACY_SELECTION.equals(selection))
+		{
+			return username == null || username.isBlank() ? null : "legacy|" + username;
+		}
+		return "jagex|" + selection;
 	}
 
 	static Optional<String> resolve(Context context, Function<String, IdentityMatch> lookup)
 	{
-		if (context.getLastLoggedInKey() != null
-			&& context.getAccountSwitches() == context.getAccountSwitchesAtLastLogin()
-			&& Objects.equals(context.getIdentityKey(), context.getIdentityKeyAtLastLogin()))
-		{
-			return Optional.of(context.getLastLoggedInKey());
-		}
-		if (context.getIdentityKey() == null || !identityTrusted(context.getAccountSwitches()))
+		if (context.getIdentityKey() == null)
 		{
 			return Optional.empty();
+		}
+		if (context.getLastLoggedInKey() != null && Objects.equals(context.getIdentityKey(), context.getIdentityKeyAtLastLogin()))
+		{
+			return Optional.of(context.getLastLoggedInKey());
 		}
 		IdentityMatch match = lookup.apply(context.getIdentityKey());
 		return match.getState() == IdentityMatch.State.MATCHED ? Optional.of(match.getAccountKey()) : Optional.empty();

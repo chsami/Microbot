@@ -200,6 +200,28 @@ public class BanLedgerTest
 	}
 
 	@Test
+	public void staleFilesArePrunedButActiveOnesStay() throws Exception
+	{
+		String old = BanLedger.accountKey(1L);
+		String oldIdentity = BanLedger.identityKey("old").orElseThrow();
+		ledger.record(old, oldIdentity, 60, List.of("PluginX"), true, 1200, false);
+		ledger.record(account, identity, 60, List.of("PluginX"), true, 1200, false);
+		Path accounts = folder.getRoot().toPath().resolve("accounts");
+		Files.setLastModifiedTime(accounts.resolve(old + ".json"),
+			java.nio.file.attribute.FileTime.from(clock.instant().minus(Duration.ofDays(61))));
+
+		ledger.pruneStale();
+
+		assertFalse(Files.exists(accounts.resolve(old + ".json")));
+		assertEquals(IdentityMatch.UNKNOWN, ledger.accountFor(oldIdentity));
+		assertEquals(IdentityMatch.of(account), ledger.accountFor(identity));
+		try (Stream<Path> files = Files.list(accounts))
+		{
+			assertTrue(files.noneMatch(f -> f.toString().endsWith(".tmp")));
+		}
+	}
+
+	@Test
 	public void keysThatAreNotHashesAreRefused()
 	{
 		ledger.record("../../evil", identity, 60, List.of("PluginX"), true, 1200, false);

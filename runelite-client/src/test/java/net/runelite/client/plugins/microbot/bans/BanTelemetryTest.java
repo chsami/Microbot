@@ -2,13 +2,17 @@ package net.runelite.client.plugins.microbot.bans;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import java.time.Clock;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
+import net.runelite.api.events.GameTick;
 import net.runelite.client.ClientSessionManager;
 import net.runelite.client.Notifier;
 import net.runelite.client.callback.ClientThread;
@@ -27,6 +31,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -45,6 +50,8 @@ public class BanTelemetryTest
 	private MicrobotApi api;
 	private ClientSessionManager sessions;
 	private BanTelemetry telemetry;
+	private final AtomicReference<BanReportMode> mode = new AtomicReference<>(BanReportMode.ASK);
+	private final AtomicReference<String> selection = new AtomicReference<>("111");
 
 	@Before
 	public void setUp()
@@ -54,9 +61,150 @@ public class BanTelemetryTest
 		api = mock(MicrobotApi.class);
 		sessions = mock(ClientSessionManager.class);
 		when(sessions.getMicrobotSessionId()).thenReturn(SESSION);
+		when(client.getAccountHash()).thenReturn(-1L);
+		ScheduledExecutorService executor = mock(ScheduledExecutorService.class);
+		doAnswer(invocation ->
+		{
+			((Runnable) invocation.getArgument(0)).run();
+			return null;
+		}).when(executor).execute(any());
+		MicrobotConfig config = new MicrobotConfig()
+		{
+			@Override
+			public BanReportMode banReports()
+			{
+				return mode.get();
+			}
+		};
 		telemetry = new BanTelemetry(client, clientThread, mock(PluginManager.class), mock(MicrobotPluginManager.class), api, sessions,
-			mock(ScheduledExecutorService.class), new MicrobotConfig() { }, mock(ConfigManager.class), mock(Notifier.class), new Gson(),
-			false, folder.getRoot().toPath());
+			executor, config, mock(ConfigManager.class), mock(Notifier.class), new Gson(), false, folder.getRoot().toPath(), selection::get);
+	}
+
+	private BooleanSupplier startWatcher()
+	{
+		telemetry.start();
+		ArgumentCaptor<BooleanSupplier> watcher = ArgumentCaptor.forClass(BooleanSupplier.class);
+		verify(clientThread).invokeLater(watcher.capture());
+		return watcher.getValue();
+	}
+
+	private void botted(long accountHash, String identity)
+	{
+		new BanLedger(folder.getRoot().toPath(), new Gson(), Clock.systemUTC())
+			.record(BanLedger.accountKey(accountHash), BanLedger.identityKey(identity).orElse(null), 600, List.of("PluginX"), true, 1200, false);
+	}
+
+	private void loggedInAs(long accountHash)
+	{
+		when(client.getAccountHash()).thenReturn(accountHash);
+		when(client.getGameState()).thenReturn(GameState.LOGGED_IN);
+		telemetry.onGameTick(new GameTick());
+		when(client.getAccountHash()).thenReturn(-1L);
+	}
+
+	private void showBanScreen(BooleanSupplier watcher)
+	{
+		when(client.getGameState()).thenReturn(GameState.LOGIN_SCREEN);
+		when(client.getLoginIndex()).thenReturn(BanTelemetry.BANNED_LOGIN_INDEX);
+		watcher.getAsBoolean();
+	}
+
+	private void leaveBanScreen(BooleanSupplier watcher)
+	{
+		when(client.getLoginIndex()).thenReturn(2);
+		watcher.getAsBoolean();
+	}
+
+	@Test
+	public void aRelogThatReselectsTheSameCharacterReportsThatAccount()
+	{
+		mode.set(BanReportMode.ALWAYS);
+		when(api.submitBanReport(any())).thenReturn(CompletableFuture.completedFuture(true));
+		botted(7, "jagex|111");
+		BooleanSupplier watcher = startWatcher();
+		loggedInAs(7);
+		selection.set("111");
+
+		showBanScreen(watcher);
+		watcher.getAsBoolean();
+		leaveBanScreen(watcher);
+		showBanScreen(watcher);
+
+		ArgumentCaptor<JsonObject> payload = ArgumentCaptor.forClass(JsonObject.class);
+		verify(api, times(1)).submitBanReport(payload.capture());
+		assertEquals(BanLedger.accountKey(7), payload.getValue().get("accountKey").getAsString());
+		assertEquals("unknown", payload.getValue().get("banKind").getAsString());
+		assertEquals(SESSION.toString(), payload.getValue().get("sessionId").getAsString());
+	}
+
+	@Test
+	public void aBanAfterSwitchingToAnotherCharacterIsNotBlamedOnTheLastOne()
+	{
+		mode.set(BanReportMode.ALWAYS);
+		when(api.submitBanReport(any())).thenReturn(CompletableFuture.completedFuture(true));
+		botted(7, "jagex|111");
+		BooleanSupplier watcher = startWatcher();
+		loggedInAs(7);
+		selection.set("222");
+
+		showBanScreen(watcher);
+
+		verify(api, never()).submitBanReport(any());
+	}
+
+	@Test
+	public void aFreshClientFindsTheAccountThroughTheLedger()
+	{
+		mode.set(BanReportMode.ALWAYS);
+		when(api.submitBanReport(any())).thenReturn(CompletableFuture.completedFuture(true));
+		botted(9, "jagex|222");
+		selection.set("222");
+		BooleanSupplier watcher = startWatcher();
+
+		showBanScreen(watcher);
+
+		ArgumentCaptor<JsonObject> payload = ArgumentCaptor.forClass(JsonObject.class);
+		verify(api).submitBanReport(payload.capture());
+		assertEquals(BanLedger.accountKey(9), payload.getValue().get("accountKey").getAsString());
+	}
+
+	@Test
+	public void neverSendSendsNothing()
+	{
+		mode.set(BanReportMode.NEVER);
+		botted(7, "jagex|111");
+		BooleanSupplier watcher = startWatcher();
+		loggedInAs(7);
+
+		showBanScreen(watcher);
+
+		verify(api, never()).submitBanReport(any());
+	}
+
+	@Test
+	public void anAccountWithoutBottingHistoryIsNotReported()
+	{
+		mode.set(BanReportMode.ALWAYS);
+		BooleanSupplier watcher = startWatcher();
+		loggedInAs(7);
+
+		showBanScreen(watcher);
+
+		verify(api, never()).submitBanReport(any());
+	}
+
+	@Test
+	public void choosingNeverDropsRuntimeThatWasWaiting()
+	{
+		when(api.submitPluginRuntime(any())).thenReturn(CompletableFuture.completedFuture(true));
+		telemetry.addPendingRuntime(Map.of("PluginX", 600L));
+		mode.set(BanReportMode.NEVER);
+
+		telemetry.flushRuntime();
+		mode.set(BanReportMode.ASK);
+		telemetry.flushRuntime();
+
+		verify(api, never()).submitPluginRuntime(any());
 	}
 
 	@Test
@@ -120,15 +268,13 @@ public class BanTelemetryTest
 	@Test
 	public void theLoginScreenWatcherSurvivesErrorsAndStopsWithTheService()
 	{
-		telemetry.start();
-		ArgumentCaptor<BooleanSupplier> watcher = ArgumentCaptor.forClass(BooleanSupplier.class);
-		verify(clientThread).invokeLater(watcher.capture());
+		BooleanSupplier watcher = startWatcher();
 		when(client.getGameState()).thenThrow(new IllegalStateException("not ready"));
 
-		assertFalse(watcher.getValue().getAsBoolean());
+		assertFalse(watcher.getAsBoolean());
 
 		telemetry.stop();
-		assertTrue(watcher.getValue().getAsBoolean());
+		assertTrue(watcher.getAsBoolean());
 	}
 
 	@Test
