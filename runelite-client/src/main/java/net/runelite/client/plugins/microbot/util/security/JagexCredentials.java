@@ -61,15 +61,27 @@ public class JagexCredentials {
             if (fromEnvironment != null) {
                 return fromEnvironment;
             }
-            File file = new File(RuneLite.RUNELITE_DIR, System.getProperty("runelite.credentials.path", "credentials.properties"));
+            return readLaunch(new File(RuneLite.RUNELITE_DIR, System.getProperty("runelite.credentials.path", "credentials.properties")));
+        } catch (RuntimeException e) {
+            logReadFailure(e);
+            return null;
+        }
+    }
+
+    static JagexCredentials readLaunch(File file) {
+        try {
             return file.exists() ? load(file) : null;
         } catch (IOException | RuntimeException e) {
-            if (!readFailureLogged) {
-                readFailureLogged = true;
-                log.warn("Unable to read the Jagex Account credentials file ({}), so it is ignored. A backslash in a value, such as a Windows path, breaks the file.",
-                    e.getClass().getSimpleName());
-            }
+            logReadFailure(e);
             return null;
+        }
+    }
+
+    private static void logReadFailure(Exception e) {
+        if (!readFailureLogged) {
+            readFailureLogged = true;
+            log.warn("Unable to read the Jagex Account credentials file ({}), so it is ignored. A backslash in a value, such as a Windows path, breaks the file.",
+                e.getClass().getSimpleName());
         }
     }
 
