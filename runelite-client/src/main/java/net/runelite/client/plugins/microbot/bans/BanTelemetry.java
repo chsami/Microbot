@@ -5,6 +5,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import java.awt.Component;
 import java.io.File;
+import java.nio.file.Path;
 import java.time.Clock;
 import java.util.HashMap;
 import java.util.List;
@@ -13,6 +14,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -74,10 +76,10 @@ public class BanTelemetry
 	private final Set<String> handledThisRun = ConcurrentHashMap.newKeySet();
 
 	private ScheduledFuture<?> flushTask;
+	private volatile int watcherGeneration;
 	private volatile boolean watching;
 	private int ticks;
 	private long lastSampleMillis;
-	private GameState lastGameState;
 	private long cachedHash = -1;
 	private String cachedKey;
 	private String cachedIdentity;
@@ -93,6 +95,14 @@ public class BanTelemetry
 		MicrobotApi microbotApi, ClientSessionManager clientSessionManager, ScheduledExecutorService executor, MicrobotConfig config,
 		ConfigManager configManager, Notifier notifier, Gson gson, @Named("disableTelemetry") boolean disableTelemetry)
 	{
+		this(client, clientThread, pluginManager, microbotPluginManager, microbotApi, clientSessionManager, executor, config,
+			configManager, notifier, gson, disableTelemetry, new File(new File(RuneLite.RUNELITE_DIR, "microbot"), "ban-ledger").toPath());
+	}
+
+	BanTelemetry(Client client, ClientThread clientThread, PluginManager pluginManager, MicrobotPluginManager microbotPluginManager,
+		MicrobotApi microbotApi, ClientSessionManager clientSessionManager, ScheduledExecutorService executor, MicrobotConfig config,
+		ConfigManager configManager, Notifier notifier, Gson gson, boolean disableTelemetry, Path ledgerDir)
+	{
 		this.client = client;
 		this.clientThread = clientThread;
 		this.pluginManager = pluginManager;
@@ -104,7 +114,7 @@ public class BanTelemetry
 		this.configManager = configManager;
 		this.notifier = notifier;
 		this.disableTelemetry = disableTelemetry;
-		this.ledger = new BanLedger(new File(new File(RuneLite.RUNELITE_DIR, "microbot"), "ban-ledger").toPath(), gson, Clock.systemUTC());
+		this.ledger = new BanLedger(ledgerDir, gson, Clock.systemUTC());
 	}
 
 	public void start()
@@ -112,11 +122,12 @@ public class BanTelemetry
 		if (!watching)
 		{
 			watching = true;
-			clientThread.invokeLater(this::watchLoginScreen);
+			int generation = ++watcherGeneration;
+			clientThread.invokeLater(() -> watchLoginScreen(generation));
 		}
 		if (flushTask == null)
 		{
-			flushTask = executor.scheduleWithFixedDelay(RunnableExceptionLogger.wrap(this::flushRuntime),
+			flushTask = executor.scheduleWithFixedDelay(RunnableExceptionLogger.wrap(() -> flushRuntime()),
 				RUNTIME_FLUSH_MINUTES, RUNTIME_FLUSH_MINUTES, TimeUnit.MINUTES);
 		}
 	}
@@ -134,19 +145,22 @@ public class BanTelemetry
 	@Subscribe
 	public void onClientShutdown(ClientShutdown event)
 	{
-		event.waitFor(executor.submit(this::flushRuntime));
+		event.waitFor(flushRuntime());
 	}
 
 	@Subscribe
 	public void onGameStateChanged(GameStateChanged event)
 	{
 		GameState state = event.getGameState();
-		if (state == GameState.LOGGED_IN && lastGameState != GameState.LOADING)
+		if (state == GameState.LOGIN_SCREEN || state == GameState.HOPPING || state == GameState.CONNECTION_LOST)
 		{
-			lastSampleMillis = System.currentTimeMillis();
+			lastSampleMillis = 0;
 			ticks = 0;
 		}
-		lastGameState = state;
+		else if (state == GameState.LOGGED_IN && lastSampleMillis == 0)
+		{
+			lastSampleMillis = System.currentTimeMillis();
+		}
 	}
 
 	@Subscribe
@@ -192,12 +206,25 @@ public class BanTelemetry
 		executor.execute(() -> ledger.record(accountKey, trustedIdentity, elapsed, scripts, member, totalLevel, breaks));
 	}
 
-	private boolean watchLoginScreen()
+	private boolean watchLoginScreen(int generation)
 	{
-		if (!watching)
+		if (!watching || generation != watcherGeneration)
 		{
 			return true;
 		}
+		try
+		{
+			checkLoginScreen();
+		}
+		catch (RuntimeException e)
+		{
+			log.debug("Ban screen check failed", e);
+		}
+		return false;
+	}
+
+	private void checkLoginScreen()
+	{
 		boolean banned = client.getGameState() == GameState.LOGIN_SCREEN && client.getLoginIndex() == BANNED_LOGIN_INDEX;
 		boolean entered = banned && !onBanScreen;
 		onBanScreen = banned;
@@ -215,7 +242,6 @@ public class BanTelemetry
 			String playerName = playerNameAtLastLogin;
 			executor.execute(RunnableExceptionLogger.wrap(() -> onBanDetected(context, loginName, playerName, parent)));
 		}
-		return false;
 	}
 
 	private void onBanDetected(BanAttribution.Context context, String loginName, String playerName, Component parent)
@@ -296,19 +322,19 @@ public class BanTelemetry
 		});
 	}
 
-	void flushRuntime()
+	CompletableFuture<?> flushRuntime()
 	{
 		UUID sessionId = clientSessionManager.getMicrobotSessionId();
 		if (sessionId == null || isDisabled())
 		{
-			return;
+			return CompletableFuture.completedFuture(null);
 		}
 		Map<String, Long> batch;
 		synchronized (pendingRuntime)
 		{
 			if (pendingRuntime.isEmpty())
 			{
-				return;
+				return CompletableFuture.completedFuture(null);
 			}
 			batch = new HashMap<>(pendingRuntime);
 			pendingRuntime.clear();
@@ -324,7 +350,7 @@ public class BanTelemetry
 			plugins.add(entry);
 		});
 		payload.add("plugins", plugins);
-		microbotApi.submitPluginRuntime(payload).thenAccept(sent ->
+		return microbotApi.submitPluginRuntime(payload).thenAccept(sent ->
 		{
 			if (!sent)
 			{
@@ -333,7 +359,7 @@ public class BanTelemetry
 		});
 	}
 
-	private void addPendingRuntime(Map<String, Long> seconds)
+	void addPendingRuntime(Map<String, Long> seconds)
 	{
 		synchronized (pendingRuntime)
 		{
@@ -393,12 +419,12 @@ public class BanTelemetry
 	@SuppressWarnings("deprecation")
 	private String loginIdentity()
 	{
-		String username = client.getUsername();
-		if (username != null && !username.isBlank())
+		String launcherName = client.getLauncherDisplayName();
+		if (launcherName != null)
 		{
-			return username;
+			return launcherName;
 		}
-		return client.getLauncherDisplayName();
+		return client.getUsername();
 	}
 
 	private boolean isDisabled()
