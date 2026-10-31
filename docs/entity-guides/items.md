@@ -296,7 +296,7 @@ While a shop, bank, deposit box or Grand Exchange inventory is open or rebuildin
 
 ## 18. An Inventory Setup slot is empty when its id is -1
 
-`InventorySetupsItem.itemIsDummy` only recognises a slot that was never touched. Removing an item in the panel, or toggling fuzzy, lock or a stack indicator on an empty slot, leaves an item with id `-1` that keeps those settings and a slot index, and it is saved that way. Code that reads a setup must treat any id `-1` row as empty; `Rs2InventorySetup` does this through `isEmptySlot`.
+`InventorySetupsItem.itemIsDummy` only recognises a slot that was never touched. Removing an item in the panel, toggling fuzzy, lock or a stack indicator on an empty slot, or updating a setup from the current inventory and equipment (which copies fuzzy, stack and lock settings onto empty slots) leaves an item with id `-1` that keeps those settings, and it is saved that way. Code that reads a setup, in the client or in Hub scripts, must treat any id `-1` row as empty with `InventorySetupsItem.isEmptySlot`; keep `itemIsDummy` for serialization only.
 
 **Why this matters:** An emptied equipment slot made `doesEquipmentMatch` fail forever and sent `loadEquipment` to the bank on every call, and an emptied fuzzy inventory slot (name `""`) matched every item, so loading dragged items into it and `getItemsNotInInventorySetup` reported nothing.
 

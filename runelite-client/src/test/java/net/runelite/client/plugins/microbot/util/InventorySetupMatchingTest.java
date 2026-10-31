@@ -463,4 +463,49 @@ public class InventorySetupMatchingTest
 
 		rs2Bank.verify(Rs2Bank::depositEquipment);
 	}
+
+	@Test
+	public void brokenBarrowsPieceDoesNotSatisfyTheSetup()
+	{
+		worn.add(held(ItemID.BARROWS_DHAROK_HEAD_BROKEN, "Dharok's helm 0", 1, 0));
+
+		assertFalse(loader(gearSetup(item(ItemID.BARROWS_DHAROK_HEAD, "Dharok's helm", 1, 0))).doesEquipmentMatch());
+		assertFalse(loader(gearSetup(fuzzy(ItemID.BARROWS_DHAROK_HEAD, "Dharok's helm", 1, 0))).doesEquipmentMatch());
+	}
+
+	@Test
+	public void brokenBarrowsPieceIsBankedAndReplaced()
+	{
+		bankReadyForLoading();
+		worn.add(held(ItemID.BARROWS_DHAROK_HEAD_BROKEN, "Dharok's helm 0", 1, 0));
+		rs2Bank.when(Rs2Bank::depositEquipment).thenAnswer(call -> {
+			worn.clear();
+			return true;
+		});
+		rs2Bank.when(() -> Rs2Bank.hasItem(org.mockito.ArgumentMatchers.anyInt())).thenReturn(true);
+		rs2Bank.when(() -> Rs2Bank.withdrawAndEquip(ItemID.BARROWS_DHAROK_HEAD)).thenAnswer(call -> worn.add(held(ItemID.BARROWS_DHAROK_HEAD, "Dharok's helm", 1, 0)));
+		rs2Bank.when(() -> Rs2Bank.withdrawAndEquip(ItemID.BARROWS_DHAROK_BODY)).thenAnswer(call -> worn.add(held(ItemID.BARROWS_DHAROK_BODY, "Dharok's platebody", 1, 4)));
+		InventorySetup setup = gearSetup(item(ItemID.BARROWS_DHAROK_HEAD, "Dharok's helm", 1, 0),
+			item(ItemID.BARROWS_DHAROK_BODY, "Dharok's platebody", 1, 4));
+
+		assertTrue(loader(setup).loadEquipment());
+
+		rs2Bank.verify(Rs2Bank::depositEquipment);
+		rs2Bank.verify(() -> Rs2Bank.withdrawAndEquip(ItemID.BARROWS_DHAROK_HEAD));
+		rs2Bank.verify(() -> Rs2Bank.withdrawAndEquip(ItemID.BARROWS_DHAROK_BODY));
+		assertEquals(Arrays.asList("Dharok's helm", "Dharok's platebody"), worn.stream().map(Rs2ItemModel::getName).collect(Collectors.toList()));
+	}
+
+	@Test
+	public void emptiedFuzzyEquipmentSlotDoesNotKeepForeignGearOn()
+	{
+		bankReadyForLoading();
+		worn.add(held(ItemID.ABYSSAL_WHIP, "Abyssal whip", 1, 3));
+		worn.add(held(ItemID.GRACEFUL_BOOTS, "Graceful boots", 1, 10));
+		InventorySetup setup = gearSetup(item(ItemID.ABYSSAL_WHIP, "Abyssal whip", 1, 3), emptiedSlot(10, true));
+
+		loader(setup).loadEquipment(false);
+
+		rs2Bank.verify(Rs2Bank::depositEquipment);
+	}
 }

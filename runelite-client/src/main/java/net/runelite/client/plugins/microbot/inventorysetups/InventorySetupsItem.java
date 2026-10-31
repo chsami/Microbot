@@ -84,6 +84,11 @@ public class InventorySetupsItem
 				item.getSlot() == -1;
 	}
 
+	public static boolean isEmptySlot(final InventorySetupsItem item)
+	{
+		return item == null || item.getId() == -1;
+	}
+
 	public String getName() {
 		String itemName = name;
 

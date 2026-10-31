@@ -111,4 +111,13 @@ public class InventorySetupsItemTest
 		assertEquals("<", InventorySetupsStackCompareID.getStringFromValue(InventorySetupsStackCompareID.Less_Than));
 		assertEquals(">", InventorySetupsStackCompareID.getStringFromValue(InventorySetupsStackCompareID.Greater_Than));
 	}
+
+	@Test
+	public void everyIdMinusOneRowIsAnEmptySlot()
+	{
+		assertTrue(InventorySetupsItem.isEmptySlot(null));
+		assertTrue(InventorySetupsItem.isEmptySlot(InventorySetupsItem.getDummyItem()));
+		assertTrue(InventorySetupsItem.isEmptySlot(new InventorySetupsItem(-1, "", 0, true, InventorySetupsStackCompareID.Standard, true, 4)));
+		assertFalse(InventorySetupsItem.isEmptySlot(item(ItemID.SHARK, "Shark", false)));
+	}
 }
