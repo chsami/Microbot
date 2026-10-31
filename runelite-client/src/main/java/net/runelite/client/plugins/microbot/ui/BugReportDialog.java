@@ -228,6 +228,8 @@ class BugReportDialog extends JDialog
 			"The settings of the chosen plugin. Secret settings are left out.");
 		addSection(panel, BugReportSection.GAME_STATE, "Game state (location, inventory, gear)", true,
 			"World, location, levels, inventory, equipment and which scripts are running.");
+		addSection(panel, BugReportSection.RECORDER, "Recent activity (last few minutes)", true,
+			"What your character and the running script did, tick by tick: position, animation, inventory changes, game messages, menu clicks, script status and script errors. No chat from other players.");
 		addSection(panel, BugReportSection.SCREENSHOT, "Screenshot of the game (shows your chat and name)", false,
 			"Your game screen as it was when you opened this window.");
 		panel.add(Box.createVerticalStrut(8));

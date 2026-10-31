@@ -86,6 +86,7 @@ public class BugReportCollectorTest
 		.diagnostics("Microbot diagnostics")
 		.gameState("{\"world\": 360}")
 		.log("2026-10-24 line\n")
+		.recorder("# legend\n812 08:13:02.4 click=Fill>Crucible(44776,GAME_OBJECT_FIRST_OPTION)\n")
 		.screenshot(new byte[]{(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, 1, 2, 3})
 		.loggedIn(true)
 		.build();
@@ -119,7 +120,7 @@ public class BugReportCollectorTest
 
 		collector = new BugReportCollector(mock(Client.class), mock(ClientThread.class), mock(ItemManager.class), configManager,
 			pluginManager, microbotPluginManager, mock(DiagnosticReportCollector.class), errors, mock(DrawManager.class),
-			sessions, api, new Gson(), false);
+			sessions, api, mock(FlightRecorder.class), new Gson(), false);
 	}
 
 	private static ConfigDescriptor descriptor() throws Exception
@@ -146,6 +147,7 @@ public class BugReportCollectorTest
 		assertEquals("Microbot diagnostics", payload.get("diagnostics").getAsString());
 		assertEquals("{\"world\": 360}", payload.get("gameState").getAsString());
 		assertEquals("2026-10-24 line\n", payload.get("log").getAsString());
+		assertTrue(payload.get("recorder").getAsString().contains("click=Fill>Crucible"));
 		assertEquals("2x FurnacePlugin: loop failed\n", payload.get("error").getAsString());
 		assertEquals("/9j/AQID", payload.get("screenshot").getAsString());
 		assertTrue(payload.has("pluginConfig"));
@@ -157,7 +159,7 @@ public class BugReportCollectorTest
 		JsonObject payload = collector.payload(SNAPSHOT, plugin, "broken", EnumSet.noneOf(BugReportSection.class));
 
 		assertEquals("Microbot diagnostics", payload.get("diagnostics").getAsString());
-		for (String key : new String[]{"gameState", "log", "error", "screenshot", "pluginConfig"})
+		for (String key : new String[]{"gameState", "log", "error", "screenshot", "pluginConfig", "recorder"})
 		{
 			assertFalse(key, payload.has(key));
 		}

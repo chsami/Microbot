@@ -76,6 +76,7 @@ public class BugReportCollector
 	private final DrawManager drawManager;
 	private final ClientSessionManager clientSessionManager;
 	private final MicrobotApi microbotApi;
+	private final FlightRecorder flightRecorder;
 	private final Gson gson;
 	private final boolean disableTelemetry;
 
@@ -83,7 +84,7 @@ public class BugReportCollector
 	BugReportCollector(Client client, ClientThread clientThread, ItemManager itemManager, ConfigManager configManager,
 		PluginManager pluginManager, MicrobotPluginManager microbotPluginManager, DiagnosticReportCollector diagnosticReportCollector,
 		ScriptErrorReporter scriptErrorReporter, DrawManager drawManager, ClientSessionManager clientSessionManager,
-		MicrobotApi microbotApi, Gson gson, @Named("disableTelemetry") boolean disableTelemetry)
+		MicrobotApi microbotApi, FlightRecorder flightRecorder, Gson gson, @Named("disableTelemetry") boolean disableTelemetry)
 	{
 		this.client = client;
 		this.clientThread = clientThread;
@@ -96,6 +97,7 @@ public class BugReportCollector
 		this.drawManager = drawManager;
 		this.clientSessionManager = clientSessionManager;
 		this.microbotApi = microbotApi;
+		this.flightRecorder = flightRecorder;
 		this.disableTelemetry = disableTelemetry;
 		this.gson = gson.newBuilder().setPrettyPrinting().disableHtmlEscaping().create();
 	}
@@ -103,6 +105,7 @@ public class BugReportCollector
 	public CompletableFuture<BugReportSnapshot> capture()
 	{
 		String diagnostics = diagnosticReportCollector.collectReport();
+		String recorder = flightRecorder.dump();
 		CompletableFuture<JsonObject> gameState = gameState();
 		CompletableFuture<byte[]> screenshot = screenshot();
 		CompletableFuture<String> rawLog = CompletableFuture.supplyAsync(this::readLog)
@@ -119,6 +122,7 @@ public class BugReportCollector
 				.loggedIn(state != null && state.has("location"))
 				.screenshot(screenshot.join())
 				.log(raw == null ? null : scriptErrorReporter.scrubLogNames(raw, names))
+				.recorder(recorder)
 				.names(names)
 				.build();
 		});
@@ -167,6 +171,10 @@ public class BugReportCollector
 				payload.addProperty("log", ScriptErrorReporter.scrubNames(snapshot.getLog(), names));
 			}
 		}
+		if (include.contains(BugReportSection.RECORDER) && snapshot.getRecorder() != null)
+		{
+			payload.addProperty("recorder", ScriptErrorReporter.scrubNames(snapshot.getRecorder(), names));
+		}
 		if (include.contains(BugReportSection.SCREENSHOT) && snapshot.getScreenshot() != null)
 		{
 			payload.addProperty("screenshot", Base64.getEncoder().encodeToString(snapshot.getScreenshot()));
@@ -199,6 +207,10 @@ public class BugReportCollector
 		if (payload.has("log"))
 		{
 			section(out, "Recent log", lastLines(text(payload, "log"), PREVIEW_LOG_LINES, forCopy));
+		}
+		if (payload.has("recorder"))
+		{
+			section(out, "Recent activity", lastLines(text(payload, "recorder"), PREVIEW_LOG_LINES, forCopy));
 		}
 		if (payload.has("screenshot"))
 		{
