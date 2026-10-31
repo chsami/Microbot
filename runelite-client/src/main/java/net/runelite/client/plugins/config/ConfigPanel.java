@@ -636,15 +636,19 @@ class ConfigPanel extends PluginPanel
 		box.setRenderer(listCellRenderer);
 		box.setPreferredSize(new Dimension(box.getPreferredSize().width, 22));
 
-		try
+		String storedValue = configManager.getConfiguration(cd.getGroup().value(), cid.getItem().keyName());
+		if (storedValue != null)
 		{
-			Enum<?> selectedItem = Enum.valueOf(type, configManager.getConfiguration(cd.getGroup().value(), cid.getItem().keyName()));
-			box.setSelectedItem(selectedItem);
-			box.setToolTipText(Text.titleCase(selectedItem));
-		}
-		catch (IllegalArgumentException ex)
-		{
-			log.debug("invalid selected item", ex);
+			try
+			{
+				Enum<?> selectedItem = Enum.valueOf(type, storedValue);
+				box.setSelectedItem(selectedItem);
+				box.setToolTipText(Text.titleCase(selectedItem));
+			}
+			catch (IllegalArgumentException ex)
+			{
+				log.debug("invalid selected item", ex);
+			}
 		}
 		box.addItemListener(e ->
 		{
