@@ -578,6 +578,8 @@ Body: `{"all": true}` or `{"name": "Logs"}`
 
 Body: `{"name": "Pure essence", "quantity": 28}`
 
+Add `"noted": true` to withdraw as notes, or `"noted": false` to switch back to items. Without `noted`, the current bank setting stays. When the bank does not switch mode, the call returns `409` and withdraws nothing.
+
 ```bash
 ./microbot-cli bank withdraw "Pure essence" 28
 ```
@@ -839,6 +841,62 @@ curl -X POST -H "Content-Type: application/json" \
 - `404` — No profile matches the given name (response includes `available` list)
 - `503` — Profile system not initialized
 
+### Grand Exchange
+
+`buy`, `sell` and `abort` walk to the Grand Exchange and open it when needed. `collect` opens it but does not walk, and `close` only closes it, so call those near a Grand Exchange clerk. Every write returns the current offers; a write that fails returns `409` with `"success": false`. Item names match exactly.
+
+| Endpoint | Body | Effect |
+|----------|------|--------|
+| `GET /ge` | - | Active offers: `slot`, `item`, `itemId`, `state`, `price`, `done`, `total`, `spent` |
+| `POST /ge/buy` | `{"name", "quantity", "price"}` | Place a buy offer (exact item name) |
+| `POST /ge/sell` | `{"name", "quantity", "price"}` | Place a sell offer for an item in the inventory. Withdraw it first with `POST /bank/withdraw` and `"noted": true` |
+| `POST /ge/collect` | `{"toBank": true}` | Collect every finished offer |
+| `POST /ge/abort` | `{"name"}` | Abort the offer for that item and collect it to the bank. Succeeds once the offer is gone (waits up to 5 seconds) |
+| `POST /ge/close` | `{}` | Close the Grand Exchange interface |
+
+### Plugin Hub
+
+Installs and removes plugins from the Microbot Plugin Hub, the same way the Plugin Hub panel does. A plugin that is installed is loaded but not started; start it with `POST /scripts/start`.
+
+#### GET /plugins
+
+Lists Plugin Hub entries.
+
+| Param | Default | Description |
+|-------|---------|-------------|
+| `q` | - | Case-insensitive match on internal name, display name or description |
+| `installed` | `false` | `true` returns only plugins loaded in this client |
+| `limit` | config max | Max results |
+| `offset` | `0` | Skip first N results |
+
+```json
+{
+  "count": 1, "total": 1, "offset": 0, "limit": 200,
+  "plugins": [
+    {"internalName": "AutoMiner", "name": "Auto Miner", "description": "...", "latestVersion": "2.0.0",
+     "installedVersion": null, "loaded": false, "health": "Health not reported", "installable": true}
+  ]
+}
+```
+
+#### POST /plugins/install
+
+Downloads and loads a plugin, and waits for the result. When the plugin is loaded at another version, it is reinstalled at the requested version.
+
+Body: `{"name": "AutoMiner", "version": "2.0.0", "timeout": 60}`. `name` accepts the internal name or the display name. `version` defaults to the latest Hub version and must be one of the manifest's available versions (`400` otherwise). `timeout` is in seconds (max 300).
+
+| Status | Meaning |
+|--------|---------|
+| `200` | Plugin is loaded. The body is the plugin entry from `GET /plugins` |
+| `202` | Still running when `timeout` elapsed. Poll `GET /plugins?q=<name>` until `loaded` is `true` and `installedVersion` equals the requested version; the old version can still be loaded while an update runs |
+| `400` | No Plugin Hub entry with that name |
+| `409` | Health blocks the install (disabled upstream, broken version, or needs a newer client) |
+| `502` | Download or load failed; the client log has the cause |
+
+#### POST /plugins/remove
+
+Stops, unloads and deletes a plugin. Body: `{"name": "AutoMiner", "timeout": 60}`. Returns `404` when the plugin is not installed, and `409` when it is still loaded afterwards (a plugin the Plugin Hub did not load stays until the client restarts).
+
 ### Script Lifecycle
 
 The examples below use the Microbot-Hub `ExamplePlugin` (`net.runelite.client.plugins.microbot.example`); it is no longer bundled with the client.
@@ -1037,6 +1095,8 @@ The `AgentHandler` base class provides: `sendJson()`, `parseQuery()`, `readJsonB
 | `agentserver/handler/RecentLog.java` | Bounded, cursor-addressed buffer used by `AgentLogs` |
 | `agentserver/handler/VarChangesHandler.java` | `GET /var-changes` |
 | `agentserver/handler/TileHandler.java` | `GET /tile` |
+| `agentserver/handler/PluginHubHandler.java` | `/plugins` endpoints |
+| `agentserver/handler/GrandExchangeHandler.java` | `/ge` endpoints |
 | `agentserver/handler/SkillsHandler.java` | `GET /skills` |
 | `agentserver/handler/VarbitHandler.java` | `GET /varbit` |
 | `agentserver/handler/VarpHandler.java` | `GET /varp` |

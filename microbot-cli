@@ -109,7 +109,7 @@ Banking:
   bank close                             Close bank
   bank deposit <name> [--all]            Deposit items
   bank deposit-all                       Deposit entire inventory
-  bank withdraw <name> <quantity>        Withdraw items
+  bank withdraw <name> <quantity> [--noted|--items]        Withdraw items
 
 Dialogue:
   dialogue                               Current dialogue state
@@ -134,6 +134,18 @@ Scripts:
   scripts pause | scripts resume         Pause or resume every script loop
   scripts results --class <className>    Get test results
   scripts results post --class <c> --data <json>  Submit test results
+
+Grand Exchange:
+  ge                                     Active offers (item, state, done/total, price)
+  ge buy <name> <quantity> <price>       Place a buy offer (walks to and opens the GE when needed)
+  ge sell <name> <quantity> <price>      Place a sell offer for an item in the inventory
+  ge collect [--inventory]               Collect finished offers (to the bank by default)
+  ge abort <name>                        Abort the offer for an item and collect it
+
+Plugin Hub:
+  plugins [--search <text>] [--installed] [--limit N]  List Plugin Hub entries with install state
+  plugins install <name> [--version <v>] [--timeout 60]  Download and load a Hub plugin (blocks until done)
+  plugins remove <name> [--timeout 60]   Unload and delete a Hub plugin
 
 Quest Helper:
   quest-helper status                     Current selected quest helper state
@@ -471,7 +483,11 @@ case "$1" in
         }
         case "$2" in
             interact)
-                [[ $# -lt 4 ]] && { echo '{"error":"Usage: microbot-cli npcs interact <name> <action>"}'; exit 1; }
+                [[ $# -lt 4 ]] && { echo '{"error":"Usage: microbot-cli npcs interact <name> <action> | --id <id> <action>"}'; exit 1; }
+                if [[ "$3" == "--id" ]]; then
+                    do_post "${BASE}/npcs/interact" "{\"id\":$4,\"action\":\"$(json_escape "$5")\"}"
+                    exit 0
+                fi
                 escaped_name=$(json_escape "$3")
                 escaped_action=$(json_escape "$4")
                 do_post "${BASE}/npcs/interact" "{\"name\":\"${escaped_name}\",\"action\":\"${escaped_action}\"}"
@@ -565,9 +581,12 @@ case "$1" in
                 do_post "${BASE}/bank/deposit" "{\"name\":\"${escaped_name}\"}"
                 ;;
             withdraw)
-                [[ $# -lt 4 ]] && { echo '{"error":"Usage: microbot-cli bank withdraw <name> <quantity>"}'; exit 1; }
+                [[ $# -lt 4 ]] && { echo '{"error":"Usage: microbot-cli bank withdraw <name> <quantity> [--noted|--items]"}'; exit 1; }
                 escaped_name=$(json_escape "$3")
-                do_post "${BASE}/bank/withdraw" "{\"name\":\"${escaped_name}\",\"quantity\":$4}"
+                mode=""
+                [[ "${5:-}" == "--noted" ]] && mode=",\"noted\":true"
+                [[ "${5:-}" == "--items" ]] && mode=",\"noted\":false"
+                do_post "${BASE}/bank/withdraw" "{\"name\":\"${escaped_name}\",\"quantity\":$4${mode}}"
                 ;;
             *) usage ;;
         esac
@@ -628,6 +647,65 @@ case "$1" in
 
     endpoints)
         do_get "${BASE}/"
+        ;;
+
+    ge)
+        [[ $# -lt 2 ]] && { do_get "${BASE}/ge"; exit 0; }
+        case "$2" in
+            buy|sell)
+                [[ $# -lt 5 ]] && { echo "{\"error\":\"Usage: microbot-cli ge $2 <name> <quantity> <price>\"}"; exit 1; }
+                request 120 -X POST -H "Content-Type: application/json" \
+                    -d "{\"name\":\"$(json_escape "$3")\",\"quantity\":$4,\"price\":$5}" "${BASE}/ge/$2"
+                ;;
+            collect)
+                to_bank="true"
+                [[ "${3:-}" == "--inventory" ]] && to_bank="false"
+                request 60 -X POST -H "Content-Type: application/json" -d "{\"toBank\":${to_bank}}" "${BASE}/ge/collect"
+                ;;
+            abort)
+                [[ $# -lt 3 ]] && { echo '{"error":"Usage: microbot-cli ge abort <name>"}'; exit 1; }
+                request 60 -X POST -H "Content-Type: application/json" -d "{\"name\":\"$(json_escape "$3")\"}" "${BASE}/ge/abort"
+                ;;
+            *) usage ;;
+        esac
+        ;;
+
+    plugins)
+        if [[ $# -lt 2 ]] || [[ "$2" == --* ]]; then
+            shift
+            search="" installed="" limit=""
+            while [[ $# -gt 0 ]]; do
+                case "$1" in
+                    --search) search="$2"; shift 2 ;;
+                    --installed) installed="true"; shift ;;
+                    --limit) limit="$2"; shift 2 ;;
+                    *) shift ;;
+                esac
+            done
+            do_get "${BASE}/plugins$(build_query "q" "$search" "installed" "$installed" "limit" "$limit")"
+            exit 0
+        fi
+        case "$2" in
+            install|remove)
+                [[ $# -lt 3 ]] && { echo "{\"error\":\"Usage: microbot-cli plugins $2 <name>\"}"; exit 1; }
+                action="$2" escaped_name=$(json_escape "$3")
+                shift 3
+                version="" plugin_timeout="60"
+                while [[ $# -gt 0 ]]; do
+                    case "$1" in
+                        --version) version="$2"; shift 2 ;;
+                        --timeout) plugin_timeout="$2"; shift 2 ;;
+                        *) shift ;;
+                    esac
+                done
+                body="{\"name\":\"${escaped_name}\",\"timeout\":${plugin_timeout}}"
+                if [[ -n "$version" ]]; then
+                    body="{\"name\":\"${escaped_name}\",\"version\":\"$(json_escape "$version")\",\"timeout\":${plugin_timeout}}"
+                fi
+                request "$((plugin_timeout + 5))" -X POST -H "Content-Type: application/json" -d "$body" "${BASE}/plugins/${action}"
+                ;;
+            *) usage ;;
+        esac
         ;;
 
     scripts)
