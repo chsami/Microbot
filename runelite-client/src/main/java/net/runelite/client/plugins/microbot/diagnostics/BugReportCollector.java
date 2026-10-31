@@ -8,7 +8,6 @@ import com.google.gson.JsonObject;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Base64;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -232,14 +231,28 @@ public class BugReportCollector
 
 	static String lastLines(String text, int count, boolean forCopy)
 	{
-		String[] lines = text.split("\n");
-		if (lines.length <= count)
+		int end = text.length();
+		while (end > 0 && text.charAt(end - 1) == '\n')
+		{
+			end--;
+		}
+		int lines = 1;
+		for (int i = text.indexOf('\n'); i >= 0 && i < end; i = text.indexOf('\n', i + 1))
+		{
+			lines++;
+		}
+		if (lines <= count)
 		{
 			return text;
 		}
-		int earlier = lines.length - count;
+		int earlier = lines - count;
+		int start = 0;
+		for (int skipped = 0; skipped < earlier; skipped++)
+		{
+			start = text.indexOf('\n', start) + 1;
+		}
 		return "... and " + earlier + (forCopy ? " earlier lines, left out here\n" : " earlier lines, which are also sent\n")
-			+ String.join("\n", Arrays.copyOfRange(lines, earlier, lines.length));
+			+ text.substring(start, end);
 	}
 
 	String readable(String json)

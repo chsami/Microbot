@@ -284,6 +284,23 @@ public class FlightRecorderTest
 	}
 
 	@Test
+	public void errorFilterKeepsLinesOutsideTheRecorderFormat()
+	{
+		String dump = "# legend err=\"x\"\nnot a line err=\"x\"\n7 08:00:00.0 err=\"boom\"\n8 08:00:00.6 out=\"ok\"";
+
+		assertEquals("# legend err=\"x\"\nnot a line err=\"x\"\n8 08:00:00.6 out=\"ok\"\n", FlightRecorder.withoutErrors(dump));
+	}
+
+	@Test
+	public void recognisesStackFrameLines()
+	{
+		assertTrue(FlightRecorder.isFrame("\tat Foo.bar(Foo.java:1)".getBytes(), 23));
+		assertTrue(FlightRecorder.isFrame("\t... 12 more".getBytes(), 12));
+		assertFalse(FlightRecorder.isFrame("attack failed".getBytes(), 13));
+		assertFalse(FlightRecorder.isFrame("java.lang.NullPointerException".getBytes(), 30));
+	}
+
+	@Test
 	public void diffListsAddedAndRemovedItemsById()
 	{
 		assertEquals("+995*100 -2361*3", FlightRecorder.diff(Map.of(2361, 3, 995, 50), Map.of(995, 150)));

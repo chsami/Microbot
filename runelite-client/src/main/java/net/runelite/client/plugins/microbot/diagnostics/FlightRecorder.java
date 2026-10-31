@@ -59,11 +59,10 @@ public class FlightRecorder
 	static final int MAX_TRACES = 500;
 	static final int STUCK_TICKS = 50;
 	static final int MAX_STACK_FRAMES = 2;
+	static final int VARS_REBUILD_SIZE = 256;
 	static final String LEGEND = "# tick time | p=x,y,plane a=animation t=target hp pr=prayer run gs=game state | inv/eq +id*n -id*n"
 		+ " | v<id>/vp<id>=varbit/varp | w+/w- interface | msg game message | click option>target (w<group> = interface click, player = another player)"
 		+ " | st=Microbot status | scripts+/- | trace:<script>.<key> | out/err script prints | ! no game change while a script runs";
-	private static final Pattern ERR_LINE = Pattern.compile("^\\d+ \\S+ err=\"");
-	private static final Pattern REPEAT_LINE = Pattern.compile("^\\d+ \\S+ \\(previous line repeated ");
 	private static final Pattern LOG_LINE = Pattern.compile("^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}");
 	private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm:ss.S");
 	private static final Set<ChatMessageType> GAME_MESSAGES = Set.of(ChatMessageType.GAMEMESSAGE, ChatMessageType.SPAM,
@@ -77,7 +76,7 @@ public class FlightRecorder
 	private final EventBus eventBus;
 	private final Deque<Line> lines = new ArrayDeque<>();
 	Clock clock = Clock.systemDefaultZone();
-	private final Map<String, Integer> vars = new LinkedHashMap<>();
+	private Map<String, Integer> vars = new LinkedHashMap<>();
 	private final Map<String, String> traces = new LinkedHashMap<String, String>(16, 0.75f, true)
 	{
 		@Override
@@ -169,18 +168,41 @@ public class FlightRecorder
 	{
 		StringBuilder out = new StringBuilder(dump.length());
 		boolean dropped = false;
-		for (String line : dump.split("\n"))
+		int start = 0;
+		while (start < dump.length())
 		{
-			boolean repeat = REPEAT_LINE.matcher(line).find();
-			if (ERR_LINE.matcher(line).find() || (repeat && dropped))
+			int end = dump.indexOf('\n', start);
+			int next = end < 0 ? dump.length() : end + 1;
+			int text = textStart(dump, start, end < 0 ? dump.length() : end);
+			boolean error = text >= 0 && dump.startsWith("err=\"", text);
+			boolean repeat = text >= 0 && dump.startsWith("(previous line repeated ", text);
+			if (error || (repeat && dropped))
 			{
 				dropped = true;
-				continue;
 			}
-			dropped = false;
-			out.append(line).append('\n');
+			else
+			{
+				dropped = false;
+				out.append(dump, start, end < 0 ? dump.length() : end).append('\n');
+			}
+			start = next;
 		}
 		return out.toString();
+	}
+
+	private static int textStart(String dump, int start, int end)
+	{
+		int tick = start;
+		while (tick < end && Character.isDigit(dump.charAt(tick)))
+		{
+			tick++;
+		}
+		if (tick == start || tick >= end || dump.charAt(tick) != ' ')
+		{
+			return -1;
+		}
+		int time = dump.indexOf(' ', tick + 1);
+		return time < 0 || time >= end ? -1 : time + 1;
 	}
 
 	@Subscribe
@@ -446,6 +468,17 @@ public class FlightRecorder
 		}
 	}
 
+	static boolean isFrame(byte[] line, int length)
+	{
+		int i = 0;
+		while (i < length && (line[i] == ' ' || line[i] == '\t'))
+		{
+			i++;
+		}
+		return (i + 3 <= length && line[i] == 'a' && line[i + 1] == 't' && line[i + 2] == ' ')
+			|| (i + 4 <= length && line[i] == '.' && line[i + 1] == '.' && line[i + 2] == '.' && line[i + 3] == ' ');
+	}
+
 	static boolean isLogLine(String chunk)
 	{
 		return LOG_LINE.matcher(chunk).find();
@@ -484,7 +517,14 @@ public class FlightRecorder
 			}
 			out.append(out.length() == 0 ? "" : " ").append(e.getKey()).append('=').append(e.getValue());
 		}
-		vars.clear();
+		if (vars.size() > VARS_REBUILD_SIZE)
+		{
+			vars = new LinkedHashMap<>();
+		}
+		else
+		{
+			vars.clear();
+		}
 		append(out.toString());
 	}
 
@@ -603,13 +643,22 @@ public class FlightRecorder
 		int runEnergy;
 	}
 
+	private static final class LineBuffer extends ByteArrayOutputStream
+	{
+		byte[] bytes()
+		{
+			return buf;
+		}
+	}
+
 	private final class Tee extends OutputStream
 	{
 		private final PrintStream target;
 		private final String stream;
 		private final Charset charset;
-		private final ThreadLocal<ByteArrayOutputStream> pending = ThreadLocal.withInitial(ByteArrayOutputStream::new);
+		private final ThreadLocal<LineBuffer> pending = ThreadLocal.withInitial(LineBuffer::new);
 		private final ThreadLocal<Boolean> skipping = ThreadLocal.withInitial(() -> false);
+		private final ThreadLocal<int[]> frames = ThreadLocal.withInitial(() -> new int[1]);
 
 		Tee(PrintStream target, String stream, Charset charset)
 		{
@@ -644,12 +693,14 @@ public class FlightRecorder
 			{
 				return;
 			}
-			ByteArrayOutputStream line = pending.get();
-			List<String> done = new ArrayList<>();
-			if (isLogLine(new String(b, off, Math.min(len, 32), StandardCharsets.ISO_8859_1)))
+			LineBuffer line = pending.get();
+			List<String> done = null;
+			if (len >= 19 && b[off] >= '0' && b[off] <= '9' && b[off + 4] == '-'
+				&& isLogLine(new String(b, off, Math.min(len, 32), StandardCharsets.ISO_8859_1)))
 			{
 				if (line.size() > 0)
 				{
+					done = new ArrayList<>();
 					done.add(line.toString(charset));
 					line.reset();
 				}
@@ -659,8 +710,12 @@ public class FlightRecorder
 			{
 				if (b[i] == '\n')
 				{
-					if (!skipping.get())
+					if (!skipping.get() && keep(line))
 					{
+						if (done == null)
+						{
+							done = new ArrayList<>();
+						}
 						done.add(line.toString(charset));
 					}
 					line.reset();
@@ -671,10 +726,24 @@ public class FlightRecorder
 					line.write(b[i]);
 				}
 			}
-			for (String text : done)
+			if (done != null)
 			{
-				recordPrint(stream, text);
+				for (String text : done)
+				{
+					recordPrint(stream, text);
+				}
 			}
+		}
+
+		private boolean keep(LineBuffer line)
+		{
+			int[] count = frames.get();
+			if (!isFrame(line.bytes(), line.size()))
+			{
+				count[0] = 0;
+				return true;
+			}
+			return ++count[0] <= MAX_STACK_FRAMES;
 		}
 	}
 }
