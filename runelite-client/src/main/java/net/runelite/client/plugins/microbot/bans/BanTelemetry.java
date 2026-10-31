@@ -313,8 +313,13 @@ public class BanTelemetry
 	{
 		UUID sessionId = clientSessionManager.getMicrobotSessionId();
 		Optional<JsonObject> report = ledger.report(accountKey, kind.value, RuneLiteProperties.getMicrobotVersion());
-		if (sessionId == null || report.isEmpty() || isDisabled())
+		if (isDisabled())
 		{
+			return;
+		}
+		if (sessionId == null || report.isEmpty())
+		{
+			sendFailed(accountKey);
 			return;
 		}
 		JsonObject payload = report.get();
@@ -329,10 +334,16 @@ public class BanTelemetry
 			}
 			else
 			{
-				handledThisRun.remove(accountKey);
-				clientThread.invokeLater(() -> notifier.notify("The ban report couldn't be sent. You'll be asked again next time."));
+				sendFailed(accountKey);
 			}
 		});
+	}
+
+	private void sendFailed(String accountKey)
+	{
+		handledThisRun.remove(accountKey);
+		clientThread.invokeLater(() -> notifier.notify("The ban report couldn't be sent. Microbot will try again the next time "
+			+ "this account shows the screen."));
 	}
 
 	CompletableFuture<?> flushRuntime()
