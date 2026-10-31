@@ -7,8 +7,6 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
-import net.runelite.client.plugins.microbot.inventorysetups.serialization.InventorySetupItemSerializable;
-import net.runelite.client.plugins.microbot.inventorysetups.serialization.InventorySetupItemSerializableTypeAdapter;
 import net.runelite.client.plugins.microbot.inventorysetups.serialization.InventorySetupSerializable;
 import net.runelite.client.plugins.microbot.inventorysetups.serialization.LongTypeAdapter;
 import joptsimple.internal.Strings;
@@ -72,7 +70,6 @@ public class InventorySetupsPersistentDataManager
 		this.sections = sections;
 
 		this.gson = this.gson.newBuilder().registerTypeAdapter(long.class, new LongTypeAdapter()).create();
-		this.gson = this.gson.newBuilder().registerTypeAdapter(InventorySetupItemSerializable.class, new InventorySetupItemSerializableTypeAdapter()).create();
 	}
 
 	public void loadConfig()
