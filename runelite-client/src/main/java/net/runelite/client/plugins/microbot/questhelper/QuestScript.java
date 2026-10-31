@@ -23,6 +23,9 @@ import net.runelite.client.plugins.microbot.questhelper.combat.QuestPotions;
 import net.runelite.client.plugins.microbot.questhelper.logic.PiratesTreasure;
 import net.runelite.client.plugins.microbot.questhelper.logic.QuestRegistry;
 import net.runelite.client.plugins.microbot.questhelper.questinfo.QuestHelperQuest;
+import net.runelite.client.plugins.microbot.questhelper.scripted.ScriptedQuest;
+import net.runelite.client.plugins.microbot.questhelper.scripted.ScriptedQuestHost;
+import net.runelite.client.plugins.microbot.questhelper.scripted.ScriptedQuestRegistry;
 import net.runelite.client.plugins.microbot.questhelper.managers.ItemAndLastUpdated;
 import net.runelite.client.plugins.microbot.questhelper.managers.QuestContainerManager;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
@@ -277,6 +280,13 @@ public class QuestScript extends Script {
 
                 if (handleShortBreak()) return;
                 humanizePause();
+
+                // a quest with its own script plays itself; the generic step handling below is its fallback
+                ScriptedQuest scripted = scriptedQuests.overrideFor(
+                        getQuestHelperPlugin().getSelectedQuest().getQuest(), config.useScriptedQuests());
+                if (scripted != null && scriptedTick(scripted, getQuestHelperPlugin().getSelectedQuest())) {
+                    return;
+                }
 
                 QuestStep questStep = activeStepOf(getQuestHelperPlugin().getSelectedQuest());
 
@@ -1560,6 +1570,10 @@ public class QuestScript extends Script {
 			needs.addAll(combat.boostPreflightNeeds(steps));
 		}
 		needs.addAll(combat.supplyPreflightNeeds(this::isIdTradable));
+		ScriptedQuest scripted = scriptedQuests.overrideFor(quest.getQuest(), config.useScriptedQuests());
+		if (scripted != null) {
+			needs.addAll(scripted.preflightNeeds());
+		}
 		for (Requirement requirement : candidates) {
 			// Subclasses (keyrings, followers, composites) have their own ownership rules; leave them to the steps
 			if (requirement == null || requirement.getClass() != ItemRequirement.class) {
@@ -4748,6 +4762,104 @@ public class QuestScript extends Script {
 	}
 
 	// ---- one loop, pause, stop and the quest window ----
+
+	// ---- scripted quests: a hand-written script replaces the generic steps, the machinery around it is reused ----
+
+	private final ScriptedQuestRegistry scriptedQuests = ScriptedQuestRegistry.shared();
+	private boolean scriptedEctoActive;
+	private boolean staminaSeen;
+
+	private final ScriptedQuestHost scriptedHost = new ScriptedQuestHost() {
+		@Override
+		public Progress earnEctoTokens(int tokens) {
+			return scriptedEctofuntus(tokens);
+		}
+
+		@Override
+		public void rearmPreflight() {
+			rearmQuestPreflight();
+		}
+
+		@Override
+		public void finish(String reason) {
+			finishScriptedQuest(reason);
+		}
+	};
+
+	/**
+	 * The gates, the preflight, the fare and the supplies the generic path runs before a step, then the script's own
+	 * tick. Returns false when the script hands the tick to the generic steps.
+	 */
+	private boolean scriptedTick(ScriptedQuest scripted, QuestHelper quest) {
+		if (!selectedIsCompleted(quest)) {
+			if (questWindowGate(quest) || combat.beginStep(quest) || runPreflight(quest) || ensureFare(quest)) {
+				return true;
+			}
+			if (staminaSpent()) {
+				rearmQuestPreflight();
+			}
+			if (combat.prepareQuestSupplies(0)) {
+				return true;
+			}
+		}
+		return scripted.tick(scriptedHost);
+	}
+
+	/** True once, when the last stamina potion of a loadout that wants them is gone: the preflight restocks them. */
+	private boolean staminaSpent() {
+		if (Rs2Inventory.count("stamina potion", false) > 0) {
+			staminaSeen = true;
+			return false;
+		}
+		boolean wanted = combat.supplyPreflightNeeds(id -> true).stream()
+				.anyMatch(need -> need.name.toLowerCase().contains("stamina"));
+		boolean spent = staminaSeen && wanted;
+		staminaSeen = false;
+		return spent;
+	}
+
+	/** Lets the preflight and the supply pass run once more (bank first, then the Grand Exchange). */
+	private void rearmQuestPreflight() {
+		preflightFinished = false;
+		preflightSummaryLogged = false;
+		preflightBankAttempts = 0;
+		preflightBuyRounds = 0;
+		supplyWithdrawDone = false;
+		supplyWithdrawAttempts = 0;
+	}
+
+	private ScriptedQuestHost.Progress scriptedEctofuntus(int tokens) {
+		QuestHelper selected = getQuestHelperPlugin().getSelectedQuest();
+		ectofuntusStep = activeStepOf(selected); // keeps the recipe's inputs out of the bank visits' "unneeded" pile
+		if (!scriptedEctoActive) {
+			scriptedEctoActive = true;
+			ectofuntus.reset();
+			ectofuntusBuyCalls = 0;
+			ectofuntusDeposited = false;
+		}
+		switch (ectofuntus.step(tokens)) {
+			case FAILED:
+				scriptedEctoActive = false;
+				stopQuesterWithReason(ectofuntus.failure());
+				return ScriptedQuestHost.Progress.FAILED;
+			case DONE:
+				scriptedEctoActive = false;
+				return ScriptedQuestHost.Progress.DONE;
+			default:
+				return ScriptedQuestHost.Progress.WORKING;
+		}
+	}
+
+	private void finishScriptedQuest(String reason) {
+		Microbot.log("Quest helper: " + reason, Level.INFO);
+		if (net.runelite.client.plugins.microbot.questhelper.planner.QuestQueue.shared().isActive()) {
+			return; // the queue sees the finished quest and moves on
+		}
+		Microbot.status = reason;
+		if (Microbot.getConfigManager() != null) {
+			Microbot.getConfigManager().setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "TurnOn", false);
+		}
+	}
 
 	private static boolean selectedIsCompleted(QuestHelper quest) {
 		return Microbot.getClientThread().runOnClientThreadOptional(quest::isCompleted).orElse(true);

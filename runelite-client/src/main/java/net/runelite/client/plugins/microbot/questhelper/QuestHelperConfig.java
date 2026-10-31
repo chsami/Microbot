@@ -256,6 +256,16 @@ public interface QuestHelperConfig extends Config
 	}
 
 	@ConfigItem(
+			keyName = "useScriptedQuests",
+			name = "Use scripted quests",
+			description = "Play quests that have a hand-written script (Animal Magnetism) with it instead of Quest Helper's generic steps. Turn off to fall back to the generic steps.",
+			section = microbotSection
+	)
+	default boolean useScriptedQuests() {
+		return true;
+	}
+
+	@ConfigItem(
 			keyName = "dismissRandomEvents",
 			name = "Dismiss random events",
 			description = "Automatically dismiss random-event NPCs that target you while the quest helper is running.",
