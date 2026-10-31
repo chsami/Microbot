@@ -142,6 +142,7 @@ class BugReportDialog extends JDialog
 	public void dispose()
 	{
 		connectionCheck.stop();
+		snapshot = null;
 		super.dispose();
 	}
 
@@ -337,6 +338,10 @@ class BugReportDialog extends JDialog
 
 	private void onCaptured(BugReportSnapshot result)
 	{
+		if (!isDisplayable())
+		{
+			return;
+		}
 		snapshot = result;
 		if (snapshot == null)
 		{

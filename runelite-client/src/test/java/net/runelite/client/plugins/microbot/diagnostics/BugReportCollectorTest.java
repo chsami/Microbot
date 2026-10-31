@@ -202,6 +202,16 @@ public class BugReportCollectorTest
 	}
 
 	@Test
+	public void lastLinesKeepsTheTailAndCountsWhatWasLeftOut()
+	{
+		assertEquals("... and 1 earlier lines, which are also sent\nb\nc", BugReportCollector.lastLines("a\nb\nc\n", 2, false));
+		assertEquals("... and 2 earlier lines, left out here\nc", BugReportCollector.lastLines("a\n\nc\n\n", 1, true));
+		assertEquals("a\nb\n", BugReportCollector.lastLines("a\nb\n", 2, false));
+		assertEquals("", BugReportCollector.lastLines("", 2, false));
+		assertEquals("... and 2 earlier lines, left out here\n", BugReportCollector.lastLines("a\nb\n", 0, true));
+	}
+
+	@Test
 	public void clientReportHasNoPluginAndListsEveryError()
 	{
 		when(errors.recentErrors(null)).thenReturn("1x client: walker failed\n");
