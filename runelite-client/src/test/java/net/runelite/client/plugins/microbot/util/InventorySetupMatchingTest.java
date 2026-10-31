@@ -539,7 +539,7 @@ public class InventorySetupMatchingTest
 
 			assertTrue(Microbot.pauseAllScripts.get());
 			rs2Bank.verify(() -> Rs2Bank.withdrawAndEquip(ItemID.BARROWS_DHAROK_HEAD), never());
-			microbot.verify(() -> Microbot.log(eq(Level.WARN), contains("is broken"), eq("Dharok's helm"), eq("Dharok's helm 0")));
+			microbot.verify(() -> Microbot.log(eq(Level.WARN), contains("is broken (%s). Repair it (Bob in Lumbridge or an armour stand in your house)"), eq("Dharok's helm"), eq("Dharok's helm 0")));
 			microbot.verify(() -> Microbot.log(eq(Level.WARN), contains("missing gear"), eq("Dharok's helm"), eq(0), eq(0), eq(1), eq("pausing")));
 		}
 		finally
