@@ -113,6 +113,9 @@ public class ConfigManager
 
 	@Getter
 	private ConfigProfile profile;
+	@Getter
+	@Nullable
+	private Long startupProfileId;
 	private ConfigProfile rsProfile;
 	private ConfigData configProfile;
 	private ConfigData rsProfileConfigProfile;
@@ -758,6 +761,7 @@ public class ConfigManager
 			syncRemote(lock, profile, remoteProfiles);
 
 			this.profile = profile;
+			startupProfileId = profile.getId();
 			configProfile = new ConfigData(ProfileManager.profileConfigFile(profile));
 		}
 
