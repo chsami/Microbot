@@ -294,6 +294,14 @@ While a shop, bank, deposit box or Grand Exchange inventory is open or rebuildin
 **Defensive check:** Run `Rs2InventoryInvokeMenuTest`.
 
 
+## 18. An Inventory Setup slot is empty when its id is -1
+
+`InventorySetupsItem.itemIsDummy` only recognises a slot that was never touched. Removing an item in the panel, or toggling fuzzy, lock or a stack indicator on an empty slot, leaves an item with id `-1` that keeps those settings and a slot index, and it is saved that way. Code that reads a setup must treat any id `-1` row as empty; `Rs2InventorySetup` does this through `isEmptySlot`.
+
+**Why this matters:** An emptied equipment slot made `doesEquipmentMatch` fail forever and sent `loadEquipment` to the bank on every call, and an emptied fuzzy inventory slot (name `""`) matched every item, so loading dragged items into it and `getItemsNotInInventorySetup` reported nothing.
+
+**Defensive check:** Run `InventorySetupMatchingTest`.
+
 ## Terminal supply stops need observed logout
 
 An owning script can set `withMissingSupplyHandler` on its Inventory Setup loader to keep its scheduled loop alive while `TerminalLogoutPrompt` closes the bank and requests logout. Do not show a blocking shortage notification or cancel that loop until `LOGGED_OUT` is observed. The default loader policy stays unchanged when no handler is supplied; ordinary breaks and world hops do not arm terminal Auto Login suppression.

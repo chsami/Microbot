@@ -362,4 +362,60 @@ public class InventorySetupMatchingTest
 		assertEquals(Boolean.TRUE, keep.get("Prayer potion"));
 		assertEquals(2, keep.size());
 	}
+
+	private void bankReadyForLoading()
+	{
+		rs2Bank.when(Rs2Bank::isOpen).thenReturn(true);
+		rs2Bank.when(() -> Rs2Bank.verifyBankMirrorAfterOpen(true, 0)).thenReturn(true);
+		rs2Bank.when(() -> Rs2Bank.isInventoryItemRetainedForSetupDeposit(any(), any(), any())).thenReturn(true);
+		rs2Inventory.when(() -> Rs2Inventory.moveItemToSlot(any(), org.mockito.ArgumentMatchers.anyInt())).thenReturn(false);
+	}
+
+	@Test
+	public void emptiedEquipmentSlotDoesNotNeedGear()
+	{
+		worn.add(held(ItemID.ABYSSAL_WHIP, "Abyssal whip", 1, 3));
+		InventorySetup setup = gearSetup(item(ItemID.ABYSSAL_WHIP, "Abyssal whip", 1, 3), emptiedSlot(0, false));
+
+		assertTrue(loader(setup).doesEquipmentMatch());
+	}
+
+	@Test
+	public void emptiedEquipmentSlotDoesNotSendTheLoaderToTheBank()
+	{
+		worn.add(held(ItemID.ABYSSAL_WHIP, "Abyssal whip", 1, 3));
+		InventorySetupsItem emptiedHelm = emptiedSlot(0, false);
+		emptiedHelm.setName("null");
+
+		assertTrue(loader(gearSetup(item(ItemID.ABYSSAL_WHIP, "Abyssal whip", 1, 3), emptiedHelm)).loadEquipment());
+		rs2Bank.verify(Rs2Bank::openBank, never());
+	}
+
+	@Test
+	public void emptiedFuzzySlotDoesNotHideItemsOutsideTheSetup()
+	{
+		InventorySetup setup = inventorySetup(item(ItemID.SHARK, "Shark", 1, 0), emptiedSlot(5, true));
+		inventory.add(held(ItemID.SHARK, "Shark", 1, 0));
+		inventory.add(held(ItemID.BONES, "Bones", 1, 1));
+
+		List<Rs2ItemModel> extra = loader(setup).getItemsNotInInventorySetup(false);
+
+		assertEquals(Collections.singletonList("Bones"), extra.stream().map(Rs2ItemModel::getName).collect(Collectors.toList()));
+	}
+
+	@Test
+	public void loadingNeverMovesItemsIntoAnEmptiedSlot()
+	{
+		bankReadyForLoading();
+		InventorySetup setup = inventorySetup(item(ItemID.SHARK, "Shark", 1, 0), item(ItemID._4DOSEPRAYERRESTORE, "Prayer potion(4)", 1, 1),
+			emptiedSlot(5, true));
+		inventory.add(held(ItemID.SHARK, "Shark", 1, 0));
+		Rs2ItemModel prayer = held(ItemID._4DOSEPRAYERRESTORE, "Prayer potion(4)", 1, 3);
+		inventory.add(prayer);
+
+		loader(setup).loadInventory(false);
+
+		rs2Inventory.verify(() -> Rs2Inventory.moveItemToSlot(prayer, 1));
+		rs2Inventory.verify(() -> Rs2Inventory.moveItemToSlot(any(), org.mockito.ArgumentMatchers.eq(5)), never());
+	}
 }
