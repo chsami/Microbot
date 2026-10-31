@@ -30,4 +30,22 @@ public class JagexCredentialsTest {
 
         assertNull(JagexCredentials.load(file));
     }
+
+    @Test public void aMalformedCredentialsFileAtLaunchIsIgnoredInsteadOfThrowing() throws Exception {
+        File file = folder.newFile("credentials.properties");
+        Files.writeString(file.toPath(), "JX_CHARACTER_ID=42\nJX_SESSION_ID=session-id\nJX_DISPLAY_NAME=Some Name\n"
+            + "JX_NOTE=C:\\users\\me\\.runelite\n");
+
+        try {
+            JagexCredentials.load(file);
+            fail("A stray backslash should make the file unreadable");
+        } catch (IllegalArgumentException expected) {
+        }
+        assertNull(JagexCredentials.readLaunch(file));
+        assertNull(JagexCredentials.readLaunch(file));
+    }
+
+    @Test public void aMissingCredentialsFileAtLaunchIsNoJagexAccount() {
+        assertNull(JagexCredentials.readLaunch(new File(folder.getRoot(), "credentials.properties")));
+    }
 }

@@ -135,6 +135,25 @@ public class ConfigManagerTest
 	}
 
 	@Test
+	public void testLoadRecordsTheStartupProfile()
+	{
+		Assert.assertEquals(Long.valueOf(manager.getProfile().getId()), manager.getStartupProfileId());
+	}
+
+	@Test
+	public void testSwitchProfileKeepsTheStartupProfile()
+	{
+		Long startupProfileId = manager.getStartupProfileId();
+		ConfigProfile other = new ConfigProfile(startupProfileId + 1);
+		other.setName("other");
+
+		manager.switchProfile(other);
+
+		Assert.assertEquals(other.getId(), manager.getProfile().getId());
+		Assert.assertEquals(startupProfileId, manager.getStartupProfileId());
+	}
+
+	@Test
 	public void testGetConfigDefault() throws IOException
 	{
 		TestConfig conf = manager.getConfig(TestConfig.class);
