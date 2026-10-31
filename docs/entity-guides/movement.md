@@ -654,7 +654,9 @@ Microbot.doInvoke(destinationMenuEntry, rowArea);
 noteTransportInteraction();
 ```
 
-**Where this applies:** `Rs2WalkerTransports.handleMinigameTeleport` and any widget-list selection dispatched through `Microbot.doInvoke`.
+Teleports have no catalog origin, so key their refusals with `Rs2WalkerTransports.refusalOrigin` (the route step's start tile). Otherwise the verdict never reads "still at origin" and the strike is never recorded.
+
+**Where this applies:** `Rs2WalkerTransports.handleMinigameTeleport`, `Rs2WalkerTransports.dispatchSelectedTransport` and any widget-list selection dispatched through `Microbot.doInvoke`.
 
 **Defensive check:** `Rs2WalkerTransportsMinigameTeleportTest` covers a row inside the list, a row scrolled out of view and a missing list.
 

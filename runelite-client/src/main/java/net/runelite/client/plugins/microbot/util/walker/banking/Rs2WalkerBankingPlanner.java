@@ -1468,8 +1468,16 @@ public final class Rs2WalkerBankingPlanner {
 
 		// Use the exact first transport selected by this route. Endpoint rematching is ambiguous when
 		// multiple catalog entries share an origin/destination pair and could score the wrong command.
+		// Later hops sit in the walked tail as one tile each; price them like the first one.
+		int laterTransportSurcharge = 0;
+		for (int i = firstTransportStep + 1; i < routeSteps.size(); i++) {
+			Rs2RouteStep step = routeSteps.get(i);
+			if (step != null && step.isTransport()) {
+				laterTransportSurcharge += step.getTransport().map(edge -> transportHopCost(edge) - 1).orElse(0);
+			}
+		}
 		int modeledDistance = transportModeledDistance(
-				pathFromBankToTarget, firstTransportStep, firstTransport, rawDistance);
+				pathFromBankToTarget, firstTransportStep, firstTransport, rawDistance, laterTransportSurcharge);
         if (modeledDistance == Integer.MAX_VALUE) {
             return rawDistance;
         }
@@ -1488,7 +1496,8 @@ public final class Rs2WalkerBankingPlanner {
 			List<WorldPoint> pathFromBankToTarget,
 			int transportStepIndex,
 			Rs2TransportEdge transport,
-			int fallbackRawDistance) {
+			int fallbackRawDistance,
+			int laterTransportSurcharge) {
 		if (transport == null || pathFromBankToTarget == null || pathFromBankToTarget.isEmpty()
 				|| transportStepIndex < 0 || transportStepIndex >= pathFromBankToTarget.size() - 1) {
 			return fallbackRawDistance;
@@ -1509,6 +1518,6 @@ public final class Rs2WalkerBankingPlanner {
 		int walkToTransport = isImmediateBankTeleport(transport) ? 0 : transportStepIndex;
         int transportHop = transportHopCost(transport);
         int postTransportTail = Math.max(0, pathFromBankToTarget.size() - destinationIndex);
-        return walkToTransport + transportHop + postTransportTail;
+        return walkToTransport + transportHop + postTransportTail + laterTransportSurcharge;
     }
 }

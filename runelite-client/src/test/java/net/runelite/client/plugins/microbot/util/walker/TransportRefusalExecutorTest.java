@@ -181,6 +181,26 @@ public class TransportRefusalExecutorTest
 		return Rs2WalkerTransports.dispatchSelectedTransport(List.of(ORIGIN, DESTINATION), 0, selection, false);
 	}
 
+	@Test
+	public void originlessTeleportRefusalsAreKeyedOnTheRouteStepStart() throws Exception
+	{
+		// A teleport has no catalog origin; without a key its refusals never reach the ledger.
+		Transport teleport = mock(Transport.class);
+		when(teleport.getDestination()).thenReturn(DESTINATION);
+		Constructor<Rs2PathApi.ActiveTransportSelection> ctor = Rs2PathApi.ActiveTransportSelection.class
+			.getDeclaredConstructor(int.class, Rs2TransportEdge.class, Transport.class);
+		ctor.setAccessible(true);
+		Rs2PathApi.ActiveTransportSelection atStepOne = ctor.newInstance(1, null, teleport);
+		List<WorldPoint> path = List.of(FALLBACK_ORIGIN, ORIGIN, DESTINATION);
+
+		assertEquals(ORIGIN, Rs2WalkerTransports.refusalOrigin(teleport, path, atStepOne));
+
+		when(teleport.getOrigin()).thenReturn(FALLBACK_ORIGIN);
+		assertEquals("a catalog origin still wins", FALLBACK_ORIGIN,
+			Rs2WalkerTransports.refusalOrigin(teleport, path, atStepOne));
+		assertEquals(null, Rs2WalkerTransports.refusalOrigin(null, path, atStepOne));
+	}
+
 	private void assertReplanAvoidsRefusedEdge()
 	{
 		List<WorldPoint> after = TransportRefusalStrikeOutTest.plan(config, ORIGIN, DESTINATION);

@@ -205,7 +205,7 @@ final class Rs2WalkerTransports {
             }
         }
         Transport transport = selection != null ? selection.getLocalExecutionTransport() : null;
-        WorldPoint origin = transport != null ? transport.getOrigin() : null;
+        WorldPoint origin = refusalOrigin(transport, path, selection);
         WorldPoint destination = transport != null ? transport.getDestination() : null;
         TransportDispatchTrace.Verdict verdict =
                 trace.verdict(handled, Rs2Player.getWorldLocation(), origin, destination);
@@ -232,8 +232,24 @@ final class Rs2WalkerTransports {
             return false;
         }
         Transport transport = selection.get().getLocalExecutionTransport();
-        return registerTransportFallThrough(transport.getOrigin(), transport.getDestination(),
-                result.trace.reason());
+        return registerTransportFallThrough(refusalOrigin(transport, path, selection.get()),
+                transport.getDestination(), result.trace.reason());
+    }
+
+    /**
+     * Where a refusal is keyed. Teleports have no catalog origin, so use the tile the route step starts
+     * from; the pathfinder checks learned blocks against that same tile, so a strike-out sticks.
+     */
+    static WorldPoint refusalOrigin(Transport transport, List<WorldPoint> path,
+                                    Rs2PathApi.ActiveTransportSelection selection) {
+        if (transport == null) {
+            return null;
+        }
+        if (transport.getOrigin() != null) {
+            return transport.getOrigin();
+        }
+        int index = selection != null ? selection.getPathIndex() : -1;
+        return path != null && index >= 0 && index < path.size() ? path.get(index) : null;
     }
 
     private static void noteTransportInteraction() {
@@ -745,11 +761,11 @@ final class Rs2WalkerTransports {
                     if (transport.getType() == TransportType.GNOME_GLIDER) {
                         if (attemptObserved(transport, () -> handleGlider(transport))) {
                             sleepUntil(() -> !Rs2Player.isAnimating());
-                            sleepUntilTrue(() -> isPlayerWithinChebyshevOf(transport.getDestination(),
+                            boolean landed = sleepUntilTrue(() -> isPlayerWithinChebyshevOf(transport.getDestination(),
                                             TRANSPORT_NEAR_LANDING_CHEBYSHEV),
                                     TRANSPORT_LANDING_WAIT_POLL_MS, TRANSPORT_LANDING_WAIT_TIMEOUT_MS);
                             sleepTickJitter(3);
-                            return finishHandledTransport(transport);
+                            return landed && finishHandledTransport(transport);
                         }
                     }
 
@@ -761,49 +777,50 @@ final class Rs2WalkerTransports {
                             noteDeliberateSkip(TransportDispatchTrace.DeliberateSkip.ALREADY_AT_DESTINATION);
                         }
                         if (!alreadyAtFairyDest && attemptObserved(transport, () -> handleFairyRing(transport))) {
-                            sleepUntilTrue(() -> isPlayerWithinChebyshevOf(transport.getDestination(), OFFSET),
+                            boolean landed = sleepUntilTrue(() -> isPlayerWithinChebyshevOf(transport.getDestination(), OFFSET),
                                     TRANSPORT_LANDING_WAIT_POLL_MS, TRANSPORT_LANDING_WAIT_TIMEOUT_MS);
-                            return finishHandledTransport(transport);
+                            return landed && finishHandledTransport(transport);
                         }
                     }
 
                     if (transport.getType() == TransportType.TELEPORTATION_MINIGAME) {
                         if (attemptObserved(transport, () -> handleMinigameTeleport(transport))) {
-                            sleepUntilTrue(() -> isPlayerWithinChebyshevOf(transport.getDestination(), OFFSET * 2),
+                            boolean landed = sleepUntilTrue(() -> isPlayerWithinChebyshevOf(transport.getDestination(), OFFSET * 2),
                                     TRANSPORT_LANDING_WAIT_POLL_MS, TRANSPORT_LANDING_WAIT_TIMEOUT_MS);
-                            return finishHandledTransport(transport);
+                            return landed && finishHandledTransport(transport);
                         }
                     }
 
                     if (transport.getType() == TransportType.TELEPORTATION_ITEM) {
                         if (attemptObserved(transport, () -> handleTeleportItem(transport))) {
                             sleepUntil(() -> !Rs2Player.isAnimating());
-                            sleepUntilTrue(() -> isPlayerWithinChebyshevOf(transport.getDestination(), OFFSET),
+                            boolean landed = sleepUntilTrue(() -> isPlayerWithinChebyshevOf(transport.getDestination(), OFFSET),
                                     TRANSPORT_LANDING_WAIT_POLL_MS, TRANSPORT_LANDING_WAIT_TIMEOUT_MS);
-                            return finishHandledTransport(transport);
+                            return landed && finishHandledTransport(transport);
                         }
                     }
 
                     if (transport.getType() == TransportType.TELEPORTATION_SPELL) {
                         if (attemptObserved(transport, () -> handleTeleportSpell(transport))) {
+                            boolean landed;
                             if (isLumbridgeHomeTeleport(transport)) {
-                                sleepUntilTrue(() -> isPlayerWithinChebyshevOf(transport.getDestination(), OFFSET), 600, 35000);
+                                landed = sleepUntilTrue(() -> isPlayerWithinChebyshevOf(transport.getDestination(), OFFSET), 600, 35000);
                             } else {
                                 sleepUntil(() -> !Rs2Player.isAnimating());
-                                sleepUntilTrue(() -> isPlayerWithinChebyshevOf(transport.getDestination(), OFFSET),
+                                landed = sleepUntilTrue(() -> isPlayerWithinChebyshevOf(transport.getDestination(), OFFSET),
                                         TRANSPORT_LANDING_WAIT_POLL_MS, TRANSPORT_LANDING_WAIT_TIMEOUT_MS);
                             }
                             Rs2Tab.switchTo(InterfaceTab.INVENTORY);
-                            return finishHandledTransport(transport);
+                            return landed && finishHandledTransport(transport);
                         }
                     }
 
                     if (transport.getType() == TransportType.SEASONAL_TRANSPORT) {
                         if (attemptObservedWithoutAttemptRecord(transport, () -> handleSeasonalTransport(transport))) {
                             sleepUntil(() -> !Rs2Player.isAnimating());
-                            sleepUntilTrue(() -> isPlayerWithinChebyshevOf(transport.getDestination(), OFFSET),
+                            boolean landed = sleepUntilTrue(() -> isPlayerWithinChebyshevOf(transport.getDestination(), OFFSET),
                                     TRANSPORT_LANDING_WAIT_POLL_MS, TRANSPORT_LANDING_WAIT_TIMEOUT_MS);
-                            return finishHandledTransport(transport);
+                            return landed && finishHandledTransport(transport);
                         }
                     }
 

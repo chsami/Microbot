@@ -210,6 +210,27 @@ public class BankedTransportItemPlanningTest {
 	}
 
 	@Test
+	public void laterTransportsOnTheBankLegArePricedNotCountedAsOneTile() {
+		WorldPoint bank = new WorldPoint(3200, 3200, 0);
+		WorldPoint landing = new WorldPoint(3000, 3000, 0);
+		WorldPoint tail = new WorldPoint(3001, 3000, 0);
+		Rs2TransportEdge grouping = edgeOfType(
+			Rs2TransportType.TELEPORTATION_MINIGAME, Rs2TransportExecutor.MINIGAME_TELEPORT, 23);
+		WorldPoint groupingLanding = grouping.getDestination();
+		WorldPoint target = new WorldPoint(groupingLanding.getX() + 1, groupingLanding.getY(), 0);
+		List<WorldPoint> path = List.of(bank, landing, tail, groupingLanding, target);
+		List<Rs2RouteStep> steps = List.of(
+			Rs2RouteStep.transport(bank, landing, teleportEdge(landing)),
+			Rs2RouteStep.walk(landing, tail),
+			Rs2RouteStep.transport(tail, groupingLanding, grouping),
+			Rs2RouteStep.walk(groupingLanding, target));
+
+		// item hop (1) + 4 tail steps + the Grouping hop's price beyond its one tail step
+		int expected = 1 + 4 + (CollisionMap.teleportCost(0, 23, true) - 1);
+		assertEquals(expected, Rs2WalkerBankingPlanner.effectiveDistanceFromBank(path, steps, 1000));
+	}
+
+	@Test
 	public void itemTeleportCostsItsDurationAndObjectTransportsStayOneStep() {
 		assertEquals(4, Rs2WalkerBankingPlanner.transportHopCost(
 			edgeOfType(Rs2TransportType.TELEPORTATION_ITEM, Rs2TransportExecutor.ITEM_TELEPORT, 4)));
