@@ -15,7 +15,6 @@ import net.runelite.client.plugins.microbot.questhelper.EctofuntusPlan.Action;
 import net.runelite.client.plugins.microbot.questhelper.EctofuntusPlan.State;
 import net.runelite.client.plugins.microbot.questhelper.EctofuntusPlan.Where;
 import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
-import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
@@ -347,7 +346,7 @@ public final class EctofuntusRunner
 			return;
 		}
 		int statusBefore = Microbot.getVarbitValue(VarbitID.AHOY_GRINDER_STATUS);
-		if (Rs2GameObject.interact(ObjectID.AHOY_GRINDER_HANDLE, "Wind"))
+		if (Microbot.getRs2TileObjectCache().query().interact(ObjectID.AHOY_GRINDER_HANDLE, "Wind"))
 		{
 			sleepUntil(() -> countBonemeal() != before
 				|| Microbot.getVarbitValue(VarbitID.AHOY_GRINDER_STATUS) != statusBefore, 4_000);
@@ -363,7 +362,7 @@ public final class EctofuntusRunner
 	/** Empties the bin into a pot; true when a bonemeal arrived. */
 	private boolean emptyBin(int bonemealBefore)
 	{
-		return Rs2GameObject.interact(ObjectID.AHOY_GRINDER_CHUTE, "Empty")
+		return Microbot.getRs2TileObjectCache().query().interact(ObjectID.AHOY_GRINDER_CHUTE, "Empty")
 			&& sleepUntil(() -> countBonemeal() > bonemealBefore, 4_000);
 	}
 
@@ -383,7 +382,7 @@ public final class EctofuntusRunner
 		int poolId = -1;
 		for (int id : POOL_IDS)
 		{
-			if (Rs2GameObject.exists(id))
+			if (Microbot.getRs2TileObjectCache().query().withId(id).nearestOnClientThread() != null)
 			{
 				poolId = id;
 				break;
@@ -422,7 +421,7 @@ public final class EctofuntusRunner
 		boolean clicked = false;
 		for (int id : ALTAR_IDS)
 		{
-			if (Rs2GameObject.interact(id, "Worship"))
+			if (Microbot.getRs2TileObjectCache().query().interact(id, "Worship"))
 			{
 				clicked = true;
 				break;

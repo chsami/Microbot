@@ -951,10 +951,10 @@ final class Rs2WalkerTransports {
                             Optional<String> talkFirst = TransportLandingRules.talkFirstNpc(object.getId());
                             if (talkFirst.isPresent()
                                     && transportRefusalLedger.claimTalkFirst(transport.getOrigin(), transport.getDestination())
-                                    && talkToPrerequisiteNpc(talkFirst.get())) {
+                                    && TransportPrerequisiteTalk.talkTo(talkFirst.get())) {
                                 prepareTransportObjectForInteraction(object);
                                 if (handleObject(transport, object, interactionAction)) {
-                                    sleepUntil(() -> !Rs2Player.isAnimating());
+                                    TransportPrerequisiteTalk.awaitIdle();
                                     landedAfterObject = waitForPostHandleObjectLanding(transport, destWait, maxInclusive);
                                 }
                             }
@@ -1135,32 +1135,6 @@ final class Rs2WalkerTransports {
             }
             sleep(600);
         }
-    }
-
-    /**
-     * Data-driven recovery (see {@link TransportLandingRules#talkFirstNpc}): a transport object that gated on a
-     * conversation is retried after talking to the named NPC and finishing the dialogue (continue only).
-     */
-    private static boolean talkToPrerequisiteNpc(String npcName) {
-        WebWalkLog.spInfo("transport prerequisite | talking to {} before retrying", npcName);
-        if (!Rs2Npc.interact(npcName, "Talk-to")) {
-            return false;
-        }
-        sleepUntil(Rs2Dialogue::isInDialogue, 10_000);
-        long deadline = System.currentTimeMillis() + 30_000;
-        while (Rs2Dialogue.isInDialogue() && System.currentTimeMillis() < deadline) {
-            if (Rs2Dialogue.hasContinue()) {
-                Rs2Dialogue.clickContinue();
-            } else if (Rs2Dialogue.hasSelectAnOption()
-                    && Rs2Dialogue.getDialogueOptions().stream().filter(w -> w.getText() != null).count() == 1) {
-                Rs2Dialogue.clickOption(Rs2Dialogue.getDialogueOptions().stream()
-                        .filter(w -> w.getText() != null).findFirst().get().getText());
-            } else if (!Rs2Dialogue.hasContinue()) {
-                sleep(300);
-            }
-            sleep(600);
-        }
-        return !Rs2Dialogue.isInDialogue();
     }
 
     static boolean isSettledNearAdjacentSamePlaneLanding(Transport transport,

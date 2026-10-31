@@ -1859,7 +1859,11 @@ public class Rs2Inventory {
 
     /** Stamina potions of every kind (plain and extended), any dose. */
     private static Stream<Rs2ItemModel> getStaminaPotionsInInventory() {
-        return getPotions().stream().filter(item -> isStaminaPotionName(item.getName()));
+        List<Rs2ItemModel> stamina = new ArrayList<>();
+        for (Rs2ItemModel item : getPotions()) {
+            if (isStaminaPotionName(item.getName())) stamina.add(item);
+        }
+        return stamina.stream();
     }
 
     private static final Pattern usesRegexPattern = Pattern.compile("^(.*?)(?:\\(\\d+\\))?$");
