@@ -18,6 +18,6 @@ public class PoweredStaff extends Weapon
 
 	public int getRange(String attackStyle)
 	{
-		return attackStyle.equals("Defensive") ? range + longRangeModifier : range;
+		return "Defensive".equals(attackStyle) ? range + longRangeModifier : range;
 	}
 }
