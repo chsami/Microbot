@@ -8,6 +8,7 @@ import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
 import net.runelite.client.config.Range;
+import net.runelite.client.plugins.microbot.bans.BanReportMode;
 import net.runelite.client.plugins.microbot.util.security.HopBudget;
 
 @ConfigGroup(MicrobotConfig.configGroup)
@@ -237,13 +238,28 @@ public interface MicrobotConfig extends Config
 	@ConfigItem(
 		keyName = keyDisableTelemetry,
 		name = "Disable telemetry",
-		description = "Stop outbound calls to microbot.cloud (update check, random-fact splash, session ping, script error reports). " +
+		description = "Stop outbound calls to microbot.cloud (update check, random-fact splash, session ping, script error reports, " +
+				"plugin runtime totals, ban reports). " +
 				"Equivalent to launching with -Dmicrobot.disableTelemetry=true.",
 		position = 6,
 		section = generalSection
 	)
 	default boolean disableTelemetry() {
 		return false;
+	}
+
+	String keyBanReports = "banReports";
+	@ConfigItem(
+		keyName = keyBanReports,
+		name = "Ban reports",
+		description = "When an account Microbot botted on shows the \"account disabled\" login screen, share an anonymous report: " +
+				"scripts run in the last 30 days and for how long, membership, total level, longest session and whether breaks were on. " +
+				"Never your account name, email, IP or location.",
+		position = 6,
+		section = generalSection
+	)
+	default BanReportMode banReports() {
+		return BanReportMode.ASK;
 	}
 
 	String keyDisableInputYielding = "disableInputYielding";

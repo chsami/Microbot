@@ -154,6 +154,39 @@ public class MicrobotApi {
         });
     }
 
+    public boolean submitBanReport(JsonObject payload)
+    {
+        return postTelemetry("/plugintelemetry/ban-reports", payload, "Ban report");
+    }
+
+    public boolean submitPluginRuntime(JsonObject payload)
+    {
+        return postTelemetry("/plugintelemetry/runtime", payload, "Plugin runtime");
+    }
+
+    private boolean postTelemetry(String path, JsonObject payload, String what)
+    {
+        Request request = new Request.Builder()
+                .url(microbotApiUrl + path)
+                .header("X-Plugin-Telemetry-Token", pluginTelemetryToken)
+                .post(RequestBody.create(RuneLiteAPI.JSON, gson.toJson(payload)))
+                .build();
+
+        try (Response response = client.newCall(request).execute())
+        {
+            if (!response.isSuccessful())
+            {
+                log.debug("{} upload rejected: HTTP {}", what, response.code());
+            }
+            return response.isSuccessful();
+        }
+        catch (IOException e)
+        {
+            log.debug("{} upload failed", what, e);
+            return false;
+        }
+    }
+
     public CompletableFuture<BugReportReceipt> submitBugReport(JsonObject payload)
     {
         Request.Builder builder = new Request.Builder()
