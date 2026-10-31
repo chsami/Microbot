@@ -232,8 +232,8 @@ class BugReportDialog extends JDialog
 			"<html>A short record of the last 20 minutes at most. It stays on your computer and is only sent with a report.<br>"
 				+ "Where you walked, animations, what you attacked, HP/prayer/run, items gained or lost (as item numbers),<br>"
 				+ "game messages, what you clicked, windows opened, game settings, the script's status and anything it printed.<br>"
-				+ "Script errors are left out when Recent log and errors is unticked.<br>"
-				+ "Other players show as \"player\". Their names and chat are not included.</html>");
+				+ "Players you click or target show as \"player\" and other players' chat is not included,<br>"
+				+ "but anything a script prints is included as it is. Error output is left out when Recent log and errors is unticked.</html>");
 		addSection(panel, BugReportSection.SCREENSHOT, "Screenshot of the game (shows your chat and name)", false,
 			"Your game screen as it was when you opened this window.");
 		panel.add(Box.createVerticalStrut(8));
