@@ -8,15 +8,18 @@ import java.nio.file.Files;
 import java.util.Properties;
 import lombok.ToString;
 import lombok.Value;
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.RuneLite;
 
 /**
  * The Jagex Account character saved in a {@code credentials.properties} file, as written by
  * {@code --insecure-write-credentials}.
  */
+@Slf4j
 @Value
 public class JagexCredentials {
     private static volatile JagexCredentials launch;
+    private static volatile boolean readFailureLogged;
 
     @ToString.Exclude
     String sessionId;
@@ -52,15 +55,20 @@ public class JagexCredentials {
     }
 
     private static JagexCredentials readLaunch() {
-        JagexCredentials fromEnvironment = of(System.getenv("JX_SESSION_ID"), System.getenv("JX_CHARACTER_ID"),
-            System.getenv("JX_DISPLAY_NAME"));
-        if (fromEnvironment != null) {
-            return fromEnvironment;
-        }
-        File file = new File(RuneLite.RUNELITE_DIR, System.getProperty("runelite.credentials.path", "credentials.properties"));
         try {
+            JagexCredentials fromEnvironment = of(System.getenv("JX_SESSION_ID"), System.getenv("JX_CHARACTER_ID"),
+                System.getenv("JX_DISPLAY_NAME"));
+            if (fromEnvironment != null) {
+                return fromEnvironment;
+            }
+            File file = new File(RuneLite.RUNELITE_DIR, System.getProperty("runelite.credentials.path", "credentials.properties"));
             return file.exists() ? load(file) : null;
-        } catch (IOException e) {
+        } catch (IOException | RuntimeException e) {
+            if (!readFailureLogged) {
+                readFailureLogged = true;
+                log.warn("Unable to read the Jagex Account credentials file ({}), so it is ignored. A backslash in a value, such as a Windows path, breaks the file.",
+                    e.getClass().getSimpleName());
+            }
             return null;
         }
     }

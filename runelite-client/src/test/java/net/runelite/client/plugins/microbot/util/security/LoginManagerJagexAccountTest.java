@@ -55,6 +55,9 @@ public class LoginManagerJagexAccountTest {
         var savedPasswordWarned = LoginManager.class.getDeclaredField("SAVED_PASSWORD_WARNED");
         savedPasswordWarned.setAccessible(true);
         ((AtomicBoolean) savedPasswordWarned.get(null)).set(false);
+        var launchCredentialsWarned = LoginManager.class.getDeclaredField("LAUNCH_CREDENTIALS_WARNED");
+        launchCredentialsWarned.setAccessible(true);
+        ((AtomicBoolean) launchCredentialsWarned.get(null)).set(false);
         logs.start();
         logger.addAppender(logs);
 
@@ -224,6 +227,31 @@ public class LoginManagerJagexAccountTest {
         assertTrue(warnings().stream().anyMatch(w -> w.contains("No Jagex Account credentials")));
     }
 
+    @Test public void missingLaunchCredentialsWarnOncePerSession() throws Exception {
+        ConfigProfile profile = startupProfile("default", null);
+
+        try (var keyboard = mockStatic(Rs2Keyboard.class); var launch = mockStatic(JagexCredentials.class)) {
+            launch.when(JagexCredentials::fromLaunch).thenReturn(null);
+            assertTrue(LoginManager.login(profile.getName(), profile.getPassword(), 301));
+            resetLastLoginAttempt();
+            assertTrue(LoginManager.login(profile.getName(), profile.getPassword(), 301));
+        }
+        assertEquals(1, warnings().size());
+    }
+
+    @Test public void credentialsOfAnotherCharacterWarnOncePerSession() throws Exception {
+        ConfigProfile profile = startupProfile("default", null);
+
+        try (var keyboard = mockStatic(Rs2Keyboard.class); var launch = mockStatic(JagexCredentials.class)) {
+            launch.when(JagexCredentials::fromLaunch).thenReturn(new JagexCredentials("other-session", "8", "Other character"));
+            assertTrue(LoginManager.login(profile.getName(), profile.getPassword(), 301));
+            resetLastLoginAttempt();
+            assertTrue(LoginManager.login(profile.getName(), profile.getPassword(), 301));
+        }
+        verify(client, never()).switchJagexAccount(any(), any(), any());
+        assertEquals(1, warnings().size());
+    }
+
     @Test public void launchProfileDoesNotSwitchToCredentialsOfAnotherCharacter() {
         startupProfile("Main#", LEGACY_PASSWORD);
         when(injector.getInstance(Key.get(String.class, Names.named("profile")))).thenReturn("Main#");
@@ -252,6 +280,7 @@ public class LoginManagerJagexAccountTest {
         String warning = warnings.get(0);
         assertTrue(warning.contains("Jagex character"));
         assertTrue(warning.contains("Play without Jagex Account"));
+        assertTrue(warning.contains("remove credentials.properties"));
         assertFalse(warning.contains("legacy-password"));
         assertFalse(warning.contains(LEGACY_PASSWORD));
         assertFalse(warning.contains("launch-session"));
