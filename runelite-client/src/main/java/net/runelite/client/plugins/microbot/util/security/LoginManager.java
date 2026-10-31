@@ -48,6 +48,7 @@ public final class LoginManager {
 	private static final int WORLD_CHANGE_TIMEOUT_MS = 3000;
 	private static final Object LOGIN_LOCK = new Object();
 	private static final AtomicBoolean LOGIN_ATTEMPT_ACTIVE = new AtomicBoolean(false);
+	private static final AtomicBoolean SAVED_PASSWORD_WARNED = new AtomicBoolean(false);
 	private static final AtomicReference<Instant> LAST_LOGIN_ATTEMPT = new AtomicReference<>(null);
 	private static final AtomicReference<GameState> LAST_KNOWN_GAME_STATE = new AtomicReference<>(GameState.UNKNOWN);
 
@@ -330,10 +331,7 @@ public final class LoginManager {
         // getLauncherDisplayName() keeps the launch-time name after the account changes, so it does not show
         // which account is selected now: select the launch character again
         if (username.equalsIgnoreCase(client.getLauncherDisplayName()) || isLaunchProfile(client, profile, username)) {
-            JagexCredentials launch = JagexCredentials.fromLaunch();
-            if (launch != null) {
-                switchJagexAccount(client, launch.getSessionId(), launch.getCharacterId(), launch.getDisplayName());
-            }
+            selectLaunchCharacter(client);
             return true;
         }
         JagexAuthService jagexAuthService = Microbot.getInjector().getInstance(JagexAuthService.class);
@@ -356,11 +354,12 @@ public final class LoginManager {
         }
         if (client.getLauncherDisplayName() != null) {
             if (isLaunchCharacterProfile(client, profile, username)) {
-                JagexCredentials launch = JagexCredentials.fromLaunch();
-                if (launch != null && launch.getDisplayName().equalsIgnoreCase(client.getLauncherDisplayName())) {
-                    switchJagexAccount(client, launch.getSessionId(), launch.getCharacterId(), launch.getDisplayName());
+                if (encryptedPassword != null && !encryptedPassword.isBlank() && !SAVED_PASSWORD_WARNED.getAndSet(true)) {
+                    log.warn("This profile has a saved password, but the client was started with the Jagex Account character {}, so logins use that character. "
+                            + "To log in with the profile's username and password, use \"Play without Jagex Account\" in the launcher or switch to another profile.",
+                            client.getLauncherDisplayName());
                 }
-                log.info("Keeping the launch Jagex Account character: the active profile is the one this client started on or is linked to that character");
+                selectLaunchCharacter(client);
                 return true;
             }
             if (encryptedPassword == null || encryptedPassword.isBlank()) {
@@ -375,6 +374,18 @@ public final class LoginManager {
             switchJagexAccount(client, null, null, null);
         }
         return false;
+    }
+
+    private static void selectLaunchCharacter(Client client) {
+        JagexCredentials launch = JagexCredentials.fromLaunch();
+        if (launch == null) {
+            log.warn("No Jagex Account credentials from the launch were found: logging in with the Jagex Account already on the login screen");
+        } else if (!launch.getDisplayName().equalsIgnoreCase(client.getLauncherDisplayName())) {
+            log.warn("The Jagex Account credentials name a different character than this client was started with: logging in with the Jagex Account already on the login screen");
+        } else {
+            log.info("Selecting the Jagex Account character this client was started with");
+            switchJagexAccount(client, launch.getSessionId(), launch.getCharacterId(), launch.getDisplayName());
+        }
     }
 
     private static boolean isLaunchCharacterProfile(Client client, ConfigProfile profile, String username) {

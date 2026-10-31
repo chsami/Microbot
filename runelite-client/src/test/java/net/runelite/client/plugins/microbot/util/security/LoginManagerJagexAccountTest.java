@@ -1,5 +1,9 @@
 package net.runelite.client.plugins.microbot.util.security;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.google.gson.Gson;
 import com.google.inject.Injector;
 import com.google.inject.Key;
@@ -8,7 +12,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.client.callback.ClientThread;
@@ -25,6 +31,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.Timeout;
 import org.mockito.MockedStatic;
+import org.slf4j.LoggerFactory;
 import static org.junit.Assert.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -39,12 +46,17 @@ public class LoginManagerJagexAccountTest {
     private Client client;
     private Injector injector;
     private final ConfigManager configManager = mock(ConfigManager.class);
+    private final Logger logger = (Logger) LoggerFactory.getLogger(LoginManager.class);
+    private final ListAppender<ILoggingEvent> logs = new ListAppender<>();
 
     @Before public void setUp() throws Exception {
         LoginLockout.getInstance().recordSuccessfulLogin();
-        var lastAttempt = LoginManager.class.getDeclaredField("LAST_LOGIN_ATTEMPT");
-        lastAttempt.setAccessible(true);
-        ((AtomicReference<?>) lastAttempt.get(null)).set(null);
+        resetLastLoginAttempt();
+        var savedPasswordWarned = LoginManager.class.getDeclaredField("SAVED_PASSWORD_WARNED");
+        savedPasswordWarned.setAccessible(true);
+        ((AtomicBoolean) savedPasswordWarned.get(null)).set(false);
+        logs.start();
+        logger.addAppender(logs);
 
         client = mock(Client.class);
         when(client.getGameState()).thenReturn(GameState.LOGIN_SCREEN);
@@ -77,6 +89,7 @@ public class LoginManagerJagexAccountTest {
     }
 
     @After public void tearDown() {
+        logger.detachAppender(logs);
         microbot.close();
     }
 
@@ -196,6 +209,63 @@ public class LoginManagerJagexAccountTest {
         }
         verify(client, never()).switchJagexAccount(any(), any(), any());
         verify(client, never()).setUsername(any());
+        assertTrue(warnings().stream().anyMatch(w -> w.contains("different character")));
+    }
+
+    @Test public void startupProfileWithoutLaunchCredentialsKeepsTheJagexAccountAndSaysSo() {
+        ConfigProfile profile = startupProfile("default", null);
+
+        try (var keyboard = mockStatic(Rs2Keyboard.class); var launch = mockStatic(JagexCredentials.class)) {
+            launch.when(JagexCredentials::fromLaunch).thenReturn(null);
+            assertTrue(LoginManager.login(profile.getName(), profile.getPassword(), 301));
+        }
+        verify(client, never()).switchJagexAccount(any(), any(), any());
+        verify(client, never()).setUsername(any());
+        assertTrue(warnings().stream().anyMatch(w -> w.contains("No Jagex Account credentials")));
+    }
+
+    @Test public void launchProfileDoesNotSwitchToCredentialsOfAnotherCharacter() {
+        startupProfile("Main#", LEGACY_PASSWORD);
+        when(injector.getInstance(Key.get(String.class, Names.named("profile")))).thenReturn("Main#");
+
+        try (var keyboard = mockStatic(Rs2Keyboard.class); var launch = mockStatic(JagexCredentials.class)) {
+            launch.when(JagexCredentials::fromLaunch).thenReturn(new JagexCredentials("other-session", "8", "Other character"));
+            assertTrue(LoginManager.login("Main#", LEGACY_PASSWORD, 301));
+        }
+        verify(client, never()).switchJagexAccount(any(), any(), any());
+        verify(client, never()).setUsername(any());
+        assertTrue(warnings().stream().anyMatch(w -> w.contains("different character")));
+    }
+
+    @Test public void startupProfileWithASavedPasswordWarnsOncePerSession() throws Exception {
+        ConfigProfile profile = startupProfile("Main", LEGACY_PASSWORD);
+
+        try (var keyboard = mockStatic(Rs2Keyboard.class); var launch = mockStatic(JagexCredentials.class)) {
+            launch.when(JagexCredentials::fromLaunch).thenReturn(new JagexCredentials("launch-session", "7", "Jagex character"));
+            assertTrue(LoginManager.login(profile.getName(), profile.getPassword(), 301));
+            resetLastLoginAttempt();
+            assertTrue(LoginManager.login(profile.getName(), profile.getPassword(), 301));
+        }
+        verify(client, times(2)).switchJagexAccount("launch-session", "7", "Jagex character");
+        List<String> warnings = warnings();
+        assertEquals(1, warnings.size());
+        String warning = warnings.get(0);
+        assertTrue(warning.contains("Jagex character"));
+        assertTrue(warning.contains("Play without Jagex Account"));
+        assertFalse(warning.contains("legacy-password"));
+        assertFalse(warning.contains(LEGACY_PASSWORD));
+        assertFalse(warning.contains("launch-session"));
+    }
+
+    @Test public void startupProfileWithoutAPasswordDoesNotWarn() {
+        ConfigProfile profile = startupProfile("default", null);
+
+        try (var keyboard = mockStatic(Rs2Keyboard.class); var launch = mockStatic(JagexCredentials.class)) {
+            launch.when(JagexCredentials::fromLaunch).thenReturn(new JagexCredentials("launch-session", "7", "Jagex character"));
+            assertTrue(LoginManager.login(profile.getName(), profile.getPassword(), 301));
+        }
+        verify(client).switchJagexAccount("launch-session", "7", "Jagex character");
+        assertTrue(warnings().isEmpty());
     }
 
     @Test public void explicitCredentialsOnTheStartupProfileAreTypedForAnotherUsername() {
@@ -217,6 +287,19 @@ public class LoginManagerJagexAccountTest {
             keyboard.verifyNoInteractions();
         }
         verify(client, never()).setUsername(any());
+    }
+
+    private List<String> warnings() {
+        return logs.list.stream()
+            .filter(event -> event.getLevel() == Level.WARN)
+            .map(ILoggingEvent::getFormattedMessage)
+            .collect(Collectors.toList());
+    }
+
+    private static void resetLastLoginAttempt() throws Exception {
+        var lastAttempt = LoginManager.class.getDeclaredField("LAST_LOGIN_ATTEMPT");
+        lastAttempt.setAccessible(true);
+        ((AtomicReference<?>) lastAttempt.get(null)).set(null);
     }
 
     private ConfigProfile startupProfile(String name, String password) {

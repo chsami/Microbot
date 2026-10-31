@@ -52,6 +52,7 @@ public class LoginManagerLaunchModeTest {
     private static final long STARTUP_PROFILE_ID = 1L;
     private static final long SWITCHED_PROFILE_ID = 2L;
     private static final String LINKED_RS_PROFILE = "rsprofile.linked";
+    private static final String OTHER_RS_PROFILE = "rsprofile.other";
 
     enum LaunchMode {
         JAGEX_LAUNCHER(true, false),
@@ -69,25 +70,26 @@ public class LoginManagerLaunchModeTest {
     }
 
     enum ProfileShape {
-        DEFAULT("default", false, false, STARTUP_PROFILE_ID, false),
-        NAMED("Main", false, false, STARTUP_PROFILE_ID, false),
-        SAVED_LEGACY_PASSWORD("Main", true, false, STARTUP_PROFILE_ID, false),
-        SAVED_SESSION("Imported character", false, true, STARTUP_PROFILE_ID, false),
-        SWITCHED_TO_WITH_SAVED_PASSWORD("legacy-user", true, false, SWITCHED_PROFILE_ID, false),
-        SWITCHED_TO_LINKED_WITH_SAVED_PASSWORD("Linked", true, false, SWITCHED_PROFILE_ID, true);
+        DEFAULT("default", false, false, STARTUP_PROFILE_ID, null),
+        NAMED("Main", false, false, STARTUP_PROFILE_ID, null),
+        SAVED_LEGACY_PASSWORD("Main", true, false, STARTUP_PROFILE_ID, null),
+        SAVED_SESSION("Imported character", false, true, STARTUP_PROFILE_ID, null),
+        SWITCHED_TO_WITH_SAVED_PASSWORD("legacy-user", true, false, SWITCHED_PROFILE_ID, null),
+        SWITCHED_TO_LINKED_WITH_SAVED_PASSWORD("Linked", true, false, SWITCHED_PROFILE_ID, LINKED_RS_PROFILE),
+        SWITCHED_TO_LINKED_TO_OTHER_CHARACTER_WITH_SAVED_PASSWORD("Other", true, false, SWITCHED_PROFILE_ID, OTHER_RS_PROFILE);
 
         final String name;
         final boolean password;
         final boolean session;
         final long id;
-        final boolean linkedToLaunchCharacter;
+        final String linkedRsProfile;
 
-        ProfileShape(String name, boolean password, boolean session, long id, boolean linkedToLaunchCharacter) {
+        ProfileShape(String name, boolean password, boolean session, long id, String linkedRsProfile) {
             this.name = name;
             this.password = password;
             this.session = session;
             this.id = id;
-            this.linkedToLaunchCharacter = linkedToLaunchCharacter;
+            this.linkedRsProfile = linkedRsProfile;
         }
     }
 
@@ -108,7 +110,8 @@ public class LoginManagerLaunchModeTest {
         if (shape.session) {
             return Expected.IMPORTED_CHARACTER;
         }
-        if (!mode.jagexAccount || shape == ProfileShape.SWITCHED_TO_WITH_SAVED_PASSWORD) {
+        if (!mode.jagexAccount || shape == ProfileShape.SWITCHED_TO_WITH_SAVED_PASSWORD
+            || shape == ProfileShape.SWITCHED_TO_LINKED_TO_OTHER_CHARACTER_WITH_SAVED_PASSWORD) {
             return Expected.TYPED_CREDENTIALS;
         }
         return Expected.LAUNCH_CHARACTER;
@@ -158,15 +161,16 @@ public class LoginManagerLaunchModeTest {
             when(profile.getJagexSessionId()).thenReturn(Encryption.encrypt("imported-session"));
             when(profile.getJagexCharacterId()).thenReturn("42");
         }
-        if (shape.linkedToLaunchCharacter) {
-            when(profile.getDefaultForRsProfiles()).thenReturn(List.of(LINKED_RS_PROFILE));
+        if (shape.linkedRsProfile != null) {
+            when(profile.getDefaultForRsProfiles()).thenReturn(List.of(shape.linkedRsProfile));
         }
 
         ConfigManager configManager = mock(ConfigManager.class);
         when(configManager.getProfile()).thenReturn(profile);
         when(configManager.getStartupProfileId()).thenReturn(STARTUP_PROFILE_ID);
         when(configManager.getRSProfiles()).thenReturn(List.of(
-            new RuneScapeProfile(LAUNCH_CHARACTER, RuneScapeProfileType.STANDARD, 99L, LINKED_RS_PROFILE)));
+            new RuneScapeProfile(LAUNCH_CHARACTER, RuneScapeProfileType.STANDARD, 99L, LINKED_RS_PROFILE),
+            new RuneScapeProfile("Other character", RuneScapeProfileType.STANDARD, 98L, OTHER_RS_PROFILE)));
 
         microbot = mockStatic(Microbot.class);
         microbot.when(Microbot::getClient).thenReturn(client);
