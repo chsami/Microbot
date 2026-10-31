@@ -130,4 +130,32 @@ public class MInventorySetupsPluginFilterTest
 		assertTrue(plugin.containerContainsItemFromSet(new java.util.HashSet<>(Arrays.asList(ItemID.RUNE_POUCH)),
 			Arrays.asList(fuzzy(ItemID.DIVINE_RUNE_POUCH, "Divine rune pouch", 1, 0)), true, true));
 	}
+
+	@Test
+	public void replacingEveryInstanceKeepsEachSlotItsOwnItem() throws Exception
+	{
+		Field ammo = MInventorySetupsPlugin.class.getDeclaredField("ammoHandler");
+		ammo.setAccessible(true);
+		ammo.set(plugin, mock(InventorySetupsAmmoHandler.class));
+		InventorySetup setup = setup("Slayer", emptyContainer(28), emptyContainer(14));
+		for (int slot = 3; slot <= 5; slot++)
+		{
+			setup.getInventory().set(slot, item(ItemID.SHARK, "Shark", 1, slot));
+		}
+		InventorySetupsItem manta = item(ItemID.MANTA_RAY, "Manta ray", 1, 3);
+		java.lang.reflect.Method replaceAll = MInventorySetupsPlugin.class.getDeclaredMethod("updateAllInstancesInContainerSetupWithNewItem",
+			InventorySetup.class, List.class, InventorySetupsItem.class, InventorySetupsItem.class, InventorySetupsSlotID.class);
+		replaceAll.setAccessible(true);
+
+		assertTrue((boolean) replaceAll.invoke(plugin, setup, setup.getInventory(), item(ItemID.SHARK, "Shark", 1, 3), manta, InventorySetupsSlotID.INVENTORY));
+
+		for (int slot = 3; slot <= 5; slot++)
+		{
+			assertEquals(ItemID.MANTA_RAY, setup.getInventory().get(slot).getId());
+			assertEquals(slot, setup.getInventory().get(slot).getSlot());
+		}
+		setup.getInventory().get(4).toggleIsFuzzy();
+		assertFalse(setup.getInventory().get(5).isFuzzy());
+		assertTrue(InventorySetupsItem.itemIsDummy(setup.getInventory().get(6)));
+	}
 }

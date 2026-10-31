@@ -63,6 +63,11 @@ public class InventorySetupsItem
 		locked = !locked;
 	}
 
+	public InventorySetupsItem copyToSlot(final int newSlot)
+	{
+		return new InventorySetupsItem(id, name, quantity, fuzzy, stackCompare, locked, newSlot);
+	}
+
 	public static InventorySetupsItem getDummyItem()
 	{
 		return new InventorySetupsItem(-1, "", 0, false, InventorySetupsStackCompareID.None, false, -1);
