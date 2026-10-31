@@ -12,6 +12,7 @@ import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.InventoryID;
 import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.client.game.ItemManager;
+import net.runelite.client.util.Text;
 
 final class DashboardGameState
 {
@@ -30,6 +31,7 @@ final class DashboardGameState
 			return state;
 		}
 
+		state.addProperty("playerName", player.getName() == null ? null : Text.sanitize(player.getName()));
 		state.addProperty("world", client.getWorld());
 		state.addProperty("combatLevel", player.getCombatLevel());
 		state.addProperty("hitpoints", client.getBoostedSkillLevel(Skill.HITPOINTS));
