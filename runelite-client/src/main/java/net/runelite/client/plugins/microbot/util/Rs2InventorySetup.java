@@ -465,7 +465,7 @@ public class Rs2InventorySetup {
 
         if (inventorySetup.getRune_pouch() != null) {
 			Map<Runes, InventorySetupsItem> inventorySetupRunes = inventorySetup.getRune_pouch().stream()
-				.filter(item -> item.getId() != -1 && item.getQuantity() > 0)
+				.filter(item -> item.getId() != -1 && item.getQuantity() > 0 && Runes.byItemId(item.getId()) != null)
 				.collect(Collectors.toMap(
 					item -> Runes.byItemId(item.getId()),
 					item -> item

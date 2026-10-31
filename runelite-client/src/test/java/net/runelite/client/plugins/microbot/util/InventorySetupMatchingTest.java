@@ -418,4 +418,23 @@ public class InventorySetupMatchingTest
 		rs2Inventory.verify(() -> Rs2Inventory.moveItemToSlot(prayer, 1));
 		rs2Inventory.verify(() -> Rs2Inventory.moveItemToSlot(any(), org.mockito.ArgumentMatchers.eq(5)), never());
 	}
+
+	@Test
+	public void runePouchLoadSkipsRunesTheClientCannotIdentify()
+	{
+		bankReadyForLoading();
+		InventorySetup setup = inventorySetup();
+		setup.updateRunePouch(Arrays.asList(item(ItemID.AETHERRUNE, "Aether rune", 500, -1), item(ItemID.LAWRUNE, "Law rune", 100, -1),
+			InventorySetupsItem.getDummyItem()));
+		rs2RunePouch.when(() -> Rs2RunePouch.loadFromInventorySetup(anyMap())).thenReturn(true);
+		rs2RunePouch.when(() -> Rs2RunePouch.contains(anyMap(), anyBoolean())).thenReturn(true);
+
+		assertTrue(loader(setup).loadInventory(false));
+
+		@SuppressWarnings("unchecked")
+		ArgumentCaptor<Map<Runes, InventorySetupsItem>> requested = ArgumentCaptor.forClass(Map.class);
+		rs2RunePouch.verify(() -> Rs2RunePouch.loadFromInventorySetup(requested.capture()));
+		assertFalse(requested.getValue().containsKey(null));
+		assertEquals(ItemID.LAWRUNE, requested.getValue().get(Runes.LAW).getId());
+	}
 }
