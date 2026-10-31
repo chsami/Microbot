@@ -431,6 +431,7 @@ public final class LoginManager {
         if (!switched) {
             throw new IllegalStateException("The client thread did not switch the Jagex Account");
         }
+        JagexAuthService.noteAccountSwitch(characterId);
     }
 
     private static void setCredentials(Client client, String username, String encryptedPassword) {

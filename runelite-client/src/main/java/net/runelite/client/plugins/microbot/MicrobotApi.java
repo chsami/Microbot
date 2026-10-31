@@ -154,6 +154,50 @@ public class MicrobotApi {
         });
     }
 
+    public CompletableFuture<Boolean> submitBanReport(JsonObject payload)
+    {
+        return postTelemetry("/plugintelemetry/ban-reports", payload, "Ban report");
+    }
+
+    public CompletableFuture<Boolean> submitPluginRuntime(JsonObject payload)
+    {
+        return postTelemetry("/plugintelemetry/runtime", payload, "Plugin runtime");
+    }
+
+    private CompletableFuture<Boolean> postTelemetry(String path, JsonObject payload, String what)
+    {
+        Request request = new Request.Builder()
+                .url(microbotApiUrl + path)
+                .header("X-Plugin-Telemetry-Token", pluginTelemetryToken)
+                .post(RequestBody.create(RuneLiteAPI.JSON, gson.toJson(payload)))
+                .build();
+
+        CompletableFuture<Boolean> result = new CompletableFuture<>();
+        client.newCall(request).enqueue(new Callback()
+        {
+            @Override
+            public void onFailure(Call call, IOException e)
+            {
+                log.debug("{} upload failed", what, e);
+                result.complete(false);
+            }
+
+            @Override
+            public void onResponse(Call call, Response response)
+            {
+                boolean successful = response.isSuccessful();
+                int code = response.code();
+                response.close();
+                if (!successful)
+                {
+                    log.debug("{} upload rejected: HTTP {}", what, code);
+                }
+                result.complete(successful);
+            }
+        });
+        return result;
+    }
+
     public CompletableFuture<BugReportReceipt> submitBugReport(JsonObject payload)
     {
         Request.Builder builder = new Request.Builder()
