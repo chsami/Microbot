@@ -903,10 +903,13 @@ public class Rs2InventorySetup {
             String extraNames = extraGear.stream().map(Rs2ItemModel::getName).collect(Collectors.joining(", "));
             if (extraGear.stream().allMatch(Rs2InventorySetup::isBrokenBarrowsPiece)) {
                 logSetup(Level.INFO, "broken gear not in setup (%s) — deposit it", extraNames);
+                boolean deposited = false;
                 for (Rs2ItemModel broken : extraGear) {
-                    Rs2Bank.depositEquippedItem(broken.getId());
+                    deposited |= Rs2Bank.depositEquippedItem(broken.getId());
                 }
-                sleepUntil(() -> extraGear.stream().noneMatch(broken -> Rs2Equipment.isWearing(broken.getId())));
+                if (deposited) {
+                    sleepUntil(() -> extraGear.stream().noneMatch(broken -> Rs2Equipment.isWearing(broken.getId())));
+                }
             } else {
                 logSetup(Level.INFO, "extra gear not in setup (%s) — deposit equipment", extraNames);
                 Rs2Bank.depositEquipment();
@@ -938,9 +941,13 @@ public class Rs2InventorySetup {
 			if (!inBank && !isFuzzy) {
 				inBank = Rs2Bank.hasBankItem(lowerCaseName, item.getQuantity(), false);
 			}
+			Rs2ItemModel barrowsInInventory = null;
+			Rs2ItemModel barrowsInBank = null;
 			if (InventorySetupsItem.isBarrowsItem(lowerCaseName)) {
-				inInventory = inInventory && Rs2Inventory.items().anyMatch(held -> itemFillsSetupRow(held, item));
-				inBank = inBank && bankQtyForPresetRow(item, lowerCaseName, isFuzzy) > 0;
+				barrowsInInventory = Rs2Inventory.items().filter(held -> itemFillsSetupRow(held, item)).findFirst().orElse(null);
+				barrowsInBank = bankItemsOrEmpty().stream().filter(held -> itemFillsSetupRow(held, item)).findFirst().orElse(null);
+				inInventory = inInventory && barrowsInInventory != null;
+				inBank = inBank && barrowsInBank != null;
 			}
 
 			if (!inInventory && !inBank) {
@@ -964,7 +971,9 @@ public class Rs2InventorySetup {
 			}
 
 			if (inInventory) {
-				if (isFuzzy) {
+				if (barrowsInInventory != null) {
+					Rs2Bank.wearItem(barrowsInInventory.getId());
+				} else if (isFuzzy) {
 					Rs2Bank.wearItem((String) identifier);
 				} else {
 					Rs2Bank.wearItem((int) identifier);
@@ -973,7 +982,9 @@ public class Rs2InventorySetup {
 				continue;
 			}
 
-			if (item.getQuantity() > 1) {
+			if (barrowsInBank != null) {
+				Rs2Bank.withdrawAndEquip(barrowsInBank.getId());
+			} else if (item.getQuantity() > 1) {
 				if (isFuzzy) {
 					Rs2Bank.withdrawXAndEquip((String) identifier, item.getQuantity());
 				} else {

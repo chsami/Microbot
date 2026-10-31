@@ -569,4 +569,34 @@ public class InventorySetupMatchingTest
 		assertEquals(Arrays.asList("Guthan's platebody 50", "Guthan's helm"), worn.stream().map(Rs2ItemModel::getName).collect(Collectors.toList()));
 		microbot.verify(() -> Microbot.log(eq(Level.INFO), contains("broken gear not in setup"), eq("Guthan's helm 0")));
 	}
+
+	@Test
+	public void fuzzyBarrowsRowWithdrawsAWorkingPieceById()
+	{
+		bankReadyForLoading();
+		List<Rs2ItemModel> bank = Arrays.asList(held(ItemID.BARROWS_DHAROK_HEAD_BROKEN, "Dharok's helm 0", 1, 0),
+			held(ItemID.BARROWS_DHAROK_HEAD_50, "Dharok's helm 50", 1, 1));
+		rs2Bank.when(Rs2Bank::bankItems).thenReturn(bank);
+		rs2Bank.when(() -> Rs2Bank.hasItem("dharok's helm")).thenReturn(true);
+
+		loader(gearSetup(fuzzy(ItemID.BARROWS_DHAROK_HEAD, "Dharok's helm", 1, 0))).loadEquipment(false);
+
+		rs2Bank.verify(() -> Rs2Bank.withdrawAndEquip(ItemID.BARROWS_DHAROK_HEAD_50));
+		rs2Bank.verify(() -> Rs2Bank.withdrawAndEquip(anyString()), never());
+		rs2Bank.verify(() -> Rs2Bank.withdrawAndEquip(ItemID.BARROWS_DHAROK_HEAD_BROKEN), never());
+	}
+
+	@Test
+	public void fuzzyBarrowsRowWearsAWorkingPieceFromTheInventoryById()
+	{
+		bankReadyForLoading();
+		inventory.add(held(ItemID.BARROWS_DHAROK_HEAD_BROKEN, "Dharok's helm 0", 1, 0));
+		inventory.add(held(ItemID.BARROWS_DHAROK_HEAD_50, "Dharok's helm 50", 1, 1));
+
+		loader(gearSetup(fuzzy(ItemID.BARROWS_DHAROK_HEAD, "Dharok's helm", 1, 0))).loadEquipment(false);
+
+		rs2Bank.verify(() -> Rs2Bank.wearItem(ItemID.BARROWS_DHAROK_HEAD_50));
+		rs2Bank.verify(() -> Rs2Bank.wearItem(anyString()), never());
+		rs2Bank.verify(() -> Rs2Bank.wearItem(ItemID.BARROWS_DHAROK_HEAD_BROKEN), never());
+	}
 }
