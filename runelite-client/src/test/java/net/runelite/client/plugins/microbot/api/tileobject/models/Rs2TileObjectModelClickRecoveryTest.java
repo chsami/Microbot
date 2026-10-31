@@ -7,6 +7,7 @@ import java.util.function.Supplier;
 import net.runelite.api.Client;
 import net.runelite.api.ObjectComposition;
 import net.runelite.api.Player;
+import net.runelite.api.Scene;
 import net.runelite.api.TileObject;
 import net.runelite.api.WorldView;
 import net.runelite.api.coords.LocalPoint;
@@ -16,6 +17,7 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
 import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
+import net.runelite.client.plugins.microbot.util.walker.recovery.CantReachTargetRecovery;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -135,7 +137,9 @@ public class Rs2TileObjectModelClickRecoveryTest {
     @Test
     public void pausesScriptsOnceRetriesAreExhausted() {
         Microbot.cantReachTarget = true;
-        Microbot.cantReachTargetRetries = 5;
+        for (int i = 0; i < 5; i++) {
+            CantReachTargetRecovery.countAttempt();
+        }
         boolean savedPause = Microbot.pauseAllScripts.get();
         try {
             assertFalse(new Rs2TileObjectModel(object).click("Open"));
@@ -152,7 +156,9 @@ public class Rs2TileObjectModelClickRecoveryTest {
     @Test
     public void exhaustedFailsafeDoesNotLatchForLaterClicks() {
         Microbot.cantReachTarget = true;
-        Microbot.cantReachTargetRetries = 5;
+        for (int i = 0; i < 5; i++) {
+            CantReachTargetRecovery.countAttempt();
+        }
         boolean savedPause = Microbot.pauseAllScripts.get();
         try {
             assertFalse(new Rs2TileObjectModel(object).click("Open"));
@@ -169,6 +175,47 @@ public class Rs2TileObjectModelClickRecoveryTest {
         } finally {
             Microbot.pauseAllScripts.set(savedPause);
         }
+    }
+
+    @Test
+    public void walksToTheTemplateTileInAnInstance() {
+        WorldPoint instanceTile = new WorldPoint(12630, 12568, 0);
+        WorldPoint templateTile = new WorldPoint(1878, 7096, 0);
+        int[][][] chunks = new int[4][13][13];
+        chunks[0][5][6] = (234 << 14) | (887 << 3);
+        Scene scene = mock(Scene.class);
+        when(scene.isInstance()).thenReturn(true);
+        when(scene.getInstanceTemplateChunks()).thenReturn(chunks);
+        WorldView topLevel = mock(WorldView.class);
+        when(topLevel.getScene()).thenReturn(scene);
+        when(topLevel.getId()).thenReturn(-1);
+        when(topLevel.getBaseX()).thenReturn(12584);
+        when(topLevel.getBaseY()).thenReturn(12520);
+        when(topLevel.getSizeX()).thenReturn(104);
+        when(topLevel.getSizeY()).thenReturn(104);
+        when(client.getTopLevelWorldView()).thenReturn(topLevel);
+        when(object.getWorldLocation()).thenReturn(instanceTile);
+        Microbot.cantReachTarget = true;
+        walker.when(() -> Rs2Walker.walkTo(eq(templateTile), eq(2))).thenReturn(true);
+
+        assertTrue(new Rs2TileObjectModel(object).click("Open"));
+
+        walker.verify(() -> Rs2Walker.walkTo(eq(templateTile), eq(2)), times(1));
+        walker.verify(() -> Rs2Walker.walkTo(eq(instanceTile), anyInt()), never());
+        assertFalse(Microbot.cantReachTarget);
+    }
+
+    @Test
+    public void clicksWithoutWalkingOrCountingOnTheClientThread() {
+        Microbot.cantReachTarget = true;
+        when(client.isClientThread()).thenReturn(true);
+
+        assertTrue(new Rs2TileObjectModel(object).click("Open"));
+
+        walker.verify(() -> Rs2Walker.walkTo(any(WorldPoint.class), anyInt()), never());
+        microbot.verify(() -> Microbot.showMessage(any(String.class)), never());
+        microbot.verify(() -> Microbot.doInvoke(any(NewMenuEntry.class), any(Rectangle.class)), times(1));
+        assertEquals(0, Microbot.cantReachTargetRetries);
     }
 
     @Test

@@ -654,25 +654,24 @@ public class Rs2Npc {
                 // escalating. LOS is deliberately not consulted: a ranged attack through a fence
                 // never prints can't-reach, so every trigger here genuinely needs adjacency.
                 if (CantReachTargetRecovery.retryExhausted(
-                        Microbot.cantReachTargetRetries, Rs2Random.between(3, 5))) {
+                        CantReachTargetRecovery.retries(), Rs2Random.between(3, 5))) {
                     int retries = CantReachTargetRecovery.giveUp();
                     Microbot.pauseAllScripts.compareAndSet(false, true);
                     Microbot.showMessage("Your bot tried to interact with an NPC for "
                             + retries + " times but failed. Please take a look at what is happening.");
                     return false;
                 }
-                final WorldPoint npcWorldPoint = npc.getWorldLocation();
+                final WorldPoint npcWorldPoint = CantReachTargetRecovery.templateLocation(npc.getWorldLocation());
                 if (npcWorldPoint == null) {
                     log.error("Error interacting with NPC '{}' for action '{}': WorldPoint is null", npc.getName(), action);
                     return false;
                 }
-                Microbot.cantReachTargetRetries++;
+                int attempt = CantReachTargetRecovery.countAttempt();
                 log.info("[Interact] can't-reach recovery: walking to NPC '{}' at {} (attempt {})",
-                        npc.getName(), npcWorldPoint, Microbot.cantReachTargetRetries);
+                        npc.getName(), npcWorldPoint, attempt);
                 if (CantReachTargetRecovery.walkTo(npcWorldPoint, 2)) {
                     Microbot.pauseAllScripts.compareAndSet(true, false);
-                    Microbot.cantReachTarget = false;
-                    Microbot.cantReachTargetRetries = 0;
+                    CantReachTargetRecovery.reset();
                     // fall through and click from beside it
                 } else {
                     return false;

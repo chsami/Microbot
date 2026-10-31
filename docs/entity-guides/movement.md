@@ -669,3 +669,13 @@ The pathfinder charges a teleport edge `distanceBeforeUsingTeleport + duration`,
 **Where this applies:** `CollisionMap` teleport neighbours, `Rs2WalkerBankingPlanner.transportHopCost` and every route-distance comparison that mixes walking tiles and transports.
 
 **Defensive check:** `BankedTransportItemPlanningTest.minigameTeleportIsPricedForItsCooldownNotAsOneTile` and `itemTeleportCostsItsDurationAndObjectTransportsStayOneStep`.
+
+## 34. Walk can't-reach recovery to the template tile, off the client thread
+
+In an instance (player-owned house, Tempoross), `TileObject.getWorldLocation()` and `Actor.getWorldLocation()` return raw instance coordinates such as `(12630, 12568)`, while `Rs2Player.getWorldLocation()` and the walker work in template coordinates. Pass the recovery target through `CantReachTargetRecovery.templateLocation` before walking. `CantReachTargetRecovery.shouldStart` returns `false` on the client thread, because the walker refuses to run there. Count attempts with `CantReachTargetRecovery.countAttempt()` and read them with `CantReachTargetRecovery.retries()`, which drops attempts older than `RETRY_WINDOW_MS`.
+
+**Why this matters:** In 2.6.43 and 2.6.44, Construction (larder hotspot 15403) and Tempoross (object 41010) players saw the "Your bot tried to interact with an object" box and had all scripts paused. In the house every recovery walk targeted a raw instance tile and the walker logged `UNREACHABLE cause=no-walkable-path`. At Tempoross the click ran on the client thread and four attempts were used up in one second. The house count also carried over 47 minutes.
+
+**Where this applies:** `Rs2TileObjectModel.click`, `Rs2NpcModel.click`, `Rs2Npc.interact` and any helper that starts a can't-reach recovery walk.
+
+**Defensive check:** `Rs2TileObjectModelClickRecoveryTest.walksToTheTemplateTileInAnInstance`, `clicksWithoutWalkingOrCountingOnTheClientThread` and `CantReachTargetRecoveryTest.staleAttemptsDoNotCarryOverToALaterRecovery`.
