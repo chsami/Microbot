@@ -706,25 +706,35 @@ public class FlightRecorder
 				}
 				skipping.set(true);
 			}
-			for (int i = off; i < off + len; i++)
+			int end = off + len;
+			int from = off;
+			while (from < end)
 			{
-				if (b[i] == '\n')
+				int newline = from;
+				while (newline < end && b[newline] != '\n')
 				{
-					if (!skipping.get() && keep(line))
+					newline++;
+				}
+				int room = MAX_LINE_CHARS * 4 - line.size();
+				if (room > 0)
+				{
+					line.write(b, from, Math.min(room, newline - from));
+				}
+				if (newline == end)
+				{
+					break;
+				}
+				if (!skipping.get() && keep(line))
+				{
+					if (done == null)
 					{
-						if (done == null)
-						{
-							done = new ArrayList<>();
-						}
-						done.add(line.toString(charset));
+						done = new ArrayList<>();
 					}
-					line.reset();
-					skipping.set(skipping.get() && i + 1 < off + len);
+					done.add(line.toString(charset));
 				}
-				else if (line.size() < MAX_LINE_CHARS * 4)
-				{
-					line.write(b[i]);
-				}
+				line.reset();
+				skipping.set(skipping.get() && newline + 1 < end);
+				from = newline + 1;
 			}
 			if (done != null)
 			{

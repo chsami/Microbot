@@ -246,13 +246,17 @@ public class BugReportCollector
 			return text;
 		}
 		int earlier = lines - count;
+		String prefix = "... and " + earlier + (forCopy ? " earlier lines, left out here\n" : " earlier lines, which are also sent\n");
+		if (count <= 0)
+		{
+			return prefix;
+		}
 		int start = 0;
 		for (int skipped = 0; skipped < earlier; skipped++)
 		{
 			start = text.indexOf('\n', start) + 1;
 		}
-		return "... and " + earlier + (forCopy ? " earlier lines, left out here\n" : " earlier lines, which are also sent\n")
-			+ text.substring(start, end);
+		return prefix + text.substring(start, end);
 	}
 
 	String readable(String json)

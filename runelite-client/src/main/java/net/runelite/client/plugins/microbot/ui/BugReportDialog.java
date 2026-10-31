@@ -345,6 +345,10 @@ class BugReportDialog extends JDialog
 
 	private void onCaptured(BugReportSnapshot result)
 	{
+		if (!isDisplayable())
+		{
+			return;
+		}
 		snapshot = result;
 		if (snapshot == null)
 		{
@@ -487,6 +491,7 @@ class BugReportDialog extends JDialog
 
 	private void send()
 	{
+		cachedPayload = null;
 		JsonObject payload = payload();
 		String plugin = pluginLabel();
 		Plugin selected = selectedPlugin();
