@@ -96,6 +96,7 @@ public class InventorySetupItemSerializableTypeAdapter extends TypeAdapter<Inven
 						slot = in.nextInt();
 						break;
 					default:
+						in.skipValue();
 						break;
 				}
 			}

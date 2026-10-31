@@ -203,6 +203,17 @@ public class InventorySetupSerializationTest
 		assertNull(loaded.getRune_pouch());
 	}
 
+	@Test(timeout = 10000)
+	public void unknownItemFieldsAreIgnored()
+	{
+		String json = "{\"id\":" + ItemID.SHARK + ",\"future\":true,\"s\":2}";
+
+		InventorySetupItemSerializable loaded = STORAGE_GSON.fromJson(json, InventorySetupItemSerializable.class);
+
+		assertEquals(ItemID.SHARK, loaded.getId());
+		assertEquals(2, loaded.getS());
+	}
+
 	@Test
 	public void longValuesThatOverflowAreClampedInsteadOfFailing()
 	{
@@ -223,5 +234,16 @@ public class InventorySetupSerializationTest
 		JsonObject laws = json.getAsJsonArray("inv").get(2).getAsJsonObject();
 		assertEquals(250, laws.get("q").getAsInt());
 		assertEquals("Less_Than", laws.get("sc").getAsString());
+	}
+
+	@Test(timeout = 10000)
+	public void unknownSetupFieldsInsideItemsDoNotStallLoading()
+	{
+		String json = "{\"inv\":[{\"id\":" + ItemID.SHARK + ",\"charges\":{\"left\":3},\"s\":0}],\"eq\":[],\"name\":\"Newer\"}";
+
+		InventorySetup loaded = InventorySetupSerializable.convertToInventorySetup(STORAGE_GSON.fromJson(json, InventorySetupSerializable.class));
+
+		assertEquals(ItemID.SHARK, loaded.getInventory().get(0).getId());
+		assertEquals(0, loaded.getInventory().get(0).getSlot());
 	}
 }
