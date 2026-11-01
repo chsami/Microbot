@@ -506,9 +506,6 @@ net.runelite.client.plugins.microbot.util.player.Rs2Player#getLocalLocation(): L
 net.runelite.client.plugins.microbot.util.player.Rs2Player#getLocalLocation(): LocalPoint  ->  net.runelite.api.Player#getLocalLocation(): LocalPoint
 net.runelite.client.plugins.microbot.util.player.Rs2Player#getPlayerEquipmentIds(Rs2PlayerModel): Map  ->  net.runelite.api.PlayerComposition#getEquipmentId(KitType): int
 net.runelite.client.plugins.microbot.util.player.Rs2Player#getPlayerEquipmentIds(Rs2PlayerModel): Map  ->  net.runelite.api.kit.KitType#values(): KitType[]
-net.runelite.client.plugins.microbot.util.player.Rs2Player#getPlayers(Predicate, boolean): Stream  ->  net.runelite.api.Client#getTopLevelWorldView(): WorldView
-net.runelite.client.plugins.microbot.util.player.Rs2Player#getPlayers(Predicate, boolean): Stream  ->  net.runelite.api.IndexedObjectSet#stream(): Stream
-net.runelite.client.plugins.microbot.util.player.Rs2Player#getPlayers(Predicate, boolean): Stream  ->  net.runelite.api.WorldView#players(): IndexedObjectSet
 net.runelite.client.plugins.microbot.util.player.Rs2Player#getWorld(): int  ->  net.runelite.api.Client#getWorld(): int
 net.runelite.client.plugins.microbot.util.player.Rs2Player#handleAnimationChanged(AnimationChanged): void  ->  net.runelite.api.Client#getLocalPlayer(): Player
 net.runelite.client.plugins.microbot.util.player.Rs2Player#handleAnimationChanged(AnimationChanged): void  ->  net.runelite.api.Player#getAnimation(): int
@@ -526,9 +523,8 @@ net.runelite.client.plugins.microbot.util.player.Rs2Player#isInPoh(): boolean  -
 net.runelite.client.plugins.microbot.util.player.Rs2Player#isInPoh(): boolean  ->  net.runelite.api.WorldView#getScene(): Scene
 net.runelite.client.plugins.microbot.util.player.Rs2Player#isInteracting(): boolean  ->  net.runelite.api.Client#getLocalPlayer(): Player
 net.runelite.client.plugins.microbot.util.player.Rs2Player#isInteracting(): boolean  ->  net.runelite.api.Player#isInteracting(): boolean
-net.runelite.client.plugins.microbot.util.player.Rs2Player#lambda$getLocalPlayer$32(Rs2PlayerModel): boolean  ->  net.runelite.api.Client#getLocalPlayer(): Player
-net.runelite.client.plugins.microbot.util.player.Rs2Player#lambda$getLocalPlayer$32(Rs2PlayerModel): boolean  ->  net.runelite.api.Player#getId(): int
-net.runelite.client.plugins.microbot.util.player.Rs2Player#lambda$getPlayers$21(boolean, Rs2PlayerModel): boolean  ->  net.runelite.api.Client#getLocalPlayer(): Player
+net.runelite.client.plugins.microbot.util.player.Rs2Player#lambda$getLocalPlayer$33(Rs2PlayerModel): boolean  ->  net.runelite.api.Client#getLocalPlayer(): Player
+net.runelite.client.plugins.microbot.util.player.Rs2Player#lambda$getLocalPlayer$33(Rs2PlayerModel): boolean  ->  net.runelite.api.Player#getId(): int
 net.runelite.client.plugins.microbot.util.player.Rs2Player#lambda$isInMemberWorld$8(World): boolean  ->  net.runelite.api.Client#getWorld(): int
 net.runelite.client.plugins.microbot.util.player.Rs2Player#lambda$waitForXpDrop$2(int, Skill, boolean): boolean  ->  net.runelite.api.Client#getSkillExperience(Skill): int
 net.runelite.client.plugins.microbot.util.player.Rs2Player#logoutWithoutAutoLogin(): Rs2Player$TerminalLogoutState  ->  net.runelite.api.Client#isClientThread(): boolean
