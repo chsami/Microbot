@@ -7,8 +7,6 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
-import net.runelite.client.plugins.microbot.inventorysetups.serialization.InventorySetupItemSerializable;
-import net.runelite.client.plugins.microbot.inventorysetups.serialization.InventorySetupItemSerializableTypeAdapter;
 import net.runelite.client.plugins.microbot.inventorysetups.serialization.InventorySetupSerializable;
 import net.runelite.client.plugins.microbot.inventorysetups.serialization.LongTypeAdapter;
 import joptsimple.internal.Strings;
@@ -72,7 +70,6 @@ public class InventorySetupsPersistentDataManager
 		this.sections = sections;
 
 		this.gson = this.gson.newBuilder().registerTypeAdapter(long.class, new LongTypeAdapter()).create();
-		this.gson = this.gson.newBuilder().registerTypeAdapter(InventorySetupItemSerializable.class, new InventorySetupItemSerializableTypeAdapter()).create();
 	}
 
 	public void loadConfig()
@@ -86,6 +83,16 @@ public class InventorySetupsPersistentDataManager
 
 		final List<InventorySetup> setupsFromConfig = loadV3Setups();
 		inventorySetups.addAll(setupsFromConfig);
+		boolean repairedSlots = false;
+		for (final InventorySetup setup : setupsFromConfig)
+		{
+			repairedSlots |= repairSharedInventorySlot(setup);
+		}
+		if (repairedSlots)
+		{
+			log.info("Repaired inventory slots of setups whose items all shared one slot");
+			updateConfig(true, false);
+		}
 		processSetupsFromConfig();
 
 		cleanSetupLayouts();
@@ -243,6 +250,37 @@ public class InventorySetupsPersistentDataManager
 			loadedSetups.add(setup);
 		}
 		return loadedSetups;
+	}
+
+	static boolean repairSharedInventorySlot(final InventorySetup setup)
+	{
+		final List<InventorySetupsItem> inventory = setup.getInventory();
+		if (inventory == null)
+		{
+			return false;
+		}
+		final List<Integer> slots = new ArrayList<>();
+		boolean misplaced = false;
+		for (int i = 0; i < inventory.size(); i++)
+		{
+			if (!InventorySetupsItem.isEmptySlot(inventory.get(i)))
+			{
+				slots.add(inventory.get(i).getSlot());
+				misplaced |= inventory.get(i).getSlot() != i;
+			}
+		}
+		if (slots.size() < 2 || slots.get(0) < 0 || slots.stream().distinct().count() != 1 || !misplaced)
+		{
+			return false;
+		}
+		for (int i = 0; i < inventory.size(); i++)
+		{
+			if (!InventorySetupsItem.isEmptySlot(inventory.get(i)))
+			{
+				inventory.get(i).setSlot(i);
+			}
+		}
+		return true;
 	}
 
 	private void processSetupsFromConfig()

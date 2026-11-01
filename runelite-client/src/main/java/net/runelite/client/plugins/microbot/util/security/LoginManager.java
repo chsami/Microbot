@@ -1,14 +1,21 @@
 package net.runelite.client.plugins.microbot.util.security;
 
+import com.google.inject.Key;
+import com.google.inject.name.Names;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
+import net.runelite.client.config.ConfigManager;
 import net.runelite.client.config.ConfigProfile;
 import net.runelite.client.config.ProfileManager;
+import net.runelite.client.config.RuneScapeProfileType;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
+import net.runelite.client.rs.auth.Account;
+import net.runelite.client.rs.auth.JagexAuthService;
+import net.runelite.client.rs.auth.Session;
 import net.runelite.client.util.WorldUtil;
 import net.runelite.http.api.worlds.World;
 import net.runelite.http.api.worlds.WorldRegion;
@@ -41,6 +48,8 @@ public final class LoginManager {
 	private static final int WORLD_CHANGE_TIMEOUT_MS = 3000;
 	private static final Object LOGIN_LOCK = new Object();
 	private static final AtomicBoolean LOGIN_ATTEMPT_ACTIVE = new AtomicBoolean(false);
+	private static final AtomicBoolean SAVED_PASSWORD_WARNED = new AtomicBoolean(false);
+	private static final AtomicBoolean LAUNCH_CREDENTIALS_WARNED = new AtomicBoolean(false);
 	private static final AtomicReference<Instant> LAST_LOGIN_ATTEMPT = new AtomicReference<>(null);
 	private static final AtomicReference<GameState> LAST_KNOWN_GAME_STATE = new AtomicReference<>(GameState.UNKNOWN);
 
@@ -220,8 +229,11 @@ public final class LoginManager {
                 log.warn("Login aborted - could not select world {}", worldId);
                 return false;
             }
+            boolean jagexAccount = selectAccount(client, username, encryptedPassword);
             triggerLoginScreen();
-            setCredentials(client, username, encryptedPassword);
+            if (!jagexAccount) {
+                setCredentials(client, username, encryptedPassword);
+            }
             submitLogin();
             handleBlockingDialogs(client);
             return true;
@@ -299,6 +311,127 @@ public final class LoginManager {
         return Microbot.getClientThread()
                 .runOnClientThreadOptional(() -> client.getWorld() == worldId)
                 .orElse(false);
+    }
+
+    /**
+     * Puts the login screen in the mode the profile needs. If the active profile holds an imported
+     * Jagex Account session, or {@code username} matches a saved Jagex Account character, that
+     * character is selected. A client launched with a Jagex Account keeps its launch character for the
+     * profile it started on, for a profile linked to that character, and for a profile without a password.
+     * Otherwise the active Jagex Account is cleared so the username and password fields can be filled in.
+     *
+     * @return true if a Jagex Account character was selected
+     */
+    private static boolean selectAccount(Client client, String username, String encryptedPassword) throws Exception {
+        ConfigProfile profile = Microbot.getConfigManager() != null ? getActiveProfile() : null;
+        if (profile != null && profile.getJagexSessionId() != null && username.equalsIgnoreCase(profile.getName())) {
+            log.debug("Switching to the profile's imported Jagex Account character");
+            switchJagexAccount(client, Encryption.decrypt(profile.getJagexSessionId()), profile.getJagexCharacterId(), profile.getName());
+            return true;
+        }
+        // getLauncherDisplayName() keeps the launch-time name after the account changes, so it does not show
+        // which account is selected now: select the launch character again
+        if (username.equalsIgnoreCase(client.getLauncherDisplayName()) || isLaunchProfile(client, profile, username)) {
+            selectLaunchCharacter(client);
+            return true;
+        }
+        JagexAuthService jagexAuthService = Microbot.getInjector().getInstance(JagexAuthService.class);
+        if (jagexAuthService.getSessions().isEmpty()) {
+            // Profile logins run on the shared single-thread executor, so loadFromStore().join() would deadlock
+            jagexAuthService.loadFromStoreNow();
+        }
+        for (Session session : jagexAuthService.getSessions()) {
+            Account[] accounts = jagexAuthService.getAccounts(session.getSessionId());
+            if (accounts == null) {
+                continue;
+            }
+            for (Account account : accounts) {
+                if (username.equalsIgnoreCase(account.getDisplayName())) {
+                    log.debug("Switching to the profile's Jagex Account character");
+                    switchJagexAccount(client, session.getSessionId(), Long.toString(account.getAccountId()), account.getDisplayName());
+                    return true;
+                }
+            }
+        }
+        if (client.getLauncherDisplayName() != null) {
+            if (isLaunchCharacterProfile(client, profile, username)) {
+                if (encryptedPassword != null && !encryptedPassword.isBlank() && !SAVED_PASSWORD_WARNED.getAndSet(true)) {
+                    log.warn("This profile has a saved password, but the client was started with the Jagex Account character {}, so logins use that character. "
+                            + "To log in with the profile's username and password, use \"Play without Jagex Account\" in the Microbot launcher, "
+                            + "remove credentials.properties from the .runelite folder if you start from the RuneLite launcher, or switch to another profile.",
+                            client.getLauncherDisplayName());
+                }
+                selectLaunchCharacter(client);
+                return true;
+            }
+            if (encryptedPassword == null || encryptedPassword.isBlank()) {
+                JagexCredentials launch = JagexCredentials.fromLaunch();
+                if (launch != null && launch.getDisplayName().equalsIgnoreCase(client.getLauncherDisplayName())) {
+                    log.info("Profile {} has no password: logging in with the launch Jagex Account character {}", username, launch.getDisplayName());
+                    switchJagexAccount(client, launch.getSessionId(), launch.getCharacterId(), launch.getDisplayName());
+                    return true;
+                }
+            }
+            log.info("Clearing the active Jagex Account to log in with a username and password");
+            switchJagexAccount(client, null, null, null);
+        }
+        return false;
+    }
+
+    private static void selectLaunchCharacter(Client client) {
+        JagexCredentials launch = JagexCredentials.fromLaunch();
+        if (launch == null) {
+            if (!LAUNCH_CREDENTIALS_WARNED.getAndSet(true)) {
+                log.warn("No Jagex Account credentials from the launch were found: logging in with the Jagex Account already on the login screen");
+            }
+        } else if (!launch.getDisplayName().equalsIgnoreCase(client.getLauncherDisplayName())) {
+            if (!LAUNCH_CREDENTIALS_WARNED.getAndSet(true)) {
+                log.warn("The Jagex Account credentials name a different character than this client was started with: logging in with the Jagex Account already on the login screen");
+            }
+        } else {
+            log.info("Selecting the Jagex Account character this client was started with");
+            switchJagexAccount(client, launch.getSessionId(), launch.getCharacterId(), launch.getDisplayName());
+        }
+    }
+
+    private static boolean isLaunchCharacterProfile(Client client, ConfigProfile profile, String username) {
+        if (profile == null || !username.equalsIgnoreCase(profile.getName())) {
+            return false;
+        }
+        ConfigManager configManager = Microbot.getConfigManager();
+        if (Long.valueOf(profile.getId()).equals(configManager.getStartupProfileId())) {
+            return true;
+        }
+        List<String> linkedRsProfiles = profile.getDefaultForRsProfiles();
+        return linkedRsProfiles != null && configManager.getRSProfiles().stream()
+                .anyMatch(rsProfile -> rsProfile.getType() == RuneScapeProfileType.STANDARD
+                        && linkedRsProfiles.contains(rsProfile.getKey())
+                        && client.getLauncherDisplayName().equals(rsProfile.getDisplayName()));
+    }
+
+    /**
+     * The launcher's "Play With Jagex Account" starts the client on a profile chosen for that character
+     * ({@code -profile=}), and the profile's name need not match the character's. Logging that profile in
+     * means the launch character, not a legacy login under the profile's name.
+     */
+    private static boolean isLaunchProfile(Client client, ConfigProfile profile, String username) {
+        if (profile == null || client.getLauncherDisplayName() == null || !username.equalsIgnoreCase(profile.getName())) {
+            return false;
+        }
+        String launchProfile = Microbot.getInjector().getInstance(Key.get(String.class, Names.named("profile")));
+        return profile.getName().equals(launchProfile);
+    }
+
+    private static void switchJagexAccount(Client client, String sessionId, String characterId, String displayName) {
+        // Waits for the switch to finish. getLauncherDisplayName() keeps the launch-time name, so it cannot confirm it.
+        boolean switched = Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            client.switchJagexAccount(sessionId, characterId, displayName);
+            return true;
+        }).orElse(false);
+        if (!switched) {
+            throw new IllegalStateException("The client thread did not switch the Jagex Account");
+        }
+        JagexAuthService.noteAccountSwitch(characterId);
     }
 
     private static void setCredentials(Client client, String username, String encryptedPassword) {

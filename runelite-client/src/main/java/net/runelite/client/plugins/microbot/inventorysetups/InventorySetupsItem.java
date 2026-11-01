@@ -63,6 +63,11 @@ public class InventorySetupsItem
 		locked = !locked;
 	}
 
+	public InventorySetupsItem copyToSlot(final int newSlot)
+	{
+		return new InventorySetupsItem(id, name, quantity, fuzzy, stackCompare, locked, newSlot);
+	}
+
 	public static InventorySetupsItem getDummyItem()
 	{
 		return new InventorySetupsItem(-1, "", 0, false, InventorySetupsStackCompareID.None, false, -1);
@@ -77,6 +82,11 @@ public class InventorySetupsItem
 				(item.getStackCompare() == InventorySetupsStackCompareID.None || item.getStackCompare() == null) &&
 				!item.isLocked() &&
 				item.getSlot() == -1;
+	}
+
+	public static boolean isEmptySlot(final InventorySetupsItem item)
+	{
+		return item == null || item.getId() == -1;
 	}
 
 	public String getName() {

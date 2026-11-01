@@ -1,0 +1,485 @@
+package net.runelite.client.plugins.microbot.bans;
+
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import java.awt.Component;
+import java.io.File;
+import java.nio.file.Path;
+import java.time.Clock;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import javax.inject.Inject;
+import javax.inject.Named;
+import javax.inject.Singleton;
+import javax.swing.SwingUtilities;
+import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.Client;
+import net.runelite.api.GameState;
+import net.runelite.api.events.GameStateChanged;
+import net.runelite.api.events.GameTick;
+import net.runelite.api.gameval.VarPlayerID;
+import net.runelite.client.ClientSessionManager;
+import net.runelite.client.Notifier;
+import net.runelite.client.RuneLite;
+import net.runelite.client.RuneLiteProperties;
+import net.runelite.client.callback.ClientThread;
+import net.runelite.client.config.ConfigManager;
+import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.events.ClientShutdown;
+import net.runelite.client.plugins.Plugin;
+import net.runelite.client.plugins.PluginManager;
+import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.MicrobotApi;
+import net.runelite.client.plugins.microbot.MicrobotConfig;
+import net.runelite.client.plugins.microbot.alerts.ClientAlertReporter;
+import net.runelite.client.plugins.microbot.externalplugins.MicrobotPluginManager;
+import net.runelite.client.plugins.microbot.util.security.JagexCredentials;
+import net.runelite.client.rs.auth.JagexAuthService;
+import net.runelite.client.util.RunnableExceptionLogger;
+
+@Slf4j
+@Singleton
+public class BanTelemetry
+{
+	static final int BANNED_LOGIN_INDEX = 14;
+	static final int SAMPLE_TICKS = 100;
+	static final long MAX_SAMPLE_SECONDS = 120;
+	static final long RUNTIME_FLUSH_MINUTES = 60;
+	static final long MAX_PENDING_SECONDS = 2 * 3600;
+	static final String CUSTOM_PLUGIN = "custom";
+	private static final String BREAK_HANDLER_PREFIX = "BreakHandler";
+
+	private final Client client;
+	private final ClientThread clientThread;
+	private final PluginManager pluginManager;
+	private final MicrobotPluginManager microbotPluginManager;
+	private final MicrobotApi microbotApi;
+	private final ClientSessionManager clientSessionManager;
+	private final ScheduledExecutorService executor;
+	private final MicrobotConfig config;
+	private final ConfigManager configManager;
+	private final Notifier notifier;
+	private final boolean disableTelemetry;
+	private final BanLedger ledger;
+	private final Map<String, Long> pendingRuntime = new HashMap<>();
+	private final Set<String> handledThisRun = ConcurrentHashMap.newKeySet();
+
+	private ScheduledFuture<?> flushTask;
+	private volatile int watcherGeneration;
+	private volatile boolean watching;
+	private int ticks;
+	private long lastSampleMillis;
+	private long cachedHash = -1;
+	private String cachedKey;
+	private String cachedIdentity;
+	private final Supplier<String> selection;
+	private volatile String launchSelection;
+	private volatile boolean launchSelectionKnown;
+	private String cachedIdentityKey;
+	private String lastLoggedInKey;
+	private String identityKeyAtLastLogin;
+	private String playerNameAtLastLogin;
+	private boolean onBanScreen;
+
+	@Inject
+	BanTelemetry(Client client, ClientThread clientThread, PluginManager pluginManager, MicrobotPluginManager microbotPluginManager,
+		MicrobotApi microbotApi, ClientSessionManager clientSessionManager, ScheduledExecutorService executor, MicrobotConfig config,
+		ConfigManager configManager, Notifier notifier, Gson gson, @Named("disableTelemetry") boolean disableTelemetry)
+	{
+		this(client, clientThread, pluginManager, microbotPluginManager, microbotApi, clientSessionManager, executor, config,
+			configManager, notifier, gson, disableTelemetry, new File(new File(RuneLite.RUNELITE_DIR, "microbot"), "ban-ledger").toPath(), null);
+	}
+
+	BanTelemetry(Client client, ClientThread clientThread, PluginManager pluginManager, MicrobotPluginManager microbotPluginManager,
+		MicrobotApi microbotApi, ClientSessionManager clientSessionManager, ScheduledExecutorService executor, MicrobotConfig config,
+		ConfigManager configManager, Notifier notifier, Gson gson, boolean disableTelemetry, Path ledgerDir, Supplier<String> selection)
+	{
+		this.client = client;
+		this.clientThread = clientThread;
+		this.pluginManager = pluginManager;
+		this.microbotPluginManager = microbotPluginManager;
+		this.microbotApi = microbotApi;
+		this.clientSessionManager = clientSessionManager;
+		this.executor = executor;
+		this.config = config;
+		this.configManager = configManager;
+		this.notifier = notifier;
+		this.disableTelemetry = disableTelemetry;
+		this.ledger = new BanLedger(ledgerDir, gson, Clock.systemUTC());
+		this.selection = selection != null ? selection : () -> JagexAuthService.selectedAccount().orElseGet(this::launchSelection);
+	}
+
+	public void start()
+	{
+		if (!watching)
+		{
+			watching = true;
+			int generation = ++watcherGeneration;
+			clientThread.invokeLater(() -> watchLoginScreen(generation));
+		}
+		executor.execute(RunnableExceptionLogger.wrap(() ->
+		{
+			JagexCredentials.fromLaunch();
+			ledger.pruneStale();
+		}));
+		if (flushTask == null)
+		{
+			flushTask = executor.scheduleWithFixedDelay(RunnableExceptionLogger.wrap(() -> flushRuntime()),
+				RUNTIME_FLUSH_MINUTES, RUNTIME_FLUSH_MINUTES, TimeUnit.MINUTES);
+		}
+	}
+
+	public void stop()
+	{
+		watching = false;
+		if (flushTask != null)
+		{
+			flushTask.cancel(false);
+			flushTask = null;
+		}
+	}
+
+	@Subscribe
+	public void onClientShutdown(ClientShutdown event)
+	{
+		event.waitFor(flushRuntime());
+	}
+
+	@Subscribe
+	public void onGameStateChanged(GameStateChanged event)
+	{
+		GameState state = event.getGameState();
+		if (state == GameState.LOGIN_SCREEN || state == GameState.HOPPING || state == GameState.CONNECTION_LOST)
+		{
+			lastSampleMillis = 0;
+			ticks = 0;
+		}
+		else if (state == GameState.LOGGED_IN && lastSampleMillis == 0)
+		{
+			lastSampleMillis = System.currentTimeMillis();
+		}
+	}
+
+	@Subscribe
+	public void onGameTick(GameTick event)
+	{
+		String accountKey = currentAccountKey();
+		String identityKey = currentIdentityKey();
+		if (accountKey != null)
+		{
+			lastLoggedInKey = accountKey;
+			identityKeyAtLastLogin = identityKey;
+			if (client.getLocalPlayer() != null && client.getLocalPlayer().getName() != null)
+			{
+				playerNameAtLastLogin = client.getLocalPlayer().getName();
+			}
+		}
+		if (++ticks < SAMPLE_TICKS)
+		{
+			return;
+		}
+		ticks = 0;
+		long now = System.currentTimeMillis();
+		long elapsed = lastSampleMillis == 0 ? 0 : Math.min((now - lastSampleMillis) / 1000, MAX_SAMPLE_SECONDS);
+		lastSampleMillis = now;
+		if (elapsed <= 0 || accountKey == null || isDisabled())
+		{
+			return;
+		}
+		List<String> scripts = activeScripts();
+		if (scripts.isEmpty())
+		{
+			return;
+		}
+		boolean member = client.getVarpValue(VarPlayerID.ACCOUNT_CREDIT) > 0;
+		int totalLevel = client.getTotalLevel();
+		boolean breaks = breakHandlerActive();
+		if (config.banReports() != BanReportMode.NEVER)
+		{
+			addPendingRuntime(BanLedger.split(scripts, elapsed));
+		}
+		executor.execute(() -> ledger.record(accountKey, identityKey, elapsed, scripts, member, totalLevel, breaks));
+	}
+
+	private boolean watchLoginScreen(int generation)
+	{
+		if (!watching || generation != watcherGeneration)
+		{
+			return true;
+		}
+		try
+		{
+			checkLoginScreen();
+		}
+		catch (RuntimeException e)
+		{
+			log.debug("Ban screen check failed", e);
+		}
+		return false;
+	}
+
+	private void checkLoginScreen()
+	{
+		boolean banned = client.getGameState() == GameState.LOGIN_SCREEN && client.getLoginIndex() == BANNED_LOGIN_INDEX;
+		boolean entered = banned && !onBanScreen;
+		onBanScreen = banned;
+		if (entered && !isDisabled())
+		{
+			BanAttribution.Context context = BanAttribution.Context.builder()
+				.identityKey(currentIdentityKey())
+				.identityKeyAtLastLogin(identityKeyAtLastLogin)
+				.lastLoggedInKey(lastLoggedInKey)
+				.build();
+			Component parent = client.getCanvas();
+			String loginName = displayLoginName();
+			String playerName = playerNameAtLastLogin;
+			executor.execute(RunnableExceptionLogger.wrap(() -> onBanDetected(context, loginName, playerName, parent)));
+		}
+	}
+
+	private void onBanDetected(BanAttribution.Context context, String loginName, String playerName, Component parent)
+	{
+		Optional<String> accountKey = BanAttribution.resolve(context, ledger::accountFor);
+		String shownName = accountKey.isPresent() && accountKey.get().equals(context.getLastLoggedInKey()) && playerName != null
+			? playerName
+			: loginName;
+		if (accountKey.isEmpty())
+		{
+			log.info("Ban screen seen, but Microbot can't tell which botted account it is; no ban report");
+			return;
+		}
+		String key = accountKey.get();
+		if (ledger.recentlyReported(key) || ledger.report(key, BanKind.UNKNOWN.value, null).isEmpty() || !handledThisRun.add(key))
+		{
+			return;
+		}
+
+		BanReportMode mode = config.banReports();
+		if (mode == BanReportMode.NEVER)
+		{
+			return;
+		}
+		if (mode == BanReportMode.ALWAYS)
+		{
+			send(key, BanKind.UNKNOWN);
+			return;
+		}
+		clientThread.invokeLater(() -> notifier.notify("A botted account shows the \"account disabled\" screen. "
+			+ "Microbot is asking whether to share an anonymous ban report."));
+		SwingUtilities.invokeLater(() ->
+		{
+			try
+			{
+				BanReportDialog.ask(parent, shownName, answer -> onAnswer(key, answer));
+			}
+			catch (RuntimeException e)
+			{
+				log.warn("Could not show the ban report dialog", e);
+			}
+		});
+	}
+
+	private void onAnswer(String key, BanReportDialog.Answer answer)
+	{
+		if (answer.isRemember())
+		{
+			configManager.setConfiguration(MicrobotConfig.configGroup, MicrobotConfig.keyBanReports,
+				answer.isSend() ? BanReportMode.ALWAYS : BanReportMode.NEVER);
+		}
+		if (answer.isSend())
+		{
+			executor.execute(() -> send(key, answer.getKind()));
+		}
+		else if (answer.isAnswered())
+		{
+			executor.execute(() -> ledger.markReported(key));
+		}
+	}
+
+	private void send(String accountKey, BanKind kind)
+	{
+		UUID sessionId = clientSessionManager.getMicrobotSessionId();
+		Optional<JsonObject> report = ledger.report(accountKey, kind.value, RuneLiteProperties.getMicrobotVersion());
+		if (isDisabled())
+		{
+			return;
+		}
+		if (sessionId == null || report.isEmpty())
+		{
+			sendFailed(accountKey);
+			return;
+		}
+		JsonObject payload = report.get();
+		payload.addProperty("sessionId", sessionId.toString());
+		microbotApi.submitBanReport(payload).thenAccept(sent ->
+		{
+			if (sent)
+			{
+				executor.execute(() -> ledger.markReported(accountKey));
+				log.info("Sent an anonymous ban report");
+				clientThread.invokeLater(() -> notifier.notify("Ban report sent. Thank you for helping other Microbot players."));
+			}
+			else
+			{
+				sendFailed(accountKey);
+			}
+		});
+	}
+
+	private void sendFailed(String accountKey)
+	{
+		handledThisRun.remove(accountKey);
+		clientThread.invokeLater(() -> notifier.notify("The ban report couldn't be sent. You'll get another chance to send it "
+			+ "the next time this account shows the screen."));
+	}
+
+	CompletableFuture<?> flushRuntime()
+	{
+		if (config.banReports() == BanReportMode.NEVER)
+		{
+			synchronized (pendingRuntime)
+			{
+				pendingRuntime.clear();
+			}
+			return CompletableFuture.completedFuture(null);
+		}
+		UUID sessionId = clientSessionManager.getMicrobotSessionId();
+		if (sessionId == null || isDisabled())
+		{
+			return CompletableFuture.completedFuture(null);
+		}
+		Map<String, Long> batch;
+		synchronized (pendingRuntime)
+		{
+			if (pendingRuntime.isEmpty())
+			{
+				return CompletableFuture.completedFuture(null);
+			}
+			batch = new HashMap<>(pendingRuntime);
+			pendingRuntime.clear();
+		}
+		JsonObject payload = new JsonObject();
+		payload.addProperty("sessionId", sessionId.toString());
+		JsonArray plugins = new JsonArray();
+		batch.forEach((plugin, seconds) ->
+		{
+			JsonObject entry = new JsonObject();
+			entry.addProperty("plugin", plugin);
+			entry.addProperty("seconds", seconds);
+			plugins.add(entry);
+		});
+		payload.add("plugins", plugins);
+		return microbotApi.submitPluginRuntime(payload).thenAccept(sent ->
+		{
+			if (!sent)
+			{
+				addPendingRuntime(batch);
+			}
+		});
+	}
+
+	void addPendingRuntime(Map<String, Long> seconds)
+	{
+		synchronized (pendingRuntime)
+		{
+			seconds.forEach((plugin, value) -> pendingRuntime.merge(plugin, value, (a, b) -> Math.min(a + b, MAX_PENDING_SECONDS)));
+		}
+	}
+
+	private String currentAccountKey()
+	{
+		long hash = client.getAccountHash();
+		if (hash == -1)
+		{
+			return null;
+		}
+		if (hash != cachedHash || cachedKey == null)
+		{
+			cachedHash = hash;
+			cachedKey = BanLedger.accountKey(hash);
+		}
+		return cachedKey;
+	}
+
+	private String currentIdentityKey()
+	{
+		String identity = loginIdentity();
+		if (!Objects.equals(identity, cachedIdentity))
+		{
+			cachedIdentity = identity;
+			cachedIdentityKey = BanLedger.identityKey(identity).orElse(null);
+		}
+		return cachedIdentityKey;
+	}
+
+	private List<String> activeScripts()
+	{
+		return pluginManager.getPlugins().stream()
+			.filter(ClientAlertReporter::isScript)
+			.filter(pluginManager::isPluginActive)
+			.map(plugin -> plugin.getClass().getSimpleName())
+			.map(name -> microbotPluginManager.getInstalledPluginVersion(name).isPresent() ? name : CUSTOM_PLUGIN)
+			.distinct()
+			.collect(Collectors.toList());
+	}
+
+	private boolean breakHandlerActive()
+	{
+		for (Plugin plugin : pluginManager.getPlugins())
+		{
+			if (plugin.getClass().getSimpleName().startsWith(BREAK_HANDLER_PREFIX) && pluginManager.isPluginActive(plugin))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	@SuppressWarnings("deprecation")
+	private String loginIdentity()
+	{
+		return BanAttribution.identity(selection.get(), client.getUsername());
+	}
+
+	@SuppressWarnings("deprecation")
+	private String displayLoginName()
+	{
+		return JagexAuthService.LEGACY_SELECTION.equals(selection.get()) ? client.getUsername() : null;
+	}
+
+	private String launchSelection()
+	{
+		if (!launchSelectionKnown)
+		{
+			JagexCredentials launch = JagexCredentials.fromLaunch();
+			if (launch != null)
+			{
+				launchSelection = launch.getCharacterId();
+			}
+			else
+			{
+				launchSelection = client.getLauncherDisplayName() == null ? JagexAuthService.LEGACY_SELECTION : null;
+			}
+			launchSelectionKnown = true;
+		}
+		return launchSelection;
+	}
+
+	private boolean isDisabled()
+	{
+		return disableTelemetry || Microbot.isTelemetryDisabled();
+	}
+}

@@ -16,6 +16,8 @@ Each guide lists known pitfalls when working with one specific game entity type.
 
 Ground-item pickup: [propagate dispatch failures](items.md#11-propagate-ground-item-dispatch-failures) and [preserve explicit Take](items.md#12-preserve-an-explicit-ground-item-take-when-a-widget-is-selected).
 
+Membership reads as 0 until the server sends it: [world gotcha 3](worlds.md#3-membership-reads-as-0-until-the-server-sends-it).
+
 Run-orb energy, geometry, and pending-click semantics: [movement gotcha 21](movement.md#21-apply-the-shared-energy-policy-before-clicking-the-run-orb).
 
 Scene walk-click render validity and destination confirmation: [movement gotcha 22](movement.md#22-a-scene-walk-click-is-only-valid-on-a-tile-rendered-at-click-time).
@@ -67,3 +69,5 @@ Each entity guide is a numbered list of gotchas. Each entry follows this structu
 Append a new numbered entry. Do **not** delete or rewrite existing entries unless they are factually wrong — each entry corresponds to a real failure mode and removing it loses the institutional memory of why the rule exists.
 
 Required-supply stops must suppress AutoLogin without blocking the next run: [items gotcha 15](items.md#15-suppress-autologin-only-for-confirmed-terminal-supply-stops).
+
+Minigame teleport dropdown clicks and teleport pricing: [movement gotcha 32](movement.md#32-click-a-dropdown-row-on-the-row-not-with-a-placeholder-rectangle) and [gotcha 33](movement.md#33-price-teleport-hops-the-same-way-in-bank-vs-direct-as-in-the-pathfinder).

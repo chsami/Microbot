@@ -769,16 +769,21 @@ public class Rs2Player {
      */
     @Deprecated(since = "2.1.0 - Use Rs2PlayerCache/Rs2PlayerQueryable", forRemoval = true)
     public static Stream<Rs2PlayerModel> getPlayers(Predicate<Rs2PlayerModel> predicate, boolean includeLocalPlayer) {
-        List<Rs2PlayerModel> players = Optional.of(Microbot.getClient().getTopLevelWorldView().players()
-                        .stream()
-                        .filter(Objects::nonNull)
-                        .map(Rs2PlayerModel::new)
-                        .filter(x -> includeLocalPlayer || x.getPlayer() != Microbot.getClient().getLocalPlayer())
-                        .filter(predicate)
-                        .collect(Collectors.toList())
-        ).orElse(new ArrayList<>());
+        List<Rs2PlayerModel> players = Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            WorldView worldView = Microbot.getClient().getTopLevelWorldView();
+            if (worldView == null) {
+                return Collections.<Rs2PlayerModel>emptyList();
+            }
+            Player localPlayer = Microbot.getClient().getLocalPlayer();
+            return worldView.players()
+                    .stream()
+                    .filter(Objects::nonNull)
+                    .filter(x -> includeLocalPlayer || x != localPlayer)
+                    .map(Rs2PlayerModel::new)
+                    .collect(Collectors.toList());
+        }).orElse(Collections.emptyList());
 
-        return players.stream();
+        return players.stream().filter(predicate);
     }
 
     /**

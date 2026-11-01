@@ -1,5 +1,7 @@
 package net.runelite.client.plugins.microbot.shortestpath.pathfinder;
 
+import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.client.plugins.microbot.shortestpath.TeleportationItem;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.TransportItemRequirement;
@@ -51,6 +53,45 @@ public class PathfinderItemRequirementTest {
     public void noRequirementsAreSatisfied() {
         assertTrue(PathfinderConfig.meetsItemRequirements(List.of(), itemId -> 0));
         assertTrue(PathfinderConfig.meetsItemRequirements(null, itemId -> 0));
+    }
+
+    @Test
+    public void slayerRingPoliciesRespectChargesAcrossAllDestinations() {
+        Set<Transport> originlessTransports = Transport.loadAllFromResources().get(null);
+        assertNotNull(originlessTransports);
+        List<Transport> rings = originlessTransports.stream()
+                .filter(transport -> transport.getType() == TransportType.TELEPORTATION_ITEM)
+                .filter(transport -> transport.getDisplayInfo() != null
+                        && transport.getDisplayInfo().startsWith("Slayer ring:"))
+                .collect(Collectors.toList());
+        Map<String, WorldPoint> destinations = Map.of(
+                "Slayer ring: Stronghold Slayer Cave", new WorldPoint(2432, 3423, 0),
+                "Slayer ring: Slayer Tower", new WorldPoint(3421, 3537, 0),
+                "Slayer ring: Fremennik", new WorldPoint(2802, 10000, 0),
+                "Slayer ring: Tarn's Lair", new WorldPoint(3185, 4601, 0),
+                "Slayer ring: Dark Beasts", new WorldPoint(2028, 4636, 0));
+
+        for (int heldItemId : List.of(ItemID.SLAYER_RING_ETERNAL,
+                ItemID.SLAYER_RING_8, ItemID.SLAYER_RING_7, ItemID.SLAYER_RING_6,
+                ItemID.SLAYER_RING_5, ItemID.SLAYER_RING_4, ItemID.SLAYER_RING_3,
+                ItemID.SLAYER_RING_2, ItemID.SLAYER_RING_1, -1)) {
+            for (TeleportationItem policy : TeleportationItem.values()) {
+                Map<String, WorldPoint> availableDestinations = rings.stream()
+                        .filter(transport -> PathfinderConfig.isTeleportationItemAllowedByPolicy(
+                                policy, transport.isConsumable()))
+                        .filter(transport -> TransportItemRequirement.selectProviders(
+                                transport.getItemRequirements(),
+                                itemId -> itemId == heldItemId ? 1 : 0,
+                                itemId -> itemId == heldItemId,
+                                itemId -> itemId == heldItemId).isPresent())
+                        .collect(Collectors.toMap(Transport::getDisplayInfo, Transport::getDestination));
+                boolean allowed = heldItemId != -1 && (policy == TeleportationItem.INVENTORY
+                        || (policy == TeleportationItem.INVENTORY_NON_CONSUMABLE
+                        && heldItemId == ItemID.SLAYER_RING_ETERNAL));
+                assertEquals("Item " + heldItemId + " with policy " + policy,
+                        allowed ? destinations : Map.of(), availableDestinations);
+            }
+        }
     }
 
     @Test

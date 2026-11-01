@@ -1925,11 +1925,7 @@ public final class Rs2PathApi
 
 	public static WorldMapPoint createTargetMarker(WorldPoint target)
 	{
-		WorldMapPoint marker = new WorldMapPoint(target, MARKER_IMAGE);
-		marker.setName("Target");
-		marker.setTarget(marker.getWorldPoint());
-		marker.setJumpOnClick(true);
-		return marker;
+		return ShortestPathPlugin.createTargetMarker(target);
 	}
 
 	// ------------------------------------------------------------------

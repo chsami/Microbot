@@ -23,9 +23,11 @@ import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.microbot.accountselector.TerminalLogoutHold;
 import net.runelite.client.plugins.microbot.alerts.ClientAlertReporter;
+import net.runelite.client.plugins.microbot.bans.BanTelemetry;
 import net.runelite.client.plugins.microbot.alerts.DashboardSync;
 import net.runelite.client.plugins.microbot.alerts.DeviceLinkFlow;
 import net.runelite.client.plugins.microbot.diagnostics.BugReportTracker;
+import net.runelite.client.plugins.microbot.diagnostics.FlightRecorder;
 import net.runelite.client.plugins.microbot.diagnostics.ScriptErrorReporter;
 import net.runelite.client.plugins.microbot.pouch.PouchOverlay;
 import net.runelite.client.plugins.microbot.ui.MicrobotPluginConfigurationDescriptor;
@@ -54,6 +56,7 @@ import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import net.runelite.client.plugins.microbot.util.security.HopBudget;
 import net.runelite.client.plugins.microbot.util.security.LoginManager;
+import net.runelite.client.plugins.microbot.util.security.MembershipRecorder;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.ui.overlay.Overlay;
@@ -124,6 +127,8 @@ public class MicrobotPlugin extends Plugin
 	@Inject
 	private ScheduledExecutorService executor;
 
+	private final MembershipRecorder membershipRecorder = new MembershipRecorder(() -> this.eventBus.post(new MembershipRecorder.MembershipSaved()));
+
 	private MicrobotTopLevelConfigPanel topLevelConfigPanel;
 
 	private NavigationButton navButton;
@@ -156,7 +161,13 @@ public class MicrobotPlugin extends Plugin
 	private ScriptErrorReporter scriptErrorReporter;
 
 	@Inject
+	private FlightRecorder flightRecorder;
+
+	@Inject
 	private ClientAlertReporter clientAlertReporter;
+
+	@Inject
+	private BanTelemetry banTelemetry;
 
 	@Inject
 	private DashboardSync dashboardSync;
@@ -204,8 +215,11 @@ public class MicrobotPlugin extends Plugin
 		final LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
 		gameChatAttachment = gameChatAppender.install(context, microbotConfig::enableGameChatLogging);
 		scriptErrorAttachment = scriptErrorReporter.install(context);
+		flightRecorder.start();
 		eventBus.register(clientAlertReporter);
 		clientAlertReporter.start();
+		eventBus.register(banTelemetry);
+		banTelemetry.start();
 		dashboardSync.start();
 		eventBus.register(deviceLinkFlow);
 		eventBus.register(terminalLogoutHold);
@@ -282,8 +296,11 @@ public class MicrobotPlugin extends Plugin
 		bugReportTracker.stop();
 		gameChatAttachment.remove();
 		scriptErrorAttachment.remove();
+		flightRecorder.stop();
 		eventBus.unregister(clientAlertReporter);
 		clientAlertReporter.stop();
+		eventBus.unregister(banTelemetry);
+		banTelemetry.stop();
 		dashboardSync.stop();
 		eventBus.unregister(deviceLinkFlow);
 		eventBus.unregister(terminalLogoutHold);
@@ -413,6 +430,10 @@ public class MicrobotPlugin extends Plugin
 	   if (gameStateChanged.getGameState() == GameState.LOGIN_SCREEN || gameStateChanged.getGameState() == GameState.HOPPING)
 	   {
 		   hwidSpoofCheck.loginStarted();
+	   }
+	   if (gameStateChanged.getGameState() == GameState.LOGIN_SCREEN)
+	   {
+		   membershipRecorder.reset();
 	   }
 	   if (gameStateChanged.getGameState() == GameState.HOPPING || gameStateChanged.getGameState() == GameState.LOGIN_SCREEN || gameStateChanged.getGameState() == GameState.CONNECTION_LOST)
 	   {
@@ -759,6 +780,8 @@ public class MicrobotPlugin extends Plugin
 		{
 			scriptErrorReporter.rememberPlayerName(localPlayer.getName());
 		}
+
+		membershipRecorder.onGameTick(Microbot.getClient(), configManager, executor);
 	}
 
 	@Subscribe(priority = 100)

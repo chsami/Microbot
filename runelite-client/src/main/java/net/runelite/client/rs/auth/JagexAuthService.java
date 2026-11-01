@@ -38,8 +38,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.atomic.AtomicReference;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.RequiredArgsConstructor;
@@ -53,6 +55,9 @@ import net.runelite.client.util.OSType;
 @RequiredArgsConstructor(onConstructor_ = @Inject)
 public class JagexAuthService
 {
+	public static final String LEGACY_SELECTION = "legacy";
+	private static final AtomicReference<String> SELECTED_ACCOUNT = new AtomicReference<>();
+
 	private final Client client;
 	private final ClientThread clientThread;
 	private final JagexAuthClient authClient;
@@ -65,29 +70,32 @@ public class JagexAuthService
 
 	public CompletableFuture<Void> loadFromStore()
 	{
-		return CompletableFuture.runAsync(
-			() ->
+		return CompletableFuture.runAsync(this::loadFromStoreNow, executor);
+	}
+
+	/**
+	 * Loads the saved sessions on the calling thread. Code already running on the shared
+	 * executor must use this: joining {@link #loadFromStore()} there waits on itself forever.
+	 */
+	public void loadFromStoreNow()
+	{
+		try
+		{
+			List<Session> sessions = sessionStore.load();
+			synchronized (this)
 			{
-				try
+				this.sessions.clear();
+				this.accounts.clear();
+				for (Session session : sessions)
 				{
-					List<Session> sessions = sessionStore.load();
-					synchronized (this)
-					{
-						this.sessions.clear();
-						this.accounts.clear();
-						for (Session session : sessions)
-						{
-							loadSession(session);
-						}
-					}
+					loadSession(session);
 				}
-				catch (Exception e)
-				{
-					log.error("Unable to load saved Jagex accounts", e);
-				}
-			},
-			executor
-		);
+			}
+		}
+		catch (Exception e)
+		{
+			log.error("Unable to load saved Jagex accounts", e);
+		}
 	}
 
 	public synchronized List<Session> getSessions()
@@ -219,7 +227,18 @@ public class JagexAuthService
 
 	public void switchJagexAccount(String sessionId, String sub, String displayName)
 	{
+		noteAccountSwitch(sub);
 		clientThread.invoke(() -> client.switchJagexAccount(sessionId, sub, displayName));
+	}
+
+	public static void noteAccountSwitch(String characterId)
+	{
+		SELECTED_ACCOUNT.set(characterId == null || characterId.isBlank() ? LEGACY_SELECTION : characterId);
+	}
+
+	public static Optional<String> selectedAccount()
+	{
+		return Optional.ofNullable(SELECTED_ACCOUNT.get());
 	}
 
 	private static URL getJagexAuthURL()

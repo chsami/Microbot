@@ -3,11 +3,13 @@ package net.runelite.client.plugins.microbot.inventorysetups.serialization;
 import net.runelite.client.plugins.microbot.inventorysetups.InventorySetupsItem;
 import net.runelite.client.plugins.microbot.inventorysetups.InventorySetupsStackCompareID;
 
+import com.google.gson.annotations.JsonAdapter;
 import lombok.Value;
 
 import javax.annotation.Nullable;
 
 @Value
+@JsonAdapter(value = InventorySetupItemSerializableTypeAdapter.class, nullSafe = false)
 public class InventorySetupItemSerializable
 {
 	int id;

@@ -2,6 +2,7 @@ package net.runelite.client.plugins.microbot.inventorysetups.serialization;
 
 import net.runelite.client.plugins.microbot.inventorysetups.InventorySetup;
 import net.runelite.client.plugins.microbot.inventorysetups.InventorySetupLayoutUtilities;
+import net.runelite.client.plugins.microbot.inventorysetups.InventorySetupsItem;
 import lombok.Value;
 import net.runelite.client.plugins.banktags.tabs.Layout;
 
@@ -38,6 +39,19 @@ public class InventorySetupPortable
 
 	public InventorySetup getSerializedSetup()
 	{
-		return InventorySetupSerializable.convertToInventorySetup(setup);
+		InventorySetup imported = InventorySetupSerializable.convertToInventorySetup(setup);
+		List<InventorySetupsItem> inventory = imported.getInventory();
+		if (inventory != null)
+		{
+			for (int i = 0; i < inventory.size(); i++)
+			{
+				InventorySetupsItem item = inventory.get(i);
+				if (!InventorySetupsItem.isEmptySlot(item) && item.getSlot() < 0)
+				{
+					item.setSlot(i);
+				}
+			}
+		}
+		return imported;
 	}
 }

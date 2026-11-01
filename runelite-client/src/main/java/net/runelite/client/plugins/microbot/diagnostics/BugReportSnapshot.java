@@ -11,6 +11,7 @@ public class BugReportSnapshot
 	String diagnostics;
 	String gameState;
 	String log;
+	String recorder;
 	byte[] screenshot;
 	boolean loggedIn;
 	@Builder.Default

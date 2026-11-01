@@ -8,6 +8,7 @@ import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
 import net.runelite.client.config.Range;
+import net.runelite.client.plugins.microbot.bans.BanReportMode;
 import net.runelite.client.plugins.microbot.util.security.HopBudget;
 
 @ConfigGroup(MicrobotConfig.configGroup)
@@ -237,13 +238,30 @@ public interface MicrobotConfig extends Config
 	@ConfigItem(
 		keyName = keyDisableTelemetry,
 		name = "Disable telemetry",
-		description = "Stop outbound calls to microbot.cloud (update check, random-fact splash, session ping, script error reports). " +
+		description = "Stop outbound calls to microbot.cloud (update check, random-fact splash, session ping, script error reports, " +
+				"plugin runtime totals, ban reports). " +
 				"Equivalent to launching with -Dmicrobot.disableTelemetry=true.",
 		position = 6,
 		section = generalSection
 	)
 	default boolean disableTelemetry() {
 		return false;
+	}
+
+	String keyBanReports = "banReports";
+	@ConfigItem(
+		keyName = keyBanReports,
+		name = "Ban reports and script runtime",
+		description = "Ask me and Always send share hourly script runtime totals (script names and minutes, no account info) " +
+				"so ban rates per script can be worked out. When a botted account shows the \"account disabled\" screen: " +
+				"Ask me shows a prompt, Always send sends a report without asking (the ban type is sent as unknown, so locked " +
+				"accounts may be counted), Never send sends neither. Reports don't include your account name, email or location, " +
+				"only a scrambled ID. Ignored while Disable telemetry is on.",
+		position = 5,
+		section = generalSection
+	)
+	default BanReportMode banReports() {
+		return BanReportMode.ASK;
 	}
 
 	String keyDisableInputYielding = "disableInputYielding";

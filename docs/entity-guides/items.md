@@ -241,9 +241,9 @@ try {
 
 **Where this applies:** `Rs2Walker.walkWithBankingState` and any bank or inventory workflow that verifies a quantity of stackable items.
 
-## 14. Address chatbox and Grand Exchange widgets through gameval, and read the offer price from its long varp
+## 14. Address chatbox and Grand Exchange widgets through gameval, and read the offer price from varp 5753 whichever type it is stored as
 
-Chatbox (group 162) child indices shift when Jagex adds a component; RuneLite regenerates `net.runelite.api.gameval.InterfaceID` each update, but raw `(162, n)` pairs stay stale. The Grand Exchange offer price is no longer a varbit: varbit 4398 was removed on 30 Sep 2026 and the in-progress price now lives in long varp 5753, read with `client.getVarpLongValue`.
+Chatbox (group 162) child indices shift when Jagex adds a component; RuneLite regenerates `net.runelite.api.gameval.InterfaceID` each update, but raw `(162, n)` pairs stay stale. The Grand Exchange offer price is no longer a varbit: varbit 4398 was removed on 30 Sep 2026 and the in-progress price now lives in varp 5753. Some sessions store it as a long and others as an int, and each getter throws `IllegalArgumentException` ("varp 5753 is an int" / "is a long") for the other type, so read it with `getVarpLongValue` and fall back to `getVarpValue` on that exception.
 
 **Why this matters:** After the 30 Sep 2026 update, `MES_LAYER_SCROLLCONTENTS` moved from 162:52 to 162:53. The buy flow waited 5 s on 162:52 for the search prompt every time, `getVarbitValue(4398)` threw `IndexOutOfBoundsException` on every price check and printed the stack trace in chat, and buy/sell returned success before the offer was placed because they waited on the details panel (465:15) instead of the setup panel (465:26).
 
@@ -257,7 +257,13 @@ Microbot.getVarbitValue(4398);
 // Right
 Rs2Widget.sleepUntilHasWidgetText("Start typing", InterfaceID.CHATBOX,
         InterfaceID.Chatbox.MES_LAYER_SCROLLCONTENTS & 0xFFFF, false, 5000);
-Microbot.getClientThread().runOnClientThreadOptional(() -> Microbot.getClient().getVarpLongValue(5753));
+Microbot.getClientThread().runOnClientThreadOptional(() -> {
+    try {
+        return Microbot.getClient().getVarpLongValue(5753);
+    } catch (IllegalArgumentException e) {
+        return (long) Microbot.getClient().getVarpValue(5753);
+    }
+});
 ```
 
 **Where this applies:** `Rs2GrandExchange`, `GrandExchangeWidget`, `Rs2Dialogue`, `Rs2Bank` X-amount prompts, and any helper reading chatbox prompts or GE offer state.
@@ -287,6 +293,22 @@ While a shop, bank, deposit box or Grand Exchange inventory is open or rebuildin
 
 **Defensive check:** Run `Rs2InventoryInvokeMenuTest`.
 
+
+## 18. An Inventory Setup slot is empty when its id is -1
+
+`InventorySetupsItem.itemIsDummy` only recognises a slot that was never touched. Removing an item in the panel, toggling fuzzy, lock or a stack indicator on an empty slot, or updating a setup from the current inventory and equipment (which copies fuzzy, stack and lock settings onto empty slots) leaves an item with id `-1` that keeps those settings, and it is saved that way. Code that reads a setup, in the client or in Hub scripts, must treat any id `-1` row as empty with `InventorySetupsItem.isEmptySlot`; keep `itemIsDummy` for serialization only.
+
+**Why this matters:** An emptied equipment slot made `doesEquipmentMatch` fail forever and sent `loadEquipment` to the bank on every call, and an emptied fuzzy inventory slot (name `""`) matched every item, so loading dragged items into it and `getItemsNotInInventorySetup` reported nothing.
+
+**Defensive check:** Run `InventorySetupMatchingTest`.
+
+## 19. An Rs2ItemModel can have no ItemComposition yet
+
+Models built from cached ids (`createFromCache`, the `(id, quantity, slot)` and `(id, quantity, slot, null)` constructors) start with a null composition and load it lazily. Every composition-backed getter must call `ensureCompositionLoaded()` first and fall back to a neutral value when it is still missing; `getHaPrice()` returns 0 and `isHaProfitable()` returns false in that case.
+
+**Why this matters:** `getHaPrice()` read the composition field directly and threw an NPE for bank and cached items, which also broke `isHaProfitable()` and Hub high-alch scripts.
+
+**Defensive check:** Run `Rs2ItemModelHaPriceTest`.
 
 ## Terminal supply stops need observed logout
 

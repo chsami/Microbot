@@ -372,6 +372,7 @@ public class ClientAlertReporter
 	{
 		return AlertEvent.builder()
 			.runningScripts(scripts.stream().map(ClientAlertReporter::scriptName).collect(Collectors.toList()))
+			.availableScripts(installedScripts())
 			.loggedIn(isLoggedIn())
 			.breakActive(isBreakActive());
 	}
@@ -381,6 +382,14 @@ public class ClientAlertReporter
 		return pluginManager.getPlugins().stream()
 			.filter(ClientAlertReporter::isScript)
 			.filter(pluginManager::isPluginActive)
+			.collect(Collectors.toList());
+	}
+
+	private List<AlertEvent.AvailableScript> installedScripts()
+	{
+		return pluginManager.getPlugins().stream()
+			.filter(ClientAlertReporter::isScript)
+			.map(plugin -> new AlertEvent.AvailableScript(plugin.getClass().getName(), scriptName(plugin)))
 			.collect(Collectors.toList());
 	}
 
@@ -437,7 +446,7 @@ public class ClientAlertReporter
 			&& previous.getState() >= GameState.LOADING.getState();
 	}
 
-	static boolean isScript(Plugin plugin)
+	public static boolean isScript(Plugin plugin)
 	{
 		PluginDescriptor descriptor = plugin == null ? null : plugin.getClass().getAnnotation(PluginDescriptor.class);
 		return descriptor != null && descriptor.isExternal() && !descriptor.hidden();
