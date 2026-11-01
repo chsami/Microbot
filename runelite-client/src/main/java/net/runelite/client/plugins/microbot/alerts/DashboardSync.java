@@ -81,6 +81,7 @@ public class DashboardSync
 	private boolean awaitingTick;
 	private boolean liveWindowOpen = true;
 	private boolean livePending;
+	private boolean liveRetried;
 	private int liveSent;
 
 	@Inject
@@ -195,33 +196,44 @@ public class DashboardSync
 
 	private void stateChanged()
 	{
-		executor.execute(RunnableExceptionLogger.wrap(this::requestLiveSync));
+		executor.execute(RunnableExceptionLogger.wrap(this::liveStateChanged));
+	}
+
+	private synchronized void liveStateChanged()
+	{
+		liveRetried = false;
+		requestLiveSync();
+	}
+
+	private synchronized void liveCaptureFailed()
+	{
+		if (!liveRetried)
+		{
+			liveRetried = true;
+			requestLiveSync();
+		}
 	}
 
 	private synchronized void requestLiveSync()
 	{
-		if (liveWindowOpen)
-		{
-			sendLiveSync();
-		}
-		else
-		{
-			livePending = true;
-		}
+		livePending = true;
+		sendPendingLiveSync();
 	}
 
 	private synchronized void liveWindowEnded()
 	{
 		liveWindowOpen = true;
-		if (livePending)
-		{
-			sendLiveSync();
-		}
+		sendPendingLiveSync();
 	}
 
 	private synchronized void liveSyncExpired()
 	{
 		liveSent--;
+		sendPendingLiveSync();
+	}
+
+	private synchronized void sendPendingLiveSync()
+	{
 		if (livePending && liveWindowOpen)
 		{
 			sendLiveSync();
@@ -251,7 +263,7 @@ public class DashboardSync
 				if (error != null)
 				{
 					log.debug("Unable to read the game state for the dashboard", error);
-					requestLiveSync();
+					liveCaptureFailed();
 					return;
 				}
 				postLiveSync(token.get(), sessionId, state);
@@ -356,9 +368,8 @@ public class DashboardSync
 		{
 			try
 			{
-				JsonObject state = DashboardGameState.capture(client, itemManager, xpTracker);
 				GameState status = client.getGameState();
-				if (captured.complete(state))
+				if (captured.complete(DashboardGameState.capture(client, itemManager, xpTracker)))
 				{
 					reportedStatus = status;
 				}

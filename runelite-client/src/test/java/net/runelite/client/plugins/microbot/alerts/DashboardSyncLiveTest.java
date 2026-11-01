@@ -4,8 +4,8 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ScheduledExecutorService;
@@ -38,11 +38,13 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import org.mockito.stubbing.Answer;
 
 public class DashboardSyncLiveTest
 {
@@ -57,7 +59,7 @@ public class DashboardSyncLiveTest
 	private final DashboardControl control = mock(DashboardControl.class);
 	private final ScheduledExecutorService executor = mock(ScheduledExecutorService.class);
 	private final Call longPollCall = mock(Call.class);
-	private final List<Scheduled> scheduled = new ArrayList<>();
+	private final List<Map.Entry<Long, Runnable>> scheduled = new ArrayList<>();
 	private final List<Callback> longPolls = new ArrayList<>();
 	private final List<Callback> liveSyncs = new ArrayList<>();
 	private final List<JsonObject> livePayloads = new ArrayList<>();
@@ -69,19 +71,16 @@ public class DashboardSyncLiveTest
 		when(linkToken.get()).thenReturn(Optional.of("token"));
 		when(sessions.getMicrobotSessionId()).thenReturn(SESSION);
 		when(client.getGameState()).thenReturn(GameState.LOGIN_SCREEN);
-		doAnswer(invocation ->
+		Answer<Void> runNow = invocation ->
 		{
 			((Runnable) invocation.getArgument(0)).run();
 			return null;
-		}).when(clientThread).invoke(any(Runnable.class));
-		doAnswer(invocation ->
-		{
-			((Runnable) invocation.getArgument(0)).run();
-			return null;
-		}).when(executor).execute(any(Runnable.class));
+		};
+		doAnswer(runNow).when(clientThread).invoke(any(Runnable.class));
+		doAnswer(runNow).when(executor).execute(any(Runnable.class));
 		when(executor.schedule(any(Runnable.class), anyLong(), any(TimeUnit.class))).thenAnswer(invocation ->
 		{
-			scheduled.add(new Scheduled(invocation.getArgument(0), invocation.getArgument(1)));
+			scheduled.add(Map.entry(invocation.getArgument(1), invocation.getArgument(0)));
 			return mock(ScheduledFuture.class);
 		});
 		when(api.syncDashboard(anyString(), any(JsonObject.class), anyInt(), any(Callback.class))).thenAnswer(invocation ->
@@ -186,13 +185,23 @@ public class DashboardSyncLiveTest
 	{
 		when(client.getGameState()).thenThrow(new IllegalStateException("not ready"));
 		sync.onGameStateChanged(event(GameState.LOGIN_SCREEN));
-		assertEquals(0, scheduled.stream().filter(task -> task.delayMs == DashboardSync.LIVE_SYNC_LIMIT_WINDOW_MS).count());
+		assertEquals(0, scheduled.stream().filter(task -> task.getKey() == DashboardSync.LIVE_SYNC_LIMIT_WINDOW_MS).count());
 
 		doReturn(GameState.LOGIN_SCREEN).when(client).getGameState();
 		runScheduled(DashboardSync.LIVE_SYNC_WINDOW_MS);
 		assertEquals(1, liveSyncs.size());
 		assertEquals("LOGIN_SCREEN", status(0));
-		assertEquals(1, scheduled.stream().filter(task -> task.delayMs == DashboardSync.LIVE_SYNC_LIMIT_WINDOW_MS).count());
+		assertEquals(1, scheduled.stream().filter(task -> task.getKey() == DashboardSync.LIVE_SYNC_LIMIT_WINDOW_MS).count());
+
+		runScheduled(DashboardSync.LIVE_SYNC_WINDOW_MS);
+		doThrow(new IllegalStateException("not ready")).when(client).getGameState();
+		sync.onGameStateChanged(event(GameState.LOGGING_IN));
+		runScheduled(DashboardSync.LIVE_SYNC_WINDOW_MS);
+		assertEquals(1, scheduled.stream().filter(task -> task.getKey() == DashboardSync.LIVE_SYNC_WINDOW_MS).count());
+
+		runScheduled(DashboardSync.LIVE_SYNC_WINDOW_MS);
+		assertEquals(0, scheduled.stream().filter(task -> task.getKey() == DashboardSync.LIVE_SYNC_WINDOW_MS).count());
+		assertEquals(1, liveSyncs.size());
 	}
 
 	@Test
@@ -330,17 +339,11 @@ public class DashboardSyncLiveTest
 
 	private void runScheduled(long delayMs)
 	{
-		Iterator<Scheduled> tasks = scheduled.iterator();
-		while (tasks.hasNext())
+		scheduled.stream().filter(task -> task.getKey() == delayMs).findFirst().ifPresent(task ->
 		{
-			Scheduled task = tasks.next();
-			if (task.delayMs == delayMs)
-			{
-				tasks.remove();
-				task.runnable.run();
-				return;
-			}
-		}
+			scheduled.remove(task);
+			task.getValue().run();
+		});
 	}
 
 	private static Response response(int code, String body)
@@ -352,17 +355,5 @@ public class DashboardSyncLiveTest
 			.message("status")
 			.body(ResponseBody.create(MediaType.get("application/json"), body))
 			.build();
-	}
-
-	private static final class Scheduled
-	{
-		private final Runnable runnable;
-		private final long delayMs;
-
-		private Scheduled(Runnable runnable, long delayMs)
-		{
-			this.runnable = runnable;
-			this.delayMs = delayMs;
-		}
 	}
 }
