@@ -37,7 +37,7 @@ import net.runelite.client.ui.NavigationButton;
 @Singleton
 public class MicrobotTour
 {
-	static final int TOUR_VERSION = 2;
+	static final int TOUR_VERSION = 1;
 	static final String TOUR_PROPERTY = "microbot.tour";
 	static final String ANTIBAN_TOOLTIP = "Antiban";
 	static final String INVENTORY_SETUPS_TOOLTIP = "Inventory Setups";

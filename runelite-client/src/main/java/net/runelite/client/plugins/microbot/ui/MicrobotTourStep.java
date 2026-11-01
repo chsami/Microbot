@@ -43,12 +43,13 @@ enum MicrobotTourStep
 			+ "Bot alerts shows whether they are on and lets you link your Microbot account. Open the dashboard to see your bots.",
 		true, true, Side.LEFT),
 	REPORT_PROBLEM("Report a problem",
-		"Script stuck or client acting up? Click the red bug button, choose Report a problem, say what you expected and what happened, "
-			+ "then Send. Your password is never sent. An orange dot means news under My reports, like a fix.",
+		"Script stuck or client acting up? Click the red bug button, choose Report a problem, pick the plugin, say what happened and click Send. "
+			+ "Your password is never sent. A yellow dot here means news under My reports, like a fix or a question.",
 		false, true, Side.LEFT),
-	HELP("Need help?",
-		"The red bug button can also start Microbot once in safe mode and links to Discord. "
-			+ "You can replay this tour from it too. That's it, have fun!",
+	HELP("More help",
+		"Problem with one plugin? The grey bug at the top of its settings reports it with that plugin picked. "
+			+ "This menu also has Safe mode next start, for when a plugin crashes the client, and Ask for help on Discord. "
+			+ "You can replay this tour here too. Have fun!",
 		false, true, Side.LEFT);
 
 	private final String title;
