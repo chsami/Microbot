@@ -58,7 +58,7 @@ public class GrandExchangeHandler extends AgentHandler {
 		}
 	}
 
-	private void handleWrite(HttpExchange exchange, String sub) throws IOException {
+	private void handleWrite(HttpExchange exchange, String sub) throws IOException, HttpMethodException {
 		switch (sub) {
 			case "/buy":
 				requirePost(exchange);
