@@ -211,6 +211,13 @@ public class MicrobotPluginManager {
                 .anyMatch(plugin -> plugin.getClass().getSimpleName().equalsIgnoreCase(internalName));
     }
 
+    public boolean isLoadedFromHub(String internalName) {
+        URLClassLoader loader = loaders.get(internalName);
+        return loader != null && getInstalledPlugins().stream()
+                .anyMatch(plugin -> plugin.getClass().getSimpleName().equalsIgnoreCase(internalName)
+                        && plugin.getClass().getClassLoader() == loader);
+    }
+
     /**
      * Gets the File object for the plugin JAR file corresponding to the given internal name.
      *

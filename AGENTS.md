@@ -3,7 +3,6 @@
 RuneLite fork with a hidden always-on plugin hosting automation scripts. Composite Gradle build, Java 11 target (JDK 17+ to develop).
 
 ## Build / validate
-- The Gradle daemon needs a JDK 17 install (`gradle/gradle-daemon-jvm.properties`); newer JDKs alone fail with "Cannot find a Java installation".
 - Compile: `./gradlew :client:compileJava`
 - Full: `./gradlew buildAll`
 - Shaded jar: `./gradlew :client:assemble`

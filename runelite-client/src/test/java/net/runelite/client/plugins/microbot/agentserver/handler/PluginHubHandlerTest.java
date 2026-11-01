@@ -46,7 +46,8 @@ public class PluginHubHandlerTest {
 		when(manager.getPluginHealth(any(), any())).thenAnswer(invocation ->
 				MicrobotPluginHealth.evaluate(invocation.getArgument(0), invocation.getArgument(1), true));
 		when(manager.installPlugin(any(), any())).thenReturn(CompletableFuture.completedFuture(null));
-		when(manager.updatePlugin(any(), any())).thenReturn(CompletableFuture.completedFuture(null));
+		when(manager.removePlugin(any())).thenReturn(CompletableFuture.completedFuture(null));
+		when(manager.isLoadedFromHub("AutoMiner")).thenReturn(true);
 
 		server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
 		PluginHubHandler handler = new PluginHubHandler(gson, manager, 50);
@@ -74,17 +75,46 @@ public class PluginHubHandlerTest {
 
 		assertEquals(200, post("/plugins/install", "{\"name\":\"AutoMiner\"}"));
 		verify(manager, never()).installPlugin(any(), any());
-		verify(manager, never()).updatePlugin(any(), any());
+		verify(manager, never()).removePlugin(any());
 	}
 
 	@Test
-	public void installOfLoadedPluginAtOtherVersionUpdatesIt() throws IOException {
-		when(manager.isLoaded("AutoMiner")).thenReturn(true);
+	public void installOfLoadedPluginAtOtherVersionRemovesThenInstalls() throws IOException {
+		when(manager.isLoaded("AutoMiner")).thenReturn(true, false, true);
 		when(manager.getInstalledPluginVersion("AutoMiner")).thenReturn(Optional.of("1.0.0"));
 
 		assertEquals(200, post("/plugins/install", "{\"name\":\"AutoMiner\"}"));
-		verify(manager).updatePlugin(manifest, null);
+		verify(manager).removePlugin(manifest);
+		verify(manager).installPlugin(manifest, null);
+	}
+
+	@Test
+	public void installOverPluginLoadedOutsideTheHubIsRefusedBeforeRemovingAnything() throws IOException {
+		when(manager.isLoaded("AutoMiner")).thenReturn(true);
+		when(manager.isLoadedFromHub("AutoMiner")).thenReturn(false);
+		when(manager.getInstalledPluginVersion("AutoMiner")).thenReturn(Optional.of("1.0.0"));
+
+		assertEquals(409, post("/plugins/install", "{\"name\":\"AutoMiner\"}"));
+		verify(manager, never()).removePlugin(any());
 		verify(manager, never()).installPlugin(any(), any());
+	}
+
+	@Test
+	public void installWhoseOldVersionStaysLoadedIsRefused() throws IOException {
+		when(manager.isLoaded("AutoMiner")).thenReturn(true);
+		when(manager.getInstalledPluginVersion("AutoMiner")).thenReturn(Optional.of("1.0.0"));
+
+		assertEquals(409, post("/plugins/install", "{\"name\":\"AutoMiner\"}"));
+		verify(manager, never()).installPlugin(any(), any());
+	}
+
+	@Test
+	public void secondInstallWhileTheFirstIsPendingIsRefused() throws IOException {
+		when(manager.installPlugin(any(), any())).thenReturn(new CompletableFuture<>());
+
+		assertEquals(202, post("/plugins/install", "{\"name\":\"AutoMiner\",\"timeout\":1}"));
+		assertEquals(409, post("/plugins/install", "{\"name\":\"AutoMiner\"}"));
+		verify(manager).installPlugin(any(), any());
 	}
 
 	@Test
@@ -103,9 +133,17 @@ public class PluginHubHandlerTest {
 	@Test
 	public void removeThatLeavesThePluginLoadedReportsConflict() throws IOException {
 		when(manager.isLoaded("AutoMiner")).thenReturn(true);
-		when(manager.removePlugin(any())).thenReturn(CompletableFuture.completedFuture(null));
 
 		assertEquals(409, post("/plugins/remove", "{\"name\":\"AutoMiner\"}"));
+	}
+
+	@Test
+	public void removeOfPluginLoadedOutsideTheHubIsRefusedBeforeDeletingTheJar() throws IOException {
+		when(manager.isLoaded("AutoMiner")).thenReturn(true);
+		when(manager.isLoadedFromHub("AutoMiner")).thenReturn(false);
+
+		assertEquals(409, post("/plugins/remove", "{\"name\":\"AutoMiner\"}"));
+		verify(manager, never()).removePlugin(any());
 	}
 
 	@Test

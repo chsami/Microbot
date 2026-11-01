@@ -47,7 +47,7 @@ TCP mode binds to `127.0.0.1` only. UDS mode binds to `~/.runelite/agent/agent.s
 
 ## Setup
 
-1. Build: `./gradlew :client:compileJava`
+1. Build: `./gradlew :client:compileJava`. The Gradle daemon needs a JDK 17 install (`gradle/gradle-daemon-jvm.properties`); newer JDKs alone fail with "Cannot find a Java installation".
 2. Launch the client
 3. Enable **"Agent Server"** in the Microbot plugin list
 4. Server starts on port `8081` (configurable)
@@ -338,6 +338,7 @@ Body: `{"name": "Banker", "action": "Bank"}` or `{"id": 3010, "action": "Attack"
 
 ```bash
 ./microbot-cli npcs interact "Banker" "Bank"
+./microbot-cli npcs interact --id 3010 "Attack"
 ```
 
 ### Objects
@@ -843,7 +844,7 @@ curl -X POST -H "Content-Type: application/json" \
 
 ### Grand Exchange
 
-`buy`, `sell` and `abort` walk to the Grand Exchange and open it when needed. `collect` opens it but does not walk, and `close` only closes it, so call those near a Grand Exchange clerk. Every write returns the current offers; a write that fails returns `409` with `"success": false`. Item names match exactly.
+No endpoint walks. `buy`, `sell`, `collect` and `abort` open the Grand Exchange when a clerk is in reach, and return `409` with "Not at the Grand Exchange" otherwise; walk there first with `POST /walk`. `collect` and `abort` also return `409` when the inventory is full, so nothing is deposited behind your back. Only one write runs at a time; a second one returns `409` while the first is running. Every write returns the current offers; a write that fails returns `409` with `"success": false` and an `error` when the handler refused it. Item names match exactly.
 
 | Endpoint | Body | Effect |
 |----------|------|--------|
@@ -890,12 +891,12 @@ Body: `{"name": "AutoMiner", "version": "2.0.0", "timeout": 60}`. `name` accepts
 | `200` | Plugin is loaded. The body is the plugin entry from `GET /plugins` |
 | `202` | Still running when `timeout` elapsed. Poll `GET /plugins?q=<name>` until `loaded` is `true` and `installedVersion` equals the requested version; the old version can still be loaded while an update runs |
 | `400` | No Plugin Hub entry with that name |
-| `409` | Health blocks the install (disabled upstream, broken version, or needs a newer client) |
+| `409` | Health blocks the install (disabled upstream, broken version, or needs a newer client); the plugin is loaded from outside the Plugin Hub (a dev build or sideloaded jar), so nothing was changed; the old version stayed loaded; or another install or removal is still running |
 | `502` | Download or load failed; the client log has the cause |
 
 #### POST /plugins/remove
 
-Stops, unloads and deletes a plugin. Body: `{"name": "AutoMiner", "timeout": 60}`. Returns `404` when the plugin is not installed, and `409` when it is still loaded afterwards (a plugin the Plugin Hub did not load stays until the client restarts).
+Stops, unloads and deletes a plugin. Body: `{"name": "AutoMiner", "timeout": 60}`. Returns `404` when the plugin is not installed, and `409` when it is loaded from outside the Plugin Hub (nothing is deleted), when it is still loaded afterwards, or when another install or removal is still running.
 
 ### Script Lifecycle
 

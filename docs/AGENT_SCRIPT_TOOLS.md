@@ -83,6 +83,7 @@ The **Agent Server** plugin (port 8081, localhost) must be enabled for any CLI/H
 | `inventory interact <name> <action>` | Use/eat/equip an item |
 | `inventory drop <name> [--all]` | Drop item(s) |
 | `npcs interact <name> <action>` | Interact with nearest NPC |
+| `npcs interact --id <id> <action>` | Interact with nearest NPC with that id |
 | `objects interact <name> <action>` | Interact with nearest object |
 | `ground-items pickup <name>` | Pick up nearest ground item |
 | `walk <x> <y> [plane] [--wait] [--timeout S]` | Walk to coordinates (non-blocking by default; `--wait` blocks) |

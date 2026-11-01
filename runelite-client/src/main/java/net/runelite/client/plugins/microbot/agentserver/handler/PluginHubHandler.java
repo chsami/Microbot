@@ -17,6 +17,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 public class PluginHubHandler extends AgentHandler {
@@ -27,6 +28,8 @@ public class PluginHubHandler extends AgentHandler {
 
 	private final MicrobotPluginManager pluginManager;
 	private final int maxResults;
+	private final ReentrantLock taskLock = new ReentrantLock();
+	private volatile Future<?> pendingTask;
 
 	public PluginHubHandler(Gson gson, MicrobotPluginManager pluginManager, int maxResults) {
 		super(gson);
@@ -51,11 +54,11 @@ public class PluginHubHandler extends AgentHandler {
 					break;
 				case "/install":
 					requirePost(exchange);
-					handleInstall(exchange);
+					runExclusive(exchange, () -> handleInstall(exchange));
 					break;
 				case "/remove":
 					requirePost(exchange);
-					handleRemove(exchange);
+					runExclusive(exchange, () -> handleRemove(exchange));
 					break;
 				default:
 					sendJson(exchange, 404, errorResponse("Unknown endpoint: " + BASE_PATH + sub));
@@ -108,10 +111,17 @@ public class PluginHubHandler extends AgentHandler {
 			return;
 		}
 
-		Future<?> task = loaded
-				? pluginManager.updatePlugin(manifest, version)
-				: pluginManager.installPlugin(manifest, version);
-		if (!awaitTask(exchange, task, timeout)) {
+		if (loaded) {
+			if (!requireLoadedFromHub(exchange, internalName)
+					|| !awaitTask(exchange, pluginManager.removePlugin(manifest), timeout)) {
+				return;
+			}
+			if (pluginManager.isLoaded(internalName)) {
+				sendJson(exchange, 409, errorResponse(internalName + " is still loaded after removing the old version; check the client log"));
+				return;
+			}
+		}
+		if (!awaitTask(exchange, pluginManager.installPlugin(manifest, version), timeout)) {
 			return;
 		}
 
@@ -130,16 +140,52 @@ public class PluginHubHandler extends AgentHandler {
 			sendJson(exchange, 404, errorResponse(manifest.getInternalName() + " is not installed"));
 			return;
 		}
+		if (!requireLoadedFromHub(exchange, manifest.getInternalName())) {
+			return;
+		}
 
 		if (!awaitTask(exchange, pluginManager.removePlugin(manifest), timeout)) {
 			return;
 		}
 		if (pluginManager.isLoaded(manifest.getInternalName())) {
-			sendJson(exchange, 409, errorResponse(manifest.getInternalName()
-					+ " is still loaded; it was not loaded through the Plugin Hub, so restart the client to unload it"));
+			sendJson(exchange, 409, errorResponse(manifest.getInternalName() + " is still loaded; check the client log"));
 			return;
 		}
 		sendJson(exchange, 200, describe(manifest));
+	}
+
+	private boolean requireLoadedFromHub(HttpExchange exchange, String internalName) throws IOException {
+		if (pluginManager.isLoadedFromHub(internalName)) {
+			return true;
+		}
+		sendJson(exchange, 409, errorResponse(internalName
+				+ " is loaded from outside the Plugin Hub (a dev build or sideloaded jar); restart the client without it first"));
+		return false;
+	}
+
+	private void runExclusive(HttpExchange exchange, PluginRequest request) throws IOException {
+		if (!taskLock.tryLock()) {
+			sendBusy(exchange);
+			return;
+		}
+		try {
+			Future<?> pending = pendingTask;
+			if (pending != null && !pending.isDone()) {
+				sendBusy(exchange);
+				return;
+			}
+			request.handle();
+		} finally {
+			taskLock.unlock();
+		}
+	}
+
+	private void sendBusy(HttpExchange exchange) throws IOException {
+		sendJson(exchange, 409, errorResponse("Another plugin install or removal is still running; poll GET /plugins?installed=true"));
+	}
+
+	private interface PluginRequest {
+		void handle() throws IOException;
 	}
 
 	private MicrobotPluginManifest requireManifest(Map<String, Object> body) {
@@ -155,6 +201,7 @@ public class PluginHubHandler extends AgentHandler {
 	 * Sends a 202 or 500 itself when the task did not finish, and returns false in that case.
 	 */
 	private boolean awaitTask(HttpExchange exchange, Future<?> task, int timeout) throws IOException {
+		pendingTask = task;
 		try {
 			task.get(timeout, TimeUnit.SECONDS);
 			return true;

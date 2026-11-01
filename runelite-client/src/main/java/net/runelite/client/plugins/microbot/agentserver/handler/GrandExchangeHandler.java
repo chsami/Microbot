@@ -9,18 +9,22 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.grandexchange.GrandExchangeAction;
 import net.runelite.client.plugins.microbot.util.grandexchange.GrandExchangeRequest;
 import net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 
 public class GrandExchangeHandler extends AgentHandler {
 
 	private static final String BASE_PATH = "/ge";
+
+	private final ReentrantLock lock = new ReentrantLock();
 
 	public GrandExchangeHandler(Gson gson) {
 		super(gson);
@@ -35,41 +39,59 @@ public class GrandExchangeHandler extends AgentHandler {
 	protected void handleRequest(HttpExchange exchange) throws IOException {
 		String sub = getSubPath(exchange, BASE_PATH);
 		try {
-			switch (sub) {
-				case "":
-				case "/":
-					requireGet(exchange);
-					sendJson(exchange, 200, offers());
-					break;
-				case "/buy":
-					requirePost(exchange);
-					handleOffer(exchange, true);
-					break;
-				case "/sell":
-					requirePost(exchange);
-					handleOffer(exchange, false);
-					break;
-				case "/collect":
-					requirePost(exchange);
-					Boolean toBank = getBooleanField(readJsonBody(exchange), "toBank");
-					sendResult(exchange, Rs2GrandExchange.collectAll(toBank == null || toBank));
-					break;
-				case "/abort":
-					requirePost(exchange);
-					String name = requireName(readJsonBody(exchange));
-					sendResult(exchange, Rs2GrandExchange.abortOffer(name, true)
-							&& sleepUntil(() -> !hasOffer(name), 5000));
-					break;
-				case "/close":
-					requirePost(exchange);
-					Rs2GrandExchange.closeExchange();
-					sendResult(exchange, !Rs2GrandExchange.isOpen());
-					break;
-				default:
-					sendJson(exchange, 404, errorResponse("Unknown endpoint: " + BASE_PATH + sub));
+			if (sub.isEmpty() || sub.equals("/")) {
+				requireGet(exchange);
+				sendJson(exchange, 200, offers());
+				return;
+			}
+			if (!lock.tryLock()) {
+				sendFailure(exchange, "Another Grand Exchange request is still running");
+				return;
+			}
+			try {
+				handleWrite(exchange, sub);
+			} finally {
+				lock.unlock();
 			}
 		} catch (HttpMethodException e) {
 			sendJson(exchange, 405, errorResponse(e.getMessage()));
+		}
+	}
+
+	private void handleWrite(HttpExchange exchange, String sub) throws IOException {
+		switch (sub) {
+			case "/buy":
+				requirePost(exchange);
+				handleOffer(exchange, true);
+				break;
+			case "/sell":
+				requirePost(exchange);
+				handleOffer(exchange, false);
+				break;
+			case "/collect": {
+				requirePost(exchange);
+				Boolean toBank = getBooleanField(readJsonBody(exchange), "toBank");
+				if (requireFreeInventorySlot(exchange) && requireOpenExchange(exchange)) {
+					sendResult(exchange, Rs2GrandExchange.collectAll(toBank == null || toBank));
+				}
+				break;
+			}
+			case "/abort": {
+				requirePost(exchange);
+				String name = requireName(readJsonBody(exchange));
+				if (requireFreeInventorySlot(exchange) && requireOpenExchange(exchange)) {
+					sendResult(exchange, Rs2GrandExchange.abortOffer(name, true)
+							&& sleepUntil(() -> !hasOffer(name), 5000));
+				}
+				break;
+			}
+			case "/close":
+				requirePost(exchange);
+				Rs2GrandExchange.closeExchange();
+				sendResult(exchange, !Rs2GrandExchange.isOpen());
+				break;
+			default:
+				sendJson(exchange, 404, errorResponse("Unknown endpoint: " + BASE_PATH + sub));
 		}
 	}
 
@@ -78,6 +100,9 @@ public class GrandExchangeHandler extends AgentHandler {
 		String name = requireName(body);
 		int quantity = requirePositiveWholeNumber(body, "quantity");
 		int price = requirePositiveWholeNumber(body, "price");
+		if (!requireOpenExchange(exchange)) {
+			return;
+		}
 
 		boolean placed = Rs2GrandExchange.processOffer(GrandExchangeRequest.builder()
 				.action(buying ? GrandExchangeAction.BUY : GrandExchangeAction.SELL)
@@ -104,6 +129,29 @@ public class GrandExchangeHandler extends AgentHandler {
 			throw new BadRequestException("Field '" + key + "' must be a whole number of at least 1");
 		}
 		return (int) number;
+	}
+
+	private boolean requireOpenExchange(HttpExchange exchange) throws IOException {
+		if (Rs2GrandExchange.isOpen() || Rs2GrandExchange.openExchange()) {
+			return true;
+		}
+		sendFailure(exchange, "Not at the Grand Exchange; POST /walk there first");
+		return false;
+	}
+
+	private boolean requireFreeInventorySlot(HttpExchange exchange) throws IOException {
+		if (!Rs2Inventory.isFull()) {
+			return true;
+		}
+		sendFailure(exchange, "Inventory is full; free a slot before collecting");
+		return false;
+	}
+
+	private void sendFailure(HttpExchange exchange, String error) throws IOException {
+		Map<String, Object> result = offers();
+		result.put("success", false);
+		result.put("error", error);
+		sendJson(exchange, 409, result);
 	}
 
 	private void sendResult(HttpExchange exchange, boolean success) throws IOException {

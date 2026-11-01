@@ -82,6 +82,7 @@ Inventory:
 NPCs:
   npcs [--name Guard] [--name-contains Guar] [--id 3265] [--distance 20] [--limit N]
   npcs interact <name> <action>          Interact with nearest NPC
+  npcs interact --id <id> <action>       Interact with nearest NPC with that id
 
 Objects:
   objects [--name "Oak tree"] [--name-contains Oak] [--id 1278] [--distance 20] [--limit N]
@@ -137,10 +138,10 @@ Scripts:
 
 Grand Exchange:
   ge                                     Active offers (item, state, done/total, price)
-  ge buy <name> <quantity> <price>       Place a buy offer (walks to and opens the GE when needed)
+  ge buy <name> <quantity> <price>       Place a buy offer (opens the GE; walk there first)
   ge sell <name> <quantity> <price>      Place a sell offer for an item in the inventory
-  ge collect [--inventory]               Collect finished offers (to the bank by default)
-  ge abort <name>                        Abort the offer for an item and collect it
+  ge collect [--inventory]               Collect finished offers (to the bank by default; needs a free slot)
+  ge abort <name>                        Abort the offer for an item and collect it (needs a free slot)
 
 Plugin Hub:
   plugins [--search <text>] [--installed] [--limit N]  List Plugin Hub entries with install state
@@ -485,6 +486,7 @@ case "$1" in
             interact)
                 [[ $# -lt 4 ]] && { echo '{"error":"Usage: microbot-cli npcs interact <name> <action> | --id <id> <action>"}'; exit 1; }
                 if [[ "$3" == "--id" ]]; then
+                    [[ $# -lt 5 || ! "$4" =~ ^[0-9]+$ ]] && { echo '{"error":"Usage: microbot-cli npcs interact --id <id> <action>"}'; exit 1; }
                     do_post "${BASE}/npcs/interact" "{\"id\":$4,\"action\":\"$(json_escape "$5")\"}"
                     exit 0
                 fi
