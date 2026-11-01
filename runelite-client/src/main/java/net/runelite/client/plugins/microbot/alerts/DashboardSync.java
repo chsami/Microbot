@@ -23,8 +23,12 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
+import net.runelite.api.events.AccountHashChanged;
+import net.runelite.api.events.GameStateChanged;
+import net.runelite.api.events.GameTick;
 import net.runelite.client.ClientSessionManager;
 import net.runelite.client.callback.ClientThread;
+import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.plugins.microbot.MicrobotApi;
 import net.runelite.client.plugins.microbot.MicrobotConfig;
@@ -47,6 +51,10 @@ public class DashboardSync
 	static final long FIRST_BACKOFF_MS = 5_000;
 	static final long MAX_BACKOFF_MS = 120_000;
 	static final long CAPTURE_TIMEOUT_SECONDS = 5;
+	static final long LIVE_SYNC_WINDOW_MS = 5_000;
+	static final int LIVE_SYNC_LIMIT = 40;
+	static final long LIVE_SYNC_LIMIT_WINDOW_MS = 600_000;
+	static final long CONNECTION_LOST_HOLD_MS = 4_000;
 	static final String SCREENSHOT = "screenshot";
 	static final String SCREENSHOT_NOTICE = "The Microbot dashboard took a screenshot of this client.";
 
@@ -67,6 +75,14 @@ public class DashboardSync
 	private volatile Call inFlight;
 	private ScheduledFuture<?> next;
 	private int failures;
+	private GameState lastStatus;
+	private GameState reportedStatus;
+	private int statusChanges;
+	private boolean awaitingTick;
+	private boolean liveWindowOpen = true;
+	private boolean livePending;
+	private boolean liveRetried;
+	private int liveSent;
 
 	@Inject
 	DashboardSync(MicrobotApi microbotApi, ClientLinkToken clientLinkToken, ClientSessionManager clientSessionManager, MicrobotConfig config,
@@ -99,6 +115,7 @@ public class DashboardSync
 	public synchronized void stop()
 	{
 		running = false;
+		livePending = false;
 		if (next != null)
 		{
 			next.cancel(false);
@@ -116,6 +133,210 @@ public class DashboardSync
 		if (running)
 		{
 			next = executor.schedule(RunnableExceptionLogger.wrap(this::sync), delayMs, TimeUnit.MILLISECONDS);
+		}
+	}
+
+	@Subscribe
+	public void onGameStateChanged(GameStateChanged event)
+	{
+		GameState state = event.getGameState();
+		statusChanges++;
+		if (state == GameState.LOADING || state == GameState.HOPPING)
+		{
+			return;
+		}
+		if (state == lastStatus)
+		{
+			if (state == GameState.LOGGED_IN && reportedStatus != null && reportedStatus != GameState.LOGGED_IN)
+			{
+				awaitingTick = true;
+			}
+			return;
+		}
+		if (state == GameState.CONNECTION_LOST)
+		{
+			int change = statusChanges;
+			executor.schedule(RunnableExceptionLogger.wrap(() -> clientThread.invoke(() -> connectionLostLasted(change))),
+				CONNECTION_LOST_HOLD_MS, TimeUnit.MILLISECONDS);
+			return;
+		}
+		lastStatus = state;
+		awaitingTick = state == GameState.LOGGED_IN;
+		if (!awaitingTick)
+		{
+			stateChanged();
+		}
+	}
+
+	private void connectionLostLasted(int change)
+	{
+		if (change == statusChanges)
+		{
+			lastStatus = GameState.CONNECTION_LOST;
+			awaitingTick = false;
+			stateChanged();
+		}
+	}
+
+	@Subscribe
+	public void onAccountHashChanged(AccountHashChanged event)
+	{
+		awaitingTick = true;
+	}
+
+	@Subscribe
+	public void onGameTick(GameTick event)
+	{
+		if (awaitingTick)
+		{
+			awaitingTick = false;
+			stateChanged();
+		}
+	}
+
+	private void stateChanged()
+	{
+		executor.execute(RunnableExceptionLogger.wrap(this::liveStateChanged));
+	}
+
+	private synchronized void liveStateChanged()
+	{
+		liveRetried = false;
+		requestLiveSync();
+	}
+
+	private synchronized void liveCaptureFailed()
+	{
+		if (!liveRetried)
+		{
+			liveRetried = true;
+			requestLiveSync();
+		}
+	}
+
+	private synchronized void requestLiveSync()
+	{
+		livePending = true;
+		sendPendingLiveSync();
+	}
+
+	private synchronized void liveWindowEnded()
+	{
+		liveWindowOpen = true;
+		sendPendingLiveSync();
+	}
+
+	private synchronized void liveSyncExpired()
+	{
+		liveSent--;
+		sendPendingLiveSync();
+	}
+
+	private synchronized void sendPendingLiveSync()
+	{
+		if (livePending && liveWindowOpen)
+		{
+			sendLiveSync();
+		}
+	}
+
+	private synchronized void sendLiveSync()
+	{
+		livePending = false;
+		Optional<String> token = clientLinkToken.get();
+		UUID sessionId = clientSessionManager.getMicrobotSessionId();
+		if (!running || failures > 0 || token.isEmpty() || sessionId == null)
+		{
+			return;
+		}
+		if (liveSent >= LIVE_SYNC_LIMIT)
+		{
+			livePending = true;
+			return;
+		}
+		liveWindowOpen = false;
+		executor.schedule(RunnableExceptionLogger.wrap(this::liveWindowEnded), LIVE_SYNC_WINDOW_MS, TimeUnit.MILLISECONDS);
+		captureState()
+			.orTimeout(CAPTURE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+			.whenCompleteAsync((state, error) ->
+			{
+				if (error != null)
+				{
+					log.debug("Unable to read the game state for the dashboard", error);
+					liveCaptureFailed();
+					return;
+				}
+				postLiveSync(token.get(), sessionId, state);
+			}, executor);
+	}
+
+	private synchronized void postLiveSync(String token, UUID sessionId, JsonObject state)
+	{
+		if (!running || failures > 0)
+		{
+			return;
+		}
+		if (liveSent >= LIVE_SYNC_LIMIT)
+		{
+			livePending = true;
+			return;
+		}
+		liveSent++;
+		executor.schedule(RunnableExceptionLogger.wrap(this::liveSyncExpired), LIVE_SYNC_LIMIT_WINDOW_MS, TimeUnit.MILLISECONDS);
+		JsonObject payload = payload(sessionId, config.allowDashboardScreenshots(), config.allowDashboardControl(), state);
+		microbotApi.syncDashboard(token, payload, 0, new Callback()
+		{
+			@Override
+			public void onFailure(Call call, IOException e)
+			{
+				log.debug("Dashboard live sync failed", e);
+			}
+
+			@Override
+			public void onResponse(Call call, Response response)
+			{
+				int code;
+				String body;
+				try (response)
+				{
+					code = response.code();
+					ResponseBody responseBody = response.body();
+					body = responseBody == null ? "" : responseBody.string();
+				}
+				catch (IOException e)
+				{
+					onFailure(call, e);
+					return;
+				}
+				handleLive(token, code, body);
+			}
+		});
+	}
+
+	private synchronized void handleLive(String token, int code, String body)
+	{
+		if (!running)
+		{
+			return;
+		}
+		if (code == 401)
+		{
+			rejectToken(token);
+			return;
+		}
+		if (code >= 300)
+		{
+			log.debug("Dashboard live sync rejected: HTTP {}", code);
+			return;
+		}
+		dispatch(token, commands(gson, body));
+	}
+
+	private void rejectToken(String token)
+	{
+		if (clientLinkToken.reject(token))
+		{
+			log.warn("The alert link token was revoked or is unknown, so bot alerts are off until a new one is set");
 		}
 	}
 
@@ -147,7 +368,11 @@ public class DashboardSync
 		{
 			try
 			{
-				captured.complete(DashboardGameState.capture(client, itemManager, xpTracker));
+				GameState status = client.getGameState();
+				if (captured.complete(DashboardGameState.capture(client, itemManager, xpTracker)))
+				{
+					reportedStatus = status;
+				}
 			}
 			catch (RuntimeException e)
 			{
@@ -206,10 +431,7 @@ public class DashboardSync
 		}
 		if (code == 401)
 		{
-			if (clientLinkToken.reject(token))
-			{
-				log.warn("The alert link token was revoked or is unknown, so bot alerts are off until a new one is set");
-			}
+			rejectToken(token);
 			schedule(IDLE_RETRY_MS);
 			return;
 		}
@@ -235,7 +457,7 @@ public class DashboardSync
 			.forEach(command -> dashboardControl.run(token, command.getId(), command.getType(), command.getScriptId()));
 	}
 
-	private void retryLater()
+	private synchronized void retryLater()
 	{
 		failures++;
 		schedule(backoff(failures));
