@@ -302,6 +302,14 @@ While a shop, bank, deposit box or Grand Exchange inventory is open or rebuildin
 
 **Defensive check:** Run `InventorySetupMatchingTest`.
 
+## 19. An Rs2ItemModel can have no ItemComposition yet
+
+Models built from cached ids (`createFromCache`, the `(id, quantity, slot)` and `(id, quantity, slot, null)` constructors) start with a null composition and load it lazily. Every composition-backed getter must call `ensureCompositionLoaded()` first and fall back to a neutral value when it is still missing; `getHaPrice()` returns 0 and `isHaProfitable()` returns false in that case.
+
+**Why this matters:** `getHaPrice()` read the composition field directly and threw an NPE for bank and cached items, which also broke `isHaProfitable()` and Hub high-alch scripts.
+
+**Defensive check:** Run `Rs2ItemModelHaPriceTest`.
+
 ## Terminal supply stops need observed logout
 
 An owning script can set `withMissingSupplyHandler` on its Inventory Setup loader to keep its scheduled loop alive while `TerminalLogoutPrompt` closes the bank and requests logout. Do not show a blocking shortage notification or cancel that loop until `LOGGED_OUT` is observed. The default loader policy stays unchanged when no handler is supplied; ordinary breaks and world hops do not arm terminal Auto Login suppression.
