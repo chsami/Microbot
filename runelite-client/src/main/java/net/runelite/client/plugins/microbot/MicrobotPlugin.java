@@ -220,6 +220,7 @@ public class MicrobotPlugin extends Plugin
 		clientAlertReporter.start();
 		eventBus.register(banTelemetry);
 		banTelemetry.start();
+		eventBus.register(dashboardSync);
 		dashboardSync.start();
 		eventBus.register(deviceLinkFlow);
 		eventBus.register(terminalLogoutHold);
@@ -301,6 +302,7 @@ public class MicrobotPlugin extends Plugin
 		clientAlertReporter.stop();
 		eventBus.unregister(banTelemetry);
 		banTelemetry.stop();
+		eventBus.unregister(dashboardSync);
 		dashboardSync.stop();
 		eventBus.unregister(deviceLinkFlow);
 		eventBus.unregister(terminalLogoutHold);
