@@ -111,17 +111,13 @@ public class PluginHubHandler extends AgentHandler {
 			return;
 		}
 
-		if (loaded) {
-			if (!requireLoadedFromHub(exchange, internalName)
-					|| !awaitTask(exchange, pluginManager.removePlugin(manifest), timeout)) {
-				return;
-			}
-			if (pluginManager.isLoaded(internalName)) {
-				sendJson(exchange, 409, errorResponse(internalName + " is still loaded after removing the old version; check the client log"));
-				return;
-			}
+		if (loaded && !requireLoadedFromHub(exchange, internalName)) {
+			return;
 		}
-		if (!awaitTask(exchange, pluginManager.installPlugin(manifest, version), timeout)) {
+		Future<?> task = loaded
+				? pluginManager.updatePlugin(manifest, version)
+				: pluginManager.installPlugin(manifest, version);
+		if (!awaitTask(exchange, task, timeout)) {
 			return;
 		}
 

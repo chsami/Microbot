@@ -143,7 +143,7 @@ public class GrandExchangeHandler extends AgentHandler {
 		if (!Rs2Inventory.isFull()) {
 			return true;
 		}
-		sendFailure(exchange, "Inventory is full; free a slot before collecting");
+		sendFailure(exchange, "Inventory is full; collecting now would deposit the whole inventory into the bank, so free a slot first");
 		return false;
 	}
 

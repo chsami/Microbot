@@ -891,7 +891,7 @@ Body: `{"name": "AutoMiner", "version": "2.0.0", "timeout": 60}`. `name` accepts
 | `200` | Plugin is loaded. The body is the plugin entry from `GET /plugins` |
 | `202` | Still running when `timeout` elapsed. Poll `GET /plugins?q=<name>` until `loaded` is `true` and `installedVersion` equals the requested version; the old version can still be loaded while an update runs |
 | `400` | No Plugin Hub entry with that name |
-| `409` | Health blocks the install (disabled upstream, broken version, or needs a newer client); the plugin is loaded from outside the Plugin Hub (a dev build or sideloaded jar), so nothing was changed; the old version stayed loaded; or another install or removal is still running |
+| `409` | Health blocks the install (disabled upstream, broken version, or needs a newer client); the plugin is loaded from outside the Plugin Hub (a dev build or sideloaded jar), so nothing was changed; or another install or removal is still running |
 | `502` | Download or load failed; the client log has the cause |
 
 #### POST /plugins/remove
