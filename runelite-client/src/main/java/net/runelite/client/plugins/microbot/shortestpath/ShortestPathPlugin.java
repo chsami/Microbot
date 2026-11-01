@@ -33,6 +33,7 @@ import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.MenuEntryAdded;
 import net.runelite.api.events.MenuOpened;
+import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.api.worldmap.WorldMap;
@@ -47,6 +48,8 @@ import net.runelite.client.input.KeyManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.questhelper.util.worldmap.WorldMapArea;
+import net.runelite.client.plugins.microbot.questhelper.util.worldmap.WorldPointMapper;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.CollisionMap;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.Pathfinder;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.PathfinderConfig;
@@ -61,6 +64,7 @@ import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveRou
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.SplitFlagMap;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
+import net.runelite.client.plugins.microbot.util.walker.Rs2PathApi;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.walker.Rs2TransportPlanningPolicy;
 import net.runelite.client.ui.ClientToolbar;
@@ -92,7 +96,7 @@ import java.util.regex.Pattern;
         description = "Draws the shortest path to a chosen destination on the map (right click a spot on the world map to use)",
         tags = {"pathfinder", "map", "waypoint", "navigation", "microbot"},
         enabledByDefault = false,
-        version = "1.0.5",
+        version = "1.0.6",
         alwaysOn = true
 )
 public class ShortestPathPlugin extends Plugin {
@@ -1100,17 +1104,24 @@ public class ShortestPathPlugin extends Plugin {
 
     private void onMenuOptionClicked(MenuEntry entry) {
         if (entry.getOption().equals(SET) && entry.getTarget().equals(TARGET)) {
-            WorldPoint worldPoint = getSelectedWorldPoint();
-            shortestPathScript.setTriggerWalker(worldPoint);
+            WorldPoint worldPoint = getClickedWalkablePoint("Target");
+            if (worldPoint != null) {
+                shortestPathScript.setTriggerWalker(worldPoint);
+            }
         }
         if (entry.getOption().equals(SET) && entry.getTarget().equals(TEST)) {
             //For debugging you can use setTarget, it will calculate path without walking
-            WorldPoint worldPoint = getSelectedWorldPoint();
-            setTarget(worldPoint);
+            WorldPoint worldPoint = getClickedWalkablePoint("Target");
+            if (worldPoint != null) {
+                setTarget(worldPoint);
+            }
         }
 
         if (entry.getOption().equals(SET) && entry.getTarget().equals(START)) {
-            setStart(getSelectedWorldPoint());
+            WorldPoint worldPoint = getClickedWalkablePoint("Start");
+            if (worldPoint != null) {
+                setStart(worldPoint);
+            }
         }
 
         if (entry.getOption().equals(CLEAR) && entry.getTarget().equals(PATH)) {
@@ -1130,16 +1141,75 @@ public class ShortestPathPlugin extends Plugin {
             if (mapPoint != null) {
                 WorldMapData worldMapData = client.getWorldMap().getWorldMapData();
                 if (worldMapData != null && !worldMapData.surfaceContainsPosition(mapPoint.getX(), mapPoint.getY())) {
-                    log.warn("[ShortestPath] World map target {} is a dungeon display coordinate (not on surface map). " +
-                            "The actual game tiles may be at different coordinates. " +
-                            "For accurate dungeon navigation, close the world map and right-click a tile in the game view instead.",
+                    // debug: this also runs on every menu rebuild; the click itself tells the player
+                    log.debug("[ShortestPath] World map target {} is a dungeon display coordinate (not on surface map)",
                             mapPoint);
                     return null;
                 }
             }
-            return mapPoint;
+            return toRealWorldPoint(mapPoint, getViewedWorldMapArea());
         }
         return null;
+    }
+
+    /** How far from a clicked tile to look for ground; covers object tiles and near-misses into walls. */
+    private static final int CLICK_SNAP_RADIUS = 16;
+    /** Snaps further than this are told to the player, since the target is no longer where they clicked. */
+    private static final int CLICK_SNAP_NOTICE_TILES = 2;
+
+    /**
+     * The clicked tile, moved onto walkable ground if it is an object or wall tile. Returns null after
+     * telling the player why, so callers keep the current route instead of clearing it.
+     */
+    private WorldPoint getClickedWalkablePoint(String label) {
+        WorldPoint clicked = getSelectedWorldPoint();
+        if (clicked == null) {
+            if (client.getWidget(ComponentID.WORLD_MAP_MAPVIEW) != null) {
+                chatMessage("Web Walker: Can't set a target in this dungeon from the world map. "
+                        + "Close the map and Shift + right-click a tile in the game view instead.");
+            }
+            return null;
+        }
+        if (Rs2Walker.isWalkableInCollisionMap(clicked)) {
+            return clicked;
+        }
+        WorldPoint snapped = Rs2PathApi.nearestWalkableTile(clicked, CLICK_SNAP_RADIUS);
+        if (snapped == null) {
+            log.debug("[ShortestPath] {} {} has no walkable tile within {}", label, clicked, CLICK_SNAP_RADIUS);
+            chatMessage("Web Walker: No walkable ground near that spot. Pick a tile closer to a path or floor.");
+            return null;
+        }
+        int moved = clicked.distanceTo2D(snapped);
+        log.debug("[ShortestPath] {} {} is not walkable; snapped to {} ({} tiles)", label, clicked, snapped, moved);
+        if (moved > CLICK_SNAP_NOTICE_TILES) {
+            chatMessage("Web Walker: " + label + " moved " + moved + " tiles to the nearest walkable spot.");
+        }
+        return snapped;
+    }
+
+    private void chatMessage(String message) {
+        client.addChatMessage(net.runelite.api.ChatMessageType.GAMEMESSAGE, "", message, "");
+    }
+
+    private WorldMapArea getViewedWorldMapArea() {
+        Widget mapList = client.getWidget(InterfaceID.Worldmap.MAPLIST_DISPLAY);
+        Widget currentMap = mapList == null ? null : mapList.getChild(4);
+        return currentMap == null ? WorldMapArea.ANY : WorldMapArea.fromName(currentMap.getText());
+    }
+
+    static WorldPoint toRealWorldPoint(WorldPoint mapPoint, WorldMapArea viewedArea) {
+        if (mapPoint == null || viewedArea == null || viewedArea == WorldMapArea.ANY) {
+            return mapPoint;
+        }
+        return WorldPointMapper.getRealWorldPointFromMapPoint(mapPoint, viewedArea).getWorldPoint();
+    }
+
+    public static WorldMapPoint createTargetMarker(WorldPoint target) {
+        WorldMapPoint marker = new WorldMapPoint(WorldPointMapper.getMapWorldPointFromRealWorldPoint(target).getWorldPoint(), MARKER_IMAGE);
+        marker.setName("Target");
+        marker.setTarget(marker.getWorldPoint());
+        marker.setJumpOnClick(true);
+        return marker;
     }
 
     public void setTarget(WorldPoint target) {
@@ -1174,10 +1244,7 @@ public class ShortestPathPlugin extends Plugin {
             }
             worldMapPointManager.removeIf(x -> x == marker);
             if (targets.size() == 1) {
-                marker = new WorldMapPoint(targets.iterator().next(), MARKER_IMAGE);
-                marker.setName("Target");
-                marker.setTarget(marker.getWorldPoint());
-                marker.setJumpOnClick(true);
+                marker = createTargetMarker(targets.iterator().next());
                 worldMapPointManager.add(marker);
             }
 

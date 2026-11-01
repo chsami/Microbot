@@ -9,6 +9,7 @@ import net.runelite.client.plugins.microbot.agentserver.scripting.DynamicScriptM
 
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -103,7 +104,13 @@ public class DynamicScriptDeployHandler extends AgentHandler {
             sendJson(exchange, 400, errorResponse("'sourcePath' is required."));
             return;
         }
-        Path sourceDir = Path.of(sourcePath);
+        Path sourceDir;
+        try {
+            sourceDir = Path.of(sourcePath);
+        } catch (InvalidPathException e) {
+            sendJson(exchange, 400, errorResponse("Invalid sourcePath: " + e.getMessage()));
+            return;
+        }
         if (!Files.isDirectory(sourceDir)) {
             sendJson(exchange, 400, errorResponse("sourcePath is not a directory: " + sourcePath));
             return;

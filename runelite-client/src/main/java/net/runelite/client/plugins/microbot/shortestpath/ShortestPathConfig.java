@@ -325,7 +325,8 @@ public interface ShortestPathConfig extends Config {
             keyName = "useTeleportationMinigames",
             name = "Use teleportation to minigames",
             description = "Whether to include teleportation to minigames/activities/grouping in the path<br>" +
-                    "(e.g. the Nightmare Zone minigame teleport). These teleports share a 20 minute cooldown.",
+                    "(e.g. the Nightmare Zone minigame teleport). These teleports share a 20 minute cooldown,<br>" +
+                    "so the walker only uses one when it saves a long walk (about 200 tiles or more).",
             position = 16,
             section = sectionSettings
     )

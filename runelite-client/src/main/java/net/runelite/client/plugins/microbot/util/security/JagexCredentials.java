@@ -8,14 +8,19 @@ import java.nio.file.Files;
 import java.util.Properties;
 import lombok.ToString;
 import lombok.Value;
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.RuneLite;
 
 /**
  * The Jagex Account character saved in a {@code credentials.properties} file, as written by
  * {@code --insecure-write-credentials}.
  */
+@Slf4j
 @Value
 public class JagexCredentials {
+    private static volatile JagexCredentials launch;
+    private static volatile boolean readFailureLogged;
+
     @ToString.Exclude
     String sessionId;
     String characterId;
@@ -35,21 +40,48 @@ public class JagexCredentials {
 
     /**
      * The character the client was launched with. Like the client, this reads the {@code JX_*} environment
-     * variables first and then the credentials file in the RuneLite directory.
+     * variables first and then the credentials file in the RuneLite directory. It is read once, so a file
+     * rewritten by a later launch does not change this client's character.
      *
      * @return null if the client was not launched with a Jagex Account
      */
     public static JagexCredentials fromLaunch() {
-        JagexCredentials fromEnvironment = of(System.getenv("JX_SESSION_ID"), System.getenv("JX_CHARACTER_ID"),
-            System.getenv("JX_DISPLAY_NAME"));
-        if (fromEnvironment != null) {
-            return fromEnvironment;
+        JagexCredentials credentials = launch;
+        if (credentials == null) {
+            credentials = readLaunch();
+            launch = credentials;
         }
-        File file = new File(RuneLite.RUNELITE_DIR, System.getProperty("runelite.credentials.path", "credentials.properties"));
+        return credentials;
+    }
+
+    private static JagexCredentials readLaunch() {
+        try {
+            JagexCredentials fromEnvironment = of(System.getenv("JX_SESSION_ID"), System.getenv("JX_CHARACTER_ID"),
+                System.getenv("JX_DISPLAY_NAME"));
+            if (fromEnvironment != null) {
+                return fromEnvironment;
+            }
+            return readLaunch(new File(RuneLite.RUNELITE_DIR, System.getProperty("runelite.credentials.path", "credentials.properties")));
+        } catch (RuntimeException e) {
+            logReadFailure(e);
+            return null;
+        }
+    }
+
+    static JagexCredentials readLaunch(File file) {
         try {
             return file.exists() ? load(file) : null;
-        } catch (IOException e) {
+        } catch (IOException | RuntimeException e) {
+            logReadFailure(e);
             return null;
+        }
+    }
+
+    private static void logReadFailure(Exception e) {
+        if (!readFailureLogged) {
+            readFailureLogged = true;
+            log.warn("Unable to read the Jagex Account credentials file ({}), so it is ignored. A backslash in a value, such as a Windows path, breaks the file.",
+                e.getClass().getSimpleName());
         }
     }
 

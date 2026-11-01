@@ -137,6 +137,21 @@ public class ClientAlertReporterTest
 	}
 
 	@Test
+	public void reportsListInstalledScriptsButNotBuiltInPlugins()
+	{
+		when(pluginManager.isPluginActive(script)).thenReturn(false);
+
+		reporter.onPluginChanged(new PluginChanged(script, true));
+
+		JsonObject event = sentOfType(AlertEvent.SCRIPT_STARTED).get(0);
+		assertEquals(0, event.getAsJsonArray("runningScripts").size());
+		assertEquals(1, event.getAsJsonArray("availableScripts").size());
+		JsonObject available = event.getAsJsonArray("availableScripts").get(0).getAsJsonObject();
+		assertEquals(FakeScript.class.getName(), available.get("id").getAsString());
+		assertEquals("Fake Fisher", available.get("name").getAsString());
+	}
+
+	@Test
 	public void builtInPluginsAreNotScripts()
 	{
 		reporter.onPluginChanged(new PluginChanged(new BuiltInPlugin(), false));
@@ -338,6 +353,8 @@ public class ClientAlertReporterTest
 
 		heartbeat.getValue().run();
 		assertEquals(1, sentOfType(AlertEvent.HEARTBEAT).size());
+		assertEquals(FakeScript.class.getName(), sentOfType(AlertEvent.HEARTBEAT).get(0)
+			.getAsJsonArray("availableScripts").get(0).getAsJsonObject().get("id").getAsString());
 	}
 
 	@Test

@@ -23,9 +23,11 @@ import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.microbot.accountselector.TerminalLogoutHold;
 import net.runelite.client.plugins.microbot.alerts.ClientAlertReporter;
+import net.runelite.client.plugins.microbot.bans.BanTelemetry;
 import net.runelite.client.plugins.microbot.alerts.DashboardSync;
 import net.runelite.client.plugins.microbot.alerts.DeviceLinkFlow;
 import net.runelite.client.plugins.microbot.diagnostics.BugReportTracker;
+import net.runelite.client.plugins.microbot.diagnostics.FlightRecorder;
 import net.runelite.client.plugins.microbot.diagnostics.ScriptErrorReporter;
 import net.runelite.client.plugins.microbot.pouch.PouchOverlay;
 import net.runelite.client.plugins.microbot.ui.MicrobotPluginConfigurationDescriptor;
@@ -159,7 +161,13 @@ public class MicrobotPlugin extends Plugin
 	private ScriptErrorReporter scriptErrorReporter;
 
 	@Inject
+	private FlightRecorder flightRecorder;
+
+	@Inject
 	private ClientAlertReporter clientAlertReporter;
+
+	@Inject
+	private BanTelemetry banTelemetry;
 
 	@Inject
 	private DashboardSync dashboardSync;
@@ -207,8 +215,11 @@ public class MicrobotPlugin extends Plugin
 		final LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
 		gameChatAttachment = gameChatAppender.install(context, microbotConfig::enableGameChatLogging);
 		scriptErrorAttachment = scriptErrorReporter.install(context);
+		flightRecorder.start();
 		eventBus.register(clientAlertReporter);
 		clientAlertReporter.start();
+		eventBus.register(banTelemetry);
+		banTelemetry.start();
 		dashboardSync.start();
 		eventBus.register(deviceLinkFlow);
 		eventBus.register(terminalLogoutHold);
@@ -285,8 +296,11 @@ public class MicrobotPlugin extends Plugin
 		bugReportTracker.stop();
 		gameChatAttachment.remove();
 		scriptErrorAttachment.remove();
+		flightRecorder.stop();
 		eventBus.unregister(clientAlertReporter);
 		clientAlertReporter.stop();
+		eventBus.unregister(banTelemetry);
+		banTelemetry.stop();
 		dashboardSync.stop();
 		eventBus.unregister(deviceLinkFlow);
 		eventBus.unregister(terminalLogoutHold);

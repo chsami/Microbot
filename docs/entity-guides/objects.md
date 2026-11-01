@@ -22,3 +22,13 @@ Check names against the game cache (or `observe --nearby` in the CLI) before har
 **Where this applies:** `Rs2TileObjectModel.click`, every `Rs2TileObjectQueryable.interact` overload, and any migration from `Rs2GameObject` to the query API (Rs2GameObject retirement M3/M4).
 
 **Defensive check:** `Rs2TileObjectModelClickActionTest` covers refusal, first option, colour tags, impostors and the selected-widget path.
+
+## 2. A tile on screen does not mean the object is clickable
+
+`Rs2Camera.isTileOnScreen` accepts a tile when any part of it is in the viewport, and in resizable mode the viewport is the whole canvas, under the chatbox, side panel and minimap. `Rs2TileObjectModel.click` therefore clicks only the part of the clickbox that is inside the viewport and clear of those interfaces (`Rs2UiHelper.clearOfInterfaces` with `visibleSceneOverlayBounds`). When nothing is clear it turns the camera to the object once, and if the object is still covered it returns `false` without clicking. After the NaturalMouse travel, `VirtualMouse.retarget` picks a new point from the same clear area (for objects and actors), so a moving player or camera cannot push the click back onto an interface. A clear area that reaches the canvas top-left corner is moved in by 2 px, because a rectangle at (0,0) or (1,1) is read as the fallback rectangle and clicked at the resting point.
+
+**Why this matters:** the walker clicked the Lumbridge castle stairs and the Edgeville trapdoor at range with a random point in the whole clickbox, which often landed on the chatbox Report button.
+
+**Where this applies:** every `Rs2TileObjectModel.click` caller, including `Rs2GameObject` and the walker's route objects. Scene tile clicks use the same interface list through `Rs2WalkerMovement`.
+
+**Defensive check:** `Rs2UiHelperInterfaceClearanceTest`, `Rs2TileObjectModelInterfaceCoverTest` and `VirtualMouseRetargetTest`.

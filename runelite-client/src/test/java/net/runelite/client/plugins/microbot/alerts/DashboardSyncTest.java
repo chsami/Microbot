@@ -8,12 +8,24 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.ScheduledExecutorService;
 import javax.imageio.ImageIO;
+import net.runelite.api.Client;
 import net.runelite.api.Skill;
+import net.runelite.client.ClientSessionManager;
+import net.runelite.client.callback.ClientThread;
+import net.runelite.client.game.ItemManager;
+import net.runelite.client.plugins.microbot.MicrobotApi;
+import net.runelite.client.plugins.microbot.MicrobotConfig;
+import net.runelite.client.ui.DrawManager;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
+import org.mockito.InOrder;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 public class DashboardSyncTest
 {
@@ -39,8 +51,43 @@ public class DashboardSyncTest
 	{
 		String body = "{\"commands\":[{\"id\":\"" + REQUEST + "\",\"type\":\"screenshot\"},{\"id\":\"" + REQUEST + "\",\"type\":\"stop_scripts\"}]}";
 
-		assertEquals(List.of(new DashboardSync.Command(REQUEST, "screenshot"), new DashboardSync.Command(REQUEST, "stop_scripts")),
+		assertEquals(List.of(new DashboardSync.Command(REQUEST, "screenshot", null), new DashboardSync.Command(REQUEST, "stop_scripts", null)),
 			DashboardSync.commands(new Gson(), body));
+	}
+
+	@Test
+	public void startScriptCommandsCarryTheirScriptId()
+	{
+		String body = "{\"commands\":[{\"id\":\"" + REQUEST + "\",\"type\":\"start_script\",\"scriptId\":\"com.example.FisherPlugin\"},"
+			+ "{\"id\":\"" + REQUEST + "\",\"type\":\"logout\",\"scriptId\":null},"
+			+ "{\"id\":\"" + REQUEST + "\",\"type\":\"start_script\",\"scriptId\":{\"nested\":true}}]}";
+
+		assertEquals(List.of(new DashboardSync.Command(REQUEST, "start_script", "com.example.FisherPlugin"),
+				new DashboardSync.Command(REQUEST, "logout", null),
+				new DashboardSync.Command(REQUEST, "start_script", null)),
+			DashboardSync.commands(new Gson(), body));
+	}
+
+	@Test
+	public void controlCommandsAreDispatchedWithTheirScriptId()
+	{
+		DashboardControl control = mock(DashboardControl.class);
+		MicrobotConfig config = mock(MicrobotConfig.class);
+		MicrobotApi api = mock(MicrobotApi.class);
+		DashboardSync sync = new DashboardSync(api, mock(ClientLinkToken.class), mock(ClientSessionManager.class), config,
+			mock(Client.class), mock(ClientThread.class), mock(ItemManager.class), mock(DrawManager.class), control,
+			mock(ScheduledExecutorService.class), new Gson());
+
+		sync.dispatch("token", List.of(
+			new DashboardSync.Command(REQUEST, "start_script", "com.example.FisherPlugin"),
+			new DashboardSync.Command(REQUEST, "stop_scripts", null),
+			new DashboardSync.Command(REQUEST, "logout", null)));
+
+		InOrder order = inOrder(control);
+		order.verify(control).run("token", REQUEST, "start_script", "com.example.FisherPlugin");
+		order.verify(control).run("token", REQUEST, "stop_scripts", null);
+		order.verify(control).run("token", REQUEST, "logout", null);
+		verifyNoInteractions(api);
 	}
 
 	@Test

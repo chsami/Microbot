@@ -1507,7 +1507,7 @@ public class MInventorySetupsPlugin extends Plugin
 			if (item.getId() == oldItem.getId())
 			{
 				ammoHandler.handleSpecialAmmo(inventorySetup, containerToUpdate.get(i), newItem);
-				containerToUpdate.set(i, newItem);
+				containerToUpdate.set(i, newItem.copyToSlot(i));
 				updated = true;
 			}
 		}

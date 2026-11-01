@@ -38,8 +38,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.atomic.AtomicReference;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.RequiredArgsConstructor;
@@ -53,6 +55,9 @@ import net.runelite.client.util.OSType;
 @RequiredArgsConstructor(onConstructor_ = @Inject)
 public class JagexAuthService
 {
+	public static final String LEGACY_SELECTION = "legacy";
+	private static final AtomicReference<String> SELECTED_ACCOUNT = new AtomicReference<>();
+
 	private final Client client;
 	private final ClientThread clientThread;
 	private final JagexAuthClient authClient;
@@ -222,7 +227,18 @@ public class JagexAuthService
 
 	public void switchJagexAccount(String sessionId, String sub, String displayName)
 	{
+		noteAccountSwitch(sub);
 		clientThread.invoke(() -> client.switchJagexAccount(sessionId, sub, displayName));
+	}
+
+	public static void noteAccountSwitch(String characterId)
+	{
+		SELECTED_ACCOUNT.set(characterId == null || characterId.isBlank() ? LEGACY_SELECTION : characterId);
+	}
+
+	public static Optional<String> selectedAccount()
+	{
+		return Optional.ofNullable(SELECTED_ACCOUNT.get());
 	}
 
 	private static URL getJagexAuthURL()
