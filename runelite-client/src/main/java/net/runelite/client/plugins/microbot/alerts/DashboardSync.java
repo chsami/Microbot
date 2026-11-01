@@ -74,6 +74,7 @@ public class DashboardSync
 	private volatile Call inFlight;
 	private ScheduledFuture<?> next;
 	private int failures;
+	private GameState lastStatus;
 	private boolean awaitingTick;
 	private boolean liveWindowOpen = true;
 	private boolean livePending;
@@ -135,10 +136,11 @@ public class DashboardSync
 	public void onGameStateChanged(GameStateChanged event)
 	{
 		GameState state = event.getGameState();
-		if (state == GameState.LOADING)
+		if (state == GameState.LOADING || state == lastStatus)
 		{
 			return;
 		}
+		lastStatus = state;
 		awaitingTick = state == GameState.LOGGED_IN;
 		if (!awaitingTick)
 		{
@@ -191,6 +193,10 @@ public class DashboardSync
 	private synchronized void liveSyncExpired()
 	{
 		liveSent--;
+		if (livePending && liveWindowOpen)
+		{
+			sendLiveSync();
+		}
 	}
 
 	private synchronized void sendLiveSync()
@@ -198,8 +204,13 @@ public class DashboardSync
 		livePending = false;
 		Optional<String> token = clientLinkToken.get();
 		UUID sessionId = clientSessionManager.getMicrobotSessionId();
-		if (!running || failures > 0 || liveSent >= LIVE_SYNC_LIMIT || token.isEmpty() || sessionId == null)
+		if (!running || failures > 0 || token.isEmpty() || sessionId == null)
 		{
+			return;
+		}
+		if (liveSent >= LIVE_SYNC_LIMIT)
+		{
+			livePending = true;
 			return;
 		}
 		liveWindowOpen = false;

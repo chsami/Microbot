@@ -140,8 +140,8 @@ public class DashboardSyncLiveTest
 	public void loggingInWaitsForTheNextTickAndLoadingIsIgnored()
 	{
 		when(client.getGameState()).thenReturn(GameState.LOGGED_IN);
-		sync.onGameStateChanged(event(GameState.LOGGED_IN));
 		sync.onGameStateChanged(event(GameState.LOADING));
+		sync.onGameStateChanged(event(GameState.LOGGED_IN));
 		assertEquals(0, liveSyncs.size());
 
 		sync.onGameTick(new GameTick());
@@ -156,18 +156,42 @@ public class DashboardSyncLiveTest
 	}
 
 	@Test
-	public void liveSyncsAreCappedPerTenMinutes()
+	public void regionLoadsWhileLoggedInSendNothingExtra()
+	{
+		changed(GameState.LOGGED_IN);
+		sync.onGameTick(new GameTick());
+		assertEquals(1, liveSyncs.size());
+
+		for (int i = 0; i < 3; i++)
+		{
+			changed(GameState.LOADING);
+			changed(GameState.LOGGED_IN);
+			sync.onGameTick(new GameTick());
+			runScheduled(DashboardSync.LIVE_SYNC_WINDOW_MS);
+		}
+		assertEquals(1, liveSyncs.size());
+
+		changed(GameState.LOGIN_SCREEN);
+		assertEquals(2, liveSyncs.size());
+		assertEquals("LOGIN_SCREEN", status(1));
+	}
+
+	@Test
+	public void liveSyncsAreCappedPerTenMinutesAndTheLatestChangeWaitsForRoom()
 	{
 		for (int i = 0; i < DashboardSync.LIVE_SYNC_LIMIT + 5; i++)
 		{
-			changed(GameState.LOGIN_SCREEN);
+			changed(i % 2 == 0 ? GameState.LOGIN_SCREEN : GameState.HOPPING);
 			runScheduled(DashboardSync.LIVE_SYNC_WINDOW_MS);
 		}
 		assertEquals(DashboardSync.LIVE_SYNC_LIMIT, liveSyncs.size());
 
 		runScheduled(DashboardSync.LIVE_SYNC_LIMIT_WINDOW_MS);
-		changed(GameState.LOGIN_SCREEN);
 
+		assertEquals(DashboardSync.LIVE_SYNC_LIMIT + 1, liveSyncs.size());
+		assertEquals("LOGIN_SCREEN", status(DashboardSync.LIVE_SYNC_LIMIT));
+
+		runScheduled(DashboardSync.LIVE_SYNC_LIMIT_WINDOW_MS);
 		assertEquals(DashboardSync.LIVE_SYNC_LIMIT + 1, liveSyncs.size());
 	}
 
