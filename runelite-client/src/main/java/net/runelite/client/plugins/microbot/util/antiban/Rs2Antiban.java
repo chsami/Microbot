@@ -218,6 +218,11 @@ public class Rs2Antiban {
         return AntibanPlugin.isIdle();
     }
 
+    public static boolean isCategoryBusy() {
+        Category current = category;
+        return current != null && current.isBusy();
+    }
+
     /**
      * <h2>Handles the Execution of an Action Cooldown Based on Anti-Ban Behaviors</h2>
      * <p>
@@ -484,8 +489,8 @@ public class Rs2Antiban {
                 .color(Color.ORANGE).build());
         panelComponent.getChildren().add(LineComponent.builder().build());
         panelComponent.getChildren().add(SplitComponent.builder()
-                .first(LineComponent.builder().left("Activity: " + activity.getMethod()).right(Rs2AntibanSettings.devDebug ? "Dynamic: " + (Rs2AntibanSettings.dynamicActivity ? "✔" : "❌") : "").build())
-                .second(LineComponent.builder().left("Category: " + category.getName()).build()).build());
+                .first(LineComponent.builder().left("Activity: " + (activity != null ? activity.getMethod() : "null")).right(Rs2AntibanSettings.devDebug ? "Dynamic: " + (Rs2AntibanSettings.dynamicActivity ? "✔" : "❌") : "").build())
+                .second(LineComponent.builder().left("Category: " + (category != null ? category.getName() : "null")).build()).build());
         panelComponent.getChildren().add(LineComponent.builder().build());
         panelComponent.getChildren().add(LineComponent.builder().left("Activity Intensity: " + activityIntensity.getName()).right(Rs2AntibanSettings.devDebug ? "Dynamic: " + (Rs2AntibanSettings.dynamicIntensity ? "✔" : "❌") : "").build());
         if (Rs2AntibanSettings.devDebug) {
@@ -508,7 +513,7 @@ public class Rs2Antiban {
                 panelComponent.getChildren().add(LineComponent.builder().left("Play style change in: " + playStyle.getTimeLeftUntilNextSwitch()).build());
             }
             panelComponent.getChildren().add(LineComponent.builder().build());
-            if (Rs2Antiban.getCategory().isBusy()) {
+            if (isCategoryBusy()) {
                 panelComponent.getChildren().add(LineComponent.builder().left("We are busy").build());
             } else {
                 panelComponent.getChildren().add(LineComponent.builder().left("Not busy anymore, breaking").build());
