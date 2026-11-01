@@ -42,9 +42,14 @@ enum MicrobotTourStep
 		"New: get a Discord or email alert when this client stops responding, a script stops on an error or the game logs out. "
 			+ "Bot alerts shows whether they are on and lets you link your Microbot account. Open the dashboard to see your bots.",
 		true, true, Side.LEFT),
-	HELP("Need help?",
-		"The red bug button reports a problem, and an orange dot on it means news under My reports. "
-			+ "It can also start Microbot once in safe mode and links to Discord. You can replay this tour from it too. That's it, have fun!",
+	REPORT_PROBLEM("Report a problem",
+		"Script stuck or client acting up? Click the red bug button, choose Report a problem, pick the plugin, say what happened and click Send. "
+			+ "Your password is never sent. A yellow dot here means news under My reports, like a fix or a question.",
+		false, true, Side.LEFT),
+	HELP("More help",
+		"Problem with one plugin? The grey bug at the top of its settings reports it with that plugin picked. "
+			+ "This menu also has Safe mode next start, for when a plugin crashes the client, and Ask for help on Discord. "
+			+ "You can replay this tour here too. Have fun!",
 		false, true, Side.LEFT);
 
 	private final String title;
