@@ -473,26 +473,25 @@ public class Rs2TileObjectModel implements TileObject, IEntity {
             return true;
         }
         if (CantReachTargetRecovery.retryExhausted(
-                Microbot.cantReachTargetRetries, Rs2Random.between(3, 5))) {
+                CantReachTargetRecovery.retries(), Rs2Random.between(3, 5))) {
             int retries = CantReachTargetRecovery.giveUp();
             Microbot.pauseAllScripts.compareAndSet(false, true);
             Microbot.showMessage("Your bot tried to interact with an object for "
                     + retries + " times but failed. Please take a look at what is happening.");
             return false;
         }
-        WorldPoint objectLocation = getRuneLiteWorldLocation();
+        WorldPoint objectLocation = CantReachTargetRecovery.templateLocation(getRuneLiteWorldLocation());
         if (objectLocation == null) {
             return false;
         }
-        Microbot.cantReachTargetRetries++;
+        int attempt = CantReachTargetRecovery.countAttempt();
         Microbot.log("[Interact] can't-reach recovery: walking to object " + getId()
-                + " at " + objectLocation + " (attempt " + Microbot.cantReachTargetRetries + ")");
+                + " at " + objectLocation + " (attempt " + attempt + ")");
         if (!CantReachTargetRecovery.walkTo(objectLocation, 2)) {
             return false;
         }
         Microbot.pauseAllScripts.compareAndSet(true, false);
-        Microbot.cantReachTarget = false;
-        Microbot.cantReachTargetRetries = 0;
+        CantReachTargetRecovery.reset();
         return true;
     }
 
@@ -596,7 +595,7 @@ public class Rs2TileObjectModel implements TileObject, IEntity {
             }
             if (distance > MAX_INTERACT_DISTANCE) {
                 Microbot.log("Object with id " + getId() + " is not close enough to interact with. Walking to the object....");
-                Rs2Walker.walkTo(getRuneLiteWorldLocation());
+                Rs2Walker.walkTo(CantReachTargetRecovery.templateLocation(getRuneLiteWorldLocation()));
                 return false;
             }
 
