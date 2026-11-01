@@ -37,6 +37,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -138,7 +139,7 @@ public class DashboardSyncLiveTest
 	}
 
 	@Test
-	public void worldHopsSendNothingExtra()
+	public void worldHopsAndRegionLoadsSendNothingExtra()
 	{
 		changed(GameState.LOGGED_IN);
 		sync.onGameTick(new GameTick());
@@ -146,49 +147,80 @@ public class DashboardSyncLiveTest
 
 		for (int i = 0; i < 3; i++)
 		{
-			changed(GameState.HOPPING);
+			if (i != 1)
+			{
+				changed(GameState.HOPPING);
+			}
 			changed(GameState.LOADING);
 			changed(GameState.LOGGED_IN);
 			sync.onGameTick(new GameTick());
 			runScheduled(DashboardSync.LIVE_SYNC_WINDOW_MS);
 		}
 		assertEquals(1, liveSyncs.size());
+
+		changed(GameState.LOGIN_SCREEN);
+		assertEquals("LOGIN_SCREEN", status(1));
 	}
 
 	@Test
-	public void aShortConnectionLossSendsNothingButALastingOneIsSent()
+	public void aLongPollCapturedMidHopIsCorrectedOnceBackInGame()
 	{
 		changed(GameState.LOGGED_IN);
 		sync.onGameTick(new GameTick());
 		runScheduled(DashboardSync.LIVE_SYNC_WINDOW_MS);
 		assertEquals(1, liveSyncs.size());
 
-		changed(GameState.CONNECTION_LOST);
+		changed(GameState.HOPPING);
+		runScheduled(DashboardSync.FIRST_SYNC_MS);
+		changed(GameState.LOADING);
 		changed(GameState.LOGGED_IN);
-		sync.onGameTick(new GameTick());
-		runScheduled(DashboardSync.CONNECTION_LOST_HOLD_MS);
 		assertEquals(1, liveSyncs.size());
 
-		changed(GameState.CONNECTION_LOST);
-		assertEquals(1, liveSyncs.size());
-		runScheduled(DashboardSync.CONNECTION_LOST_HOLD_MS);
+		sync.onGameTick(new GameTick());
 		assertEquals(2, liveSyncs.size());
-		assertEquals("CONNECTION_LOST", status(1));
+		assertEquals("LOGGED_IN", status(1));
 	}
 
 	@Test
-	public void aConnectionLossThatEndsAtTheLoginScreenSendsTheLoginScreen()
+	public void aFailedLiveCaptureIsRetriedAfterTheWindowWithoutUsingACapSlot()
+	{
+		when(client.getGameState()).thenThrow(new IllegalStateException("not ready"));
+		sync.onGameStateChanged(event(GameState.LOGIN_SCREEN));
+		assertEquals(0, scheduled.stream().filter(task -> task.delayMs == DashboardSync.LIVE_SYNC_LIMIT_WINDOW_MS).count());
+
+		doReturn(GameState.LOGIN_SCREEN).when(client).getGameState();
+		runScheduled(DashboardSync.LIVE_SYNC_WINDOW_MS);
+		assertEquals(1, liveSyncs.size());
+		assertEquals("LOGIN_SCREEN", status(0));
+		assertEquals(1, scheduled.stream().filter(task -> task.delayMs == DashboardSync.LIVE_SYNC_LIMIT_WINDOW_MS).count());
+	}
+
+	@Test
+	public void connectionLossesAreSentOnlyOnceTheyLastOrEndAtTheLoginScreen()
 	{
 		changed(GameState.LOGGED_IN);
 		sync.onGameTick(new GameTick());
 		runScheduled(DashboardSync.LIVE_SYNC_WINDOW_MS);
+		assertEquals(1, liveSyncs.size());
+
+		changed(GameState.CONNECTION_LOST);
+		changed(GameState.LOGGED_IN);
+		sync.onGameTick(new GameTick());
+		runScheduled(DashboardSync.CONNECTION_LOST_HOLD_MS);
+		assertEquals(1, liveSyncs.size());
 
 		changed(GameState.CONNECTION_LOST);
 		changed(GameState.LOGIN_SCREEN);
 		runScheduled(DashboardSync.CONNECTION_LOST_HOLD_MS);
-
 		assertEquals(2, liveSyncs.size());
 		assertEquals("LOGIN_SCREEN", status(1));
+
+		runScheduled(DashboardSync.LIVE_SYNC_WINDOW_MS);
+		changed(GameState.CONNECTION_LOST);
+		assertEquals(2, liveSyncs.size());
+		runScheduled(DashboardSync.CONNECTION_LOST_HOLD_MS);
+		assertEquals(3, liveSyncs.size());
+		assertEquals("CONNECTION_LOST", status(2));
 	}
 
 	@Test
@@ -208,27 +240,6 @@ public class DashboardSyncLiveTest
 		runScheduled(DashboardSync.LIVE_SYNC_WINDOW_MS);
 		assertEquals(2, liveSyncs.size());
 		assertEquals("LOGGED_IN", status(1));
-	}
-
-	@Test
-	public void regionLoadsWhileLoggedInSendNothingExtra()
-	{
-		changed(GameState.LOGGED_IN);
-		sync.onGameTick(new GameTick());
-		assertEquals(1, liveSyncs.size());
-
-		for (int i = 0; i < 3; i++)
-		{
-			changed(GameState.LOADING);
-			changed(GameState.LOGGED_IN);
-			sync.onGameTick(new GameTick());
-			runScheduled(DashboardSync.LIVE_SYNC_WINDOW_MS);
-		}
-		assertEquals(1, liveSyncs.size());
-
-		changed(GameState.LOGIN_SCREEN);
-		assertEquals(2, liveSyncs.size());
-		assertEquals("LOGIN_SCREEN", status(1));
 	}
 
 	@Test

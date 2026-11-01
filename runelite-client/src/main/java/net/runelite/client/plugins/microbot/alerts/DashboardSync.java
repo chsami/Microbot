@@ -76,6 +76,7 @@ public class DashboardSync
 	private ScheduledFuture<?> next;
 	private int failures;
 	private GameState lastStatus;
+	private GameState reportedStatus;
 	private int statusChanges;
 	private boolean awaitingTick;
 	private boolean liveWindowOpen = true;
@@ -139,8 +140,16 @@ public class DashboardSync
 	{
 		GameState state = event.getGameState();
 		statusChanges++;
-		if (state == GameState.LOADING || state == GameState.HOPPING || state == lastStatus)
+		if (state == GameState.LOADING || state == GameState.HOPPING)
 		{
+			return;
+		}
+		if (state == lastStatus)
+		{
+			if (state == GameState.LOGGED_IN && reportedStatus != null && reportedStatus != GameState.LOGGED_IN)
+			{
+				awaitingTick = true;
+			}
 			return;
 		}
 		if (state == GameState.CONNECTION_LOST)
@@ -234,9 +243,7 @@ public class DashboardSync
 			return;
 		}
 		liveWindowOpen = false;
-		liveSent++;
 		executor.schedule(RunnableExceptionLogger.wrap(this::liveWindowEnded), LIVE_SYNC_WINDOW_MS, TimeUnit.MILLISECONDS);
-		executor.schedule(RunnableExceptionLogger.wrap(this::liveSyncExpired), LIVE_SYNC_LIMIT_WINDOW_MS, TimeUnit.MILLISECONDS);
 		captureState()
 			.orTimeout(CAPTURE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
 			.whenCompleteAsync((state, error) ->
@@ -244,18 +251,27 @@ public class DashboardSync
 				if (error != null)
 				{
 					log.debug("Unable to read the game state for the dashboard", error);
+					requestLiveSync();
 					return;
 				}
-				postLiveSync(token.get(), payload(sessionId, config.allowDashboardScreenshots(), config.allowDashboardControl(), state));
+				postLiveSync(token.get(), sessionId, state);
 			}, executor);
 	}
 
-	private synchronized void postLiveSync(String token, JsonObject payload)
+	private synchronized void postLiveSync(String token, UUID sessionId, JsonObject state)
 	{
 		if (!running || failures > 0)
 		{
 			return;
 		}
+		if (liveSent >= LIVE_SYNC_LIMIT)
+		{
+			livePending = true;
+			return;
+		}
+		liveSent++;
+		executor.schedule(RunnableExceptionLogger.wrap(this::liveSyncExpired), LIVE_SYNC_LIMIT_WINDOW_MS, TimeUnit.MILLISECONDS);
+		JsonObject payload = payload(sessionId, config.allowDashboardScreenshots(), config.allowDashboardControl(), state);
 		microbotApi.syncDashboard(token, payload, 0, new Callback()
 		{
 			@Override
@@ -340,7 +356,12 @@ public class DashboardSync
 		{
 			try
 			{
-				captured.complete(DashboardGameState.capture(client, itemManager, xpTracker));
+				JsonObject state = DashboardGameState.capture(client, itemManager, xpTracker);
+				GameState status = client.getGameState();
+				if (captured.complete(state))
+				{
+					reportedStatus = status;
+				}
 			}
 			catch (RuntimeException e)
 			{
@@ -425,7 +446,7 @@ public class DashboardSync
 			.forEach(command -> dashboardControl.run(token, command.getId(), command.getType(), command.getScriptId()));
 	}
 
-	private void retryLater()
+	private synchronized void retryLater()
 	{
 		failures++;
 		schedule(backoff(failures));
