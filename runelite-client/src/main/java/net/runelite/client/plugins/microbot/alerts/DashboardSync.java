@@ -54,6 +54,7 @@ public class DashboardSync
 	static final long LIVE_SYNC_WINDOW_MS = 5_000;
 	static final int LIVE_SYNC_LIMIT = 40;
 	static final long LIVE_SYNC_LIMIT_WINDOW_MS = 600_000;
+	static final long CONNECTION_LOST_HOLD_MS = 4_000;
 	static final String SCREENSHOT = "screenshot";
 	static final String SCREENSHOT_NOTICE = "The Microbot dashboard took a screenshot of this client.";
 
@@ -75,6 +76,7 @@ public class DashboardSync
 	private ScheduledFuture<?> next;
 	private int failures;
 	private GameState lastStatus;
+	private int statusChanges;
 	private boolean awaitingTick;
 	private boolean liveWindowOpen = true;
 	private boolean livePending;
@@ -136,14 +138,32 @@ public class DashboardSync
 	public void onGameStateChanged(GameStateChanged event)
 	{
 		GameState state = event.getGameState();
-		if (state == GameState.LOADING || state == lastStatus)
+		statusChanges++;
+		if (state == GameState.LOADING || state == GameState.HOPPING || state == lastStatus)
 		{
+			return;
+		}
+		if (state == GameState.CONNECTION_LOST)
+		{
+			int change = statusChanges;
+			executor.schedule(RunnableExceptionLogger.wrap(() -> clientThread.invoke(() -> connectionLostLasted(change))),
+				CONNECTION_LOST_HOLD_MS, TimeUnit.MILLISECONDS);
 			return;
 		}
 		lastStatus = state;
 		awaitingTick = state == GameState.LOGGED_IN;
 		if (!awaitingTick)
 		{
+			stateChanged();
+		}
+	}
+
+	private void connectionLostLasted(int change)
+	{
+		if (change == statusChanges)
+		{
+			lastStatus = GameState.CONNECTION_LOST;
+			awaitingTick = false;
 			stateChanged();
 		}
 	}

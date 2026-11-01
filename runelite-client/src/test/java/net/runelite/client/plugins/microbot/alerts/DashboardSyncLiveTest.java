@@ -117,12 +117,13 @@ public class DashboardSyncLiveTest
 	@Test
 	public void burstsCollapseIntoOneTrailingSyncWithTheLatestState()
 	{
-		changed(GameState.HOPPING);
-		changed(GameState.CONNECTION_LOST);
+		changed(GameState.LOGGING_IN);
+		changed(GameState.LOGIN_SCREEN);
+		changed(GameState.LOGGING_IN);
 		changed(GameState.LOGIN_SCREEN);
 
 		assertEquals(1, liveSyncs.size());
-		assertEquals("HOPPING", status(0));
+		assertEquals("LOGGING_IN", status(0));
 
 		runScheduled(DashboardSync.LIVE_SYNC_WINDOW_MS);
 
@@ -132,8 +133,62 @@ public class DashboardSyncLiveTest
 		runScheduled(DashboardSync.LIVE_SYNC_WINDOW_MS);
 		assertEquals(2, liveSyncs.size());
 
-		changed(GameState.HOPPING);
+		changed(GameState.LOGGING_IN);
 		assertEquals(3, liveSyncs.size());
+	}
+
+	@Test
+	public void worldHopsSendNothingExtra()
+	{
+		changed(GameState.LOGGED_IN);
+		sync.onGameTick(new GameTick());
+		assertEquals(1, liveSyncs.size());
+
+		for (int i = 0; i < 3; i++)
+		{
+			changed(GameState.HOPPING);
+			changed(GameState.LOADING);
+			changed(GameState.LOGGED_IN);
+			sync.onGameTick(new GameTick());
+			runScheduled(DashboardSync.LIVE_SYNC_WINDOW_MS);
+		}
+		assertEquals(1, liveSyncs.size());
+	}
+
+	@Test
+	public void aShortConnectionLossSendsNothingButALastingOneIsSent()
+	{
+		changed(GameState.LOGGED_IN);
+		sync.onGameTick(new GameTick());
+		runScheduled(DashboardSync.LIVE_SYNC_WINDOW_MS);
+		assertEquals(1, liveSyncs.size());
+
+		changed(GameState.CONNECTION_LOST);
+		changed(GameState.LOGGED_IN);
+		sync.onGameTick(new GameTick());
+		runScheduled(DashboardSync.CONNECTION_LOST_HOLD_MS);
+		assertEquals(1, liveSyncs.size());
+
+		changed(GameState.CONNECTION_LOST);
+		assertEquals(1, liveSyncs.size());
+		runScheduled(DashboardSync.CONNECTION_LOST_HOLD_MS);
+		assertEquals(2, liveSyncs.size());
+		assertEquals("CONNECTION_LOST", status(1));
+	}
+
+	@Test
+	public void aConnectionLossThatEndsAtTheLoginScreenSendsTheLoginScreen()
+	{
+		changed(GameState.LOGGED_IN);
+		sync.onGameTick(new GameTick());
+		runScheduled(DashboardSync.LIVE_SYNC_WINDOW_MS);
+
+		changed(GameState.CONNECTION_LOST);
+		changed(GameState.LOGIN_SCREEN);
+		runScheduled(DashboardSync.CONNECTION_LOST_HOLD_MS);
+
+		assertEquals(2, liveSyncs.size());
+		assertEquals("LOGIN_SCREEN", status(1));
 	}
 
 	@Test
@@ -181,7 +236,7 @@ public class DashboardSyncLiveTest
 	{
 		for (int i = 0; i < DashboardSync.LIVE_SYNC_LIMIT + 5; i++)
 		{
-			changed(i % 2 == 0 ? GameState.LOGIN_SCREEN : GameState.HOPPING);
+			changed(i % 2 == 0 ? GameState.LOGIN_SCREEN : GameState.LOGGING_IN);
 			runScheduled(DashboardSync.LIVE_SYNC_WINDOW_MS);
 		}
 		assertEquals(DashboardSync.LIVE_SYNC_LIMIT, liveSyncs.size());
@@ -203,7 +258,7 @@ public class DashboardSyncLiveTest
 
 		when(linkToken.get()).thenReturn(Optional.of("token"));
 		when(sessions.getMicrobotSessionId()).thenReturn(null);
-		changed(GameState.HOPPING);
+		changed(GameState.LOGGING_IN);
 
 		when(sessions.getMicrobotSessionId()).thenReturn(SESSION);
 		runScheduled(DashboardSync.FIRST_SYNC_MS);
