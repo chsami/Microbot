@@ -6,7 +6,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
+import net.runelite.api.Client;
+import net.runelite.api.ItemComposition;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.client.callback.ClientThread;
@@ -441,6 +444,31 @@ public class InventorySetupMatchingTest
 		assertFalse(requested.getValue().containsKey(null));
 		assertEquals(ItemID.LAWRUNE, requested.getValue().get(Runes.LAW).getId());
 		microbot.verify(() -> Microbot.log(eq(Level.WARN), contains("rune pouch is not supported yet"), eq("Aether rune"), eq("Aether rune")));
+	}
+
+	@Test
+	public void notedRowIsCheckedAndWithdrawnByName()
+	{
+		bankReadyForLoading();
+		ItemComposition notedShark = mock(ItemComposition.class);
+		when(notedShark.getName()).thenReturn("Shark");
+		when(notedShark.getNote()).thenReturn(799);
+		when(notedShark.isStackable()).thenReturn(true);
+		Client client = mock(Client.class);
+		when(client.getItemDefinition(org.mockito.ArgumentMatchers.anyInt())).thenReturn(mock(ItemComposition.class));
+		when(client.getItemDefinition(ItemID.Cert.SHARK)).thenReturn(notedShark);
+		ClientThread clientThread = mock(ClientThread.class);
+		when(clientThread.runOnClientThreadOptional(any())).thenAnswer(call -> Optional.ofNullable(call.<Callable<?>>getArgument(0).call()));
+		microbot.when(Microbot::getClientThread).thenReturn(clientThread);
+		microbot.when(Microbot::getClient).thenReturn(client);
+		rs2Bank.when(() -> Rs2Bank.hasBankItem("shark", 100, false)).thenReturn(true);
+		rs2Inventory.when(() -> Rs2Inventory.waitForInventoryChanges(org.mockito.ArgumentMatchers.anyInt())).thenReturn(true);
+
+		loader(inventorySetup(item(ItemID.Cert.SHARK, "Shark", 100, -1))).loadInventory(false);
+
+		rs2Bank.verify(() -> Rs2Bank.hasBankItem("shark", 100, false));
+		rs2Bank.verify(() -> Rs2Bank.hasBankItem(org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyInt()), never());
+		rs2Bank.verify(() -> Rs2Bank.withdrawX("shark", 100));
 	}
 
 	@Test

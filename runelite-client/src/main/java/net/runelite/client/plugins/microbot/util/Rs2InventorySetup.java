@@ -428,7 +428,7 @@ public class Rs2InventorySetup {
 			boolean isNoted = existingItem.isNoted(); //for noted items, we also need to use the name of the hasBankItem method, or the unnoted id
 			String lowerCaseName = item.getName().toLowerCase();
 			boolean isFuzzy = item.isFuzzy();
-			Object identifier = isFuzzy ? lowerCaseName : item.getId();
+			Object identifier = isFuzzy || isNoted ? lowerCaseName : item.getId();
 
 			boolean partialBankWithdraw = matchingItems.stream().anyMatch(Rs2InventorySetup::setupWithdrawIgnoresExactBankTotal);
 			boolean stackableRow = setupRowIsStackableByDefinition(item);
