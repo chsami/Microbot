@@ -96,7 +96,7 @@ import java.util.regex.Pattern;
         description = "Draws the shortest path to a chosen destination on the map (right click a spot on the world map to use)",
         tags = {"pathfinder", "map", "waypoint", "navigation", "microbot"},
         enabledByDefault = false,
-        version = "1.0.7",
+        version = "1.0.8",
         alwaysOn = true
 )
 public class ShortestPathPlugin extends Plugin {
