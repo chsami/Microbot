@@ -1975,11 +1975,13 @@ public class Rs2Inventory {
 
         if (action.equalsIgnoreCase("destroy")) {
             if (!sleepUntil(() -> Rs2Widget.isWidgetVisible(584, 0))) {
-                Microbot.log("Could not confirm destroying " + rs2Item.getName() + ": the confirm dialog did not open. Click Yes on the dialog yourself or restart the script.", Level.WARN);
+                Microbot.status = action + " " + rs2Item.getName() + " not confirmed";
+                Microbot.log("Could not confirm destroying " + rs2Item.getName() + ": the destroy confirmation did not appear in time. If it is open, click Yes. If not, right-click " + rs2Item.getName() + " and choose Destroy yourself.", Level.WARN);
                 return false;
             }
             Widget confirmWidget = Rs2Widget.getWidget(584, 1);
             if (confirmWidget == null) {
+                Microbot.status = action + " " + rs2Item.getName() + " not confirmed";
                 Microbot.log("Could not confirm destroying " + rs2Item.getName() + ": the Yes button was not found. Click Yes on the dialog yourself.", Level.WARN);
                 return false;
             }

@@ -21,6 +21,7 @@ import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.function.BooleanSupplier;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -98,7 +99,8 @@ public class Rs2InventoryInvokeMenuTest {
             assertFalse(Rs2Inventory.interact(item, "Destroy"));
 
             microbot.verify(() -> Microbot.doInvoke(argThat(entry -> entry.getIdentifier() == 2), any()));
-            microbot.verify(() -> Microbot.log(eq("Could not confirm destroying Bonds: the confirm dialog did not open. Click Yes on the dialog yourself or restart the script."), eq(Level.WARN)));
+            microbot.verify(() -> Microbot.log(eq("Could not confirm destroying Bonds: the destroy confirmation did not appear in time. If it is open, click Yes. If not, right-click Bonds and choose Destroy yourself."), eq(Level.WARN)));
+            assertEquals("Destroy Bonds not confirmed", Microbot.status);
             widgets.verify(() -> Rs2Widget.getWidget(584, 1), never());
             widgets.verify(() -> Rs2Widget.clickWidget(anyInt()), never());
         }
@@ -124,6 +126,7 @@ public class Rs2InventoryInvokeMenuTest {
             assertFalse(Rs2Inventory.interact(item, "Destroy"));
 
             microbot.verify(() -> Microbot.log(eq("Could not confirm destroying Bonds: the Yes button was not found. Click Yes on the dialog yourself."), eq(Level.WARN)));
+            assertEquals("Destroy Bonds not confirmed", Microbot.status);
             widgets.verify(() -> Rs2Widget.clickWidget(anyInt()), never());
         }
     }
