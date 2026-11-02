@@ -310,6 +310,14 @@ Models built from cached ids (`createFromCache`, the `(id, quantity, slot)` and 
 
 **Defensive check:** Run `Rs2ItemModelHaPriceTest`.
 
+## 20. The Destroy confirm dialog may never open
+
+After sending Destroy, `Rs2Inventory` waits for the confirm dialog (`584:0`) and clicks `584:1`. The wait returns false without the dialog when it runs on the client thread (where `sleepUntil` is a no-op), times out, the player takes over input, or the item has no destroy prompt, and `Rs2Widget.getWidget(584, 1)` is then null. Return when the wait fails or the widget is missing instead of dereferencing it, log a warning naming the item, and let `Rs2Inventory.interact(item, "Destroy")` return false so the caller can retry or stop instead of assuming the item is gone.
+
+**Why this matters:** `invokeMenu` ignored the wait result and called `getId()` on the missing widget, so the NPE escaped `Rs2Inventory.interact` and crashed the caller's client-thread invoke.
+
+**Defensive check:** Run `Rs2InventoryInvokeMenuTest`.
+
 ## Terminal supply stops need observed logout
 
 An owning script can set `withMissingSupplyHandler` on its Inventory Setup loader to keep its scheduled loop alive while `TerminalLogoutPrompt` closes the bank and requests logout. Do not show a blocking shortage notification or cancel that loop until `LOGGED_OUT` is observed. The default loader policy stays unchanged when no handler is supplied; ordinary breaks and world hops do not arm terminal Auto Login suppression.
