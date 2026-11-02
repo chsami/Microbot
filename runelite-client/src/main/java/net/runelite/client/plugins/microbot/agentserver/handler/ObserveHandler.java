@@ -12,10 +12,13 @@ import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.ToIntFunction;
 import java.util.stream.Collectors;
 
 public class ObserveHandler extends AgentHandler {
@@ -135,11 +138,22 @@ public class ObserveHandler extends AgentHandler {
 	}
 
 	private static List<Map<String, Object>> nearbyNpcs(int distance, int limit) {
-		return Microbot.getRs2NpcCache().query().within(distance).toListOnClientThread().stream()
-				.sorted(Comparator.comparingInt(Rs2NpcModel::getDistanceFromPlayer))
+		List<Rs2NpcModel> npcs = Microbot.getClientThread().invoke(() ->
+				nearestFirst(Microbot.getRs2NpcCache().query().within(distance).toList(), Rs2NpcModel::getDistanceFromPlayer));
+		return npcs.stream()
 				.limit(limit)
 				.map(NpcHandler::serializeNpc)
 				.collect(Collectors.toList());
+	}
+
+	static <T> List<T> nearestFirst(List<T> items, ToIntFunction<T> distance) {
+		Map<T, Integer> keys = new IdentityHashMap<>();
+		for (T item : items) {
+			keys.put(item, distance.applyAsInt(item));
+		}
+		List<T> sorted = new ArrayList<>(items);
+		sorted.sort(Comparator.comparingInt(keys::get));
+		return sorted;
 	}
 
 	private static List<Map<String, Object>> nearbyObjects(int distance, int limit) {
