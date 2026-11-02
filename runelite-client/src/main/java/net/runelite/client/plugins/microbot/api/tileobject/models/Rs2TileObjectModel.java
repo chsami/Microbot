@@ -654,12 +654,25 @@ public class Rs2TileObjectModel implements TileObject, IEntity {
 
             Rectangle clickArea = clearClickArea();
             if (clickArea == null && !turned) {
-                Rs2Camera.turnTo(tileObject);
+                Rs2Camera.turnTo(tileObject, COVERED_TURN_MAX_ANGLE);
                 clickArea = clearClickArea();
             }
             if (clickArea == null) {
-                warnCoveredByInterface(objName);
-                return false;
+                String name = coveredObjectName(objName);
+                boolean warn = shouldWarnCovered(getId(), System.currentTimeMillis());
+                boolean walked = false;
+                if (distance > COVERED_WALK_DISTANCE && !Rs2Walker.isWalkingOnCurrentThread()) {
+                    if (warn) {
+                        Microbot.log(name + " is behind the chatbox or side panel - walking closer so it can be clicked.");
+                    }
+                    CantReachTargetRecovery.walkTo(CantReachTargetRecovery.templateLocation(getRuneLiteWorldLocation()), COVERED_WALK_DISTANCE);
+                    walked = true;
+                    clickArea = clearClickArea();
+                }
+                if (clickArea == null) {
+                    warnCoveredByInterface(name, walked, warn);
+                    return false;
+                }
             }
 
             Microbot.doInvoke(new NewMenuEntry()
@@ -694,6 +707,8 @@ public class Rs2TileObjectModel implements TileObject, IEntity {
                 Rs2UiHelper.visibleSceneOverlayBounds());
     }
 
+    static final int COVERED_TURN_MAX_ANGLE = 5;
+    static final int COVERED_WALK_DISTANCE = 2;
     static final long COVERED_WARN_INTERVAL_MS = 10_000;
     private static int lastCoveredWarnId = -1;
     private static long lastCoveredWarnAt;
@@ -707,14 +722,21 @@ public class Rs2TileObjectModel implements TileObject, IEntity {
         return true;
     }
 
-    private void warnCoveredByInterface(String objName) {
+    private String coveredObjectName(String objName) {
         String name = objName == null || objName.isEmpty() ? getName() : Rs2UiHelper.stripColTags(objName);
         if (name == null || name.isEmpty() || "null".equalsIgnoreCase(name)) {
             name = "object " + getId();
         }
-        String message = "Can't click {} - it is behind the chatbox, side panel or minimap even after turning the camera."
-                + " If this keeps happening, zoom out or move the camera so it is in view.";
-        if (shouldWarnCovered(getId(), System.currentTimeMillis())) {
+        return name;
+    }
+
+    private void warnCoveredByInterface(String name, boolean walked, boolean warn) {
+        String message = walked
+                ? "Can't click {} - it is still behind the chatbox, side panel or minimap after turning the camera and walking closer."
+                        + " If this keeps happening, zoom out or drag the camera so it is in the middle of the screen."
+                : "Can't click {} - it is behind the chatbox, side panel or minimap even after turning the camera."
+                        + " If this keeps happening, zoom out or move the camera so it is in view.";
+        if (warn) {
             log.warn(message, name);
         } else {
             log.debug(message, name);

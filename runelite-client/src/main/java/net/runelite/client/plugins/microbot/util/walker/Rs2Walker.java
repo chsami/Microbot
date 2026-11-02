@@ -1187,6 +1187,10 @@ public class Rs2Walker {
      * on {@link java.util.concurrent.locks.ReentrantLock#lockInterruptibly()} for the full teleport timeout.
      * <p>No-op release path when the current thread does not hold the lock (e.g. calibration daemon).
      */
+    public static boolean isWalkingOnCurrentThread() {
+        return walkerLock.isHeldByCurrentThread();
+    }
+
     public static void runWithWalkerLockReleased(Runnable action)
     {
         if (action == null)
