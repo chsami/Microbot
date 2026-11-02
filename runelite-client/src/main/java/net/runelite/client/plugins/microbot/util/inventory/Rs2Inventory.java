@@ -1974,8 +1974,10 @@ public class Rs2Inventory {
                 (itemBounds(rs2Item) == null) ? new Rectangle(1, 1) : itemBounds(rs2Item));
 
         if (action.equalsIgnoreCase("destroy")) {
-            sleepUntil(() -> Rs2Widget.isWidgetVisible(584, 0));
-            Rs2Widget.clickWidget(Rs2Widget.getWidget(584, 1).getId());
+            if (!sleepUntil(() -> Rs2Widget.isWidgetVisible(584, 0))) return;
+            Widget confirmWidget = Rs2Widget.getWidget(584, 1);
+            if (confirmWidget == null) return;
+            Rs2Widget.clickWidget(confirmWidget.getId());
         }
     }
 
