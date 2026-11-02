@@ -18,8 +18,6 @@ import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.walker.recovery.CantReachTargetRecovery;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ThreadFactory;
@@ -41,7 +39,7 @@ public abstract class Script extends Global implements IScript {
         }
     }
 
-    protected ScheduledExecutorService scheduledExecutorService = new ScheduledThreadPoolExecutor(10,
+    protected ScheduledExecutorService scheduledExecutorService = new ScriptScheduledExecutor(10,
         new ThreadFactory() {
             private final AtomicInteger threadNumber = new AtomicInteger(1);
             @Override
@@ -51,28 +49,7 @@ public abstract class Script extends Global implements IScript {
                 t.setDaemon(true);
                 return t;
             }
-        }) {
-            {
-                setKeepAliveTime(EXECUTOR_KEEP_ALIVE_SECONDS, TimeUnit.SECONDS);
-                allowCoreThreadTimeOut(true);
-                setRemoveOnCancelPolicy(true);
-            }
-
-            @Override
-            public ScheduledFuture<?> scheduleWithFixedDelay(Runnable command, long initialDelay,
-                    long delay, TimeUnit unit) {
-                // Announce before a zero-delay loop can report a terminal supply failure.
-                announceStart();
-                return super.scheduleWithFixedDelay(command, initialDelay, delay, unit);
-            }
-
-            @Override
-            public ScheduledFuture<?> scheduleAtFixedRate(Runnable command, long initialDelay,
-                    long period, TimeUnit unit) {
-                announceStart();
-                return super.scheduleAtFixedRate(command, initialDelay, period, unit);
-            }
-        };
+        }, this::announceStart);
     protected ScheduledFuture<?> scheduledFuture;
     protected ScheduledFuture<?> mainScheduledFuture;
 
@@ -121,6 +98,9 @@ public abstract class Script extends Global implements IScript {
      */
     public boolean run() {
         ScriptHeartbeatRegistry.recordHeartbeat(this.getClass().getName());
+
+        // Do not enter script logic while the user has the game. Plugin lifecycle and state remain intact.
+        if (ScriptPauseController.isPaused()) return false;
 
         if (Microbot.isLoggedIn() && !SessionFatigue.isActive()) {
             SessionFatigue.startSession();

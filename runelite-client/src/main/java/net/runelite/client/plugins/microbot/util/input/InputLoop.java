@@ -2,6 +2,7 @@ package net.runelite.client.plugins.microbot.util.input;
 
 import net.runelite.api.Point;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.ScriptPauseController;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -24,6 +25,7 @@ public final class InputLoop
 {
 	private static final ReentrantLock LOCK = new ReentrantLock();
 	private static final ThreadLocal<Boolean> IN_GESTURE = ThreadLocal.withInitial(() -> Boolean.FALSE);
+	private static final ThreadLocal<Long> GESTURE_GENERATION = ThreadLocal.withInitial(() -> -1L);
 
 	/** Generous: a healthy gesture holds the lock for milliseconds, so this only catches a wedge. */
 	private static volatile long lockTimeoutMs = 5_000L;
@@ -55,6 +57,13 @@ public final class InputLoop
 		return IN_GESTURE.get();
 	}
 
+	public static boolean isInputAllowed()
+	{
+		long gestureGeneration = GESTURE_GENERATION.get();
+		return !ScriptPauseController.isPaused()
+			&& (gestureGeneration < 0 || gestureGeneration == ScriptPauseController.getGeneration());
+	}
+
 	public static Result run(Gesture gesture)
 	{
 		// An inner run would get its own Emit, so an inner abort would clear targetMenu and release
@@ -63,7 +72,8 @@ public final class InputLoop
 		{
 			throw new IllegalStateException("InputLoop.run is already running a gesture on this thread");
 		}
-		if (InputArbiter.isHuman())
+		long generation = ScriptPauseController.getGeneration();
+		if (!isInputAllowed() || InputArbiter.isHuman())
 		{
 			return Result.ABORTED;
 		}
@@ -82,11 +92,12 @@ public final class InputLoop
 			return Result.ABORTED;
 		}
 		IN_GESTURE.set(Boolean.TRUE);
+		GESTURE_GENERATION.set(generation);
 		try
 		{
 			// The human may have taken over while this thread waited, and a deferred client-thread
 			// item may have been queued long before it ran.
-			if (InputArbiter.isHuman())
+			if (!isInputAllowed() || generation != ScriptPauseController.getGeneration() || InputArbiter.isHuman())
 			{
 				return Result.ABORTED;
 			}
@@ -111,6 +122,7 @@ public final class InputLoop
 		finally
 		{
 			IN_GESTURE.remove();
+			GESTURE_GENERATION.remove();
 			LOCK.unlock();
 		}
 	}
@@ -176,7 +188,7 @@ public final class InputLoop
 
 		public void checkpoint()
 		{
-			if (InputArbiter.isHuman())
+			if (!isInputAllowed() || InputArbiter.isHuman())
 			{
 				throw ABORTED;
 			}

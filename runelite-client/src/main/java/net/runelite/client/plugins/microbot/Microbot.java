@@ -100,7 +100,7 @@ public class Microbot {
     private static final ScheduledExecutorService xpSchedulor = Executors.newSingleThreadScheduledExecutor();
     @Getter
     private static final SpecialAttackConfigs specialAttackConfigs = new SpecialAttackConfigs();
-    public static MenuEntry targetMenu;
+    public static volatile MenuEntry targetMenu;
     public static boolean isGainingExp = false;
     public static AtomicBoolean pauseAllScripts = new AtomicBoolean(false);
     public static String status = "IDLE";
@@ -374,6 +374,9 @@ public class Microbot {
      * (interacting player, existing hop, invalid world). Returns {@code true} if a hop is initiated.
      */
     public static boolean hopToWorld(int worldNumber) {
+        if (ScriptPauseController.isPaused()) {
+            return false;
+        }
         if (!Microbot.isLoggedIn()) {
             return false;
         }
@@ -397,6 +400,9 @@ public class Microbot {
         }
         final net.runelite.api.World[] target = new net.runelite.api.World[1];
         boolean prepared = Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            if (ScriptPauseController.isPaused()) {
+                return false;
+            }
             String blocker = hopBlocker();
             if (blocker != null) {
                 log.error(blocker);
@@ -775,6 +781,9 @@ public class Microbot {
     }
 
     private static void doInvoke(NewMenuEntry entry, Rectangle rectangle, boolean quick) {
+        if (ScriptPauseController.isPaused()) {
+            return;
+        }
         try {
             Rectangle visible = Rs2UiHelper.isFallbackRectangle(rectangle) ? null : Rs2UiHelper.clipToCanvas(rectangle);
             if (visible == null) {
@@ -789,6 +798,9 @@ public class Microbot {
     }
 
     public static void drag(Rectangle start, Rectangle end) {
+        if (ScriptPauseController.isPaused()) {
+            return;
+        }
         if (start == null || end == null) {
             return;
         }
@@ -808,6 +820,9 @@ public class Microbot {
     }
 
     private static void click(Rectangle rectangle, NewMenuEntry entry, boolean resolveFallback, boolean quick) {
+        if (ScriptPauseController.isPaused()) {
+            return;
+        }
         Point point = entry.getType() == MenuAction.WALK
                 ? new Point(entry.getParam0(), entry.getParam1())
                 : Rs2UiHelper.getClickingPoint(rectangle, true, resolveFallback);
@@ -823,6 +838,9 @@ public class Microbot {
     }
 
     public static void click(Rectangle rectangle) {
+        if (ScriptPauseController.isPaused()) {
+            return;
+        }
         if (Rs2UiHelper.isFallbackRectangle(rectangle)) {
             return;
         }

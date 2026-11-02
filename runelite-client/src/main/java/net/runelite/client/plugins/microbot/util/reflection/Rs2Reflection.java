@@ -5,6 +5,7 @@ import net.runelite.api.ItemComposition;
 import net.runelite.api.MenuAction;
 import net.runelite.api.MenuEntry;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.ScriptPauseController;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 
@@ -31,6 +32,8 @@ public class Rs2Reflection {
     @SneakyThrows
     public static void invokeMenu(int param0, int param1, int opcode, int identifier, int itemId, int worldViewId, String option, String target, int canvasX, int canvasY)
     {
+        if (ScriptPauseController.isPaused()) return;
+        final long pauseGeneration = ScriptPauseController.getGeneration();
         // Cache-first path: when the on-disk cache resolves, MenuActionAsmResolver is never
         // referenced, so the JVM has no cause to class-load it — and therefore no cause to
         // link the ASM library. That's the point of P7-b: ASM becomes a first-launch-only
@@ -58,12 +61,19 @@ public class Rs2Reflection {
         if (menuAction == null || menuActionGarbageValue == null)
         {
             Microbot.showMessage("invokeMenu method is broken! Falling back to runelite menu action");
-            Microbot.getClientThread().invoke(() -> Microbot.getClient().menuAction(param0, param1, MenuAction.of(opcode), identifier, itemId, option, target));
+            Microbot.getClientThread().invoke(() -> {
+                if (!ScriptPauseController.isPaused() && pauseGeneration == ScriptPauseController.getGeneration()) {
+                    Microbot.getClient().menuAction(param0, param1, MenuAction.of(opcode), identifier, itemId, option, target);
+                }
+            });
             return;
         }
 
         menuAction.setAccessible(true);
-        Microbot.getClientThread().runOnClientThreadOptional(() -> menuAction.invoke(null, param0, param1, opcode, identifier, itemId, worldViewId, option, target, canvasX, canvasY, menuActionGarbageValue));
+        Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            if (ScriptPauseController.isPaused() || pauseGeneration != ScriptPauseController.getGeneration()) return null;
+            return menuAction.invoke(null, param0, param1, opcode, identifier, itemId, worldViewId, option, target, canvasX, canvasY, menuActionGarbageValue);
+        });
         menuAction.setAccessible(false);
 
         if (Microbot.getClient().getKeyboardIdleTicks() > Rs2Random.between(5000, 10000))

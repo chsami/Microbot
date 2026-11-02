@@ -123,6 +123,7 @@ public class BlockingEventManager
      * and, if true, offers it into the queue (drops if full).
      */
     private void validateAndEnqueueWithBackoff() {
+        if (ScriptPauseController.isPaused()) return;
         boolean hasValidEvents = false;
         if (!SplashScreen.isOpen()) {
             for (BlockingEvent event : blockingEvents) {
@@ -164,6 +165,7 @@ public class BlockingEventManager
      */
     public boolean shouldBlockAndProcess()
     {
+        if (ScriptPauseController.isPaused()) return true;
         if (isRunning.get())
         {
             return true;
@@ -187,7 +189,10 @@ public class BlockingEventManager
             boolean executedSuccess = false;
             try
             {
-                executedSuccess = event.execute();
+                if (ScriptPauseController.awaitResume()) {
+                    // A queued event may no longer apply after manual play.
+                    executedSuccess = !event.validate() || event.execute();
+                }
             }
             catch (Exception ex)
             {

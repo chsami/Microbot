@@ -2,6 +2,7 @@ package net.runelite.client.plugins.microbot.util.input;
 
 import net.runelite.api.Point;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.ScriptPauseController;
 import net.runelite.client.plugins.microbot.util.mouse.BotEventGuard;
 
 import java.awt.AWTEvent;
@@ -38,6 +39,10 @@ public final class AwtEmitter
 
 	public static void moved(int canvasX, int canvasY)
 	{
+		if (!InputLoop.isInputAllowed())
+		{
+			return;
+		}
 		// Here, not at the callers: every motion funnels through this method.
 		if (exitIfOutside(canvasX, canvasY))
 		{
@@ -74,6 +79,10 @@ public final class AwtEmitter
 
 	public static void wheel(int canvasX, int canvasY, int wheelRotation, int unitsToScroll)
 	{
+		if (!InputLoop.isInputAllowed())
+		{
+			return;
+		}
 		Canvas canvas = canvas();
 		if (canvas == null)
 		{
@@ -88,6 +97,10 @@ public final class AwtEmitter
 
 	private static void button(int id, int canvasX, int canvasY, int button)
 	{
+		if (id != MouseEvent.MOUSE_RELEASED && !InputLoop.isInputAllowed())
+		{
+			return;
+		}
 		if (id == MouseEvent.MOUSE_PRESSED)
 		{
 			HELD_BUTTONS.add(button);
@@ -121,6 +134,16 @@ public final class AwtEmitter
 	static void resetHeldButtonsForTest()
 	{
 		HELD_BUTTONS.clear();
+	}
+
+	/** Releases synthetic buttons after the pause has fenced off new input. */
+	public static void releaseHeldButtons()
+	{
+		Point at = PointerState.get();
+		for (Integer button : HELD_BUTTONS.toArray(new Integer[0]))
+		{
+			released(at.getX(), at.getY(), button);
+		}
 	}
 
 	/**
@@ -309,6 +332,11 @@ public final class AwtEmitter
 	// hand focus to the parent instead, which is the thing being prevented.
 	private static void dispatch(Canvas canvas, AWTEvent event)
 	{
+		if (ScriptPauseController.isPaused()
+			&& (!(event instanceof MouseEvent) || ((MouseEvent) event).getID() != MouseEvent.MOUSE_RELEASED))
+		{
+			return;
+		}
 		boolean canvasIsFocused = canvas.isFocusOwner();
 		boolean wasFocusable = canvas.isFocusable();
 		boolean shouldGuard = wasFocusable && !canvasIsFocused;
