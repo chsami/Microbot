@@ -15,15 +15,19 @@ import org.junit.Test;
 import org.mockito.Answers;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
+import org.slf4j.event.Level;
 
 import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.function.BooleanSupplier;
 
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
@@ -91,9 +95,10 @@ public class Rs2InventoryInvokeMenuTest {
             stubDestroyPath(microbot, widgets, inventory, item);
             microbot.when(Microbot::getClient).thenReturn(client);
 
-            assertTrue(Rs2Inventory.interact(item, "Destroy"));
+            assertFalse(Rs2Inventory.interact(item, "Destroy"));
 
             microbot.verify(() -> Microbot.doInvoke(argThat(entry -> entry.getIdentifier() == 2), any()));
+            microbot.verify(() -> Microbot.log(eq("Could not confirm destroying Bonds: the confirm dialog did not open. Click Yes on the dialog yourself or restart the script."), eq(Level.WARN)));
             widgets.verify(() -> Rs2Widget.getWidget(584, 1), never());
             widgets.verify(() -> Rs2Widget.clickWidget(anyInt()), never());
         }
@@ -116,8 +121,9 @@ public class Rs2InventoryInvokeMenuTest {
             global.when(() -> Global.sleepUntil(any(BooleanSupplier.class))).thenReturn(true);
             widgets.when(() -> Rs2Widget.getWidget(584, 1)).thenReturn(null);
 
-            assertTrue(Rs2Inventory.interact(item, "Destroy"));
+            assertFalse(Rs2Inventory.interact(item, "Destroy"));
 
+            microbot.verify(() -> Microbot.log(eq("Could not confirm destroying Bonds: the Yes button was not found. Click Yes on the dialog yourself."), eq(Level.WARN)));
             widgets.verify(() -> Rs2Widget.clickWidget(anyInt()), never());
         }
     }
@@ -144,6 +150,7 @@ public class Rs2InventoryInvokeMenuTest {
             assertTrue(Rs2Inventory.interact(item, "Destroy"));
 
             widgets.verify(() -> Rs2Widget.clickWidget(DESTROY_CONFIRM_ID));
+            microbot.verify(() -> Microbot.log(anyString(), eq(Level.WARN)), never());
         }
     }
 
