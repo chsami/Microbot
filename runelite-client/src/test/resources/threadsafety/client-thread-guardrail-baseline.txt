@@ -101,7 +101,6 @@ net.runelite.client.plugins.microbot.util.bank.Rs2Bank#updateLocalBank(ItemConta
 net.runelite.client.plugins.microbot.util.bank.Rs2Bank#withdrawLootItems(String, List): boolean  ->  net.runelite.api.ItemComposition#getNote(): int
 net.runelite.client.plugins.microbot.util.bank.Rs2Bank#withdrawLootItems(String, List): boolean  ->  net.runelite.api.ItemComposition#isTradeable(): boolean
 net.runelite.client.plugins.microbot.util.camera.Rs2Camera#getZoom(): int  ->  net.runelite.api.Client#getVarcIntValue(int): int
-net.runelite.client.plugins.microbot.util.camera.Rs2Camera#isTileOnScreen(LocalPoint): boolean  ->  net.runelite.api.Client#getPlane(): int
 net.runelite.client.plugins.microbot.util.camera.Rs2Camera#readPitchDirectly(): int  ->  net.runelite.api.Client#getCameraPitch(): int
 net.runelite.client.plugins.microbot.util.camera.Rs2Camera#readYawDirectly(): int  ->  net.runelite.api.Client#getCameraYaw(): int
 net.runelite.client.plugins.microbot.util.combat.Rs2Combat#getWeaponAttackStyle(): String  ->  net.runelite.api.EnumComposition#getIntValue(int): int
@@ -456,6 +455,7 @@ net.runelite.client.plugins.microbot.util.magic.Rs2Magic#superHeat(Rs2ItemModel,
 net.runelite.client.plugins.microbot.util.magic.Rs2Magic#superHeat(Rs2ItemModel, int, int): void  ->  net.runelite.api.widgets.Widget#getSpriteId(): int
 net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper#getActorClickbox(Actor): Rectangle  ->  net.runelite.api.Actor#getLocalLocation(): LocalPoint
 net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper#getTileClickbox(Tile): Rectangle  ->  net.runelite.api.Client#getPlane(): int
+net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper#getTileClickbox(Tile): Rectangle  ->  net.runelite.api.Perspective#localToCanvas(Client, LocalPoint, int): Point
 net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper#getTileClickbox(Tile): Rectangle  ->  net.runelite.api.Tile#getLocalLocation(): LocalPoint
 net.runelite.client.plugins.microbot.util.npc.Rs2Npc#attack(List): boolean  ->  net.runelite.api.Client#getLocalPlayer(): Player
 net.runelite.client.plugins.microbot.util.npc.Rs2Npc#attack(NPC): boolean  ->  net.runelite.api.Client#getLocalPlayer(): Player
@@ -718,9 +718,11 @@ net.runelite.client.plugins.microbot.util.walker.Rs2Walker#tryHandleBlockingPath
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#tryResolvePathAdjacentBlocker(WorldPoint, List, int, int, int): boolean  ->  net.runelite.api.GameObject#getWorldLocation(): WorldPoint
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#tryResolvePathAdjacentBlocker(WorldPoint, List, int, int, int): boolean  ->  net.runelite.api.ObjectComposition#getName(): String
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#walkCanvas(WorldPoint): WorldPoint  ->  net.runelite.api.Client#getTopLevelWorldView(): WorldView
+net.runelite.client.plugins.microbot.util.walker.Rs2Walker#walkCanvas(WorldPoint): WorldPoint  ->  net.runelite.api.Perspective#localToCanvas(Client, LocalPoint, int): Point
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#walkCanvas(WorldPoint): WorldPoint  ->  net.runelite.api.WorldView#getPlane(): int
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#walkCanvas(WorldPoint): WorldPoint  ->  net.runelite.api.coords.LocalPoint#fromWorld(WorldView, WorldPoint): LocalPoint
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#walkFastLocal(LocalPoint): void  ->  net.runelite.api.Client#getTopLevelWorldView(): WorldView
+net.runelite.client.plugins.microbot.util.walker.Rs2Walker#walkFastLocal(LocalPoint): void  ->  net.runelite.api.Perspective#localToCanvas(Client, LocalPoint, int): Point
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#walkFastLocal(LocalPoint): void  ->  net.runelite.api.WorldView#getPlane(): int
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#walkNextToInstance(GameObject): void  ->  net.runelite.api.Client#getTopLevelWorldView(): WorldView
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#walkNextToInstance(GameObject): void  ->  net.runelite.api.coords.LocalPoint#fromWorld(WorldView, WorldPoint): LocalPoint
@@ -769,6 +771,7 @@ net.runelite.client.plugins.microbot.util.walker.Rs2WalkerDoors#waitForDoorInter
 net.runelite.client.plugins.microbot.util.walker.Rs2WalkerMovement#localPointForWorld(WorldPoint): LocalPoint  ->  net.runelite.api.Client#getTopLevelWorldView(): WorldView
 net.runelite.client.plugins.microbot.util.walker.Rs2WalkerMovement#localPointForWorld(WorldPoint): LocalPoint  ->  net.runelite.api.WorldView#isInstance(): boolean
 net.runelite.client.plugins.microbot.util.walker.Rs2WalkerMovement#localPointForWorld(WorldPoint): LocalPoint  ->  net.runelite.api.coords.LocalPoint#fromWorld(WorldView, WorldPoint): LocalPoint
+net.runelite.client.plugins.microbot.util.walker.Rs2WalkerMovement#sceneCanvasPoint(WorldPoint): Point  ->  net.runelite.api.Perspective#localToCanvas(Client, LocalPoint, int): Point
 net.runelite.client.plugins.microbot.util.walker.Rs2WalkerMovement#staminaThreshold(): int  ->  net.runelite.api.Client#getLocalPlayer(): Player
 net.runelite.client.plugins.microbot.util.walker.Rs2WalkerMovement#staminaThreshold(): int  ->  net.runelite.api.Player#getName(): String
 net.runelite.client.plugins.microbot.util.walker.Rs2WalkerTransports#adjacentSamePlaneTransportSuppressionPoints(Transport, TileObject): Set  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
