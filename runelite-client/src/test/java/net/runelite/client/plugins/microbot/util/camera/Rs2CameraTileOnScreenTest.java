@@ -15,11 +15,13 @@ import org.mockito.Mockito;
 
 import java.util.Optional;
 import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -106,6 +108,83 @@ public class Rs2CameraTileOnScreenTest {
         doReturn(0).when(worldView).getTileHeight(anyInt(), anyInt(), anyInt());
         Rs2Camera.isTileOnScreen(sceneTile(103, 103));
         verify(worldView, atLeastOnce()).getTileHeight(anyInt(), anyInt(), anyInt());
+    }
+
+    @Test
+    public void localPointInsideSceneWithOverflowingHeightLookupIsNotOnScreen() {
+        mockScene();
+        assertFalse(Rs2Camera.isTileOnScreen(sceneTile(103, 103)));
+        verify(worldView, atLeastOnce()).getTileHeight(anyInt(), anyInt(), anyInt());
+    }
+
+    @Test
+    public void tileObjectInsideSceneWithOverflowingHeightLookupIsNotOnScreen() {
+        mockScene();
+        TileObject tileObject = mock(TileObject.class);
+        when(tileObject.getLocalLocation()).thenReturn(sceneTile(103, 103));
+        assertFalse(Rs2Camera.isTileOnScreen(tileObject));
+        verify(worldView, atLeastOnce()).getTileHeight(anyInt(), anyInt(), anyInt());
+    }
+
+    @Test
+    public void canvasTilePolyWithOverflowingHeightLookupIsEmpty() {
+        mockScene();
+        assertFalse(Rs2Camera.getCanvasTilePoly(sceneTile(103, 103)).isPresent());
+        verify(worldView, atLeastOnce()).getTileHeight(anyInt(), anyInt(), anyInt());
+    }
+
+    @Test
+    public void canvasTilePolyOutsideSceneOrNullIsEmpty() {
+        assertFalse(Rs2Camera.getCanvasTilePoly(sceneTile(111, 50)).isPresent());
+        assertFalse(Rs2Camera.getCanvasTilePoly(null).isPresent());
+        verify(worldView, never()).getTileHeight(anyInt(), anyInt(), anyInt());
+    }
+
+    @Test
+    public void tileWithOverflowingHeightLookupIsNotCenteredOnScreen() {
+        mockScene();
+        assertFalse(Rs2Camera.isTileCenteredOnScreen(sceneTile(103, 103)));
+        verify(worldView, atLeastOnce()).getTileHeight(anyInt(), anyInt(), anyInt());
+    }
+
+    @Test
+    public void projectionRunsInsideTheClientThreadCall() {
+        mockScene();
+        AtomicBoolean onClientThread = new AtomicBoolean();
+        AtomicBoolean projectedOffClientThread = new AtomicBoolean();
+        ClientThread clientThread = mock(ClientThread.class);
+        when(clientThread.runOnClientThreadOptional(any())).thenAnswer(inv -> {
+            Callable<?> callable = inv.getArgument(0);
+            onClientThread.set(true);
+            try {
+                return Optional.ofNullable(callable.call());
+            } finally {
+                onClientThread.set(false);
+            }
+        });
+        microbot.when(Microbot::getClientThread).thenReturn(clientThread);
+        doAnswer(inv -> {
+            if (!onClientThread.get()) {
+                projectedOffClientThread.set(true);
+            }
+            return 0;
+        }).when(worldView).getTileHeight(anyInt(), anyInt(), anyInt());
+
+        Rs2Camera.isTileOnScreen(sceneTile(103, 103));
+        TileObject tileObject = mock(TileObject.class);
+        when(tileObject.getLocalLocation()).thenReturn(sceneTile(103, 103));
+        Rs2Camera.isTileOnScreen(tileObject);
+        Rs2Camera.isTileCenteredOnScreen(sceneTile(103, 103));
+        Rs2Camera.getCanvasTilePoly(sceneTile(103, 103));
+
+        verify(worldView, atLeastOnce()).getTileHeight(anyInt(), anyInt(), anyInt());
+        assertFalse(projectedOffClientThread.get());
+    }
+
+    private void mockScene() {
+        Scene scene = mock(Scene.class);
+        when(scene.getExtendedTileSettings()).thenReturn(new byte[4][184][184]);
+        when(worldView.getScene()).thenReturn(scene);
     }
 
     private static LocalPoint sceneTile(int sceneX, int sceneY) {
