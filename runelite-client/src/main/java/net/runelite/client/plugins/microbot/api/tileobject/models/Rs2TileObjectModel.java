@@ -654,7 +654,11 @@ public class Rs2TileObjectModel implements TileObject, IEntity {
 
             Rectangle clickArea = clearClickArea();
             if (clickArea == null && !turned) {
-                Rs2Camera.turnTo(tileObject);
+                Rs2Camera.turnTo(tileObject, COVERED_TURN_MAX_ANGLE);
+                clickArea = clearClickArea();
+            }
+            if (clickArea == null && distance > COVERED_WALK_DISTANCE) {
+                Rs2Walker.walkTo(CantReachTargetRecovery.templateLocation(getRuneLiteWorldLocation()), COVERED_WALK_DISTANCE);
                 clickArea = clearClickArea();
             }
             if (clickArea == null) {
@@ -694,6 +698,8 @@ public class Rs2TileObjectModel implements TileObject, IEntity {
                 Rs2UiHelper.visibleSceneOverlayBounds());
     }
 
+    static final int COVERED_TURN_MAX_ANGLE = 5;
+    static final int COVERED_WALK_DISTANCE = 2;
     static final long COVERED_WARN_INTERVAL_MS = 10_000;
     private static int lastCoveredWarnId = -1;
     private static long lastCoveredWarnAt;

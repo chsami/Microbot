@@ -31,6 +31,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -123,7 +125,7 @@ public class Rs2TileObjectModelInterfaceCoverTest {
     @Test
     public void turnsTheCameraWhenTheObjectIsBehindTheChatbox() {
         clickbox.set(new Rectangle(100, 650, 60, 40));
-        camera.when(() -> Rs2Camera.turnTo(any(TileObject.class)))
+        camera.when(() -> Rs2Camera.turnTo(any(TileObject.class), eq(Rs2TileObjectModel.COVERED_TURN_MAX_ANGLE)))
                 .thenAnswer(inv -> {
                     clickbox.set(new Rectangle(600, 300, 60, 40));
                     return null;
@@ -140,7 +142,8 @@ public class Rs2TileObjectModelInterfaceCoverTest {
 
         assertFalse(new Rs2TileObjectModel(object).click("Climb-down"));
 
-        camera.verify(() -> Rs2Camera.turnTo(any(TileObject.class)));
+        camera.verify(() -> Rs2Camera.turnTo(any(TileObject.class), eq(Rs2TileObjectModel.COVERED_TURN_MAX_ANGLE)));
+        walker.verify(() -> Rs2Walker.walkTo(any(WorldPoint.class), anyInt()), never());
         microbot.verify(() -> Microbot.doInvoke(any(NewMenuEntry.class), any(Rectangle.class)), never());
     }
 
@@ -152,6 +155,35 @@ public class Rs2TileObjectModelInterfaceCoverTest {
         assertFalse(new Rs2TileObjectModel(object).click("Climb-down"));
 
         camera.verify(() -> Rs2Camera.turnTo(any(TileObject.class)), times(1));
+        camera.verify(() -> Rs2Camera.turnTo(any(TileObject.class), anyInt()), never());
+        microbot.verify(() -> Microbot.doInvoke(any(NewMenuEntry.class), any(Rectangle.class)), never());
+    }
+
+    @Test
+    public void walksCloserWhenTheObjectStaysCoveredAfterTheCameraTurn() {
+        when(object.getLocalLocation()).thenReturn(scene(58, 44));
+        clickbox.set(new Rectangle(100, 650, 60, 40));
+        walker.when(() -> Rs2Walker.walkTo(any(WorldPoint.class), anyInt()))
+                .thenAnswer(inv -> {
+                    clickbox.set(new Rectangle(600, 300, 60, 40));
+                    return true;
+                });
+
+        assertTrue(new Rs2TileObjectModel(object).click("Climb-down"));
+
+        camera.verify(() -> Rs2Camera.turnTo(any(TileObject.class), eq(Rs2TileObjectModel.COVERED_TURN_MAX_ANGLE)));
+        walker.verify(() -> Rs2Walker.walkTo(STAIRS, Rs2TileObjectModel.COVERED_WALK_DISTANCE));
+        assertEquals(new Rectangle(600, 300, 60, 40), clickedArea());
+    }
+
+    @Test
+    public void doesNotClickTheChatboxWhenTheObjectStaysCoveredAfterWalking() {
+        when(object.getLocalLocation()).thenReturn(scene(58, 44));
+        clickbox.set(new Rectangle(100, 650, 60, 40));
+
+        assertFalse(new Rs2TileObjectModel(object).click("Climb-down"));
+
+        walker.verify(() -> Rs2Walker.walkTo(STAIRS, Rs2TileObjectModel.COVERED_WALK_DISTANCE), times(1));
         microbot.verify(() -> Microbot.doInvoke(any(NewMenuEntry.class), any(Rectangle.class)), never());
     }
 
