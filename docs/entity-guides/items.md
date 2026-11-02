@@ -93,7 +93,7 @@ When you know the *intent* (consume, equip, drop) but not the verb the game uses
 
 **Why this matters:** Inventory setups and scripts often store `ItemID` constants; Jagex renumbers or the bank holds the noted variant while the preset uses the unnoted id (or vice versa). Without fallback you get false “not in bank”.
 
-**Pattern to follow:** Prefer fuzzy or name-based setup rows when ids are unstable; enable DEBUG to see `[Rs2Bank] bank id drift` when a fallback row differs from the requested id.
+**Pattern to follow:** Prefer fuzzy or name-based setup rows when ids are unstable; enable DEBUG to see `[Rs2Bank] bank id drift` when a fallback row differs from the requested id. For a noted, non-fuzzy setup row, check and withdraw by the noted id (with withdraw-as-note on), not by name: the bank only holds the unnoted stack, which the id lookup finds through the linked id, while a name lookup with `exact=false` takes the shortest-named bank item whose name contains the text and has enough (40 Bones next to 300 Big bones gives you Big bones).
 
 **Where this applies:** `Rs2Bank.findBankStackRowForSavedId`, `resolveBankStackForSavedId`, id overloads of `hasBankItem` / `count` / `withdraw*`.
 
