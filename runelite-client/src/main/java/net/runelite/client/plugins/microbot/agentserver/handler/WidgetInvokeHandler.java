@@ -5,6 +5,7 @@ import com.sun.net.httpserver.HttpExchange;
 import net.runelite.api.MenuAction;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.ScriptPauseController;
 import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
 import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
@@ -58,15 +59,22 @@ public class WidgetInvokeHandler extends AgentHandler {
 		int identifier = identifierNum != null ? identifierNum.intValue() : 1;
 		String option = action != null ? action : "Select";
 
-		int packedId = (groupId << 16) | childId;
-		Widget widget = Rs2Widget.getWidget(packedId);
-
 		Map<String, Object> response = new LinkedHashMap<>();
 		response.put("groupId", groupId);
 		response.put("childId", childId);
 		response.put("param0", param0);
 		response.put("action", option);
 		response.put("identifier", identifier);
+		long pauseGeneration = ScriptPauseController.getGeneration();
+		if (ScriptPauseController.isPaused()) {
+			response.put("invoked", false);
+			response.put("reason", "Scripts are paused");
+			sendJson(exchange, 200, response);
+			return;
+		}
+
+		int packedId = (groupId << 16) | childId;
+		Widget widget = Rs2Widget.getWidget(packedId);
 
 		if (widget == null) {
 			response.put("invoked", false);
@@ -98,9 +106,17 @@ public class WidgetInvokeHandler extends AgentHandler {
 				.param1(widget.getId())
 				.forceLeftClick(false);
 
+		if (pauseGeneration != ScriptPauseController.getGeneration() || ScriptPauseController.isPaused()) {
+			response.put("invoked", false);
+			response.put("reason", "Scripts were paused while the action was being prepared");
+			sendJson(exchange, 200, response);
+			return;
+		}
 		Microbot.doInvoke(menuEntry, clickRect);
 		response.put("bounds", bounds != null ? bounds.toString() : "null");
-		response.put("invoked", true);
+		boolean invoked = pauseGeneration == ScriptPauseController.getGeneration() && !ScriptPauseController.isPaused();
+		response.put("invoked", invoked);
+		if (!invoked) response.put("reason", "Scripts were paused while the action was being submitted");
 		sendJson(exchange, 200, response);
 	}
 }

@@ -51,15 +51,18 @@ public class MicrobotWorldHopTest {
     private final AtomicBoolean switcherLoaded = new AtomicBoolean();
     private final AtomicInteger openCall = new AtomicInteger(-1);
     private final AtomicInteger hopCall = new AtomicInteger(-1);
+    private Runnable beforeClientThreadCallable = () -> { };
 
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
+        ScriptPauseController.setPaused(false).get(2, java.util.concurrent.TimeUnit.SECONDS);
         client = mock(Client.class);
         target = mock(World.class);
         ClientThread clientThread = mock(ClientThread.class);
         when(clientThread.runOnClientThreadOptional(any())).thenAnswer(inv -> {
             clientThreadCalls.incrementAndGet();
             Callable<?> callable = inv.getArgument(0);
+            beforeClientThreadCallable.run();
             return Optional.ofNullable(callable.call());
         });
         Widget buttons = mock(Widget.class);
@@ -79,7 +82,8 @@ public class MicrobotWorldHopTest {
     }
 
     @After
-    public void tearDown() {
+    public void tearDown() throws Exception {
+        ScriptPauseController.setPaused(false).get(2, java.util.concurrent.TimeUnit.SECONDS);
         Microbot.cantHopWorld = false;
         microbot.close();
     }
@@ -206,6 +210,27 @@ public class MicrobotWorldHopTest {
 
         verify(client, never()).openWorldHopper();
         verify(client).hopToWorld(target);
+    }
+
+    @Test
+    public void pauseBeforeFinalWorldSwitcherCallbackPreventsHop() {
+        switcherLoaded.set(true);
+        beforeClientThreadCallable = () -> {
+            if (clientThreadCalls.get() == 2) ScriptPauseController.setPaused(true);
+        };
+
+        assertFalse(Microbot.hopViaWorldSwitcher(target, 3000));
+
+        verify(client, never()).hopToWorld(any());
+    }
+
+    @Test
+    public void stalePauseGenerationPreventsWorldSwitcherHop() {
+        switcherLoaded.set(true);
+
+        assertFalse(Microbot.hopViaWorldSwitcher(target, 3000, ScriptPauseController.getGeneration() + 1));
+
+        verify(client, never()).hopToWorld(any());
     }
 
     @Test

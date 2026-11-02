@@ -377,6 +377,7 @@ public class Microbot {
         if (ScriptPauseController.isPaused()) {
             return false;
         }
+        final long pauseGeneration = ScriptPauseController.getGeneration();
         if (!Microbot.isLoggedIn()) {
             return false;
         }
@@ -400,7 +401,7 @@ public class Microbot {
         }
         final net.runelite.api.World[] target = new net.runelite.api.World[1];
         boolean prepared = Microbot.getClientThread().runOnClientThreadOptional(() -> {
-            if (ScriptPauseController.isPaused()) {
+            if (ScriptPauseController.isPaused() || pauseGeneration != ScriptPauseController.getGeneration()) {
                 return false;
             }
             String blocker = hopBlocker();
@@ -446,17 +447,24 @@ public class Microbot {
         if (target[0] != null) {
             boolean hopIssued;
             try {
-                hopIssued = prepared && hopViaWorldSwitcher(target[0], WORLD_SWITCHER_LOAD_TIMEOUT_MS);
+                hopIssued = prepared && hopViaWorldSwitcher(target[0], WORLD_SWITCHER_LOAD_TIMEOUT_MS, pauseGeneration);
             } finally {
                 quickHopTargetWorld = null;
             }
-            if (prepared && !hopIssued) {
+            if (prepared && !hopIssued && (ScriptPauseController.isPaused()
+                    || pauseGeneration != ScriptPauseController.getGeneration())) {
+                return false;
+            }
+            if (prepared && !hopIssued && !ScriptPauseController.isPaused()
+                    && pauseGeneration == ScriptPauseController.getGeneration()) {
                 log.warn("World switcher did not load in time, could not hop to world {}", worldNumber);
                 return false;
             }
         }
         if (!prepared) {
-            log.error("Failed to hop to world {}", worldNumber);
+            if (!ScriptPauseController.isPaused() && pauseGeneration == ScriptPauseController.getGeneration()) {
+                log.error("Failed to hop to world {}", worldNumber);
+            }
             return false;
         }
         // Wait off the client thread so sleeps actually block. The lambda above runs on
@@ -581,11 +589,25 @@ public class Microbot {
     }
 
     static boolean hopViaWorldSwitcher(net.runelite.api.World rsWorld, int loadTimeoutMs) {
-        if (!isWorldSwitcherLoaded()
-                && !sleepUntil(Microbot::isWorldSwitcherLoaded, Microbot::openWorldSwitcher, loadTimeoutMs, WORLD_SWITCHER_REOPEN_INTERVAL_MS)) {
+        return hopViaWorldSwitcher(rsWorld, loadTimeoutMs, ScriptPauseController.getGeneration());
+    }
+
+    static boolean hopViaWorldSwitcher(net.runelite.api.World rsWorld, int loadTimeoutMs, long pauseGeneration) {
+        if (ScriptPauseController.isPaused() || pauseGeneration != ScriptPauseController.getGeneration()) {
             return false;
         }
+        if (!isWorldSwitcherLoaded()) {
+            boolean readyOrInvalidated = sleepUntil(
+                    () -> pauseGeneration != ScriptPauseController.getGeneration() || isWorldSwitcherLoaded(),
+                    () -> openWorldSwitcher(pauseGeneration), loadTimeoutMs, WORLD_SWITCHER_REOPEN_INTERVAL_MS);
+            if (!readyOrInvalidated || ScriptPauseController.isPaused()
+                    || pauseGeneration != ScriptPauseController.getGeneration()) {
+                return false;
+            }
+        }
         return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            if (ScriptPauseController.isPaused()) return false;
+            if (pauseGeneration != ScriptPauseController.getGeneration()) return false;
             if (Microbot.getClient().getWidget(InterfaceID.Worldswitcher.BUTTONS) == null) {
                 return false;
             }
@@ -594,8 +616,13 @@ public class Microbot {
         }).orElse(false);
     }
 
-    private static void openWorldSwitcher() {
+    private static void openWorldSwitcher(long pauseGeneration) {
+        if (ScriptPauseController.isPaused() || pauseGeneration != ScriptPauseController.getGeneration()) {
+            return;
+        }
         Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            if (ScriptPauseController.isPaused()) return false;
+            if (pauseGeneration != ScriptPauseController.getGeneration()) return false;
             Microbot.getClient().openWorldHopper();
             return true;
         });

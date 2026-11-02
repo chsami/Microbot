@@ -32,10 +32,20 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public abstract class Script extends Global implements IScript {
     static final long EXECUTOR_KEEP_ALIVE_SECONDS = 60;
     private final AtomicBoolean startAnnounced = new AtomicBoolean();
+    private final AtomicBoolean pauseWaitAnnounced = new AtomicBoolean();
 
     private void announceStart() {
+        if (ScriptPauseController.isPaused()) {
+            announcePauseWait();
+        }
         if (Microbot.getEventBus() != null && startAnnounced.compareAndSet(false, true)) {
             Microbot.getEventBus().post(new ScriptStarted(this));
+        }
+    }
+
+    private void announcePauseWait() {
+        if (pauseWaitAnnounced.compareAndSet(false, true)) {
+            Microbot.log(getClass().getSimpleName() + " is waiting: scripts are paused. Click the amber play button in the top bar to resume.");
         }
     }
 
@@ -69,6 +79,7 @@ public abstract class Script extends Global implements IScript {
      */
     public void shutdown() {
         startAnnounced.set(false);
+        pauseWaitAnnounced.set(false);
         ScriptHeartbeatRegistry.remove(this.getClass().getName());
         if (mainScheduledFuture != null && !mainScheduledFuture.isDone()) {
             mainScheduledFuture.cancel(true);
@@ -100,7 +111,10 @@ public abstract class Script extends Global implements IScript {
         ScriptHeartbeatRegistry.recordHeartbeat(this.getClass().getName());
 
         // Do not enter script logic while the user has the game. Plugin lifecycle and state remain intact.
-        if (ScriptPauseController.isPaused()) return false;
+        if (ScriptPauseController.isPaused()) {
+            announcePauseWait();
+            return false;
+        }
 
         if (Microbot.isLoggedIn() && !SessionFatigue.isActive()) {
             SessionFatigue.startSession();

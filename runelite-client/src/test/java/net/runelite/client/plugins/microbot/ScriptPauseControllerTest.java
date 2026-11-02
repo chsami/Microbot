@@ -12,6 +12,7 @@ import net.runelite.api.Client;
 import net.runelite.client.plugins.microbot.util.Global;
 import net.runelite.client.plugins.microbot.util.input.InputArbiter;
 import net.runelite.client.plugins.microbot.util.input.InputLoop;
+import org.mockito.MockedStatic;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -21,6 +22,14 @@ import static org.mockito.Mockito.*;
 
 public class ScriptPauseControllerTest
 {
+	private static final class PauseAwareTestScript extends Script
+	{
+		void startLoop()
+		{
+			scheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> { }, 1, 1, TimeUnit.DAYS);
+		}
+	}
+
 	private ScriptScheduledExecutor executor;
 	private Client client;
 	private Object previousClient;
@@ -210,6 +219,26 @@ public class ScriptPauseControllerTest
 		assertTrue(task.cancel(true));
 		executor.shutdownNow();
 		assertTrue(executor.awaitTermination(2, TimeUnit.SECONDS));
+	}
+
+	@Test
+	public void scriptStartedWhilePausedLogsOnceForThatStart() throws Exception
+	{
+		PauseAwareTestScript script = new PauseAwareTestScript();
+		ScriptPauseController.setPaused(true).get(2, TimeUnit.SECONDS);
+		try (MockedStatic<Microbot> microbot = mockStatic(Microbot.class, CALLS_REAL_METHODS))
+		{
+			microbot.when(Microbot::getEventBus).thenReturn(null);
+			script.startLoop();
+			assertFalse(script.run());
+			assertFalse(script.run());
+			microbot.verify(() -> Microbot.log("PauseAwareTestScript is waiting: scripts are paused. Click the amber play button in the top bar to resume."), times(1));
+		}
+		finally
+		{
+			script.shutdown();
+			script.scheduledExecutorService.shutdownNow();
+		}
 	}
 
 	private static void assertPending(Future<?> task) throws Exception

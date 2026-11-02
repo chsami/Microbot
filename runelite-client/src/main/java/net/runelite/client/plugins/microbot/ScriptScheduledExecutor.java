@@ -22,7 +22,7 @@ final class ScriptScheduledExecutor extends ScheduledThreadPoolExecutor
 		this.beforePeriodicSchedule = beforePeriodicSchedule;
 		// Match the upstream executor policy: idle script threads must not stay
 		// alive for the lifetime of the client.
-		setKeepAliveTime(60, TimeUnit.SECONDS);
+		setKeepAliveTime(Script.EXECUTOR_KEEP_ALIVE_SECONDS, TimeUnit.SECONDS);
 		allowCoreThreadTimeOut(true);
 		setRemoveOnCancelPolicy(true);
 	}

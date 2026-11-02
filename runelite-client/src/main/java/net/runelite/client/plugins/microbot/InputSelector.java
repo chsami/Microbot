@@ -5,6 +5,7 @@ import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.ClientUI;
 import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.util.ImageUtil;
+import org.slf4j.event.Level;
 
 import java.awt.image.BufferedImage;
 import java.awt.Color;
@@ -39,9 +40,14 @@ public class InputSelector {
         enableButton = NavigationButton.builder().tab(false).icon(ENABLED_IMAGE).tooltip("Enable Input").onClick(this::enableClick).build();
         disableButton = NavigationButton.builder().tab(false).icon(DISABLED_IMAGE).tooltip("Disable Input").onClick(this::disableClick).build();
         pauseButton = NavigationButton.builder().tab(false).priority(1).icon(pauseIcon(false))
-                .tooltip("Pause all scripts and enable manual input").onClick(this::togglePause).build();
+                .tooltip("Pause all scripts and enable manual input (actions already started in game continue)")
+                .onClick(this::togglePause).build();
         resumeButton = NavigationButton.builder().tab(false).priority(1).icon(pauseIcon(true))
-                .tooltip("Scripts paused — resume all scripts").onClick(this::togglePause).build();
+                .tooltip("Scripts paused - click to resume all scripts (input goes back to its previous setting)")
+                .onClick(this::togglePause).build();
+        if (ScriptPauseController.isPaused()) {
+            inputEnabledBeforePause = ClientUI.getClient().isEnabled();
+        }
         addAndRemoveButtons();
         updatePauseButton();
     }
@@ -82,23 +88,31 @@ public class InputSelector {
             ClientUI.getClient().setEnabled(false);
             Microbot.getClient().getCanvas().setFocusable(false);
             addAndRemoveButtons();
-        } else if (!inputChangedDuringPause) {
-            ClientUI.getClient().setEnabled(inputEnabledBeforePause);
-            Microbot.getClient().getCanvas().setFocusable(inputEnabledBeforePause);
-            addAndRemoveButtons();
         }
         updatePauseButton();
         transition.whenComplete((ignored, error) -> SwingUtilities.invokeLater(() -> {
             transitionPending = false;
             if (closed) return;
             if (error != null) {
-                Microbot.log("Script input release failed; scripts remain paused. Click Resume to retry.");
+                String message = pause
+                        ? "Pause could not release a key or mouse button held by a script. Scripts are still paused, but manual input is off. Click the Enable Input button to play yourself, or the amber play button to resume scripts."
+                        : "Scripts could not resume because a key or mouse button held by a script could not be released. Scripts are still paused, and manual input remains at its current setting. Click the amber play button to retry.";
+                Microbot.log(message, Level.WARN);
             }
             if (pause && error == null && ScriptPauseController.isPaused()) {
                 ClientUI.getClient().setEnabled(true);
                 Microbot.getClient().getCanvas().setFocusable(true);
                 Microbot.getClient().getCanvas().requestFocusInWindow();
                 addAndRemoveButtons();
+                Microbot.log("All scripts paused. Manual input is on. Click the amber play button in the top bar to resume.");
+            }
+            if (!pause && error == null && !ScriptPauseController.isPaused()) {
+                if (!inputChangedDuringPause) {
+                    ClientUI.getClient().setEnabled(inputEnabledBeforePause);
+                    Microbot.getClient().getCanvas().setFocusable(inputEnabledBeforePause);
+                    addAndRemoveButtons();
+                }
+                Microbot.log("All scripts resumed.");
             }
             updatePauseButton();
         }));

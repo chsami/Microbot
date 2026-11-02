@@ -321,8 +321,9 @@ public class Rs2Camera {
 
     public static void setZoom(int zoom) {
         if (ScriptPauseController.isPaused()) return;
+        long pauseGeneration = ScriptPauseController.getGeneration();
         Microbot.getClientThread().invokeLater(() -> {
-            if (ScriptPauseController.isPaused()) return;
+            if (ScriptPauseController.isPaused() || pauseGeneration != ScriptPauseController.getGeneration()) return;
             Microbot.getClient().runScript(ScriptID.CAMERA_DO_ZOOM, zoom, zoom);
         });
     }
@@ -362,9 +363,10 @@ public class Rs2Camera {
 
     private static void setCameraTargetOnClientThread(int target, boolean isPitch) {
         if (ScriptPauseController.isPaused()) return;
+        long pauseGeneration = ScriptPauseController.getGeneration();
         int clientTarget = toClientAngleUnits(target);
         Microbot.getClientThread().invoke(() -> {
-            if (ScriptPauseController.isPaused()) return;
+            if (ScriptPauseController.isPaused() || pauseGeneration != ScriptPauseController.getGeneration()) return;
             if (isPitch) {
                 Microbot.getClient().setCameraPitchTarget(clientTarget);
             } else {
