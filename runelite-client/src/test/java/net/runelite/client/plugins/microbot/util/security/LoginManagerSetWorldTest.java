@@ -111,6 +111,28 @@ public class LoginManagerSetWorldTest {
         verify(client, never()).changeWorld(any());
     }
 
+    @Test public void doesNotChangeWorldOutsideTheLoginScreen() {
+        when(client.getGameState()).thenReturn(GameState.CONNECTION_LOST);
+
+        assertFalse(LoginManager.setWorld(308));
+
+        verify(client, never()).createWorld();
+        verify(client, never()).changeWorld(any());
+    }
+
+    @Test public void loginStopsBeforeCredentialsWhenTheConnectionIsLost() {
+        when(client.getGameState()).thenReturn(GameState.CONNECTION_LOST);
+
+        try (var keyboard = mockStatic(Rs2Keyboard.class)) {
+            assertFalse(LoginManager.login("user", "", 308));
+
+            keyboard.verifyNoInteractions();
+        }
+        verify(client, never()).changeWorld(any());
+        verify(client, never()).setUsername(anyString());
+        assertFalse(LoginManager.isLoginAttemptActive());
+    }
+
     @Test public void reportsFailureForAnUnknownWorld() {
         assertFalse(LoginManager.setWorld(999));
 

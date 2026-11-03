@@ -660,7 +660,7 @@ public final class LoginManager {
                     .runOnClientThreadOptional(() -> changeWorld(Microbot.getClient(), world))
                     .orElse(false);
             if (!changed) {
-                log.warn("Failed to change to world {}", worldNumber);
+                log.warn("Failed to change to world {} (game state {})", worldNumber, Microbot.getClient().getGameState());
             }
             return changed;
         } catch (Exception ex) {
@@ -670,6 +670,9 @@ public final class LoginManager {
     }
 
     private static boolean changeWorld(Client client, net.runelite.http.api.worlds.World world) {
+        if (client.getGameState() != GameState.LOGIN_SCREEN) {
+            return false;
+        }
         final net.runelite.api.World rsWorld = client.createWorld();
         if (rsWorld == null) {
             return false;
