@@ -6,7 +6,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
+import net.runelite.api.Client;
+import net.runelite.api.ItemComposition;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.client.callback.ClientThread;
@@ -441,6 +444,87 @@ public class InventorySetupMatchingTest
 		assertFalse(requested.getValue().containsKey(null));
 		assertEquals(ItemID.LAWRUNE, requested.getValue().get(Runes.LAW).getId());
 		microbot.verify(() -> Microbot.log(eq(Level.WARN), contains("rune pouch is not supported yet"), eq("Aether rune"), eq("Aether rune")));
+	}
+
+	private void notedItemDefinitions(int notedId, String name)
+	{
+		bankReadyForLoading();
+		ItemComposition noted = mock(ItemComposition.class);
+		when(noted.getName()).thenReturn(name);
+		when(noted.getNote()).thenReturn(799);
+		when(noted.isStackable()).thenReturn(true);
+		Client client = mock(Client.class);
+		when(client.getItemDefinition(org.mockito.ArgumentMatchers.anyInt())).thenReturn(mock(ItemComposition.class));
+		when(client.getItemDefinition(notedId)).thenReturn(noted);
+		ClientThread clientThread = mock(ClientThread.class);
+		when(clientThread.runOnClientThreadOptional(any())).thenAnswer(call -> Optional.ofNullable(call.<Callable<?>>getArgument(0).call()));
+		microbot.when(Microbot::getClientThread).thenReturn(clientThread);
+		microbot.when(Microbot::getClient).thenReturn(client);
+		rs2Inventory.when(() -> Rs2Inventory.waitForInventoryChanges(org.mockito.ArgumentMatchers.anyInt())).thenReturn(true);
+	}
+
+	private void verifyNothingLookedUpByName()
+	{
+		rs2Bank.verify(() -> Rs2Bank.hasBankItem(anyString(), org.mockito.ArgumentMatchers.anyInt(), anyBoolean()), never());
+		rs2Bank.verify(() -> Rs2Bank.withdrawX(anyString(), org.mockito.ArgumentMatchers.anyInt()), never());
+		rs2Bank.verify(() -> Rs2Bank.withdrawX(anyString(), org.mockito.ArgumentMatchers.anyInt(), anyBoolean()), never());
+		rs2Bank.verify(() -> Rs2Bank.withdrawItem(anyString()), never());
+	}
+
+	@Test
+	public void notedRowIsCheckedAndWithdrawnByItsId()
+	{
+		notedItemDefinitions(ItemID.Cert.SHARK, "Shark");
+		rs2Bank.when(() -> Rs2Bank.hasBankItem(ItemID.Cert.SHARK, 100)).thenReturn(true);
+
+		loader(inventorySetup(item(ItemID.Cert.SHARK, "Shark", 100, -1))).loadInventory(false);
+
+		rs2Bank.verify(() -> Rs2Bank.setWithdrawAs(true));
+		rs2Bank.verify(() -> Rs2Bank.withdrawX(ItemID.Cert.SHARK, 100));
+		verifyNothingLookedUpByName();
+	}
+
+	@Test
+	public void notedRowStopsForMissingSupplyInsteadOfTakingASimilarlyNamedItem()
+	{
+		notedItemDefinitions(ItemID.Cert.BONES, "Bones");
+		rs2Bank.when(() -> Rs2Bank.count(ItemID.Cert.BONES)).thenReturn(40);
+		rs2Bank.when(() -> Rs2Bank.hasBankItem(ItemID.Cert.BONES, 100)).thenReturn(false);
+		rs2Bank.when(() -> Rs2Bank.hasBankItem("bones", 100, false)).thenReturn(true);
+		List<String> missing = new ArrayList<>();
+
+		assertFalse(loader(inventorySetup(item(ItemID.Cert.BONES, "Bones", 100, -1))).withMissingSupplyHandler(missing::add).loadInventory(false));
+
+		assertEquals(Collections.singletonList("Bones"), missing);
+		rs2Bank.verify(() -> Rs2Bank.withdrawX(org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyInt()), never());
+		verifyNothingLookedUpByName();
+	}
+
+	@Test
+	public void partlyStockedNotedRowWithdrawsOnlyTheRemainder()
+	{
+		notedItemDefinitions(ItemID.Cert.BONES, "Bones");
+		inventory.add(held(ItemID.Cert.BONES, "Bones", 30, 27));
+		rs2Bank.when(() -> Rs2Bank.hasBankItem(ItemID.Cert.BONES, 70)).thenReturn(true);
+
+		loader(inventorySetup(item(ItemID.Cert.BONES, "Bones", 100, -1))).loadInventory(false);
+
+		rs2Bank.verify(() -> Rs2Bank.withdrawX(ItemID.Cert.BONES, 70));
+		verifyNothingLookedUpByName();
+	}
+
+	@Test
+	public void partlyStockedNotedRowKeepsGoingWhenTheBankIsOut()
+	{
+		notedItemDefinitions(ItemID.Cert.BONES, "Bones");
+		inventory.add(held(ItemID.Cert.BONES, "Bones", 30, 27));
+		List<String> missing = new ArrayList<>();
+
+		loader(inventorySetup(item(ItemID.Cert.BONES, "Bones", 100, -1))).withMissingSupplyHandler(missing::add).loadInventory(false);
+
+		assertTrue(missing.isEmpty());
+		rs2Bank.verify(() -> Rs2Bank.withdrawX(org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyInt()), never());
+		verifyNothingLookedUpByName();
 	}
 
 	@Test

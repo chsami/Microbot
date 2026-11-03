@@ -256,7 +256,10 @@ public class Rs2ItemModel {
     }
 
     public int getHaPrice() {
-        return itemComposition.getHaPrice();
+        if (itemComposition == null) {
+            ensureCompositionLoaded();
+        }
+        return itemComposition != null ? itemComposition.getHaPrice() : 0;
     }
 
     public boolean isHaProfitable() {

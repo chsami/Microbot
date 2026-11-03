@@ -154,8 +154,25 @@ class WikiDpsManager
 	private void addButton(int btnLayer, Runnable onClick)
 	{
 		Widget setBonus = client.getWidget(btnLayer);
+		if (setBonus == null)
+		{
+			return;
+		}
+
 		Widget parent = setBonus.getParent();
 		Widget[] btnChld = setBonus.getChildren();
+		if (parent == null || btnChld == null || btnChld.length < 10)
+		{
+			return;
+		}
+
+		for (int i = 0; i < 10; i++)
+		{
+			if (btnChld[i] == null)
+			{
+				return;
+			}
+		}
 
 		final int padding = 4;
 		// now shift the Equipment Effects/Stats button over a bit to make room

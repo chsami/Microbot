@@ -96,7 +96,7 @@ import java.util.regex.Pattern;
         description = "Draws the shortest path to a chosen destination on the map (right click a spot on the world map to use)",
         tags = {"pathfinder", "map", "waypoint", "navigation", "microbot"},
         enabledByDefault = false,
-        version = "1.0.6",
+        version = "1.0.8",
         alwaysOn = true
 )
 public class ShortestPathPlugin extends Plugin {
@@ -361,10 +361,14 @@ public class ShortestPathPlugin extends Plugin {
     //Method from microbot
     public static void exit() {
         invalidatePendingPathfinding();
-        if (pathfindingExecutor != null) {
-            Rs2Walker.clearWalkingRoute("shortest-path-plugin:exit");
-            pathfindingExecutor.shutdownNow();
+        ExecutorService executor;
+        synchronized (pathfinderMutex) {
+            executor = pathfindingExecutor;
             pathfindingExecutor = null;
+        }
+        if (executor != null) {
+            Rs2Walker.clearWalkingRoute("shortest-path-plugin:exit");
+            executor.shutdownNow();
         }
     }
 

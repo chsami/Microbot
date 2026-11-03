@@ -93,7 +93,7 @@ When you know the *intent* (consume, equip, drop) but not the verb the game uses
 
 **Why this matters:** Inventory setups and scripts often store `ItemID` constants; Jagex renumbers or the bank holds the noted variant while the preset uses the unnoted id (or vice versa). Without fallback you get false “not in bank”.
 
-**Pattern to follow:** Prefer fuzzy or name-based setup rows when ids are unstable; enable DEBUG to see `[Rs2Bank] bank id drift` when a fallback row differs from the requested id.
+**Pattern to follow:** Prefer fuzzy or name-based setup rows when ids are unstable; enable DEBUG to see `[Rs2Bank] bank id drift` when a fallback row differs from the requested id. For a noted, non-fuzzy setup row, check and withdraw by the noted id (with withdraw-as-note on), not by name: the bank only holds the unnoted stack, which the id lookup finds through the linked id, while a name lookup with `exact=false` takes the shortest-named bank item whose name contains the text and has enough (40 Bones next to 300 Big bones gives you Big bones).
 
 **Where this applies:** `Rs2Bank.findBankStackRowForSavedId`, `resolveBankStackForSavedId`, id overloads of `hasBankItem` / `count` / `withdraw*`.
 
@@ -301,6 +301,22 @@ While a shop, bank, deposit box or Grand Exchange inventory is open or rebuildin
 **Why this matters:** An emptied equipment slot made `doesEquipmentMatch` fail forever and sent `loadEquipment` to the bank on every call, and an emptied fuzzy inventory slot (name `""`) matched every item, so loading dragged items into it and `getItemsNotInInventorySetup` reported nothing.
 
 **Defensive check:** Run `InventorySetupMatchingTest`.
+
+## 19. An Rs2ItemModel can have no ItemComposition yet
+
+Models built from cached ids (`createFromCache`, the `(id, quantity, slot)` and `(id, quantity, slot, null)` constructors) start with a null composition and load it lazily. Every composition-backed getter must call `ensureCompositionLoaded()` first and fall back to a neutral value when it is still missing; `getHaPrice()` returns 0 and `isHaProfitable()` returns false in that case.
+
+**Why this matters:** `getHaPrice()` read the composition field directly and threw an NPE for bank and cached items, which also broke `isHaProfitable()` and Hub high-alch scripts.
+
+**Defensive check:** Run `Rs2ItemModelHaPriceTest`.
+
+## 20. The Destroy confirm dialog may never open
+
+After sending Destroy, `Rs2Inventory` waits for the confirm dialog (`584:0`) and clicks `584:1`. The wait returns false without the dialog when it runs on the client thread (where `sleepUntil` is a no-op), times out, the player takes over input, or the item has no destroy prompt, and `Rs2Widget.getWidget(584, 1)` is then null. Return when the wait fails or the widget is missing instead of dereferencing it, log a warning naming the item, and let `Rs2Inventory.interact(item, "Destroy")` return false so the caller can retry or stop instead of assuming the item is gone.
+
+**Why this matters:** `invokeMenu` ignored the wait result and called `getId()` on the missing widget, so the NPE escaped `Rs2Inventory.interact` and crashed the caller's client-thread invoke.
+
+**Defensive check:** Run `Rs2InventoryInvokeMenuTest`.
 
 ## Terminal supply stops need observed logout
 

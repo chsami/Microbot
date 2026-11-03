@@ -446,7 +446,7 @@ public class ClientAlertReporter
 			&& previous.getState() >= GameState.LOADING.getState();
 	}
 
-	static boolean isScript(Plugin plugin)
+	public static boolean isScript(Plugin plugin)
 	{
 		PluginDescriptor descriptor = plugin == null ? null : plugin.getClass().getAnnotation(PluginDescriptor.class);
 		return descriptor != null && descriptor.isExternal() && !descriptor.hidden();

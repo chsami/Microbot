@@ -206,23 +206,22 @@ public class Rs2NpcModel extends Rs2ActorModel implements IEntity
                     Microbot.isCantReachTargetDetectionEnabled, Microbot.cantReachTarget)) {
                 if (!hasLineOfSight()) {
                     if (CantReachTargetRecovery.retryExhausted(
-                            Microbot.cantReachTargetRetries, Rs2Random.between(3, 5))) {
+                            CantReachTargetRecovery.retries(), Rs2Random.between(3, 5))) {
                         int retries = CantReachTargetRecovery.giveUp();
                         Microbot.pauseAllScripts.compareAndSet(false, true);
                         Microbot.showMessage("Your bot tried to interact with an NPC for "
                                 + retries + " times but failed. Please take a look at what is happening.");
                         return false;
                     }
-                    final WorldPoint npcWorldPoint = getWorldLocation();
+                    final WorldPoint npcWorldPoint = CantReachTargetRecovery.templateLocation(getWorldLocation());
                     if (npcWorldPoint == null) {
                         log.error("Error interacting with NPC '{}' for action '{}': WorldPoint is null", npcName, action);
                         return false;
                     }
-                    Microbot.cantReachTargetRetries++;
+                    CantReachTargetRecovery.countAttempt();
                     if (CantReachTargetRecovery.walkTo(npcWorldPoint, 2)) {
                         Microbot.pauseAllScripts.compareAndSet(true, false);
-                        Microbot.cantReachTarget = false;
-                        Microbot.cantReachTargetRetries = 0;
+                        CantReachTargetRecovery.reset();
                         // fall through and click from beside it
                     } else {
                         return false;

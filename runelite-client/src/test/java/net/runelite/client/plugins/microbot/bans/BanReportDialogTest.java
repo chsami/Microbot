@@ -1,0 +1,66 @@
+package net.runelite.client.plugins.microbot.bans;
+
+import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
+public class BanReportDialogTest
+{
+	@Test
+	public void sendCarriesTheChosenKind()
+	{
+		BanReportDialog.Answer answer = BanReportDialog.answer(BanReportDialog.SEND, BanKind.TEMPORARY, true);
+
+		assertTrue(answer.isSend());
+		assertEquals(BanKind.TEMPORARY, answer.getKind());
+		assertTrue(answer.isRemember());
+	}
+
+	@Test
+	public void notABanIsNeverSentOrRemembered()
+	{
+		BanReportDialog.Answer answer = BanReportDialog.answer(BanReportDialog.SEND, BanKind.NOT_A_BAN, true);
+
+		assertFalse(answer.isSend());
+		assertFalse(answer.isRemember());
+		assertEquals(BanKind.NOT_A_BAN, answer.getKind());
+	}
+
+	@Test
+	public void closingTheWindowDecidesNothing()
+	{
+		BanReportDialog.Answer answer = BanReportDialog.answer(null, BanKind.PERMANENT, true);
+
+		assertFalse(answer.isSend());
+		assertFalse(answer.isRemember());
+		assertFalse(answer.isAnswered());
+	}
+
+	@Test
+	public void dontSendCanBeRemembered()
+	{
+		BanReportDialog.Answer answer = BanReportDialog.answer(BanReportDialog.DONT_SEND, BanKind.UNKNOWN, true);
+
+		assertFalse(answer.isSend());
+		assertTrue(answer.isRemember());
+		assertTrue(answer.isAnswered());
+	}
+
+	@Test
+	public void messageNamesTheAccountSafely()
+	{
+		assertTrue(BanReportDialog.message("Zezima").contains("<b>Zezima</b> shows"));
+		assertTrue(BanReportDialog.message("<i>x</i>").contains("&lt;i&gt;x&lt;/i&gt;"));
+		assertTrue(BanReportDialog.message(null).contains("This account shows"));
+		assertTrue(BanReportDialog.message(" ").contains("This account shows"));
+		assertTrue(BanReportDialog.message("Zezima").contains("can also mean the account is locked"));
+	}
+
+	@Test
+	public void banReportsAskByDefault()
+	{
+		assertEquals(BanReportMode.ASK, new net.runelite.client.plugins.microbot.MicrobotConfig() { }.banReports());
+	}
+}

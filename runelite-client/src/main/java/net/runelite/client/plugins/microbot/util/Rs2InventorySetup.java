@@ -425,7 +425,7 @@ public class Rs2InventorySetup {
 			if (desiredWithdraw == 0) continue;
 
 			Rs2ItemModel existingItem = new Rs2ItemModel(item.getId(), desiredWithdraw, desiredWithdraw);
-			boolean isNoted = existingItem.isNoted(); //for noted items, we also need to use the name of the hasBankItem method, or the unnoted id
+			boolean isNoted = existingItem.isNoted();
 			String lowerCaseName = item.getName().toLowerCase();
 			boolean isFuzzy = item.isFuzzy();
 			Object identifier = isFuzzy ? lowerCaseName : item.getId();
@@ -463,7 +463,7 @@ public class Rs2InventorySetup {
 						item.getName(), withdrawQuantity, desiredWithdraw);
 			}
 
-			boolean hasBankItem = isFuzzy || isNoted
+			boolean hasBankItem = isFuzzy
 				? Rs2Bank.hasBankItem((String) identifier, withdrawQuantity, false)
 				: Rs2Bank.hasBankItem((int) identifier, withdrawQuantity);
 			if (!hasBankItem && !isFuzzy && !isNoted) {
@@ -809,7 +809,7 @@ public class Rs2InventorySetup {
      * @param quantity The quantity to withdraw.
      */
     private void withdrawItem(InventorySetupsItem item, int quantity,  boolean isNoted) {
-		boolean useName = item.isFuzzy() || isNoted; // when notded we must use the name to withdraw or we must use the unnoted id
+		boolean useName = item.isFuzzy();
 		Object identifier = useName ? item.getName().toLowerCase() : item.getId();
 		boolean isWithdrawAs= Rs2Bank.isWithdrawAs(isNoted);
 		if(!isWithdrawAs){

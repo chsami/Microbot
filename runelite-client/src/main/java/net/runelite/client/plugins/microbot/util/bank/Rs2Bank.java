@@ -2743,13 +2743,23 @@ public class Rs2Bank {
         if (distance > 10)
             distance = 10;
 
-        if (initialRs2PlayerLocation.distanceTo(Rs2Player.getWorldLocation()) > distance || !Rs2Tile.isTileReachable(initialRs2PlayerLocation)) {
+        WorldPoint playerLocation = Rs2Player.getWorldLocation();
+        if (playerLocation == null) {
+            return false;
+        }
+
+        if (initialRs2PlayerLocation.distanceTo(playerLocation) > distance || !Rs2Tile.isTileReachable(initialRs2PlayerLocation)) {
             Rs2Walker.walkTo(initialRs2PlayerLocation, distance);
         } else {
             Rs2Walker.walkFastCanvas(initialRs2PlayerLocation);
         }
 
-        return !(Rs2Inventory.emptySlotCount() <= emptySlotCount) && initialRs2PlayerLocation.distanceTo(Rs2Player.getWorldLocation()) <= distance;
+        playerLocation = Rs2Player.getWorldLocation();
+        if (playerLocation == null) {
+            return false;
+        }
+
+        return !(Rs2Inventory.emptySlotCount() <= emptySlotCount) && initialRs2PlayerLocation.distanceTo(playerLocation) <= distance;
     }
 
     /**

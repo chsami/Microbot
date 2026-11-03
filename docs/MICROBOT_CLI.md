@@ -141,6 +141,9 @@ Widgets are the game's UI elements (interfaces, buttons, toggles, text). Use the
 # Interact with the nearest matching NPC
 ./microbot-cli npcs interact "Banker" "Bank"
 ./microbot-cli npcs interact "Guard" "Attack"
+
+# Interact with the nearest NPC with that id
+./microbot-cli npcs interact --id 3010 "Attack"
 ```
 
 ### Objects
@@ -215,6 +218,10 @@ Plan a route without moving, to see why a walk fails or takes a strange route:
 # Withdraw items (name + quantity)
 ./microbot-cli bank withdraw "Pure essence" 28
 ./microbot-cli bank withdraw "Coins" 1000
+
+# Withdraw as notes (to sell), or switch back to items
+./microbot-cli bank withdraw "Gold ring" 0 --noted
+./microbot-cli bank withdraw "Gold bar" 27 --items
 ```
 
 ### Dialogue
@@ -339,6 +346,27 @@ A typical workflow: a contributor unsure whether their script utility needs to w
 ```
 
 These endpoints are designed for the Microbot-Hub automated testing loop: the Hub spawns a client, logs in, starts a script, polls status, and collects results. See `docs/AGENT_SERVER.md` for the full HTTP API.
+
+### Plugin Hub
+
+```bash
+# Search the Plugin Hub
+./microbot-cli plugins --search miner
+
+# List plugins loaded in this client
+./microbot-cli plugins --installed
+
+# Install the latest version, or a given version; blocks until loaded
+./microbot-cli plugins install AutoMiner
+./microbot-cli plugins install "Auto Miner" --version 1.4.0
+
+# Unload and delete
+./microbot-cli plugins remove AutoMiner
+```
+
+When the install is still running at `--timeout`, the command prints `{"status": "pending", ...}` and exits with status 0. Check the output, and wait until `plugins --search <name>` shows `loaded: true` with the requested `installedVersion` before you start the plugin.
+
+An installed plugin is not started. Start it with `./microbot-cli scripts start --name <name>`.
 
 ## Response Format
 
