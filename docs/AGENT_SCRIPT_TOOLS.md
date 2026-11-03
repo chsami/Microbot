@@ -83,6 +83,7 @@ The **Agent Server** plugin (port 8081, localhost) must be enabled for any CLI/H
 | `inventory interact <name> <action>` | Use/eat/equip an item |
 | `inventory drop <name> [--all]` | Drop item(s) |
 | `npcs interact <name> <action>` | Interact with nearest NPC |
+| `npcs interact --id <id> <action>` | Interact with nearest NPC with that id |
 | `objects interact <name> <action>` | Interact with nearest object |
 | `ground-items pickup <name>` | Pick up nearest ground item |
 | `walk <x> <y> [plane] [--wait] [--timeout S]` | Walk to coordinates (non-blocking by default; `--wait` blocks) |
@@ -90,7 +91,7 @@ The **Agent Server** plugin (port 8081, localhost) must be enabled for any CLI/H
 | `bank close` | Close bank interface |
 | `bank deposit <name> [--all]` | Deposit items |
 | `bank deposit-all` | Deposit entire inventory |
-| `bank withdraw <name> <qty>` | Withdraw items |
+| `bank withdraw <name> <qty> [--noted\|--items]` | Withdraw items, optionally as notes or as items |
 | `dialogue continue` | Click continue in dialogue |
 | `dialogue select <option>` | Select a dialogue option by text |
 | `widgets click <group> <child>` | Click a widget by group/child ID |
@@ -102,6 +103,8 @@ The **Agent Server** plugin (port 8081, localhost) must be enabled for any CLI/H
 | `keyboard backspace` | Press Backspace |
 | `settings search <term>` | Open in-game settings and search |
 | `scripts results post --class <cls> --data <json>` | Submit test results |
+| `plugins install <name> [--version V]` | Download and load a Plugin Hub plugin |
+| `plugins remove <name>` | Unload and delete a Plugin Hub plugin |
 
 ### Debug (script introspection)
 

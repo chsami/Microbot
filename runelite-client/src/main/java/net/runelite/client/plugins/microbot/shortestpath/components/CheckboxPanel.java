@@ -98,7 +98,7 @@ public class CheckboxPanel extends JPanel {
 
     private boolean getBool(String key) {
         try {
-            return Microbot.getConfigManager().getConfiguration(CONFIG_GROUP, key, Boolean.class);
+            return Boolean.TRUE.equals(Microbot.getConfigManager().getConfiguration(CONFIG_GROUP, key, Boolean.class));
         } catch (NullPointerException e) {
             Microbot.log("Failed to poh checkbox config for " + key);
             return false;

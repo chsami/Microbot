@@ -38,6 +38,8 @@ A missing scene tile means no path: [movement gotcha 29](movement.md#29-null-che
 
 Scene walk clicks must not land under the side panel, chatbox or minimap: [movement gotcha 30](movement.md#30-in-resizable-mode-the-viewport-runs-under-the-side-panel-chatbox-and-minimap).
 
+Can't-reach recovery walks to the template tile, off the client thread: [movement gotcha 34](movement.md#34-walk-cant-reach-recovery-to-the-template-tile-off-the-client-thread).
+
 ## Format
 
 Each entity guide is a numbered list of gotchas. Each entry follows this structure:

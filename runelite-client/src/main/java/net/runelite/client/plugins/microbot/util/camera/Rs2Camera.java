@@ -16,6 +16,7 @@ import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 
 import java.awt.*;
 import java.awt.event.KeyEvent;
+import java.util.Optional;
 
 @Slf4j
 public class Rs2Camera {
@@ -263,48 +264,53 @@ public class Rs2Camera {
 
     public static boolean isTileOnScreen(TileObject tileObject) {
         Client client = Microbot.getClient();
-        LocalPoint localPoint = tileObject.getLocalLocation();
-        if (!isInWorldViewScene(client, localPoint)) return false;
-
         int viewportHeight = client.getViewportHeight();
         int viewportWidth = client.getViewportWidth();
 
-        Polygon poly = Perspective.getCanvasTilePoly(client, localPoint);
-
-        if (poly == null) return false;
-
-        return poly.getBounds2D().getX() <= viewportWidth && poly.getBounds2D().getY() <= viewportHeight;
+        return getCanvasTilePoly(tileObject.getLocalLocation())
+                .map(poly -> poly.getBounds2D().getX() <= viewportWidth && poly.getBounds2D().getY() <= viewportHeight)
+                .orElse(false);
     }
 
     public static boolean isTileOnScreen(LocalPoint localPoint) {
         Client client = Microbot.getClient();
-        if (!isInWorldViewScene(client, localPoint)) return false;
-
         int viewportHeight = client.getViewportHeight();
         int viewportWidth = client.getViewportWidth();
 
-        Polygon poly = Perspective.getCanvasTilePoly(client, localPoint);
+        Polygon poly = getCanvasTilePoly(localPoint).orElse(null);
         if (poly == null) return false;
 
-        // Check if any part of the polygon intersects with the screen bounds
         Rectangle viewportBounds = new Rectangle(0, 0, viewportWidth, viewportHeight);
         if (!poly.intersects(viewportBounds)) return false;
 
-        // Optionally, check if the tile is in front of the camera
-        Point canvasPoint = Perspective.localToCanvas(client, localPoint, client.getPlane());
-        return canvasPoint != null;
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            try {
+                return Perspective.localToCanvas(client, localPoint, client.getPlane());
+            } catch (IndexOutOfBoundsException e) {
+                return null;
+            }
+        }).isPresent();
     }
 
-    private static boolean isInWorldViewScene(Client client, LocalPoint localPoint) {
-        if (localPoint == null) return false;
+    public static Optional<Polygon> getCanvasTilePoly(LocalPoint localPoint) {
+        if (localPoint == null) return Optional.empty();
+        Client client = Microbot.getClient();
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            if (!isInWorldViewScene(client.getWorldView(localPoint.getWorldView()), localPoint)) return null;
+            try {
+                return Perspective.getCanvasTilePoly(client, localPoint);
+            } catch (IndexOutOfBoundsException e) {
+                return null;
+            }
+        });
+    }
+
+    private static boolean isInWorldViewScene(WorldView worldView, LocalPoint localPoint) {
         int sceneX = localPoint.getSceneX();
         int sceneY = localPoint.getSceneY();
-        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
-            WorldView worldView = client.getWorldView(localPoint.getWorldView());
-            return worldView != null
-                    && sceneX >= 0 && sceneY >= 0
-                    && sceneX < worldView.getSizeX() && sceneY < worldView.getSizeY();
-        }).orElse(false);
+        return worldView != null
+                && sceneX >= 0 && sceneY >= 0
+                && sceneX < worldView.getSizeX() && sceneY < worldView.getSizeY();
     }
 
     // get the camera zoom
@@ -438,7 +444,7 @@ public class Rs2Camera {
      * {@code false} if the tile cannot be projected or lies outside that box
      */
     public static boolean isTileCenteredOnScreen(LocalPoint tile, double marginPercentage) {
-        Polygon poly = Perspective.getCanvasTilePoly(Microbot.getClient(), tile);
+        Polygon poly = getCanvasTilePoly(tile).orElse(null);
         if (poly == null) return false;
 
         Rectangle tileBounds = poly.getBounds();

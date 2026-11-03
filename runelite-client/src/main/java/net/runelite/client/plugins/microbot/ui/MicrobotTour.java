@@ -272,7 +272,7 @@ public class MicrobotTour
 		frame = owner;
 		countAutoShow = auto;
 		sequence = new MicrobotTourSequence(Arrays.asList(MicrobotTourStep.values()),
-			step -> step != MicrobotTourStep.HELP || helpMenu.getButton() != null);
+			step -> (step != MicrobotTourStep.HELP && step != MicrobotTourStep.REPORT_PROBLEM) || helpMenu.getButton() != null);
 		callout = new MicrobotTourCallout(frame, this::end, this::neverAgain, this::back, this::next, () -> userPlaced = true);
 		spotlight = new MicrobotTourSpotlight(frame.getLayeredPane());
 		frame.addWindowListener(windowListener);
@@ -412,6 +412,7 @@ public class MicrobotTour
 				break;
 			case ANTIBAN:
 			case INVENTORY_SETUPS:
+			case REPORT_PROBLEM:
 			case HELP:
 				if (!clientToolbar.isSidebarOpen())
 				{
@@ -452,6 +453,7 @@ public class MicrobotTour
 				return sidebarTabBounds(ANTIBAN_TOOLTIP);
 			case INVENTORY_SETUPS:
 				return sidebarTabBounds(INVENTORY_SETUPS_TOOLTIP);
+			case REPORT_PROBLEM:
 			case HELP:
 				NavigationButton help = helpMenu.getButton();
 				return help == null ? null : clientToolbar.getNavigationBounds(help);

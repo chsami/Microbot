@@ -150,7 +150,7 @@ public class AntibanPlugin extends Plugin {
     public static void performActionBreak() {
         if (Rs2AntibanSettings.actionCooldownActive) {
             if (Rs2Antiban.getTIMEOUT() > 0) {
-                if (!Rs2Antiban.getCategory().isBusy()) {
+                if (!Rs2Antiban.isCategoryBusy()) {
                     Rs2Antiban.TIMEOUT--;
                 }
             } else {

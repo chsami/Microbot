@@ -188,6 +188,47 @@ public class SealedTargetFastPathTest {
         assertEquals(dst, pf.getPath().get(pf.getPath().size() - 1));
     }
 
+    @Test
+    public void midRiverTargetPublishesTheNearestBankAsSubstitute() {
+        PathfinderConfig config = newConfig();
+        WorldPoint dst = new WorldPoint(2466, 3151, 0);
+        assumeTrue("precondition: the shipped map must seal the river tile",
+                config.getMap().isBlocked(dst.getX(), dst.getY(), dst.getPlane()));
+
+        Pathfinder pf = new Pathfinder(config, new WorldPoint(2212, 2859, 0), dst);
+        pf.run();
+
+        assertEquals(PathTerminationReason.SEARCH_EXHAUSTED, pf.getTerminationReason());
+        WorldPoint substitute = pf.getNearestSealedRimSubstitute();
+        assertNotNull(substitute);
+        assertTrue("mid-river goal must publish a substitute other than itself: " + substitute,
+                !substitute.equals(dst));
+        assertTrue("substitute must be open ground: " + substitute,
+                !config.getMap().isBlocked(substitute.getX(), substitute.getY(), substitute.getPlane()));
+        assertTrue("substitute must be beside the river spot: " + substitute,
+                substitute.distanceTo2D(dst) <= 10);
+        assertTrue("the substitute search must run: nodes=" + pf.getStats().getNodesChecked(),
+                pf.getStats().getNodesChecked() > 0);
+    }
+
+    @Test
+    public void midRiverTargetFromTheBankYieldsAnApproachPath() {
+        PathfinderConfig config = newConfig();
+        WorldPoint dst = new WorldPoint(2466, 3151, 0);
+        WorldPoint src = new WorldPoint(2456, 3151, 0);
+        assumeTrue("precondition: the shipped map must seal the river tile",
+                config.getMap().isBlocked(dst.getX(), dst.getY(), dst.getPlane()));
+
+        Pathfinder pf = new Pathfinder(config, src, dst);
+        pf.run();
+
+        assertEquals(PathTerminationReason.SEARCH_EXHAUSTED, pf.getTerminationReason());
+        assertTrue("the walk gets an approach path toward the river spot", !pf.getPath().isEmpty());
+        WorldPoint last = pf.getPath().get(pf.getPath().size() - 1);
+        assertTrue("approach path must end on the bank beside the spot, ended at " + last,
+                last.distanceTo2D(dst) <= 10);
+    }
+
     /** Regression from 2026-08-15: 3539 -> 3538 -> 3537 must be normalized in one plan. */
     @Test
     public void burthorpeNestedSealedShellPublishesTheOuterApproachOnce() {

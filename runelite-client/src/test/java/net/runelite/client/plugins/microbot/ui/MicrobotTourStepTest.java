@@ -49,6 +49,15 @@ public class MicrobotTourStepTest
 	}
 
 	@Test
+	public void reportProblemComesRightBeforeHelp()
+	{
+		MicrobotTourStep[] steps = MicrobotTourStep.values();
+		assertEquals(MicrobotTourStep.REPORT_PROBLEM, steps[steps.length - 2]);
+		assertTrue(MicrobotTourStep.REPORT_PROBLEM.getBody().contains("Report a problem"));
+		assertTrue(MicrobotTourStep.REPORT_PROBLEM.getBody().contains("My reports"));
+	}
+
+	@Test
 	public void escapeHandlesHtmlCharacters()
 	{
 		assertEquals("a &lt;b&gt; &amp; c", MicrobotTourCallout.escape("a <b> & c"));

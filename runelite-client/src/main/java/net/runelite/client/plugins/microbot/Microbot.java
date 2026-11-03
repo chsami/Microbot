@@ -971,13 +971,22 @@ public class Microbot {
 
             // Schedule a task to check the widget's state and close the interface if necessary
             getClientThread().invokeLater(() -> {
-                Widget w = getClient().getWidget(InterfaceID.NOTIFICATION_DISPLAY, 1);
+                Client client = getClient();
+                if (client.getComponentTable().get(container) != widgetNode) {
+                    return true;
+                }
+
+                Widget w = client.getWidget(InterfaceID.NOTIFICATION_DISPLAY, 1);
                 if (w == null || w.getWidth() > 0) {
                     return false; // Exit if the widget is null or already displayed
                 }
 
                 // Close the interface if the widget is valid
-                getClient().closeInterface(widgetNode, true);
+                try {
+                    client.closeInterface(widgetNode, true);
+                } catch (IllegalArgumentException ex) {
+                    log.debug("Pop-up on component {} was already closed", container, ex);
+                }
                 return true;
             });
         });
