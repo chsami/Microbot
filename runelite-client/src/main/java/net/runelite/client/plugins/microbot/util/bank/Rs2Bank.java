@@ -2382,6 +2382,17 @@ public class Rs2Bank {
 
     private static NearestBankRoute getPathAndBankToNearestBank(
             WorldPoint worldPoint, int maxObjectSearchRadius, Boolean useBankItems) {
+        return getPathAndBankToNearestBank(worldPoint, maxObjectSearchRadius, useBankItems, false);
+    }
+
+    private static BankLocation getNearestBankForWalkBack() {
+        WorldPoint playerLocation = Rs2Player.getWorldLocation();
+        NearestBankRoute walkable = getPathAndBankToNearestBank(playerLocation, 20, null, true);
+        return walkable != null ? walkable.getBank() : getNearestBank(playerLocation);
+    }
+
+    private static NearestBankRoute getPathAndBankToNearestBank(
+            WorldPoint worldPoint, int maxObjectSearchRadius, Boolean useBankItems, boolean ignoreTeleports) {
         if (worldPoint == null) return null;
         Microbot.log("Finding nearest bank...");
 
@@ -2439,6 +2450,9 @@ public class Rs2Bank {
         Rs2RouteRequest request = Rs2RouteRequest.toAny(worldPoint, targets);
         if (useBankItems != null) {
             request = request.withBankItems(useBankItems);
+        }
+        if (ignoreTeleports) {
+            request = request.withoutTeleports();
         }
         Rs2RouteResult route = Rs2PathApi.plan(request);
         List<WorldPoint> path = route.getPath();
@@ -2699,7 +2713,7 @@ public class Rs2Bank {
      * @return
      */
     public static boolean bankItemsAndWalkBackToOriginalPosition(Collection<String> itemNames, WorldPoint initialRs2PlayerLocation, int emptySlotCount) {
-        return bankItemsAndWalkBackToOriginalPosition(itemNames,false, getNearestBank(), initialRs2PlayerLocation, emptySlotCount, 4);
+        return bankItemsAndWalkBackToOriginalPosition(itemNames,false, getNearestBankForWalkBack(), initialRs2PlayerLocation, emptySlotCount, 4);
     }
 
     /**
@@ -2710,7 +2724,7 @@ public class Rs2Bank {
      * @return
      */
     public static boolean bankItemsAndWalkBackToOriginalPosition(Collection<String> itemNames, WorldPoint initialRs2PlayerLocation) {
-        return bankItemsAndWalkBackToOriginalPosition(itemNames,false, getNearestBank(), initialRs2PlayerLocation, 0, 4);
+        return bankItemsAndWalkBackToOriginalPosition(itemNames,false, getNearestBankForWalkBack(), initialRs2PlayerLocation, 0, 4);
     }
 
     /**
@@ -2773,7 +2787,7 @@ public class Rs2Bank {
      * @return
      */
     public static boolean bankItemsAndWalkBackToOriginalPosition(Collection<String> itemNames, WorldPoint initialRs2PlayerLocation, int emptySlotCount, int distance) {
-        return bankItemsAndWalkBackToOriginalPosition(itemNames,false, getNearestBank(), initialRs2PlayerLocation, emptySlotCount, distance);
+        return bankItemsAndWalkBackToOriginalPosition(itemNames,false, getNearestBankForWalkBack(), initialRs2PlayerLocation, emptySlotCount, distance);
     }
 
     public static boolean isWithdrawAs(boolean noted) {
