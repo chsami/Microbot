@@ -204,7 +204,7 @@ public class CooksHelper extends PlayerMadeQuestHelper
 			.addContinueDialog(new RunelitePlayerDialogStep(client, "I have! Here you go, why do you need it?"))
 			.addContinueDialog(hopleez.createDialogStepForNpc("Nice! Now let's sort out this crasher..."))
 			.addContinueDialog(hopleez.createDialogStepForNpc("Oi noob, take this!"))
-			.addContinueDialog(new RuneliteObjectDialogStep("Hatius Cosaintus", "What on earth?", NpcID.HATIUS_LUMBRIDGE_DIARY).setStateProgression(endQuest));
+			.addContinueDialog(new RuneliteObjectDialogStep("Hatius Cosaintus", "What on earth?", NpcID.HATIUS_COSAINTUS).setStateProgression(endQuest));
 		hopleez.addDialogTree(pickedCabbage, hopleezGiveCabbageDialog);
 	}
 
