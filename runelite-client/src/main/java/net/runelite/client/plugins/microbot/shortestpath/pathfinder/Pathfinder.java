@@ -329,6 +329,7 @@ public class Pathfinder implements Runnable {
      * walks the partial path, replans closer, and the next probe answers from nearer.
      */
     private static final long SEALED_SUBSTITUTE_NODE_BUDGET = 50_000L;
+    private static final int SEALED_RIM_MAX_RADIUS = 10;
 
     /** The targets the search LOOPS actually chase; equals {@link #targetsPacked} except in sealed mode. */
     private volatile int[] searchTargetsPacked;
@@ -456,6 +457,9 @@ public class Pathfinder implements Runnable {
                 }
             }
         }
+        if (rim.isEmpty()) {
+            rim.addAll(nearestOpenRing(goalPacked));
+        }
         // Nearest to START, not to the goal: the reachable rim is on the approach side, and ranking
         // it first lets the substitute search REACH a target in hundreds of nodes. Goal-side rim
         // tiles are usually inside the sealed pocket's far side — unreachable by construction — and
@@ -471,6 +475,23 @@ public class Pathfinder implements Runnable {
         WebWalkLog.pf("target_sealed dst={} component={} rim={} probeNodes={}",
                 WorldPointUtil.toString(goalPacked), component.size(), rim.size(), expanded);
         return substitutes;
+    }
+
+    private List<Integer> nearestOpenRing(int goalPacked) {
+        final int gx = WorldPointUtil.unpackWorldX(goalPacked);
+        final int gy = WorldPointUtil.unpackWorldY(goalPacked);
+        final int z = WorldPointUtil.unpackWorldPlane(goalPacked);
+        final List<Integer> ring = new ArrayList<>();
+        for (int r = 2; r <= SEALED_RIM_MAX_RADIUS && ring.isEmpty(); r++) {
+            for (int x = gx - r; x <= gx + r; x++) {
+                for (int y = gy - r; y <= gy + r; y++) {
+                    if (Math.max(Math.abs(x - gx), Math.abs(y - gy)) == r && !map.isBlocked(x, y, z)) {
+                        ring.add(WorldPointUtil.packWorldPoint(x, y, z));
+                    }
+                }
+            }
+        }
+        return ring;
     }
 
     /**
