@@ -40,6 +40,7 @@ public final class Rs2RouteRequest
 	private final Boolean useBankItems;
 	private final Rs2RoutePolicy policy;
 	private final Purpose purpose;
+	private final boolean teleportsIgnored;
 
 	private Rs2RouteRequest(
 		WorldPoint start,
@@ -48,7 +49,8 @@ public final class Rs2RouteRequest
 		WorldPoint refreshTarget,
 		Boolean useBankItems,
 		Rs2RoutePolicy policy,
-		Purpose purpose)
+		Purpose purpose,
+		boolean teleportsIgnored)
 	{
 		this.start = Objects.requireNonNull(start, "start");
 		Objects.requireNonNull(targets, "targets");
@@ -67,6 +69,7 @@ public final class Rs2RouteRequest
 		this.useBankItems = useBankItems;
 		this.policy = policy;
 		this.purpose = Objects.requireNonNull(purpose, "purpose");
+		this.teleportsIgnored = teleportsIgnored;
 	}
 
 	public static Rs2RouteRequest to(WorldPoint start, WorldPoint target)
@@ -78,19 +81,21 @@ public final class Rs2RouteRequest
 	{
 		return new Rs2RouteRequest(
 			start, targets, RefreshPolicy.IF_TRANSPORTS_EMPTY, null, null, null,
-			Purpose.GENERAL);
+			Purpose.GENERAL, false);
 	}
 
 	public Rs2RouteRequest withRefreshPolicy(RefreshPolicy policy)
 	{
 		return new Rs2RouteRequest(
-			start, targets, policy, refreshTarget, useBankItems, this.policy, purpose);
+			start, targets, policy, refreshTarget, useBankItems, this.policy, purpose,
+			teleportsIgnored);
 	}
 
 	public Rs2RouteRequest withRefreshTarget(WorldPoint target)
 	{
 		return new Rs2RouteRequest(
-			start, targets, refreshPolicy, target, useBankItems, policy, purpose);
+			start, targets, refreshPolicy, target, useBankItems, policy, purpose,
+			teleportsIgnored);
 	}
 
 	/**
@@ -102,7 +107,13 @@ public final class Rs2RouteRequest
 	{
 		return new Rs2RouteRequest(
 			start, targets, RefreshPolicy.ALWAYS, refreshTarget, enabled,
-			policy == null ? null : policy.withUseBankItems(enabled), purpose);
+			policy == null ? null : policy.withUseBankItems(enabled), purpose, teleportsIgnored);
+	}
+
+	public Rs2RouteRequest withoutTeleports()
+	{
+		return new Rs2RouteRequest(
+			start, targets, refreshPolicy, refreshTarget, useBankItems, policy, purpose, true);
 	}
 
 	/** Classify this request without changing planning behavior. */
@@ -110,7 +121,7 @@ public final class Rs2RouteRequest
 	{
 		return new Rs2RouteRequest(
 			start, targets, refreshPolicy, refreshTarget, useBankItems, policy,
-			Objects.requireNonNull(purpose, "purpose"));
+			Objects.requireNonNull(purpose, "purpose"), teleportsIgnored);
 	}
 
 	/** Attach the fully resolved policy passed to an engine implementation. */
@@ -119,7 +130,7 @@ public final class Rs2RouteRequest
 		Rs2RoutePolicy nonNullPolicy = Objects.requireNonNull(resolvedPolicy, "resolvedPolicy");
 		return new Rs2RouteRequest(
 			start, targets, refreshPolicy, refreshTarget,
-			nonNullPolicy.isUseBankItems(), nonNullPolicy, purpose);
+			nonNullPolicy.isUseBankItems(), nonNullPolicy, purpose, teleportsIgnored);
 	}
 
 	public WorldPoint getStart()
@@ -155,5 +166,10 @@ public final class Rs2RouteRequest
 	public Purpose getPurpose()
 	{
 		return purpose;
+	}
+
+	public boolean isTeleportsIgnored()
+	{
+		return teleportsIgnored;
 	}
 }

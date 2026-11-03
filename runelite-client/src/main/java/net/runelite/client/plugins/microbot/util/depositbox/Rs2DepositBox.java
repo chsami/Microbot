@@ -454,14 +454,51 @@ public class Rs2DepositBox {
      * @return the nearest {@link DepositBoxLocation}, or {@code null} if no accessible deposit box could be reached
      */
     public static DepositBoxLocation getNearestDepositBox(WorldPoint worldPoint, int maxObjectSearchRadius) {
-        Microbot.log("Finding nearest deposit box...");
+        return getNearestDepositBox(worldPoint, maxObjectSearchRadius, false);
+    }
+
+    private static volatile WorldPoint lastWalkBackFallbackLocation;
+
+    private static DepositBoxLocation getNearestDepositBoxForWalkBack() {
+        WorldPoint playerLocation = Rs2Player.getWorldLocation();
+        if (playerLocation == null) return null;
+        DepositBoxLocation walkable = getNearestDepositBox(playerLocation, 15, true);
+        if (walkable != null) {
+            lastWalkBackFallbackLocation = null;
+            return walkable;
+        }
+        if (!playerLocation.equals(lastWalkBackFallbackLocation)) {
+            lastWalkBackFallbackLocation = playerLocation;
+            Microbot.log("No deposit box within walking distance, choosing one you can reach with teleports.");
+        }
+        return getNearestDepositBox(playerLocation);
+    }
+
+    private static void logDepositBoxSearchFailure(String message, boolean ignoreTeleports) {
+        if (ignoreTeleports) {
+            log.debug(message);
+        } else {
+            Microbot.log(message);
+        }
+    }
+
+    private static String foundDepositBoxMessage(DepositBoxLocation depositBox, String method, boolean ignoreTeleports) {
+        return ignoreTeleports
+                ? "Using deposit box at " + depositBox + " (closest on foot, so the walk back stays short)"
+                : "Found nearest deposit box (" + method + "): " + depositBox;
+    }
+
+    private static DepositBoxLocation getNearestDepositBox(WorldPoint worldPoint, int maxObjectSearchRadius, boolean ignoreTeleports) {
+        if (!ignoreTeleports) {
+            Microbot.log("Finding nearest deposit box...");
+        }
 
         Set<DepositBoxLocation> accessibleDepositBoxes = Arrays.stream(DepositBoxLocation.values())
                 .filter(DepositBoxLocation::hasRequirements)
                 .collect(Collectors.toSet());
 
         if (accessibleDepositBoxes.isEmpty()) {
-            Microbot.log("No accessible deposit boxes found");
+            logDepositBoxSearchFailure("No accessible deposit boxes found", ignoreTeleports);
             return null;
         }
 
@@ -487,7 +524,7 @@ public class Rs2DepositBox {
                     .map(Map.Entry::getKey);
 
             if (byObject.isPresent()) {
-                Microbot.log("Found nearest deposit box (object): " + byObject.get());
+                Microbot.log(foundDepositBoxMessage(byObject.get(), "object", ignoreTeleports));
                 return byObject.get();
             }
         }
@@ -496,10 +533,14 @@ public class Rs2DepositBox {
                 .map(DepositBoxLocation::getWorldPoint)
                 .collect(Collectors.toSet());
 
-        Rs2RouteResult route = Rs2PathApi.plan(Rs2RouteRequest.toAny(worldPoint, targets));
+        Rs2RouteRequest request = Rs2RouteRequest.toAny(worldPoint, targets);
+        if (ignoreTeleports) {
+            request = request.withoutTeleports();
+        }
+        Rs2RouteResult route = Rs2PathApi.plan(request);
         List<WorldPoint> path = route.getPath();
         if (path.isEmpty()) {
-            Microbot.log("Unable to find path to any deposit box");
+            logDepositBoxSearchFailure("Unable to find path to any deposit box", ignoreTeleports);
             return null;
         }
 
@@ -509,11 +550,11 @@ public class Rs2DepositBox {
                 .findFirst();
 
         if (byPath.isPresent()) {
-            Microbot.log("Found nearest deposit box (shortest path): " + byPath.get());
+            Microbot.log(foundDepositBoxMessage(byPath.get(), "shortest path", ignoreTeleports));
             return byPath.get();
         }
 
-        Microbot.log("Nearest deposit box point " + nearestTile + " did not match any DepositBoxLocation");
+        logDepositBoxSearchFailure("Nearest deposit box point " + nearestTile + " did not match any DepositBoxLocation", ignoreTeleports);
         return null;
     }
 
@@ -605,7 +646,7 @@ public class Rs2DepositBox {
      */
     public static boolean bankItemsAndWalkBackToOriginalPosition(List<String> itemNames, boolean exactItemNames, WorldPoint initialPlayerLocation, int emptySlotCount, int distance) {
         if (Rs2Inventory.getEmptySlots() <= emptySlotCount) {
-            boolean isDepositBoxOpen = Rs2DepositBox.walkToAndUseDepositBox();
+            boolean isDepositBoxOpen = Rs2DepositBox.walkToAndUseDepositBox(getNearestDepositBoxForWalkBack());
             if (isDepositBoxOpen) {
                 depositAll(itemNames, exactItemNames);
             }
