@@ -1,6 +1,8 @@
 package net.runelite.client.plugins.microbot;
 
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import javax.swing.SwingUtilities;
@@ -22,6 +24,7 @@ public final class ScriptPauseController
 	});
 	private static volatile boolean paused;
 	private static volatile long generation;
+	private static final Set<String> announcedPauseWaits = ConcurrentHashMap.newKeySet();
 	private static long request;
 	private static long pausedAt;
 	private static long pausedNanos;
@@ -42,6 +45,12 @@ public final class ScriptPauseController
 		return generation;
 	}
 
+	/** Returns true the first time this display name announces a wait in the current pause. */
+	static boolean markPauseWaitAnnounced(String name)
+	{
+		return announcedPauseWaits.add(name);
+	}
+
 	/** Returns after held input is released (pause), or workers can proceed (resume). */
 	public static CompletableFuture<Void> setPaused(boolean value)
 	{
@@ -52,6 +61,7 @@ public final class ScriptPauseController
 			{
 				if (!paused)
 				{
+					announcedPauseWaits.clear();
 					pausedAt = System.nanoTime();
 					paused = true;
 					generation++;

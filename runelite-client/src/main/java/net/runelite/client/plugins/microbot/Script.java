@@ -20,6 +20,7 @@ import net.runelite.client.plugins.microbot.util.walker.Rs2PathApi;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.walker.recovery.CantReachTargetRecovery;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.event.Level;
 
 import java.lang.reflect.Field;
 import java.util.concurrent.ScheduledExecutorService;
@@ -49,7 +50,11 @@ public abstract class Script extends Global implements IScript {
 
     private void announcePauseWait() {
         if (pauseWaitAnnounced.compareAndSet(false, true)) {
-            Microbot.log(pauseWaitName() + " is waiting: scripts are paused. Click the amber play button next to the Enable/Disable Input button to resume.");
+            String name = pauseWaitName();
+            if (!ScriptPauseController.markPauseWaitAnnounced(name)) {
+                return;
+            }
+            Microbot.log(name + " is waiting: scripts are paused. Click the amber play button next to the Enable/Disable Input button to resume.", Level.WARN);
         }
     }
 

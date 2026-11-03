@@ -17,6 +17,7 @@ import net.runelite.client.plugins.microbot.util.Global;
 import net.runelite.client.plugins.microbot.util.input.InputArbiter;
 import net.runelite.client.plugins.microbot.util.input.InputLoop;
 import org.mockito.MockedStatic;
+import org.slf4j.event.Level;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -38,6 +39,13 @@ public class ScriptPauseControllerTest
 	private static final class PauseAwareTestPlugin extends Plugin
 	{
 		private final PauseAwareTestScript script = new PauseAwareTestScript();
+	}
+
+	@PluginDescriptor(name = "<html>[<font color=green>D</font>] Multi Script Plugin")
+	private static final class MultiScriptTestPlugin extends Plugin
+	{
+		private final PauseAwareTestScript first = new PauseAwareTestScript();
+		private final PauseAwareTestScript second = new PauseAwareTestScript();
 	}
 
 	private ScriptScheduledExecutor executor;
@@ -255,7 +263,7 @@ public class ScriptPauseControllerTest
 			script.startLoop();
 			assertFalse(script.run());
 			assertFalse(script.run());
-			microbot.verify(() -> Microbot.log("Pause Aware Test is waiting: scripts are paused. Click the amber play button next to the Enable/Disable Input button to resume."), times(1));
+			microbot.verify(() -> Microbot.log("Pause Aware Test is waiting: scripts are paused. Click the amber play button next to the Enable/Disable Input button to resume.", Level.WARN), times(1));
 		}
 		finally
 		{
@@ -277,12 +285,46 @@ public class ScriptPauseControllerTest
 			microbot.when(Microbot::getPluginManager).thenReturn(pluginManager);
 			plugin.script.startLoop();
 			assertFalse(plugin.script.run());
-			microbot.verify(() -> Microbot.log("Pause Test Plugin is waiting: scripts are paused. Click the amber play button next to the Enable/Disable Input button to resume."), times(1));
+			microbot.verify(() -> Microbot.log("Pause Test Plugin is waiting: scripts are paused. Click the amber play button next to the Enable/Disable Input button to resume.", Level.WARN), times(1));
 		}
 		finally
 		{
 			plugin.script.shutdown();
 			plugin.script.scheduledExecutorService.shutdownNow();
+		}
+	}
+
+	@Test
+	public void pluginWithSeveralScriptsAnnouncesWaitOncePerPause() throws Exception
+	{
+		MultiScriptTestPlugin plugin = new MultiScriptTestPlugin();
+		PluginManager pluginManager = mock(PluginManager.class);
+		when(pluginManager.getPlugins()).thenReturn(java.util.Collections.singleton(plugin));
+		ScriptPauseController.setPaused(true).get(2, TimeUnit.SECONDS);
+		try (MockedStatic<Microbot> microbot = mockStatic(Microbot.class, CALLS_REAL_METHODS))
+		{
+			microbot.when(Microbot::getEventBus).thenReturn(null);
+			microbot.when(Microbot::getPluginManager).thenReturn(pluginManager);
+
+			assertFalse(plugin.first.run());
+			assertFalse(plugin.second.run());
+			microbot.verify(() -> Microbot.log("Multi Script Plugin is waiting: scripts are paused. Click the amber play button next to the Enable/Disable Input button to resume.", Level.WARN), times(1));
+
+			ScriptPauseController.setPaused(false).get(2, TimeUnit.SECONDS);
+			plugin.first.shutdown();
+			plugin.second.shutdown();
+			ScriptPauseController.setPaused(true).get(2, TimeUnit.SECONDS);
+
+			assertFalse(plugin.first.run());
+			assertFalse(plugin.second.run());
+			microbot.verify(() -> Microbot.log("Multi Script Plugin is waiting: scripts are paused. Click the amber play button next to the Enable/Disable Input button to resume.", Level.WARN), times(2));
+		}
+		finally
+		{
+			plugin.first.shutdown();
+			plugin.first.scheduledExecutorService.shutdownNow();
+			plugin.second.shutdown();
+			plugin.second.scheduledExecutorService.shutdownNow();
 		}
 	}
 
@@ -296,7 +338,7 @@ public class ScriptPauseControllerTest
 			microbot.when(Microbot::getEventBus).thenReturn(null);
 			script.scheduledExecutorService.scheduleWithFixedDelay(() -> { }, 1, 1, TimeUnit.DAYS);
 			assertFalse(script.run());
-			microbot.verify(() -> Microbot.log("A script is waiting: scripts are paused. Click the amber play button next to the Enable/Disable Input button to resume."), times(1));
+			microbot.verify(() -> Microbot.log("A script is waiting: scripts are paused. Click the amber play button next to the Enable/Disable Input button to resume.", Level.WARN), times(1));
 		}
 		finally
 		{
