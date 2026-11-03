@@ -5,6 +5,9 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
+import net.runelite.client.plugins.Plugin;
+import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.plugins.PluginManager;
 import net.runelite.client.plugins.microbot.util.Global;
 import net.runelite.client.plugins.microbot.agentserver.handler.ScriptHeartbeatRegistry;
 import net.runelite.client.plugins.microbot.diagnostics.FlightRecorder;
@@ -18,6 +21,7 @@ import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.walker.recovery.CantReachTargetRecovery;
 import org.jetbrains.annotations.NotNull;
 
+import java.lang.reflect.Field;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ThreadFactory;
@@ -45,8 +49,53 @@ public abstract class Script extends Global implements IScript {
 
     private void announcePauseWait() {
         if (pauseWaitAnnounced.compareAndSet(false, true)) {
-            Microbot.log(getClass().getSimpleName() + " is waiting: scripts are paused. Click the amber play button in the top bar to resume.");
+            Microbot.log(pauseWaitName() + " is waiting: scripts are paused. Click the amber play button next to the Enable/Disable Input button to resume.");
         }
+    }
+
+    private String pauseWaitName() {
+        String pluginName = owningPluginName();
+        if (pluginName != null && !pluginName.trim().isEmpty()) {
+            return pluginName.trim();
+        }
+
+        String scriptName = getClass().getSimpleName()
+                .replaceAll("Script$", "")
+                .replaceAll("(?<=[a-z])(?=[A-Z])", " ");
+        return scriptName.isEmpty() ? "A script" : scriptName;
+    }
+
+    private String owningPluginName() {
+        PluginManager pluginManager = Microbot.getPluginManager();
+        if (pluginManager == null) {
+            return null;
+        }
+
+        for (Plugin plugin : pluginManager.getPlugins()) {
+            PluginDescriptor descriptor = plugin.getClass().getAnnotation(PluginDescriptor.class);
+            if (descriptor != null && ownsScript(plugin)) {
+                return descriptor.name();
+            }
+        }
+        return null;
+    }
+
+    private boolean ownsScript(Plugin plugin) {
+        for (Class<?> type = plugin.getClass(); type != null && Plugin.class.isAssignableFrom(type); type = type.getSuperclass()) {
+            for (Field field : type.getDeclaredFields()) {
+                if (!Script.class.isAssignableFrom(field.getType())) {
+                    continue;
+                }
+                try {
+                    if (field.trySetAccessible() && field.get(plugin) == this) {
+                        return true;
+                    }
+                } catch (IllegalAccessException | RuntimeException ignored) {
+                    // A plugin may keep its script in a field that is not reflectively accessible.
+                }
+            }
+        }
+        return false;
     }
 
     protected ScheduledExecutorService scheduledExecutorService = new ScriptScheduledExecutor(10,

@@ -104,7 +104,7 @@ public class InputSelector {
                 Microbot.getClient().getCanvas().setFocusable(true);
                 Microbot.getClient().getCanvas().requestFocusInWindow();
                 addAndRemoveButtons();
-                Microbot.log("All scripts paused. Manual input is on. Click the amber play button in the top bar to resume.");
+                Microbot.log("All scripts paused. Manual input is on. Click the amber play button next to the Enable/Disable Input button to resume.", Level.WARN);
             }
             if (!pause && error == null && !ScriptPauseController.isPaused()) {
                 if (!inputChangedDuringPause) {
@@ -112,7 +112,7 @@ public class InputSelector {
                     Microbot.getClient().getCanvas().setFocusable(inputEnabledBeforePause);
                     addAndRemoveButtons();
                 }
-                Microbot.log("All scripts resumed.");
+                Microbot.log("All scripts resumed. A break that came due while paused will start now.", Level.WARN);
             }
             updatePauseButton();
         }));

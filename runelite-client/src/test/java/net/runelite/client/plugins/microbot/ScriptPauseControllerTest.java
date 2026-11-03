@@ -7,8 +7,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import javax.swing.SwingUtilities;
 import net.runelite.api.Client;
+import net.runelite.client.plugins.Plugin;
+import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.plugins.PluginManager;
 import net.runelite.client.plugins.microbot.util.Global;
 import net.runelite.client.plugins.microbot.util.input.InputArbiter;
 import net.runelite.client.plugins.microbot.util.input.InputLoop;
@@ -28,6 +32,12 @@ public class ScriptPauseControllerTest
 		{
 			scheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> { }, 1, 1, TimeUnit.DAYS);
 		}
+	}
+
+	@PluginDescriptor(name = "Pause Test Plugin")
+	private static final class PauseAwareTestPlugin extends Plugin
+	{
+		private final PauseAwareTestScript script = new PauseAwareTestScript();
 	}
 
 	private ScriptScheduledExecutor executor;
@@ -156,6 +166,19 @@ public class ScriptPauseControllerTest
 	}
 
 	@Test
+	public void sleepStillWaitsOnSwingThreadWhenItIsNotTheClientThread() throws Exception
+	{
+		when(client.isClientThread()).thenReturn(false);
+		AtomicLong elapsedNanos = new AtomicLong();
+		SwingUtilities.invokeAndWait(() -> {
+			long start = System.nanoTime();
+			Global.sleep(80);
+			elapsedNanos.set(System.nanoTime() - start);
+		});
+		assertTrue("Swing-thread wait returned before the requested delay", elapsedNanos.get() >= TimeUnit.MILLISECONDS.toNanos(60));
+	}
+
+	@Test
 	public void pauseRemainsIndependentOfLegacyPauseWriters() throws Exception
 	{
 		boolean original = Microbot.pauseAllScripts.get();
@@ -232,7 +255,48 @@ public class ScriptPauseControllerTest
 			script.startLoop();
 			assertFalse(script.run());
 			assertFalse(script.run());
-			microbot.verify(() -> Microbot.log("PauseAwareTestScript is waiting: scripts are paused. Click the amber play button in the top bar to resume."), times(1));
+			microbot.verify(() -> Microbot.log("Pause Aware Test is waiting: scripts are paused. Click the amber play button next to the Enable/Disable Input button to resume."), times(1));
+		}
+		finally
+		{
+			script.shutdown();
+			script.scheduledExecutorService.shutdownNow();
+		}
+	}
+
+	@Test
+	public void scriptWaitMessageUsesOwningPluginDescriptorName() throws Exception
+	{
+		PauseAwareTestPlugin plugin = new PauseAwareTestPlugin();
+		PluginManager pluginManager = mock(PluginManager.class);
+		when(pluginManager.getPlugins()).thenReturn(java.util.Collections.singleton(plugin));
+		ScriptPauseController.setPaused(true).get(2, TimeUnit.SECONDS);
+		try (MockedStatic<Microbot> microbot = mockStatic(Microbot.class, CALLS_REAL_METHODS))
+		{
+			microbot.when(Microbot::getEventBus).thenReturn(null);
+			microbot.when(Microbot::getPluginManager).thenReturn(pluginManager);
+			plugin.script.startLoop();
+			assertFalse(plugin.script.run());
+			microbot.verify(() -> Microbot.log("Pause Test Plugin is waiting: scripts are paused. Click the amber play button next to the Enable/Disable Input button to resume."), times(1));
+		}
+		finally
+		{
+			plugin.script.shutdown();
+			plugin.script.scheduledExecutorService.shutdownNow();
+		}
+	}
+
+	@Test
+	public void anonymousScriptWaitMessageUsesGenericName() throws Exception
+	{
+		Script script = new Script() { };
+		ScriptPauseController.setPaused(true).get(2, TimeUnit.SECONDS);
+		try (MockedStatic<Microbot> microbot = mockStatic(Microbot.class, CALLS_REAL_METHODS))
+		{
+			microbot.when(Microbot::getEventBus).thenReturn(null);
+			script.scheduledExecutorService.scheduleWithFixedDelay(() -> { }, 1, 1, TimeUnit.DAYS);
+			assertFalse(script.run());
+			microbot.verify(() -> Microbot.log("A script is waiting: scripts are paused. Click the amber play button next to the Enable/Disable Input button to resume."), times(1));
 		}
 		finally
 		{

@@ -81,7 +81,7 @@ public class Global {
 
     /** Sliced so a takeover cuts the remainder short. Every fixed-sleep wrapper funnels here. */
     public static void sleep(int start) {
-        if (javax.swing.SwingUtilities.isEventDispatchThread() || Microbot.getClient().isClientThread()) return;
+        if (Microbot.getClient().isClientThread()) return;
         long remaining = start;
         while (remaining > 0) {
             if (humanOwnsInput()) return;
@@ -144,7 +144,7 @@ public class Global {
 
     @SneakyThrows
     public static <T> T sleepUntilNotNull(Callable<T> method, int timeoutMillis, int sleepMillis) {
-        if (javax.swing.SwingUtilities.isEventDispatchThread() || Microbot.getClient().isClientThread()) return null;
+        if (Microbot.getClient().isClientThread()) return null;
         boolean done;
         T methodResponse;
         final long endTime = activeTimeMillis()+timeoutMillis;
@@ -176,7 +176,7 @@ public class Global {
      * No-op on the client thread to avoid blocking RuneLite.
      */
     public static boolean sleepUntil(BooleanSupplier awaitedCondition, int time) {
-        if (javax.swing.SwingUtilities.isEventDispatchThread() || Microbot.getClient().isClientThread()) return false;
+        if (Microbot.getClient().isClientThread()) return false;
         long startTime = activeTimeMillis();
         try {
             while (!Thread.currentThread().isInterrupted() && activeTimeMillis() - startTime < time) {
@@ -191,7 +191,7 @@ public class Global {
     }
 
     public static boolean sleepUntil(BooleanSupplier awaitedCondition, Runnable action, long timeoutMillis, int sleepMillis) {
-        if (javax.swing.SwingUtilities.isEventDispatchThread() || Microbot.getClient().isClientThread()) return false;
+        if (Microbot.getClient().isClientThread()) return false;
         long startTime = ScriptPauseController.activeTimeNanos();
         long timeoutNanos = TimeUnit.MILLISECONDS.toNanos(timeoutMillis);
         try {
@@ -210,7 +210,7 @@ public class Global {
     }
 
     public static boolean sleepUntilTrue(BooleanSupplier awaitedCondition) {
-        if (javax.swing.SwingUtilities.isEventDispatchThread() || Microbot.getClient().isClientThread()) return false;
+        if (Microbot.getClient().isClientThread()) return false;
         long startTime = activeTimeMillis();
         try {
             do {
@@ -229,7 +229,7 @@ public class Global {
     }
 
     public static boolean sleepUntilTrue(BooleanSupplier awaitedCondition, int time, int timeout) {
-        if (javax.swing.SwingUtilities.isEventDispatchThread() || Microbot.getClient().isClientThread()) return false;
+        if (Microbot.getClient().isClientThread()) return false;
         long startTime = activeTimeMillis();
         try {
             do {
@@ -248,7 +248,7 @@ public class Global {
     }
 
     public static boolean sleepUntilTrue(BooleanSupplier awaitedCondition, BooleanSupplier resetCondition, int time, int timeout) {
-        if (javax.swing.SwingUtilities.isEventDispatchThread() || Microbot.getClient().isClientThread()) return false;
+        if (Microbot.getClient().isClientThread()) return false;
         long startTime = activeTimeMillis();
         try {
             do {
@@ -277,7 +277,7 @@ public class Global {
     }
 
     public static void sleepUntilOnClientThread(BooleanSupplier awaitedCondition, int time) {
-        if (javax.swing.SwingUtilities.isEventDispatchThread() || Microbot.getClient().isClientThread()) return;
+        if (Microbot.getClient().isClientThread()) return;
         boolean done;
         long startTime = activeTimeMillis();
         try {
@@ -304,7 +304,7 @@ public class Global {
      * either side of the await.
      */
     public static boolean sleepUntilNextTick() {
-        if (javax.swing.SwingUtilities.isEventDispatchThread() || Microbot.getClient().isClientThread()) return false;
+        if (Microbot.getClient().isClientThread()) return false;
         if (humanOwnsInput()) return false;
         GameTickBroadcaster broadcaster = Microbot.getGameTickBroadcaster();
         if (broadcaster == null) return false;
@@ -324,7 +324,7 @@ public class Global {
     }
 
     public static boolean sleepUntilNextTick(long timeoutMs) {
-        if (javax.swing.SwingUtilities.isEventDispatchThread() || Microbot.getClient().isClientThread()) return false;
+        if (Microbot.getClient().isClientThread()) return false;
         if (humanOwnsInput()) return false;
         GameTickBroadcaster broadcaster = Microbot.getGameTickBroadcaster();
         if (broadcaster == null) return false;
@@ -344,7 +344,7 @@ public class Global {
     }
 
     public static boolean sleepTicks(int ticks) {
-        if (javax.swing.SwingUtilities.isEventDispatchThread() || Microbot.getClient().isClientThread()) return false;
+        if (Microbot.getClient().isClientThread()) return false;
         for (int i = 0; i < ticks; i++) {
             if (!sleepUntilNextTick()) {
                 return false;
