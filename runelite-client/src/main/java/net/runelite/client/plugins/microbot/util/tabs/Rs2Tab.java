@@ -9,6 +9,7 @@ import net.runelite.api.gameval.VarClientID;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.ScriptPauseController;
 import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
@@ -67,6 +68,8 @@ public class Rs2Tab {
     }
 
     public static boolean switchTo(InterfaceTab tab) {
+        if (ScriptPauseController.isPaused()) return false;
+        long generation = ScriptPauseController.getGeneration();
         if (!Microbot.isLoggedIn()) return false;
         if (readCurrentTab() == tab) return true;
 
@@ -76,6 +79,7 @@ public class Rs2Tab {
         int varcIntIndex = tab.getVarcIntIndex();
         if (varcIntIndex != -1) {
             boolean scriptRan = Microbot.getClientThread().runOnClientThreadOptional(() -> {
+                if (ScriptPauseController.isPaused() || generation != ScriptPauseController.getGeneration()) return false;
                 Client client = Microbot.getClient();
                 if (client.getGameState() != GameState.LOGGED_IN || client.getTopLevelInterfaceId() == -1) {
                     return false;

@@ -100,7 +100,7 @@ public class Microbot {
     private static final ScheduledExecutorService xpSchedulor = Executors.newSingleThreadScheduledExecutor();
     @Getter
     private static final SpecialAttackConfigs specialAttackConfigs = new SpecialAttackConfigs();
-    public static MenuEntry targetMenu;
+    public static volatile MenuEntry targetMenu;
     public static boolean isGainingExp = false;
     public static AtomicBoolean pauseAllScripts = new AtomicBoolean(false);
     public static String status = "IDLE";
@@ -374,6 +374,10 @@ public class Microbot {
      * (interacting player, existing hop, invalid world). Returns {@code true} if a hop is initiated.
      */
     public static boolean hopToWorld(int worldNumber) {
+        if (ScriptPauseController.isPaused()) {
+            return false;
+        }
+        final long pauseGeneration = ScriptPauseController.getGeneration();
         if (!Microbot.isLoggedIn()) {
             return false;
         }
@@ -397,6 +401,9 @@ public class Microbot {
         }
         final net.runelite.api.World[] target = new net.runelite.api.World[1];
         boolean prepared = Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            if (ScriptPauseController.isPaused() || pauseGeneration != ScriptPauseController.getGeneration()) {
+                return false;
+            }
             String blocker = hopBlocker();
             if (blocker != null) {
                 log.error(blocker);
@@ -440,17 +447,24 @@ public class Microbot {
         if (target[0] != null) {
             boolean hopIssued;
             try {
-                hopIssued = prepared && hopViaWorldSwitcher(target[0], WORLD_SWITCHER_LOAD_TIMEOUT_MS);
+                hopIssued = prepared && hopViaWorldSwitcher(target[0], WORLD_SWITCHER_LOAD_TIMEOUT_MS, pauseGeneration);
             } finally {
                 quickHopTargetWorld = null;
             }
-            if (prepared && !hopIssued) {
+            if (prepared && !hopIssued && (ScriptPauseController.isPaused()
+                    || pauseGeneration != ScriptPauseController.getGeneration())) {
+                return false;
+            }
+            if (prepared && !hopIssued && !ScriptPauseController.isPaused()
+                    && pauseGeneration == ScriptPauseController.getGeneration()) {
                 log.warn("World switcher did not load in time, could not hop to world {}", worldNumber);
                 return false;
             }
         }
         if (!prepared) {
-            log.error("Failed to hop to world {}", worldNumber);
+            if (!ScriptPauseController.isPaused() && pauseGeneration == ScriptPauseController.getGeneration()) {
+                log.error("Failed to hop to world {}", worldNumber);
+            }
             return false;
         }
         // Wait off the client thread so sleeps actually block. The lambda above runs on
@@ -575,11 +589,25 @@ public class Microbot {
     }
 
     static boolean hopViaWorldSwitcher(net.runelite.api.World rsWorld, int loadTimeoutMs) {
-        if (!isWorldSwitcherLoaded()
-                && !sleepUntil(Microbot::isWorldSwitcherLoaded, Microbot::openWorldSwitcher, loadTimeoutMs, WORLD_SWITCHER_REOPEN_INTERVAL_MS)) {
+        return hopViaWorldSwitcher(rsWorld, loadTimeoutMs, ScriptPauseController.getGeneration());
+    }
+
+    static boolean hopViaWorldSwitcher(net.runelite.api.World rsWorld, int loadTimeoutMs, long pauseGeneration) {
+        if (ScriptPauseController.isPaused() || pauseGeneration != ScriptPauseController.getGeneration()) {
             return false;
         }
+        if (!isWorldSwitcherLoaded()) {
+            boolean readyOrInvalidated = sleepUntil(
+                    () -> pauseGeneration != ScriptPauseController.getGeneration() || isWorldSwitcherLoaded(),
+                    () -> openWorldSwitcher(pauseGeneration), loadTimeoutMs, WORLD_SWITCHER_REOPEN_INTERVAL_MS);
+            if (!readyOrInvalidated || ScriptPauseController.isPaused()
+                    || pauseGeneration != ScriptPauseController.getGeneration()) {
+                return false;
+            }
+        }
         return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            if (ScriptPauseController.isPaused()) return false;
+            if (pauseGeneration != ScriptPauseController.getGeneration()) return false;
             if (Microbot.getClient().getWidget(InterfaceID.Worldswitcher.BUTTONS) == null) {
                 return false;
             }
@@ -588,8 +616,13 @@ public class Microbot {
         }).orElse(false);
     }
 
-    private static void openWorldSwitcher() {
+    private static void openWorldSwitcher(long pauseGeneration) {
+        if (ScriptPauseController.isPaused() || pauseGeneration != ScriptPauseController.getGeneration()) {
+            return;
+        }
         Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            if (ScriptPauseController.isPaused()) return false;
+            if (pauseGeneration != ScriptPauseController.getGeneration()) return false;
             Microbot.getClient().openWorldHopper();
             return true;
         });
@@ -775,6 +808,9 @@ public class Microbot {
     }
 
     private static void doInvoke(NewMenuEntry entry, Rectangle rectangle, boolean quick) {
+        if (ScriptPauseController.isPaused()) {
+            return;
+        }
         try {
             Rectangle visible = Rs2UiHelper.isFallbackRectangle(rectangle) ? null : Rs2UiHelper.clipToCanvas(rectangle);
             if (visible == null) {
@@ -789,6 +825,9 @@ public class Microbot {
     }
 
     public static void drag(Rectangle start, Rectangle end) {
+        if (ScriptPauseController.isPaused()) {
+            return;
+        }
         if (start == null || end == null) {
             return;
         }
@@ -808,6 +847,9 @@ public class Microbot {
     }
 
     private static void click(Rectangle rectangle, NewMenuEntry entry, boolean resolveFallback, boolean quick) {
+        if (ScriptPauseController.isPaused()) {
+            return;
+        }
         Point point = entry.getType() == MenuAction.WALK
                 ? new Point(entry.getParam0(), entry.getParam1())
                 : Rs2UiHelper.getClickingPoint(rectangle, true, resolveFallback);
@@ -823,6 +865,9 @@ public class Microbot {
     }
 
     public static void click(Rectangle rectangle) {
+        if (ScriptPauseController.isPaused()) {
+            return;
+        }
         if (Rs2UiHelper.isFallbackRectangle(rectangle)) {
             return;
         }

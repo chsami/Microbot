@@ -5,6 +5,9 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
+import net.runelite.client.plugins.Plugin;
+import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.plugins.PluginManager;
 import net.runelite.client.plugins.microbot.util.Global;
 import net.runelite.client.plugins.microbot.agentserver.handler.ScriptHeartbeatRegistry;
 import net.runelite.client.plugins.microbot.diagnostics.FlightRecorder;
@@ -17,9 +20,9 @@ import net.runelite.client.plugins.microbot.util.walker.Rs2PathApi;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.walker.recovery.CantReachTargetRecovery;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.event.Level;
 
-import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.lang.reflect.Field;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ThreadFactory;
@@ -34,14 +37,76 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public abstract class Script extends Global implements IScript {
     static final long EXECUTOR_KEEP_ALIVE_SECONDS = 60;
     private final AtomicBoolean startAnnounced = new AtomicBoolean();
+    private final AtomicBoolean pauseWaitAnnounced = new AtomicBoolean();
 
     private void announceStart() {
+        if (ScriptPauseController.isPaused()) {
+            announcePauseWait();
+        }
         if (Microbot.getEventBus() != null && startAnnounced.compareAndSet(false, true)) {
             Microbot.getEventBus().post(new ScriptStarted(this));
         }
     }
 
-    protected ScheduledExecutorService scheduledExecutorService = new ScheduledThreadPoolExecutor(10,
+    private void announcePauseWait() {
+        if (pauseWaitAnnounced.compareAndSet(false, true)) {
+            String name = pauseWaitName();
+            if (!ScriptPauseController.markPauseWaitAnnounced(name)) {
+                return;
+            }
+            Microbot.log(name + " is waiting: scripts are paused. Click the amber play button next to the Enable/Disable Input button to resume.", Level.WARN);
+        }
+    }
+
+    private String pauseWaitName() {
+        String pluginName = owningPluginName();
+        if (pluginName != null) {
+            pluginName = pluginName.replaceAll("<[^>]*>", "").replaceFirst("^\\[[^\\]]*]\\s*", "");
+        }
+        if (pluginName != null && !pluginName.trim().isEmpty()) {
+            return pluginName.trim();
+        }
+
+        String scriptName = getClass().getSimpleName()
+                .replaceAll("Script$", "")
+                .replaceAll("(?<=[a-z])(?=[A-Z])", " ");
+        return scriptName.isEmpty() ? "A script" : scriptName;
+    }
+
+    private String owningPluginName() {
+        PluginManager pluginManager = Microbot.getPluginManager();
+        if (pluginManager == null) {
+            return null;
+        }
+
+        for (Plugin plugin : pluginManager.getPlugins()) {
+            PluginDescriptor descriptor = plugin.getClass().getAnnotation(PluginDescriptor.class);
+            if (descriptor != null && ownsScript(plugin)) {
+                return descriptor.name();
+            }
+        }
+        return null;
+    }
+
+    private boolean ownsScript(Plugin plugin) {
+        for (Class<?> type = plugin.getClass(); type != null && Plugin.class.isAssignableFrom(type); type = type.getSuperclass()) {
+            for (Field field : type.getDeclaredFields()) {
+                if (!Script.class.isAssignableFrom(field.getType())) {
+                    continue;
+                }
+                try {
+                    if (field.trySetAccessible() && field.get(plugin) == this) {
+                        return true;
+                    }
+                } catch (IllegalAccessException | RuntimeException ignored) {
+                    // A plugin may keep its script in a field that is not reflectively accessible.
+                }
+            }
+        }
+        return false;
+    }
+
+    protected ScheduledExecutorService scheduledExecutorService = new ScriptScheduledExecutor(10,
         new ThreadFactory() {
             private final AtomicInteger threadNumber = new AtomicInteger(1);
             @Override
@@ -51,28 +116,7 @@ public abstract class Script extends Global implements IScript {
                 t.setDaemon(true);
                 return t;
             }
-        }) {
-            {
-                setKeepAliveTime(EXECUTOR_KEEP_ALIVE_SECONDS, TimeUnit.SECONDS);
-                allowCoreThreadTimeOut(true);
-                setRemoveOnCancelPolicy(true);
-            }
-
-            @Override
-            public ScheduledFuture<?> scheduleWithFixedDelay(Runnable command, long initialDelay,
-                    long delay, TimeUnit unit) {
-                // Announce before a zero-delay loop can report a terminal supply failure.
-                announceStart();
-                return super.scheduleWithFixedDelay(command, initialDelay, delay, unit);
-            }
-
-            @Override
-            public ScheduledFuture<?> scheduleAtFixedRate(Runnable command, long initialDelay,
-                    long period, TimeUnit unit) {
-                announceStart();
-                return super.scheduleAtFixedRate(command, initialDelay, period, unit);
-            }
-        };
+        }, this::announceStart);
     protected ScheduledFuture<?> scheduledFuture;
     protected ScheduledFuture<?> mainScheduledFuture;
 
@@ -92,6 +136,7 @@ public abstract class Script extends Global implements IScript {
      */
     public void shutdown() {
         startAnnounced.set(false);
+        pauseWaitAnnounced.set(false);
         ScriptHeartbeatRegistry.remove(this.getClass().getName());
         if (mainScheduledFuture != null && !mainScheduledFuture.isDone()) {
             mainScheduledFuture.cancel(true);
@@ -121,6 +166,12 @@ public abstract class Script extends Global implements IScript {
      */
     public boolean run() {
         ScriptHeartbeatRegistry.recordHeartbeat(this.getClass().getName());
+
+        // Do not enter script logic while the user has the game. Plugin lifecycle and state remain intact.
+        if (ScriptPauseController.isPaused()) {
+            announcePauseWait();
+            return false;
+        }
 
         if (Microbot.isLoggedIn() && !SessionFatigue.isActive()) {
             SessionFatigue.startSession();

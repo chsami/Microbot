@@ -47,5 +47,6 @@ Local setup, build commands, and script authoring entry points.
 
 ## Additional References
 - Installation steps and launcher notes: `docs/installation.md`
+- Client-wide script pause behavior and compatibility limits: `docs/manual-pause.md`
 - API guide and examples: `runelite-client/src/main/java/net/runelite/client/plugins/microbot/api`
 - Example scripts: `runelite-client/src/main/java/net/runelite/client/plugins/microbot/example/`

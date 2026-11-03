@@ -2,6 +2,7 @@ package net.runelite.client.plugins.microbot.util.input;
 
 import net.runelite.api.Point;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.ScriptPauseController;
 import net.runelite.client.plugins.microbot.util.mouse.BotEventGuard;
 
 import java.awt.AWTEvent;
@@ -31,6 +32,7 @@ public final class AwtEmitter
 	private static final double COVERED_EDGE_RETURN_CHANCE = 0.35;
 
 	private static final Set<Integer> HELD_BUTTONS = ConcurrentHashMap.newKeySet();
+	private static final Object HELD_BUTTONS_LOCK = new Object();
 
 	private AwtEmitter()
 	{
@@ -38,6 +40,10 @@ public final class AwtEmitter
 
 	public static void moved(int canvasX, int canvasY)
 	{
+		if (!InputLoop.isInputAllowed())
+		{
+			return;
+		}
 		// Here, not at the callers: every motion funnels through this method.
 		if (exitIfOutside(canvasX, canvasY))
 		{
@@ -74,6 +80,10 @@ public final class AwtEmitter
 
 	public static void wheel(int canvasX, int canvasY, int wheelRotation, int unitsToScroll)
 	{
+		if (!InputLoop.isInputAllowed())
+		{
+			return;
+		}
 		Canvas canvas = canvas();
 		if (canvas == null)
 		{
@@ -88,24 +98,40 @@ public final class AwtEmitter
 
 	private static void button(int id, int canvasX, int canvasY, int button)
 	{
-		if (id == MouseEvent.MOUSE_PRESSED)
+		if (id != MouseEvent.MOUSE_RELEASED && !InputLoop.isInputAllowed())
 		{
-			HELD_BUTTONS.add(button);
-		}
-		else if (id == MouseEvent.MOUSE_RELEASED)
-		{
-			HELD_BUTTONS.remove(button);
+			return;
 		}
 		Canvas canvas = canvas();
 		if (canvas == null)
 		{
 			return;
 		}
-		enterIfOutside(canvas, canvasX, canvasY);
-		Point component = StretchMapper.toComponent(canvasX, canvasY);
-		recordPosition(canvasX, canvasY);
-		dispatch(canvas, new MouseEvent(canvas, id, System.currentTimeMillis(), heldMask(),
-			component.getX(), component.getY(), 1, false, button));
+		synchronized (HELD_BUTTONS_LOCK)
+		{
+			enterIfOutside(canvas, canvasX, canvasY);
+			Point component = StretchMapper.toComponent(canvasX, canvasY);
+			recordPosition(canvasX, canvasY);
+			int modifiers = heldMask();
+			if (id == MouseEvent.MOUSE_PRESSED)
+			{
+				modifiers |= InputEvent.getMaskForButton(button);
+			}
+			else if (id == MouseEvent.MOUSE_RELEASED)
+			{
+				modifiers &= ~InputEvent.getMaskForButton(button);
+			}
+			boolean delivered = dispatch(canvas, new MouseEvent(canvas, id, System.currentTimeMillis(), modifiers,
+				component.getX(), component.getY(), 1, false, button));
+			if (delivered && id == MouseEvent.MOUSE_PRESSED)
+			{
+				HELD_BUTTONS.add(button);
+			}
+			else if (delivered && id == MouseEvent.MOUSE_RELEASED)
+			{
+				HELD_BUTTONS.remove(button);
+			}
+		}
 	}
 
 	public static int heldMask()
@@ -120,7 +146,27 @@ public final class AwtEmitter
 
 	static void resetHeldButtonsForTest()
 	{
-		HELD_BUTTONS.clear();
+		synchronized (HELD_BUTTONS_LOCK)
+		{
+			HELD_BUTTONS.clear();
+		}
+	}
+
+	/** Releases synthetic buttons after the pause has fenced off new input. */
+	public static void releaseHeldButtons()
+	{
+		synchronized (HELD_BUTTONS_LOCK)
+		{
+			Point at = PointerState.get();
+			for (Integer button : HELD_BUTTONS.toArray(new Integer[0]))
+			{
+				released(at.getX(), at.getY(), button);
+			}
+			if (!HELD_BUTTONS.isEmpty())
+			{
+				throw new IllegalStateException("Could not release all synthetic mouse buttons");
+			}
+		}
 	}
 
 	/**
@@ -307,8 +353,13 @@ public final class AwtEmitter
 	// the user is typing in. Non-focusable for the dispatch neuters it; mouse delivery ignores
 	// focusable state. Skipped when the canvas already owns focus, where setFocusable(false) would
 	// hand focus to the parent instead, which is the thing being prevented.
-	private static void dispatch(Canvas canvas, AWTEvent event)
+	private static boolean dispatch(Canvas canvas, AWTEvent event)
 	{
+		if (ScriptPauseController.isPaused()
+			&& (!(event instanceof MouseEvent) || ((MouseEvent) event).getID() != MouseEvent.MOUSE_RELEASED))
+		{
+			return false;
+		}
 		boolean canvasIsFocused = canvas.isFocusOwner();
 		boolean wasFocusable = canvas.isFocusable();
 		boolean shouldGuard = wasFocusable && !canvasIsFocused;
@@ -320,6 +371,7 @@ public final class AwtEmitter
 		try
 		{
 			canvas.dispatchEvent(event);
+			return true;
 		}
 		finally
 		{

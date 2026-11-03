@@ -8,6 +8,7 @@ import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.plugins.camera.CameraPlugin;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.ScriptPauseController;
 import net.runelite.client.plugins.microbot.api.player.models.Rs2PlayerModel;
 import net.runelite.client.plugins.microbot.util.Global;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
@@ -319,7 +320,10 @@ public class Rs2Camera {
     }
 
     public static void setZoom(int zoom) {
+        if (ScriptPauseController.isPaused()) return;
+        long pauseGeneration = ScriptPauseController.getGeneration();
         Microbot.getClientThread().invokeLater(() -> {
+            if (ScriptPauseController.isPaused() || pauseGeneration != ScriptPauseController.getGeneration()) return;
             Microbot.getClient().runScript(ScriptID.CAMERA_DO_ZOOM, zoom, zoom);
         });
     }
@@ -358,8 +362,11 @@ public class Rs2Camera {
     }
 
     private static void setCameraTargetOnClientThread(int target, boolean isPitch) {
+        if (ScriptPauseController.isPaused()) return;
+        long pauseGeneration = ScriptPauseController.getGeneration();
         int clientTarget = toClientAngleUnits(target);
         Microbot.getClientThread().invoke(() -> {
+            if (ScriptPauseController.isPaused() || pauseGeneration != ScriptPauseController.getGeneration()) return;
             if (isPitch) {
                 Microbot.getClient().setCameraPitchTarget(clientTarget);
             } else {
@@ -375,6 +382,7 @@ public class Rs2Camera {
     // Short rotation hops (<3 units) are below the noise floor of the internal camera speed
     // and would be invisible anyway, so skip smoothing for those — avoids a 200ms stall on no-ops.
     private static void smoothTo(int target, boolean isPitch) {
+        if (ScriptPauseController.isPaused()) return;
         int start = isPitch ? getPitch() : getYaw();
         int clampedTarget;
         if (isPitch) {
