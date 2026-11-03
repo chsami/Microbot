@@ -116,6 +116,16 @@ public class LoginManagerSetWorldTest {
 
         assertFalse(LoginManager.setWorld(308));
 
+        verify(clientThread, never()).runOnClientThreadOptional(any());
+        verify(client, never()).createWorld();
+        verify(client, never()).changeWorld(any());
+    }
+
+    @Test public void doesNotChangeWorldWhenTheLoginScreenIsLeftBeforeTheClientThreadRuns() {
+        when(client.getGameState()).thenReturn(GameState.LOGIN_SCREEN, GameState.LOADING);
+
+        assertFalse(LoginManager.setWorld(308));
+
         verify(client, never()).createWorld();
         verify(client, never()).changeWorld(any());
     }
