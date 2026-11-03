@@ -55,6 +55,9 @@ public abstract class Script extends Global implements IScript {
 
     private String pauseWaitName() {
         String pluginName = owningPluginName();
+        if (pluginName != null) {
+            pluginName = pluginName.replaceAll("<[^>]*>", "").replaceFirst("^\\[[^\\]]*]\\s*", "");
+        }
         if (pluginName != null && !pluginName.trim().isEmpty()) {
             return pluginName.trim();
         }

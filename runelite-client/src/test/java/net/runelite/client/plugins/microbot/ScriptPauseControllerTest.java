@@ -34,7 +34,7 @@ public class ScriptPauseControllerTest
 		}
 	}
 
-	@PluginDescriptor(name = "Pause Test Plugin")
+	@PluginDescriptor(name = "<html>[<font color=green>D</font>] Pause Test Plugin")
 	private static final class PauseAwareTestPlugin extends Plugin
 	{
 		private final PauseAwareTestScript script = new PauseAwareTestScript();

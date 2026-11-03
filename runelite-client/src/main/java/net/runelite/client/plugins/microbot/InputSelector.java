@@ -112,7 +112,7 @@ public class InputSelector {
                     Microbot.getClient().getCanvas().setFocusable(inputEnabledBeforePause);
                     addAndRemoveButtons();
                 }
-                Microbot.log("All scripts resumed. A break that came due while paused will start now.", Level.WARN);
+                Microbot.log("All scripts resumed. If Break Handler had a break due while paused, it starts now.", Level.WARN);
             }
             updatePauseButton();
         }));
