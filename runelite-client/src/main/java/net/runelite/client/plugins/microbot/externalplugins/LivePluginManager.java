@@ -84,12 +84,29 @@ public class LivePluginManager {
         this.config = config;
         this.events = events;
         this.safeMode = safeMode;
-        this.pluginDirectory = configuredDirectory(config, directory);
+        // ConfigManager has no active profile during Guice construction. Start with
+        // the launcher default and apply the saved directory in loadAtStartup().
+        this.pluginDirectory = directory.toAbsolutePath().normalize();
         this.cacheDirectory = pluginDirectory.resolve(".runtime");
     }
 
+    private void applyConfiguredDirectory() {
+        Path configured = configuredDirectory(config, pluginDirectory);
+        if (!configured.equals(pluginDirectory)) {
+            pluginDirectory = configured;
+            cacheDirectory = configured.resolve(".runtime");
+        }
+    }
+
     private static Path configuredDirectory(ConfigManager config, Path fallback) {
-        String configured = config.getConfiguration(CONFIG_GROUP, PLUGIN_DIRECTORY_KEY);
+        String configured;
+        try {
+            configured = config.getConfiguration(CONFIG_GROUP, PLUGIN_DIRECTORY_KEY);
+        } catch (RuntimeException ex) {
+            // The config profile is not loaded yet during early startup.
+            log.debug("Could not read the configured plugin directory yet", ex);
+            return fallback.toAbsolutePath().normalize();
+        }
         if (configured != null && !configured.trim().isEmpty()) {
             try {
                 return java.nio.file.Paths.get(configured).toAbsolutePath().normalize();
@@ -261,6 +278,7 @@ public class LivePluginManager {
                 || (Microbot.getClient() != null && Microbot.getClient().isClientThread())) {
             throw new IllegalStateException("Startup plugin scanning must run off the UI and client threads.");
         }
+        applyConfiguredDirectory();
         OperationResult result = submit(() -> scan(true)).join();
         if (!result.success) {
             log.warn("Some local plugins could not be loaded: {}", result.message);
