@@ -1252,6 +1252,9 @@ final class Rs2WalkerTransports {
         if (isAlKharidTollGateTransport(transport) && isPayTollAction(transport.getAction())) {
             return handleAlKharidTollGate(transport);
         }
+        if (isGuidorGateTransport(transport)) {
+            return handleGuidorGateSearch(transport);
+        }
         if (handleObjectExceptions(transport, tileObject)) return true;
         WorldPoint tdObj = transport.getDestination();
         WorldPoint plObj = Rs2Player.getWorldLocation();
@@ -1866,6 +1869,44 @@ final class Rs2WalkerTransports {
             WebWalkLog.spWarn(
                     "Al Kharid toll gate crossing unresolved confirmed={} dest={} at={}",
                     confirmed,
+                    compactWorldPoint(transport.getDestination()),
+                    compactWorldPoint(Rs2Player.getWorldLocation()));
+        }
+        return reachedDestination;
+    }
+
+    static boolean isGuidorGateTransport(Transport transport) {
+        return transport != null && GUIDOR_GATE_OBJECT_IDS.contains(transport.getObjectId());
+    }
+
+    static boolean hasReachedGuidorGateDestination(Transport transport, WorldPoint playerLocation) {
+        return isGuidorGateTransport(transport)
+                && playerLocation != null
+                && playerLocation.equals(transport.getDestination());
+    }
+
+    private static boolean handleGuidorGateSearch(Transport transport) {
+        AtomicBoolean searched = new AtomicBoolean(false);
+        sleepUntil(() -> hasReachedGuidorGateDestination(transport, Rs2Player.getWorldLocation())
+                        || (searched.get() && !Rs2Dialogue.isInDialogue() && !Rs2Player.isMoving()),
+                () -> {
+                    if (Rs2Dialogue.hasContinue()) {
+                        searched.set(true);
+                        Rs2Dialogue.clickContinue();
+                    }
+                },
+                GUIDOR_GATE_SEARCH_WAIT_MS,
+                Rs2Random.between(600, 800));
+
+        boolean reachedDestination = hasReachedGuidorGateDestination(
+                transport, Rs2Player.getWorldLocation())
+                || sleepUntil(() -> hasReachedGuidorGateDestination(
+                        transport, Rs2Player.getWorldLocation()),
+                POST_HANDLE_OBJECT_LANDING_WAIT_MS);
+        if (!reachedDestination) {
+            WebWalkLog.spWarn(
+                    "Guidor gate search crossing unresolved searched={} dest={} at={}",
+                    searched.get(),
                     compactWorldPoint(transport.getDestination()),
                     compactWorldPoint(Rs2Player.getWorldLocation()));
         }
