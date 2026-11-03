@@ -119,6 +119,7 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
             ExternalPluginManager externalPluginManager,
             EventBus eventBus,
             Provider<MicrobotConfigPanel> configPanelProvider,
+            Provider<LocalPluginsPanel> localPluginsPanelProvider,
             MicrobotBugReporter bugReporter) {
         super(false);
 
@@ -171,6 +172,10 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
         topPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
         topPanel.setLayout(new BorderLayout(0, BORDER_OFFSET));
         topPanel.add(searchBar, BorderLayout.CENTER);
+        JButton localPluginsButton = new JButton("Local Plugins");
+        localPluginsButton.setToolTipText("Add, update, reload or remove plugin JARs while Microbot is running");
+        localPluginsButton.addActionListener(e -> localPluginsPanelProvider.get().open(this));
+        topPanel.add(localPluginsButton, BorderLayout.SOUTH);
         add(topPanel, BorderLayout.NORTH);
 
         mainPanel = new MicrobotFixedWidthPanel(LIST_VIEW_WIDTH);

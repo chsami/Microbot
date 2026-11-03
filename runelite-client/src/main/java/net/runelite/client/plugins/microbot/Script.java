@@ -7,6 +7,7 @@ import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.util.Global;
 import net.runelite.client.plugins.microbot.agentserver.handler.ScriptHeartbeatRegistry;
+import net.runelite.client.plugins.microbot.externalplugins.PluginResources;
 import net.runelite.client.plugins.microbot.diagnostics.FlightRecorder;
 import net.runelite.client.plugins.microbot.util.antiban.SessionFatigue;
 import net.runelite.client.plugins.microbot.util.input.InputArbiter;
@@ -18,13 +19,13 @@ import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.walker.recovery.CantReachTargetRecovery;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Base class for Microbot automation scripts.
@@ -41,7 +42,8 @@ public abstract class Script extends Global implements IScript {
         }
     }
 
-    protected ScheduledExecutorService scheduledExecutorService = new ScheduledThreadPoolExecutor(10,
+    protected ScheduledExecutorService scheduledExecutorService = PluginResources.registerExecutor(
+        getClass().getClassLoader(), new ScheduledThreadPoolExecutor(10,
         new ThreadFactory() {
             private final AtomicInteger threadNumber = new AtomicInteger(1);
             @Override
@@ -72,15 +74,43 @@ public abstract class Script extends Global implements IScript {
                 announceStart();
                 return super.scheduleAtFixedRate(command, initialDelay, period, unit);
             }
-        };
+        });
     protected ScheduledFuture<?> scheduledFuture;
     protected ScheduledFuture<?> mainScheduledFuture;
+    private final Object lifecycleLock = new Object();
+    private volatile boolean disposed;
+    private boolean heartbeatRecorded;
+
+    protected Script() {
+        PluginResources.registerScript(this);
+    }
 
     /**
      * Indicates whether the main scheduled script loop is still active.
      */
     public boolean isRunning() {
-        return mainScheduledFuture != null && !mainScheduledFuture.isDone();
+        return !disposed && mainScheduledFuture != null && !mainScheduledFuture.isDone();
+    }
+
+    /** Permanently dispose this instance after its plugin has stopped. */
+    public final ScheduledExecutorService disposeForUnload() {
+        synchronized (lifecycleLock) {
+            disposed = true;
+            if (heartbeatRecorded) {
+                ScriptHeartbeatRegistry.remove(getClass().getName());
+                heartbeatRecorded = false;
+            }
+        }
+        if (mainScheduledFuture != null) {
+            mainScheduledFuture.cancel(true);
+        }
+        if (scheduledFuture != null) {
+            scheduledFuture.cancel(true);
+        }
+        if (scheduledExecutorService != null) {
+            scheduledExecutorService.shutdownNow();
+        }
+        return scheduledExecutorService;
     }
 
     @Getter
@@ -92,7 +122,10 @@ public abstract class Script extends Global implements IScript {
      */
     public void shutdown() {
         startAnnounced.set(false);
-        ScriptHeartbeatRegistry.remove(this.getClass().getName());
+        synchronized (lifecycleLock) {
+            ScriptHeartbeatRegistry.remove(this.getClass().getName());
+            heartbeatRecorded = false;
+        }
         if (mainScheduledFuture != null && !mainScheduledFuture.isDone()) {
             mainScheduledFuture.cancel(true);
             Rs2PathApi.exit();
@@ -120,7 +153,13 @@ public abstract class Script extends Global implements IScript {
      * {@link Microbot#runEnergyThreshold} and no blocking interface is open (see {@link #isBlockingInterfaceOpen()}).
      */
     public boolean run() {
-        ScriptHeartbeatRegistry.recordHeartbeat(this.getClass().getName());
+        synchronized (lifecycleLock) {
+            if (disposed || Thread.currentThread().isInterrupted()) {
+                return false;
+            }
+            ScriptHeartbeatRegistry.recordHeartbeat(this.getClass().getName());
+            heartbeatRecorded = true;
+        }
 
         if (Microbot.isLoggedIn() && !SessionFatigue.isActive()) {
             SessionFatigue.startSession();
