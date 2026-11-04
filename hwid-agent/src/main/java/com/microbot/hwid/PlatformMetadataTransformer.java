@@ -81,7 +81,14 @@ public final class PlatformMetadataTransformer implements ClassFileTransformer
 			FrameClassWriter writer = new FrameClassWriter(loader);
 			node.accept(writer);
 			byte[] patched = writer.toByteArray();
-			HwidAgent.markPlatformHookInstalled();
+			if (!signerHashes.isEmpty())
+			{
+				HwidAgent.markSignerHookInstalled();
+			}
+			if (!processWrites.isEmpty())
+			{
+				HwidAgent.markProcessHookInstalled();
+			}
 			log.info("Platform metadata hooks installed on " + className);
 			return patched;
 		}

@@ -68,9 +68,35 @@ public final class HwidAgent
 		System.setProperty(DEVICE_HOOK_PROPERTY, "true");
 	}
 
-	static void markPlatformHookInstalled()
+	private static volatile boolean signerHookInstalled;
+	private static volatile boolean processHookInstalled;
+
+	static void markSignerHookInstalled()
 	{
-		System.setProperty(PLATFORM_HOOK_PROPERTY, "true");
+		signerHookInstalled = true;
+		publishPlatformHook();
+	}
+
+	static void markProcessHookInstalled()
+	{
+		processHookInstalled = true;
+		publishPlatformHook();
+	}
+
+	/** The platform property is only set once both the signer hash and the process names are hooked. */
+	private static void publishPlatformHook()
+	{
+		if (signerHookInstalled && processHookInstalled)
+		{
+			System.setProperty(PLATFORM_HOOK_PROPERTY, "true");
+		}
+	}
+
+	static void resetPlatformHooksForTest()
+	{
+		signerHookInstalled = false;
+		processHookInstalled = false;
+		System.clearProperty(PLATFORM_HOOK_PROPERTY);
 	}
 
 	public static boolean isDeviceHookInstalled()
