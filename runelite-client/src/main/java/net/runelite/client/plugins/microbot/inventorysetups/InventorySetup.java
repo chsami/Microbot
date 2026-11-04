@@ -104,12 +104,32 @@ public class InventorySetup implements InventorySetupsDisplayAttributes
 
 	public void updateInventory(final List<InventorySetupsItem> inv)
 	{
-		inventory = inv;
+		inventory = padToSize(inv, MInventorySetupsPlugin.NUM_INVENTORY_ITEMS);
 	}
 
 	public void updateEquipment(final List<InventorySetupsItem> eqp)
 	{
-		equipment = eqp;
+		equipment = padToSize(eqp, MInventorySetupsPlugin.NUM_EQUIPMENT_ITEMS);
+	}
+
+	public void padContainers()
+	{
+		updateInventory(inventory);
+		updateEquipment(equipment);
+	}
+
+	private static List<InventorySetupsItem> padToSize(final List<InventorySetupsItem> items, final int size)
+	{
+		if (items == null || items.size() >= size)
+		{
+			return items;
+		}
+		final List<InventorySetupsItem> padded = new ArrayList<>(items);
+		while (padded.size() < size)
+		{
+			padded.add(InventorySetupsItem.getDummyItem());
+		}
+		return padded;
 	}
 
 	public void updateRunePouch(final List<InventorySetupsItem> rp)

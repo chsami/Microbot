@@ -260,7 +260,29 @@ public class InventorySetupSerializationTest
 		assertEquals(100, imported.getInventory().get(2).getQuantity());
 		assertTrue(InventorySetupsItem.itemIsDummy(imported.getInventory().get(1)));
 		assertTrue(InventorySetupsItem.itemIsDummy(imported.getInventory().get(3)));
-		assertEquals(4, imported.getInventory().size());
+		assertEquals(28, imported.getInventory().size());
+		assertEquals(14, imported.getEquipment().size());
+	}
+
+	@Test
+	public void savedSetupWithShortContainersLoadsWithEverySlot()
+	{
+		StringBuilder inv = new StringBuilder("[{\"id\":" + ItemID.SHARK + ",\"s\":0}");
+		for (int i = 1; i < 27; i++)
+		{
+			inv.append(",null");
+		}
+		inv.append("]");
+		String json = "{\"inv\":" + inv + ",\"eq\":[null,null,null,{\"id\":" + ItemID.ABYSSAL_WHIP + ",\"s\":3}],\"name\":\"Short\"}";
+
+		InventorySetup loaded = InventorySetupSerializable.convertToInventorySetup(STORAGE_GSON.fromJson(json, InventorySetupSerializable.class));
+
+		assertEquals(28, loaded.getInventory().size());
+		assertEquals(14, loaded.getEquipment().size());
+		assertEquals(ItemID.SHARK, loaded.getInventory().get(0).getId());
+		assertEquals(ItemID.ABYSSAL_WHIP, loaded.getEquipment().get(3).getId());
+		assertTrue(InventorySetupsItem.itemIsDummy(loaded.getInventory().get(27)));
+		assertTrue(InventorySetupsItem.itemIsDummy(loaded.getEquipment().get(13)));
 	}
 
 	@Test(timeout = 10000)
