@@ -55,6 +55,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.swing.JOptionPane;
@@ -94,6 +95,8 @@ public class QuestScript extends Script {
 
     private final MultiNpcTargetTracker multiNpcTarget = new MultiNpcTargetTracker();
 
+    private final AtomicReference<Thread> iterationThread = new AtomicReference<>();
+
     /**
      * Epoch millis at which the post-dialogue cooldown expires. While
      * {@code System.currentTimeMillis() < dialogueCooldownEndsAt}, the main tick
@@ -110,7 +113,7 @@ public class QuestScript extends Script {
         this.mQuestPlugin = mQuestPlugin;
 
 
-        mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
+        Runnable iteration = () -> {
             try {
                 if (!config.startStopQuestHelper()) return;
                 if (!Microbot.isLoggedIn()) return;
@@ -288,8 +291,26 @@ public class QuestScript extends Script {
                 System.out.println(ex.getMessage());
                 ex.printStackTrace(System.out);
             }
-        }, 0, Rs2Random.between(400, 1000), TimeUnit.MILLISECONDS);
+        };
+        mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> runTracked(iteration), 0, Rs2Random.between(400, 1000), TimeUnit.MILLISECONDS);
         return true;
+    }
+
+    void runTracked(Runnable iteration) {
+        Thread current = Thread.currentThread();
+        iterationThread.set(current);
+        try {
+            iteration.run();
+        } finally {
+            iterationThread.compareAndSet(current, null);
+        }
+    }
+
+    public void cancelInFlightIteration() {
+        Thread thread = iterationThread.get();
+        if (thread != null) {
+            thread.interrupt();
+        }
     }
 
 	private boolean handleRequirements(DetailedQuestStep questStep) {
