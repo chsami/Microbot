@@ -255,7 +255,7 @@ public class QuestHelperPlugin extends Plugin
 		questBankManager.shutDown(eventBus);
 
 		GlobalFakeObjects.setInitialized(false);
-		questScript.shutdown();
+		questScript.stopLoop();
 	}
 
 	// Run our base game tick checks later than other Quest Helper checks
