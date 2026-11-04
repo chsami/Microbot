@@ -103,7 +103,10 @@ public class ColdWar extends BasicQuestHelper
 		lumbridgeVisit1.addStep(new Conditions(isPenguin, isAtZoo), exitSuit);
 		steps.put(45, lumbridgeVisit1);
 
-		steps.put(50, returnToZooPenguin);
+		ConditionalStep zooPenguinPhrase = new ConditionalStep(this, tuxedoTime);
+		zooPenguinPhrase.addStep(isInPenguinPen, returnToZooPenguin);
+		zooPenguinPhrase.addStep(isPenguin, enterPenguinPen);
+		steps.put(50, zooPenguinPhrase);
 
 		steps.put(55, returnToThing);
 
