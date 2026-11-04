@@ -60,6 +60,7 @@ public class LocalPluginsPanel extends JPanel {
     private final JTextArea folder = new JTextArea();
     private JDialog dialog;
     private boolean busy;
+    private String shownWatchStatus = "";
 
     @Inject
     LocalPluginsPanel(LivePluginManager livePluginManager, EventBus eventBus) {
@@ -112,7 +113,7 @@ public class LocalPluginsPanel extends JPanel {
         });
         removeButton.addActionListener(e -> {
             PluginEntry entry = selectedPlugin();
-            if (entry != null) {
+            if (entry != null && confirmRemove(entry)) {
                 runOperation("Removing " + displayName(entry) + "...", () -> livePluginManager.remove(entry.getId()));
             }
         });
@@ -207,8 +208,9 @@ public class LocalPluginsPanel extends JPanel {
         }
         if (!tableModel.entries.isEmpty()) {
             int choice = JOptionPane.showConfirmDialog(this,
-                    "Switching folders unloads the currently managed plugins. Their JAR files stay in the current folder; "
-                            + "the selected folder will be scanned. Continue?",
+                    folderChangeWarning(tableModel.entries.size(),
+                            (int) tableModel.entries.stream().filter(entry -> entry.getHubId() != null).count(),
+                            livePluginManager.getPluginDirectory()),
                     "Change plugin folder", JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
             if (choice != JOptionPane.OK_OPTION) {
                 return;
@@ -216,6 +218,25 @@ public class LocalPluginsPanel extends JPanel {
         }
         runOperation("Changing the managed plugin folder...",
                 () -> livePluginManager.changePluginDirectory(selected));
+    }
+
+    static String folderChangeWarning(int plugins, int hubPlugins, Path current) {
+        String count = plugins == 1 ? "the 1 plugin" : "all " + plugins + " plugins";
+        String hub = hubPlugins == 0 ? "" : hubPlugins == plugins
+                ? ", all installed from the Plugin Hub"
+                : ", including " + hubPlugins + " installed from the Plugin Hub";
+        return "Switching folders turns off and unloads " + count + " in the current folder" + hub + ".\n"
+                + "Their files stay in " + current + ".\n"
+                + "Plugin Hub installs will go to the new folder from now on. Continue?";
+    }
+
+    private boolean confirmRemove(PluginEntry entry) {
+        Path source = entry.getSourcePath();
+        String message = "Remove " + displayName(entry) + "?\n"
+                + "This turns the plugin off and deletes " + source.getFileName() + " from " + source.getParent() + ".\n"
+                + "Your settings are kept.";
+        return JOptionPane.showConfirmDialog(this, message, "Remove plugin",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE) == JOptionPane.OK_OPTION;
     }
 
     private void runOperation(String message, Supplier<CompletableFuture<OperationResult>> operation) {
@@ -281,8 +302,14 @@ public class LocalPluginsPanel extends JPanel {
         }
         watchFolder.setSelected(livePluginManager.isWatching());
         String watchStatus = livePluginManager.getWatchStatus();
-        if (!busy && watchStatus != null && !watchStatus.isEmpty()) {
+        if (watchStatus == null) {
+            watchStatus = "";
+        }
+        if (!busy && !watchStatus.isEmpty() && !watchStatus.equals(shownWatchStatus)) {
             setStatus(watchStatus);
+        }
+        if (!busy) {
+            shownWatchStatus = watchStatus;
         }
         updateControls();
     }

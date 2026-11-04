@@ -235,7 +235,36 @@ public class LivePluginManagerTest {
         when(config.getConfiguration("microbotPluginManager", "pluginDirectory"))
                 .thenReturn(nextDirectory.toString());
         manager = newManager(false);
+        manager.loadAtStartup();
         assertEquals(nextDirectory.toAbsolutePath().normalize(), manager.getPluginDirectory());
+    }
+
+    @Test
+    public void manifestDisabledHubPluginIsNotLoadedAtStartupAndIsReported() throws Exception {
+        Files.copy(fixture("v1.jar", "1.0", false), directory.resolve("FixturePlugin.jar"));
+        MicrobotPluginManager hub = new MicrobotPluginManager(mock(okhttp3.OkHttpClient.class),
+                mock(MicrobotPluginClient.class), events, plugins, config,
+                mock(net.runelite.client.plugins.microbot.MicrobotApi.class), manager);
+        MicrobotPluginManifest manifest = new MicrobotPluginManifest();
+        manifest.setInternalName("FixturePlugin");
+        manifest.setDisplayName("Live fixture");
+        manifest.setVersion("1.0");
+        manifest.setDisable(true);
+        java.lang.reflect.Field manifests = MicrobotPluginManager.class.getDeclaredField("manifestMap");
+        manifests.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        Map<String, MicrobotPluginManifest> map = (Map<String, MicrobotPluginManifest>) manifests.get(hub);
+        map.put("FixturePlugin", manifest);
+
+        manager.loadAtStartup();
+
+        assertTrue(registered.isEmpty());
+        assertTrue(manager.getInstalledPlugins().isEmpty());
+        assertTrue(Files.exists(directory.resolve("FixturePlugin.jar")));
+        String reason = hub.getBlockedPlugins().get("FixturePlugin");
+        assertNotNull(reason);
+        assertTrue(reason, reason.startsWith("disabled upstream"));
+        verify(plugins, never()).preparePlugin(any(), anyCollection());
     }
 
     @Test

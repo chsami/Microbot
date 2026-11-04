@@ -12,9 +12,11 @@ import java.util.jar.Attributes;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
+import net.runelite.client.RuneLiteProperties;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
+import net.runelite.client.util.Text;
 import org.objectweb.asm.AnnotationVisitor;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
@@ -100,11 +102,15 @@ final class LivePluginArtifact implements AutoCloseable {
                     throw new IOException("Plugin must directly extend Plugin: " + entry);
                 }
                 PluginDescriptor descriptor = type.getAnnotation(PluginDescriptor.class);
-                if (descriptor.alwaysOn() || descriptor.hidden() || descriptor.disable()) {
-                    throw new IOException("Hidden, always-on, or disabled plugins cannot be managed live: " + entry);
+                if (descriptor.alwaysOn() || descriptor.hidden()) {
+                    throw new IOException("Hidden or always-on plugins cannot be managed live: " + entry);
                 }
                 if (!Rs2UiHelper.isClientVersionCompatible(descriptor.minClientVersion())) {
-                    throw new IOException("Plugin requires Microbot " + descriptor.minClientVersion() + ": " + entry);
+                    throw new BlockedPluginException(type, "requires client " + descriptor.minClientVersion()
+                            + " or newer (current " + RuneLiteProperties.getMicrobotVersion() + ")");
+                }
+                if (descriptor.disable()) {
+                    throw new BlockedPluginException(type, "disabled upstream");
                 }
                 types.add(type.asSubclass(Plugin.class));
             }
@@ -137,5 +143,24 @@ final class LivePluginArtifact implements AutoCloseable {
     @Override
     public void close() throws IOException {
         loader.close();
+    }
+
+    static final class BlockedPluginException extends IOException {
+        final String internalName;
+        final String displayName;
+        final String version;
+        final String reason;
+
+        BlockedPluginException(Class<?> type, String reason) {
+            this(type.getSimpleName(), type.getAnnotation(PluginDescriptor.class), reason);
+        }
+
+        BlockedPluginException(String internalName, PluginDescriptor descriptor, String reason) {
+            super(Text.removeTags(descriptor.name()) + " was not loaded: " + reason + ".");
+            this.internalName = internalName;
+            this.displayName = Text.removeTags(descriptor.name());
+            this.version = descriptor.version();
+            this.reason = reason;
+        }
     }
 }

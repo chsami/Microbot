@@ -43,7 +43,7 @@ public class PluginManagerLifecycleTest {
     }
 
     @Test
-    public void failedStartupRetainsShutdownFailureAndBlocksRestartUntilRetry() throws Exception {
+    public void failedStartupRetainsShutdownFailureAndStillAllowsRestart() throws Exception {
         PluginManager manager = manager();
         LifecyclePlugin plugin = new LifecyclePlugin();
         plugin.startFailure = new IllegalStateException("Startup failed");
@@ -59,16 +59,13 @@ public class PluginManagerLifecycleTest {
             }
             assertFalse(manager.isActive(plugin));
             assertSame(plugin.stopFailure, manager.getShutdownFailure(plugin));
-            assertFalse(manager.startPlugin(plugin));
             assertEquals(1, plugin.starts);
 
-            plugin.stopFailure = null;
-            assertTrue("Inactive instances with failed shutdown must be retryable", manager.stopPlugin(plugin));
-            assertNull(manager.getShutdownFailure(plugin));
-            assertEquals(2, plugin.stops);
-
             plugin.startFailure = null;
-            assertTrue(manager.startPlugin(plugin));
+            plugin.stopFailure = null;
+            assertTrue("A plugin whose shutdown failed must be startable again", manager.startPlugin(plugin));
+            assertEquals(2, plugin.starts);
+            assertNull(manager.getShutdownFailure(plugin));
             assertTrue(manager.stopPlugin(plugin));
             manager.remove(plugin);
             assertNull(manager.getShutdownFailure(plugin));

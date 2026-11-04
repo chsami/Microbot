@@ -175,6 +175,25 @@ public class MicrobotPluginManagerTest {
     }
 
     @Test
+    public void onlyHubInstallsCountAsHubInstalled() throws Exception {
+        Constructor<LivePluginManager.PluginEntry> constructor = LivePluginManager.PluginEntry.class.getDeclaredConstructor(
+                String.class, String.class, String.class, Path.class, boolean.class, String.class, List.class, String.class);
+        constructor.setAccessible(true);
+        LivePluginManager.PluginEntry sideloaded = constructor.newInstance("private.SecretPlugin", "Secret", "1.0",
+                Paths.get("SecretPlugin.jar"), true, "Ready", Collections.singletonList("private.SecretPlugin"), null);
+        LivePluginManager.PluginEntry hub = constructor.newInstance("hub.AutoMinerPlugin", "Auto Miner", "2.0",
+                Paths.get("AutoMinerPlugin.jar"), true, "Ready", Collections.singletonList("hub.AutoMinerPlugin"), "AutoMinerPlugin");
+        when(lifecycle.getInstalledPlugins()).thenReturn(java.util.Arrays.asList(sideloaded, hub));
+        when(config.getConfiguration("microbotPluginVersions", "plugin.FixturePlugin")).thenReturn("1.2.3:" + HASH);
+
+        assertFalse(manager.isHubInstalled("SecretPlugin"));
+        assertTrue(manager.isHubInstalled("AutoMinerPlugin"));
+        assertTrue(manager.isHubInstalled("FixturePlugin"));
+        assertTrue(manager.isLoadedFromHub("AutoMinerPlugin"));
+        assertFalse(manager.isLoadedFromHub("SecretPlugin"));
+    }
+
+    @Test
     public void localReplacementAndRemovalDoNotReportStaleHubVersion() throws Exception {
         when(config.getConfiguration("microbotPluginVersions", "plugin.FixturePlugin"))
                 .thenReturn("1.2.3:" + HASH);

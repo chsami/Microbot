@@ -637,7 +637,7 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
 				{
 					return;
 				}
-				runOperation(() -> installed
+				runOperation(installed ? "update" : "install", () -> installed
 					? microbotPluginManager.updatePlugin(manifest, version)
 					: microbotPluginManager.installPlugin(manifest, version), () -> {
 					installed = true;
@@ -653,7 +653,7 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
 				{
 					return;
 				}
-				runOperation(() -> microbotPluginManager.updatePlugin(manifest, version), () -> {
+				runOperation("update", () -> microbotPluginManager.updatePlugin(manifest, version), () -> {
 					installedVersion = version;
 					comboBox.setSelectedItem(version);
 					updateBorder(version);
@@ -662,14 +662,14 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
 
 			private void removePlugin()
 			{
-				runOperation(() -> microbotPluginManager.removePlugin(manifest), () -> {
+				runOperation("remove", () -> microbotPluginManager.removePlugin(manifest), () -> {
 					installed = false;
 					installedVersion = null;
 					setInstalled(false, null);
 				});
 			}
 
-			private void runOperation(Supplier<CompletableFuture<OperationResult>> operation, Runnable onSuccess)
+			private void runOperation(String action, Supplier<CompletableFuture<OperationResult>> operation, Runnable onSuccess)
 			{
 				if (!pendingOperations.add(manifest.getInternalName()))
 				{
@@ -679,15 +679,21 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
 				try
 				{
 					operation.get().whenComplete((result, error) -> SwingUtilities.invokeLater(
-						() -> finishOperation(result, error, onSuccess)));
+						() -> finishOperation(action, result, error, onSuccess)));
 				}
 				catch (RuntimeException error)
 				{
-					finishOperation(null, error, onSuccess);
+					finishOperation(action, null, error, onSuccess);
 				}
 			}
 
-			private void finishOperation(OperationResult result, Throwable error, Runnable onSuccess)
+			private String pluginName()
+			{
+				String name = manifest.getDisplayName();
+				return name == null || name.trim().isEmpty() ? manifest.getInternalName() : name;
+			}
+
+			private void finishOperation(String action, OperationResult result, Throwable error, Runnable onSuccess)
 			{
 				pendingOperations.remove(manifest.getInternalName());
 				if (error == null && result != null && result.isSuccess())
@@ -711,7 +717,7 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
 					messageArea.setWrapStyleWord(true);
 					messageArea.setOpaque(false);
 					JOptionPane.showMessageDialog(MicrobotPluginHubPanel.this, messageArea,
-						"Plugin operation failed", JOptionPane.ERROR_MESSAGE);
+						"Couldn't " + action + " " + pluginName(), JOptionPane.ERROR_MESSAGE);
 				}
 				refreshActionButton();
 				MicrobotPluginHubPanel.this.reloadPluginList();
@@ -987,6 +993,10 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
         executor.submit(() ->
         {
             Collection<MicrobotPluginManifest> manifestCollection = new ArrayList<>(microbotPluginManager.getManifestMap().values());
+            if (manifestCollection.isEmpty()) {
+                SwingUtilities.invokeLater(this::showManifestFailure);
+                return;
+            }
 
             Map<String, Integer> pluginCounts = Collections.emptyMap();
             try {
@@ -998,6 +1008,24 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
             Map<String, Integer> counts = pluginCounts;
             SwingUtilities.invokeLater(() -> reloadPluginList(manifestCollection, counts));
         });
+    }
+
+    private void showManifestFailure() {
+        refreshing.setVisible(false);
+        reloadQueued = false;
+        mainPanel.removeAll();
+        mainPanel.add(new JLabel("Couldn't load the Plugin Hub. Check your connection."));
+        JButton retry = new JButton("Retry");
+        retry.addActionListener(l -> {
+            retry.setEnabled(false);
+            executor.submit(() -> {
+                microbotPluginManager.init();
+                reloadPluginList();
+            });
+        });
+        mainPanel.add(retry);
+        mainPanel.revalidate();
+        mainPanel.repaint();
     }
 
     private void reloadPluginList(Collection<MicrobotPluginManifest> manifest, Map<String, Integer> pluginCounts) {

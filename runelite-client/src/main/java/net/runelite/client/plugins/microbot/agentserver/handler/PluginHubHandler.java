@@ -3,6 +3,7 @@ package net.runelite.client.plugins.microbot.agentserver.handler;
 import com.google.common.base.Strings;
 import com.google.gson.Gson;
 import com.sun.net.httpserver.HttpExchange;
+import net.runelite.client.plugins.microbot.externalplugins.LivePluginManager;
 import net.runelite.client.plugins.microbot.externalplugins.MicrobotPluginHealth;
 import net.runelite.client.plugins.microbot.externalplugins.MicrobotPluginManager;
 import net.runelite.client.plugins.microbot.externalplugins.MicrobotPluginManifest;
@@ -199,7 +200,13 @@ public class PluginHubHandler extends AgentHandler {
 	private boolean awaitTask(HttpExchange exchange, Future<?> task, int timeout) throws IOException {
 		pendingTask = task;
 		try {
-			task.get(timeout, TimeUnit.SECONDS);
+			Object outcome = task.get(timeout, TimeUnit.SECONDS);
+			if (outcome instanceof LivePluginManager.OperationResult
+					&& !((LivePluginManager.OperationResult) outcome).isSuccess()) {
+				sendJson(exchange, 502, errorResponse("Plugin task failed: "
+						+ ((LivePluginManager.OperationResult) outcome).getMessage()));
+				return false;
+			}
 			return true;
 		} catch (TimeoutException e) {
 			Map<String, Object> result = new LinkedHashMap<>();

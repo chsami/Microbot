@@ -386,7 +386,7 @@ public class PluginManager {
         // plugins always start in the EDT
         assert SwingUtilities.isEventDispatchThread();
 
-        if (unloadingPlugins.contains(plugin) || shutdownFailures.containsKey(plugin)
+        if (unloadingPlugins.contains(plugin)
                 || activePlugins.contains(plugin) || !isPluginEnabled(plugin)) {
             return false;
         }
@@ -414,6 +414,7 @@ public class PluginManager {
 
         try {
             plugin.startUp();
+            shutdownFailures.remove(plugin);
 
             log.debug("Plugin {} is now running", plugin.getClass().getSimpleName());
             if (sceneTileManager != null) {

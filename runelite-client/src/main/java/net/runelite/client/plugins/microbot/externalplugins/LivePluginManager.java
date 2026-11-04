@@ -71,6 +71,19 @@ public class LivePluginManager {
     private volatile String watchStatus = "";
     private ScheduledFuture<?> watcher;
     private Map<Path, String> observed = Collections.emptyMap();
+    private volatile LoadPolicy loadPolicy;
+
+    interface LoadPolicy {
+        String blockReason(String internalName, PluginDescriptor descriptor);
+
+        void blocked(String internalName, String version, String phase, String reason);
+
+        void loaded(String internalName);
+    }
+
+    void setLoadPolicy(LoadPolicy loadPolicy) {
+        this.loadPolicy = loadPolicy;
+    }
 
     @Inject
     LivePluginManager(PluginManager plugins, ConfigManager config, EventBus events,
@@ -160,13 +173,36 @@ public class LivePluginManager {
             Installation current = installed.values().stream()
                     .filter(i -> hubId.equals(i.hubId) || i.artifact.types.stream()
                             .anyMatch(type -> type.getSimpleName().equals(hubId)))
-                    .findFirst().orElseThrow(() -> new IllegalArgumentException("Plugin is not installed."));
+                    .findFirst().orElse(null);
+            if (current == null) {
+                return removeUnloadedHubFile(hubId);
+            }
             return removeNow(current, true);
         });
     }
 
+    private OperationResult removeUnloadedHubFile(String hubId) throws Exception {
+        if (!hubId.matches("[A-Za-z0-9_.-]+")) {
+            throw new IllegalArgumentException("Plugin is not installed.");
+        }
+        Path file = pluginDirectory.resolve(hubId + ".jar");
+        checkManagedPath(file);
+        if (!Files.exists(file)) {
+            throw new IllegalArgumentException("Plugin is not installed.");
+        }
+        Files.deleteIfExists(file);
+        Files.deleteIfExists(originPath(file));
+        return OperationResult.success("Removed " + hubId + ". Settings were kept.");
+    }
+
     public CompletableFuture<OperationResult> rescan() {
-        return submit(() -> scan(false));
+        return submit(() -> {
+            OperationResult result = scan(false);
+            if (result.success) {
+                watchStatus = "";
+            }
+            return result;
+        });
     }
 
     /** Switches the active JAR folder, keeping files in place and replacing its loaded plugins. */
@@ -375,12 +411,27 @@ public class LivePluginManager {
             if (hubId != null && candidate.types.stream().noneMatch(type -> type.getSimpleName().equals(hubId))) {
                 throw new IllegalArgumentException("Downloaded JAR does not contain the selected Hub plugin.");
             }
-            Installation old = installed.get(candidate.id);
+            checkLoadPolicy(candidate);
+            Installation previousInstall = installed.get(candidate.id);
+            if (previousInstall != null && hubId != null && !previousInstall.blocked && !quarantine.containsKey(candidate.id)
+                    && !entryClassNames(previousInstall.artifact).equals(entryClassNames(candidate))) {
+                removeNow(previousInstall, !incoming.equals(previousInstall.source));
+                if (previousInstall.pendingRestart) {
+                    throw new IllegalStateException(previousInstall.status);
+                }
+                previousInstall = null;
+                originalSource = null;
+            }
+            Installation old = previousInstall;
             if (old != null && incoming.getParent().equals(pluginDirectory) && !incoming.equals(old.source)) {
                 throw new IllegalArgumentException("Duplicate plugin JAR in the folder. Keep only " + old.source.getFileName() + ".");
             }
             if (quarantine.containsKey(candidate.id)) {
                 throw new IllegalStateException("A previous generation could not be cleaned up. Remove this plugin before retrying.");
+            }
+            if (old != null && old.pendingRestart) {
+                throw new IllegalStateException("Restart Microbot to finish removing " + displayName(old.artifact)
+                        + " before installing it again.");
             }
             if (old != null && old.blocked) {
                 throw new IllegalStateException("Previous cleanup failed. Remove the plugin successfully before installing a replacement.");
@@ -432,7 +483,14 @@ public class LivePluginManager {
                 if (old != null) {
                     release(old.artifact);
                 }
-                return OperationResult.success(old == null ? "Plugin installed." : "Plugin updated. Settings were preserved.");
+                notifyLoaded(replacement.artifact);
+                boolean nowRunning = replacement.instances.stream().anyMatch(plugins::isPluginActive);
+                return OperationResult.success(old == null
+                        ? "Installed " + describe(replacement.artifact) + (nowRunning ? "."
+                                : ". Turn it on in the Microbot plugin list.")
+                        : "Updated " + displayName(replacement.artifact)
+                                + (version(replacement.artifact).isEmpty() ? "" : " to " + version(replacement.artifact))
+                                + ". Settings were kept.");
             } catch (Exception | LinkageError | AssertionError failure) {
                 try {
                     retire(replacement);
@@ -534,13 +592,14 @@ public class LivePluginManager {
                 continue;
             }
             if (names.contains(plugin.getClass().getName())) {
-                throw new IllegalArgumentException("Plugin is already loaded by the client or another JAR: "
-                        + plugin.getClass().getName() + ". Bundled scripts must be packaged separately first.");
+                throw new IllegalArgumentException(displayName(plugin.getClass())
+                        + " is already loaded, either built into this client or from another JAR."
+                        + " Remove the other copy first.");
             }
             if (keys.contains(configKey(plugin.getClass()))) {
-                throw new IllegalArgumentException("Enable/disable setting '" + configKey(plugin.getClass())
-                        + "' is already used by " + plugin.getClass().getName()
-                        + ". Give this plugin a distinct @PluginDescriptor configName.");
+                throw new IllegalArgumentException("This plugin uses the same on/off setting as "
+                        + displayName(plugin.getClass()) + " ('" + configKey(plugin.getClass())
+                        + "'). Give it a different @PluginDescriptor configName.");
             }
         }
         if (old != null) {
@@ -603,7 +662,8 @@ public class LivePluginManager {
                 if (!startup && shouldStart) {
                     for (Plugin conflict : plugins.conflictsForPlugin(plugin)) {
                         if (!current.instances.contains(conflict) && plugins.isPluginEnabled(conflict)) {
-                            throw new IllegalStateException("Disable the conflicting plugin first: " + conflict.getClass().getSimpleName());
+                            throw new IllegalStateException("Turn off " + displayName(conflict.getClass())
+                                    + " first; it can't run at the same time as " + displayName(plugin.getClass()) + ".");
                         }
                     }
                 }
@@ -633,11 +693,26 @@ public class LivePluginManager {
             }
             release(current.artifact);
             installed.remove(current.artifact.id);
-            return OperationResult.success("Plugin removed. Settings were kept.");
+            return OperationResult.success("Removed " + displayName(current.artifact) + ". Settings were kept.");
         } catch (Exception | LinkageError | AssertionError failure) {
             current.blocked = true;
             current.status = "Removal failed: " + message(failure);
-            throw failure;
+            if (!deleteFile) {
+                throw failure;
+            }
+            try {
+                checkManagedPath(current.source);
+                Files.deleteIfExists(current.source);
+                Files.deleteIfExists(originPath(current.source));
+            } catch (Exception deleteFailure) {
+                failure.addSuppressed(deleteFailure);
+                throw failure;
+            }
+            log.warn("Plugin {} could not be stopped; its file was removed and the rest happens on restart",
+                    current.artifact.id, failure);
+            current.pendingRestart = true;
+            current.status = "Restart Microbot to finish removing " + displayName(current.artifact) + ".";
+            return OperationResult.success(current.status);
         }
     }
 
@@ -687,20 +762,41 @@ public class LivePluginManager {
             try {
                 Properties origin = readOrigin(source);
                 Installation existing = installed.values().stream().filter(i -> i.source.equals(source)).findFirst().orElse(null);
-                if (existing != null && existing.digest.equals(hash(source))) {
+                String digest = hash(source);
+                if (existing != null && existing.digest.equals(digest)) {
                     continue;
                 }
+                String hubId = origin.getProperty("hubId");
+                String expectedHash = origin.getProperty("sha256");
+                if (hubId == null) {
+                    String recordedHub = recordedHubInstall(source, digest);
+                    if (recordedHub != null) {
+                        hubId = recordedHub;
+                        expectedHash = digest;
+                    }
+                }
                 OperationResult result = installNow(source, existing == null ? null : existing.artifact.id,
-                        origin.getProperty("hubId"), origin.getProperty("sha256"), false, startup);
+                        hubId, expectedHash, false, startup);
                 if (!result.success) {
                     failures.add(source.getFileName() + ": " + result.message);
+                    if (startup) {
+                        reportBlocked(jarName(source), "", "load", result.message);
+                    }
+                }
+            } catch (LivePluginArtifact.BlockedPluginException blocked) {
+                failures.add(source.getFileName() + ": " + blocked.getMessage());
+                if (startup) {
+                    reportBlocked(blocked.internalName, blocked.version, "compatibility check", blocked.reason);
                 }
             } catch (Exception | LinkageError | AssertionError failure) {
                 failures.add(source.getFileName() + ": " + message(failure));
+                if (startup) {
+                    reportBlocked(jarName(source), "", "load", message(failure));
+                }
             }
         }
         for (Installation current : new ArrayList<>(installed.values())) {
-            if (!Files.exists(current.source)) {
+            if (!current.pendingRestart && !Files.exists(current.source)) {
                 try {
                     removeNow(current, true);
                 } catch (Exception | LinkageError | AssertionError failure) {
@@ -726,17 +822,19 @@ public class LivePluginManager {
                 }
             }
             if (current.equals(observed)) {
-                boolean changed = current.size() != installed.size() || installed.values().stream()
+                List<Installation> tracked = new ArrayList<>();
+                for (Installation installation : installed.values()) {
+                    if (!installation.pendingRestart) {
+                        tracked.add(installation);
+                    }
+                }
+                boolean changed = current.size() != tracked.size() || tracked.stream()
                         .anyMatch(i -> !i.digest.equals(current.get(i.source)));
                 if (changed) {
                     OperationResult result = scan(false);
                     if (!result.success) {
-                        // Report once per file change; do not repeatedly stop/attempt a failed artifact.
                         watching = false;
-                        watchStatus = "Folder watch stopped: " + result.message;
-                        for (Installation entry : installed.values()) {
-                            entry.status = "Folder watch stopped: " + result.message;
-                        }
+                        watchStatus = watchStopped(result.message);
                         log.warn("Plugin folder watch stopped: {}", result.message);
                     }
                     publish();
@@ -745,7 +843,7 @@ public class LivePluginManager {
             observed = current;
         } catch (Exception | LinkageError | AssertionError failure) {
             watching = false;
-            watchStatus = "Folder watch stopped: " + message(failure);
+            watchStatus = watchStopped(message(failure));
             log.warn("Plugin folder watch stopped: {}", message(failure));
             publish();
         }
@@ -874,6 +972,102 @@ public class LivePluginManager {
         return failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage();
     }
 
+    private void checkLoadPolicy(LivePluginArtifact candidate) throws LivePluginArtifact.BlockedPluginException {
+        LoadPolicy policy = loadPolicy;
+        if (policy == null) {
+            return;
+        }
+        for (Class<? extends Plugin> type : candidate.types) {
+            PluginDescriptor descriptor = type.getAnnotation(PluginDescriptor.class);
+            if (!descriptor.isExternal()) {
+                continue;
+            }
+            String reason = policy.blockReason(type.getSimpleName(), descriptor);
+            if (reason != null) {
+                throw new LivePluginArtifact.BlockedPluginException(type.getSimpleName(), descriptor, reason);
+            }
+        }
+    }
+
+    private void notifyLoaded(LivePluginArtifact artifact) {
+        LoadPolicy policy = loadPolicy;
+        if (policy == null) {
+            return;
+        }
+        for (Class<? extends Plugin> type : artifact.types) {
+            try {
+                policy.loaded(type.getSimpleName());
+            } catch (RuntimeException failure) {
+                log.debug("Could not clear the load block for {}", type.getSimpleName(), failure);
+            }
+        }
+    }
+
+    private void reportBlocked(String internalName, String version, String phase, String reason) {
+        LoadPolicy policy = loadPolicy;
+        if (policy == null) {
+            return;
+        }
+        try {
+            policy.blocked(internalName, version, phase, reason);
+        } catch (RuntimeException failure) {
+            log.debug("Could not report the blocked plugin {}", internalName, failure);
+        }
+    }
+
+    private String recordedHubInstall(Path source, String digest) {
+        String name = jarName(source);
+        if (!name.matches("[A-Za-z0-9_.-]+")) {
+            return null;
+        }
+        String record;
+        try {
+            record = config.getConfiguration("microbotPluginVersions", "plugin." + name);
+        } catch (RuntimeException failure) {
+            return null;
+        }
+        if (record == null) {
+            return null;
+        }
+        String[] parts = record.split(":", 2);
+        return parts.length == 2 && parts[1].equalsIgnoreCase(digest) ? name : null;
+    }
+
+    private static String jarName(Path source) {
+        String name = source.getFileName().toString();
+        return name.toLowerCase(Locale.ROOT).endsWith(".jar") ? name.substring(0, name.length() - 4) : name;
+    }
+
+    private static Set<String> entryClassNames(LivePluginArtifact artifact) {
+        Set<String> names = new HashSet<>();
+        artifact.types.forEach(type -> names.add(type.getName()));
+        return names;
+    }
+
+    private static String displayName(Class<?> type) {
+        PluginDescriptor descriptor = type.getAnnotation(PluginDescriptor.class);
+        String name = descriptor == null ? "" : net.runelite.client.util.Text.removeTags(descriptor.name()).trim();
+        return name.isEmpty() ? type.getSimpleName() : name;
+    }
+
+    private static String displayName(LivePluginArtifact artifact) {
+        return displayName(artifact.types.get(0));
+    }
+
+    private static String version(LivePluginArtifact artifact) {
+        PluginDescriptor descriptor = artifact.types.get(0).getAnnotation(PluginDescriptor.class);
+        return descriptor == null ? "" : descriptor.version();
+    }
+
+    private static String describe(LivePluginArtifact artifact) {
+        String version = version(artifact);
+        return displayName(artifact) + (version == null || version.isEmpty() ? "" : " " + version);
+    }
+
+    private static String watchStopped(String detail) {
+        return "Folder watch stopped: " + detail + "\nFix the JAR, then tick 'Watch folder for changes' again.";
+    }
+
     private static final class Installation {
         final LivePluginArtifact artifact;
         final Path source;
@@ -883,6 +1077,7 @@ public class LivePluginManager {
         final List<Plugin> instances = new ArrayList<>();
         String status = "Ready";
         boolean blocked;
+        boolean pendingRestart;
 
         Installation(LivePluginArtifact artifact, Path source, String digest, String hubId, String expectedHash) {
             this.artifact = artifact;

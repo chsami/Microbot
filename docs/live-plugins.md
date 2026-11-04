@@ -8,30 +8,36 @@ be added, updated, reloaded, or removed without restarting the client.
 
 Open **Local Plugins** from Microbot's plugin panel:
 
-- **Add JAR** imports a compiled plugin JAR and makes its configuration available.
-- **Update JAR** replaces the selected plugin while retaining compatible settings.
-- **Reload** creates a fresh plugin instance from its installed JAR.
-- **Remove** stops and uninstalls the plugin. Saved settings are retained.
-- **Rescan folder** detects added, replaced, and deleted JARs.
-- **Change folder** selects and saves a different managed JAR directory. Plugins
-  from the previous folder are unloaded, their JARs stay in place, and the new
-  directory is scanned. The Hub's **Open Folder** button follows the selection.
-- **Watch folder for changes** applies changes after two matching observations.
-  Finish builds outside the watched directory, then copy the JAR with a temporary
-  filename and rename it to `.jar`. A failed scan stops watching and reports the
-  error; fix the JAR and enable watching again. Keep one JAR per plugin identity.
+- **Add JAR** copies a plugin JAR into the plugin folder and loads it. Turn it on
+  in the Microbot plugin list afterwards.
+- **Update JAR** swaps the selected plugin for a newer JAR. Your settings are kept.
+- **Reload** restarts the selected plugin from its JAR.
+- **Remove** turns the plugin off and deletes its JAR file from the plugin folder.
+  Your settings are kept.
+- **Rescan folder** picks up JARs you added, replaced or deleted in the folder.
+- **Change folder** switches to a different plugin folder. Every plugin in the
+  current folder is turned off and unloaded, including plugins you installed from
+  the Plugin Hub. Their files stay where they are. New Plugin Hub installs go to
+  the new folder, and the Hub's **Open Folder** button opens it.
+- **Watch folder for changes** loads a JAR about two seconds after it stops
+  changing. Build somewhere else and copy the finished JAR into the folder. If a
+  JAR can't be loaded, watching stops and the error is shown. Fix the JAR, then
+  tick **Watch folder for changes** again. Keep one JAR per plugin.
 
-By default, installed JARs live in `~/.runelite/microbot-plugins/` (on Windows,
-`%USERPROFILE%\.runelite\microbot-plugins`). The selected directory is saved in
-the current RuneLite profile. The manager loads an immutable copy of each JAR so
-Windows does not lock the installed file against replacement. Treat its `.runtime`
-cache as internal storage.
+By default, plugin JARs live in `~/.runelite/microbot-plugins/` (on Windows,
+`%USERPROFILE%\.runelite\microbot-plugins`). The chosen folder is saved in your
+current RuneLite profile. If you switch profiles, the other profile's folder is
+used after you restart Microbot. Microbot runs a copy of each JAR from the
+`.runtime` folder inside it, so you can replace the JAR while it is loaded. Don't
+edit `.runtime` yourself.
 
-A plugin's identity comes from its entry class or manifest, rather than its
-filename. Renaming a JAR does not make it a different plugin. The manager stops
-the previous instance before activating an update. Check the operation result if
-an update or removal fails; a plugin whose shutdown fails must not be replaced by
-a second running instance.
+Plugins are matched by their main class, not their file name, so renaming a JAR
+doesn't make it a different plugin. If a plugin can't be stopped cleanly, Remove
+still deletes its file and asks you to restart Microbot to finish.
+
+At startup, Plugin Hub plugins that are disabled on the Hub, marked broken for
+your version, or need a newer client are not loaded. Microbot lists them in the
+"Microbot Plugins Not Loaded" notice, together with any JAR that failed to load.
 
 ## Build a standalone plugin JAR
 
@@ -47,6 +53,11 @@ target and does not include the client or its libraries. It rejects shared API
 and service packages. Helpers outside the selected package and third-party
 dependencies are not copied automatically; package plugin-owned helpers with
 the entry class or arrange their dependencies separately.
+
+The JAR only loads into a client that no longer contains that package. A client
+built from the same source tree already has those classes, so it rejects the JAR
+with "Plugin bundles shared client classes". Move the plugin out of the client
+first, then load the JAR into a client built without it.
 
 The JAR manifest declares `Microbot-Plugin-Id` and `Microbot-Plugin-Class` using
 the full entry class name. Keep the identity stable across versions. Older JARs

@@ -131,7 +131,23 @@ public class MicrobotPluginManager {
         this.configManager = configManager;
         this.microbotApi = microbotApi;
         this.livePlugins = livePlugins;
+        livePlugins.setLoadPolicy(new LivePluginManager.LoadPolicy() {
+            @Override
+            public String blockReason(String internalName, PluginDescriptor descriptor) {
+                return getLoadBlockReason(internalName, descriptor);
+            }
 
+            @Override
+            public void blocked(String internalName, String version, String phase, String reason) {
+                blockedPlugins.put(internalName, reason);
+                StartupRecovery.pluginFailed(internalName, version, phase, reason);
+            }
+
+            @Override
+            public void loaded(String internalName) {
+                blockedPlugins.remove(internalName);
+            }
+        });
     }
 
     /**
@@ -210,8 +226,38 @@ public class MicrobotPluginManager {
     }
 
     public boolean isLoadedFromHub(String internalName) {
+        if (Strings.isNullOrEmpty(internalName)) {
+            return false;
+        }
         return livePlugins.getInstalledPlugins().stream()
-                .anyMatch(entry -> internalName.equalsIgnoreCase(entry.getHubId()) && entry.isRunning());
+                .anyMatch(entry -> internalName.equalsIgnoreCase(entry.getHubId())
+                        || (entry.getClassNames().stream().anyMatch(name -> internalName.equalsIgnoreCase(simpleName(name)))
+                        && hasInstalledVersionRecord(simpleNameOf(entry, internalName))));
+    }
+
+    public boolean isHubInstalled(String internalName) {
+        if (Strings.isNullOrEmpty(internalName)) {
+            return false;
+        }
+        boolean live = livePlugins.getInstalledPlugins().stream()
+                .anyMatch(entry -> internalName.equals(entry.getHubId()));
+        return live || hasInstalledVersionRecord(internalName);
+    }
+
+    private boolean hasInstalledVersionRecord(String internalName) {
+        return !Strings.isNullOrEmpty(configManager.getConfiguration(INSTALLED_VERSION_GROUP,
+                INSTALLED_VERSION_KEY_PREFIX + internalName));
+    }
+
+    private static String simpleNameOf(LivePluginManager.PluginEntry entry, String internalName) {
+        return entry.getClassNames().stream()
+                .map(MicrobotPluginManager::simpleName)
+                .filter(internalName::equalsIgnoreCase)
+                .findFirst().orElse(internalName);
+    }
+
+    private static String simpleName(String className) {
+        return className.substring(className.lastIndexOf('.') + 1);
     }
 
     /**
@@ -426,13 +472,15 @@ public class MicrobotPluginManager {
             }
             HttpUrl jarUrl = microbotPluginClient.getJarURL(manifest, version);
             if (jarUrl == null || !jarUrl.isHttps()) {
-                return LivePluginManager.OperationResult.failure("Plugin download must use HTTPS.");
+                return LivePluginManager.OperationResult.failure("Couldn't download " + hubName(manifest)
+                        + ": the Plugin Hub link is not a secure HTTPS link. Report this in Discord.");
             }
             temporary = java.nio.file.Files.createTempFile("microbot-plugin-", ".jar");
             Request request = new Request.Builder().url(jarUrl).build();
             try (Response response = noProxy(okHttpClient).newCall(request).execute()) {
                 if (!response.isSuccessful() || response.body() == null || !response.request().url().isHttps()) {
-                    return LivePluginManager.OperationResult.failure("Plugin download failed (HTTP " + response.code() + ").");
+                    return LivePluginManager.OperationResult.failure("Couldn't download " + hubName(manifest)
+                            + " from the Plugin Hub (HTTP " + response.code() + "). Check your connection and try again.");
                 }
                 try (InputStream input = response.body().byteStream()) {
                     java.nio.file.Files.copy(input, temporary, StandardCopyOption.REPLACE_EXISTING);
@@ -441,7 +489,8 @@ public class MicrobotPluginManager {
             String expectedHash = version.equals(manifest.getVersion()) ? manifest.getSha256() : null;
             String actualHash = LivePluginManager.hash(temporary);
             if (!Strings.isNullOrEmpty(expectedHash) && !actualHash.equalsIgnoreCase(expectedHash)) {
-                return LivePluginManager.OperationResult.failure("Plugin checksum does not match the Hub manifest.");
+                return LivePluginManager.OperationResult.failure("The downloaded file for " + hubName(manifest)
+                        + " didn't match the Plugin Hub's checksum. Try again later; if it keeps happening, report it in Discord.");
             }
             LivePluginManager.OperationResult result = livePlugins.installHub(temporary,
                     manifest.getInternalName(), expectedHash).get();
@@ -459,8 +508,9 @@ public class MicrobotPluginManager {
             if (failure instanceof InterruptedException) {
                 Thread.currentThread().interrupt();
             }
-            return LivePluginManager.OperationResult.failure("Plugin installation failed: "
-                    + (failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage()));
+            return LivePluginManager.OperationResult.failure("Couldn't install " + hubName(manifest) + ": "
+                    + (failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage())
+                    + ". Check your connection and try again.");
         } finally {
             if (temporary != null) {
                 try {
@@ -490,6 +540,10 @@ public class MicrobotPluginManager {
             return result;
         });
     }
+    private static String hubName(MicrobotPluginManifest manifest) {
+        return Strings.isNullOrEmpty(manifest.getDisplayName()) ? manifest.getInternalName() : manifest.getDisplayName();
+    }
+
     private void sendPluginInstallTelemetry(MicrobotPluginManifest manifest, @Nullable String versionOverride)
     {
         if (manifest == null) {
