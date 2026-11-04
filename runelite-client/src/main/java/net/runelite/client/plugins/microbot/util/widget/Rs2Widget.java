@@ -609,7 +609,7 @@ public class Rs2Widget {
             return false;
         }
         Widget mainWidget = getWidget(InterfaceID.SKILLMULTI, 0);
-     
+        if (mainWidget == null) return false;
 
         // enable quantity option if available
         //enableQuantityOption(widgetGroupId);

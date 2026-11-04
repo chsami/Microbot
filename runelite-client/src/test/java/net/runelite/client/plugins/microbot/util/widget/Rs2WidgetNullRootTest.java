@@ -50,6 +50,15 @@ public class Rs2WidgetNullRootTest {
     }
 
     @Test
+    public void handleProcessingInterfaceReturnsFalseWhenRootClosesAfterVisibilityCheck() {
+        Widget root = mock(Widget.class);
+        when(root.isHidden()).thenReturn(false);
+        when(client.getWidget(270, 0)).thenReturn(root, (Widget) null);
+        assertFalse(Rs2Widget.handleProcessingInterface("Make"));
+        microbot.verify(Microbot::getMouse, Mockito.never());
+    }
+
+    @Test
     public void findWidgetSkipsNullEntriesInChildren() {
         Widget match = mock(Widget.class);
         when(match.getText()).thenReturn("Make");
