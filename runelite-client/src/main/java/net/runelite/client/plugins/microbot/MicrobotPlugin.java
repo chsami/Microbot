@@ -207,7 +207,11 @@ public class MicrobotPlugin extends Plugin
 		gameChatAppender = new GameChatAppender();
 		gameChatAppender.setName("GAME_CHAT");
 
-		System.setProperty(HWID_SPOOF_PROPERTY, Boolean.toString(microbotConfig.spoofDeviceId()));
+		// A launcher that started the JVM with spoofing on keeps it on until the player turns it off here.
+		if (configManager.getConfiguration(MicrobotConfig.configGroup, MicrobotConfig.keySpoofDeviceId) != null)
+		{
+			System.setProperty(HWID_SPOOF_PROPERTY, Boolean.toString(microbotConfig.spoofDeviceId()));
+		}
 
 		// Set pattern based on new configuration
 		String pattern = microbotConfig.getGameChatLogPattern().getPattern();
@@ -429,7 +433,7 @@ public class MicrobotPlugin extends Plugin
 					Microbot.setLastKnownRegions(currentRegions.clone());
 				}
 		   }
-		   hwidSpoofCheck.loggedIn(microbotConfig.spoofDeviceId()).ifPresent(this::reportHwidSpoofProblem);
+		   hwidSpoofCheck.loggedIn(Boolean.parseBoolean(System.getProperty(HWID_SPOOF_PROPERTY))).ifPresent(this::reportHwidSpoofProblem);
 	   }
 	   if (gameStateChanged.getGameState() == GameState.LOGIN_SCREEN || gameStateChanged.getGameState() == GameState.HOPPING)
 	   {

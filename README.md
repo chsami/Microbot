@@ -32,6 +32,10 @@ This README is intentionally short. Durable details live in the docs below so hi
 - Queryable caches: `runelite-client/src/main/java/net/runelite/client/plugins/microbot/api`
 - Runtime agent tooling: `runelite-client/src/main/java/net/runelite/client/plugins/microbot/agentserver`
 
+## Hardware ID Spoofing (opt-in)
+
+Off by default. The `hwid-agent` does nothing unless the JVM starts with `-javaagent:hwid-agent-<version>.jar -Dmicrobot.hwid.spoof=true` (the launcher's "Spoof hardware IDs" setting). Details: `docs/DETECTION_HARDENING.md`, Phase 9.
+
 ## Discord
 [![Discord Banner 1](https://discord.com/api/guilds/1087718903985221642/widget.png?style=banner1)](https://discord.gg/zaGrfqFEWE)
 

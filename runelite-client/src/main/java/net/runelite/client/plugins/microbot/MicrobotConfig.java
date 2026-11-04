@@ -66,13 +66,13 @@ public interface MicrobotConfig extends Config
 	@ConfigItem(
 		keyName = keySpoofDeviceId,
 		name = "Spoof device ID",
-		description = "Replace the hardware device ID and random.dat seed sent to the game server at login with random values cached per account",
+		description = "Replace the hardware device ID and random.dat seed sent to the game server at login with random values cached per account, and make the platform details in the login packet match a stock RuneLite launch. Off by default. This only works when the launcher started the client with Spoof hardware IDs enabled, otherwise the HWID agent is not attached and a restart is needed",
 		position = 3,
 		section = generalSection
 	)
 	default boolean spoofDeviceId()
 	{
-		return true;
+		return false;
 	}
 
 	@ConfigSection(
