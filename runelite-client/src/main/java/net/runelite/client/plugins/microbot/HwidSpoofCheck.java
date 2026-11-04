@@ -86,13 +86,15 @@ final class HwidSpoofCheck
 		{
 			return DEVICE_HOOK_MISSING;
 		}
-		if (properties.apply(PLATFORM_HOOK_PROPERTY) == null)
-		{
-			return PLATFORM_HOOK_MISSING;
-		}
+		// random.dat is checked before the platform hook so PLATFORM_HOOK_MISSING
+		// is only reported once the device ID and random.dat hooks are known to have run.
 		if (lastRandomDatCall() < startedAt)
 		{
 			return RANDOM_DAT_HOOK_MISSED;
+		}
+		if (properties.apply(PLATFORM_HOOK_PROPERTY) == null)
+		{
+			return PLATFORM_HOOK_MISSING;
 		}
 		return null;
 	}
