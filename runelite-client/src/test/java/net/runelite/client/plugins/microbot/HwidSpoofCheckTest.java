@@ -92,7 +92,7 @@ public class HwidSpoofCheckTest
 	public void rawLaunchFlagsStayOutOfChatMessages()
 	{
 		for (String message : new String[]{HwidSpoofCheck.AGENT_MISSING, HwidSpoofCheck.LAUNCHER_NOT_OPTED_IN,
-			HwidSpoofCheck.LAUNCHER_DISABLED, HwidSpoofCheck.DEVICE_HOOK_MISSING, HwidSpoofCheck.RANDOM_DAT_HOOK_MISSED})
+			HwidSpoofCheck.LAUNCHER_DISABLED, HwidSpoofCheck.SETTING_OFF_WITH_LAUNCHER_ON, HwidSpoofCheck.DEVICE_HOOK_MISSING, HwidSpoofCheck.RANDOM_DAT_HOOK_MISSED})
 		{
 			assertFalse(message, message.contains("-javaagent") || message.contains("-D"));
 		}
@@ -104,6 +104,24 @@ public class HwidSpoofCheckTest
 	@Test
 	public void silentWhenSpoofingIsOff()
 	{
+		check.loginStarted();
+		assertFalse(check.loggedIn(false).isPresent());
+	}
+
+	@Test
+	public void warnsOnceWhenTheLauncherOptedInButTheSettingIsOff()
+	{
+		agentLoadedWithDeviceHook();
+		check.loginStarted();
+		assertEquals(Optional.of(HwidSpoofCheck.SETTING_OFF_WITH_LAUNCHER_ON), check.loggedIn(false));
+		check.loginStarted();
+		assertFalse(check.loggedIn(false).isPresent());
+	}
+
+	@Test
+	public void silentWhenTheSettingIsOffAndTheAgentIsInert()
+	{
+		properties.put(HwidSpoofCheck.AGENT_PROPERTY, HwidSpoofCheck.AGENT_INERT);
 		check.loginStarted();
 		assertFalse(check.loggedIn(false).isPresent());
 	}

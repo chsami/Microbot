@@ -63,12 +63,16 @@ public interface MicrobotConfig extends Config
 	}
 
 	String keySpoofDeviceId = "spoofDeviceId";
-	/** Not a setting: records that the one-time "now opt-in" chat notice was shown. */
-	String keySpoofOptInNoticeShown = "spoofDeviceIdOptInNoticeShown";
+	/**
+	 * Not a @ConfigItem (RuneLite writes every item's default before startUp, so an item can't tell "never set"
+	 * apart from "default"): records that a launcher opt-in already turned Spoof device ID on once, so a later
+	 * untick is respected.
+	 */
+	String keySpoofLauncherSeeded = "spoofDeviceIdLauncherSeeded";
 	@ConfigItem(
 		keyName = keySpoofDeviceId,
 		name = "Spoof device ID",
-		description = "Send a random device ID and random.dat seed, kept per account, instead of the real ones. Off by default. Needs Spoof hardware IDs ticked in the launcher and a client restart",
+		description = "Send a random device ID and random.dat seed, kept per account, instead of the real ones. Off by default. Also needs Spoof hardware IDs ticked in the Microbot launcher, then a client restart",
 		position = 3,
 		section = generalSection
 	)

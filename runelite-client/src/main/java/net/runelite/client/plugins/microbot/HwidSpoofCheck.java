@@ -9,13 +9,15 @@ import java.util.function.LongSupplier;
 final class HwidSpoofCheck
 {
 	static final String AGENT_PROPERTY = "microbot.hwid.agent";
+	static final String AGENT_LOADED = "loaded";
 	static final String AGENT_INERT = "inert";
 	static final String LAUNCHER_DISABLED_PROPERTY = "microbot.hwid.launcherDisabled";
 	static final String DEVICE_HOOK_PROPERTY = "microbot.hwid.device.installed";
 	static final String RANDOM_DAT_CALL_PROPERTY = "microbot.hwid.randomdat.lastCall";
 
 	static final String AGENT_MISSING = "Spoof device ID is on, but the HWID agent is not running, so this login sent the real device details. Update the Microbot launcher, make sure Spoof hardware IDs is ticked, and restart the client.";
-	static final String LAUNCHER_NOT_OPTED_IN = "Spoof device ID is on, but the launcher started the client without it, so this login sent the real device details. Update the Microbot launcher, tick Spoof hardware IDs, and restart the client.";
+	static final String LAUNCHER_NOT_OPTED_IN = "Spoof device ID is on, but the launcher started the client without it, so this login sent the real device details. To spoof, update the Microbot launcher, tick Spoof hardware IDs and restart the client. If you do not want spoofing, turn off Spoof device ID in the Microbot settings.";
+	static final String SETTING_OFF_WITH_LAUNCHER_ON = "Spoof hardware IDs is ticked in the Microbot launcher, but Spoof device ID is off in the Microbot settings, so this login sent the real device details. Turn on Spoof device ID (Microbot > General) to use it.";
 	static final String LAUNCHER_DISABLED = "Spoof device ID has no effect until you tick Spoof hardware IDs in the Microbot launcher and restart the client. This login sent the real device details.";
 	/** Log only; raw JVM flags stay out of game chat. */
 	static final String MANUAL_LAUNCH_HINT = "To start the client by hand with spoofing, add -javaagent:hwid-agent-<version>.jar -Dmicrobot.hwid.spoof=true to the JVM arguments.";
@@ -47,11 +49,11 @@ final class HwidSpoofCheck
 	{
 		long startedAt = loginStartedAt;
 		loginStartedAt = -1;
-		if (!spoofEnabled || startedAt < 0)
+		if (startedAt < 0)
 		{
 			return Optional.empty();
 		}
-		String problem = problem(startedAt);
+		String problem = spoofEnabled ? problem(startedAt) : settingOffProblem();
 		if (problem == null || !reported.add(problem))
 		{
 			return Optional.empty();
@@ -63,6 +65,12 @@ final class HwidSpoofCheck
 	static boolean needsManualLaunchHint(String problem)
 	{
 		return AGENT_MISSING.equals(problem) || LAUNCHER_NOT_OPTED_IN.equals(problem);
+	}
+
+	/** The launcher started the agent on purpose, but the in-client setting is off. */
+	private String settingOffProblem()
+	{
+		return AGENT_LOADED.equals(properties.apply(AGENT_PROPERTY)) ? SETTING_OFF_WITH_LAUNCHER_ON : null;
 	}
 
 	private String problem(long startedAt)

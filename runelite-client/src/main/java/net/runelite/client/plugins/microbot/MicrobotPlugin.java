@@ -103,10 +103,10 @@ public class MicrobotPlugin extends Plugin
 	 */
 	public static final long LEAGUES_LOCK_CHAT_MAX_ATTEMPT_AGE_MS = Rs2LeaguesTransport.LEAGUES_LOCK_CHAT_MAX_ATTEMPT_AGE_MS;
 	private static final String HWID_SPOOF_PROPERTY = "microbot.hwid.spoof";
+	private static final String HWID_AGENT_PROPERTY = HwidSpoofCheck.AGENT_PROPERTY;
+	private static final String HWID_AGENT_LOADED = HwidSpoofCheck.AGENT_LOADED;
 	private EnumSet<WorldType> lastWorldTypeProfile = null;
 	private final HwidSpoofCheck hwidSpoofCheck = new HwidSpoofCheck();
-	static final String HWID_SPOOF_OPT_IN_NOTICE = "Spoof device ID is now off by default. To use it, tick Spoof hardware IDs in the Microbot launcher and restart the client.";
-	private volatile boolean hwidSpoofOptInNoticePending;
 
 	@Inject
 	private Provider<MicrobotPluginListPanel> pluginListPanelProvider;
@@ -209,20 +209,16 @@ public class MicrobotPlugin extends Plugin
 		gameChatAppender = new GameChatAppender();
 		gameChatAppender.setName("GAME_CHAT");
 
-		// The saved setting decides; without one, a launcher that opted in seeds it, so the checkbox,
-		// the property the agent reads and the login check always agree.
-		if (configManager.getConfiguration(MicrobotConfig.configGroup, MicrobotConfig.keySpoofDeviceId) != null)
-		{
-			System.setProperty(HWID_SPOOF_PROPERTY, Boolean.toString(microbotConfig.spoofDeviceId()));
-		}
-		else if (Boolean.parseBoolean(System.getProperty(HWID_SPOOF_PROPERTY)))
+		// RuneLite has already written the setting's default (false) by now, so "nothing saved" can't be detected.
+		// The first launch where the launcher opted in (agent loaded) turns the setting on once and records that
+		// in a marker key; afterwards the saved setting alone decides, so a later untick is respected.
+		if (HWID_AGENT_LOADED.equals(System.getProperty(HWID_AGENT_PROPERTY))
+			&& configManager.getConfiguration(MicrobotConfig.configGroup, MicrobotConfig.keySpoofLauncherSeeded) == null)
 		{
 			configManager.setConfiguration(MicrobotConfig.configGroup, MicrobotConfig.keySpoofDeviceId, true);
+			configManager.setConfiguration(MicrobotConfig.configGroup, MicrobotConfig.keySpoofLauncherSeeded, true);
 		}
-		else
-		{
-			hwidSpoofOptInNoticePending = configManager.getConfiguration(MicrobotConfig.configGroup, MicrobotConfig.keySpoofOptInNoticeShown) == null;
-		}
+		System.setProperty(HWID_SPOOF_PROPERTY, Boolean.toString(microbotConfig.spoofDeviceId()));
 
 		// Set pattern based on new configuration
 		String pattern = microbotConfig.getGameChatLogPattern().getPattern();
@@ -445,7 +441,6 @@ public class MicrobotPlugin extends Plugin
 				}
 		   }
 		   hwidSpoofCheck.loggedIn(microbotConfig.spoofDeviceId()).ifPresent(this::reportHwidSpoofProblem);
-		   showHwidSpoofOptInNoticeOnce();
 	   }
 	   if (gameStateChanged.getGameState() == GameState.LOGIN_SCREEN || gameStateChanged.getGameState() == GameState.HOPPING)
 	   {
@@ -476,18 +471,6 @@ public class MicrobotPlugin extends Plugin
 			log.warn(HwidSpoofCheck.MANUAL_LAUNCH_HINT);
 		}
 		queueHighlightedConsoleMessage(problem);
-	}
-
-	/** Players who never saved Spoof device ID were spoofed by default before; tell them once that it is now opt-in. */
-	private void showHwidSpoofOptInNoticeOnce()
-	{
-		if (!hwidSpoofOptInNoticePending)
-		{
-			return;
-		}
-		hwidSpoofOptInNoticePending = false;
-		configManager.setConfiguration(MicrobotConfig.configGroup, MicrobotConfig.keySpoofOptInNoticeShown, true);
-		queueHighlightedConsoleMessage(HWID_SPOOF_OPT_IN_NOTICE);
 	}
 
 	private void queueHighlightedConsoleMessage(String message)
