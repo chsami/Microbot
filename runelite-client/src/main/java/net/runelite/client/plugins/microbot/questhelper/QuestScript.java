@@ -8,6 +8,7 @@ import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
+import net.runelite.client.plugins.microbot.agentserver.handler.ScriptHeartbeatRegistry;
 import net.runelite.client.plugins.microbot.api.tileobject.models.TileObjectType;
 import net.runelite.client.plugins.microbot.questhelper.logic.PiratesTreasure;
 import net.runelite.client.plugins.microbot.questhelper.logic.QuestRegistry;
@@ -55,6 +56,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.swing.JOptionPane;
@@ -94,6 +96,8 @@ public class QuestScript extends Script {
 
     private final MultiNpcTargetTracker multiNpcTarget = new MultiNpcTargetTracker();
 
+    private final AtomicReference<Thread> iterationThread = new AtomicReference<>();
+
     /**
      * Epoch millis at which the post-dialogue cooldown expires. While
      * {@code System.currentTimeMillis() < dialogueCooldownEndsAt}, the main tick
@@ -110,7 +114,7 @@ public class QuestScript extends Script {
         this.mQuestPlugin = mQuestPlugin;
 
 
-        mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
+        Runnable iteration = () -> {
             try {
                 if (!config.startStopQuestHelper()) return;
                 if (!Microbot.isLoggedIn()) return;
@@ -288,8 +292,42 @@ public class QuestScript extends Script {
                 System.out.println(ex.getMessage());
                 ex.printStackTrace(System.out);
             }
-        }, 0, Rs2Random.between(400, 1000), TimeUnit.MILLISECONDS);
+        };
+        mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> runTracked(iteration), 0, Rs2Random.between(400, 1000), TimeUnit.MILLISECONDS);
         return true;
+    }
+
+    void runTracked(Runnable iteration) {
+        Thread current = Thread.currentThread();
+        iterationThread.set(current);
+        try {
+            iteration.run();
+        } finally {
+            iterationThread.compareAndSet(current, null);
+        }
+    }
+
+    public void cancelInFlightIteration() {
+        Thread thread = iterationThread.get();
+        if (thread != null) {
+            thread.interrupt();
+        }
+    }
+
+    boolean isIterationCancelled() {
+        return Thread.currentThread().isInterrupted() || (config != null && !config.startStopQuestHelper());
+    }
+
+    public void stopLoop() {
+        if (mainScheduledFuture != null) {
+            mainScheduledFuture.cancel(true);
+        }
+        if (config != null && config.startStopQuestHelper()) {
+            Rs2Walker.clearWalkingRoute("quest-helper:plugin-stop");
+        }
+        ScriptHeartbeatRegistry.remove(getClass().getName());
+        multiNpcTarget.release();
+        reset();
     }
 
 	private boolean handleRequirements(DetailedQuestStep questStep) {
@@ -408,6 +446,10 @@ public class QuestScript extends Script {
 			if (!Rs2Bank.isOpen()) {
 				return true;
 			}
+		}
+
+		if (isIterationCancelled()) {
+			return true;
 		}
 
 		List<ItemRequirement> fromBank = new ArrayList<>();
@@ -539,6 +581,9 @@ public class QuestScript extends Script {
 
 		boolean bankWithdrawalMissed = false;
 		for (ItemRequirement ir : fromBank) {
+			if (isIterationCancelled()) {
+				return true;
+			}
 			Integer idToWithdraw = bankWithdrawId.get(ir);
 			if (idToWithdraw == null || idToWithdraw <= 0) {
 				continue;
@@ -550,6 +595,9 @@ public class QuestScript extends Script {
 			Microbot.status = "Withdrawing " + ir.getName() + " x" + qty;
 			Rs2Bank.withdrawX(idToWithdraw, qty);
 			if (!sleepUntil(() -> hasItemRequirementOnPlayer(ir), 2_000)) {
+				if (isIterationCancelled()) {
+					return true;
+				}
 				Microbot.log("Quest helper: bank withdrawal for " + ir.getName() + " did not land in time",
 						Level.WARN);
 				bankWithdrawalMissed = true;
@@ -572,6 +620,9 @@ public class QuestScript extends Script {
 				Microbot.status = "Withdrawing " + coinsToWithdraw + " gp for Grand Exchange";
 				Rs2Bank.withdrawX(ItemID.COINS_995, coinsToWithdraw);
 				sleepUntil(() -> Rs2Inventory.itemQuantity(ItemID.COINS_995) >= requiredCoins, 3_000);
+				if (isIterationCancelled()) {
+					return true;
+				}
 			}
 
 			long invCoinsAfter = Rs2Inventory.itemQuantity(ItemID.COINS_995);
@@ -592,7 +643,7 @@ public class QuestScript extends Script {
 		Rs2Bank.closeBank();
 		sleepUntil(() -> !Rs2Bank.isOpen(), 3_000);
 
-		if (toBuy.isEmpty()) {
+		if (toBuy.isEmpty() || isIterationCancelled()) {
 			return true;
 		}
 
@@ -608,6 +659,9 @@ public class QuestScript extends Script {
 
 		int placedOffers = 0;
 		for (ItemRequirement ir : toBuy) {
+			if (isIterationCancelled()) {
+				return true;
+			}
 			int offerPrice = offerPrices.getOrDefault(ir, 0);
 			int qty = buyQuantities.getOrDefault(ir, 0);
 			int primaryId = buyPrimaryIds.getOrDefault(ir, -1);
@@ -642,6 +696,9 @@ public class QuestScript extends Script {
 					attempt, maxBuyAttempts);
 
 			sleepUntil(() -> itemsStillBuying(toBuy, buyPrimaryIds).isEmpty(), perAttemptWaitMs);
+			if (isIterationCancelled()) {
+				return true;
+			}
 
 			List<ItemRequirement> stillPending = itemsStillBuying(toBuy, buyPrimaryIds);
 			if (stillPending.isEmpty()) {
@@ -659,6 +716,9 @@ public class QuestScript extends Script {
 			}
 
 			for (ItemRequirement ir : stillPending) {
+				if (isIterationCancelled()) {
+					return true;
+				}
 				int primaryId = buyPrimaryIds.getOrDefault(ir, -1);
 				if (primaryId == -1) {
 					continue;
@@ -678,6 +738,9 @@ public class QuestScript extends Script {
 				}
 
 				sleepUntil(() -> Rs2Inventory.itemQuantity(ItemID.COINS_995) > preAbortCoins, 3_000);
+				if (isIterationCancelled()) {
+					return true;
+				}
 
 				int alreadyOnHand = inventoryQuantityIncludingNoted(ir);
 				int qtyNeeded = Math.max(0, ir.getQuantity() - alreadyOnHand);
@@ -753,6 +816,9 @@ public class QuestScript extends Script {
 	}
 
 	private void collectPurchasedItemsViaBank(List<ItemRequirement> items) {
+		if (isIterationCancelled()) {
+			return;
+		}
 		Microbot.status = "Collecting purchased quest items to bank";
 		Rs2GrandExchange.collectAllToBank();
 		sleep(800, 1200);
@@ -766,6 +832,9 @@ public class QuestScript extends Script {
 			Microbot.status = "Opening bank to retrieve purchased quest items";
 			Rs2Bank.walkToBankAndUseBank();
 			sleepUntil(Rs2Bank::isOpen, 15_000);
+			if (isIterationCancelled()) {
+				return;
+			}
 			if (!Rs2Bank.isOpen()) {
 				Microbot.log("Quest helper: failed to open bank after Grand Exchange collection", Level.WARN);
 				return;
@@ -802,6 +871,9 @@ public class QuestScript extends Script {
 			Microbot.status = "Withdrawing " + ir.getName() + " x" + qty;
 			Rs2Bank.withdrawX(idToWithdraw, qty);
 			if (!sleepUntil(() -> hasItemRequirementOnPlayer(ir), 2_000)) {
+				if (isIterationCancelled()) {
+					return;
+				}
 				Microbot.log("Quest helper: purchased item " + ir.getName() + " did not land in inventory after bank withdrawal",
 						Level.WARN);
 			}
@@ -1249,7 +1321,10 @@ public class QuestScript extends Script {
 		stopQuesterWithReason(reason, Level.ERROR);
 	}
 
-	private void stopQuesterWithReason(String reason, Level level) {
+	void stopQuesterWithReason(String reason, Level level) {
+		if (isIterationCancelled()) {
+			return;
+		}
 		Microbot.status = reason;
 		Microbot.log("Quest helper stopped: " + reason, level);
 		if (Microbot.getConfigManager() != null) {
@@ -1375,6 +1450,9 @@ public class QuestScript extends Script {
         // doesn't mean a direct click will succeed. Require line-of-sight too, or we walk instead.
         if (npc != null && npc.getLocalLocation() != null && Rs2Camera.isTileOnScreen(npc.getLocalLocation())
                 && (Microbot.getClient().isInInstancedRegion() || (Rs2Walker.canReach(npc.getWorldLocation()) && npc.hasLineOfSight()))) {
+            if (isIterationCancelled()) {
+                return false;
+            }
             Rs2Walker.clearWalkingRoute("quest-helper:npc-step-visible-interact");
 
             if (step.getText().stream().anyMatch(x -> x.toLowerCase().contains("kill"))) {
@@ -1516,6 +1594,9 @@ public class QuestScript extends Script {
         }
 
         if (hasLineOfSightToObject(object) || object != null && (Rs2Camera.isTileOnScreen(object.getLocalLocation()) || object.getCanvasLocation() != null)) {
+            if (isIterationCancelled()) {
+                return false;
+            }
             Rs2Walker.clearWalkingRoute("quest-helper:object-step-interact");
 
             if (itemId == -1)
