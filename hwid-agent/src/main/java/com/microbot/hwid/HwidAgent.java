@@ -15,6 +15,10 @@ public final class HwidAgent
 
 	public static final String TOGGLE_PROPERTY = "microbot.hwid.spoof";
 	public static final String AGENT_PROPERTY = "microbot.hwid.agent";
+	/** {@link #AGENT_PROPERTY} value once the transformers are registered. */
+	public static final String AGENT_LOADED = "loaded";
+	/** {@link #AGENT_PROPERTY} value when the agent was attached but the launcher did not opt in to spoofing. */
+	public static final String AGENT_INERT = "inert";
 	public static final String DEVICE_HOOK_PROPERTY = "microbot.hwid.device.installed";
 	public static final String RANDOM_DAT_CALL_PROPERTY = "microbot.hwid.randomdat.lastCall";
 
@@ -32,12 +36,14 @@ public final class HwidAgent
 
 	/**
 	 * Spoofing is opt-in per launch. Unless the launcher started the JVM with -Dmicrobot.hwid.spoof=true
-	 * this does nothing: no transformer, no property, no file is touched.
+	 * the agent registers no transformer and touches no file; it only publishes {@link #AGENT_INERT} so the
+	 * client can tell a launcher that did not opt in apart from a missing agent.
 	 */
 	public static void premain(String args, Instrumentation inst)
 	{
 		if (!spoofEnabled())
 		{
+			System.setProperty(AGENT_PROPERTY, AGENT_INERT);
 			return;
 		}
 		try
@@ -45,7 +51,7 @@ public final class HwidAgent
 			inst.addTransformer(new PlatformInfoTransformer());
 			inst.addTransformer(new RandomDatTransformer());
 			inst.addTransformer(new RandomDatWriteTransformer());
-			System.setProperty(AGENT_PROPERTY, "loaded");
+			System.setProperty(AGENT_PROPERTY, AGENT_LOADED);
 			launcherCharacterId();
 		}
 		catch (Throwable t)

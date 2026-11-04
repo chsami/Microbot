@@ -2,7 +2,6 @@ package com.microbot.hwid;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
 
 import java.lang.instrument.Instrumentation;
 import java.lang.reflect.Proxy;
@@ -44,13 +43,13 @@ public class HwidAgentOptInTest
 	}
 
 	@Test
-	public void premainDoesNothingWhileSpoofingIsOff()
+	public void premainOnlyReportsInertWhileSpoofingIsOff()
 	{
 		System.clearProperty(HwidAgent.TOGGLE_PROPERTY);
 		AtomicInteger transformers = new AtomicInteger();
 		HwidAgent.premain(null, countingInstrumentation(transformers));
 		assertEquals(0, transformers.get());
-		assertNull(System.getProperty(HwidAgent.AGENT_PROPERTY));
+		assertEquals(HwidAgent.AGENT_INERT, System.getProperty(HwidAgent.AGENT_PROPERTY));
 	}
 
 	@Test
@@ -60,7 +59,7 @@ public class HwidAgentOptInTest
 		AtomicInteger transformers = new AtomicInteger();
 		HwidAgent.premain(null, countingInstrumentation(transformers));
 		assertEquals(3, transformers.get());
-		assertEquals("loaded", System.getProperty(HwidAgent.AGENT_PROPERTY));
+		assertEquals(HwidAgent.AGENT_LOADED, System.getProperty(HwidAgent.AGENT_PROPERTY));
 	}
 
 	static Instrumentation countingInstrumentation(AtomicInteger transformers)

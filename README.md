@@ -19,6 +19,7 @@ This README is intentionally short. Durable details live in the docs below so hi
 - Build scripts safely: `runelite-client/src/main/java/net/runelite/client/plugins/microbot/AGENTS.md`
 - Use entity caches/queryables: `runelite-client/src/main/java/net/runelite/client/plugins/microbot/api/QUERYABLE_API.md`
 - Drive a running client: `docs/MICROBOT_CLI.md`
+- Hardware ID spoofing (opt-in, off by default): `docs/DETECTION_HARDENING.md`, Phase 9
 
 ## Common Commands
 - Compile client: `./gradlew :client:compileJava`
@@ -31,10 +32,6 @@ This README is intentionally short. Durable details live in the docs below so hi
 - Reusable helpers: `runelite-client/src/main/java/net/runelite/client/plugins/microbot/util`
 - Queryable caches: `runelite-client/src/main/java/net/runelite/client/plugins/microbot/api`
 - Runtime agent tooling: `runelite-client/src/main/java/net/runelite/client/plugins/microbot/agentserver`
-
-## Hardware ID Spoofing (opt-in)
-
-Off by default. The `hwid-agent` does nothing unless the JVM starts with `-javaagent:hwid-agent-<version>.jar -Dmicrobot.hwid.spoof=true` (the launcher's "Spoof hardware IDs" setting). Details: `docs/DETECTION_HARDENING.md`, Phase 9.
 
 ## Discord
 [![Discord Banner 1](https://discord.com/api/guilds/1087718903985221642/widget.png?style=banner1)](https://discord.gg/zaGrfqFEWE)

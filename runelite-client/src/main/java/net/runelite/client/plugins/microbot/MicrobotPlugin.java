@@ -105,6 +105,8 @@ public class MicrobotPlugin extends Plugin
 	private static final String HWID_SPOOF_PROPERTY = "microbot.hwid.spoof";
 	private EnumSet<WorldType> lastWorldTypeProfile = null;
 	private final HwidSpoofCheck hwidSpoofCheck = new HwidSpoofCheck();
+	static final String HWID_SPOOF_OPT_IN_NOTICE = "Spoof device ID is now off by default. To use it, tick Spoof hardware IDs in the Microbot launcher and restart the client.";
+	private volatile boolean hwidSpoofOptInNoticePending;
 
 	@Inject
 	private Provider<MicrobotPluginListPanel> pluginListPanelProvider;
@@ -207,10 +209,19 @@ public class MicrobotPlugin extends Plugin
 		gameChatAppender = new GameChatAppender();
 		gameChatAppender.setName("GAME_CHAT");
 
-		// A launcher that started the JVM with spoofing on keeps it on until the player turns it off here.
+		// The saved setting decides; without one, a launcher that opted in seeds it, so the checkbox,
+		// the property the agent reads and the login check always agree.
 		if (configManager.getConfiguration(MicrobotConfig.configGroup, MicrobotConfig.keySpoofDeviceId) != null)
 		{
 			System.setProperty(HWID_SPOOF_PROPERTY, Boolean.toString(microbotConfig.spoofDeviceId()));
+		}
+		else if (Boolean.parseBoolean(System.getProperty(HWID_SPOOF_PROPERTY)))
+		{
+			configManager.setConfiguration(MicrobotConfig.configGroup, MicrobotConfig.keySpoofDeviceId, true);
+		}
+		else
+		{
+			hwidSpoofOptInNoticePending = configManager.getConfiguration(MicrobotConfig.configGroup, MicrobotConfig.keySpoofOptInNoticeShown) == null;
 		}
 
 		// Set pattern based on new configuration
@@ -433,7 +444,8 @@ public class MicrobotPlugin extends Plugin
 					Microbot.setLastKnownRegions(currentRegions.clone());
 				}
 		   }
-		   hwidSpoofCheck.loggedIn(Boolean.parseBoolean(System.getProperty(HWID_SPOOF_PROPERTY))).ifPresent(this::reportHwidSpoofProblem);
+		   hwidSpoofCheck.loggedIn(microbotConfig.spoofDeviceId()).ifPresent(this::reportHwidSpoofProblem);
+		   showHwidSpoofOptInNoticeOnce();
 	   }
 	   if (gameStateChanged.getGameState() == GameState.LOGIN_SCREEN || gameStateChanged.getGameState() == GameState.HOPPING)
 	   {
@@ -459,11 +471,32 @@ public class MicrobotPlugin extends Plugin
 	private void reportHwidSpoofProblem(String problem)
 	{
 		log.warn(problem);
+		if (HwidSpoofCheck.needsManualLaunchHint(problem))
+		{
+			log.warn(HwidSpoofCheck.MANUAL_LAUNCH_HINT);
+		}
+		queueHighlightedConsoleMessage(problem);
+	}
+
+	/** Players who never saved Spoof device ID were spoofed by default before; tell them once that it is now opt-in. */
+	private void showHwidSpoofOptInNoticeOnce()
+	{
+		if (!hwidSpoofOptInNoticePending)
+		{
+			return;
+		}
+		hwidSpoofOptInNoticePending = false;
+		configManager.setConfiguration(MicrobotConfig.configGroup, MicrobotConfig.keySpoofOptInNoticeShown, true);
+		queueHighlightedConsoleMessage(HWID_SPOOF_OPT_IN_NOTICE);
+	}
+
+	private void queueHighlightedConsoleMessage(String message)
+	{
 		chatMessageManager.queue(QueuedMessage.builder()
 			.type(ChatMessageType.CONSOLE)
 			.runeLiteFormattedMessage(new ChatMessageBuilder()
 				.append(ChatColorType.HIGHLIGHT)
-				.append(problem)
+				.append(message)
 				.build())
 			.build());
 	}
