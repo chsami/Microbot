@@ -268,7 +268,7 @@ public class LivePluginManagerTest {
     }
 
     @Test
-    public void blockedHubJarIsReportedOnceAndDoesNotStopFolderWatching() throws Exception {
+    public void blockedHubJarDoesNotStopFolderWatchingAndLoadsOnceUnblocked() throws Exception {
         Files.copy(fixture("v1.jar", "1.0", false), directory.resolve("FixturePlugin.jar"));
         MicrobotPluginManager hub = new MicrobotPluginManager(mock(okhttp3.OkHttpClient.class),
                 mock(MicrobotPluginClient.class), events, plugins, config,
@@ -287,16 +287,38 @@ public class LivePluginManagerTest {
         OperationResult first = await(manager.rescan());
         assertTrue(first.getMessage(), first.isSuccess());
         assertTrue(first.getMessage(), first.getMessage().contains("Live fixture (FixturePlugin.jar) is blocked by the Plugin Hub"));
-        OperationResult second = await(manager.rescan());
-        assertTrue(second.isSuccess());
-        assertFalse(second.getMessage(), second.getMessage().contains("blocked"));
-
         manager.setWatching(true);
         Thread.sleep(3500);
         assertTrue(manager.isWatching());
         assertEquals("", manager.getWatchStatus());
         assertTrue(registered.isEmpty());
         assertTrue(Files.exists(directory.resolve("FixturePlugin.jar")));
+        manager.setWatching(false);
+
+        manifest.setDisable(false);
+        OperationResult unblocked = await(manager.rescan());
+        assertTrue(unblocked.getMessage(), unblocked.isSuccess());
+        assertEquals(1, registered.size());
+    }
+
+    @Test
+    public void hubUpdateNeverOverwritesAJarThePlayerAdded() throws Exception {
+        Path local = directory.resolve("my-dev-build.jar");
+        Files.copy(fixture("v1.jar", "1.0", false), local);
+        success(manager.rescan());
+        Plugin plugin = onlyPlugin();
+        assertNull(manager.getInstalledPlugins().get(0).getHubId());
+        byte[] before = Files.readAllBytes(local);
+        Path v2 = fixture("v2.jar", "2.0", false);
+
+        OperationResult result = await(manager.installHub(v2, "FixturePlugin", LivePluginManager.hash(v2)));
+
+        assertFalse(result.getMessage(), result.isSuccess());
+        assertTrue(result.getMessage(), result.getMessage().contains("Remove it in Local Plugins first"));
+        assertArrayEquals(before, Files.readAllBytes(local));
+        assertFalse(Files.exists(directory.resolve("my-dev-build.jar.origin")));
+        assertSame(plugin, onlyPlugin());
+        assertTrue(active.contains(plugin));
     }
 
     @Test

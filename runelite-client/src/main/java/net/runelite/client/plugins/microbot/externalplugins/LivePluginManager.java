@@ -1,6 +1,7 @@
 package net.runelite.client.plugins.microbot.externalplugins;
 
 import com.google.common.hash.Hashing;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.AtomicMoveNotSupportedException;
@@ -190,7 +191,10 @@ public class LivePluginManager {
         if (!Files.exists(file) || installed.values().stream().anyMatch(i -> i.source.equals(file))) {
             throw new IllegalArgumentException("Plugin is not installed.");
         }
-        if (!hubId.equals(readOrigin(file).getProperty("hubId")) && !hubId.equals(recordedHubInstall(file, hash(file)))) {
+        String digest = hash(file);
+        Properties origin = readOrigin(file);
+        boolean fromOrigin = hubId.equals(origin.getProperty("hubId")) && digest.equalsIgnoreCase(origin.getProperty("sha256", ""));
+        if (!fromOrigin && !hubId.equals(recordedHubInstall(file, digest))) {
             throw new IllegalArgumentException(file.getFileName() + " was not installed from the Plugin Hub. Remove it in Local Plugins.");
         }
         Files.deleteIfExists(file);
@@ -201,6 +205,7 @@ public class LivePluginManager {
 
     public CompletableFuture<OperationResult> rescan() {
         return submit(() -> {
+            skipped.clear();
             OperationResult result = scan(false);
             if (result.success) {
                 watchStatus = "";
@@ -419,6 +424,11 @@ public class LivePluginManager {
             Installation previousInstall = hubId == null ? installed.get(candidate.id)
                     : installed.values().stream().filter(i -> hubId.equals(i.hubId)).findFirst()
                             .orElse(installed.get(candidate.id));
+            if (hubId != null && previousInstall != null && previousInstall.hubId == null
+                    && !previousInstall.source.equals(incoming)) {
+                throw new IllegalArgumentException(displayName(candidate) + " is loaded from a JAR you added ("
+                        + previousInstall.source.getFileName() + "). Remove it in Local Plugins first.");
+            }
             if (previousInstall != null && hubId != null && !previousInstall.blocked && !previousInstall.pendingRestart
                     && !quarantine.containsKey(previousInstall.artifact.id)
                     && (!previousInstall.artifact.id.equals(candidate.id)
@@ -594,13 +604,21 @@ public class LivePluginManager {
             Installation replacement = installed.values().stream().filter(i -> hubId.equals(i.hubId)).findFirst().orElse(null);
             if (replacement != null && !replacement.source.equals(oldSource)) {
                 checkManagedPath(oldSource);
-                Files.deleteIfExists(oldSource);
-                Files.deleteIfExists(originPath(oldSource));
+                try {
+                    Files.deleteIfExists(originPath(oldSource));
+                    Files.deleteIfExists(oldSource);
+                } catch (IOException cleanup) {
+                    log.warn("Could not delete the previous plugin JAR {}: {}", oldSource, cleanup.getMessage());
+                }
             }
             return replacement == null ? result : OperationResult.success("Updated " + displayName(replacement.artifact)
                     + (version(replacement.artifact).isEmpty() ? "" : " to " + version(replacement.artifact)) + ".");
         } finally {
-            Files.deleteIfExists(backup);
+            try {
+                Files.deleteIfExists(backup);
+            } catch (IOException cleanup) {
+                log.debug("Could not delete the update backup {}", backup, cleanup);
+            }
         }
     }
 
@@ -740,6 +758,7 @@ public class LivePluginManager {
             return OperationResult.success(current.status, true);
         }
         checkDependents(current);
+        skipped.remove(current.source);
         try {
             retire(current);
             for (Installation pending : quarantine.getOrDefault(current.artifact.id, Collections.emptyList())) {
