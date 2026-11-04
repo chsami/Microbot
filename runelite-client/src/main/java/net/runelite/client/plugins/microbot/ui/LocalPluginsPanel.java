@@ -121,6 +121,7 @@ public class LocalPluginsPanel extends JPanel {
         changeFolderButton.addActionListener(e -> chooseFolder());
         watchFolder.setOpaque(false);
         watchFolder.addActionListener(e -> {
+            shownWatchStatus = "";
             try {
                 livePluginManager.setWatching(watchFolder.isSelected());
                 setStatus(livePluginManager.isWatching() ? "Watching the plugin folder for changes." : "Folder watching is off.");
@@ -244,6 +245,7 @@ public class LocalPluginsPanel extends JPanel {
             return;
         }
         busy = true;
+        shownWatchStatus = "";
         setStatus(message);
         updateControls();
         try {

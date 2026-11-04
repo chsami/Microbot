@@ -229,31 +229,34 @@ public class MicrobotPluginManager {
         if (Strings.isNullOrEmpty(internalName)) {
             return false;
         }
-        return livePlugins.getInstalledPlugins().stream()
-                .anyMatch(entry -> internalName.equalsIgnoreCase(entry.getHubId())
-                        || (entry.getClassNames().stream().anyMatch(name -> internalName.equalsIgnoreCase(simpleName(name)))
-                        && hasInstalledVersionRecord(simpleNameOf(entry, internalName))));
+        Optional<LivePluginManager.PluginEntry> live = liveEntry(internalName);
+        return live.isPresent() ? live.get().getHubId() != null : hasInstalledVersionRecord(internalName);
     }
 
     public boolean isHubInstalled(String internalName) {
         if (Strings.isNullOrEmpty(internalName)) {
             return false;
         }
-        boolean live = livePlugins.getInstalledPlugins().stream()
-                .anyMatch(entry -> internalName.equals(entry.getHubId()));
-        return live || hasInstalledVersionRecord(internalName);
+        Optional<LivePluginManager.PluginEntry> live = liveEntry(internalName);
+        return live.isPresent() ? live.get().getHubId() != null : hasInstalledVersionRecord(internalName);
+    }
+
+    private Optional<LivePluginManager.PluginEntry> liveEntry(String internalName) {
+        List<LivePluginManager.PluginEntry> entries = livePlugins.getInstalledPlugins();
+        Optional<LivePluginManager.PluginEntry> byHub = entries.stream()
+                .filter(entry -> internalName.equalsIgnoreCase(entry.getHubId()))
+                .findFirst();
+        if (byHub.isPresent()) {
+            return byHub;
+        }
+        return entries.stream()
+                .filter(entry -> entry.getClassNames().stream().anyMatch(name -> internalName.equalsIgnoreCase(simpleName(name))))
+                .findFirst();
     }
 
     private boolean hasInstalledVersionRecord(String internalName) {
         return !Strings.isNullOrEmpty(configManager.getConfiguration(INSTALLED_VERSION_GROUP,
                 INSTALLED_VERSION_KEY_PREFIX + internalName));
-    }
-
-    private static String simpleNameOf(LivePluginManager.PluginEntry entry, String internalName) {
-        return entry.getClassNames().stream()
-                .map(MicrobotPluginManager::simpleName)
-                .filter(internalName::equalsIgnoreCase)
-                .findFirst().orElse(internalName);
     }
 
     private static String simpleName(String className) {
@@ -478,6 +481,10 @@ public class MicrobotPluginManager {
             temporary = java.nio.file.Files.createTempFile("microbot-plugin-", ".jar");
             Request request = new Request.Builder().url(jarUrl).build();
             try (Response response = noProxy(okHttpClient).newCall(request).execute()) {
+                if (response.code() >= 400 && response.code() < 500) {
+                    return LivePluginManager.OperationResult.failure("Couldn't download " + hubName(manifest) + " "
+                            + version + ": this version is no longer on the Plugin Hub. Pick another version.");
+                }
                 if (!response.isSuccessful() || response.body() == null || !response.request().url().isHttps()) {
                     return LivePluginManager.OperationResult.failure("Couldn't download " + hubName(manifest)
                             + " from the Plugin Hub (HTTP " + response.code() + "). Check your connection and try again.");
@@ -508,9 +515,13 @@ public class MicrobotPluginManager {
             if (failure instanceof InterruptedException) {
                 Thread.currentThread().interrupt();
             }
-            return LivePluginManager.OperationResult.failure("Couldn't install " + hubName(manifest) + ": "
-                    + (failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage())
-                    + ". Check your connection and try again.");
+            if (failure instanceof IOException) {
+                return LivePluginManager.OperationResult.failure("Couldn't reach the Plugin Hub to download "
+                        + hubName(manifest) + ". Check your connection and try again.");
+            }
+            return LivePluginManager.OperationResult.failure("Couldn't " + (isHubInstalled(manifest.getInternalName()) ? "update " : "install ")
+                    + hubName(manifest) + ": "
+                    + (failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage()));
         } finally {
             if (temporary != null) {
                 try {

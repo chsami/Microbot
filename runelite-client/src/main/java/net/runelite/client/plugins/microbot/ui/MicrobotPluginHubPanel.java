@@ -699,6 +699,11 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
 				if (error == null && result != null && result.isSuccess())
 				{
 					onSuccess.run();
+					if (result.isNeedsRestart())
+					{
+						JOptionPane.showMessageDialog(MicrobotPluginHubPanel.this, result.getMessage(),
+							"Restart needed", JOptionPane.INFORMATION_MESSAGE);
+					}
 				}
 				else
 				{
@@ -1014,10 +1019,12 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
         refreshing.setVisible(false);
         reloadQueued = false;
         mainPanel.removeAll();
-        mainPanel.add(new JLabel("Couldn't load the Plugin Hub. Check your connection."));
+        JLabel failure = new JLabel("<html>Couldn't load the Plugin Hub.<br>Check your connection, then press Retry.</html>");
+        mainPanel.add(failure);
         JButton retry = new JButton("Retry");
         retry.addActionListener(l -> {
             retry.setEnabled(false);
+            failure.setText("Retrying...");
             executor.submit(() -> {
                 microbotPluginManager.init();
                 reloadPluginList();

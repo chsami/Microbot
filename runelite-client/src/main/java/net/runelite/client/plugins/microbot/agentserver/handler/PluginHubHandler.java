@@ -141,7 +141,16 @@ public class PluginHubHandler extends AgentHandler {
 			return;
 		}
 
-		if (!awaitTask(exchange, pluginManager.removePlugin(manifest), timeout)) {
+		Future<LivePluginManager.OperationResult> removal = pluginManager.removePlugin(manifest);
+		if (!awaitTask(exchange, removal, timeout)) {
+			return;
+		}
+		LivePluginManager.OperationResult removed = getQuietly(removal);
+		if (removed != null && removed.isNeedsRestart()) {
+			Map<String, Object> result = new LinkedHashMap<>(describe(manifest));
+			result.put("restartRequired", true);
+			result.put("message", removed.getMessage());
+			sendJson(exchange, 200, result);
 			return;
 		}
 		if (pluginManager.isLoaded(manifest.getInternalName())) {
@@ -220,6 +229,17 @@ public class PluginHubHandler extends AgentHandler {
 			sendJson(exchange, 500, errorResponse("Plugin task failed: " + e.getCause()));
 		}
 		return false;
+	}
+
+	private static LivePluginManager.OperationResult getQuietly(Future<LivePluginManager.OperationResult> task) {
+		try {
+			return task.get(0, TimeUnit.SECONDS);
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			return null;
+		} catch (ExecutionException | TimeoutException e) {
+			return null;
+		}
 	}
 
 	private static int timeoutSeconds(Map<String, Object> body) {

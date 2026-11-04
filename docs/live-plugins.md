@@ -23,6 +23,10 @@ Open **Local Plugins** from Microbot's plugin panel:
   changing. Build somewhere else and copy the finished JAR into the folder. If a
   JAR can't be loaded, watching stops and the error is shown. Fix the JAR, then
   tick **Watch folder for changes** again. Keep one JAR per plugin.
+- A Plugin Hub plugin that the Hub has blocked (disabled or a broken version)
+  stays in the folder but is not loaded. Rescan tells you once, and watching
+  carries on without it. Remove it in the Plugin Hub, or install a working
+  version there.
 
 By default, plugin JARs live in `~/.runelite/microbot-plugins/` (on Windows,
 `%USERPROFILE%\.runelite\microbot-plugins`). The chosen folder is saved in your

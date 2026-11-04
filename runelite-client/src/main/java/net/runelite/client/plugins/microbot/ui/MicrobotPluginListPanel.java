@@ -402,7 +402,7 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
                 .append(HtmlEscapers.htmlEscaper().escape(displayName.apply(name)))
                 .append("</b>: ")
                 .append(HtmlEscapers.htmlEscaper().escape(reason)));
-        return message.append("<br><br>Open the <strong>Microbot Plugin Hub</strong> to see details, remove them or install an unaffected version.</html>")
+        return message.append("<br><br>Open the <strong>Microbot Plugin Hub</strong> to see details, remove them or install an unaffected version. For a JAR you added yourself, fix or remove the JAR in <strong>Local Plugins</strong>.</html>")
                 .toString();
     }
 

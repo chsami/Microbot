@@ -268,6 +268,96 @@ public class LivePluginManagerTest {
     }
 
     @Test
+    public void blockedHubJarIsReportedOnceAndDoesNotStopFolderWatching() throws Exception {
+        Files.copy(fixture("v1.jar", "1.0", false), directory.resolve("FixturePlugin.jar"));
+        MicrobotPluginManager hub = new MicrobotPluginManager(mock(okhttp3.OkHttpClient.class),
+                mock(MicrobotPluginClient.class), events, plugins, config,
+                mock(net.runelite.client.plugins.microbot.MicrobotApi.class), manager);
+        MicrobotPluginManifest manifest = new MicrobotPluginManifest();
+        manifest.setInternalName("FixturePlugin");
+        manifest.setDisplayName("Live fixture");
+        manifest.setVersion("1.0");
+        manifest.setDisable(true);
+        java.lang.reflect.Field manifests = MicrobotPluginManager.class.getDeclaredField("manifestMap");
+        manifests.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        Map<String, MicrobotPluginManifest> map = (Map<String, MicrobotPluginManifest>) manifests.get(hub);
+        map.put("FixturePlugin", manifest);
+
+        OperationResult first = await(manager.rescan());
+        assertTrue(first.getMessage(), first.isSuccess());
+        assertTrue(first.getMessage(), first.getMessage().contains("Live fixture (FixturePlugin.jar) is blocked by the Plugin Hub"));
+        OperationResult second = await(manager.rescan());
+        assertTrue(second.isSuccess());
+        assertFalse(second.getMessage(), second.getMessage().contains("blocked"));
+
+        manager.setWatching(true);
+        Thread.sleep(3500);
+        assertTrue(manager.isWatching());
+        assertEquals("", manager.getWatchStatus());
+        assertTrue(registered.isEmpty());
+        assertTrue(Files.exists(directory.resolve("FixturePlugin.jar")));
+    }
+
+    @Test
+    public void hubUpdateThatMovesTheEntryClassAndFailsToStartRestoresThePreviousVersion() throws Exception {
+        Path v1 = fixture("v1.jar", "1.0", false);
+        success(manager.installHub(v1, "FixturePlugin", LivePluginManager.hash(v1)));
+        Plugin original = onlyPlugin();
+        Path installedJar = manager.getInstalledPlugins().get(0).getSourcePath();
+        Path moved = fixture("moved.jar", "moved-plugin", "livefixture.moved.FixturePlugin", CONFIG_KEY, "2.0", true);
+
+        OperationResult failure = await(manager.installHub(moved, "FixturePlugin", LivePluginManager.hash(moved)));
+
+        assertFalse(failure.isSuccess());
+        assertTrue(failure.getMessage(), failure.getMessage().contains("The previous version was restored."));
+        Plugin restored = onlyPlugin();
+        assertNotSame(original, restored);
+        assertEquals(ENTRY_CLASS, restored.getClass().getName());
+        assertEquals("1.0", resource(restored));
+        assertTrue(active.contains(restored));
+        assertArrayEquals(Files.readAllBytes(v1), Files.readAllBytes(installedJar));
+        assertEquals("FixturePlugin", manager.getInstalledPlugins().get(0).getHubId());
+    }
+
+    @Test
+    public void hubUpdateThatMovesTheEntryClassReplacesThePreviousVersion() throws Exception {
+        Path v1 = fixture("v1.jar", "1.0", false);
+        success(manager.installHub(v1, "FixturePlugin", LivePluginManager.hash(v1)));
+        Plugin original = onlyPlugin();
+        Path installedJar = manager.getInstalledPlugins().get(0).getSourcePath();
+        Path moved = fixture("moved.jar", "moved-plugin", "livefixture.moved.FixturePlugin", CONFIG_KEY, "2.0", false);
+
+        OperationResult result = await(manager.installHub(moved, "FixturePlugin", LivePluginManager.hash(moved)));
+
+        assertTrue(result.getMessage(), result.isSuccess());
+        Plugin replacement = onlyPlugin();
+        assertEquals("livefixture.moved.FixturePlugin", replacement.getClass().getName());
+        assertEquals(1, counter(original, "stops"));
+        assertEquals(1, manager.getInstalledPlugins().size());
+        assertEquals(installedJar, manager.getInstalledPlugins().get(0).getSourcePath());
+        assertArrayEquals(Files.readAllBytes(moved), Files.readAllBytes(installedJar));
+    }
+
+    @Test
+    public void hubRemoveNeverDeletesALocalJarThatReplacedAHubPlugin() throws Exception {
+        Path local = directory.resolve("FixturePlugin.jar");
+        Files.copy(fixture("v1.jar", "1.0", false), local);
+        when(config.getConfiguration("microbotPluginVersions", "plugin.FixturePlugin"))
+                .thenReturn("0.9:0000000000000000000000000000000000000000000000000000000000000000");
+        success(manager.rescan());
+        Plugin plugin = onlyPlugin();
+        assertNull(manager.getInstalledPlugins().get(0).getHubId());
+
+        OperationResult result = await(manager.removeHub("FixturePlugin"));
+
+        assertFalse(result.getMessage(), result.isSuccess());
+        assertTrue(Files.exists(local));
+        assertSame(plugin, onlyPlugin());
+        assertTrue(active.contains(plugin));
+    }
+
+    @Test
     public void failedReplacementRestoresRunningPreviousVersionAndInstalledBytes() throws Exception {
         Path v1 = fixture("v1.jar", "1.0", false);
         Path bad = fixture("bad.jar", "2.0", true);

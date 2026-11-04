@@ -194,6 +194,20 @@ public class MicrobotPluginManagerTest {
     }
 
     @Test
+    public void localJarReplacingAHubPluginIsNotHubInstalledDespiteAStaleVersionRecord() throws Exception {
+        Constructor<LivePluginManager.PluginEntry> constructor = LivePluginManager.PluginEntry.class.getDeclaredConstructor(
+                String.class, String.class, String.class, Path.class, boolean.class, String.class, List.class, String.class);
+        constructor.setAccessible(true);
+        LivePluginManager.PluginEntry local = constructor.newInstance("local.FixturePlugin", "Fixture", "9.9",
+                Paths.get("FixturePlugin.jar"), true, "Ready", Collections.singletonList("local.FixturePlugin"), null);
+        when(lifecycle.getInstalledPlugins()).thenReturn(Collections.singletonList(local));
+        when(config.getConfiguration("microbotPluginVersions", "plugin.FixturePlugin")).thenReturn("1.2.3:" + HASH);
+
+        assertFalse(manager.isHubInstalled("FixturePlugin"));
+        assertFalse(manager.isLoadedFromHub("FixturePlugin"));
+    }
+
+    @Test
     public void localReplacementAndRemovalDoNotReportStaleHubVersion() throws Exception {
         when(config.getConfiguration("microbotPluginVersions", "plugin.FixturePlugin"))
                 .thenReturn("1.2.3:" + HASH);

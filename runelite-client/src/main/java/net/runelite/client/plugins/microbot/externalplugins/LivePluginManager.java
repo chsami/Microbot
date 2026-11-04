@@ -71,6 +71,7 @@ public class LivePluginManager {
     private volatile String watchStatus = "";
     private ScheduledFuture<?> watcher;
     private Map<Path, String> observed = Collections.emptyMap();
+    private final Map<Path, String> skipped = new HashMap<>();
     private volatile LoadPolicy loadPolicy;
 
     interface LoadPolicy {
@@ -171,8 +172,7 @@ public class LivePluginManager {
     CompletableFuture<OperationResult> removeHub(String hubId) {
         return submit(() -> {
             Installation current = installed.values().stream()
-                    .filter(i -> hubId.equals(i.hubId) || i.artifact.types.stream()
-                            .anyMatch(type -> type.getSimpleName().equals(hubId)))
+                    .filter(i -> hubId.equals(i.hubId))
                     .findFirst().orElse(null);
             if (current == null) {
                 return removeUnloadedHubFile(hubId);
@@ -187,10 +187,14 @@ public class LivePluginManager {
         }
         Path file = pluginDirectory.resolve(hubId + ".jar");
         checkManagedPath(file);
-        if (!Files.exists(file)) {
+        if (!Files.exists(file) || installed.values().stream().anyMatch(i -> i.source.equals(file))) {
             throw new IllegalArgumentException("Plugin is not installed.");
         }
+        if (!hubId.equals(readOrigin(file).getProperty("hubId")) && !hubId.equals(recordedHubInstall(file, hash(file)))) {
+            throw new IllegalArgumentException(file.getFileName() + " was not installed from the Plugin Hub. Remove it in Local Plugins.");
+        }
         Files.deleteIfExists(file);
+        skipped.remove(file);
         Files.deleteIfExists(originPath(file));
         return OperationResult.success("Removed " + hubId + ". Settings were kept.");
     }
@@ -412,26 +416,25 @@ public class LivePluginManager {
                 throw new IllegalArgumentException("Downloaded JAR does not contain the selected Hub plugin.");
             }
             checkLoadPolicy(candidate);
-            Installation previousInstall = installed.get(candidate.id);
-            if (previousInstall != null && hubId != null && !previousInstall.blocked && !quarantine.containsKey(candidate.id)
-                    && !entryClassNames(previousInstall.artifact).equals(entryClassNames(candidate))) {
-                removeNow(previousInstall, !incoming.equals(previousInstall.source));
-                if (previousInstall.pendingRestart) {
-                    throw new IllegalStateException(previousInstall.status);
-                }
-                previousInstall = null;
-                originalSource = null;
+            Installation previousInstall = hubId == null ? installed.get(candidate.id)
+                    : installed.values().stream().filter(i -> hubId.equals(i.hubId)).findFirst()
+                            .orElse(installed.get(candidate.id));
+            if (previousInstall != null && hubId != null && !previousInstall.blocked && !previousInstall.pendingRestart
+                    && !quarantine.containsKey(previousInstall.artifact.id)
+                    && (!previousInstall.artifact.id.equals(candidate.id)
+                            || !entryClassNames(previousInstall.artifact).equals(entryClassNames(candidate)))) {
+                return replaceChangedHubPlugin(previousInstall, incoming, hubId, expectedHash, startup);
             }
             Installation old = previousInstall;
+            if (old != null && old.pendingRestart) {
+                throw new IllegalStateException("Restart Microbot to finish removing " + displayName(old.artifact)
+                        + " before installing it again.");
+            }
             if (old != null && incoming.getParent().equals(pluginDirectory) && !incoming.equals(old.source)) {
                 throw new IllegalArgumentException("Duplicate plugin JAR in the folder. Keep only " + old.source.getFileName() + ".");
             }
             if (quarantine.containsKey(candidate.id)) {
                 throw new IllegalStateException("A previous generation could not be cleaned up. Remove this plugin before retrying.");
-            }
-            if (old != null && old.pendingRestart) {
-                throw new IllegalStateException("Restart Microbot to finish removing " + displayName(old.artifact)
-                        + " before installing it again.");
             }
             if (old != null && old.blocked) {
                 throw new IllegalStateException("Previous cleanup failed. Remove the plugin successfully before installing a replacement.");
@@ -485,6 +488,9 @@ public class LivePluginManager {
                 }
                 notifyLoaded(replacement.artifact);
                 boolean nowRunning = replacement.instances.stream().anyMatch(plugins::isPluginActive);
+                if (old != null && force && old.digest.equals(digest)) {
+                    return OperationResult.success("Reloaded " + describe(replacement.artifact) + ".");
+                }
                 return OperationResult.success(old == null
                         ? "Installed " + describe(replacement.artifact) + (nowRunning ? "."
                                 : ". Turn it on in the Microbot plugin list.")
@@ -558,6 +564,60 @@ public class LivePluginManager {
                 }
             }
         }
+    }
+
+    private OperationResult replaceChangedHubPlugin(Installation previous, Path incoming, String hubId,
+            String expectedHash, boolean startup) throws Exception {
+        Path oldSource = previous.source;
+        String oldHubId = previous.hubId;
+        String oldExpectedHash = previous.expectedHash;
+        String name = displayName(previous.artifact);
+        Path backup = Files.createTempFile(cacheDirectory, "previous-", ".jar");
+        try {
+            Files.copy(previous.artifact.cacheFile, backup, StandardCopyOption.REPLACE_EXISTING);
+            try {
+                removeNow(previous, false);
+            } catch (Exception | LinkageError | AssertionError failure) {
+                throw new IllegalStateException("Couldn't stop " + name + " to update it: " + message(failure)
+                        + ". The installed version was kept; restart Microbot and try again.", failure);
+            }
+            OperationResult result;
+            try {
+                result = installNow(incoming, null, hubId, expectedHash, false, startup);
+            } catch (Exception | LinkageError | AssertionError failure) {
+                result = OperationResult.failure(message(failure));
+            }
+            if (!result.isSuccess()) {
+                return OperationResult.failure("Couldn't update " + name + ": " + result.getMessage() + " "
+                        + restorePrevious(oldSource, backup, oldHubId, oldExpectedHash, startup));
+            }
+            Installation replacement = installed.values().stream().filter(i -> hubId.equals(i.hubId)).findFirst().orElse(null);
+            if (replacement != null && !replacement.source.equals(oldSource)) {
+                checkManagedPath(oldSource);
+                Files.deleteIfExists(oldSource);
+                Files.deleteIfExists(originPath(oldSource));
+            }
+            return replacement == null ? result : OperationResult.success("Updated " + displayName(replacement.artifact)
+                    + (version(replacement.artifact).isEmpty() ? "" : " to " + version(replacement.artifact)) + ".");
+        } finally {
+            Files.deleteIfExists(backup);
+        }
+    }
+
+    private String restorePrevious(Path oldSource, Path backup, String oldHubId, String oldExpectedHash, boolean startup) {
+        try {
+            if (!Files.exists(oldSource) || !hash(oldSource).equals(hash(backup))) {
+                replaceFile(backup, oldSource);
+            }
+            OperationResult restored = installNow(oldSource, null, oldHubId, oldExpectedHash, true, startup);
+            if (restored.isSuccess()) {
+                return "The previous version was restored.";
+            }
+            log.warn("Could not restart the previous plugin version: {}", restored.getMessage());
+        } catch (Exception | LinkageError | AssertionError failure) {
+            log.warn("Could not restore the previous plugin version", failure);
+        }
+        return "The previous version is still in the plugin folder and loads after a restart.";
     }
 
     private void restoreDisk(Installation current) throws Exception {
@@ -676,6 +736,9 @@ public class LivePluginManager {
     }
 
     private OperationResult removeNow(Installation current, boolean deleteFile) throws Exception {
+        if (current.pendingRestart) {
+            return OperationResult.success(current.status, true);
+        }
         checkDependents(current);
         try {
             retire(current);
@@ -712,7 +775,7 @@ public class LivePluginManager {
                     current.artifact.id, failure);
             current.pendingRestart = true;
             current.status = "Restart Microbot to finish removing " + displayName(current.artifact) + ".";
-            return OperationResult.success(current.status);
+            return OperationResult.success(current.status, true);
         }
     }
 
@@ -753,17 +816,24 @@ public class LivePluginManager {
 
     private OperationResult scan(boolean startup) throws Exception {
         List<String> failures = new ArrayList<>();
+        List<String> notices = new ArrayList<>();
         List<Path> sources;
         try (java.util.stream.Stream<Path> files = Files.list(pluginDirectory)) {
             sources = files.filter(path -> path.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".jar"))
                     .sorted().collect(java.util.stream.Collectors.toList());
         }
+        skipped.keySet().retainAll(new HashSet<>(sources));
         for (Path source : sources) {
+            String digest = null;
             try {
                 Properties origin = readOrigin(source);
                 Installation existing = installed.values().stream().filter(i -> i.source.equals(source)).findFirst().orElse(null);
-                String digest = hash(source);
+                digest = hash(source);
                 if (existing != null && existing.digest.equals(digest)) {
+                    skipped.remove(source);
+                    continue;
+                }
+                if (digest.equals(skipped.get(source))) {
                     continue;
                 }
                 String hubId = origin.getProperty("hubId");
@@ -775,20 +845,29 @@ public class LivePluginManager {
                         expectedHash = digest;
                     }
                 }
-                OperationResult result = installNow(source, existing == null ? null : existing.artifact.id,
+                OperationResult result = installNow(source, existing == null || hubId != null ? null : existing.artifact.id,
                         hubId, expectedHash, false, startup);
-                if (!result.success) {
+                if (result.success) {
+                    skipped.remove(source);
+                } else {
+                    skipped.put(source, digest);
                     failures.add(source.getFileName() + ": " + result.message);
                     if (startup) {
                         reportBlocked(jarName(source), "", "load", result.message);
                     }
                 }
             } catch (LivePluginArtifact.BlockedPluginException blocked) {
-                failures.add(source.getFileName() + ": " + blocked.getMessage());
+                if (digest != null) {
+                    skipped.put(source, digest);
+                }
+                notices.add(blockedNotice(blocked, source));
                 if (startup) {
                     reportBlocked(blocked.internalName, blocked.version, "compatibility check", blocked.reason);
                 }
             } catch (Exception | LinkageError | AssertionError failure) {
+                if (digest != null) {
+                    skipped.put(source, digest);
+                }
                 failures.add(source.getFileName() + ": " + message(failure));
                 if (startup) {
                     reportBlocked(jarName(source), "", "load", message(failure));
@@ -804,8 +883,22 @@ public class LivePluginManager {
                 }
             }
         }
-        return failures.isEmpty() ? OperationResult.success("Plugin folder refreshed.")
-                : OperationResult.failure(String.join("\n", failures));
+        if (!failures.isEmpty()) {
+            failures.addAll(notices);
+            return OperationResult.failure(String.join("\n", failures));
+        }
+        return OperationResult.success(notices.isEmpty() ? "Plugin folder refreshed."
+                : "Plugin folder refreshed.\n" + String.join("\n", notices));
+    }
+
+    private static String blockedNotice(LivePluginArtifact.BlockedPluginException blocked, Path source) {
+        String label = blocked.displayName + " (" + source.getFileName() + ")";
+        if (blocked.reason.startsWith("requires client")) {
+            return label + " needs a newer Microbot: " + blocked.reason
+                    + ". Update Microbot, or remove the JAR. It is skipped until then.";
+        }
+        return label + " is blocked by the Plugin Hub: " + blocked.reason
+                + ". Remove it in the Plugin Hub, or install a working version there. It is skipped until then.";
     }
 
     private void watch() {
@@ -822,15 +915,13 @@ public class LivePluginManager {
                 }
             }
             if (current.equals(observed)) {
-                List<Installation> tracked = new ArrayList<>();
+                Map<Path, String> expected = new HashMap<>(skipped);
                 for (Installation installation : installed.values()) {
                     if (!installation.pendingRestart) {
-                        tracked.add(installation);
+                        expected.put(installation.source, installation.digest);
                     }
                 }
-                boolean changed = current.size() != tracked.size() || tracked.stream()
-                        .anyMatch(i -> !i.digest.equals(current.get(i.source)));
-                if (changed) {
+                if (!current.equals(expected)) {
                     OperationResult result = scan(false);
                     if (!result.success) {
                         watching = false;
@@ -1116,18 +1207,24 @@ public class LivePluginManager {
     public static final class OperationResult {
         private final boolean success;
         private final String message;
+        private final boolean needsRestart;
 
-        private OperationResult(boolean success, String message) {
+        private OperationResult(boolean success, String message, boolean needsRestart) {
             this.success = success;
             this.message = message;
+            this.needsRestart = needsRestart;
         }
 
         public static OperationResult success(String message) {
-            return new OperationResult(true, message);
+            return new OperationResult(true, message, false);
+        }
+
+        public static OperationResult success(String message, boolean needsRestart) {
+            return new OperationResult(true, message, needsRestart);
         }
 
         public static OperationResult failure(String message) {
-            return new OperationResult(false, message);
+            return new OperationResult(false, message, false);
         }
     }
 }
