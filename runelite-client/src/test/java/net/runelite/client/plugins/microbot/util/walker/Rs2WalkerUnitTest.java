@@ -320,6 +320,50 @@ public class Rs2WalkerUnitTest {
                 new String[]{"Open"}));
     }
 
+    @Test
+    public void guidorGateTransport_matchesBothBiohazardGateLeaves() {
+        assertTrue(Rs2WalkerTransports.isGuidorGateTransport(guidorGateTransport(
+                new WorldPoint(3263, 3405, 0), new WorldPoint(3264, 3405, 0),
+                net.runelite.api.gameval.ObjectID.GUIDORGATELCLOSED)));
+        assertTrue(Rs2WalkerTransports.isGuidorGateTransport(guidorGateTransport(
+                new WorldPoint(3264, 3406, 0), new WorldPoint(3263, 3406, 0),
+                net.runelite.api.gameval.ObjectID.GUIDORGATERCLOSED)));
+        assertFalse(Rs2WalkerTransports.isGuidorGateTransport(guidorGateTransport(
+                new WorldPoint(3152, 3363, 0), new WorldPoint(3153, 3363, 0), 136)));
+        assertFalse(Rs2WalkerTransports.isGuidorGateTransport(null));
+    }
+
+    @Test
+    public void guidorGateLanding_requiresExactDestinationTile() {
+        Transport eastbound = guidorGateTransport(
+                new WorldPoint(3263, 3405, 0), new WorldPoint(3264, 3405, 0),
+                net.runelite.api.gameval.ObjectID.GUIDORGATELCLOSED);
+
+        assertTrue(Rs2WalkerTransports.hasReachedGuidorGateDestination(
+                eastbound, eastbound.getDestination()));
+        assertFalse("standing at the gate while the guard searches is not a crossing",
+                Rs2WalkerTransports.hasReachedGuidorGateDestination(eastbound, eastbound.getOrigin()));
+        assertFalse(Rs2WalkerTransports.hasReachedGuidorGateDestination(
+                eastbound, new WorldPoint(3264, 3406, 0)));
+        assertFalse(Rs2WalkerTransports.hasReachedGuidorGateDestination(eastbound, null));
+
+        Transport door = guidorGateTransport(
+                new WorldPoint(3152, 3363, 0), new WorldPoint(3153, 3363, 0), 136);
+        assertFalse(Rs2WalkerTransports.hasReachedGuidorGateDestination(door, door.getDestination()));
+    }
+
+    private static Transport guidorGateTransport(WorldPoint origin, WorldPoint destination, int objectId) {
+        return new Transport(
+                origin,
+                destination,
+                "Gate",
+                TransportType.TRANSPORT,
+                false,
+                "Open",
+                "Gate",
+                objectId);
+    }
+
     private static Transport alKharidGateTransport(String action) {
         return new Transport(
                 new WorldPoint(3267, 3227, 0),

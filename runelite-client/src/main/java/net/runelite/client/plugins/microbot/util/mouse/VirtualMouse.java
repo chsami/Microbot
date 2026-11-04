@@ -3,6 +3,7 @@ package net.runelite.client.plugins.microbot.util.mouse;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Point;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.ScriptPauseController;
 import net.runelite.client.plugins.microbot.util.input.AwtEmitter;
 import net.runelite.client.plugins.microbot.util.input.InputArbiter;
 import net.runelite.client.plugins.microbot.util.input.InputLoop;
@@ -87,10 +88,19 @@ public class VirtualMouse extends Mouse {
      * happen on the client thread. Every gesture goes through here so none can forget.
      */
     private void runGesture(Runnable gesture) {
+        if (ScriptPauseController.isPaused()) {
+            return;
+        }
+        long generation = ScriptPauseController.getGeneration();
+        Runnable fencedGesture = () -> {
+            if (!ScriptPauseController.isPaused() && generation == ScriptPauseController.getGeneration()) {
+                gesture.run();
+            }
+        };
         if (Microbot.getClient().isClientThread()) {
-            scheduledExecutorService.schedule(gesture, 0, TimeUnit.MILLISECONDS);
+            scheduledExecutorService.schedule(fencedGesture, 0, TimeUnit.MILLISECONDS);
         } else {
-            gesture.run();
+            fencedGesture.run();
         }
     }
 

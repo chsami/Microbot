@@ -613,6 +613,55 @@ public class Rs2PathApiPlanningTest
 	}
 
 	@Test
+	public void teleportFreePlanPrefersWalkableTargetAndRestoresSharedPolicy() throws Exception
+	{
+		WorldPoint start = new WorldPoint(3222, 3218, 0);
+		WorldPoint walkableTarget = new WorldPoint(3232, 3218, 0);
+		WorldPoint teleportTarget = new WorldPoint(3094, 3492, 0);
+		Transport oneWayTeleport = new Transport(
+			start, teleportTarget, "Synthetic one-way teleport",
+			TransportType.TELEPORTATION_SPELL, false, 4);
+		PathfinderConfig teleportConfig = configWithTransport(start, oneWayTeleport);
+		PathfinderConfig original = ShortestPathPlugin.pathfinderConfig;
+		Rs2RouteRequest request = Rs2RouteRequest.toAny(
+				start, new LinkedHashSet<>(List.of(walkableTarget, teleportTarget)))
+			.withRefreshPolicy(Rs2RouteRequest.RefreshPolicy.NEVER);
+		try
+		{
+			ShortestPathPlugin.pathfinderConfig = teleportConfig;
+
+			assertEquals(teleportTarget, Rs2PathApi.plan(request).getEndpoint().orElse(null));
+			assertEquals(walkableTarget,
+				Rs2PathApi.plan(request.withoutTeleports()).getEndpoint().orElse(null));
+			assertFalse(teleportConfig.isIgnoreTeleportAndItems());
+			assertEquals(teleportTarget, Rs2PathApi.plan(request).getEndpoint().orElse(null));
+		}
+		finally
+		{
+			ShortestPathPlugin.pathfinderConfig = original;
+		}
+
+		assertFalse(request.isTeleportsIgnored());
+		assertTrue(request.withoutTeleports()
+			.withPurpose(Rs2RouteRequest.Purpose.BANK_ROUTE_TO_BANK)
+			.withRefreshTarget(walkableTarget)
+			.withBankItems(false)
+			.isTeleportsIgnored());
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void activeRouteRejectsTemporaryTeleportPolicy()
+	{
+		Rs2PathApi.restartActiveRoute(
+			Rs2RouteRequest.to(
+				new WorldPoint(3222, 3218, 0),
+				new WorldPoint(3232, 3218, 0))
+				.withoutTeleports(),
+			false,
+			0);
+	}
+
+	@Test
 	public void namedRuntimePolicyOperationsOwnMutableConfiguration()
 	{
 		PathfinderConfig original = ShortestPathPlugin.pathfinderConfig;

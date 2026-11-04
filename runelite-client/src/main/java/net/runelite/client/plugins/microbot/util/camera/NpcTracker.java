@@ -3,6 +3,7 @@ package net.runelite.client.plugins.microbot.util.camera;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Actor;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.ScriptPauseController;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 
 import java.util.concurrent.Executors;
@@ -17,6 +18,8 @@ public class NpcTracker {
 
     // The original method to track the actor
     private static void trackNpc(int npcId) {
+        if (ScriptPauseController.isPaused()) return;
+        long generation = ScriptPauseController.getGeneration();
         if (!Microbot.isLoggedIn()) {
             return;
         }
@@ -26,7 +29,11 @@ public class NpcTracker {
         }
         int yaw = Rs2Camera.calculateCameraYaw(Rs2Camera.angleToTile(actor));
         int clientYaw = Rs2Camera.toClientAngleUnits(yaw);
-        Microbot.getClientThread().invokeLater(() -> Microbot.getClient().setCameraYawTarget(clientYaw));
+        Microbot.getClientThread().invokeLater(() -> {
+            if (!ScriptPauseController.isPaused() && generation == ScriptPauseController.getGeneration()) {
+                Microbot.getClient().setCameraYawTarget(clientYaw);
+            }
+        });
     }
 
     /**

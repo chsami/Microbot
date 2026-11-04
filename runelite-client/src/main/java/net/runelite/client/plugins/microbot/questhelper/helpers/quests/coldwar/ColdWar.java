@@ -50,7 +50,8 @@ public class ColdWar extends BasicQuestHelper
 		agilityEnterWater, agilityExitWater, agilityJumpStones, agilityTreadSoftly, agilityCrossIce, agilityDone,
 		tellLarryAboutArmy, kgpBeforePingPong, pingPong1, removePenguinSuitForBongos, makeBongos, pingPong2,
 		pingPong3, openControlDoor, enterWarRoom, exitIcelordPen, killIcelords, useChasm, tellLarryPlans,
-		enterAvalanche2, enterAvalanche3;
+		enterAvalanche2, enterAvalanche3, tuxedoTimeZooPenguinReturn, enterPenguinPenZooPenguinReturn, tuxedoTimeThingReturn,
+		tuxedoTimeOutpostInfo;
 
 	//Zones
 	Zone onIceberg, inPenguinPen, inPenguinPen2, atZoo, atLumbridgeSheepFarm, inAgilityStart, inAgilityWater, inAgilityStones,
@@ -103,14 +104,20 @@ public class ColdWar extends BasicQuestHelper
 		lumbridgeVisit1.addStep(new Conditions(isPenguin, isAtZoo), exitSuit);
 		steps.put(45, lumbridgeVisit1);
 
-		steps.put(50, returnToZooPenguin);
+		ConditionalStep zooPenguinPhrase = new ConditionalStep(this, tuxedoTimeZooPenguinReturn);
+		zooPenguinPhrase.addStep(isInPenguinPen, returnToZooPenguin);
+		zooPenguinPhrase.addStep(isPenguin, enterPenguinPenZooPenguinReturn);
+		steps.put(50, zooPenguinPhrase);
 
-		steps.put(55, returnToThing);
+		ConditionalStep thingPhrase = new ConditionalStep(this, tuxedoTimeThingReturn);
+		thingPhrase.addStep(new Conditions(isPenguin, isAtLumbridgeSheepFarm), returnToThing);
+		steps.put(55, thingPhrase);
 
 		steps.put(60, fredTheFarmer);
 
 		ConditionalStep outpostInfo = new ConditionalStep(this, stealCowbell);
-		outpostInfo.addStep(cowbell, askThingAboutOutpost);
+		outpostInfo.addStep(new Conditions(cowbell, isPenguin, isAtLumbridgeSheepFarm), askThingAboutOutpost);
+		outpostInfo.addStep(cowbell, tuxedoTimeOutpostInfo);
 		steps.put(65, outpostInfo);
 
 		ConditionalStep enterTheIceberg = new ConditionalStep(this, tellLarryAboutOutpost);
@@ -332,7 +339,16 @@ public class ColdWar extends BasicQuestHelper
 			"I need that phrase!", "The penguins in Lumbridge refuse to talk to me.",
 			"I must have left the outpost before they gave out the phrase.", "Sure!");
 
+		tuxedoTimeZooPenguinReturn = new NpcStep(this, NpcID.PENG_LARRY_ZOO, new WorldPoint(2597, 3266, 0), "Bring a raw cod or wear the Ring of Charos (a), unequip your cape and weapons, then right-click Tuxedo-time Larry at the Ardougne Zoo.", clockworkSuit, rawCodOrCharos);
+		tuxedoTimeZooPenguinReturn.addDialogStep("Yes");
+
+		enterPenguinPenZooPenguinReturn = new ObjectStep(this, ObjectID.PENG_ARDOUGNE_ENCLOSURE_DOOR, new WorldPoint(2594, 3266, 0), "Enter the penguin pen with a raw cod, or wearing the Ring of Charos (a).", rawCodOrCharos);
+		returnToZooPenguin.addSubSteps(tuxedoTimeZooPenguinReturn, enterPenguinPenZooPenguinReturn);
+
 		returnToThing = new NpcStep(this, NpcID.SHEEP_SHEARER_THE_THING, new WorldPoint(3201, 3266, 0), "Speak to the sheep-penguins again in the Lumbridge sheep farm.", clockworkSuit);
+
+		tuxedoTimeThingReturn = new NpcStep(this, NpcID.PENG_LARRY_ZOO, new WorldPoint(3212, 3263, 0), "Tuxedo-time Larry in the Lumbridge sheep farm, then speak to the sheep-penguins again.", clockworkSuit);
+		returnToThing.addSubSteps(tuxedoTimeThingReturn);
 
 		fredTheFarmer = new NpcStep(this, NpcID.FRED_THE_FARMER, new WorldPoint(3189, 3273, 0), "Talk to Fred the Farmer without the penguin suit.");
 		fredTheFarmer.addDialogStep("I need to talk to you about penguins.");
@@ -342,6 +358,9 @@ public class ColdWar extends BasicQuestHelper
 
 		askThingAboutOutpost = new NpcStep(this, NpcID.SHEEP_SHEARER_THE_THING, new WorldPoint(3201, 3266, 0), "Speak to the sheep-penguins once again in the Lumbridge sheep farm to learn about the outpost.", clockworkSuit);
 		askThingAboutOutpost.addDialogStep("The Farmer is harmless.");
+
+		tuxedoTimeOutpostInfo = new NpcStep(this, NpcID.PENG_LARRY_ZOO, new WorldPoint(3212, 3263, 0), "Tuxedo-time Larry in the Lumbridge sheep farm, then speak to the sheep-penguins about the outpost.", clockworkSuit, cowbell);
+		askThingAboutOutpost.addSubSteps(tuxedoTimeOutpostInfo);
 
 		tellLarryAboutOutpost = new NpcStep(this, NpcID.PENG_LARRY_ZOO, new WorldPoint(3212, 3263, 0), "Tell Larry about the outpost and travel back to the iceberg.", swampTar, feathers, lumbridgeMissionReport);
 		tellLarryAboutOutpost.addDialogStep("Yes");
