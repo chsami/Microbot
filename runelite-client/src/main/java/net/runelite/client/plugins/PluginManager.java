@@ -46,6 +46,7 @@ import net.runelite.client.events.PluginChanged;
 import net.runelite.client.events.ProfileChanged;
 import net.runelite.client.plugins.microbot.AlwaysOnPlugins;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.externalplugins.PluginJarClassLoader;
 import net.runelite.client.plugins.microbot.recovery.StartupRecovery;
 import net.runelite.client.task.Scheduler;
 import net.runelite.client.ui.SplashScreen;
@@ -61,6 +62,7 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
@@ -81,6 +83,9 @@ public class PluginManager {
     private final Provider<GameEventManager> sceneTileManager;
     private final PluginModuleFactory pluginModuleFactory;
     private final List<Plugin> plugins = new CopyOnWriteArrayList<>();
+    private final Set<Plugin> unloadingPlugins = java.util.concurrent.ConcurrentHashMap.newKeySet();
+    // Plugin equality is final and identity-based; keep failures even after activePlugins removes it.
+    private final Map<Plugin, Throwable> shutdownFailures = new ConcurrentHashMap<>();
     @Getter
     private final List<Plugin> activePlugins = new CopyOnWriteArrayList<>();
 
@@ -330,7 +335,7 @@ public class PluginManager {
 				{
 					// also disable the plugin from autostarting later
 					configManager.setConfiguration(RuneLiteConfig.GROUP_NAME,
-						(Strings.isNullOrEmpty(pluginDescriptor.configName()) ? clazz.getSimpleName() : pluginDescriptor.configName()).toLowerCase(),
+						getPluginConfigurationKey(clazz),
 						false);
 				}
 				continue;
@@ -381,7 +386,8 @@ public class PluginManager {
         // plugins always start in the EDT
         assert SwingUtilities.isEventDispatchThread();
 
-        if (activePlugins.contains(plugin) || !isPluginEnabled(plugin)) {
+        if (unloadingPlugins.contains(plugin)
+                || activePlugins.contains(plugin) || !isPluginEnabled(plugin)) {
             return false;
         }
 
@@ -398,15 +404,17 @@ public class PluginManager {
         activePlugins.add(plugin);
 
         PluginDescriptor descriptor = plugin.getClass().getAnnotation(PluginDescriptor.class);
-        boolean external = descriptor != null && descriptor.isExternal();
+        boolean external = descriptor != null && (descriptor.isExternal()
+                || plugin.getClass().getClassLoader() instanceof PluginJarClassLoader);
         String pluginName = plugin.getClass().getSimpleName();
         if (external) {
             StartupRecovery.pluginStarting(pluginName,
-                (Strings.isNullOrEmpty(descriptor.configName()) ? pluginName : descriptor.configName()).toLowerCase());
+                getPluginConfigurationKey(plugin.getClass()));
         }
 
         try {
             plugin.startUp();
+            shutdownFailures.remove(plugin);
 
             log.debug("Plugin {} is now running", plugin.getClass().getSimpleName());
             if (sceneTileManager != null) {
@@ -444,24 +452,33 @@ public class PluginManager {
         // plugins always stop in the EDT
         assert SwingUtilities.isEventDispatchThread();
 
-        if (!activePlugins.remove(plugin)) {
+        if (!activePlugins.remove(plugin) && !shutdownFailures.containsKey(plugin)) {
             return false;
         }
 
         StartupRecovery.pluginStopped(plugin.getClass().getSimpleName());
         scheduler.unregister(plugin);
         eventBus.unregister(plugin);
-
         try {
             plugin.shutDown();
+            shutdownFailures.remove(plugin);
 
             log.debug("Plugin {} is now stopped", plugin.getClass().getSimpleName());
             eventBus.post(new PluginChanged(plugin, false));
         } catch (Exception ex) {
+            shutdownFailures.put(plugin, ex);
             throw new PluginInstantiationException(ex);
+        } catch (Error ex) {
+            shutdownFailures.put(plugin, ex);
+            throw ex;
         }
 
         return true;
+    }
+
+    /** A failed shutdown remains visible even though the plugin is no longer marked active. */
+    public Throwable getShutdownFailure(Plugin plugin) {
+        return shutdownFailures.get(plugin);
     }
 
     public boolean isActive(Plugin plugin) {
@@ -477,9 +494,7 @@ public class PluginManager {
             return;
         }
 
-        final PluginDescriptor pluginDescriptor = plugin.getClass().getAnnotation(PluginDescriptor.class);
-        final String keyName = Strings.isNullOrEmpty(pluginDescriptor.configName()) ? plugin.getClass().getSimpleName() : pluginDescriptor.configName();
-        configManager.setConfiguration(RuneLiteConfig.GROUP_NAME, keyName.toLowerCase(), String.valueOf(enabled));
+        configManager.setConfiguration(RuneLiteConfig.GROUP_NAME, getPluginConfigurationKey(plugin.getClass()), String.valueOf(enabled));
 
         if (enabled) {
             List<Plugin> conflicts = conflictsForPlugin(plugin);
@@ -499,13 +514,37 @@ public class PluginManager {
      */
     public boolean isPluginEnabled(Plugin plugin) {
         final PluginDescriptor pluginDescriptor = plugin.getClass().getAnnotation(PluginDescriptor.class);
-        final String keyName = Strings.isNullOrEmpty(pluginDescriptor.configName()) ? plugin.getClass().getSimpleName() : pluginDescriptor.configName();
-        final String value = configManager.getConfiguration(RuneLiteConfig.GROUP_NAME, keyName.toLowerCase());
-
         if (isPluginAlwaysOn(plugin))
             return true;
 
+        final String keyName = getPluginConfigurationKey(plugin.getClass());
+        String value = configManager.getConfiguration(RuneLiteConfig.GROUP_NAME, keyName);
+        String legacyKey = legacyPluginConfigurationKey(plugin.getClass());
+        if (value == null && !keyName.equals(legacyKey)
+                && plugins.stream().noneMatch(other -> other.getClass() != plugin.getClass()
+                    && legacyPluginConfigurationKey(other.getClass()).equals(legacyKey))) {
+            // Migrate only when the old key has one unambiguous owner. A built-in plugin must
+            // never enable an unrelated external plugin with the same simple class name.
+            value = configManager.getConfiguration(RuneLiteConfig.GROUP_NAME, legacyKey);
+            if (value != null) {
+                configManager.setConfiguration(RuneLiteConfig.GROUP_NAME, keyName, value);
+            }
+        }
         return value != null ? Boolean.parseBoolean(value) : pluginDescriptor.enabledByDefault();
+    }
+
+    /** Enable/disable identity for a plugin; external default names are isolated from core names. */
+    public static String getPluginConfigurationKey(Class<?> type) {
+        PluginDescriptor descriptor = type.getAnnotation(PluginDescriptor.class);
+        if (Strings.isNullOrEmpty(descriptor.configName()) && type.getClassLoader() instanceof PluginJarClassLoader) {
+            return "external." + type.getName().toLowerCase(Locale.ROOT);
+        }
+        return legacyPluginConfigurationKey(type);
+    }
+
+    private static String legacyPluginConfigurationKey(Class<?> type) {
+        PluginDescriptor descriptor = type.getAnnotation(PluginDescriptor.class);
+        return (Strings.isNullOrEmpty(descriptor.configName()) ? type.getSimpleName() : descriptor.configName()).toLowerCase(Locale.ROOT);
     }
 
     public boolean isPluginAlwaysOn(Plugin plugin) {
@@ -534,11 +573,7 @@ public class PluginManager {
                 throw new PluginInstantiationException("Unmet dependency for " + clazz.getSimpleName() + ": " + pluginDependency.value().getSimpleName());
             }
 
-            var module = dependency.get().getPublicModule();
-            if (module != null)
-            {
-                modules.add(module);
-            }
+            modules.add(pluginModuleFactory.dependencyModule(dependency.get()));
         }
 
         Plugin plugin;
@@ -578,6 +613,24 @@ public class PluginManager {
 
     public void remove(Plugin plugin) {
         plugins.remove(plugin);
+        unloadingPlugins.remove(plugin);
+        shutdownFailures.remove(plugin);
+    }
+
+    /** Prepare an external instance without publishing it in the live plugin list. */
+    @SuppressWarnings("unchecked")
+    public Plugin preparePlugin(Class<? extends Plugin> type, Collection<Plugin> dependencies)
+            throws PluginInstantiationException {
+        return instantiate(new ArrayList<>(dependencies), (Class<Plugin>) type);
+    }
+
+    /** Prevent profile changes and UI toggles from restarting a plugin during permanent disposal. */
+    public void setPluginUnloading(Plugin plugin, boolean unloading) {
+        if (unloading) {
+            unloadingPlugins.add(plugin);
+        } else {
+            unloadingPlugins.remove(plugin);
+        }
     }
 
     public Collection<Plugin> getPlugins() {

@@ -10,6 +10,10 @@ import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.util.Collections;
+import java.util.Enumeration;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 @Slf4j
 public class PluginJarClassLoader extends URLClassLoader implements ReflectUtil.PrivateLookupableClassLoader {
@@ -19,20 +23,52 @@ public class PluginJarClassLoader extends URLClassLoader implements ReflectUtil.
     private MethodHandles.Lookup lookup;
 
     private final ClassLoader parent;
+    private final Set<String> ownedClasses;
 
     public PluginJarClassLoader(File jarFile, ClassLoader parent) throws IOException {
+        this(jarFile, parent, null);
+    }
+
+    public PluginJarClassLoader(File jarFile, ClassLoader parent, Set<String> ownedClasses) throws IOException {
         super(new URL[]{jarFile.toURI().toURL()}, null);
         this.parent = parent;
+        this.ownedClasses = ownedClasses == null ? null : new LinkedHashSet<>(ownedClasses);
         ReflectUtil.installLookupHelper(this);
     }
 
     @Override
-    public Class<?> loadClass(String name) throws ClassNotFoundException {
-        try {
-            return super.loadClass(name);
-        } catch (ClassNotFoundException ex) {
-            return parent.loadClass(name);
+    protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
+        synchronized (getClassLoadingLock(name)) {
+            Class<?> result = findLoadedClass(name);
+            if (result == null) {
+                if (ownedClasses != null && !ownedClasses.contains(name)) {
+                    result = parent.loadClass(name);
+                } else {
+                    try {
+                        result = super.loadClass(name, false);
+                    } catch (ClassNotFoundException ex) {
+                        result = parent.loadClass(name);
+                    }
+                }
+            }
+            if (resolve) {
+                resolveClass(result);
+            }
+            return result;
         }
+    }
+
+    @Override
+    public URL getResource(String name) {
+        URL resource = findResource(name);
+        return resource != null ? resource : parent.getResource(name);
+    }
+
+    @Override
+    public Enumeration<URL> getResources(String name) throws IOException {
+        Set<URL> resources = new LinkedHashSet<>(Collections.list(findResources(name)));
+        resources.addAll(Collections.list(parent.getResources(name)));
+        return Collections.enumeration(resources);
     }
 
     @Override

@@ -235,6 +235,59 @@ tasks.register<JavaExec>("exportEmbeddedUpstreamPlannerComparison") {
     outputs.upToDateWhen { false }
 }
 
+// Build one plugin artifact without embedding the client or shared services.
+val configureStandalonePluginJar: Jar.(String, String) -> Unit = { pluginPackage, pluginClass ->
+    group = "build"
+    dependsOn(tasks.named("classes"))
+    val packagePath = pluginPackage.replace('.', '/')
+    archiveFileName.set("${pluginClass.substringAfterLast('.').ifBlank { "plugin" }}.jar")
+    from(sourceSets.main.get().output) {
+        include("$packagePath/**")
+        exclude("**/AGENTS.md", "**/README.md", "**/docs/**", "**/dependencies.txt")
+    }
+    manifest {
+        attributes(mapOf(
+            "Microbot-Plugin-Id" to pluginClass,
+            "Microbot-Plugin-Class" to pluginClass
+        ))
+    }
+    isPreserveFileTimestamps = false
+    isReproducibleFileOrder = true
+
+    doFirst {
+        val microbotPrefix = "net.runelite.client.plugins.microbot."
+        val qualifiedName = Regex("[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)+")
+        require(qualifiedName.matches(pluginPackage) && pluginPackage.startsWith(microbotPrefix)) {
+            "Set -PpluginPackage to one full Microbot plugin package"
+        }
+        val sharedPackages = setOf(
+            "agentserver", "api", "externalplugins", "globval", "statemachine", "ui", "util"
+        )
+        require(pluginPackage.removePrefix(microbotPrefix).substringBefore('.') !in sharedPackages) {
+            "Shared Microbot services cannot be exported as a standalone plugin"
+        }
+        require(qualifiedName.matches(pluginClass) && pluginClass.startsWith("$pluginPackage.")) {
+            "Set -PpluginClass to the full @PluginDescriptor class inside -PpluginPackage"
+        }
+        val classPath = pluginClass.replace('.', '/') + ".class"
+        require(sourceSets.main.get().output.classesDirs.any { File(it, classPath).isFile }) {
+            "Plugin entry class was not compiled: $pluginClass"
+        }
+        val sourceFile = file("src/main/java/${pluginClass.replace('.', '/')}.java")
+        require(sourceFile.isFile && sourceFile.readText().contains("@PluginDescriptor")) {
+            "Plugin entry class must declare @PluginDescriptor: $pluginClass"
+        }
+    }
+}
+
+tasks.register<Jar>("pluginJar") {
+    description = "Export one plugin with -PpluginPackage=<full package> -PpluginClass=<full class>"
+    configureStandalonePluginJar(
+        providers.gradleProperty("pluginPackage").getOrElse(""),
+        providers.gradleProperty("pluginClass").getOrElse("")
+    )
+}
+
 tasks.register<Test>("runUnitTests") {
     group = "verification"
     description = "Run unit tests only (no client, no login) — safe for CI"
