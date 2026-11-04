@@ -44,7 +44,7 @@ public class PlatformMetadataTransformerTest
 	{
 		restore(HwidAgent.TOGGLE_PROPERTY, previousSpoof);
 		restore("os.name", previousOs);
-		System.clearProperty(HwidAgent.PLATFORM_HOOK_PROPERTY);
+		HwidAgent.resetPlatformHooksForTest();
 		System.clearProperty(HwidAgent.AGENT_PROPERTY);
 	}
 
