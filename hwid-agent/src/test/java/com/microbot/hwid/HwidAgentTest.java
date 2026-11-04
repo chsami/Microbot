@@ -650,7 +650,6 @@ public class HwidAgentTest
 			RandomDatTransformer.resetForTesting();
 			RandomDatWriteTransformer.resetForTesting();
 			ClassFileTransformer[] transformers = {
-				new PlatformMetadataTransformer(),
 				new PlatformInfoTransformer(),
 				new RandomDatTransformer(),
 				new RandomDatWriteTransformer()

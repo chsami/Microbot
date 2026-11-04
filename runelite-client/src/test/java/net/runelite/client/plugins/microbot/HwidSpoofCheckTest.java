@@ -19,7 +19,6 @@ public class HwidSpoofCheckTest
 	{
 		properties.put(HwidSpoofCheck.AGENT_PROPERTY, "loaded");
 		properties.put(HwidSpoofCheck.DEVICE_HOOK_PROPERTY, "true");
-		properties.put(HwidSpoofCheck.PLATFORM_HOOK_PROPERTY, "true");
 	}
 
 	@Test
@@ -51,16 +50,6 @@ public class HwidSpoofCheckTest
 		properties.put(HwidSpoofCheck.RANDOM_DAT_CALL_PROPERTY, "1500");
 		check.loginStarted();
 		assertEquals(Optional.of(HwidSpoofCheck.DEVICE_HOOK_MISSING), check.loggedIn(true));
-	}
-
-	@Test
-	public void reportsMissingPlatformHook()
-	{
-		properties.put(HwidSpoofCheck.AGENT_PROPERTY, "loaded");
-		properties.put(HwidSpoofCheck.DEVICE_HOOK_PROPERTY, "true");
-		properties.put(HwidSpoofCheck.RANDOM_DAT_CALL_PROPERTY, "1500");
-		check.loginStarted();
-		assertEquals(Optional.of(HwidSpoofCheck.PLATFORM_HOOK_MISSING), check.loggedIn(true));
 	}
 
 	@Test
