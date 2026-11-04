@@ -58,7 +58,7 @@ public class HwidAgentOptInTest
 		System.setProperty(HwidAgent.TOGGLE_PROPERTY, "true");
 		AtomicInteger transformers = new AtomicInteger();
 		HwidAgent.premain(null, countingInstrumentation(transformers));
-		assertEquals(3, transformers.get());
+		assertEquals(4, transformers.get());
 		assertEquals(HwidAgent.AGENT_LOADED, System.getProperty(HwidAgent.AGENT_PROPERTY));
 	}
 
