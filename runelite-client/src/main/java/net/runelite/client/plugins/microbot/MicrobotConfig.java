@@ -69,10 +69,16 @@ public interface MicrobotConfig extends Config
 	 * untick is respected.
 	 */
 	String keySpoofLauncherSeeded = "spoofDeviceIdLauncherSeeded";
+	/**
+	 * Not a @ConfigItem: records the one-time opt-in migration. Existing installs already saved the old default
+	 * (true); the first start without the launcher opting in resets it to false once, so nobody is left spoof-on
+	 * without having chosen it.
+	 */
+	String keySpoofOptInMigrated = "spoofDeviceIdOptInMigrated";
 	@ConfigItem(
 		keyName = keySpoofDeviceId,
 		name = "Spoof device ID",
-		description = "Send a random device ID and random.dat seed, kept per account, instead of the real ones. Off by default. Also needs Spoof hardware IDs ticked in the Microbot launcher, then a client restart",
+		description = "Send a random device ID and login seed (random.dat), kept per account, instead of the real ones. Only works when Spoof hardware IDs is ticked in the Microbot launcher; restart the client after changing that",
 		position = 3,
 		section = generalSection
 	)

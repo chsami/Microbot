@@ -89,6 +89,16 @@ public class HwidSpoofCheckTest
 	}
 
 	@Test
+	public void launcherWarningsOfferAWayOut()
+	{
+		for (String message : new String[]{HwidSpoofCheck.LAUNCHER_NOT_OPTED_IN, HwidSpoofCheck.LAUNCHER_DISABLED})
+		{
+			assertTrue(message, message.contains("turn off Spoof device ID"));
+		}
+		assertTrue(HwidSpoofCheck.SETTING_OFF_WITH_LAUNCHER_ON.contains("untick Spoof hardware IDs"));
+	}
+
+	@Test
 	public void rawLaunchFlagsStayOutOfChatMessages()
 	{
 		for (String message : new String[]{HwidSpoofCheck.AGENT_MISSING, HwidSpoofCheck.LAUNCHER_NOT_OPTED_IN,

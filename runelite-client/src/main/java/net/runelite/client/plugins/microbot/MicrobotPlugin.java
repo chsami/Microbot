@@ -107,6 +107,9 @@ public class MicrobotPlugin extends Plugin
 	private static final String HWID_AGENT_LOADED = HwidSpoofCheck.AGENT_LOADED;
 	private EnumSet<WorldType> lastWorldTypeProfile = null;
 	private final HwidSpoofCheck hwidSpoofCheck = new HwidSpoofCheck();
+	static final String HWID_SPOOF_SEEDED_NOTICE = "Spoof device ID was turned on because Spoof hardware IDs is ticked in the Microbot launcher. You can turn it off in Microbot > General.";
+	/** Chat line shown at the next login; set in startUp, before chat can show it. */
+	private volatile String hwidSpoofPendingNotice;
 
 	@Inject
 	private Provider<MicrobotPluginListPanel> pluginListPanelProvider;
@@ -209,15 +212,7 @@ public class MicrobotPlugin extends Plugin
 		gameChatAppender = new GameChatAppender();
 		gameChatAppender.setName("GAME_CHAT");
 
-		// RuneLite has already written the setting's default (false) by now, so "nothing saved" can't be detected.
-		// The first launch where the launcher opted in (agent loaded) turns the setting on once and records that
-		// in a marker key; afterwards the saved setting alone decides, so a later untick is respected.
-		if (HWID_AGENT_LOADED.equals(System.getProperty(HWID_AGENT_PROPERTY))
-			&& configManager.getConfiguration(MicrobotConfig.configGroup, MicrobotConfig.keySpoofLauncherSeeded) == null)
-		{
-			configManager.setConfiguration(MicrobotConfig.configGroup, MicrobotConfig.keySpoofDeviceId, true);
-			configManager.setConfiguration(MicrobotConfig.configGroup, MicrobotConfig.keySpoofLauncherSeeded, true);
-		}
+		applyHwidSpoofMarkers(HWID_AGENT_LOADED.equals(System.getProperty(HWID_AGENT_PROPERTY)));
 		System.setProperty(HWID_SPOOF_PROPERTY, Boolean.toString(microbotConfig.spoofDeviceId()));
 
 		// Set pattern based on new configuration
@@ -441,6 +436,7 @@ public class MicrobotPlugin extends Plugin
 				}
 		   }
 		   hwidSpoofCheck.loggedIn(microbotConfig.spoofDeviceId()).ifPresent(this::reportHwidSpoofProblem);
+		   showPendingHwidSpoofNotice();
 	   }
 	   if (gameStateChanged.getGameState() == GameState.LOGIN_SCREEN || gameStateChanged.getGameState() == GameState.HOPPING)
 	   {
@@ -471,6 +467,45 @@ public class MicrobotPlugin extends Plugin
 			log.warn(HwidSpoofCheck.MANUAL_LAUNCH_HINT);
 		}
 		queueHighlightedConsoleMessage(problem);
+	}
+
+	/**
+	 * RuneLite has already written every setting's default by startUp, so "never saved" can't be detected from the
+	 * setting itself; two marker keys (not @ConfigItems) record one-time steps instead.
+	 * Migration: installs from before opt-in saved the old default (true). The first start without the launcher
+	 * opting in resets it to false once. Seed: the first start where the launcher opted in (agent loaded) turns it
+	 * on once, with a chat notice if that changed it. Afterwards the saved setting alone decides.
+	 */
+	private void applyHwidSpoofMarkers(boolean agentLoaded)
+	{
+		String group = MicrobotConfig.configGroup;
+		if (configManager.getConfiguration(group, MicrobotConfig.keySpoofOptInMigrated) == null)
+		{
+			if (!agentLoaded)
+			{
+				configManager.setConfiguration(group, MicrobotConfig.keySpoofDeviceId, false);
+			}
+			configManager.setConfiguration(group, MicrobotConfig.keySpoofOptInMigrated, true);
+		}
+		if (agentLoaded && configManager.getConfiguration(group, MicrobotConfig.keySpoofLauncherSeeded) == null)
+		{
+			if (!microbotConfig.spoofDeviceId())
+			{
+				configManager.setConfiguration(group, MicrobotConfig.keySpoofDeviceId, true);
+				hwidSpoofPendingNotice = HWID_SPOOF_SEEDED_NOTICE;
+			}
+			configManager.setConfiguration(group, MicrobotConfig.keySpoofLauncherSeeded, true);
+		}
+	}
+
+	private void showPendingHwidSpoofNotice()
+	{
+		String notice = hwidSpoofPendingNotice;
+		if (notice != null)
+		{
+			hwidSpoofPendingNotice = null;
+			queueHighlightedConsoleMessage(notice);
+		}
 	}
 
 	private void queueHighlightedConsoleMessage(String message)
