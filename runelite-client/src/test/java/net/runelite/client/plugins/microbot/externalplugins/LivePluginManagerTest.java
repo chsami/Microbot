@@ -161,6 +161,30 @@ public class LivePluginManagerTest {
     }
 
     @Test
+    public void installsPluginCompiledForJava17() throws Exception {
+        // Regression: ASM 9.0 rejected class file major version 61 before the JVM saw the class.
+        fixtureClassVersion = Opcodes.V17;
+        success(manager.install(fixture("java17.jar", "1.0", false)));
+        Plugin plugin = onlyPlugin();
+        assertEquals("1.0", resource(plugin));
+        assertEquals(1, counter(plugin, "starts"));
+    }
+
+    @Test
+    public void classNewerThanRuntimeIsRejectedWithReadableError() {
+        byte[] header = {(byte) 0xCA, (byte) 0xFE, (byte) 0xBA, (byte) 0xBE, 0, 0, 0, 0};
+        int major = Runtime.version().feature() + 45;
+        header[6] = (byte) (major >> 8);
+        header[7] = (byte) major;
+        try {
+            LivePluginArtifact.readClass("Future.class", header);
+            fail("Expected class newer than the runtime to be rejected");
+        } catch (java.io.IOException ex) {
+            assertTrue(ex.getMessage(), ex.getMessage().contains("--release 11"));
+        }
+    }
+
+    @Test
     public void addUpdateAndRemoveUseFreshCodeAndReleaseOwnedResources() throws Exception {
         Path v1 = fixture("v1.jar", "1.0", false);
         Path v2 = fixture("v2.jar", "2.0", false);
@@ -750,6 +774,9 @@ public class LivePluginManagerTest {
         }
     }
 
+    /** Class-file version written into fixture plugin classes. */
+    private int fixtureClassVersion = Opcodes.V11;
+
     private Path fixture(String filename, String version, boolean failStart) throws Exception {
         return fixture(filename, PLUGIN_ID, ENTRY_CLASS, CONFIG_KEY, version, failStart);
     }
@@ -762,7 +789,7 @@ public class LivePluginManagerTest {
     private Path fixture(String filename, String id, String className, String configName, String version, boolean failStart, boolean failStop) throws Exception {
         String type = className.replace('.', '/');
         ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_MAXS);
-        writer.visit(Opcodes.V11, Opcodes.ACC_PUBLIC, type, null, "net/runelite/client/plugins/Plugin", null);
+        writer.visit(fixtureClassVersion, Opcodes.ACC_PUBLIC, type, null, "net/runelite/client/plugins/Plugin", null);
         AnnotationVisitor descriptor = writer.visitAnnotation("Lnet/runelite/client/plugins/PluginDescriptor;", true);
         descriptor.visit("name", "Live fixture");
         descriptor.visit("configName", configName);

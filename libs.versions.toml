@@ -24,7 +24,7 @@
 #
 [versions]
 cache = "165"
-asm = "9.0"
+asm = "9.8"
 
 flatlaf = "3.2.5-rl4"
 guice = "4.1.0"
