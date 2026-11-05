@@ -9,6 +9,7 @@ import net.runelite.client.plugins.PluginInstantiationException;
 import net.runelite.client.plugins.PluginManager;
 import net.runelite.client.plugins.microbot.externalplugins.LivePluginManager.OperationResult;
 import org.junit.After;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -163,6 +164,7 @@ public class LivePluginManagerTest {
     @Test
     public void installsPluginCompiledForJava17() throws Exception {
         // Regression: ASM 9.0 rejected class file major version 61 before the JVM saw the class.
+        Assume.assumeTrue("Needs a Java 17+ test JVM", Runtime.version().feature() >= 17);
         fixtureClassVersion = Opcodes.V17;
         success(manager.install(fixture("java17.jar", "1.0", false)));
         Plugin plugin = onlyPlugin();
