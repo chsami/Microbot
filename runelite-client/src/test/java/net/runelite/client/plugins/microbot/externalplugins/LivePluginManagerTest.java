@@ -9,6 +9,7 @@ import net.runelite.client.plugins.PluginInstantiationException;
 import net.runelite.client.plugins.PluginManager;
 import net.runelite.client.plugins.microbot.externalplugins.LivePluginManager.OperationResult;
 import org.junit.After;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -158,6 +159,31 @@ public class LivePluginManagerTest {
             ((URLClassLoader) plugin.getClass().getClassLoader()).close();
         }
         SwingUtilities.invokeAndWait(() -> { });
+    }
+
+    @Test
+    public void installsPluginCompiledForJava17() throws Exception {
+        // Regression: ASM 9.0 rejected class file major version 61 before the JVM saw the class.
+        Assume.assumeTrue("Needs a Java 17+ test JVM", Runtime.version().feature() >= 17);
+        fixtureClassVersion = Opcodes.V17;
+        success(manager.install(fixture("java17.jar", "1.0", false)));
+        Plugin plugin = onlyPlugin();
+        assertEquals("1.0", resource(plugin));
+        assertEquals(1, counter(plugin, "starts"));
+    }
+
+    @Test
+    public void classNewerThanRuntimeIsRejectedWithReadableError() {
+        byte[] header = {(byte) 0xCA, (byte) 0xFE, (byte) 0xBA, (byte) 0xBE, 0, 0, 0, 0};
+        int major = Runtime.version().feature() + 45;
+        header[6] = (byte) (major >> 8);
+        header[7] = (byte) major;
+        try {
+            LivePluginArtifact.readClass("Future.class", header);
+            fail("Expected class newer than the runtime to be rejected");
+        } catch (java.io.IOException ex) {
+            assertTrue(ex.getMessage(), ex.getMessage().contains("--release 11"));
+        }
     }
 
     @Test
@@ -750,6 +776,9 @@ public class LivePluginManagerTest {
         }
     }
 
+    /** Class-file version written into fixture plugin classes. */
+    private int fixtureClassVersion = Opcodes.V11;
+
     private Path fixture(String filename, String version, boolean failStart) throws Exception {
         return fixture(filename, PLUGIN_ID, ENTRY_CLASS, CONFIG_KEY, version, failStart);
     }
@@ -762,7 +791,7 @@ public class LivePluginManagerTest {
     private Path fixture(String filename, String id, String className, String configName, String version, boolean failStart, boolean failStop) throws Exception {
         String type = className.replace('.', '/');
         ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_MAXS);
-        writer.visit(Opcodes.V11, Opcodes.ACC_PUBLIC, type, null, "net/runelite/client/plugins/Plugin", null);
+        writer.visit(fixtureClassVersion, Opcodes.ACC_PUBLIC, type, null, "net/runelite/client/plugins/Plugin", null);
         AnnotationVisitor descriptor = writer.visitAnnotation("Lnet/runelite/client/plugins/PluginDescriptor;", true);
         descriptor.visit("name", "Live fixture");
         descriptor.visit("configName", configName);

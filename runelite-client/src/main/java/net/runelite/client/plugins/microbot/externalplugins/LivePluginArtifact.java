@@ -60,7 +60,7 @@ final class LivePluginArtifact implements AutoCloseable {
                     throw new IOException("Multi-release plugin JARs are unsupported. Build a Java 11 plugin JAR.");
                 }
                 try (InputStream input = jar.getInputStream(entry)) {
-                    ClassReader reader = new ClassReader(input);
+                    ClassReader reader = readClass(entry.getName(), input.readAllBytes());
                     String className = reader.getClassName().replace('/', '.');
                     if (!entry.getName().equals(reader.getClassName() + ".class") || !classes.add(className)) {
                         throw new IOException("Duplicate or incorrectly named class: " + className);
@@ -122,6 +122,29 @@ final class LivePluginArtifact implements AutoCloseable {
         } catch (Throwable failure) {
             loader.close();
             throw failure;
+        }
+    }
+
+    /**
+     * Parses one class file, turning class-version problems into a readable install error
+     * instead of a raw ASM {@link IllegalArgumentException}.
+     */
+    static ClassReader readClass(String entryName, byte[] bytes) throws IOException {
+        if (bytes.length < 8) {
+            throw new IOException("Malformed class file in plugin JAR: " + entryName);
+        }
+        int major = ((bytes[6] & 0xFF) << 8) | (bytes[7] & 0xFF);
+        int classJava = major - 44;
+        int runtimeJava = Runtime.version().feature();
+        if (classJava > runtimeJava) {
+            throw new IOException("Plugin class " + entryName + " targets Java " + classJava
+                    + " but the client runs on Java " + runtimeJava + ". Rebuild the plugin with --release 11.");
+        }
+        try {
+            return new ClassReader(bytes);
+        } catch (IllegalArgumentException ex) {
+            throw new IOException("Unsupported class file in plugin JAR: " + entryName
+                    + " (Java " + classJava + "). Rebuild the plugin with --release 11.", ex);
         }
     }
 
