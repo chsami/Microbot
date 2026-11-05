@@ -334,7 +334,7 @@ public class ActorModel implements Actor
 	@Override
 	public Point getMinimapLocation()
 	{
-		return actor.getMinimapLocation();
+		return Microbot.getClientThread().runOnClientThreadOptional(actor::getMinimapLocation).orElse(null);
 	}
 
 	@Override
