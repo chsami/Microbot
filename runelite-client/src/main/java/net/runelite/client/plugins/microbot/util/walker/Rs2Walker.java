@@ -448,7 +448,10 @@ public class Rs2Walker {
         routeState.walledDoorEdgeFrom = null;
         routeState.walledDoorEdgeTo = null;
         routeState.walledDoorEdgeAtMs = 0L;
-        routeState.walledDoorEdgeSinceMs = 0L;
+        routeState.adjacentRefusalFrom = null;
+        routeState.adjacentRefusalTo = null;
+        routeState.adjacentRefusalAtMs = 0L;
+        routeState.adjacentRefusalSinceMs = 0L;
         routeState.requestedGoal = null;
         routeState.sealedRimRetargets = 0;
         resetRouteProgress();
@@ -6241,11 +6244,10 @@ public class Rs2Walker {
         }
     }
 
-    private static void clearWalledDoorClaim() {
+    static void clearWalledDoorClaim() {
         routeState.walledDoorEdgeFrom = null;
         routeState.walledDoorEdgeTo = null;
         routeState.walledDoorEdgeAtMs = 0L;
-        routeState.walledDoorEdgeSinceMs = 0L;
     }
 
     static boolean hasFreshActiveDoorClaim(long nowMs) {

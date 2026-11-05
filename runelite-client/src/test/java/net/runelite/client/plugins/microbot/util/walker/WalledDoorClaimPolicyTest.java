@@ -8,7 +8,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class WalledDoorClaimPolicyTest {
-    private static final long NOW = 10_000L;
+    private static final long NOW = 100_000L;
     private static final WorldPoint FROM = new WorldPoint(1770, 3589, 0);
     private static final WorldPoint TO = new WorldPoint(1770, 3590, 0);
 
@@ -109,7 +109,7 @@ public class WalledDoorClaimPolicyTest {
         assertEquals(NOW, WalledDoorClaimPolicy.claimSinceMs(FROM, TO, NOW - 500L, since,
                 wallFrom, wallTo, NOW));
         assertEquals(NOW, WalledDoorClaimPolicy.claimSinceMs(wallFrom, wallTo,
-                NOW - WalledDoorClaimPolicy.FRESH_MS - 1, since, wallFrom, wallTo, NOW));
+                NOW - WalledDoorClaimPolicy.ADJACENT_REFUSAL_GAP_MS - 1, since, wallFrom, wallTo, NOW));
         assertEquals(NOW, WalledDoorClaimPolicy.claimSinceMs(null, null, 0L, 0L,
                 wallFrom, wallTo, NOW));
     }
@@ -132,9 +132,20 @@ public class WalledDoorClaimPolicyTest {
                 wallFrom, wallTo, NOW));
         assertFalse(WalledDoorClaimPolicy.isAdjacentClaimSpent(FROM, TO, NOW - 500L, longAgo,
                 wallFrom, wallTo, NOW));
+        long lapsed = NOW - WalledDoorClaimPolicy.ADJACENT_REFUSAL_GAP_MS - 1;
         assertFalse(WalledDoorClaimPolicy.isAdjacentClaimSpent(wallFrom, wallTo,
-                longAgo, longAgo, wallFrom, wallTo, NOW));
+                lapsed, lapsed, wallFrom, wallTo, NOW));
         assertFalse(WalledDoorClaimPolicy.isAdjacentClaimSpent(null, null, 0L, 0L,
+                wallFrom, wallTo, NOW));
+    }
+
+    @Test
+    public void refusalsSlowerThanTheClaimWindowStillSpendTheAdjacentClaim() {
+        WorldPoint wallFrom = new WorldPoint(2656, 3292, 0);
+        WorldPoint wallTo = new WorldPoint(2656, 3291, 0);
+        long firstRefusal = NOW - WalledDoorClaimPolicy.FRESH_MS - 1_000L;
+        long since = WalledDoorClaimPolicy.claimSinceMs(null, null, 0L, 0L, wallFrom, wallTo, firstRefusal);
+        assertTrue(WalledDoorClaimPolicy.isAdjacentClaimSpent(wallFrom, wallTo, firstRefusal, since,
                 wallFrom, wallTo, NOW));
     }
 

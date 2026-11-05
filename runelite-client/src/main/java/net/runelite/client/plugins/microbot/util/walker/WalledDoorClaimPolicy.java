@@ -6,6 +6,7 @@ import net.runelite.client.plugins.microbot.util.walker.door.Rs2DoorGeometry;
 /** Pure state and traversal-envelope policy for a remembered scene-door route edge. */
 final class WalledDoorClaimPolicy {
     static final long FRESH_MS = 6_000L;
+    static final long ADJACENT_REFUSAL_GAP_MS = 20_000L;
 
     enum Decision {
         NONE,
@@ -47,7 +48,7 @@ final class WalledDoorClaimPolicy {
     private static boolean continuesClaim(WorldPoint claimFrom, WorldPoint claimTo, long claimedAtMs,
                                           long claimSinceMs, WorldPoint edgeFrom, WorldPoint edgeTo,
                                           long nowMs) {
-        return claimSinceMs > 0L && isFresh(claimFrom, claimTo, claimedAtMs, nowMs)
+        return claimSinceMs > 0L && isFresh(claimFrom, claimTo, claimedAtMs, nowMs, ADJACENT_REFUSAL_GAP_MS)
                 && claimFrom.equals(edgeFrom) && claimTo.equals(edgeTo);
     }
 
