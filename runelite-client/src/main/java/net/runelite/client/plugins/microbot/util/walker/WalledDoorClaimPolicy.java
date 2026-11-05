@@ -30,6 +30,27 @@ final class WalledDoorClaimPolicy {
                 && nowMs - claimedAtMs <= maxAgeMs;
     }
 
+    static long claimSinceMs(WorldPoint claimFrom, WorldPoint claimTo, long claimedAtMs,
+                             long claimSinceMs, WorldPoint edgeFrom, WorldPoint edgeTo, long nowMs) {
+        return continuesClaim(claimFrom, claimTo, claimedAtMs, claimSinceMs, edgeFrom, edgeTo, nowMs)
+                ? claimSinceMs
+                : nowMs;
+    }
+
+    static boolean isAdjacentClaimSpent(WorldPoint claimFrom, WorldPoint claimTo, long claimedAtMs,
+                                        long claimSinceMs, WorldPoint edgeFrom, WorldPoint edgeTo,
+                                        long nowMs) {
+        return continuesClaim(claimFrom, claimTo, claimedAtMs, claimSinceMs, edgeFrom, edgeTo, nowMs)
+                && nowMs - claimSinceMs > FRESH_MS;
+    }
+
+    private static boolean continuesClaim(WorldPoint claimFrom, WorldPoint claimTo, long claimedAtMs,
+                                          long claimSinceMs, WorldPoint edgeFrom, WorldPoint edgeTo,
+                                          long nowMs) {
+        return claimSinceMs > 0L && isFresh(claimFrom, claimTo, claimedAtMs, nowMs)
+                && claimFrom.equals(edgeFrom) && claimTo.equals(edgeTo);
+    }
+
     static Decision decide(WorldPoint from, WorldPoint to, long claimedAtMs, long nowMs,
                            WorldPoint player, boolean moving, boolean nearSideReachable) {
         return decide(from, to, claimedAtMs, nowMs, player, moving, nearSideReachable, FRESH_MS);

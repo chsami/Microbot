@@ -520,10 +520,20 @@ final class Rs2WalkerMovement {
         // learned mid-corridor, each costing a replan. Not learning is always recoverable — the
         // refused click just falls back as before; learning wrongly poisons routing for the session.
         if (sceneDoorAdjacentToEdge(edge[0], edge[1])) {
-            WebWalkLog.spInfo("walled_edge_not_learned | {} -> {} — scene door adjacent to the edge (double-gate wing), the door pipeline owns it",
+            if (!WalledDoorClaimPolicy.isAdjacentClaimSpent(routeState.walledDoorEdgeFrom,
+                    routeState.walledDoorEdgeTo, routeState.walledDoorEdgeAtMs,
+                    routeState.walledDoorEdgeSinceMs, edge[0], edge[1], System.currentTimeMillis())) {
+                WebWalkLog.spInfo("walled_edge_not_learned | {} -> {} — scene door adjacent to the edge (double-gate wing), the door pipeline owns it",
+                        compactWorldPoint(edge[0]), compactWorldPoint(edge[1]));
+                rememberWalledDoorEdge(edge);
+                return;
+            }
+            WebWalkLog.spInfo("walled_edge_adjacent_claim_spent | {} -> {} — adjacent door never opened the edge, learning it",
                     compactWorldPoint(edge[0]), compactWorldPoint(edge[1]));
-            rememberWalledDoorEdge(edge);
-            return;
+            routeState.walledDoorEdgeFrom = null;
+            routeState.walledDoorEdgeTo = null;
+            routeState.walledDoorEdgeAtMs = 0L;
+            routeState.walledDoorEdgeSinceMs = 0L;
         }
         // Via the Rs2PathApi wrapper rather than the config directly: it takes the pathfinder mutex,
         // which matters because the replan below runs straight after. Same return contract — true only
@@ -537,9 +547,13 @@ final class Rs2WalkerMovement {
 
     /** Hands the door-bearing walled edge to recovery so it approaches the door instead of replanning. */
     private static void rememberWalledDoorEdge(WorldPoint[] edge) {
+        long now = System.currentTimeMillis();
+        routeState.walledDoorEdgeSinceMs = WalledDoorClaimPolicy.claimSinceMs(routeState.walledDoorEdgeFrom,
+                routeState.walledDoorEdgeTo, routeState.walledDoorEdgeAtMs, routeState.walledDoorEdgeSinceMs,
+                edge[0], edge[1], now);
         routeState.walledDoorEdgeFrom = edge[0];
         routeState.walledDoorEdgeTo = edge[1];
-        routeState.walledDoorEdgeAtMs = System.currentTimeMillis();
+        routeState.walledDoorEdgeAtMs = now;
     }
 
     /**

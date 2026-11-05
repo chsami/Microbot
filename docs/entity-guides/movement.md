@@ -679,3 +679,13 @@ In an instance (player-owned house, Tempoross), `TileObject.getWorldLocation()` 
 **Where this applies:** `Rs2TileObjectModel.click`, `Rs2NpcModel.click`, `Rs2Npc.interact` and any helper that starts a can't-reach recovery walk.
 
 **Defensive check:** `Rs2TileObjectModelClickRecoveryTest.walksToTheTemplateTileInAnInstance`, `clicksWithoutWalkingOrCountingOnTheClientThread` and `CantReachTargetRecoveryTest.staleAttemptsDoNotCarryOverToALaterRecovery`.
+
+## 35. A door next to a walled edge does not always own that edge
+
+When a route click is refused, the walker does not learn the edge as walled if an actioned door sits within one tile of it. This exists for double gates, where only one wing has the Open action. A plain wall can also have an unrelated door beside it. The claim on that edge must not stay alive just because the same refused click keeps renewing it. Keep the time the claim on this exact edge started in `walledDoorEdgeSinceMs`. Once the claim has been renewed for longer than `WalledDoorClaimPolicy.FRESH_MS` without the edge opening, learn the edge and replan.
+
+**Why this matters:** In 2.6.50, Mahogany Homes stood still for 20 minutes on East Ardougne 2656,3293 while walking to the bank. The edge 2656,3292 -> 2656,3291 is a wall with a door beside it. Every pass logged `walled_door_owned ... state=await-door-handler`, and the edge was never learned.
+
+**Where this applies:** `Rs2WalkerMovement.learnWalledRouteEdge` and any heuristic that hands a refused edge to the door pipeline instead of learning it.
+
+**Defensive check:** `WalledDoorClaimPolicyTest.adjacentClaimKeptFreshByTheSameRefusalIsSpentAfterOneWindow` and `refreshingTheSameEdgeKeepsTheOriginalClaimStart`.
