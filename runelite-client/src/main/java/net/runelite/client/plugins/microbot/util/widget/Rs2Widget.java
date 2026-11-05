@@ -238,7 +238,7 @@ public class Rs2Widget {
         if (child == null) return null;
         if (matchesText(child, text, exact)) return child;
 
-        Widget[][] childGroups = {child.getChildren(), child.getNestedChildren(), child.getDynamicChildren(), child.getStaticChildren()};
+        Widget[][] childGroups = {child.getChildren(), child.getNestedChildren(), child.getDynamicChildren(), staticChildrenOf(child)};
         for (Widget[] childGroup : childGroups) {
             if (childGroup != null) {
                 for (Widget nestedChild : childGroup) {
@@ -300,6 +300,14 @@ public class Rs2Widget {
         }
     }
 
+    private static Widget[] staticChildrenOf(Widget widget) {
+        try {
+            return widget.getStaticChildren();
+        } catch (NullPointerException e) {
+            return null;
+        }
+    }
+
     /**
      * Searches for a widget with the specified sprite ID among root widgets or the specified child widgets.
      *
@@ -346,7 +354,7 @@ public class Rs2Widget {
         if (child == null) return null;
         if (matchesSpriteId(child, spriteId)) return child;
 
-        Widget[][] childGroups = {child.getChildren(), child.getNestedChildren(), child.getDynamicChildren(), child.getStaticChildren()};
+        Widget[][] childGroups = {child.getChildren(), child.getNestedChildren(), child.getDynamicChildren(), staticChildrenOf(child)};
         for (Widget[] childGroup : childGroups) {
             if (childGroup != null) {
                 for (Widget nestedChild : childGroup) {
@@ -552,7 +560,7 @@ public class Rs2Widget {
             if (child == null) return found;
 
             List<Widget[]> childGroups = Stream.of(child.getChildren(), child.getNestedChildren(),
-                                                 child.getDynamicChildren(), child.getStaticChildren())
+                                                 child.getDynamicChildren(), staticChildrenOf(child))
                     .filter(Objects::nonNull)
                     .collect(Collectors.toList());
 
@@ -601,7 +609,7 @@ public class Rs2Widget {
             return false;
         }
         Widget mainWidget = getWidget(InterfaceID.SKILLMULTI, 0);
-     
+        if (mainWidget == null) return false;
 
         // enable quantity option if available
         //enableQuantityOption(widgetGroupId);
@@ -935,7 +943,8 @@ public class Rs2Widget {
 	   // Recursively check all children for nested containers
 	   List<Widget[]> childGroups = new java.util.ArrayList<>();
 	   
-	   if (widget.getStaticChildren() != null) childGroups.add(widget.getStaticChildren());
+	   Widget[] staticChildren = staticChildrenOf(widget);
+	   if (staticChildren != null) childGroups.add(staticChildren);
 	   
 
 	   for (Widget[] childGroup : childGroups) {

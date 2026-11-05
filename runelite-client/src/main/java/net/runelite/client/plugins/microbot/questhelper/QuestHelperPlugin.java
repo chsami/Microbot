@@ -255,6 +255,7 @@ public class QuestHelperPlugin extends Plugin
 		questBankManager.shutDown(eventBus);
 
 		GlobalFakeObjects.setInitialized(false);
+		questScript.stopLoop();
 	}
 
 	// Run our base game tick checks later than other Quest Helper checks
@@ -377,6 +378,11 @@ public class QuestHelperPlugin extends Plugin
 		if (!event.getGroup().equals(QuestHelperConfig.QUEST_HELPER_GROUP))
 		{
 			return;
+		}
+
+		if ("TurnOn".equals(event.getKey()) && "false".equals(event.getNewValue()))
+		{
+			questScript.cancelInFlightIteration();
 		}
 
 		if (configEvents.contains(event.getKey()) || event.getKey().contains("skillfilter"))

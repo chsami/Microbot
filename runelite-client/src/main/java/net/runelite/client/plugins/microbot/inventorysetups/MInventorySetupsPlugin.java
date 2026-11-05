@@ -1053,6 +1053,7 @@ public class MInventorySetupsPlugin extends Plugin
 		if (MAX_SETUP_NAME_LENGTH < invSetup.getName().length()) {
 			invSetup.setName(invSetup.getName().substring(0, MAX_SETUP_NAME_LENGTH));
 		}
+		invSetup.padContainers();
 		if (cache.getInventorySetupNames().containsKey(invSetup.getName())) {
 			updateExisting(invSetup);
 			return;

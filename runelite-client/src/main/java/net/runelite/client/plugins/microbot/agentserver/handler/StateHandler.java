@@ -80,7 +80,9 @@ public class StateHandler extends AgentHandler {
 			}
 		}
 
-		state.put("scriptsPaused", Microbot.pauseAllScripts.get());
+		state.put("scriptsPaused", Microbot.pauseAllScripts.get()
+			|| net.runelite.client.plugins.microbot.ScriptPauseController.isPaused());
+		state.put("manuallyPaused", net.runelite.client.plugins.microbot.ScriptPauseController.isPaused());
 		state.put("instance", instance());
 		return state;
 	}

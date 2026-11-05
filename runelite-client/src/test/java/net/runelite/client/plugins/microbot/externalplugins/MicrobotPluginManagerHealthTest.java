@@ -1,35 +1,36 @@
 package net.runelite.client.plugins.microbot.externalplugins;
 
 import com.google.gson.Gson;
-import com.google.inject.Binder;
-import com.google.inject.Guice;
-import com.google.inject.Injector;
-import net.runelite.client.RuneLite;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.EventBus;
+import net.runelite.client.events.ClientShutdown;
 import net.runelite.client.events.ExternalPluginsChanged;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.PluginManager;
 import net.runelite.client.plugins.microbot.MicrobotApi;
 import okhttp3.OkHttpClient;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.lang.reflect.Constructor;
+import javax.swing.SwingUtilities;
+
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -50,40 +51,31 @@ public class MicrobotPluginManagerHealthTest {
     public static class FutureClientFixturePlugin extends Plugin {
     }
 
-    @PluginDescriptor(name = "Injector Failure Fixture", isExternal = true, version = "1.0.0", minClientVersion = "0.0.1")
-    public static class InjectorFailureFixturePlugin extends Plugin {
-        @Override
-        public void configure(Binder binder) {
-            throw new IllegalStateException("injector failure");
-        }
-    }
-
-    @PluginDescriptor(name = "Linkage Failure Fixture", isExternal = true, version = "1.0.0", minClientVersion = "0.0.1")
-    public static class LinkageFailureFixturePlugin extends Plugin {
-        @Override
-        public void configure(Binder binder) {
-            throw new NoClassDefFoundError("missing/ApiClass");
-        }
-    }
-
     private MicrobotPluginManager manager;
     private PluginManager pluginManager;
     private ConfigManager configManager;
     private EventBus eventBus;
+    private LivePluginManager lifecycle;
 
     @Before
     public void setUp() throws Exception {
         pluginManager = mock(PluginManager.class);
         configManager = mock(ConfigManager.class);
         eventBus = mock(EventBus.class);
+        lifecycle = mock(LivePluginManager.class);
         when(pluginManager.getPlugins()).thenReturn(Collections.emptyList());
+        when(lifecycle.removeHub(anyString())).thenReturn(CompletableFuture.completedFuture(
+                LivePluginManager.OperationResult.success("Removed")));
+        when(lifecycle.shutdown()).thenReturn(CompletableFuture.completedFuture(
+                LivePluginManager.OperationResult.success("Stopped")));
 
-        Constructor<MicrobotPluginManager> constructor = MicrobotPluginManager.class.getDeclaredConstructor(
-                OkHttpClient.class, MicrobotPluginClient.class, EventBus.class, ScheduledExecutorService.class,
-                PluginManager.class, Gson.class, ConfigManager.class, MicrobotApi.class);
-        constructor.setAccessible(true);
-        manager = constructor.newInstance(new OkHttpClient(), mock(MicrobotPluginClient.class), eventBus,
-                mock(ScheduledExecutorService.class), pluginManager, new Gson(), configManager, mock(MicrobotApi.class));
+        manager = new MicrobotPluginManager(new OkHttpClient(), mock(MicrobotPluginClient.class), eventBus,
+                pluginManager, configManager, mock(MicrobotApi.class), lifecycle);
+    }
+
+    @After
+    public void tearDown() {
+        manager.onClientShutdown(new ClientShutdown());
     }
 
     private MicrobotPluginManifest addManifest(String internalName, String version, boolean disable, String healthJson) throws Exception {
@@ -181,6 +173,13 @@ public class MicrobotPluginManagerHealthTest {
 
         addManifest("HealthFixturePlugin", "1.1.0", true, null);
         assertFalse(manager.getOutdatedPluginUpdate(plugin).isPresent());
+
+        MicrobotPluginManifest incompatible = addManifest("HealthFixturePlugin", "1.1.0", false, null);
+        incompatible.setMinClientVersion("999.0.0");
+        assertFalse(manager.getOutdatedPluginUpdate(plugin).isPresent());
+
+        addManifest("HealthFixturePlugin", "1.1.0", false, "{\"status\":\"unverified\",\"reason\":\"Needs confirmation\"}");
+        assertTrue("Unverified reports must not suppress an available update", manager.getOutdatedPluginUpdate(plugin).isPresent());
     }
 
     @Test
@@ -188,12 +187,42 @@ public class MicrobotPluginManagerHealthTest {
         MicrobotPluginManifest manifest = addManifest("HealthFixturePlugin", "2.0.0", true, null);
         loadPlugins(HealthFixturePlugin.class);
         assertTrue(manager.getBlockedPlugins().containsKey("HealthFixturePlugin"));
+        assertEquals(Collections.singleton("HealthFixturePlugin"), manager.takeBlockedPluginsToNotify().keySet());
 
-        manager.remove(manifest);
+        CompletableFuture<LivePluginManager.OperationResult> removed = new CompletableFuture<>();
+        when(lifecycle.removeHub("HealthFixturePlugin")).thenReturn(removed);
+        CompletableFuture<LivePluginManager.OperationResult> result = manager.removePlugin(manifest);
+        assertFalse(result.isDone());
+        assertTrue(manager.getBlockedPlugins().containsKey("HealthFixturePlugin"));
+        verify(configManager, never()).unsetConfiguration(eq("microbotPluginVersions"), eq("plugin.HealthFixturePlugin"));
+
+        removed.complete(LivePluginManager.OperationResult.success("Removed"));
+        assertTrue(result.get(5, TimeUnit.SECONDS).isSuccess());
 
         verify(configManager).unsetConfiguration(eq("microbotPluginVersions"), eq("plugin.HealthFixturePlugin"));
-        verify(eventBus).post(any(ExternalPluginsChanged.class));
+        verify(lifecycle).removeHub("HealthFixturePlugin");
         assertFalse(manager.getBlockedPlugins().containsKey("HealthFixturePlugin"));
+        SwingUtilities.invokeAndWait(() -> { });
+        verify(eventBus).post(any(ExternalPluginsChanged.class));
+
+        // Reinstalling the same blocked version should be eligible for a fresh notification.
+        loadPlugins(HealthFixturePlugin.class);
+        assertEquals(Collections.singleton("HealthFixturePlugin"), manager.takeBlockedPluginsToNotify().keySet());
+    }
+
+    @Test
+    public void failedRemovalRetainsBlockedStateAndInstalledMetadata() throws Exception {
+        MicrobotPluginManifest manifest = addManifest("HealthFixturePlugin", "2.0.0", true, null);
+        loadPlugins(HealthFixturePlugin.class);
+        assertEquals(Collections.singleton("HealthFixturePlugin"), manager.takeBlockedPluginsToNotify().keySet());
+        when(lifecycle.removeHub("HealthFixturePlugin")).thenReturn(CompletableFuture.completedFuture(
+                LivePluginManager.OperationResult.failure("Plugin could not stop")));
+
+        assertFalse(manager.removePlugin(manifest).get(5, TimeUnit.SECONDS).isSuccess());
+
+        assertTrue(manager.getBlockedPlugins().containsKey("HealthFixturePlugin"));
+        assertTrue(manager.takeBlockedPluginsToNotify().isEmpty());
+        verify(configManager, never()).unsetConfiguration(eq("microbotPluginVersions"), eq("plugin.HealthFixturePlugin"));
     }
 
     @Test
@@ -202,34 +231,12 @@ public class MicrobotPluginManagerHealthTest {
         when(pluginManager.getPlugins()).thenReturn(Collections.singletonList(corePlugin));
         MicrobotPluginManifest manifest = addManifest("HealthFixturePlugin", "2.0.0", true, null);
 
-        manager.remove(manifest);
+        assertTrue(manager.removePlugin(manifest).get(5, TimeUnit.SECONDS).isSuccess());
 
+        verify(lifecycle).removeHub("HealthFixturePlugin");
         verify(pluginManager, never()).stopPlugin(corePlugin);
         verify(pluginManager, never()).remove(corePlugin);
         verify(configManager).unsetConfiguration(eq("microbotPluginVersions"), eq("plugin.HealthFixturePlugin"));
     }
 
-    @Test
-    public void pluginWithoutInjectorIsNotRegistered() throws Exception {
-        assertTrue(loadPlugins(InjectorFailureFixturePlugin.class).isEmpty());
-
-        verify(pluginManager, never()).addPlugin(any(Plugin.class));
-    }
-
-    @Test
-    public void failingPluginDoesNotStopOthersFromLoading() throws Exception {
-        Injector previous = RuneLite.getInjector();
-        RuneLite.setInjector(Guice.createInjector());
-        try {
-            List<Plugin> loaded = loadPlugins(InjectorFailureFixturePlugin.class, LinkageFailureFixturePlugin.class, HealthFixturePlugin.class);
-
-            assertEquals(1, loaded.size());
-            assertTrue(loaded.get(0) instanceof HealthFixturePlugin);
-            verify(pluginManager).addPlugin(loaded.get(0));
-            verify(pluginManager, never()).addPlugin(any(InjectorFailureFixturePlugin.class));
-            verify(pluginManager, never()).addPlugin(any(LinkageFailureFixturePlugin.class));
-        } finally {
-            RuneLite.setInjector(previous);
-        }
-    }
 }

@@ -431,7 +431,7 @@ public class BanTelemetry
 			.filter(ClientAlertReporter::isScript)
 			.filter(pluginManager::isPluginActive)
 			.map(plugin -> plugin.getClass().getSimpleName())
-			.map(name -> microbotPluginManager.getInstalledPluginVersion(name).isPresent() ? name : CUSTOM_PLUGIN)
+			.map(name -> microbotPluginManager.isHubInstalled(name) ? name : CUSTOM_PLUGIN)
 			.distinct()
 			.collect(Collectors.toList());
 	}

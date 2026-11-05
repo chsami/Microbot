@@ -25,12 +25,25 @@
 package net.runelite.client.plugins;
 
 import com.google.inject.AbstractModule;
+import com.google.inject.Module;
+import com.google.inject.util.Modules;
+import com.google.inject.util.Providers;
 import javax.inject.Singleton;
 import lombok.RequiredArgsConstructor;
 
 @Singleton
 class PluginModuleFactory
 {
+	Module dependencyModule(Plugin dependency)
+	{
+		// A declared dependency is already constructed and injected. toInstance would inject
+		// it again in the dependent's scope, where its private config/services are unavailable.
+		Module identity = binder -> binder.bind((Class<Plugin>) dependency.getClass())
+			.toProvider(Providers.of(dependency));
+		Module exports = dependency.getPublicModule();
+		return exports == null ? identity : Modules.override(exports).with(identity);
+	}
+
 	@RequiredArgsConstructor
 	class PluginModule extends AbstractModule
 	{

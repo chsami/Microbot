@@ -421,6 +421,11 @@ public final class Rs2PathApi
 			throw new IllegalArgumentException(
 				"active asynchronous routes cannot use a temporary bank-item policy");
 		}
+		if (request.isTeleportsIgnored())
+		{
+			throw new IllegalArgumentException(
+				"active asynchronous routes cannot use a temporary teleport policy");
+		}
 		PathfinderConfig config = getPathfinderConfig();
 		if (config == null)
 		{
@@ -698,6 +703,7 @@ public final class Rs2PathApi
 			boolean originalUseBankItems = config.isUseBankItems();
 			boolean bankPolicyChanged = requestedBankItems != null
 				&& requestedBankItems != originalUseBankItems;
+			boolean teleportPolicyChanged = false;
 			try
 			{
 				if (bankPolicyChanged)
@@ -707,6 +713,11 @@ public final class Rs2PathApi
 				if (shouldRefresh(request, config))
 				{
 					config.refresh(request.getRefreshTarget());
+				}
+				if (request.isTeleportsIgnored() && !config.isIgnoreTeleportAndItems())
+				{
+					config.setIgnoreTeleportAndItems(true);
+					teleportPolicyChanged = true;
 				}
 				Rs2RouteRequest resolved = resolvePolicy(request, config);
 				Rs2PlanningSnapshot snapshot = resolvePlanningSnapshot(resolved, config);
@@ -742,6 +753,10 @@ public final class Rs2PathApi
 			}
 			finally
 			{
+				if (teleportPolicyChanged)
+				{
+					config.setIgnoreTeleportAndItems(false);
+				}
 				if (bankPolicyChanged)
 				{
 					config.setUseBankItems(originalUseBankItems);

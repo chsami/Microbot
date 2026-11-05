@@ -56,6 +56,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.IntPredicate;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -2382,8 +2383,46 @@ public class Rs2Bank {
 
     private static NearestBankRoute getPathAndBankToNearestBank(
             WorldPoint worldPoint, int maxObjectSearchRadius, Boolean useBankItems) {
+        return getPathAndBankToNearestBank(worldPoint, maxObjectSearchRadius, useBankItems, false);
+    }
+
+    private static volatile WorldPoint lastWalkBackFallbackLocation;
+
+    private static BankLocation getNearestBankForWalkBack() {
+        WorldPoint playerLocation = Rs2Player.getWorldLocation();
+        if (playerLocation == null) return null;
+        NearestBankRoute walkable = getPathAndBankToNearestBank(playerLocation, 20, null, true);
+        if (walkable != null) {
+            lastWalkBackFallbackLocation = null;
+            return walkable.getBank();
+        }
+        if (!playerLocation.equals(lastWalkBackFallbackLocation)) {
+            lastWalkBackFallbackLocation = playerLocation;
+            Microbot.log("No bank within walking distance, choosing a bank you can reach with teleports.");
+        }
+        return getNearestBank(playerLocation);
+    }
+
+    private static void logBankSearchFailure(String message, boolean ignoreTeleports) {
+        if (ignoreTeleports) {
+            log.debug(message);
+        } else {
+            Microbot.log(message);
+        }
+    }
+
+    private static String foundBankMessage(BankLocation bank, String method, boolean ignoreTeleports) {
+        return ignoreTeleports
+                ? "Banking at " + bank + " (closest bank on foot, so the walk back stays short)"
+                : "Found nearest bank (" + method + "): " + bank;
+    }
+
+    private static NearestBankRoute getPathAndBankToNearestBank(
+            WorldPoint worldPoint, int maxObjectSearchRadius, Boolean useBankItems, boolean ignoreTeleports) {
         if (worldPoint == null) return null;
-        Microbot.log("Finding nearest bank...");
+        if (!ignoreTeleports) {
+            Microbot.log("Finding nearest bank...");
+        }
 
         Set<BankLocation> allBanks = Arrays.stream(BankLocation.values())
                 .collect(Collectors.toSet());
@@ -2412,7 +2451,7 @@ public class Rs2Bank {
                     .min(Comparator.comparingInt(Map.Entry::getValue))
                     .map(Map.Entry::getKey);
             if (byObject.isPresent() && byObject.get().hasRequirements()) {
-                Microbot.log("Found nearest bank (object): " + byObject.get());
+                Microbot.log(foundBankMessage(byObject.get(), "object", ignoreTeleports));
                 BankLocation returnBankLocation = byObject.get();
                 List<WorldPoint> path = new ArrayList<>(Collections.singletonList(byObject.get().getWorldPoint()));
                 return new NearestBankRoute(path, returnBankLocation, null);
@@ -2429,7 +2468,7 @@ public class Rs2Bank {
                 accessibleBanksTime / 1_000_000.0, accessibleBanks.size(), BankLocation.values().length);
 
         if (accessibleBanks.isEmpty()) {
-            Microbot.log("No accessible banks found");
+            logBankSearchFailure("No accessible banks found", ignoreTeleports);
             return null;
         }
         Set<WorldPoint> targets = accessibleBanks.stream()
@@ -2440,11 +2479,14 @@ public class Rs2Bank {
         if (useBankItems != null) {
             request = request.withBankItems(useBankItems);
         }
+        if (ignoreTeleports) {
+            request = request.withoutTeleports();
+        }
         Rs2RouteResult route = Rs2PathApi.plan(request);
         List<WorldPoint> path = route.getPath();
 
         if (path.isEmpty()) {
-            Microbot.log("Unable to find path to nearest bank");
+            logBankSearchFailure("Unable to find path to nearest bank", ignoreTeleports);
             return null;
         }
         // Create a WorldArea around the final tile to be more generous
@@ -2465,11 +2507,11 @@ public class Rs2Bank {
             // (3025,3508): the endpoint was 2 tiles away while EDGEVILLE sat 69 tiles east). Report it
             // as the unreachable/partial route it is, and return nothing so getPathToNearestBank
             // honours its documented empty-list contract instead of handing callers a stub to walk.
-            Microbot.log("No bank reachable from " + worldPoint + ": pathfinding stopped at " + nearestTile
-                    + " after " + path.size() + " tiles (partial route)");
+            logBankSearchFailure("No bank reachable from " + worldPoint + ": pathfinding stopped at " + nearestTile
+                    + " after " + path.size() + " tiles (partial route)", ignoreTeleports);
             return null;
         }
-        Microbot.log("Found nearest bank (shortest path): " + byPath.get());
+        Microbot.log(foundBankMessage(byPath.get(), "shortest path", ignoreTeleports));
         return new NearestBankRoute(path, byPath.get(), route);
     }
 
@@ -2699,7 +2741,7 @@ public class Rs2Bank {
      * @return
      */
     public static boolean bankItemsAndWalkBackToOriginalPosition(Collection<String> itemNames, WorldPoint initialRs2PlayerLocation, int emptySlotCount) {
-        return bankItemsAndWalkBackToOriginalPosition(itemNames,false, getNearestBank(), initialRs2PlayerLocation, emptySlotCount, 4);
+        return bankItemsAndWalkBackToOriginalPosition(itemNames,false, Rs2Bank::getNearestBankForWalkBack, initialRs2PlayerLocation, emptySlotCount, 4);
     }
 
     /**
@@ -2710,7 +2752,7 @@ public class Rs2Bank {
      * @return
      */
     public static boolean bankItemsAndWalkBackToOriginalPosition(Collection<String> itemNames, WorldPoint initialRs2PlayerLocation) {
-        return bankItemsAndWalkBackToOriginalPosition(itemNames,false, getNearestBank(), initialRs2PlayerLocation, 0, 4);
+        return bankItemsAndWalkBackToOriginalPosition(itemNames,false, Rs2Bank::getNearestBankForWalkBack, initialRs2PlayerLocation, 0, 4);
     }
 
     /**
@@ -2725,8 +2767,12 @@ public class Rs2Bank {
      * @return
      */
     public static boolean bankItemsAndWalkBackToOriginalPosition(Collection<String> itemNames, boolean exactItemNames, BankLocation bankLocation, WorldPoint initialRs2PlayerLocation, int emptySlotCount, int distance) {
+        return bankItemsAndWalkBackToOriginalPosition(itemNames, exactItemNames, () -> bankLocation, initialRs2PlayerLocation, emptySlotCount, distance);
+    }
+
+    private static boolean bankItemsAndWalkBackToOriginalPosition(Collection<String> itemNames, boolean exactItemNames, Supplier<BankLocation> bankLocation, WorldPoint initialRs2PlayerLocation, int emptySlotCount, int distance) {
         if (Rs2Inventory.emptySlotCount() <= emptySlotCount) {
-            boolean isBankOpen = Rs2Bank.walkToBankAndUseBank(bankLocation);
+            boolean isBankOpen = Rs2Bank.walkToBankAndUseBank(bankLocation.get());
             if (isBankOpen) {
                 for (String itemName : itemNames) {
                     if (itemName.matches("\\d+")) {
@@ -2773,7 +2819,7 @@ public class Rs2Bank {
      * @return
      */
     public static boolean bankItemsAndWalkBackToOriginalPosition(Collection<String> itemNames, WorldPoint initialRs2PlayerLocation, int emptySlotCount, int distance) {
-        return bankItemsAndWalkBackToOriginalPosition(itemNames,false, getNearestBank(), initialRs2PlayerLocation, emptySlotCount, distance);
+        return bankItemsAndWalkBackToOriginalPosition(itemNames,false, Rs2Bank::getNearestBankForWalkBack, initialRs2PlayerLocation, emptySlotCount, distance);
     }
 
     public static boolean isWithdrawAs(boolean noted) {

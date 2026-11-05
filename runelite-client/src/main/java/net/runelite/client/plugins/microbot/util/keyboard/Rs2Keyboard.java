@@ -1,6 +1,7 @@
 package net.runelite.client.plugins.microbot.util.keyboard;
 
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.ScriptPauseController;
 import net.runelite.client.plugins.microbot.util.Global;
 import net.runelite.client.plugins.microbot.util.input.InputArbiter;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
@@ -23,6 +24,36 @@ public class Rs2Keyboard
 {
 	/** Keys the bot currently holds down. See {@link #releaseHeldKeys()}. */
 	private static final Set<Integer> HELD_KEYS = ConcurrentHashMap.newKeySet();
+	private static final ThreadLocal<Long> INPUT_GENERATION = ThreadLocal.withInitial(() -> -1L);
+
+	private static long beginInputSequence()
+	{
+		long previous = INPUT_GENERATION.get();
+		if (previous < 0)
+		{
+			INPUT_GENERATION.set(ScriptPauseController.getGeneration());
+		}
+		return previous;
+	}
+
+	private static void endInputSequence(long previous)
+	{
+		if (previous < 0)
+		{
+			INPUT_GENERATION.remove();
+		}
+		else
+		{
+			INPUT_GENERATION.set(previous);
+		}
+	}
+
+	private static boolean isInputAllowed()
+	{
+		long sequenceGeneration = INPUT_GENERATION.get();
+		return !ScriptPauseController.isPaused()
+			&& (sequenceGeneration < 0 || sequenceGeneration == ScriptPauseController.getGeneration());
+	}
 
 	/**
 	 * Gets the current game canvas.
@@ -50,7 +81,7 @@ public class Rs2Keyboard
 		// it a takeover mid-typeString sprays the rest of the string into whatever the human just
 		// took over. RELEASED is exempt: releaseHeldKeys runs while the human owns input, and
 		// suppressing it would strand a key down.
-		if (id != KeyEvent.KEY_RELEASED && InputArbiter.isHuman())
+		if (id != KeyEvent.KEY_RELEASED && (!isInputAllowed() || InputArbiter.isHuman()))
 		{
 			return false;
 		}
@@ -109,13 +140,21 @@ public class Rs2Keyboard
 	 */
 	public static void typeString(final String word)
 	{
-		for (char c : word.toCharArray())
+		long previous = beginInputSequence();
+		try
 		{
-			if (!typeChar(c))
+			for (char c : word.toCharArray())
 			{
-				return;
+				if (!isInputAllowed() || !typeChar(c))
+				{
+					return;
+				}
+				Global.sleep(Rs2Random.logNormalBounded(KEY_GAP_MIN_MS, KEY_GAP_MAX_MS));
 			}
-			Global.sleep(Rs2Random.logNormalBounded(KEY_GAP_MIN_MS, KEY_GAP_MAX_MS));
+		}
+		finally
+		{
+			endInputSequence(previous);
 		}
 	}
 
@@ -126,7 +165,15 @@ public class Rs2Keyboard
 	 */
 	public static void keyPress(final char key)
 	{
-		typeChar(key);
+		long previous = beginInputSequence();
+		try
+		{
+			typeChar(key);
+		}
+		finally
+		{
+			endInputSequence(previous);
+		}
 	}
 
 	private static boolean typeChar(char c)
@@ -304,27 +351,35 @@ public class Rs2Keyboard
 	 */
 	public static void keyPress(int key)
 	{
-		char typed = toTypedChar(key);
-		if (typed == CHAR_UNDEFINED)
+		long previous = beginInputSequence();
+		try
 		{
-			if (hold(key))
+			char typed = toTypedChar(key);
+			if (typed == CHAR_UNDEFINED)
 			{
-				Global.sleep(Rs2Random.logNormalBounded(KEY_HOLD_MIN_MS, KEY_HOLD_MAX_MS));
-				keyRelease(key);
+				if (hold(key))
+				{
+					Global.sleep(Rs2Random.logNormalBounded(KEY_HOLD_MIN_MS, KEY_HOLD_MAX_MS));
+					keyRelease(key);
+				}
+				return;
 			}
-			return;
-		}
 
-		// A suppressed press must not be followed by a release.
-		if (!dispatchKeyEvent(KeyEvent.KEY_PRESSED, key, typed))
-		{
-			return;
+			// A suppressed press must not be followed by a release.
+			if (!dispatchKeyEvent(KeyEvent.KEY_PRESSED, key, typed))
+			{
+				return;
+			}
+			dispatchKeyEvent(KeyEvent.KEY_TYPED, KeyEvent.VK_UNDEFINED, typed);
+			Global.sleep(Rs2Random.logNormalBounded(KEY_HOLD_MIN_MS, KEY_HOLD_MAX_MS));
+			// Unconditional: the press went out, so the release owes the client its pair even if the
+			// human took over in between.
+			dispatchKeyEvent(KeyEvent.KEY_RELEASED, key, typed);
 		}
-		dispatchKeyEvent(KeyEvent.KEY_TYPED, KeyEvent.VK_UNDEFINED, typed);
-		Global.sleep(Rs2Random.logNormalBounded(KEY_HOLD_MIN_MS, KEY_HOLD_MAX_MS));
-		// Unconditional: the press went out, so the release owes the client its pair even if the
-		// human took over in between.
-		dispatchKeyEvent(KeyEvent.KEY_RELEASED, key, typed);
+		finally
+		{
+			endInputSequence(previous);
+		}
 	}
 
 	/**
@@ -352,11 +407,19 @@ public class Rs2Keyboard
 	 */
 	public static void enter()
 	{
-		keyPress(KeyEvent.VK_ENTER);
+		long previous = beginInputSequence();
+		try
+		{
+			keyPress(KeyEvent.VK_ENTER);
 
-		// This is to make sure the enter event gets released, because for some reason it
-		// stays pressed and auto logs for jagex accounts
-		resetEnter();
+			// This is to make sure the enter event gets released, because for some reason it
+			// stays pressed and auto logs for jagex accounts
+			resetEnter();
+		}
+		finally
+		{
+			endInputSequence(previous);
+		}
 
 	}
 
