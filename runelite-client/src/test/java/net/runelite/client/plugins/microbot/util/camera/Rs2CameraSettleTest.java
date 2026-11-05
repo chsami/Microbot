@@ -18,6 +18,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -36,6 +37,7 @@ public class Rs2CameraSettleTest {
     private static final int TICK_MS = 20;
     private static final int HELD_SPEED = 160;
     private static final int COAST_DECAY = 20;
+    private static final int WINDOW_SKIPPING_SPEED = 1200;
     private static final int MAX_POLL_MS = 320;
     private static final int SCHEDULING_SLACK_MS = 1000;
 
@@ -50,6 +52,9 @@ public class Rs2CameraSettleTest {
     private final AtomicInteger pitch = new AtomicInteger(2048);
     private final AtomicInteger velocity = new AtomicInteger();
     private final AtomicInteger heldKey = new AtomicInteger(-1);
+    private final AtomicInteger heldSpeed = new AtomicInteger(HELD_SPEED);
+    private final AtomicInteger coastDecay = new AtomicInteger(COAST_DECAY);
+    private final AtomicLong travelled = new AtomicLong();
     private final AtomicBoolean spinForever = new AtomicBoolean();
     private final AtomicBoolean onClientThread = new AtomicBoolean();
     private final AtomicBoolean isClientThread = new AtomicBoolean();
@@ -107,18 +112,21 @@ public class Rs2CameraSettleTest {
 
     private void tick() {
         int key = heldKey.get();
+        int speed = heldSpeed.get();
+        int decay = coastDecay.get();
         int v;
         if (spinForever.get()) {
-            v = HELD_SPEED;
+            v = speed;
         } else if (key == KeyEvent.VK_LEFT) {
-            v = -HELD_SPEED;
+            v = -speed;
         } else if (key == KeyEvent.VK_RIGHT) {
-            v = HELD_SPEED;
+            v = speed;
         } else {
             int current = velocity.get();
-            v = current > 0 ? Math.max(0, current - COAST_DECAY) : Math.min(0, current + COAST_DECAY);
+            v = current > 0 ? Math.max(0, current - decay) : Math.min(0, current + decay);
         }
         velocity.set(v);
+        travelled.addAndGet(Math.abs(v));
         yaw.set(Math.floorMod(yaw.get() + v, FULL_TURN));
         cycle.incrementAndGet();
     }
@@ -132,6 +140,30 @@ public class Rs2CameraSettleTest {
         Thread.sleep(200);
         assertEquals("yaw kept changing after setAngle returned", yawAtReturn, yaw.get());
         assertTrue("turn did not reach the target window", Rs2Camera.isAngleGood(90, 40));
+    }
+
+    @Test
+    public void rightTurnStopsOnceItPassesANarrowWindow() {
+        heldSpeed.set(WINDOW_SKIPPING_SPEED);
+        coastDecay.set(WINDOW_SKIPPING_SPEED);
+
+        Rs2Camera.setAngle(90, 5);
+
+        assertEquals(-1, heldKey.get());
+        assertTrue("camera turned " + travelled.get() + " units", travelled.get() < FULL_TURN);
+        assertTrue(Rs2Camera.getAngleTo(90) > 0);
+    }
+
+    @Test
+    public void leftTurnStopsOnceItPassesANarrowWindow() {
+        heldSpeed.set(WINDOW_SKIPPING_SPEED);
+        coastDecay.set(WINDOW_SKIPPING_SPEED);
+
+        Rs2Camera.setAngle(270, 5);
+
+        assertEquals(-1, heldKey.get());
+        assertTrue("camera turned " + travelled.get() + " units", travelled.get() < FULL_TURN);
+        assertTrue(Rs2Camera.getAngleTo(270) < 0);
     }
 
     @Test
