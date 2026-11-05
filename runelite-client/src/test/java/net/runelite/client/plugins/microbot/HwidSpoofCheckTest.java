@@ -91,9 +91,9 @@ public class HwidSpoofCheckTest
 	@Test
 	public void launcherWarningsOfferAWayOut()
 	{
-		for (String message : new String[]{HwidSpoofCheck.LAUNCHER_NOT_OPTED_IN, HwidSpoofCheck.LAUNCHER_DISABLED})
+		for (String message : new String[]{HwidSpoofCheck.AGENT_MISSING, HwidSpoofCheck.LAUNCHER_NOT_OPTED_IN, HwidSpoofCheck.LAUNCHER_DISABLED})
 		{
-			assertTrue(message, message.contains("turn off Spoof device ID"));
+			assertTrue(message, message.contains("turn off Spoof device ID in Microbot > General"));
 		}
 		assertTrue(HwidSpoofCheck.SETTING_OFF_WITH_LAUNCHER_ON.contains("untick Spoof hardware IDs"));
 	}

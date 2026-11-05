@@ -108,6 +108,7 @@ public class MicrobotPlugin extends Plugin
 	private EnumSet<WorldType> lastWorldTypeProfile = null;
 	private final HwidSpoofCheck hwidSpoofCheck = new HwidSpoofCheck();
 	static final String HWID_SPOOF_SEEDED_NOTICE = "Spoof device ID was turned on because Spoof hardware IDs is ticked in the Microbot launcher. You can turn it off in Microbot > General.";
+	static final String HWID_SPOOF_MIGRATED_NOTICE = "Spoofing is now off by default, so Spoof device ID was turned off and this login sent the real device details. To spoof, tick Spoof hardware IDs in the Microbot launcher, restart the client and turn Spoof device ID back on in Microbot > General.";
 	/** Chat line shown at the next login; set in startUp, before chat can show it. */
 	private volatile String hwidSpoofPendingNotice;
 
@@ -473,7 +474,7 @@ public class MicrobotPlugin extends Plugin
 	 * RuneLite has already written every setting's default by startUp, so "never saved" can't be detected from the
 	 * setting itself; two marker keys (not @ConfigItems) record one-time steps instead.
 	 * Migration: installs from before opt-in saved the old default (true). The first start without the launcher
-	 * opting in resets it to false once. Seed: the first start where the launcher opted in (agent loaded) turns it
+	 * opting in resets it to false once, with a chat notice if it was on. Seed: the first start where the launcher opted in (agent loaded) turns it
 	 * on once, with a chat notice if that changed it. Afterwards the saved setting alone decides.
 	 */
 	private void applyHwidSpoofMarkers(boolean agentLoaded)
@@ -481,9 +482,10 @@ public class MicrobotPlugin extends Plugin
 		String group = MicrobotConfig.configGroup;
 		if (configManager.getConfiguration(group, MicrobotConfig.keySpoofOptInMigrated) == null)
 		{
-			if (!agentLoaded)
+			if (!agentLoaded && microbotConfig.spoofDeviceId())
 			{
 				configManager.setConfiguration(group, MicrobotConfig.keySpoofDeviceId, false);
+				hwidSpoofPendingNotice = HWID_SPOOF_MIGRATED_NOTICE;
 			}
 			configManager.setConfiguration(group, MicrobotConfig.keySpoofOptInMigrated, true);
 		}
