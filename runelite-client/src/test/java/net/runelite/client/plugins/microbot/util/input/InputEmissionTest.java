@@ -260,14 +260,41 @@ public class InputEmissionTest
 	}
 
 	@Test
-	public void aReleaseClearsTheHeldButtonEvenWithoutACanvas()
+	public void aReleaseRemainsTrackedWhenItCouldNotBeDelivered()
 	{
 		AwtEmitter.pressed(100, 50, MouseEvent.BUTTON1);
 		when(client.getCanvas()).thenReturn(null);
 
 		AwtEmitter.released(100, 50, MouseEvent.BUTTON1);
 
+		assertEquals(InputEvent.BUTTON1_DOWN_MASK, AwtEmitter.heldMask());
+	}
+
+	@Test
+	public void pressWithoutCanvasIsNotTrackedAsHeld()
+	{
+		when(client.getCanvas()).thenReturn(null);
+
+		AwtEmitter.pressed(100, 50, MouseEvent.BUTTON1);
+
 		assertEquals(0, AwtEmitter.heldMask());
+	}
+
+	@Test
+	public void pauseCleanupFailsIfHeldButtonCouldNotBeDeliveredAsReleased()
+	{
+		AwtEmitter.pressed(100, 50, MouseEvent.BUTTON1);
+		when(client.getCanvas()).thenReturn(null);
+
+		try
+		{
+			AwtEmitter.releaseHeldButtons();
+			throw new AssertionError("Expected the failed release to be reported");
+		}
+		catch (IllegalStateException expected)
+		{
+			assertEquals(InputEvent.BUTTON1_DOWN_MASK, AwtEmitter.heldMask());
+		}
 	}
 
 	@Test

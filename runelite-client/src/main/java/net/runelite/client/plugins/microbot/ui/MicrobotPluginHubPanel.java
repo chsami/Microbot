@@ -28,7 +28,6 @@ import com.google.common.base.Strings;
 import com.google.common.html.HtmlEscapers;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.client.RuneLite;
 import net.runelite.client.RuneLiteProperties;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ExternalPluginsChanged;
@@ -36,6 +35,7 @@ import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.PluginManager;
 import net.runelite.client.plugins.config.SearchablePlugin;
+import net.runelite.client.plugins.microbot.externalplugins.LivePluginManager.OperationResult;
 import net.runelite.client.plugins.microbot.externalplugins.MicrobotPluginClient;
 import net.runelite.client.plugins.microbot.externalplugins.MicrobotPluginHealth;
 import net.runelite.client.plugins.microbot.externalplugins.MicrobotPluginManager;
@@ -65,9 +65,11 @@ import java.io.File;
 import java.awt.Desktop;
 import java.util.List;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -546,6 +548,15 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
 
 			private void refreshActionButton()
 			{
+				boolean pending = pendingOperations.contains(manifest.getInternalName());
+				comboBox.setEnabled(!pending);
+				actionButton.setEnabled(!pending);
+				if (pending)
+				{
+					actionButton.setText("...");
+					actionButton.setToolTipText("Plugin operation in progress");
+					return;
+				}
 				ActionState state = determineState();
 				String selected = (String) comboBox.getSelectedItem();
 				switch (state)
@@ -573,6 +584,10 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
 
 			private void handleActionButtonClick()
 			{
+				if (pendingOperations.contains(manifest.getInternalName()))
+				{
+					return;
+				}
 				ActionState state = determineState();
 				String selected = (String) comboBox.getSelectedItem();
 				switch (state)
@@ -622,12 +637,14 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
 				{
 					return;
 				}
-				microbotPluginManager.installPlugin(manifest, version);
-				installed = true;
-				installedVersion = version;
-				setInstalled(true, version);
-				comboBox.setSelectedItem(version);
-				refreshActionButton();
+				runOperation(installed ? "update" : "install", () -> installed
+					? microbotPluginManager.updatePlugin(manifest, version)
+					: microbotPluginManager.installPlugin(manifest, version), () -> {
+					installed = true;
+					installedVersion = version;
+					setInstalled(true, version);
+					comboBox.setSelectedItem(version);
+				});
 			}
 
 			private void updateSelectedVersion(String version)
@@ -636,21 +653,79 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
 				{
 					return;
 				}
-				microbotPluginManager.updatePlugin(manifest, version);
-				installedVersion = version;
-				comboBox.setSelectedItem(version);
-				updateBorder(version);
-				refreshActionButton();
-				MicrobotPluginHubPanel.this.reloadPluginList();
+				runOperation("update", () -> microbotPluginManager.updatePlugin(manifest, version), () -> {
+					installedVersion = version;
+					comboBox.setSelectedItem(version);
+					updateBorder(version);
+				});
 			}
 
 			private void removePlugin()
 			{
-				microbotPluginManager.removePlugin(manifest);
-				installed = false;
-				installedVersion = null;
-				setInstalled(false, null);
+				runOperation("remove", () -> microbotPluginManager.removePlugin(manifest), () -> {
+					installed = false;
+					installedVersion = null;
+					setInstalled(false, null);
+				});
+			}
+
+			private void runOperation(String action, Supplier<CompletableFuture<OperationResult>> operation, Runnable onSuccess)
+			{
+				if (!pendingOperations.add(manifest.getInternalName()))
+				{
+					return;
+				}
 				refreshActionButton();
+				try
+				{
+					operation.get().whenComplete((result, error) -> SwingUtilities.invokeLater(
+						() -> finishOperation(action, result, error, onSuccess)));
+				}
+				catch (RuntimeException error)
+				{
+					finishOperation(action, null, error, onSuccess);
+				}
+			}
+
+			private String pluginName()
+			{
+				String name = manifest.getDisplayName();
+				return name == null || name.trim().isEmpty() ? manifest.getInternalName() : name;
+			}
+
+			private void finishOperation(String action, OperationResult result, Throwable error, Runnable onSuccess)
+			{
+				pendingOperations.remove(manifest.getInternalName());
+				if (error == null && result != null && result.isSuccess())
+				{
+					onSuccess.run();
+					if (result.isNeedsRestart())
+					{
+						JOptionPane.showMessageDialog(MicrobotPluginHubPanel.this, result.getMessage(),
+							"Restart needed", JOptionPane.INFORMATION_MESSAGE);
+					}
+				}
+				else
+				{
+					String message = result == null ? "The plugin operation failed." : result.getMessage();
+					if (error != null)
+					{
+						Throwable cause = error.getCause() == null ? error : error.getCause();
+						if (cause.getMessage() != null)
+						{
+							message = cause.getMessage();
+						}
+					}
+					JTextArea messageArea = new JTextArea(message, 4, 42);
+					messageArea.setEditable(false);
+					messageArea.setLineWrap(true);
+					messageArea.setWrapStyleWord(true);
+					messageArea.setOpaque(false);
+					JOptionPane.showMessageDialog(MicrobotPluginHubPanel.this, messageArea,
+						"Couldn't " + action + " " + pluginName(), JOptionPane.ERROR_MESSAGE);
+				}
+				refreshActionButton();
+				MicrobotPluginHubPanel.this.reloadPluginList();
 			}
 
 			private boolean ensureHealthAllows(String version)
@@ -733,13 +808,13 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
     private final ScheduledExecutorService executor;
 
     private final Deque<PluginIcon> iconLoadQueue = new ArrayDeque<>();
+    private final Set<String> pendingOperations = new HashSet<>();
 
     private final IconTextField searchBar;
     private final JLabel refreshing;
     private final JPanel mainPanel;
     private List<PluginItem> plugins = null;
-
-    private static final File MICROBOT_PLUGIN_DIR = new File(RuneLite.RUNELITE_DIR, "microbot-plugins");
+    private boolean reloadQueued;
 
     @Inject
     MicrobotPluginHubPanel(
@@ -776,17 +851,17 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
         searchBar.getDocument().addDocumentListener(new DocumentListener() {
             @Override
             public void insertUpdate(DocumentEvent e) {
-                executor.execute(MicrobotPluginHubPanel.this::filter);
+                filter();
             }
 
             @Override
             public void removeUpdate(DocumentEvent e) {
-                executor.execute(MicrobotPluginHubPanel.this::filter);
+                filter();
             }
 
             @Override
             public void changedUpdate(DocumentEvent e) {
-                executor.execute(MicrobotPluginHubPanel.this::filter);
+                filter();
             }
         });
 
@@ -802,8 +877,12 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
         JButton openFolderButton = new JButton("Open Folder");
         SwingUtil.removeButtonDecorations(openFolderButton);
         openFolderButton.setFocusable(false);
-        openFolderButton.setToolTipText("Open " + MICROBOT_PLUGIN_DIR.getAbsolutePath());
-        openFolderButton.addActionListener(e -> openMicrobotPluginFolder());
+        openFolderButton.setToolTipText("Open " + microbotPluginManager.getPluginDirectory().getAbsolutePath());
+        openFolderButton.addActionListener(e -> {
+            File pluginDirectory = microbotPluginManager.getPluginDirectory();
+            openFolderButton.setToolTipText("Open " + pluginDirectory.getAbsolutePath());
+            openMicrobotPluginFolder();
+        });
 
         {
             GroupLayout layout = new GroupLayout(mainPanelWrapper);
@@ -886,24 +965,30 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
     }
 
     private void openMicrobotPluginFolder() {
-        if (!MICROBOT_PLUGIN_DIR.exists() && !MICROBOT_PLUGIN_DIR.mkdirs()) {
-            log.warn("Unable to create microbot plugin directory at {}", MICROBOT_PLUGIN_DIR.getAbsolutePath());
+        File pluginDirectory = microbotPluginManager.getPluginDirectory();
+        if (!pluginDirectory.exists() && !pluginDirectory.mkdirs()) {
+            log.warn("Unable to create microbot plugin directory at {}", pluginDirectory.getAbsolutePath());
             return;
         }
 
         try {
             if (!Desktop.isDesktopSupported() || !Desktop.getDesktop().isSupported(Desktop.Action.OPEN)) {
-                log.warn("Desktop browsing not supported; plugin folder: {}", MICROBOT_PLUGIN_DIR.getAbsolutePath());
+                log.warn("Desktop browsing not supported; plugin folder: {}", pluginDirectory.getAbsolutePath());
                 return;
             }
-            Desktop.getDesktop().open(MICROBOT_PLUGIN_DIR);
+            Desktop.getDesktop().open(pluginDirectory);
         } catch (Exception ex) {
-            log.warn("Failed to open microbot plugin folder {}", MICROBOT_PLUGIN_DIR.getAbsolutePath(), ex);
+            log.warn("Failed to open microbot plugin folder {}", pluginDirectory.getAbsolutePath(), ex);
         }
     }
 
     private void reloadPluginList() {
+        if (!SwingUtilities.isEventDispatchThread()) {
+            SwingUtilities.invokeLater(this::reloadPluginList);
+            return;
+        }
         if (refreshing.isVisible()) {
+            reloadQueued = true;
             return;
         }
 
@@ -912,27 +997,42 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
 
         executor.submit(() ->
         {
-            Collection<MicrobotPluginManifest> manifestCollection = microbotPluginManager.getManifestMap().values();
+            Collection<MicrobotPluginManifest> manifestCollection = new ArrayList<>(microbotPluginManager.getManifestMap().values());
+            if (manifestCollection.isEmpty()) {
+                SwingUtilities.invokeLater(this::showManifestFailure);
+                return;
+            }
 
             Map<String, Integer> pluginCounts = Collections.emptyMap();
             try {
                 pluginCounts = microbotPluginClient.getPluginCounts();
             } catch (IOException e) {
                 log.warn("Unable to download plugin counts", e);
-                SwingUtilities.invokeLater(() ->
-                {
-                    refreshing.setVisible(false);
-                    mainPanel.add(new JLabel("Downloading the plugin manifest failed"));
-
-                    JButton retry = new JButton("Retry");
-                    retry.addActionListener(l -> reloadPluginList());
-                    mainPanel.add(retry);
-                    mainPanel.revalidate();
-                });
             }
 
-            reloadPluginList(manifestCollection, pluginCounts);
+            Map<String, Integer> counts = pluginCounts;
+            SwingUtilities.invokeLater(() -> reloadPluginList(manifestCollection, counts));
         });
+    }
+
+    private void showManifestFailure() {
+        refreshing.setVisible(false);
+        reloadQueued = false;
+        mainPanel.removeAll();
+        JLabel failure = new JLabel("<html>Couldn't load the Plugin Hub.<br>Check your connection, then press Retry.</html>");
+        mainPanel.add(failure);
+        JButton retry = new JButton("Retry");
+        retry.addActionListener(l -> {
+            retry.setEnabled(false);
+            failure.setText("Retrying...");
+            executor.submit(() -> {
+                microbotPluginManager.init();
+                reloadPluginList();
+            });
+        });
+        mainPanel.add(retry);
+        mainPanel.revalidate();
+        mainPanel.repaint();
     }
 
     private void reloadPluginList(Collection<MicrobotPluginManifest> manifest, Map<String, Integer> pluginCounts) {
@@ -1007,11 +1107,19 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
             }
 
             refreshing.setVisible(false);
-            executor.execute(MicrobotPluginHubPanel.this::filter);
+            filter();
+            if (reloadQueued) {
+                reloadQueued = false;
+                reloadPluginList();
+            }
         });
     }
 
     void filter() {
+        if (!SwingUtilities.isEventDispatchThread()) {
+            SwingUtilities.invokeLater(this::filter);
+            return;
+        }
         if (refreshing.isVisible() || plugins == null) {
             return;
         }
@@ -1023,12 +1131,10 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
                 PluginItem::isInstalled,
                 PluginItem::getUserCount);
 
-        SwingUtilities.invokeLater(() ->
-        {
-            mainPanel.removeAll();
-            pluginItems.forEach(mainPanel::add);
-            mainPanel.revalidate();
-        });
+        mainPanel.removeAll();
+        pluginItems.forEach(mainPanel::add);
+        mainPanel.revalidate();
+        mainPanel.repaint();
     }
 
     @Override
@@ -1044,6 +1150,7 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
         mainPanel.removeAll();
         refreshing.setVisible(false);
         plugins = null;
+        reloadQueued = false;
 
         synchronized (iconLoadQueue) {
             for (PluginIcon pi; (pi = iconLoadQueue.poll()) != null; ) {
