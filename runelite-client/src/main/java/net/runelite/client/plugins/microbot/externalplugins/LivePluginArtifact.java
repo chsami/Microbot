@@ -60,7 +60,7 @@ final class LivePluginArtifact implements AutoCloseable {
                     throw new IOException("Multi-release plugin JARs are unsupported. Build a Java 11 plugin JAR.");
                 }
                 try (InputStream input = jar.getInputStream(entry)) {
-                    ClassReader reader = new ClassReader(input);
+                    ClassReader reader = readClass(entry.getName(), input.readAllBytes());
                     String className = reader.getClassName().replace('/', '.');
                     if (!entry.getName().equals(reader.getClassName() + ".class") || !classes.add(className)) {
                         throw new IOException("Duplicate or incorrectly named class: " + className);
@@ -122,6 +122,26 @@ final class LivePluginArtifact implements AutoCloseable {
         } catch (Throwable failure) {
             loader.close();
             throw failure;
+        }
+    }
+
+    static ClassReader readClass(String entryName, byte[] bytes) throws IOException {
+        if (bytes.length < 8) {
+            throw new IOException("Malformed class file in plugin JAR: " + entryName);
+        }
+        int major = ((bytes[6] & 0xFF) << 8) | (bytes[7] & 0xFF);
+        int classJava = major - 44;
+        int runtimeJava = Runtime.version().feature();
+        if (classJava > runtimeJava) {
+            throw new IOException("This plugin was built for Java " + classJava + ", but your client runs on Java "
+                    + runtimeJava + ", so it can't be loaded. Ask the plugin author to rebuild it for Java 11"
+                    + " (--release 11). (class: " + entryName + ")");
+        }
+        try {
+            return new ClassReader(bytes);
+        } catch (IllegalArgumentException ex) {
+            throw new IOException("This plugin contains a class the client can't read (built for Java " + classJava
+                    + "). Ask the plugin author to rebuild it for Java 11 (--release 11). (class: " + entryName + ")", ex);
         }
     }
 
