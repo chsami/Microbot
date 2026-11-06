@@ -1,6 +1,6 @@
 package net.runelite.client.plugins.microbot;
 
-import java.util.HashSet;
+import java.util.EnumSet;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
@@ -15,18 +15,41 @@ final class HwidSpoofCheck
 	static final String DEVICE_HOOK_PROPERTY = "microbot.hwid.device.installed";
 	static final String RANDOM_DAT_CALL_PROPERTY = "microbot.hwid.randomdat.lastCall";
 
-	static final String AGENT_MISSING = "Spoof device ID is on, but the HWID agent is not running, so this login sent the real device details. Close the client and start it again from the Microbot launcher with Spoof hardware IDs ticked. If you do not want spoofing, turn off Spoof device ID in Microbot > General.";
-	static final String LAUNCHER_NOT_OPTED_IN = "Spoof device ID is on, but the launcher started the client with spoofing off, so this login sent the real device details. To spoof, tick Spoof hardware IDs in the Microbot launcher and restart the client. If it is already ticked, your launcher is too old to turn spoofing on; update it when a new version is out. If you do not want spoofing, turn off Spoof device ID in Microbot > General.";
-	static final String SETTING_OFF_WITH_LAUNCHER_ON = "Spoof hardware IDs is ticked in the Microbot launcher, but Spoof device ID is off in Microbot > General, so this login sent the real device details. Turn on Spoof device ID there to spoof from your next login, or untick Spoof hardware IDs in the launcher if you do not want spoofing.";
-	static final String LAUNCHER_DISABLED = "Spoof device ID is on, but Spoof hardware IDs is not ticked in the Microbot launcher, so this login sent the real device details. To spoof, tick Spoof hardware IDs in the launcher and restart the client. If you do not want spoofing, turn off Spoof device ID in Microbot > General.";
-	/** Log only; raw JVM flags stay out of game chat. */
-	static final String MANUAL_LAUNCH_HINT = "To start the client by hand with spoofing, add -javaagent:hwid-agent-<version>.jar -Dmicrobot.hwid.spoof=true to the JVM arguments.";
-	static final String DEVICE_HOOK_MISSING = "Spoof device ID is on, but the HWID agent could not hook the device ID method in this client version. If this version reads the device ID, the real one was sent at this login.";
-	static final String RANDOM_DAT_HOOK_MISSED = "Spoof device ID is on, but the HWID agent's random.dat hook did not run during this login, so the real random.dat may have been sent.";
+	static final String AGENT_MISSING_CHAT = "Spoof device ID is on, but the client was not started with spoofing, so this login sent the real device details. Restart from the Microbot launcher with Spoof hardware IDs ticked.";
+	static final String AGENT_INERT_CHAT = "Spoof device ID is on, but this client was started with spoofing turned off, so this login sent the real device details. Restart from the Microbot launcher with Spoof hardware IDs ticked, or turn off Spoof device ID in Microbot > General.";
+	static final String HOOK_FAILED_CHAT = "Spoof device ID is on, but spoofing did not work in this client version, so this login may have sent the real device details. Report this in the Microbot Discord.";
+
+	enum Problem
+	{
+		AGENT_MISSING(AGENT_MISSING_CHAT, "HWID agent not attached (microbot.hwid.agent is not set). To start the client by hand with spoofing, add -javaagent:hwid-agent-<version>.jar to the JVM arguments."),
+		AGENT_INERT(AGENT_INERT_CHAT, "HWID agent attached with -Dmicrobot.hwid.spoof=false, so it registered no transformer (microbot.hwid.agent=inert). Drop that flag to spoof."),
+		DEVICE_HOOK_MISSING(HOOK_FAILED_CHAT, "HWID agent loaded but could not hook the device ID method in this client version (microbot.hwid.device.installed is not set). If this version reads the device ID, the real one was sent."),
+		RANDOM_DAT_HOOK_MISSED(HOOK_FAILED_CHAT, "HWID agent loaded but its random.dat hook did not run during this login (microbot.hwid.randomdat.lastCall is older than the login start), so the real random.dat may have been sent."),
+		SETTING_OFF_WITH_LAUNCHER_ON(null, "HWID agent loaded, but Spoof device ID is off in Microbot > General, so this login sent the real device details.");
+
+		private final String chat;
+		private final String detail;
+
+		Problem(String chat, String detail)
+		{
+			this.chat = chat;
+			this.detail = detail;
+		}
+
+		Optional<String> chatMessage()
+		{
+			return Optional.ofNullable(chat);
+		}
+
+		String logMessage()
+		{
+			return chat == null ? detail : chat + " " + detail;
+		}
+	}
 
 	private final Function<String, String> properties;
 	private final LongSupplier clock;
-	private final Set<String> reported = new HashSet<>();
+	private final Set<Problem> reported = EnumSet.noneOf(Problem.class);
 	private long loginStartedAt;
 
 	HwidSpoofCheck()
@@ -45,15 +68,15 @@ final class HwidSpoofCheck
 		loginStartedAt = clock.getAsLong();
 	}
 
-	synchronized Optional<String> loggedIn(boolean spoofEnabled)
+	synchronized Optional<Problem> loggedIn(boolean spoofEnabled)
 	{
 		long startedAt = loginStartedAt;
 		loginStartedAt = -1;
-		if (startedAt < 0)
+		if (startedAt < 0 || Boolean.parseBoolean(properties.apply(LAUNCHER_DISABLED_PROPERTY)))
 		{
 			return Optional.empty();
 		}
-		String problem = spoofEnabled ? problem(startedAt) : settingOffProblem();
+		Problem problem = spoofEnabled ? problem(startedAt) : settingOffProblem();
 		if (problem == null || !reported.add(problem))
 		{
 			return Optional.empty();
@@ -61,40 +84,29 @@ final class HwidSpoofCheck
 		return Optional.of(problem);
 	}
 
-	/** Whether the log line for this problem should carry {@link #MANUAL_LAUNCH_HINT}. */
-	static boolean needsManualLaunchHint(String problem)
+	private Problem settingOffProblem()
 	{
-		return AGENT_MISSING.equals(problem) || LAUNCHER_NOT_OPTED_IN.equals(problem);
+		return AGENT_LOADED.equals(properties.apply(AGENT_PROPERTY)) ? Problem.SETTING_OFF_WITH_LAUNCHER_ON : null;
 	}
 
-	/** The launcher started the agent on purpose, but the in-client setting is off. */
-	private String settingOffProblem()
+	private Problem problem(long startedAt)
 	{
-		return AGENT_LOADED.equals(properties.apply(AGENT_PROPERTY)) ? SETTING_OFF_WITH_LAUNCHER_ON : null;
-	}
-
-	private String problem(long startedAt)
-	{
-		if (Boolean.parseBoolean(properties.apply(LAUNCHER_DISABLED_PROPERTY)))
-		{
-			return LAUNCHER_DISABLED;
-		}
 		String agent = properties.apply(AGENT_PROPERTY);
 		if (agent == null)
 		{
-			return AGENT_MISSING;
+			return Problem.AGENT_MISSING;
 		}
 		if (AGENT_INERT.equals(agent))
 		{
-			return LAUNCHER_NOT_OPTED_IN;
+			return Problem.AGENT_INERT;
 		}
 		if (properties.apply(DEVICE_HOOK_PROPERTY) == null)
 		{
-			return DEVICE_HOOK_MISSING;
+			return Problem.DEVICE_HOOK_MISSING;
 		}
 		if (lastRandomDatCall() < startedAt)
 		{
-			return RANDOM_DAT_HOOK_MISSED;
+			return Problem.RANDOM_DAT_HOOK_MISSED;
 		}
 		return null;
 	}
