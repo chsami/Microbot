@@ -133,14 +133,15 @@ final class LivePluginArtifact implements AutoCloseable {
         int classJava = major - 44;
         int runtimeJava = Runtime.version().feature();
         if (classJava > runtimeJava) {
-            throw new IOException("Plugin class " + entryName + " targets Java " + classJava
-                    + " but the client runs on Java " + runtimeJava + ". Rebuild the plugin with --release 11.");
+            throw new IOException("This plugin was built for Java " + classJava + ", but your client runs on Java "
+                    + runtimeJava + ", so it can't be loaded. Ask the plugin author to rebuild it for Java 11"
+                    + " (--release 11). (class: " + entryName + ")");
         }
         try {
             return new ClassReader(bytes);
         } catch (IllegalArgumentException ex) {
-            throw new IOException("Unsupported class file in plugin JAR: " + entryName
-                    + " (Java " + classJava + "). Rebuild the plugin with --release 11.", ex);
+            throw new IOException("This plugin contains a class the client can't read (built for Java " + classJava
+                    + "). Ask the plugin author to rebuild it for Java 11 (--release 11). (class: " + entryName + ")", ex);
         }
     }
 
