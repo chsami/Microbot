@@ -125,10 +125,6 @@ final class LivePluginArtifact implements AutoCloseable {
         }
     }
 
-    /**
-     * Parses one class file, turning class-version problems into a readable install error
-     * instead of a raw ASM {@link IllegalArgumentException}.
-     */
     static ClassReader readClass(String entryName, byte[] bytes) throws IOException {
         if (bytes.length < 8) {
             throw new IOException("Malformed class file in plugin JAR: " + entryName);

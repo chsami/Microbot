@@ -163,7 +163,6 @@ public class LivePluginManagerTest {
 
     @Test
     public void installsPluginCompiledForJava17() throws Exception {
-        // Regression: ASM 9.0 rejected class file major version 61 before the JVM saw the class.
         Assume.assumeTrue("Needs a Java 17+ test JVM", Runtime.version().feature() >= 17);
         fixtureClassVersion = Opcodes.V17;
         success(manager.install(fixture("java17.jar", "1.0", false)));
@@ -776,7 +775,6 @@ public class LivePluginManagerTest {
         }
     }
 
-    /** Class-file version written into fixture plugin classes. */
     private int fixtureClassVersion = Opcodes.V11;
 
     private Path fixture(String filename, String version, boolean failStart) throws Exception {
