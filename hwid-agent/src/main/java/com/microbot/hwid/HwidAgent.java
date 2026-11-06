@@ -15,7 +15,12 @@ public final class HwidAgent
 
 	public static final String TOGGLE_PROPERTY = "microbot.hwid.spoof";
 	public static final String AGENT_PROPERTY = "microbot.hwid.agent";
+	/** {@link #AGENT_PROPERTY} value once the transformers are registered. */
+	public static final String AGENT_LOADED = "loaded";
+	/** {@link #AGENT_PROPERTY} value when the agent was attached but the launcher did not opt in to spoofing. */
+	public static final String AGENT_INERT = "inert";
 	public static final String DEVICE_HOOK_PROPERTY = "microbot.hwid.device.installed";
+	public static final String PLATFORM_HOOK_PROPERTY = "microbot.hwid.platform.installed";
 	public static final String RANDOM_DAT_CALL_PROPERTY = "microbot.hwid.randomdat.lastCall";
 
 	private static volatile boolean deviceHookInstalled;
@@ -30,14 +35,31 @@ public final class HwidAgent
 	{
 	}
 
+	/** Stock RuneLite reports the hash of its signing certificate; the unsigned Microbot build would report 0. */
+	private static final int STOCK_SIGNER_HASH = -991467620;
+
+	/** Same values as the stock macOS RuneLite.app, started by LaunchServices without any java agent. */
+	private static final String[] STOCK_MAC_PROCESS_NAMES = {"RuneLite", "launchd", ""};
+
+	/**
+	 * Spoofing is opt-in per launch. Unless the launcher started the JVM with -Dmicrobot.hwid.spoof=true
+	 * the agent registers no transformer and touches no file; it only publishes {@link #AGENT_INERT} so the
+	 * client can tell a launcher that did not opt in apart from a missing agent.
+	 */
 	public static void premain(String args, Instrumentation inst)
 	{
+		if (!spoofEnabled())
+		{
+			System.setProperty(AGENT_PROPERTY, AGENT_INERT);
+			return;
+		}
 		try
 		{
+			inst.addTransformer(new PlatformMetadataTransformer());
 			inst.addTransformer(new PlatformInfoTransformer());
 			inst.addTransformer(new RandomDatTransformer());
 			inst.addTransformer(new RandomDatWriteTransformer());
-			System.setProperty(AGENT_PROPERTY, "loaded");
+			System.setProperty(AGENT_PROPERTY, AGENT_LOADED);
 			launcherCharacterId();
 		}
 		catch (Throwable t)
@@ -50,6 +72,37 @@ public final class HwidAgent
 	{
 		deviceHookInstalled = true;
 		System.setProperty(DEVICE_HOOK_PROPERTY, "true");
+	}
+
+	private static volatile boolean signerHookInstalled;
+	private static volatile boolean processHookInstalled;
+
+	static void markSignerHookInstalled()
+	{
+		signerHookInstalled = true;
+		publishPlatformHook();
+	}
+
+	static void markProcessHookInstalled()
+	{
+		processHookInstalled = true;
+		publishPlatformHook();
+	}
+
+	/** The platform property is only set once both the signer hash and the process names are hooked. */
+	private static void publishPlatformHook()
+	{
+		if (signerHookInstalled && processHookInstalled)
+		{
+			System.setProperty(PLATFORM_HOOK_PROPERTY, "true");
+		}
+	}
+
+	static void resetPlatformHooksForTest()
+	{
+		signerHookInstalled = false;
+		processHookInstalled = false;
+		System.clearProperty(PLATFORM_HOOK_PROPERTY);
 	}
 
 	public static boolean isDeviceHookInstalled()
@@ -77,7 +130,24 @@ public final class HwidAgent
 
 	public static boolean spoofEnabled()
 	{
-		return Boolean.parseBoolean(System.getProperty(TOGGLE_PROPERTY, "true"));
+		return Boolean.parseBoolean(System.getProperty(TOGGLE_PROPERTY, "false"));
+	}
+
+	/** Replaces the {@code Arrays.hashCode(getSigners())} call the game makes while collecting platform info. */
+	public static int signerHash(Object[] signers)
+	{
+		return spoofEnabled() ? STOCK_SIGNER_HASH : Arrays.hashCode(signers);
+	}
+
+	/** Called on each executable, parent process and agent name the game stores before it sizes the login packet. */
+	public static String platformName(String collected, int phase)
+	{
+		if (!spoofEnabled() || phase < 0 || phase >= STOCK_MAC_PROCESS_NAMES.length
+			|| !System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT).startsWith("mac"))
+		{
+			return collected;
+		}
+		return STOCK_MAC_PROCESS_NAMES[phase];
 	}
 
 	public static Object randomDatFile(Object handle)

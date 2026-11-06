@@ -8,6 +8,7 @@ import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class HwidSpoofCheckTest
 {
@@ -19,6 +20,7 @@ public class HwidSpoofCheckTest
 	{
 		properties.put(HwidSpoofCheck.AGENT_PROPERTY, "loaded");
 		properties.put(HwidSpoofCheck.DEVICE_HOOK_PROPERTY, "true");
+		properties.put(HwidSpoofCheck.PLATFORM_HOOK_PROPERTY, "true");
 	}
 
 	@Test
@@ -53,6 +55,16 @@ public class HwidSpoofCheckTest
 	}
 
 	@Test
+	public void reportsMissingPlatformHook()
+	{
+		properties.put(HwidSpoofCheck.AGENT_PROPERTY, "loaded");
+		properties.put(HwidSpoofCheck.DEVICE_HOOK_PROPERTY, "true");
+		properties.put(HwidSpoofCheck.RANDOM_DAT_CALL_PROPERTY, "1500");
+		check.loginStarted();
+		assertEquals(Optional.of(HwidSpoofCheck.PLATFORM_HOOK_MISSING), check.loggedIn(true));
+	}
+
+	@Test
 	public void reportsRandomDatHookThatOnlyRanBeforeThisLogin()
 	{
 		agentLoadedWithDeviceHook();
@@ -62,11 +74,42 @@ public class HwidSpoofCheckTest
 	}
 
 	@Test
-	public void silentWhenTheLauncherTurnedSpoofingOff()
+	public void reportsAgentAttachedWithoutTheLauncherOptingIn()
+	{
+		properties.put(HwidSpoofCheck.AGENT_PROPERTY, HwidSpoofCheck.AGENT_INERT);
+		check.loginStarted();
+		assertEquals(Optional.of(HwidSpoofCheck.LAUNCHER_NOT_OPTED_IN), check.loggedIn(true));
+	}
+
+	@Test
+	public void warnsOnceWhenTheSettingIsOnButTheLauncherTurnedSpoofingOff()
 	{
 		properties.put(HwidSpoofCheck.LAUNCHER_DISABLED_PROPERTY, "true");
 		check.loginStarted();
+		assertEquals(Optional.of(HwidSpoofCheck.LAUNCHER_DISABLED), check.loggedIn(true));
+		check.loginStarted();
 		assertFalse(check.loggedIn(true).isPresent());
+	}
+
+	@Test
+	public void silentWhenTheLauncherAndTheSettingAreBothOff()
+	{
+		properties.put(HwidSpoofCheck.LAUNCHER_DISABLED_PROPERTY, "true");
+		check.loginStarted();
+		assertFalse(check.loggedIn(false).isPresent());
+	}
+
+	@Test
+	public void rawLaunchFlagsStayOutOfChatMessages()
+	{
+		for (String message : new String[]{HwidSpoofCheck.AGENT_MISSING, HwidSpoofCheck.LAUNCHER_NOT_OPTED_IN,
+			HwidSpoofCheck.LAUNCHER_DISABLED, HwidSpoofCheck.DEVICE_HOOK_MISSING, HwidSpoofCheck.PLATFORM_HOOK_MISSING, HwidSpoofCheck.RANDOM_DAT_HOOK_MISSED})
+		{
+			assertFalse(message, message.contains("-javaagent") || message.contains("-D"));
+		}
+		assertTrue(HwidSpoofCheck.needsManualLaunchHint(HwidSpoofCheck.AGENT_MISSING));
+		assertTrue(HwidSpoofCheck.needsManualLaunchHint(HwidSpoofCheck.LAUNCHER_NOT_OPTED_IN));
+		assertFalse(HwidSpoofCheck.needsManualLaunchHint(HwidSpoofCheck.LAUNCHER_DISABLED));
 	}
 
 	@Test

@@ -9,12 +9,19 @@ import java.util.function.LongSupplier;
 final class HwidSpoofCheck
 {
 	static final String AGENT_PROPERTY = "microbot.hwid.agent";
+	static final String AGENT_INERT = "inert";
 	static final String LAUNCHER_DISABLED_PROPERTY = "microbot.hwid.launcherDisabled";
 	static final String DEVICE_HOOK_PROPERTY = "microbot.hwid.device.installed";
+	static final String PLATFORM_HOOK_PROPERTY = "microbot.hwid.platform.installed";
 	static final String RANDOM_DAT_CALL_PROPERTY = "microbot.hwid.randomdat.lastCall";
 
-	static final String AGENT_MISSING = "Spoof device ID is on, but the HWID agent is not attached, so this login sent the real random.dat (and the real device ID, if this client version reads it). Start Microbot from the launcher, or add -javaagent:hwid-agent-<version>.jar.";
+	static final String AGENT_MISSING = "Spoof device ID is on, but the HWID agent is not running, so this login sent the real device details. Update the Microbot launcher, make sure Spoof hardware IDs is ticked, and restart the client.";
+	static final String LAUNCHER_NOT_OPTED_IN = "Spoof device ID is on, but the launcher started the client without it, so this login sent the real device details. Update the Microbot launcher, tick Spoof hardware IDs, and restart the client.";
+	static final String LAUNCHER_DISABLED = "Spoof device ID has no effect until you tick Spoof hardware IDs in the Microbot launcher and restart the client. This login sent the real device details.";
+	/** Log only; raw JVM flags stay out of game chat. */
+	static final String MANUAL_LAUNCH_HINT = "To start the client by hand with spoofing, add -javaagent:hwid-agent-<version>.jar -Dmicrobot.hwid.spoof=true to the JVM arguments.";
 	static final String DEVICE_HOOK_MISSING = "Spoof device ID is on, but the HWID agent could not hook the device ID method in this client version. If this version reads the device ID, the real one was sent at this login.";
+	static final String PLATFORM_HOOK_MISSING = "Spoof device ID is on, but some client details were sent unchanged at this login. The device ID and random.dat are still spoofed. Update Microbot, or report this on Discord if it keeps happening.";
 	static final String RANDOM_DAT_HOOK_MISSED = "Spoof device ID is on, but the HWID agent's random.dat hook did not run during this login, so the real random.dat may have been sent.";
 
 	private final Function<String, String> properties;
@@ -42,7 +49,7 @@ final class HwidSpoofCheck
 	{
 		long startedAt = loginStartedAt;
 		loginStartedAt = -1;
-		if (!spoofEnabled || startedAt < 0 || Boolean.parseBoolean(properties.apply(LAUNCHER_DISABLED_PROPERTY)))
+		if (!spoofEnabled || startedAt < 0)
 		{
 			return Optional.empty();
 		}
@@ -54,19 +61,40 @@ final class HwidSpoofCheck
 		return Optional.of(problem);
 	}
 
+	/** Whether the log line for this problem should carry {@link #MANUAL_LAUNCH_HINT}. */
+	static boolean needsManualLaunchHint(String problem)
+	{
+		return AGENT_MISSING.equals(problem) || LAUNCHER_NOT_OPTED_IN.equals(problem);
+	}
+
 	private String problem(long startedAt)
 	{
-		if (properties.apply(AGENT_PROPERTY) == null)
+		if (Boolean.parseBoolean(properties.apply(LAUNCHER_DISABLED_PROPERTY)))
+		{
+			return LAUNCHER_DISABLED;
+		}
+		String agent = properties.apply(AGENT_PROPERTY);
+		if (agent == null)
 		{
 			return AGENT_MISSING;
+		}
+		if (AGENT_INERT.equals(agent))
+		{
+			return LAUNCHER_NOT_OPTED_IN;
 		}
 		if (properties.apply(DEVICE_HOOK_PROPERTY) == null)
 		{
 			return DEVICE_HOOK_MISSING;
 		}
+		// random.dat is checked before the platform hook so PLATFORM_HOOK_MISSING
+		// is only reported once the device ID and random.dat hooks are known to have run.
 		if (lastRandomDatCall() < startedAt)
 		{
 			return RANDOM_DAT_HOOK_MISSED;
+		}
+		if (properties.apply(PLATFORM_HOOK_PROPERTY) == null)
+		{
+			return PLATFORM_HOOK_MISSING;
 		}
 		return null;
 	}
