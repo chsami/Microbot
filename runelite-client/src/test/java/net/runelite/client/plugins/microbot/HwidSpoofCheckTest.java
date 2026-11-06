@@ -93,6 +93,18 @@ public class HwidSpoofCheckTest
 	}
 
 	@Test
+	public void chatTextsTellThePlayerWhatHappenedAndWhatToDo()
+	{
+		assertEquals(Optional.of("Spoofing is not active, so this login sent your real device details. Restart the client from the Microbot launcher and check that Spoof hardware IDs is ticked. Already ticked? Report it in the Microbot Discord."),
+			Problem.AGENT_MISSING.chatMessage());
+		assertEquals(Optional.of("This client started with spoofing off, so this login sent your real device details. Restart from the Microbot launcher, or turn off Spoof device ID in Microbot > General."),
+			Problem.AGENT_INERT.chatMessage());
+		String hookFailed = "Spoof device ID is on, but spoofing did not work in this client version, so this login may have sent the real device details. Report it in the Microbot Discord, or turn off Spoof device ID in Microbot > General.";
+		assertEquals(Optional.of(hookFailed), Problem.DEVICE_HOOK_MISSING.chatMessage());
+		assertEquals(Optional.of(hookFailed), Problem.RANDOM_DAT_HOOK_MISSED.chatMessage());
+	}
+
+	@Test
 	public void rawLaunchFlagsStayInTheLogOnly()
 	{
 		for (Problem problem : Problem.values())

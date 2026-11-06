@@ -64,6 +64,16 @@ public class HwidAgentOptInTest
 	}
 
 	@Test
+	public void premainRegistersEveryTransformerForAnyValueOtherThanFalse()
+	{
+		System.setProperty(HwidAgent.TOGGLE_PROPERTY, "0");
+		AtomicInteger transformers = new AtomicInteger();
+		HwidAgent.premain(null, countingInstrumentation(transformers));
+		assertEquals(3, transformers.get());
+		assertEquals(HwidAgent.AGENT_LOADED, System.getProperty(HwidAgent.AGENT_PROPERTY));
+	}
+
+	@Test
 	public void premainRegistersEveryTransformerWhenSpoofingIsOn()
 	{
 		System.setProperty(HwidAgent.TOGGLE_PROPERTY, "true");

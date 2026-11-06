@@ -454,7 +454,7 @@ public class MicrobotPlugin extends Plugin
 
 	private void reportHwidSpoofProblem(HwidSpoofCheck.Problem problem)
 	{
-		log.warn(problem.logMessage());
+		log.info(problem.logMessage());
 		problem.chatMessage().ifPresent(message -> chatMessageManager.queue(QueuedMessage.builder()
 			.type(ChatMessageType.CONSOLE)
 			.runeLiteFormattedMessage(new ChatMessageBuilder()
