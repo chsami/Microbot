@@ -216,7 +216,8 @@ public class NaturalMouse {
 
         @Override
         public Dimension getScreenSize() {
-            return Microbot.getClient().getCanvas().getSize();
+            Client client = Microbot.getClient();
+            return new Dimension(client.getCanvasWidth(), client.getCanvasHeight());
         }
 
         @Override
