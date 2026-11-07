@@ -18,7 +18,7 @@ final class HwidSpoofCheck
 
 	static final String AGENT_MISSING_CHAT = "Spoofing is not active, so this login sent your real device details. Restart the client from the Microbot launcher and check that Spoof hardware IDs is ticked. Already ticked? Report it in the Microbot Discord.";
 	static final String AGENT_INERT_CHAT = "This client started with spoofing off, so this login sent your real device details. Restart from the Microbot launcher, or turn off Spoof device ID in Microbot > General.";
-	static final String PLATFORM_HOOK_MISSING_CHAT = "Spoof device ID is on, but this client version could not hide some client details at login, so they were sent unchanged. Your device ID and random.dat are still spoofed. Report it in the Microbot Discord, or turn off Spoof device ID in Microbot > General.";
+	static final String PLATFORM_HOOK_MISSING_CHAT = "Spoof device ID is on, but this client version could not hide the client signature and program names at login, so those were sent unchanged. Your device ID and random.dat are still spoofed, so keep Spoof device ID on and report this in the Microbot Discord.";
 	static final String HOOK_FAILED_CHAT = "Spoof device ID is on, but spoofing did not work in this client version, so this login may have sent the real device details. Report it in the Microbot Discord, or turn off Spoof device ID in Microbot > General.";
 
 	enum Problem
