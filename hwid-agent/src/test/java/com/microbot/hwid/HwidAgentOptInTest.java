@@ -1,8 +1,9 @@
 package com.microbot.hwid;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
+import java.io.File;
 import java.lang.instrument.Instrumentation;
 import java.lang.reflect.Proxy;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -13,12 +14,16 @@ import org.junit.Test;
 public class HwidAgentOptInTest
 {
 	private String previousSpoof;
+	private File credentialsFile;
 
 	@Before
-	public void setUp()
+	public void setUp() throws Exception
 	{
 		previousSpoof = System.getProperty(HwidAgent.TOGGLE_PROPERTY);
 		System.clearProperty(HwidAgent.AGENT_PROPERTY);
+		credentialsFile = File.createTempFile("hwid-optin", ".credentials");
+		credentialsFile.delete();
+		HwidAgent.setCredentialsFileForTesting(credentialsFile);
 	}
 
 	@After
@@ -33,23 +38,39 @@ public class HwidAgentOptInTest
 			System.setProperty(HwidAgent.TOGGLE_PROPERTY, previousSpoof);
 		}
 		System.clearProperty(HwidAgent.AGENT_PROPERTY);
+		credentialsFile.delete();
+		HwidAgent.setCredentialsFileForTesting(null);
 	}
 
 	@Test
-	public void spoofingIsOffUnlessAskedFor()
-	{
-		System.clearProperty(HwidAgent.TOGGLE_PROPERTY);
-		assertFalse(HwidAgent.spoofEnabled());
-	}
-
-	@Test
-	public void premainOnlyReportsInertWhileSpoofingIsOff()
+	public void premainRegistersEveryTransformerWhenTheSpoofPropertyIsMissing()
 	{
 		System.clearProperty(HwidAgent.TOGGLE_PROPERTY);
 		AtomicInteger transformers = new AtomicInteger();
 		HwidAgent.premain(null, countingInstrumentation(transformers));
+		assertEquals(4, transformers.get());
+		assertEquals(HwidAgent.AGENT_LOADED, System.getProperty(HwidAgent.AGENT_PROPERTY));
+		assertTrue(HwidAgent.spoofEnabled());
+	}
+
+	@Test
+	public void premainStaysInertOnlyWhenSpoofingIsExplicitlyOff()
+	{
+		System.setProperty(HwidAgent.TOGGLE_PROPERTY, "false");
+		AtomicInteger transformers = new AtomicInteger();
+		HwidAgent.premain(null, countingInstrumentation(transformers));
 		assertEquals(0, transformers.get());
 		assertEquals(HwidAgent.AGENT_INERT, System.getProperty(HwidAgent.AGENT_PROPERTY));
+	}
+
+	@Test
+	public void premainRegistersEveryTransformerForAnyValueOtherThanFalse()
+	{
+		System.setProperty(HwidAgent.TOGGLE_PROPERTY, "0");
+		AtomicInteger transformers = new AtomicInteger();
+		HwidAgent.premain(null, countingInstrumentation(transformers));
+		assertEquals(4, transformers.get());
+		assertEquals(HwidAgent.AGENT_LOADED, System.getProperty(HwidAgent.AGENT_PROPERTY));
 	}
 
 	@Test

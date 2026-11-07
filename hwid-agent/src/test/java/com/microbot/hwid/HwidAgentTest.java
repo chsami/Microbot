@@ -42,8 +42,6 @@ public class HwidAgentTest
 	@Before
 	public void setUp() throws Exception
 	{
-		// Spoofing is off unless asked for; these tests exercise the spoofed paths.
-		System.setProperty(HwidAgent.TOGGLE_PROPERTY, "true");
 		storeFile = File.createTempFile("hwid-test", ".properties");
 		DeviceIdStore.setStoreFileForTesting(storeFile);
 		DeviceIdStore.reset();
@@ -60,7 +58,6 @@ public class HwidAgentTest
 	@After
 	public void tearDown()
 	{
-		System.clearProperty(HwidAgent.TOGGLE_PROPERTY);
 		System.clearProperty("microbot.hwid.store");
 		System.clearProperty("microbot.hwid.randomdat.store");
 		DeviceIdStore.reset();

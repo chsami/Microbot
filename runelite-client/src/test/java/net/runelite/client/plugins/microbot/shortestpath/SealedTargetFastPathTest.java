@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
@@ -227,6 +228,31 @@ public class SealedTargetFastPathTest {
         WorldPoint last = pf.getPath().get(pf.getPath().size() - 1);
         assertTrue("approach path must end on the bank beside the spot, ended at " + last,
                 last.distanceTo2D(dst) <= 10);
+    }
+
+    @Test
+    public void alKharidFurnaceRimSkipsBlockedTilesAndNeverPublishesThePlayerTile() {
+        PathfinderConfig config = newConfig();
+        CollisionMap map = config.getMap();
+        WorldPoint src = new WorldPoint(3276, 3186, 0);
+        WorldPoint dst = new WorldPoint(3276, 3188, 0);
+        assumeTrue("precondition: the shipped map must block the furnace and counter tiles",
+                map.isBlocked(3276, 3188, 0) && map.isBlocked(3276, 3187, 0) && map.isBlocked(3277, 3188, 0)
+                        && !map.isBlocked(src.getX(), src.getY(), src.getPlane()));
+
+        Pathfinder pf = new Pathfinder(config, src, dst);
+        pf.run();
+
+        assertEquals(PathTerminationReason.SEARCH_EXHAUSTED, pf.getTerminationReason());
+        WorldPoint reached = pf.getReachedSealedSubstitute();
+        assertNotNull(reached);
+        assertNotEquals("the rim must not collapse onto the player's own tile", src, reached);
+        assertTrue("the rim must be standable: " + reached,
+                !map.isBlocked(reached.getX(), reached.getY(), reached.getPlane()));
+        assertEquals("the rim must sit beside the sealed tile: " + reached, 1, reached.distanceTo2D(dst));
+        WorldPoint nearest = pf.getNearestSealedRimSubstitute();
+        assertNotNull(nearest);
+        assertNotEquals(src, nearest);
     }
 
     /** Regression from 2026-08-15: 3539 -> 3538 -> 3537 must be normalized in one plan. */

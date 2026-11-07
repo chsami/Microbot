@@ -63,18 +63,16 @@ public interface MicrobotConfig extends Config
 	}
 
 	String keySpoofDeviceId = "spoofDeviceId";
-	/** Not a setting: records that the one-time "now opt-in" chat notice was shown. */
-	String keySpoofOptInNoticeShown = "spoofDeviceIdOptInNoticeShown";
 	@ConfigItem(
 		keyName = keySpoofDeviceId,
 		name = "Spoof device ID",
-		description = "Send a random device ID and random.dat seed, kept per account, instead of the real ones. Off by default. Needs Spoof hardware IDs ticked in the launcher and a client restart",
+		description = "Send a random device ID and login seed (random.dat), kept per account, instead of the real ones. Only works when Spoof hardware IDs is ticked in the Microbot launcher; restart the client after changing that",
 		position = 3,
 		section = generalSection
 	)
 	default boolean spoofDeviceId()
 	{
-		return false;
+		return true;
 	}
 
 	@ConfigSection(

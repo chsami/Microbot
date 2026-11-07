@@ -446,7 +446,7 @@ public class Pathfinder implements Runnable {
                 final int nx = x + d[0];
                 final int ny = y + d[1];
                 final int np = WorldPointUtil.packWorldPoint(nx, ny, z);
-                if (component.contains(np) || rim.contains(np)) {
+                if (component.contains(np) || rim.contains(np) || map.isBlocked(nx, ny, z)) {
                     continue;
                 }
                 for (int[] out : dirs) {

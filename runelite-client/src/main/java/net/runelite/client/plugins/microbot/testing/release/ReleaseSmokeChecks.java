@@ -797,14 +797,28 @@ public final class ReleaseSmokeChecks {
 
         context.onCleanup("uninstall " + internalName, () -> {
             if (findExternal(internalName).isPresent()) {
-                microbotPluginManager.remove(manifest);
+                var removeOperation = microbotPluginManager.removePlugin(manifest);
+                if (!waitFor(removeOperation::isDone, 30_000)) {
+                    throw new IllegalStateException("Uninstall operation did not finish for " + internalName);
+                }
+                var removeResult = removeOperation.getNow(null);
+                if (removeResult == null || !removeResult.isSuccess()) {
+                    throw new IllegalStateException("Uninstall failed for " + internalName + ": "
+                            + (removeResult == null ? "no result" : removeResult.getMessage()));
+                }
                 if (findExternal(internalName).isPresent()) {
                     throw new IllegalStateException(internalName + " still registered after remove");
                 }
             }
         });
         long start = System.currentTimeMillis();
-        microbotPluginManager.install(manifest, null);
+        var installOperation = microbotPluginManager.installPlugin(manifest, null);
+        context.require(waitFor(installOperation::isDone, 30_000),
+                "Hub plugin " + internalName + " install operation did not finish");
+        var installResult = installOperation.getNow(null);
+        context.require(installResult != null && installResult.isSuccess(),
+                "Hub plugin " + internalName + " installation failed: "
+                        + (installResult == null ? "no result" : installResult.getMessage()));
         boolean installed = waitFor(() -> findExternal(internalName).isPresent(), 30_000);
         context.detail("installMs", System.currentTimeMillis() - start);
         context.require(installed, "Hub plugin " + internalName + " did not load after install");
@@ -812,7 +826,13 @@ public final class ReleaseSmokeChecks {
         context.detail("activeAfterInstall", pluginManager.isPluginActive(plugin));
         cyclePlugin(context, plugin);
 
-        microbotPluginManager.remove(manifest);
+        var removeOperation = microbotPluginManager.removePlugin(manifest);
+        context.require(waitFor(removeOperation::isDone, 30_000),
+                "Hub plugin " + internalName + " uninstall operation did not finish");
+        var removeResult = removeOperation.getNow(null);
+        context.require(removeResult != null && removeResult.isSuccess(),
+                "Hub plugin " + internalName + " uninstall failed: "
+                        + (removeResult == null ? "no result" : removeResult.getMessage()));
         context.require(findExternal(internalName).isEmpty(), "Hub plugin still registered after uninstall");
         context.require(microbotPluginManager.getInstalledPluginVersion(internalName).isEmpty(),
                 "Installed version still recorded after uninstall");
