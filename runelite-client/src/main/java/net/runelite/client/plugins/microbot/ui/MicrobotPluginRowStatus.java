@@ -37,8 +37,9 @@ class MicrobotPluginRowStatus
         if (health != null && health.isBlocking())
         {
             String reason = health.getReason();
-            return new MicrobotPluginRowStatus(Kind.HEALTH, reason == null || reason.trim().isEmpty() ? "Confirmed broken"
-                : "Confirmed broken: " + StringUtils.abbreviate(reason.trim(), REASON_LENGTH), true);
+            String label = health.getLabel();
+            return new MicrobotPluginRowStatus(Kind.HEALTH, reason == null || reason.trim().isEmpty() ? label
+                : label + ": " + StringUtils.abbreviate(reason.trim(), REASON_LENGTH), true);
         }
         if (health != null && health.isWarning())
         {

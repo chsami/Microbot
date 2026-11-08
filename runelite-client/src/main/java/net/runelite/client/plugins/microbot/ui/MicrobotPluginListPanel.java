@@ -351,8 +351,8 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
         SwingUtil.removeButtonDecorations(button);
         button.setPreferredSize(new Dimension(TOP_BUTTON_SIZE, TOP_BUTTON_SIZE));
         button.setRequestFocusEnabled(false);
-        button.setToolTipText("Sort");
-        button.getAccessibleContext().setAccessibleName("Sort");
+        button.setToolTipText("Sort, filter and more");
+        button.getAccessibleContext().setAccessibleName("Sort, filter and more");
         button.addActionListener(e -> menu.show(button, button.getWidth() - menu.getPreferredSize().width, button.getHeight()));
         return button;
     }
@@ -938,7 +938,8 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
 
     boolean askToReport(String name, String reason) {
         Object[] options = {"Report", "Close"};
-        return JOptionPane.showOptionDialog(this, wrappedMessage(reason), name + " failed to start",
+        String body = name + " hit an error while starting and is switched off. Switch it on to try again, or press Report to send this to the plugin author.\n\nError: " + reason;
+        return JOptionPane.showOptionDialog(this, wrappedMessage(body), name + " failed to start",
                 JOptionPane.DEFAULT_OPTION, JOptionPane.ERROR_MESSAGE, null, options, options[1]) == 0;
     }
 

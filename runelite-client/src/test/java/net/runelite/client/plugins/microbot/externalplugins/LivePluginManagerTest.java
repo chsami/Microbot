@@ -289,7 +289,7 @@ public class LivePluginManagerTest {
         assertTrue(Files.exists(directory.resolve("FixturePlugin.jar")));
         String reason = hub.getBlockedPlugins().get("FixturePlugin");
         assertNotNull(reason);
-        assertTrue(reason, reason.startsWith("disabled"));
+        assertTrue(reason, reason.startsWith("turned off"));
         verify(plugins, never()).preparePlugin(any(), anyCollection());
     }
 
