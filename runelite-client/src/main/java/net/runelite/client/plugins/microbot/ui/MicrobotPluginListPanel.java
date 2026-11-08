@@ -608,6 +608,7 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
                 .map(desc ->
                 {
                     MicrobotPluginListItem listItem = new MicrobotPluginListItem(this, desc);
+                    listItem.setSettingsOnly(fakePlugins.contains(desc));
                     Plugin plugin = desc.getPlugin();
                     listItem.setPinned(isNamePinned(pinnedNames, desc.getName())
                             || (plugin != null && pinnedClasses.contains(plugin.getClass().getName())));

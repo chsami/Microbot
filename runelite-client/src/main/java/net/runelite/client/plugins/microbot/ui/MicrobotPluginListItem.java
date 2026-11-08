@@ -76,9 +76,11 @@ class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 	@Getter
 	private final boolean alwaysOn;
 
-	// No switch a user can flip: always on, settings only (no plugin), or disabled by its author.
-	@Getter
-	private final boolean noSwitch;
+	private final boolean disabledByAuthor;
+
+	// A settings row such as Microbot's; set by the panel, since a blocked plugin also has no plugin behind it.
+	@Setter
+	private boolean settingsOnly;
 
 	@Getter
 	@Setter
@@ -132,7 +134,7 @@ class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 		PluginDescriptor pluginDescriptor = pluginConfig.getPlugin() == null ? null
 			: pluginConfig.getPlugin().getClass().getAnnotation(PluginDescriptor.class);
 		alwaysOn = AlwaysOnPlugins.isLocked(pluginDescriptor);
-		noSwitch = alwaysOn || pluginDescriptor == null || pluginDescriptor.disable();
+		disabledByAuthor = pluginDescriptor != null && pluginDescriptor.disable();
 		alwaysOnLabel = alwaysOn ? createAlwaysOnLabel() : null;
 		nameLabel = createNameLabel(pluginConfig, alwaysOn ? alwaysOnLabel.getPreferredSize().width : SWITCH_WIDTH,
 			pluginDescriptor == null ? "" : pluginDescriptor.version());
@@ -361,6 +363,12 @@ class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 	void setPluginEnabled(boolean enabled)
 	{
 		onOffToggle.setSelected(enabled);
+	}
+
+	/** No switch a user can flip: always on, a settings row, or disabled by its author. Blocked plugins are not included. */
+	boolean isNoSwitch()
+	{
+		return alwaysOn || settingsOnly || disabledByAuthor;
 	}
 
 	boolean isOn()

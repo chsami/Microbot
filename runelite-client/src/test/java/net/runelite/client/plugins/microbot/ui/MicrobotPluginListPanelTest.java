@@ -1262,10 +1262,26 @@ public class MicrobotPluginListPanelTest
         assertNull("No cog", ghost.getPluginConfig().getConfigDescriptor());
         assertFalse("No switch", ((Component) field(ghost, "onOffToggle")).isVisible());
         assertEquals("1 to fix", text("fixChip"));
+        assertFalse("A blocked plugin is the user's, not a settings row", ghost.isNoSwitch());
+        assertFalse(inList("builtInHeader"));
 
         clickStatus("<html>[M] Bird Hunter");
         assertEquals(Collections.singletonList("Bird Hunter"), hubSearches);
         verify(localPluginsPanel, never()).open(any());
+    }
+
+    @Test
+    public void aBlockedPluginAloneIsNotTheFirstRunScreen() throws Exception
+    {
+        when(microbotPluginManager.getBlockedPlugins()).thenReturn(Collections.singletonMap("MyScript-1.0", "zip END header not found"));
+        addMicrobotRow();
+
+        rebuild(new AlwaysPlugin());
+
+        assertFalse(inList("emptyPanel"));
+        assertTrue(visible("fixChip"));
+        assertEquals("1 to fix", text("fixChip"));
+        assertEquals(Collections.singletonList("MyScript-1.0"), shownNames());
     }
 
     @Test
