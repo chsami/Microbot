@@ -319,7 +319,7 @@ public class MicrobotPluginManager {
                 blockedPlugins.remove(type.getSimpleName());
             } else if (descriptor.disable()) {
                 StartupRecovery.pluginFailed(type.getSimpleName(), descriptor.version(),
-                        "compatibility check", "disabled");
+                        "compatibility check", "disabled upstream");
                 continue;
             }
             accepted.add(type);
@@ -613,7 +613,7 @@ public class MicrobotPluginManager {
                     + RuneLiteProperties.getMicrobotVersion() + ")";
         }
         if (descriptor.disable()) {
-            return "disabled";
+            return "disabled upstream";
         }
 
         MicrobotPluginManifest manifest = manifestMap.get(internalName);
@@ -623,11 +623,11 @@ public class MicrobotPluginManager {
         MicrobotPluginHealth health = getPluginHealth(manifest, descriptor.version());
         String reason = health.getReason();
         if (manifest.isDisable()) {
-            return "disabled" + (reason == null ? "" : ": " + reason);
+            return "disabled upstream" + (reason == null ? "" : ": " + reason);
         }
         if (!Strings.isNullOrEmpty(descriptor.version())
                 && (health.getState() == MicrobotPluginHealth.State.BROKEN || health.isAffected(descriptor.version()))) {
-            return "version " + descriptor.version() + " is confirmed broken"
+            return "version " + descriptor.version() + " is confirmed broken upstream"
                     + (reason == null ? "" : ": " + reason);
         }
         return null;

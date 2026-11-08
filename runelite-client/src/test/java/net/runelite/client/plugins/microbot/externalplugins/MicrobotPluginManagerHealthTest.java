@@ -113,7 +113,7 @@ public class MicrobotPluginManagerHealthTest {
         List<Plugin> loaded = loadPlugins(HealthFixturePlugin.class);
 
         assertTrue(loaded.isEmpty());
-        assertEquals("version 1.0.0 is confirmed broken: Stops after banking",
+        assertEquals("version 1.0.0 is confirmed broken upstream: Stops after banking",
                 manager.getBlockedPlugins().get("HealthFixturePlugin"));
     }
 
@@ -132,11 +132,11 @@ public class MicrobotPluginManagerHealthTest {
     @Test
     public void hubDisableAloneBlocksInstalledJar() throws Exception {
         addManifest("HealthFixturePlugin", "2.0.0", true, null);
-        assertEquals("disabled", manager.getLoadBlockReason("HealthFixturePlugin", descriptor(HealthFixturePlugin.class)));
+        assertEquals("disabled upstream", manager.getLoadBlockReason("HealthFixturePlugin", descriptor(HealthFixturePlugin.class)));
 
         addManifest("HealthFixturePlugin", "2.0.0", true, "{\"status\":\"broken\",\"reason\":\"Retired\",\"affectedVersions\":[\"*\"]}");
         assertTrue(loadPlugins(HealthFixturePlugin.class).isEmpty());
-        assertEquals("disabled: Retired", manager.getBlockedPlugins().get("HealthFixturePlugin"));
+        assertEquals("disabled upstream: Retired", manager.getBlockedPlugins().get("HealthFixturePlugin"));
     }
 
     @Test
@@ -144,7 +144,7 @@ public class MicrobotPluginManagerHealthTest {
         assertTrue(loadPlugins(JarDisabledFixturePlugin.class, FutureClientFixturePlugin.class).isEmpty());
 
         Map<String, String> blocked = manager.getBlockedPlugins();
-        assertEquals("disabled", blocked.get("JarDisabledFixturePlugin"));
+        assertEquals("disabled upstream", blocked.get("JarDisabledFixturePlugin"));
         assertTrue(blocked.get("FutureClientFixturePlugin").startsWith("requires client 999.0.0 or newer"));
     }
 
