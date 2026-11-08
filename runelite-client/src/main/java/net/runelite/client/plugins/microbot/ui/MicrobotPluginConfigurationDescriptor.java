@@ -67,6 +67,11 @@ public class MicrobotPluginConfigurationDescriptor
 		this(name, description, tags, null, config, configDescriptor, null, null);
 	}
 
+	public MicrobotPluginConfigurationDescriptor(String name, String description, String[] tags, Plugin plugin, Config config, ConfigDescriptor configDescriptor, List<String> conflicts)
+	{
+		this(name, description, tags, plugin, config, configDescriptor, conflicts, null);
+	}
+
 	/**
 	 * Creates a menu item for linking to a support page for the plugin
 	 *
