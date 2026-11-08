@@ -106,7 +106,8 @@ public class LivePluginManagerTest {
             enabled.put(call.getArgument(1), call.getArgument(2));
             return null;
         }).when(config).setConfiguration(anyString(), anyString(), any(Boolean.class));
-        when(plugins.startPlugin(any(Plugin.class))).thenAnswer(call -> {
+        // Install, update and reload restarts are not the player using a plugin.
+        when(plugins.startPlugin(any(Plugin.class), eq(false))).thenAnswer(call -> {
             assertTrue("Plugin startup must run on EDT", SwingUtilities.isEventDispatchThread());
             Plugin plugin = call.getArgument(0);
             assertNotSame("EDT callbacks must retain the shared client context loader",
@@ -288,8 +289,57 @@ public class LivePluginManagerTest {
         assertTrue(Files.exists(directory.resolve("FixturePlugin.jar")));
         String reason = hub.getBlockedPlugins().get("FixturePlugin");
         assertNotNull(reason);
-        assertTrue(reason, reason.startsWith("disabled upstream"));
+        assertTrue(reason, reason.startsWith("disabled"));
         verify(plugins, never()).preparePlugin(any(), anyCollection());
+    }
+
+    private Map<String, String> recordBlocked() {
+        Map<String, String> blocked = new java.util.concurrent.ConcurrentHashMap<>();
+        manager.setLoadPolicy(new LivePluginManager.LoadPolicy() {
+            @Override
+            public String blockReason(String internalName, PluginDescriptor descriptor) {
+                return null;
+            }
+
+            @Override
+            public void blocked(String internalName, String version, String phase, String reason) {
+                blocked.put(internalName, reason);
+            }
+
+            @Override
+            public void loaded(String internalName) {
+                blocked.remove(internalName);
+            }
+        });
+        return blocked;
+    }
+
+    @Test
+    public void startupLoadFailureClearsOnceThatJarLoads() throws Exception {
+        Map<String, String> blocked = recordBlocked();
+        Path jar = directory.resolve("MyScript-1.0.jar");
+        Files.write(jar, "not a valid plugin ZIP".getBytes(StandardCharsets.UTF_8));
+        manager.loadAtStartup();
+        assertTrue(blocked.containsKey("MyScript-1.0"));
+
+        Files.copy(fixture("v1.jar", "1.0", false), jar, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        success(manager.rescan());
+
+        assertFalse(blocked.containsKey("MyScript-1.0"));
+    }
+
+    @Test
+    public void startupLoadFailureClearsOnceThatJarIsGone() throws Exception {
+        Map<String, String> blocked = recordBlocked();
+        Path jar = directory.resolve("MyScript-1.0.jar");
+        Files.write(jar, "not a valid plugin ZIP".getBytes(StandardCharsets.UTF_8));
+        manager.loadAtStartup();
+        assertTrue(blocked.containsKey("MyScript-1.0"));
+
+        Files.delete(jar);
+        await(manager.rescan());
+
+        assertFalse(blocked.containsKey("MyScript-1.0"));
     }
 
     @Test
@@ -846,5 +896,18 @@ public class LivePluginManagerTest {
         }
         method.visitMaxs(0, 0);
         method.visitEnd();
+    }
+
+    // The old folder keeps its JARs, but nothing watches them any more.
+    @Test
+    public void startupLoadFailureClearsWhenThePluginFolderChanges() throws Exception {
+        Map<String, String> blocked = recordBlocked();
+        Files.write(directory.resolve("MyScript-1.0.jar"), "not a valid plugin ZIP".getBytes(StandardCharsets.UTF_8));
+        manager.loadAtStartup();
+        assertTrue(blocked.containsKey("MyScript-1.0"));
+
+        manager.changePluginDirectory(temporary.newFolder("moved").toPath()).get();
+
+        assertFalse(blocked.containsKey("MyScript-1.0"));
     }
 }

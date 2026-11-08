@@ -120,6 +120,10 @@ public class MicrobotTopLevelConfigPanel extends PluginPanel {
         pluginListPanelTab = addTab(pluginListPanel.getMuxer(), installedIcon, "Installed Microbot Plugins");
         profilePanelTab = addTab(profilePanel, "profile_icon.png", "Profiles");
         pluginHubTab = addTab(microbotPluginHubPanelProvider, hubIcon, "Microbot Hub");
+        pluginListPanel.setOpenHub(query -> {
+            microbotPluginHubPanelProvider.get().search(query);
+            tabGroup.select(pluginHubTab);
+        });
 
         tabGroup.select(pluginListPanelTab);
     }
