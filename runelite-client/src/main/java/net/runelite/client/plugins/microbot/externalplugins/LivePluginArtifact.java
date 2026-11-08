@@ -110,7 +110,7 @@ final class LivePluginArtifact implements AutoCloseable {
                             + " or newer (current " + RuneLiteProperties.getMicrobotVersion() + ")");
                 }
                 if (descriptor.disable()) {
-                    throw new BlockedPluginException(type, "disabled upstream");
+                    throw new BlockedPluginException(type, "turned off by its author");
                 }
                 types.add(type.asSubclass(Plugin.class));
             }
