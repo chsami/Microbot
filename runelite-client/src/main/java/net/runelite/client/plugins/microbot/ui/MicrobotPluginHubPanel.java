@@ -942,7 +942,7 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
             openFolder.setToolTipText("Open " + microbotPluginManager.getPluginDirectory().getAbsolutePath());
             openMicrobotPluginFolder();
         });
-        return MicrobotPluginListPanel.createSortButton("Sort and more", sortMenu, sortItems, MicrobotPluginHubOrder.Sort.values(),
+        return MicrobotPluginListPanel.createSortButton("Sort and open plugin folder", sortMenu, sortItems, MicrobotPluginHubOrder.Sort.values(),
                 MicrobotPluginHubOrder.Sort::getLabel, sort, option -> {
                     sort = option;
                     configManager.setConfiguration(MicrobotPluginListPanel.RUNELITE_GROUP_NAME, SORT_CONFIG_KEY, option.name());
