@@ -24,6 +24,7 @@
  */
 package net.runelite.client.plugins.microbot.ui;
 
+import com.google.common.base.Enums;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.html.HtmlEscapers;
@@ -469,7 +470,7 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
         hubHeader.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
         hubHeader.setBorder(new EmptyBorder(6, 0, 0, 0));
         healthBanner.getDismissButton().addActionListener(e -> {
-            healthBanner.clear();
+            usage.markHealthSeen(healthBanner.clear());
             updateList();
         });
     }
@@ -1232,16 +1233,21 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
                 rowNames.put(hubName, MicrobotPluginNames.plainName(row.getPluginConfig().getName()));
             }
         }
-        List<String> changed = usage.healthChanges(states);
+        List<String> changed = usage.healthChanges(states, MicrobotPluginListPanel::worthReporting);
         if (!changed.isEmpty()) {
             healthBanner.add(changed.stream().map(name -> {
-                MicrobotPluginManifest manifest = manifests.get(name);
-                String label = MicrobotPluginNames.plainName(manifest.getDisplayName());
-                String rowName = rowNames.get(name);
-                return new HealthChange(name, rowName.isEmpty() ? name : rowName,
-                        (label.isEmpty() ? name : label) + ": " + health.get(name).getLabel());
+                // The row's own name, as the list and the search box show it.
+                String rowName = rowNames.get(name).isEmpty() ? name : rowNames.get(name);
+                return new HealthChange(name, states.get(name), rowName, rowName + ": " + health.get(name).getLabel());
             }).collect(Collectors.toList()));
         }
+    }
+
+    // Worth a banner: a change into or out of a state that warns (turned off, needs a newer client, broken or an unverified report).
+    // Verified and not reported move with every release and say nothing new.
+    static boolean worthReporting(String state) {
+        MicrobotPluginHealth.State known = Enums.getIfPresent(MicrobotPluginHealth.State.class, state).orNull();
+        return known != null && (known.isBlocking() || known == MicrobotPluginHealth.State.UNVERIFIED);
     }
 
     // The Hub panel's own pre-install checks and dialogs, so no safety prompt is skipped here.
@@ -1310,6 +1316,8 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
     static class HealthChange {
         // Hub internal name: one banner line per plugin.
         String hubName;
+        // The health state this line reports, saved as seen once the player opens or dismisses it.
+        String state;
         // The row's display name, which is what the search box shows and matches.
         String query;
         String text;
@@ -1328,7 +1336,7 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
             super(new BorderLayout(4, 2));
             setBackground(ColorScheme.DARKER_GRAY_COLOR);
             setBorder(new CompoundBorder(new LineBorder(ColorScheme.PROGRESS_INPROGRESS_COLOR), new EmptyBorder(4, 6, 4, 4)));
-            JLabel title = new JLabel("Plugin health changed");
+            JLabel title = new JLabel("Hub status changed for your plugins");
             title.setFont(FontManager.getRunescapeSmallFont());
             title.setForeground(ColorScheme.PROGRESS_INPROGRESS_COLOR);
             add(title, BorderLayout.NORTH);
@@ -1353,9 +1361,21 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
             rebuild();
         }
 
-        void clear() {
+        /** Empties the banner and returns what it showed (Hub name to state), for saving as seen. */
+        Map<String, String> clear() {
+            Map<String, String> seen = new HashMap<>();
+            shown.values().forEach(change -> seen.put(change.getHubName(), change.getState()));
             shown.clear();
             rebuild();
+            return seen;
+        }
+
+        // Opening a line is seeing it: it leaves the banner, and the rest stay until dismissed.
+        private void open(HealthChange change) {
+            shown.remove(change.getHubName());
+            usage.markHealthSeen(Collections.singletonMap(change.getHubName(), change.getState()));
+            rebuild();
+            openWithFilter(change.getQuery());
         }
 
         private void rebuild() {
@@ -1368,7 +1388,8 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
                 link.setBorder(new EmptyBorder(0, 0, 0, 0));
                 link.setFont(FontManager.getRunescapeSmallFont());
                 link.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-                link.addActionListener(e -> openWithFilter(change.getQuery()));
+                link.setToolTipText("Show this plugin in the list");
+                link.addActionListener(e -> open(change));
                 links.add(link);
                 linkPanel.add(link);
             }

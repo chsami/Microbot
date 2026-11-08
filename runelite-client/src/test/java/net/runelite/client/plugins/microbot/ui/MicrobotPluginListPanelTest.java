@@ -1607,8 +1607,8 @@ public class MicrobotPluginListPanelTest
 
         List<AbstractButton> links = ((MicrobotPluginListPanel.HealthBanner) field(panel, "healthBanner")).getLinks();
         assertEquals("Html Hub's undismissed line stays beside Late Hub's", 2, links.size());
-        assertTrue(links.get(0).getText(), links.get(0).getText().contains("Html Hub"));
-        assertTrue(links.get(1).getText(), links.get(1).getText().contains("Late Hub"));
+        assertTrue(links.get(0).getText(), links.get(0).getText().contains("Html Fixture"));
+        assertTrue(links.get(1).getText(), links.get(1).getText().contains("Late Fixture"));
 
         withHealth(htmlHub, MicrobotPluginHealth.STATUS_OK);
         rebuild(html, late);
@@ -1697,12 +1697,30 @@ public class MicrobotPluginListPanelTest
         assertEquals(0, Arrays.asList(mainPanel().getComponents()).indexOf(field(panel, "healthBanner")));
         List<AbstractButton> links = ((MicrobotPluginListPanel.HealthBanner) field(panel, "healthBanner")).getLinks();
         assertEquals(1, links.size());
-        assertTrue(links.get(0).getText(), links.get(0).getText().contains("Html Hub"));
+        assertTrue("The row's own name, as the list shows it", links.get(0).getText().contains("Html Fixture"));
         assertTrue(links.get(0).getText(), links.get(0).getText().contains("Confirmed broken"));
+        assertEquals("Show this plugin in the list", links.get(0).getToolTipText());
 
         onEdt(() -> links.get(0).doClick(0));
         assertEquals("Html Fixture", searchText());
         assertEquals(Collections.singletonList(HTML_NAME), shownNames());
+        search("");
+        assertFalse("An opened line leaves the banner", inList("healthBanner"));
+        rebuild(plugin, new LatePlugin());
+        assertFalse("and is saved as seen", inList("healthBanner"));
+    }
+
+    @Test
+    public void dismissSavesEveryLineAsSeenButAnUnopenedChangeComesBack() throws Exception
+    {
+        HtmlPlugin plugin = new HtmlPlugin();
+        installedHubPlugin(plugin, MicrobotPluginHealth.STATUS_OK);
+        rebuild(plugin, new LatePlugin());
+        installedHubPlugin(plugin, MicrobotPluginHealth.STATUS_BROKEN);
+        rebuild(plugin, new LatePlugin());
+
+        rebuild(plugin, new LatePlugin());
+        assertTrue("Not opened or dismissed yet, so still shown", inList("healthBanner"));
 
         onEdt(() -> ((MicrobotPluginListPanel.HealthBanner) unchecked("healthBanner")).getDismissButton().doClick(0));
         assertFalse(inList("healthBanner"));

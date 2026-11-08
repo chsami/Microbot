@@ -21,6 +21,7 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 /**
  * Last start and first install time per plugin class, and the health each installed Hub plugin last had.
@@ -42,6 +43,8 @@ public class MicrobotPluginUsage
         Map<String, Long> installed = new HashMap<>();
         // Null until the first check, which records without reporting changes.
         Map<String, String> health;
+        // When each health state was seen, so a merge keeps the newest.
+        Map<String, Long> healthSeenAt = new HashMap<>();
     }
 
     private final Path file;
@@ -102,6 +105,10 @@ public class MicrobotPluginUsage
         {
             data.lastStarted = new HashMap<>();
         }
+        if (data.healthSeenAt == null)
+        {
+            data.healthSeenAt = new HashMap<>();
+        }
         if (data.installed == null)
         {
             data.installed = new HashMap<>();
@@ -147,36 +154,64 @@ public class MicrobotPluginUsage
     }
 
     /**
-     * Records {@code current} (internal name to health state) and returns the names whose state differs from
-     * the last one seen. Names missing from {@code current} keep their old state.
+     * Compares {@code current} (Hub internal name to health state) with the last state the player saw, and
+     * returns the names worth telling them about: a change into or out of a state {@code worthReporting}
+     * accepts. Those stay unseen until {@link #markHealthSeen}, so a change is not lost if the list never shows
+     * it. Routine changes (for example verified to not reported after an update) and newly installed plugins are
+     * recorded as seen at once. The first check only records.
      */
-    synchronized List<String> healthChanges(Map<String, String> current)
+    synchronized List<String> healthChanges(Map<String, String> current, Predicate<String> worthReporting)
     {
         List<String> changed = new ArrayList<>();
+        Map<String, String> quiet = new HashMap<>();
         boolean firstRun = data.health == null;
         if (firstRun)
         {
             data.health = new HashMap<>();
+            quiet.putAll(current);
         }
         else
         {
             current.forEach((name, state) -> {
                 String seen = data.health.get(name);
-                if (seen != null && !seen.equals(state))
+                if (seen == null)
                 {
-                    changed.add(name);
+                    quiet.put(name, state);
+                }
+                else if (!seen.equals(state))
+                {
+                    if (worthReporting.test(seen) || worthReporting.test(state))
+                    {
+                        changed.add(name);
+                    }
+                    else
+                    {
+                        quiet.put(name, state);
+                    }
                 }
             });
         }
-        // Checked on every tab activation, so write only when something is new.
-        if (firstRun || !data.health.entrySet().containsAll(current.entrySet()))
+        if (firstRun || !quiet.isEmpty())
         {
-            data.health.putAll(current);
-            queueWrite();
+            markHealthSeen(quiet);
         }
         return changed;
     }
 
+    /** The player saw these states (dismissed or opened the banner line), so they are not reported again. */
+    synchronized void markHealthSeen(Map<String, String> states)
+    {
+        if (data.health == null)
+        {
+            data.health = new HashMap<>();
+        }
+        long now = System.currentTimeMillis();
+        states.forEach((name, state) -> {
+            data.health.put(name, state);
+            data.healthSeenAt.put(name, now);
+        });
+        queueWrite();
+    }
     /** Writes a start still waiting for its delayed write, so one made just before exit is kept. */
     void flush()
     {
@@ -226,7 +261,15 @@ public class MicrobotPluginUsage
                     {
                         data.health = new HashMap<>();
                     }
-                    saved.health.forEach(data.health::putIfAbsent);
+                    // The newest sighting wins, so a client with stale memory cannot bring back an old state.
+                    saved.health.forEach((name, state) -> {
+                        long savedAt = saved.healthSeenAt.getOrDefault(name, 0L);
+                        if (!data.health.containsKey(name) || savedAt > data.healthSeenAt.getOrDefault(name, 0L))
+                        {
+                            data.health.put(name, state);
+                            data.healthSeenAt.put(name, savedAt);
+                        }
+                    });
                 }
                 json = GSON.toJson(data);
             }

@@ -49,6 +49,8 @@ public class MicrobotPluginUsageTest
         write.getValue().run();
     }
 
+    private static final java.util.function.Predicate<String> WORTH = MicrobotPluginListPanel::worthReporting;
+
     private static Map<String, String> health(String... pairs)
     {
         Map<String, String> map = new HashMap<>();
@@ -74,7 +76,7 @@ public class MicrobotPluginUsageTest
             Files.write(file(), content.getBytes(StandardCharsets.UTF_8));
             MicrobotPluginUsage usage = load();
             assertEquals(content, 0, usage.lastStarted("a.Plugin"));
-            assertTrue(content, usage.healthChanges(health("A", "BROKEN")).isEmpty());
+            assertTrue(content, usage.healthChanges(health("A", "BROKEN"), WORTH).isEmpty());
         }
     }
 
@@ -128,30 +130,65 @@ public class MicrobotPluginUsageTest
     {
         MicrobotPluginUsage usage = load();
 
-        assertTrue(usage.healthChanges(health("A", "VERIFIED", "B", "UNKNOWN")).isEmpty());
-        assertEquals(Collections.singletonList("A"), usage.healthChanges(health("A", "BROKEN", "B", "UNKNOWN")));
-        assertTrue("Reported once", usage.healthChanges(health("A", "BROKEN", "B", "UNKNOWN")).isEmpty());
+        assertTrue(usage.healthChanges(health("A", "VERIFIED", "B", "UNKNOWN"), WORTH).isEmpty());
+        assertEquals(Collections.singletonList("A"), usage.healthChanges(health("A", "BROKEN", "B", "UNKNOWN"), WORTH));
+        assertEquals("Still unseen, so still reported", Collections.singletonList("A"),
+            usage.healthChanges(health("A", "BROKEN", "B", "UNKNOWN"), WORTH));
+        usage.markHealthSeen(health("A", "BROKEN"));
+        assertTrue("Seen once opened or dismissed", usage.healthChanges(health("A", "BROKEN", "B", "UNKNOWN"), WORTH).isEmpty());
     }
 
     @Test
     public void newlyInstalledOrMissingPluginsAreNotChanges() throws Exception
     {
         MicrobotPluginUsage usage = load();
-        usage.healthChanges(health("A", "VERIFIED"));
+        usage.healthChanges(health("A", "VERIFIED"), WORTH);
 
-        assertTrue(usage.healthChanges(health("B", "BROKEN")).isEmpty());
+        assertTrue(usage.healthChanges(health("B", "BROKEN"), WORTH).isEmpty());
         assertEquals("A kept while its manifest was missing", Collections.singletonList("A"),
-            usage.healthChanges(health("A", "BROKEN", "B", "BROKEN")));
+            usage.healthChanges(health("A", "BROKEN", "B", "BROKEN"), WORTH));
+    }
+
+    @Test
+    public void routineChangesAreRecordedQuietly() throws Exception
+    {
+        MicrobotPluginUsage usage = load();
+        usage.healthChanges(health("A", "VERIFIED"), WORTH);
+
+        assertTrue("Verified to not reported after an update says nothing", usage.healthChanges(health("A", "UNKNOWN"), WORTH).isEmpty());
+        assertTrue("and is recorded, not reported later", usage.healthChanges(health("A", "UNKNOWN"), WORTH).isEmpty());
+        assertEquals("Into a warning is reported", Collections.singletonList("A"), usage.healthChanges(health("A", "UNVERIFIED"), WORTH));
+    }
+
+    @Test
+    public void theNewestSightingWinsWhenTwoClientsMerge() throws Exception
+    {
+        MicrobotPluginUsage stale = load();
+        stale.healthChanges(health("A", "VERIFIED"), WORTH);
+        flush(1);
+
+        ScheduledExecutorService otherWriter = mock(ScheduledExecutorService.class);
+        MicrobotPluginUsage other = new MicrobotPluginUsage(file(), otherWriter);
+        Thread.sleep(5);
+        other.markHealthSeen(health("A", "BROKEN"));
+        ArgumentCaptor<Runnable> otherWrite = ArgumentCaptor.forClass(Runnable.class);
+        verify(otherWriter).schedule(otherWrite.capture(), anyLong(), eq(TimeUnit.MILLISECONDS));
+        otherWrite.getValue().run();
+
+        stale.started("x.Plugin", 1);
+        flush(2);
+        assertTrue("The other client already saw BROKEN; stale memory must not undo it",
+            load().healthChanges(health("A", "BROKEN"), WORTH).isEmpty());
     }
 
     @Test
     public void unchangedHealthDoesNotWriteAgain() throws Exception
     {
         MicrobotPluginUsage usage = load();
-        usage.healthChanges(health("A", "VERIFIED"));
+        usage.healthChanges(health("A", "VERIFIED"), WORTH);
         flush(1);
 
-        usage.healthChanges(health("A", "VERIFIED"));
+        usage.healthChanges(health("A", "VERIFIED"), WORTH);
 
         verify(writer, times(1)).schedule(org.mockito.ArgumentMatchers.any(Runnable.class), anyLong(), eq(TimeUnit.MILLISECONDS));
     }
@@ -164,14 +201,14 @@ public class MicrobotPluginUsageTest
         MicrobotPluginUsage other = new MicrobotPluginUsage(file(), otherWriter);
         other.started("b.Plugin", 200);
         other.started("c.Plugin", 50);
-        other.healthChanges(health("B", "VERIFIED"));
+        other.healthChanges(health("B", "VERIFIED"), WORTH);
         ArgumentCaptor<Runnable> otherWrite = ArgumentCaptor.forClass(Runnable.class);
         verify(otherWriter).schedule(otherWrite.capture(), anyLong(), eq(TimeUnit.MILLISECONDS));
         otherWrite.getValue().run();
 
         mine.started("a.Plugin", 100);
         mine.started("c.Plugin", 300);
-        mine.healthChanges(health("A", "VERIFIED"));
+        mine.healthChanges(health("A", "VERIFIED"), WORTH);
         flush(1);
 
         MicrobotPluginUsage reloaded = load();
@@ -179,7 +216,7 @@ public class MicrobotPluginUsageTest
         assertEquals("Another client's start is kept", 200, reloaded.lastStarted("b.Plugin"));
         assertEquals("The newest start wins", 300, reloaded.lastStarted("c.Plugin"));
         assertEquals("Both clients' health is seen", Collections.singletonList("B"),
-            reloaded.healthChanges(health("A", "VERIFIED", "B", "BROKEN")));
+            reloaded.healthChanges(health("A", "VERIFIED", "B", "BROKEN"), WORTH));
     }
 
     @Test
@@ -222,9 +259,9 @@ public class MicrobotPluginUsageTest
     @Test
     public void healthSeenSurvivesARestart() throws Exception
     {
-        load().healthChanges(health("A", "VERIFIED"));
+        load().healthChanges(health("A", "VERIFIED"), WORTH);
         flush(1);
 
-        assertEquals(Collections.singletonList("A"), load().healthChanges(health("A", "BROKEN")));
+        assertEquals(Collections.singletonList("A"), load().healthChanges(health("A", "BROKEN"), WORTH));
     }
 }
