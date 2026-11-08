@@ -28,6 +28,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -228,7 +229,11 @@ public class MicrobotPluginHubPanelSearchTest
         // A profile switch on another tab: the hidden panel gets no event, only the new saved value.
         SwingUtilities.invokeAndWait(hub::onDeactivate);
         config.put("pluginHubSort", "NEWEST");
-        open();
+        // The same panel comes back: a new one would read the sort in its constructor and prove nothing.
+        MicrobotPluginHubPanel same = hub;
+        SwingUtilities.invokeAndWait(hub::onActivate);
+        flush();
+        assertSame(same, hub);
 
         assertEquals(Arrays.asList("Bravo", "Alpha"), shownNames());
         assertTrue(((JMenuItem) ((JPopupMenu) field(hub, "sortMenu")).getComponent(1)).isSelected());
