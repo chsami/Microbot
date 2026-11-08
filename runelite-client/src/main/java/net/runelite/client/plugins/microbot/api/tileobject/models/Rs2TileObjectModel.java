@@ -179,7 +179,7 @@ public class Rs2TileObjectModel implements TileObject, IEntity {
 
     @Override
     public @Nullable Point getMinimapLocation() {
-        return tileObject.getMinimapLocation();
+        return Microbot.getClientThread().runOnClientThreadOptional(tileObject::getMinimapLocation).orElse(null);
     }
 
     @Override

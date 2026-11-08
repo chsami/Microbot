@@ -19,7 +19,7 @@ public final class WebWalkLog {
     }
 
     public static void routeClearMissingReason(String threadName) {
-        LOG.warn("[WebWalk] clear | reason=<missing> thread={}", threadName);
+        LOG.info("[WebWalk] clear | reason=<missing> thread={}", threadName);
     }
 
     /** Cancel / EXIT / traceProcessWalkExit - compact WARN for production diagnosis. */

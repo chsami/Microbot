@@ -6,6 +6,8 @@ import com.google.inject.Injector;
 import net.runelite.client.RuneLite;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.EventBus;
+import net.runelite.client.plugins.microbot.ui.MicrobotPluginFailures;
+import net.runelite.client.plugins.microbot.ui.MicrobotPluginUsage;
 import net.runelite.client.task.Scheduler;
 import org.junit.Test;
 
@@ -21,6 +23,8 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 
 public class PluginManagerLifecycleTest {
@@ -39,6 +43,101 @@ public class PluginManagerLifecycleTest {
             assertTrue(loaded.get(0) instanceof LifecyclePlugin);
         } finally {
             RuneLite.setInjector(previous);
+        }
+    }
+
+    @Test
+    public void startsByStartPluginsAtLaunchAreNotUseButLaterStartsAre() throws Exception {
+        List<Plugin> used = new java.util.ArrayList<>();
+        MicrobotPluginUsage.setStartRecorder(used::add);
+        try {
+            PluginManager manager = manager();
+            LifecyclePlugin plugin = new LifecyclePlugin();
+            manager.add(plugin);
+
+            manager.startPlugins();
+            assertEquals(1, plugin.starts);
+            assertTrue("Launch auto-starts do not count", used.isEmpty());
+
+            onEdt(() -> manager.stopPlugin(plugin));
+            onEdt(() -> manager.startPlugin(plugin));
+            assertEquals(java.util.Collections.singletonList(plugin), used);
+
+            onEdt(() -> manager.stopPlugin(plugin));
+            onEdt(() -> manager.startPlugin(plugin, false));
+            assertEquals("A start the caller says is not use does not count", 1, used.size());
+        } finally {
+            MicrobotPluginUsage.setStartRecorder(p -> { });
+        }
+    }
+
+    @Test
+    public void profileChangeRestartsAreNotUse() throws Exception {
+        List<Plugin> used = new java.util.ArrayList<>();
+        MicrobotPluginUsage.setStartRecorder(used::add);
+        try {
+            PluginManager manager = manager();
+            // Past launch, where starts count as use.
+            manager.startPlugins();
+            LifecyclePlugin plugin = new LifecyclePlugin();
+            manager.add(plugin);
+
+            manager.onProfileChanged(null);
+            onEdt(() -> null);
+
+            assertTrue(manager.isActive(plugin));
+            assertTrue(used.isEmpty());
+        } finally {
+            MicrobotPluginUsage.setStartRecorder(p -> { });
+        }
+    }
+
+    @Test
+    public void aThrowingUsageRecorderLeavesThePluginStartedAndNotFailed() throws Exception {
+        MicrobotPluginUsage.setStartRecorder(p -> {
+            throw new IllegalStateException("usage broke");
+        });
+        try {
+            PluginManager manager = manager();
+            // Past launch, where starts count as use.
+            manager.startPlugins();
+            LifecyclePlugin plugin = new LifecyclePlugin();
+            manager.add(plugin);
+
+            assertTrue(onEdt(() -> manager.startPlugin(plugin)));
+            assertTrue(manager.isActive(plugin));
+            assertNull(MicrobotPluginFailures.failure(plugin));
+        } finally {
+            MicrobotPluginUsage.setStartRecorder(p -> { });
+        }
+    }
+
+    @Test
+    public void aStartThatFailsAfterStartUpIsNotUse() throws Exception {
+        List<Plugin> used = new java.util.ArrayList<>();
+        MicrobotPluginUsage.setStartRecorder(used::add);
+        try {
+            EventBus eventBus = mock(EventBus.class);
+            doThrow(new IllegalStateException("bad subscriber")).when(eventBus).register(any());
+            PluginManager manager = new PluginManager(false, eventBus, mock(Scheduler.class), mock(ConfigManager.class),
+                null, new PluginModuleFactory());
+            manager.startPlugins();
+            LifecyclePlugin plugin = new LifecyclePlugin();
+            manager.add(plugin);
+
+            onEdt(() -> {
+                try {
+                    manager.startPlugin(plugin);
+                    fail("Start should fail");
+                } catch (PluginInstantiationException expected) {
+                    // Recorded as a failure, not as use.
+                }
+                return null;
+            });
+
+            assertTrue(used.isEmpty());
+        } finally {
+            MicrobotPluginUsage.setStartRecorder(p -> { });
         }
     }
 
@@ -69,6 +168,29 @@ public class PluginManagerLifecycleTest {
             assertTrue(manager.stopPlugin(plugin));
             manager.remove(plugin);
             assertNull(manager.getShutdownFailure(plugin));
+            return null;
+        });
+    }
+
+    @Test
+    public void startFailureIsRecordedForThePluginListAndClearedByASuccessfulStart() throws Exception {
+        PluginManager manager = manager();
+        LifecyclePlugin plugin = new LifecyclePlugin();
+        plugin.startFailure = new IllegalStateException("Missing config");
+        manager.add(plugin);
+
+        onEdt(() -> {
+            try {
+                manager.startPlugin(plugin);
+                fail("Startup should fail");
+            } catch (PluginInstantiationException expected) {
+                // Recorded below.
+            }
+            assertSame(plugin.startFailure, MicrobotPluginFailures.failure(plugin));
+
+            plugin.startFailure = null;
+            assertTrue(manager.startPlugin(plugin));
+            assertNull(MicrobotPluginFailures.failure(plugin));
             return null;
         });
     }

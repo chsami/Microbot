@@ -1,6 +1,6 @@
 package net.runelite.client.plugins.microbot;
 
-import java.util.HashSet;
+import java.util.EnumSet;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
@@ -9,17 +9,47 @@ import java.util.function.LongSupplier;
 final class HwidSpoofCheck
 {
 	static final String AGENT_PROPERTY = "microbot.hwid.agent";
+	static final String AGENT_LOADED = "loaded";
+	static final String AGENT_INERT = "inert";
 	static final String LAUNCHER_DISABLED_PROPERTY = "microbot.hwid.launcherDisabled";
 	static final String DEVICE_HOOK_PROPERTY = "microbot.hwid.device.installed";
 	static final String RANDOM_DAT_CALL_PROPERTY = "microbot.hwid.randomdat.lastCall";
 
-	static final String AGENT_MISSING = "Spoof device ID is on, but the HWID agent is not attached, so this login sent the real random.dat (and the real device ID, if this client version reads it). Start Microbot from the launcher, or add -javaagent:hwid-agent-<version>.jar.";
-	static final String DEVICE_HOOK_MISSING = "Spoof device ID is on, but the HWID agent could not hook the device ID method in this client version. If this version reads the device ID, the real one was sent at this login.";
-	static final String RANDOM_DAT_HOOK_MISSED = "Spoof device ID is on, but the HWID agent's random.dat hook did not run during this login, so the real random.dat may have been sent.";
+	static final String AGENT_MISSING_CHAT = "Spoofing is not active, so this login sent your real device details. Restart the client from the Microbot launcher and check that Spoof hardware IDs is ticked. Already ticked? Report it in the Microbot Discord.";
+	static final String AGENT_INERT_CHAT = "This client started with spoofing off, so this login sent your real device details. Restart from the Microbot launcher, or turn off Spoof device ID in Microbot > General.";
+	static final String HOOK_FAILED_CHAT = "Spoof device ID is on, but spoofing did not work in this client version, so this login may have sent the real device details. Report it in the Microbot Discord, or turn off Spoof device ID in Microbot > General.";
+
+	enum Problem
+	{
+		AGENT_MISSING(AGENT_MISSING_CHAT, "HWID agent not attached (microbot.hwid.agent is not set). To start the client by hand with spoofing, add -javaagent:hwid-agent-<version>.jar to the JVM arguments."),
+		AGENT_INERT(AGENT_INERT_CHAT, "HWID agent attached with -Dmicrobot.hwid.spoof=false, so it registered no transformer (microbot.hwid.agent=inert). Drop that flag to spoof."),
+		DEVICE_HOOK_MISSING(HOOK_FAILED_CHAT, "HWID agent loaded but could not hook the device ID method in this client version (microbot.hwid.device.installed is not set). If this version reads the device ID, the real one was sent."),
+		RANDOM_DAT_HOOK_MISSED(HOOK_FAILED_CHAT, "HWID agent loaded but its random.dat hook did not run during this login (microbot.hwid.randomdat.lastCall is older than the login start), so the real random.dat may have been sent."),
+		SETTING_OFF_WITH_LAUNCHER_ON(null, "HWID agent loaded, but Spoof device ID is off in Microbot > General, so this login sent the real device details.");
+
+		private final String chat;
+		private final String detail;
+
+		Problem(String chat, String detail)
+		{
+			this.chat = chat;
+			this.detail = detail;
+		}
+
+		Optional<String> chatMessage()
+		{
+			return Optional.ofNullable(chat);
+		}
+
+		String logMessage()
+		{
+			return chat == null ? detail : chat + " " + detail;
+		}
+	}
 
 	private final Function<String, String> properties;
 	private final LongSupplier clock;
-	private final Set<String> reported = new HashSet<>();
+	private final Set<Problem> reported = EnumSet.noneOf(Problem.class);
 	private long loginStartedAt;
 
 	HwidSpoofCheck()
@@ -38,15 +68,15 @@ final class HwidSpoofCheck
 		loginStartedAt = clock.getAsLong();
 	}
 
-	synchronized Optional<String> loggedIn(boolean spoofEnabled)
+	synchronized Optional<Problem> loggedIn(boolean spoofEnabled)
 	{
 		long startedAt = loginStartedAt;
 		loginStartedAt = -1;
-		if (!spoofEnabled || startedAt < 0 || Boolean.parseBoolean(properties.apply(LAUNCHER_DISABLED_PROPERTY)))
+		if (startedAt < 0 || Boolean.parseBoolean(properties.apply(LAUNCHER_DISABLED_PROPERTY)))
 		{
 			return Optional.empty();
 		}
-		String problem = problem(startedAt);
+		Problem problem = spoofEnabled ? problem(startedAt) : settingOffProblem();
 		if (problem == null || !reported.add(problem))
 		{
 			return Optional.empty();
@@ -54,19 +84,29 @@ final class HwidSpoofCheck
 		return Optional.of(problem);
 	}
 
-	private String problem(long startedAt)
+	private Problem settingOffProblem()
 	{
-		if (properties.apply(AGENT_PROPERTY) == null)
+		return AGENT_LOADED.equals(properties.apply(AGENT_PROPERTY)) ? Problem.SETTING_OFF_WITH_LAUNCHER_ON : null;
+	}
+
+	private Problem problem(long startedAt)
+	{
+		String agent = properties.apply(AGENT_PROPERTY);
+		if (agent == null)
 		{
-			return AGENT_MISSING;
+			return Problem.AGENT_MISSING;
+		}
+		if (AGENT_INERT.equals(agent))
+		{
+			return Problem.AGENT_INERT;
 		}
 		if (properties.apply(DEVICE_HOOK_PROPERTY) == null)
 		{
-			return DEVICE_HOOK_MISSING;
+			return Problem.DEVICE_HOOK_MISSING;
 		}
 		if (lastRandomDatCall() < startedAt)
 		{
-			return RANDOM_DAT_HOOK_MISSED;
+			return Problem.RANDOM_DAT_HOOK_MISSED;
 		}
 		return null;
 	}

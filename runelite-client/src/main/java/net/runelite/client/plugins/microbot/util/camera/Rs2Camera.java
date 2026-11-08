@@ -128,9 +128,9 @@ public class Rs2Camera {
         Microbot.getClient().setCameraSpeed(3f);
 
         if (getAngleTo(targetDegrees) > maxAngle) {
-            holdUntil(KeyEvent.VK_LEFT, () -> Math.abs(getAngleTo(targetDegrees)) <= maxAngle);
+            holdUntil(KeyEvent.VK_LEFT, () -> getAngleTo(targetDegrees) <= maxAngle);
         } else if (getAngleTo(targetDegrees) < -maxAngle) {
-            holdUntil(KeyEvent.VK_RIGHT, () -> Math.abs(getAngleTo(targetDegrees)) <= maxAngle);
+            holdUntil(KeyEvent.VK_RIGHT, () -> getAngleTo(targetDegrees) >= -maxAngle);
         }
         Microbot.getClient().setCameraSpeed((float) defaultCameraSpeed);
     }

@@ -448,6 +448,10 @@ public class Rs2Walker {
         routeState.walledDoorEdgeFrom = null;
         routeState.walledDoorEdgeTo = null;
         routeState.walledDoorEdgeAtMs = 0L;
+        routeState.adjacentRefusalFrom = null;
+        routeState.adjacentRefusalTo = null;
+        routeState.adjacentRefusalAtMs = 0L;
+        routeState.adjacentRefusalSinceMs = 0L;
         routeState.requestedGoal = null;
         routeState.sealedRimRetargets = 0;
         resetRouteProgress();
@@ -1925,7 +1929,7 @@ public class Rs2Walker {
 
             boolean partialPath = false;
             if (dst == null || dst.distanceTo(target) > distance) {
-                final WorldPoint sealedRim = consumeSealedRimRetarget(target, dst);
+                final WorldPoint sealedRim = consumeSealedRimRetarget(target, dst, walkLoop.playerLoc, distance);
                 if (sealedRim != null) { return processWalk(sealedRim, distance, partialRetries); }
                 if (path != null && path.size() > 1) {
                     WebWalkLog.partialSegment(dst, dst.distanceTo(target), target, path.size());
@@ -6240,7 +6244,7 @@ public class Rs2Walker {
         }
     }
 
-    private static void clearWalledDoorClaim() {
+    static void clearWalledDoorClaim() {
         routeState.walledDoorEdgeFrom = null;
         routeState.walledDoorEdgeTo = null;
         routeState.walledDoorEdgeAtMs = 0L;
@@ -6256,12 +6260,17 @@ public class Rs2Walker {
     private static final int MAX_SEALED_RIM_RETARGETS = 1;
 
     /** Retargets a proven-sealed requested goal to one normalized, reachable approach rim. */
-    private static WorldPoint consumeSealedRimRetarget(WorldPoint target, WorldPoint dst) {
+    private static WorldPoint consumeSealedRimRetarget(WorldPoint target, WorldPoint dst, WorldPoint playerLoc, int distance) {
         var pf = Rs2PathApi.getPathfinder();
         if (pf == null) {
             return null;
         }
         WorldPoint rim = pf.getReachedSealedSubstitute();
+        if (isStationarySealedRim(rim, playerLoc, target, distance)) {
+            WebWalkLog.spInfo("sealed_target_retarget_skipped | goal={} rim={} — rim is the player tile, goal beyond finish distance",
+                    target, rim);
+            return null;
+        }
         if (rim != null && rim.equals(dst) && !rim.equals(target)) {
             WebWalkLog.spInfo("sealed_target_retarget | goal={} rim={} — goal proven sealed, walking to its rim",
                     target, rim);
@@ -6277,6 +6286,7 @@ public class Rs2Walker {
         // route doors, and arrival lands beside the sealed tile the caller actually clicked.
         WorldPoint nearest = pf.getNearestSealedRimSubstitute();
         if (nearest == null || nearest.equals(target)
+                || isStationarySealedRim(nearest, playerLoc, target, distance)
                 || routeState.sealedRimRetargets >= MAX_SEALED_RIM_RETARGETS) {
             return null;
         }
@@ -6287,6 +6297,11 @@ public class Rs2Walker {
         setTarget(nearest);
         recalculatePath();
         return nearest;
+    }
+
+    static boolean isStationarySealedRim(WorldPoint rim, WorldPoint playerLoc, WorldPoint target, int distance) {
+        return rim != null && playerLoc != null && target != null
+                && rim.equals(playerLoc) && playerLoc.distanceTo(target) > Math.max(distance, 1);
     }
 
     public static void setTarget(WorldPoint target) {

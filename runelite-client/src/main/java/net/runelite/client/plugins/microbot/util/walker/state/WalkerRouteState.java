@@ -127,6 +127,10 @@ public final class WalkerRouteState {
     public volatile WorldPoint walledDoorEdgeFrom = null;
     public volatile WorldPoint walledDoorEdgeTo = null;
     public volatile long walledDoorEdgeAtMs = 0L;
+    public volatile WorldPoint adjacentRefusalFrom = null;
+    public volatile WorldPoint adjacentRefusalTo = null;
+    public volatile long adjacentRefusalAtMs = 0L;
+    public volatile long adjacentRefusalSinceMs = 0L;
     /** Immutable caller intent for this walk; currentTarget may temporarily become an effective rim. */
     public volatile WorldPoint requestedGoal = null;
     /** Sealed-goal rim retargets consumed this walk; bounds the chain (a rim tile can itself probe sealed). */

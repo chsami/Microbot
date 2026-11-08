@@ -26,7 +26,7 @@ public final class MicrobotPluginHealth {
     public static final String ALL_VERSIONS = "*";
 
     public enum State {
-        DISABLED("Disabled upstream", true),
+        DISABLED("Turned off on the Microbot Hub", true),
         INCOMPATIBLE("Requires a newer client", true),
         BROKEN("Confirmed broken", true),
         UNVERIFIED("Unverified report", false),

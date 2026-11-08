@@ -58,9 +58,18 @@ public class MicrobotPluginConfigurationDescriptor
 	@Nullable
 	private final List<String> conflicts;
 
+	// Null unless the plugin came from a Microbot Hub jar
+	@Nullable
+	private final String microbotHubName;
+
 	public MicrobotPluginConfigurationDescriptor(String name, String description, String[] tags, Config config, ConfigDescriptor configDescriptor)
 	{
-		this(name, description, tags, null, config, configDescriptor, null);
+		this(name, description, tags, null, config, configDescriptor, null, null);
+	}
+
+	public MicrobotPluginConfigurationDescriptor(String name, String description, String[] tags, Plugin plugin, Config config, ConfigDescriptor configDescriptor, List<String> conflicts)
+	{
+		this(name, description, tags, plugin, config, configDescriptor, conflicts, null);
 	}
 
 	/**
@@ -92,6 +101,6 @@ public class MicrobotPluginConfigurationDescriptor
 			return null;
 		}
 
-		return ExternalPluginManager.getInternalName(plugin.getClass());
+		return microbotHubName != null ? microbotHubName : ExternalPluginManager.getInternalName(plugin.getClass());
 	}
 }

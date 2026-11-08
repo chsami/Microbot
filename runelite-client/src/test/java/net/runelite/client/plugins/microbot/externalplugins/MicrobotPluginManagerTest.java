@@ -17,6 +17,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.events.ClientShutdown;
+import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginManager;
 import net.runelite.client.plugins.microbot.MicrobotApi;
 import net.runelite.client.plugins.microbot.externalplugins.LivePluginManager.OperationResult;
@@ -205,6 +206,79 @@ public class MicrobotPluginManagerTest {
 
         assertFalse(manager.isHubInstalled("FixturePlugin"));
         assertFalse(manager.isLoadedFromHub("FixturePlugin"));
+    }
+
+    private static class InstallTimePlugin extends Plugin {
+    }
+
+    private void installJar(Path jar) throws Exception {
+        Constructor<LivePluginManager.PluginEntry> constructor = LivePluginManager.PluginEntry.class.getDeclaredConstructor(
+                String.class, String.class, String.class, Path.class, boolean.class, String.class, List.class, String.class);
+        constructor.setAccessible(true);
+        when(lifecycle.getInstalledPlugins()).thenReturn(Collections.singletonList(constructor.newInstance("id", "Name", "1.0",
+                jar, true, "Ready", Collections.singletonList(InstallTimePlugin.class.getName()), null)));
+    }
+
+    @Test
+    public void installTimesAreTheJarFileTimes() throws Exception {
+        Path jar = Files.createTempFile("install-time", ".jar");
+        try {
+            Files.setLastModifiedTime(jar, java.nio.file.attribute.FileTime.fromMillis(123_000L));
+            installJar(jar);
+
+            assertEquals(Long.valueOf(123_000L), manager.getInstallTimes().get(InstallTimePlugin.class.getName()));
+        } finally {
+            Files.deleteIfExists(jar);
+        }
+    }
+
+    @Test
+    public void installTimeIsZeroForAMissingJarAndAbsentForABuiltInPlugin() throws Exception {
+        installJar(Paths.get("does-not-exist.jar"));
+        assertEquals(Long.valueOf(0L), manager.getInstallTimes().get(InstallTimePlugin.class.getName()));
+
+        when(lifecycle.getInstalledPlugins()).thenReturn(Collections.emptyList());
+        assertTrue(manager.getInstallTimes().isEmpty());
+    }
+
+    @Test
+    public void hubInternalNameComesFromTheOwningHubArtifact() throws Exception {
+        Constructor<LivePluginManager.PluginEntry> constructor = LivePluginManager.PluginEntry.class.getDeclaredConstructor(
+                String.class, String.class, String.class, Path.class, boolean.class, String.class, List.class, String.class);
+        constructor.setAccessible(true);
+        Plugin hubPlugin = new HubFixturePlugin();
+        Plugin localPlugin = new LocalFixturePlugin();
+        LivePluginManager.PluginEntry hub = constructor.newInstance("hub", "Hub", "1.0", Paths.get("Hub.jar"), true, "Ready",
+                Collections.singletonList(HubFixturePlugin.class.getName()), "HubArtifact");
+        LivePluginManager.PluginEntry local = constructor.newInstance("local", "Local", "1.0", Paths.get("Local.jar"), true, "Ready",
+                Collections.singletonList(LocalFixturePlugin.class.getName()), null);
+        when(lifecycle.getInstalledPlugins()).thenReturn(java.util.Arrays.asList(local, hub));
+
+        assertEquals("HubArtifact", manager.getHubInternalName(hubPlugin));
+        assertNull(manager.getHubInternalName(localPlugin));
+    }
+
+    public static class HubFixturePlugin extends Plugin {
+    }
+
+    public static class LocalFixturePlugin extends Plugin {
+    }
+
+    @Test
+    public void newerVersionComparesInVersionOrder() {
+        assertTrue(MicrobotPluginManager.isNewerVersion("1.10.0", "1.9.0"));
+        assertFalse(MicrobotPluginManager.isNewerVersion("1.9.0", "1.10.0"));
+        assertFalse(MicrobotPluginManager.isNewerVersion("1.0.0", "1.0.0"));
+        assertTrue("Versions that cannot be ordered still count as different", MicrobotPluginManager.isNewerVersion("beta", "alpha"));
+    }
+
+    @Test
+    public void newerVersionIgnoresALeadingV() {
+        assertTrue(MicrobotPluginManager.isNewerVersion("v2.0.0", "v1.9.0"));
+        assertTrue(MicrobotPluginManager.isNewerVersion("v1.2", "1.1"));
+        assertTrue(MicrobotPluginManager.isNewerVersion("1.10", "1.9"));
+        assertFalse(MicrobotPluginManager.isNewerVersion("v1.9.0", "v2.0.0"));
+        assertFalse(MicrobotPluginManager.isNewerVersion("v1.1", "1.1"));
     }
 
     @Test
