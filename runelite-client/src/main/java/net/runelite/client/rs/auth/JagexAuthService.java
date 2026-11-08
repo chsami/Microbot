@@ -176,17 +176,31 @@ public class JagexAuthService
 				}
 			}
 
+			process.waitFor();
+
 			if (idToken.isBlank())
 			{
 				throw new RuntimeException("Login did not return an id token");
 			}
 
-			process.waitFor();
 			return idToken;
 		}
 		finally
 		{
+			deleteTempFile(temp);
+		}
+	}
+
+	static void deleteTempFile(Path temp)
+	{
+		try
+		{
 			Files.deleteIfExists(temp);
+		}
+		catch (IOException e)
+		{
+			log.debug("Unable to delete temporary jagexauth file, deleting on exit", e);
+			temp.toFile().deleteOnExit();
 		}
 	}
 

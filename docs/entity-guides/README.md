@@ -40,6 +40,8 @@ Scene walk clicks must not land under the side panel, chatbox or minimap: [movem
 
 Can't-reach recovery walks to the template tile, off the client thread: [movement gotcha 34](movement.md#34-walk-cant-reach-recovery-to-the-template-tile-off-the-client-thread).
 
+A door beside a refused edge owns it for one claim window, then the edge is learned for this walk: [movement gotcha 35](movement.md#35-a-door-next-to-a-walled-edge-does-not-always-own-that-edge).
+
 ## Format
 
 Each entity guide is a numbered list of gotchas. Each entry follows this structure:

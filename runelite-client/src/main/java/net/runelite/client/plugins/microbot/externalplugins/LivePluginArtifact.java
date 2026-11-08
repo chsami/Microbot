@@ -110,7 +110,7 @@ final class LivePluginArtifact implements AutoCloseable {
                             + " or newer (current " + RuneLiteProperties.getMicrobotVersion() + ")");
                 }
                 if (descriptor.disable()) {
-                    throw new BlockedPluginException(type, "disabled upstream");
+                    throw new BlockedPluginException(type, "turned off by its author");
                 }
                 types.add(type.asSubclass(Plugin.class));
             }
@@ -125,10 +125,6 @@ final class LivePluginArtifact implements AutoCloseable {
         }
     }
 
-    /**
-     * Parses one class file, turning class-version problems into a readable install error
-     * instead of a raw ASM {@link IllegalArgumentException}.
-     */
     static ClassReader readClass(String entryName, byte[] bytes) throws IOException {
         if (bytes.length < 8) {
             throw new IOException("Malformed class file in plugin JAR: " + entryName);
@@ -137,14 +133,15 @@ final class LivePluginArtifact implements AutoCloseable {
         int classJava = major - 44;
         int runtimeJava = Runtime.version().feature();
         if (classJava > runtimeJava) {
-            throw new IOException("Plugin class " + entryName + " targets Java " + classJava
-                    + " but the client runs on Java " + runtimeJava + ". Rebuild the plugin with --release 11.");
+            throw new IOException("This plugin was built for Java " + classJava + ", but your client runs on Java "
+                    + runtimeJava + ", so it can't be loaded. Ask the plugin author to rebuild it for Java 11"
+                    + " (--release 11). (class: " + entryName + ")");
         }
         try {
             return new ClassReader(bytes);
         } catch (IllegalArgumentException ex) {
-            throw new IOException("Unsupported class file in plugin JAR: " + entryName
-                    + " (Java " + classJava + "). Rebuild the plugin with --release 11.", ex);
+            throw new IOException("This plugin contains a class the client can't read (built for Java " + classJava
+                    + "). Ask the plugin author to rebuild it for Java 11 (--release 11). (class: " + entryName + ")", ex);
         }
     }
 
