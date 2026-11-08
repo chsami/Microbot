@@ -1645,6 +1645,34 @@ public class MicrobotPluginListPanelTest
         assertEquals("1 to fix", text("fixChip"));
     }
 
+    @Test
+    public void healthChangeShowsADismissibleBannerThatOpensTheRow() throws Exception
+    {
+        HtmlPlugin plugin = new HtmlPlugin();
+        installedHubPlugin(plugin, MicrobotPluginHealth.STATUS_OK);
+        rebuild(plugin, new LatePlugin());
+        assertFalse("First run only records", inList("healthBanner"));
+
+        installedHubPlugin(plugin, MicrobotPluginHealth.STATUS_BROKEN);
+        rebuild(plugin, new LatePlugin());
+
+        assertTrue(inList("healthBanner"));
+        assertEquals(0, Arrays.asList(mainPanel().getComponents()).indexOf(field(panel, "healthBanner")));
+        List<AbstractButton> links = ((MicrobotPluginListPanel.HealthBanner) field(panel, "healthBanner")).getLinks();
+        assertEquals(1, links.size());
+        assertTrue(links.get(0).getText(), links.get(0).getText().contains("Html Hub"));
+        assertTrue(links.get(0).getText(), links.get(0).getText().contains("Confirmed broken"));
+
+        onEdt(() -> links.get(0).doClick(0));
+        assertEquals("Html Fixture", searchText());
+        assertEquals(Collections.singletonList(HTML_NAME), shownNames());
+
+        onEdt(() -> ((MicrobotPluginListPanel.HealthBanner) unchecked("healthBanner")).getDismissButton().doClick(0));
+        assertFalse(inList("healthBanner"));
+        rebuild(plugin, new LatePlugin());
+        assertFalse("Seen changes stay dismissed", inList("healthBanner"));
+    }
+
     private String countLine() throws Exception
     {
         return text("countLabel") + text("clearButton").replaceAll("<[^>]*>", "");
@@ -1750,6 +1778,24 @@ public class MicrobotPluginListPanelTest
         assertEquals(1, failureDialogs.size());
         assertNull(row("Always Fixture").getStatus());
         assertFalse(shownNames().contains("Always Fixture"));
+    }
+
+    @Test
+    public void healthBannerHidesWhileSearchingOrFiltering() throws Exception
+    {
+        HtmlPlugin plugin = new HtmlPlugin();
+        installedHubPlugin(plugin, MicrobotPluginHealth.STATUS_OK);
+        rebuild(plugin, new LatePlugin());
+        installedHubPlugin(plugin, MicrobotPluginHealth.STATUS_BROKEN);
+        rebuild(plugin, new LatePlugin());
+        assertTrue(inList("healthBanner"));
+
+        search("late");
+        assertFalse(inList("healthBanner"));
+        search("");
+        assertTrue(inList("healthBanner"));
+        click("fixChip");
+        assertFalse(inList("healthBanner"));
     }
 
     @Test

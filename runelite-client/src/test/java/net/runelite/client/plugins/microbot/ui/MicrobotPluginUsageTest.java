@@ -10,6 +10,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
@@ -47,6 +49,16 @@ public class MicrobotPluginUsageTest
         write.getValue().run();
     }
 
+    private static Map<String, String> health(String... pairs)
+    {
+        Map<String, String> map = new HashMap<>();
+        for (int i = 0; i < pairs.length; i += 2)
+        {
+            map.put(pairs[i], pairs[i + 1]);
+        }
+        return map;
+    }
+
     @Test
     public void missingFileMeansNothingUsedYet() throws Exception
     {
@@ -62,6 +74,7 @@ public class MicrobotPluginUsageTest
             Files.write(file(), content.getBytes(StandardCharsets.UTF_8));
             MicrobotPluginUsage usage = load();
             assertEquals(content, 0, usage.lastStarted("a.Plugin"));
+            assertTrue(content, usage.healthChanges(health("A", "BROKEN")).isEmpty());
         }
     }
 
@@ -111,6 +124,39 @@ public class MicrobotPluginUsageTest
     }
 
     @Test
+    public void firstHealthCheckRecordsWithoutReportingChanges() throws Exception
+    {
+        MicrobotPluginUsage usage = load();
+
+        assertTrue(usage.healthChanges(health("A", "VERIFIED", "B", "UNKNOWN")).isEmpty());
+        assertEquals(Collections.singletonList("A"), usage.healthChanges(health("A", "BROKEN", "B", "UNKNOWN")));
+        assertTrue("Reported once", usage.healthChanges(health("A", "BROKEN", "B", "UNKNOWN")).isEmpty());
+    }
+
+    @Test
+    public void newlyInstalledOrMissingPluginsAreNotChanges() throws Exception
+    {
+        MicrobotPluginUsage usage = load();
+        usage.healthChanges(health("A", "VERIFIED"));
+
+        assertTrue(usage.healthChanges(health("B", "BROKEN")).isEmpty());
+        assertEquals("A kept while its manifest was missing", Collections.singletonList("A"),
+            usage.healthChanges(health("A", "BROKEN", "B", "BROKEN")));
+    }
+
+    @Test
+    public void unchangedHealthDoesNotWriteAgain() throws Exception
+    {
+        MicrobotPluginUsage usage = load();
+        usage.healthChanges(health("A", "VERIFIED"));
+        flush(1);
+
+        usage.healthChanges(health("A", "VERIFIED"));
+
+        verify(writer, times(1)).schedule(org.mockito.ArgumentMatchers.any(Runnable.class), anyLong(), eq(TimeUnit.MILLISECONDS));
+    }
+
+    @Test
     public void writeKeepsWhatAnotherClientSavedAndTheNewestStart() throws Exception
     {
         MicrobotPluginUsage mine = load();
@@ -118,18 +164,22 @@ public class MicrobotPluginUsageTest
         MicrobotPluginUsage other = new MicrobotPluginUsage(file(), otherWriter);
         other.started("b.Plugin", 200);
         other.started("c.Plugin", 50);
+        other.healthChanges(health("B", "VERIFIED"));
         ArgumentCaptor<Runnable> otherWrite = ArgumentCaptor.forClass(Runnable.class);
         verify(otherWriter).schedule(otherWrite.capture(), anyLong(), eq(TimeUnit.MILLISECONDS));
         otherWrite.getValue().run();
 
         mine.started("a.Plugin", 100);
         mine.started("c.Plugin", 300);
+        mine.healthChanges(health("A", "VERIFIED"));
         flush(1);
 
         MicrobotPluginUsage reloaded = load();
         assertEquals(100, reloaded.lastStarted("a.Plugin"));
         assertEquals("Another client's start is kept", 200, reloaded.lastStarted("b.Plugin"));
         assertEquals("The newest start wins", 300, reloaded.lastStarted("c.Plugin"));
+        assertEquals("Both clients' health is seen", Collections.singletonList("B"),
+            reloaded.healthChanges(health("A", "VERIFIED", "B", "BROKEN")));
     }
 
     @Test
@@ -169,4 +219,12 @@ public class MicrobotPluginUsageTest
         assertEquals(100, load().lastStarted("a.Plugin"));
     }
 
+    @Test
+    public void healthSeenSurvivesARestart() throws Exception
+    {
+        load().healthChanges(health("A", "VERIFIED"));
+        flush(1);
+
+        assertEquals(Collections.singletonList("A"), load().healthChanges(health("A", "BROKEN")));
+    }
 }
