@@ -62,10 +62,17 @@ final class MicrobotPluginHubOrder
             return !installed ? NONE : blocking ? BLOCKED : outdated ? UPDATE : INSTALLED;
         }
 
-        /** What the card says: the health's own label when blocked. */
-        String text(MicrobotPluginHealth health)
+        /**
+         * What the card says: the health's own label when blocked, plus a pointer to the fix when a working
+         * update exists, so a player updates instead of removing the plugin.
+         */
+        String text(MicrobotPluginHealth health, boolean workingUpdate)
         {
-            return this == BLOCKED ? health.getLabel() : label;
+            if (this != BLOCKED)
+            {
+                return label;
+            }
+            return workingUpdate ? health.getLabel() + ", update to fix" : health.getLabel();
         }
     }
 

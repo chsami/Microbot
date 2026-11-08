@@ -458,7 +458,7 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
 			setBorder(state == MicrobotPluginHubOrder.State.NONE
 				? BorderFactory.createEmptyBorder(2, 2, 2, 2)
 				: BorderFactory.createLineBorder(color, 2));
-			stateLabel.setText(state.text(microbotPluginManager.getPluginHealth(manifest, selectedVersion)));
+			stateLabel.setText(state.text(microbotPluginManager.getPluginHealth(manifest, selectedVersion), outdated));
 			stateLabel.setForeground(color);
 			stateLabel.setVisible(state != MicrobotPluginHubOrder.State.NONE);
 		}
@@ -869,7 +869,7 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
         return clientCompatible ? InstallBlock.NONE : InstallBlock.CLIENT_VERSION;
     }
 
-    /** Every Hub install asks this first: it explains and refuses a broken version or a too-old client. */
+    /** Every Hub install asks this first, here and from the Installed list: it explains and refuses a broken version or a too-old client. */
     static boolean confirmInstall(Component parent, MicrobotPluginManager manager, MicrobotPluginManifest manifest, String version) {
         MicrobotPluginHealth health = manager.getPluginHealth(manifest, version);
         switch (installBlock(health, Rs2UiHelper.isClientVersionCompatible(manifest.getMinClientVersion()))) {
@@ -942,12 +942,15 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
             openFolder.setToolTipText("Open " + microbotPluginManager.getPluginDirectory().getAbsolutePath());
             openMicrobotPluginFolder();
         });
-        return MicrobotPluginListPanel.createSortButton("Sort and open plugin folder", sortMenu, sortItems, MicrobotPluginHubOrder.Sort.values(),
+        JButton button = MicrobotPluginListPanel.createSortButton("Sort, or open your plugin folder", sortMenu, sortItems, MicrobotPluginHubOrder.Sort.values(),
                 MicrobotPluginHubOrder.Sort::getLabel, sort, option -> {
                     sort = option;
                     configManager.setConfiguration(MicrobotPluginListPanel.RUNELITE_GROUP_NAME, SORT_CONFIG_KEY, option.name());
                     filter();
                 }, openFolder);
+        // A search lists by best match, so a sort choice only shows once the search box is empty.
+        sortItems.values().forEach(item -> item.setToolTipText("While searching, results are listed by best match"));
+        return button;
     }
 
     private static String healthHtml(MicrobotPluginHealth health) {

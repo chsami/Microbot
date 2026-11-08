@@ -192,7 +192,7 @@ public class MicrobotPluginHubPanelSearchTest
     public void sortButtonIsReachableByKeyboardButNotFocusedByAClick() throws Exception
     {
         open();
-        javax.swing.AbstractButton sort = findButtonByName(hub, "Sort and open plugin folder");
+        javax.swing.AbstractButton sort = findButtonByName(hub, "Sort, or open your plugin folder");
 
         assertTrue(sort.isFocusable());
         assertTrue(!sort.isRequestFocusEnabled());

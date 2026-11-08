@@ -263,7 +263,11 @@ public class MicrobotPluginHubOrderTest
         disabled.setVersion("1.0.0");
         disabled.setDisable(true);
         assertEquals("A blocked card says why, not always broken", MicrobotPluginHealth.State.DISABLED.getLabel(),
-            MicrobotPluginHubOrder.State.BLOCKED.text(MicrobotPluginHealth.evaluate(disabled, "1.0.0", true)));
+            MicrobotPluginHubOrder.State.BLOCKED.text(MicrobotPluginHealth.evaluate(disabled, "1.0.0", true), false));
+        assertEquals("A working update is the fix, so the card says so", MicrobotPluginHealth.State.DISABLED.getLabel() + ", update to fix",
+            MicrobotPluginHubOrder.State.BLOCKED.text(MicrobotPluginHealth.evaluate(disabled, "1.0.0", true), true));
+        assertEquals("Only a blocked card adds it", "Update available",
+            MicrobotPluginHubOrder.State.UPDATE.text(MicrobotPluginHealth.evaluate(disabled, "1.0.0", true), true));
     }
 
     @Test
