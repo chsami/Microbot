@@ -41,10 +41,10 @@ public class MicrobotPluginRowStatusTest
     @Test
     public void longBlockedReasonIsShortenedLikeAHealthReason()
     {
-        String reason = "version 1.0.12 is confirmed broken: stalls at the bank every single time";
+        String reason = "version 1.0.12 is confirmed broken: stalls at the bank every single time after the last game update";
         MicrobotPluginRowStatus status = MicrobotPluginRowStatus.of(null, reason, null, null, null, false);
 
-        assertEquals("Not loaded: " + org.apache.commons.lang3.StringUtils.abbreviate(reason, 35), status.getText());
+        assertEquals("Not loaded: " + org.apache.commons.lang3.StringUtils.abbreviate(reason, 80), status.getText());
     }
 
     @Test

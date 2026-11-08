@@ -32,7 +32,7 @@ class MicrobotPluginRowStatus
         }
         if (blockedReason != null)
         {
-            return new MicrobotPluginRowStatus(Kind.BLOCKED, "Not loaded: " + StringUtils.abbreviate(blockedReason, REASON_LENGTH), true);
+            return new MicrobotPluginRowStatus(Kind.BLOCKED, "Not loaded: " + StringUtils.abbreviate(blockedReason, REASON_LENGTH + 45), true);
         }
         if (health != null && health.isBlocking())
         {

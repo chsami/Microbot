@@ -910,7 +910,7 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
                 if (failure == null) {
                     break;
                 }
-                if (askToReport(name, MicrobotPluginFailures.describe(failure))) {
+                if (askToReport(name, MicrobotPluginFailures.describe(failure), row.isAlwaysOn())) {
                     bugReporter.open(this, plugin);
                 } else if (row.isAlwaysOn()) {
                     // Nothing to switch back on, so Close is the only way the line, and the opened Always on & settings section, can go.
@@ -936,9 +936,11 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
         }
     }
 
-    boolean askToReport(String name, String reason) {
+    boolean askToReport(String name, String reason, boolean alwaysOn) {
         Object[] options = {"Report", "Close"};
-        String body = name + " hit an error while starting and is switched off. Switch it on to try again, or press Report to send this to the plugin author.\n\nError: " + reason;
+        String body = alwaysOn
+                ? name + " hit an error while starting. Restart the client to try again, or press Report to send a bug report. Close hides this message.\n\nError: " + reason
+                : name + " hit an error while starting and is switched off. Switch it on to try again, or press Report to send a bug report.\n\nError: " + reason;
         return JOptionPane.showOptionDialog(this, wrappedMessage(body), name + " failed to start",
                 JOptionPane.DEFAULT_OPTION, JOptionPane.ERROR_MESSAGE, null, options, options[1]) == 0;
     }

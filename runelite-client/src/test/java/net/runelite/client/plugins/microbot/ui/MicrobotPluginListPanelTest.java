@@ -166,7 +166,7 @@ public class MicrobotPluginListPanelTest
             bugReporter, usage)
         {
             @Override
-            boolean askToReport(String name, String reason)
+            boolean askToReport(String name, String reason, boolean alwaysOn)
             {
                 failureDialogs.add(reason);
                 return chooseReport;
