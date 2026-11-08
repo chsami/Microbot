@@ -1579,6 +1579,43 @@ public class MicrobotPluginListPanelTest
         return manifest;
     }
 
+    private static MicrobotPluginManifest withHealth(MicrobotPluginManifest manifest, String status)
+    {
+        MicrobotPluginHealth.Metadata health = new MicrobotPluginHealth.Metadata();
+        health.setStatus(status);
+        health.setAffectedVersions(Collections.singletonList("*"));
+        manifest.setHealth(health);
+        return manifest;
+    }
+
+    @Test
+    public void aSecondHealthChangeJoinsTheBannerInsteadOfReplacingIt() throws Exception
+    {
+        HtmlPlugin html = new HtmlPlugin();
+        LatePlugin late = new LatePlugin();
+        when(microbotPluginManager.getHubInternalName(html)).thenReturn("HtmlHub");
+        when(microbotPluginManager.getHubInternalName(late)).thenReturn("LateHub");
+        MicrobotPluginManifest htmlHub = withHealth(hubManifest("HtmlHub", "Html Hub"), MicrobotPluginHealth.STATUS_OK);
+        MicrobotPluginManifest lateHub = withHealth(hubManifest("LateHub", "Late Hub"), MicrobotPluginHealth.STATUS_OK);
+        hubManifests(htmlHub, lateHub);
+        rebuild(html, late);
+
+        withHealth(htmlHub, MicrobotPluginHealth.STATUS_BROKEN);
+        rebuild(html, late);
+        withHealth(lateHub, MicrobotPluginHealth.STATUS_BROKEN);
+        rebuild(html, late);
+
+        List<AbstractButton> links = ((MicrobotPluginListPanel.HealthBanner) field(panel, "healthBanner")).getLinks();
+        assertEquals("Html Hub's undismissed line stays beside Late Hub's", 2, links.size());
+        assertTrue(links.get(0).getText(), links.get(0).getText().contains("Html Hub"));
+        assertTrue(links.get(1).getText(), links.get(1).getText().contains("Late Hub"));
+
+        withHealth(htmlHub, MicrobotPluginHealth.STATUS_OK);
+        rebuild(html, late);
+        assertEquals("A newer change for the same plugin replaces its line", 2,
+            ((MicrobotPluginListPanel.HealthBanner) field(panel, "healthBanner")).getLinks().size());
+    }
+
     @Test
     public void noInstalledMatchWithHubMatchesSaysOnlyThatAndSitsHigh() throws Exception
     {

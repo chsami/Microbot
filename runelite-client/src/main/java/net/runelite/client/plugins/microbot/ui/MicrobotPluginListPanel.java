@@ -96,6 +96,7 @@ import java.util.IdentityHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -468,7 +469,7 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
         hubHeader.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
         hubHeader.setBorder(new EmptyBorder(6, 0, 0, 0));
         healthBanner.getDismissButton().addActionListener(e -> {
-            healthBanner.show(Collections.emptyList());
+            healthBanner.clear();
             updateList();
         });
     }
@@ -1233,11 +1234,11 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
         }
         List<String> changed = usage.healthChanges(states);
         if (!changed.isEmpty()) {
-            healthBanner.show(changed.stream().map(name -> {
+            healthBanner.add(changed.stream().map(name -> {
                 MicrobotPluginManifest manifest = manifests.get(name);
                 String label = MicrobotPluginNames.plainName(manifest.getDisplayName());
                 String rowName = rowNames.get(name);
-                return new HealthChange(rowName.isEmpty() ? name : rowName,
+                return new HealthChange(name, rowName.isEmpty() ? name : rowName,
                         (label.isEmpty() ? name : label) + ": " + health.get(name).getLabel());
             }).collect(Collectors.toList()));
         }
@@ -1307,6 +1308,8 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
 
     @lombok.Value
     static class HealthChange {
+        // Hub internal name: one banner line per plugin.
+        String hubName;
         // The row's display name, which is what the search box shows and matches.
         String query;
         String text;
@@ -1338,14 +1341,27 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
             add(dismissButton, BorderLayout.EAST);
         }
 
+        // Keyed by Hub internal name: a newer change for one plugin replaces its line, others stay until dismissed.
+        private final Map<String, HealthChange> shown = new LinkedHashMap<>();
+
         boolean hasLinks() {
             return !links.isEmpty();
         }
 
-        void show(List<HealthChange> changes) {
+        void add(List<HealthChange> changes) {
+            changes.forEach(change -> shown.put(change.getHubName(), change));
+            rebuild();
+        }
+
+        void clear() {
+            shown.clear();
+            rebuild();
+        }
+
+        private void rebuild() {
             links.clear();
             linkPanel.removeAll();
-            for (HealthChange change : changes) {
+            for (HealthChange change : shown.values()) {
                 JButton link = new JButton(linkHtml(change.getText()));
                 SwingUtil.removeButtonDecorations(link);
                 link.setHorizontalAlignment(SwingConstants.LEFT);
