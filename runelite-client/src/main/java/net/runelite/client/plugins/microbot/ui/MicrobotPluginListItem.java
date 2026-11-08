@@ -70,7 +70,8 @@ class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 
 	private final JToggleButton pinButton;
 	private final MicrobotPluginToggleButton onOffToggle;
-	private final JLabel alwaysOnLabel;
+	// "Always on" or "Turned off" in place of the switch, when the player cannot flip it.
+	private final JLabel sideLabel;
 
 	// Locked core plugins.
 	@Getter
@@ -135,8 +136,9 @@ class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 			: pluginConfig.getPlugin().getClass().getAnnotation(PluginDescriptor.class);
 		alwaysOn = AlwaysOnPlugins.isLocked(pluginDescriptor);
 		disabledByAuthor = pluginDescriptor != null && pluginDescriptor.disable();
-		alwaysOnLabel = alwaysOn ? createAlwaysOnLabel() : null;
-		nameLabel = createNameLabel(pluginConfig, alwaysOn ? alwaysOnLabel.getPreferredSize().width : SWITCH_WIDTH,
+		sideLabel = alwaysOn ? createSideLabel("Always on", AlwaysOnPlugins.TOOLTIP)
+			: disabledByAuthor ? createSideLabel("Turned off", "Turned off by its author") : null;
+		nameLabel = createNameLabel(pluginConfig, sideLabel != null ? sideLabel.getPreferredSize().width : SWITCH_WIDTH,
 			pluginDescriptor == null ? "" : pluginDescriptor.version());
 		baseHeight = Math.max(MIN_ITEM_HEIGHT, nameLabel.getPreferredSize().height);
 		setPreferredSize(new Dimension(MicrobotPluginListPanel.LIST_ITEM_WIDTH, baseHeight));
@@ -188,7 +190,7 @@ class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 		});
 
 		final JPanel buttonPanel = new JPanel();
-		buttonPanel.setLayout(alwaysOn ? new BorderLayout(3, 0) : new GridLayout(1, 2));
+		buttonPanel.setLayout(sideLabel != null ? new BorderLayout(3, 0) : new GridLayout(1, 2));
 		buttonPanel.setOpaque(false);
 		add(buttonPanel, BorderLayout.LINE_END);
 
@@ -227,9 +229,9 @@ class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 
 		onOffToggle = new MicrobotPluginToggleButton();
 		onOffToggle.setConflicts(pluginConfig.getConflicts());
-		if (alwaysOn)
+		if (sideLabel != null)
 		{
-			buttonPanel.add(alwaysOnLabel, BorderLayout.LINE_END);
+			buttonPanel.add(sideLabel, BorderLayout.LINE_END);
 		}
 		else
 		{
@@ -254,7 +256,6 @@ class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 			if (pluginDescriptor.disable()) {
 				onOffToggle.setEnabled(false);
 				onOffToggle.setSelected(false);
-				onOffToggle.setToolTipText("Disabled by the author");
 			}
 		}
 
@@ -262,7 +263,7 @@ class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 		setFocusable(true);
 		getAccessibleContext().setAccessibleName(MicrobotPluginNames.plainName(pluginConfig.getName()));
 		// Space does nothing on these rows, so a screen reader says why.
-		getAccessibleContext().setAccessibleDescription(alwaysOn ? "Always on" : null);
+		getAccessibleContext().setAccessibleDescription(sideLabel == null ? null : sideLabel.getText());
 		addFocusListener(new FocusAdapter()
 		{
 			@Override
@@ -279,12 +280,12 @@ class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 		});
 	}
 
-	private static JLabel createAlwaysOnLabel()
+	private static JLabel createSideLabel(String text, String tooltip)
 	{
-		JLabel label = new JLabel("Always on");
+		JLabel label = new JLabel(text);
 		label.setFont(FontManager.getRunescapeSmallFont());
 		label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-		label.setToolTipText(AlwaysOnPlugins.TOOLTIP);
+		label.setToolTipText(tooltip);
 		return label;
 	}
 
@@ -318,7 +319,7 @@ class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 		{
 			statusButton.setText(MicrobotPluginListPanel.linkHtml(status.getText()));
 			statusButton.setForeground(statusButton.isFocusOwner() ? ColorScheme.BRAND_ORANGE : statusColor(status));
-			statusButton.setToolTipText(status.getKind() == MicrobotPluginRowStatus.Kind.FAILED ? "See why" : null);
+			statusButton.setToolTipText(status.getKind() == MicrobotPluginRowStatus.Kind.FAILED ? "See why" : status.getFullText());
 		}
 		int height = baseHeight + (status == null ? 0 : statusButton.getPreferredSize().height);
 		setPreferredSize(new Dimension(MicrobotPluginListPanel.LIST_ITEM_WIDTH, height));

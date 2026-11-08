@@ -48,6 +48,34 @@ public class MicrobotPluginRowStatusTest
     }
 
     @Test
+    public void longReasonKeepsTheWholeLineForTheTooltip()
+    {
+        String reason = "version 1.0.12 is confirmed broken: stalls at the bank every single time";
+
+        assertEquals("Not loaded: " + reason, MicrobotPluginRowStatus.of(null, reason, null, null, null, false).getFullText());
+        assertNull("A short reason needs no tooltip", MicrobotPluginRowStatus.of(null, "disabled", null, null, null, false).getFullText());
+    }
+
+    @Test
+    public void blockingHealthUsesItsOwnWordsNotAlwaysBroken()
+    {
+        MicrobotPluginManifest disabled = new MicrobotPluginManifest();
+        disabled.setInternalName("A");
+        disabled.setVersion("1.0.0");
+        disabled.setDisable(true);
+        assertEquals(MicrobotPluginHealth.State.DISABLED.getLabel(),
+            MicrobotPluginRowStatus.of(null, null, MicrobotPluginHealth.evaluate(disabled, "1.0.0", true), null, null, false).getText());
+
+        MicrobotPluginManifest tooNew = new MicrobotPluginManifest();
+        tooNew.setInternalName("B");
+        tooNew.setVersion("1.0.0");
+        tooNew.setMinClientVersion("9.9.9");
+        MicrobotPluginRowStatus status = MicrobotPluginRowStatus.of(null, null, MicrobotPluginHealth.evaluate(tooNew, "1.0.0", false), null, null, false);
+        assertEquals("Requires client 9.9.9", status.getText());
+        assertTrue(status.isSevere());
+    }
+
+    @Test
     public void updateNamesBothVersions()
     {
         MicrobotPluginRowStatus status = MicrobotPluginRowStatus.of(null, null, null, "1.4", "1.5", false);

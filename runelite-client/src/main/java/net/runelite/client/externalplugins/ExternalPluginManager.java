@@ -341,7 +341,8 @@ public class ExternalPluginManager
 							{
 								for (Plugin p : newPlugins2)
 								{
-									pluginManager.startPlugin(p);
+									// Starting a freshly installed plugin is not the player using it.
+									pluginManager.startPlugin(p, false);
 								}
 							}
 							catch (PluginInstantiationException e)

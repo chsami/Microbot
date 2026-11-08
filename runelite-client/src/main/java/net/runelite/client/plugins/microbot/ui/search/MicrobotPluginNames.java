@@ -34,7 +34,13 @@ public final class MicrobotPluginNames
     /** For keywords and descriptions, where a leading bracket is a word and not an author tag. */
     public static String searchText(String raw)
     {
-        return withoutMarkup(raw).toLowerCase(Locale.ROOT);
+        return plainText(raw).toLowerCase(Locale.ROOT);
+    }
+
+    /** Text to show, such as a description in a tooltip: tags and entities removed, case kept. */
+    public static String plainText(String raw)
+    {
+        return withoutMarkup(raw);
     }
 
     private static String withoutMarkup(String raw)

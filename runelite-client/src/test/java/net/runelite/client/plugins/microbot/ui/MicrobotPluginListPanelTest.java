@@ -837,7 +837,7 @@ public class MicrobotPluginListPanelTest
         rebuild(new AlwaysPlugin());
 
         MicrobotPluginListItem row = row("Always Fixture");
-        JLabel label = (JLabel) field(row, "alwaysOnLabel");
+        JLabel label = (JLabel) field(row, "sideLabel");
         assertEquals("Always on", label.getText());
         assertEquals("Always on: required by Microbot", label.getToolTipText());
         assertNotNull(label.getParent());
@@ -907,7 +907,7 @@ public class MicrobotPluginListPanelTest
         assertTrue(text("builtInHeader").endsWith("Always on & settings (1)"));
         click("builtInHeader");
         assertEquals(Arrays.asList(HTML_NAME, "Late Fixture", "Microbot"), shownNames());
-        assertNull(field(row("Microbot"), "alwaysOnLabel"));
+        assertNull(field(row("Microbot"), "sideLabel"));
         assertFalse(((Component) field(row("Microbot"), "onOffToggle")).isVisible());
         assertEquals("Only on (0)", text("onChip"));
     }
@@ -1232,10 +1232,28 @@ public class MicrobotPluginListPanelTest
         clickStatus(HTML_NAME);
         assertEquals(Collections.singletonList("IllegalStateException: Missing config"), failureDialogs);
         verify(bugReporter, never()).open(any(), any());
+        assertNull("Close clears the line on a normal row too", row(HTML_NAME).getStatus());
 
+        fail(plugin, "Missing config");
         chooseReport = true;
         clickStatus(HTML_NAME);
         verify(bugReporter).open(panel, plugin);
+    }
+
+    @Test
+    public void failureDialogSaysWhatHappenedAndWhatToDoBeforeTheError()
+    {
+        assertEquals("Html Fixture hit an error while starting and is switched off. Switch it on to try again, or press Report."
+            + "\n\nError: IllegalStateException: Missing config",
+            MicrobotPluginListPanel.failureMessage("Html Fixture", "IllegalStateException: Missing config"));
+    }
+
+    @Test
+    public void hubHeaderSaysTheNumberIsTheBestMatchesOnceCut()
+    {
+        assertEquals("Microbot Hub: 1 match", MicrobotPluginListPanel.hubHeaderText(1, 5));
+        assertEquals("Microbot Hub: 3 matches", MicrobotPluginListPanel.hubHeaderText(3, 5));
+        assertEquals("Microbot Hub: top 5 matches", MicrobotPluginListPanel.hubHeaderText(5, 5));
     }
 
     private MicrobotPluginListItem ghostWithManifest(List<String> hubSearches) throws Exception
@@ -1482,7 +1500,7 @@ public class MicrobotPluginListPanelTest
         search("zul");
 
         assertTrue(inList("hubHeader"));
-        assertEquals("Microbot Hub (1)", text("hubHeader"));
+        assertEquals("Microbot Hub: 1 match", text("hubHeader"));
         assertEquals(Collections.singletonList("ZulrahHelper"), shownHubRows());
         assertTrue("Coloured author tag, like installed rows",
             ((JLabel) hubRow("ZulrahHelper").getComponent(0)).getText().contains("<font color=red>M</font>"));
@@ -1638,8 +1656,10 @@ public class MicrobotPluginListPanelTest
 
         assertEquals(Collections.singletonList(HTML_NAME), shownNames());
         assertTrue(text("builtInHeader").endsWith("Always on & settings (1)"));
-        assertEquals("Disabled by the author",
-            ((JComponent) field(row("Disabled Fixture"), "onOffToggle")).getToolTipText());
+        JLabel label = (JLabel) field(row("Disabled Fixture"), "sideLabel");
+        assertEquals("Turned off", label.getText());
+        assertEquals("Turned off by its author", label.getToolTipText());
+        assertNull("No greyed-out switch", ((Component) field(row("Disabled Fixture"), "onOffToggle")).getParent());
     }
 
     @Test

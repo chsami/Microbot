@@ -323,8 +323,8 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
         JPanel searchRow = new JPanel(new BorderLayout(BORDER_OFFSET, 0));
         searchRow.setOpaque(false);
         searchRow.add(searchBar, BorderLayout.CENTER);
-        searchRow.add(createSortButton(sortMenu, sortItems, Sort.values(), Sort::getLabel, sort, this::setSort, localPlugins),
-                BorderLayout.EAST);
+        searchRow.add(createSortButton("Sort, filter and more", sortMenu, sortItems, Sort.values(), Sort::getLabel, sort,
+                this::setSort, localPlugins), BorderLayout.EAST);
         // Sits between the sorts and Local Plugins, behind its own separator.
         onChip.addActionListener(e -> setFilter(filter == Filter.ON ? Filter.ALL : Filter.ON));
         sortMenu.insert(onChipSeparator, Sort.values().length);
@@ -332,8 +332,11 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
         return searchRow;
     }
 
-    /** The sort button both tabs use: one radio item per sort, then {@code extra}. Tab reaches it; a click does not focus it. */
-    static <S> JButton createSortButton(JPopupMenu menu, Map<S, JMenuItem> items, S[] options, Function<S, String> label,
+    /**
+     * A menu button: one radio item per sort, then {@code extra}. {@code name} says everything the menu holds, not
+     * just "Sort". Tab reaches it; a click does not focus it.
+     */
+    static <S> JButton createSortButton(String name, JPopupMenu menu, Map<S, JMenuItem> items, S[] options, Function<S, String> label,
             S selected, Consumer<S> onSort, JMenuItem extra) {
         ButtonGroup group = new ButtonGroup();
         for (S option : options) {
@@ -350,8 +353,8 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
         SwingUtil.removeButtonDecorations(button);
         button.setPreferredSize(new Dimension(TOP_BUTTON_SIZE, TOP_BUTTON_SIZE));
         button.setRequestFocusEnabled(false);
-        button.setToolTipText("Sort");
-        button.getAccessibleContext().setAccessibleName("Sort");
+        button.setToolTipText(name);
+        button.getAccessibleContext().setAccessibleName(name);
         button.addActionListener(e -> menu.show(button, button.getWidth() - menu.getPreferredSize().width, button.getHeight()));
         return button;
     }
@@ -608,7 +611,8 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
                     listItem.setPinned(isNamePinned(pinnedNames, desc.getName())
                             || (plugin != null && pinnedClasses.contains(plugin.getClass().getName())));
                     if (plugin != null) {
-                        listItem.setInstallTime(installTimes.getOrDefault(plugin.getClass().getName(), 0L));
+                        String className = plugin.getClass().getName();
+                        listItem.setInstallTime(usage.installedSince(className, installTimes.getOrDefault(className, 0L)));
                     } else if (blocked.containsKey(desc)) {
                         listItem.setStatus(MicrobotPluginRowStatus.of(null, blocked.get(desc), null, null, null, false));
                     }
@@ -777,7 +781,7 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
             }
         }
         if (!hubHits.isEmpty()) {
-            hubHeader.setText("Microbot Hub (" + hubHits.size() + ")");
+            hubHeader.setText(hubHeaderText(hubHits.size(), HUB_RESULTS));
             children.add(hubHeader);
             hubHits.forEach(manifest -> children.add(hubRows.computeIfAbsent(manifest.getInternalName(),
                     name -> new HubRow(manifest))));
@@ -902,8 +906,8 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
                 }
                 if (askToReport(name, MicrobotPluginFailures.describe(failure))) {
                     bugReporter.open(this, plugin);
-                } else if (row.isAlwaysOn()) {
-                    // Nothing to switch back on, so Close is the only way the line, and the opened Always on & settings section, can go.
+                } else {
+                    // Seen and closed: the switch already shows it is off, and an always-on plugin has no switch to clear it.
                     MicrobotPluginFailures.clear(plugin);
                 }
                 break;
@@ -928,8 +932,19 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
 
     boolean askToReport(String name, String reason) {
         Object[] options = {"Report", "Close"};
-        return JOptionPane.showOptionDialog(this, wrappedMessage(reason), name + " failed to start",
+        return JOptionPane.showOptionDialog(this, wrappedMessage(failureMessage(name, reason)), name + " failed to start",
                 JOptionPane.DEFAULT_OPTION, JOptionPane.ERROR_MESSAGE, null, options, options[1]) == 0;
+    }
+
+    // Says it is the best few, not the Hub's total, once the list is cut at the limit.
+    static String hubHeaderText(int shown, int limit) {
+        return "Microbot Hub: " + (shown >= limit ? "top " + shown + " matches" : shown + (shown == 1 ? " match" : " matches"));
+    }
+
+    // What happened and what to do first; the raw error last, for a report.
+    static String failureMessage(String name, String reason) {
+        return name + " hit an error while starting and is switched off. Switch it on to try again, or press Report."
+                + "\n\nError: " + reason;
     }
 
     // Same checks, dialogs and path as the Hub's Update.
@@ -950,7 +965,7 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
     }
 
     private static JTextArea wrappedMessage(String message) {
-        JTextArea area = new JTextArea(message, 4, 42);
+        JTextArea area = new JTextArea(message, 6, 42);
         area.setEditable(false);
         area.setLineWrap(true);
         area.setWrapStyleWord(true);
@@ -1220,7 +1235,7 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
             JLabel name = new JLabel(plain.isEmpty() ? manifest.getInternalName()
                     : "<html>" + wrapped(MicrobotPluginListItem.htmlBody(manifest.getDisplayName()), LIST_ITEM_WIDTH - 90, "left"));
             name.setToolTipText(Strings.isNullOrEmpty(manifest.getDescription()) ? null
-                    : "<html>" + HtmlEscapers.htmlEscaper().escape(MicrobotPluginNames.searchText(manifest.getDescription())) + "</html>");
+                    : "<html>" + HtmlEscapers.htmlEscaper().escape(MicrobotPluginNames.plainText(manifest.getDescription())) + "</html>");
             add(name, BorderLayout.CENTER);
 
             SwingUtil.removeButtonDecorations(installButton);

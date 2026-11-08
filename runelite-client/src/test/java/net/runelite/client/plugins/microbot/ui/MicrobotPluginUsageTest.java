@@ -145,6 +145,20 @@ public class MicrobotPluginUsageTest
     }
 
     @Test
+    public void installTimeIsTheFirstJarTimeSoAnUpdateDoesNotBumpIt() throws Exception
+    {
+        MicrobotPluginUsage usage = load();
+
+        assertEquals(100, usage.installedSince("a.Plugin", 100));
+        assertEquals("A new jar from an update keeps the first time", 100, usage.installedSince("a.Plugin", 900));
+        assertEquals("Built in, no jar: not recorded", 0, usage.installedSince("b.Plugin", 0));
+        assertEquals(500, usage.installedSince("b.Plugin", 500));
+
+        flush(1);
+        assertEquals("Survives a restart", 100, load().installedSince("a.Plugin", 900));
+    }
+
+    @Test
     public void flushWritesAPendingStartAtOnce() throws Exception
     {
         MicrobotPluginUsage usage = load();

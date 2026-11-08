@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 /**
- * Last start time per plugin class. Kept in a local file,
+ * Last start and first install time per plugin class. Kept in a local file,
  * not the profile, so a start does not churn synced config.
  */
 @Slf4j
@@ -35,6 +35,8 @@ public class MicrobotPluginUsage
     private static final class Data
     {
         Map<String, Long> lastStarted = new HashMap<>();
+        // First time each plugin class was seen installed, so an update (a new jar) does not count as an install.
+        Map<String, Long> installed = new HashMap<>();
     }
 
     private final Path file;
@@ -95,6 +97,10 @@ public class MicrobotPluginUsage
         {
             data.lastStarted = new HashMap<>();
         }
+        if (data.installed == null)
+        {
+            data.installed = new HashMap<>();
+        }
         return data;
     }
 
@@ -113,6 +119,26 @@ public class MicrobotPluginUsage
     synchronized long lastStarted(String className)
     {
         return data.lastStarted.getOrDefault(className, 0L);
+    }
+
+    /**
+     * When the plugin was installed: the first {@code jarTime} seen for it, kept from then on. 0 for a plugin
+     * without a jar (built in), which is not recorded.
+     * shortcut: an uninstall does not forget the time, so a later reinstall keeps the first one; clear it on uninstall if that matters.
+     */
+    synchronized long installedSince(String className, long jarTime)
+    {
+        Long first = data.installed.get(className);
+        if (first != null)
+        {
+            return first;
+        }
+        if (jarTime > 0)
+        {
+            data.installed.put(className, jarTime);
+            queueWrite();
+        }
+        return jarTime;
     }
 
     /** Writes a start still waiting for its delayed write, so one made just before exit is kept. */
@@ -157,6 +183,7 @@ public class MicrobotPluginUsage
             {
                 writeQueued = false;
                 saved.lastStarted.forEach((name, time) -> data.lastStarted.merge(name, time, Math::max));
+                saved.installed.forEach((name, time) -> data.installed.merge(name, time, Math::min));
                 json = GSON.toJson(data);
             }
             Path temp = null;
