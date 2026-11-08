@@ -22,7 +22,6 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.ScheduledExecutorService;
@@ -75,7 +74,6 @@ public class LivePluginManager {
     private Map<Path, String> observed = Collections.emptyMap();
     private final Map<Path, String> skipped = new HashMap<>();
     private volatile LoadPolicy loadPolicy;
-    private final Set<Path> reportedLoadFailures = ConcurrentHashMap.newKeySet();
 
     interface LoadPolicy {
         String blockReason(String internalName, PluginDescriptor descriptor);
@@ -874,7 +872,7 @@ public class LivePluginManager {
                     skipped.put(source, digest);
                     failures.add(source.getFileName() + ": " + result.message);
                     if (startup) {
-                        reportLoadFailure(source, result.message);
+                        reportBlocked(jarName(source), "", "load", result.message);
                     }
                 }
             } catch (LivePluginArtifact.BlockedPluginException blocked) {
@@ -891,7 +889,7 @@ public class LivePluginManager {
                 }
                 failures.add(source.getFileName() + ": " + message(failure));
                 if (startup) {
-                    reportLoadFailure(source, message(failure));
+                    reportBlocked(jarName(source), "", "load", message(failure));
                 }
             }
         }
@@ -962,22 +960,6 @@ public class LivePluginManager {
     }
 
     private void publish() {
-        // Load failures are keyed by file name, which loaded() never sees: clear them once the jar loads, goes,
-        // or is left behind in a folder that is no longer watched.
-        for (Path source : reportedLoadFailures) {
-            if (!Files.exists(source) || !pluginDirectory.equals(source.toAbsolutePath().normalize().getParent())
-                    || installed.values().stream().anyMatch(i -> i.source.equals(source))) {
-                reportedLoadFailures.remove(source);
-                LoadPolicy policy = loadPolicy;
-                try {
-                    if (policy != null) {
-                        policy.loaded(jarName(source));
-                    }
-                } catch (RuntimeException failure) {
-                    log.debug("Could not clear the load failure for {}", source.getFileName(), failure);
-                }
-            }
-        }
         List<PluginEntry> next = new ArrayList<>();
         for (Installation current : installed.values()) {
             PluginDescriptor descriptor = current.artifact.types.get(0).getAnnotation(PluginDescriptor.class);
@@ -1129,11 +1111,6 @@ public class LivePluginManager {
                 log.debug("Could not clear the load block for {}", type.getSimpleName(), failure);
             }
         }
-    }
-
-    private void reportLoadFailure(Path source, String reason) {
-        reportedLoadFailures.add(source);
-        reportBlocked(jarName(source), "", "load", reason);
     }
 
     private void reportBlocked(String internalName, String version, String phase, String reason) {
