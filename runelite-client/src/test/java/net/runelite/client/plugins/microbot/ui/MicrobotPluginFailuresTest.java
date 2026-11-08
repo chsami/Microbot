@@ -36,6 +36,17 @@ public class MicrobotPluginFailuresTest
     }
 
     @Test
+    public void aRemovedPluginsFailureIsDroppedSoItCanBeUnloaded()
+    {
+        Plugin plugin = new FixturePlugin();
+        MicrobotPluginFailures.failed(plugin, new IllegalStateException("Missing config"));
+
+        MicrobotPluginFailures.removed(plugin);
+
+        assertNull(MicrobotPluginFailures.failure(plugin));
+    }
+
+    @Test
     public void describeNamesTheTypeAndTheMessage()
     {
         assertEquals("IllegalStateException: Missing config",

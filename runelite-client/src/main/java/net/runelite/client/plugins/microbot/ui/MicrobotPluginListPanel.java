@@ -717,6 +717,10 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
     }
 
     private void updateList() {
+        // Typing, a sort or a chip can arrive before the first rebuild at startup.
+        if (pluginList == null) {
+            return;
+        }
         final String query = searchBar.getText();
         if (filter == Filter.ON) {
             MicrobotPluginListOrder.keepSwitchedOff(kept, shownRows, MicrobotPluginListItem::isOn);

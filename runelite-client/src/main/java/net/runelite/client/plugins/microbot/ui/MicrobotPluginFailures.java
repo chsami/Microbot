@@ -15,7 +15,8 @@ import java.util.WeakHashMap;
 @Slf4j
 public final class MicrobotPluginFailures
 {
-    // Weak, so a replaced or removed plugin's classloader is not kept alive by its old failure.
+    // Weak keys alone do not free a failed plugin: its Throwable holds the plugin's classes, which can reach the
+    // plugin itself. So PluginManager.remove() drops the entry too (removed), and weak keys catch anything left.
     private static final Map<Plugin, Throwable> FAILURES = Collections.synchronizedMap(new WeakHashMap<>());
     private static volatile Runnable listener = () -> { };
 
@@ -30,6 +31,12 @@ public final class MicrobotPluginFailures
     }
 
     public static void started(Plugin plugin)
+    {
+        clear(plugin);
+    }
+
+    /** The plugin left the registry (a live reload, update or removal), so its old failure must not keep it loaded. */
+    public static void removed(Plugin plugin)
     {
         clear(plugin);
     }

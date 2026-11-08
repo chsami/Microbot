@@ -627,6 +627,7 @@ public class PluginManager {
         plugins.remove(plugin);
         unloadingPlugins.remove(plugin);
         shutdownFailures.remove(plugin);
+        MicrobotPluginFailures.removed(plugin);
     }
 
     /** Prepare an external instance without publishing it in the live plugin list. */

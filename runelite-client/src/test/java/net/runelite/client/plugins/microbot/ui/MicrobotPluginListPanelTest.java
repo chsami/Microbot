@@ -1241,6 +1241,18 @@ public class MicrobotPluginListPanelTest
     }
 
     @Test
+    public void typingSortingOrFilteringBeforeTheFirstBuildDoesNothing() throws Exception
+    {
+        search("zul");
+        click("onChip");
+        JMenuItem byAuthor = (JMenuItem) ((JPopupMenu) field(panel, "sortMenu")).getComponent(3);
+        onEdt(() -> byAuthor.doClick(0));
+
+        rebuild(new HtmlPlugin());
+        assertEquals("The search still applies once the list exists", Collections.emptyList(), shownNames());
+    }
+
+    @Test
     public void failureDialogSaysWhatHappenedAndWhatToDoBeforeTheError()
     {
         assertEquals("Html Fixture hit an error while starting and is switched off. Switch it on to try again, or press Report."
