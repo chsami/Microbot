@@ -62,12 +62,7 @@ public class MicrobotPluginHubOrderTest
 
     private static List<String> order(List<Item> items, String query)
     {
-        return order(items, query, MicrobotPluginHubOrder.Sort.INSTALLED_FIRST);
-    }
-
-    private static List<String> order(List<Item> items, String query, MicrobotPluginHubOrder.Sort sort)
-    {
-        return names(MicrobotPluginHubOrder.order(items, query, sort, i -> i.manifest, i -> i.installed));
+        return names(MicrobotPluginHubOrder.order(items, query, i -> i.manifest, i -> i.installed, i -> i.users));
     }
 
     private static List<String> names(List<Item> items)
@@ -145,45 +140,38 @@ public class MicrobotPluginHubOrderTest
         assertTrue(MicrobotPluginHubOrder.isNewlyAddedFilterQuery(" New"));
     }
 
-    // User counts are gone from the default order: getPluginCounts() is an empty stub.
     @Test
-    public void defaultSortIsInstalledFirstThenAToZByCleanName()
+    public void ordinarySortIsUnchangedInstalledThenPopularityThenName()
     {
         List<Item> items = Arrays.asList(
             new Item("Delta", daysAgo(1), false, 50),
             new Item("Alpha", null, false, 50),
             new Item("Charlie", daysAgo(300), true, 1),
             new Item("Bravo", daysAgo(2), false, 900),
-            new Item("Echo", null, true, 70),
-            new Item("<html>[<font color=red>A</font>] Zed", null, false, 0));
+            new Item("Echo", null, true, 70));
 
-        List<String> expected = Arrays.asList("Charlie", "Echo", "Alpha", "Bravo", "Delta", "<html>[<font color=red>A</font>] Zed");
+        List<String> expected = Arrays.asList("Echo", "Charlie", "Bravo", "Alpha", "Delta");
         assertEquals(expected, order(items, ""));
         assertEquals(expected, order(items, null));
         assertEquals(expected, order(items, "   "));
     }
 
     @Test
-    public void newestAndAToZSortsIgnoreInstalledState()
+    public void legacyManifestWithoutAddedAtParsesAndSortsLast()
     {
-        List<Item> items = Arrays.asList(
-            new Item("Bravo", daysAgo(1), false, 0),
-            new Item("Alpha", daysAgo(9), false, 0),
-            new Item("Charlie", null, true, 0));
+        MicrobotPluginManifest[] parsed = new Gson().fromJson(
+            "[{\"internalName\":\"LegacyPlugin\",\"name\":\"Legacy\",\"version\":\"1.0.0\"},"
+                + "{\"internalName\":\"FreshPlugin\",\"name\":\"Fresh\",\"version\":\"1.0.0\",\"addedAt\":\"" + daysAgo(1) + "\"}]",
+            MicrobotPluginManifest[].class);
 
-        assertEquals(Arrays.asList("Bravo", "Alpha", "Charlie"), order(items, "", MicrobotPluginHubOrder.Sort.NEWEST));
-        assertEquals(Arrays.asList("Alpha", "Bravo", "Charlie"), order(items, "", MicrobotPluginHubOrder.Sort.AZ));
-        assertEquals("A search keeps its own order", Arrays.asList("Charlie"), order(items, "char", MicrobotPluginHubOrder.Sort.NEWEST));
-    }
+        assertFalse(parsed[0].getAddedInstant().isPresent());
+        assertTrue(parsed[1].isNewlyAdded());
 
-    @Test
-    public void savedSortParsesWithInstalledFirstAsDefault()
-    {
-        assertEquals(MicrobotPluginHubOrder.Sort.INSTALLED_FIRST, MicrobotPluginHubOrder.Sort.parse(null));
-        assertEquals(MicrobotPluginHubOrder.Sort.INSTALLED_FIRST, MicrobotPluginHubOrder.Sort.parse("POPULAR"));
-        assertEquals(MicrobotPluginHubOrder.Sort.NEWEST, MicrobotPluginHubOrder.Sort.parse("NEWEST"));
-        assertEquals(Arrays.asList("Installed first", "Newest", "A-Z"), Arrays.stream(MicrobotPluginHubOrder.Sort.values())
-            .map(MicrobotPluginHubOrder.Sort::getLabel).collect(Collectors.toList()));
+        List<MicrobotPluginManifest> manifests = Arrays.asList(parsed);
+        List<MicrobotPluginManifest> sorted = new ArrayList<>(manifests);
+        sorted.sort(MicrobotPluginHubOrder.newestFirst(m -> m));
+        assertEquals("FreshPlugin", sorted.get(0).getInternalName());
+        assertEquals("LegacyPlugin", sorted.get(1).getInternalName());
     }
 
     private static MicrobotPluginManifest manifest(String internalName, String displayName)
@@ -246,34 +234,5 @@ public class MicrobotPluginHubOrderTest
         assertEquals(Arrays.asList("Full", "cuts", "trees", "Zoe", "skilling"), MicrobotPluginHubOrder.keywords(full));
         assertEquals(Collections.singletonList("Full"), hubMatches(Arrays.asList(bare, full), "zoe"));
         assertEquals(Collections.singletonList("Full"), hubMatches(Arrays.asList(bare, full), "skilling"));
-    }
-
-    @Test
-    public void rowStateInWords()
-    {
-        assertEquals(MicrobotPluginHubOrder.State.NONE, MicrobotPluginHubOrder.State.of(false, true, true));
-        assertEquals(MicrobotPluginHubOrder.State.BROKEN, MicrobotPluginHubOrder.State.of(true, true, true));
-        assertEquals(MicrobotPluginHubOrder.State.UPDATE, MicrobotPluginHubOrder.State.of(true, false, true));
-        assertEquals(MicrobotPluginHubOrder.State.INSTALLED, MicrobotPluginHubOrder.State.of(true, false, false));
-        assertEquals(Arrays.asList("", "Installed", "Update available", "Confirmed broken"), Arrays.stream(MicrobotPluginHubOrder.State.values())
-            .map(MicrobotPluginHubOrder.State::getLabel).collect(Collectors.toList()));
-    }
-
-    @Test
-    public void legacyManifestWithoutAddedAtParsesAndSortsLast()
-    {
-        MicrobotPluginManifest[] parsed = new Gson().fromJson(
-            "[{\"internalName\":\"LegacyPlugin\",\"name\":\"Legacy\",\"version\":\"1.0.0\"},"
-                + "{\"internalName\":\"FreshPlugin\",\"name\":\"Fresh\",\"version\":\"1.0.0\",\"addedAt\":\"" + daysAgo(1) + "\"}]",
-            MicrobotPluginManifest[].class);
-
-        assertFalse(parsed[0].getAddedInstant().isPresent());
-        assertTrue(parsed[1].isNewlyAdded());
-
-        List<MicrobotPluginManifest> manifests = Arrays.asList(parsed);
-        List<MicrobotPluginManifest> sorted = new ArrayList<>(manifests);
-        sorted.sort(MicrobotPluginHubOrder.newestFirst(m -> m));
-        assertEquals("FreshPlugin", sorted.get(0).getInternalName());
-        assertEquals("LegacyPlugin", sorted.get(1).getInternalName());
     }
 }
