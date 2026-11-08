@@ -24,6 +24,7 @@
  */
 package net.runelite.client.plugins.microbot.ui;
 
+import com.google.common.base.Enums;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.html.HtmlEscapers;
@@ -88,6 +89,7 @@ import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -96,6 +98,7 @@ import java.util.IdentityHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -216,6 +219,7 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
     private final Set<String> installing = new HashSet<>();
     // Lowercased: Hub names of rows, plugin class names and blocked jars, so the Hub section offers none of them.
     private final Set<String> installedNames = new HashSet<>();
+    private final HealthBanner healthBanner = new HealthBanner();
 
     @Inject
     public MicrobotPluginListPanel(
@@ -466,6 +470,10 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
         hubHeader.setFont(FontManager.getRunescapeSmallFont());
         hubHeader.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
         hubHeader.setBorder(new EmptyBorder(6, 0, 0, 0));
+        healthBanner.getDismissButton().addActionListener(e -> {
+            usage.markHealthSeen(healthBanner.clear());
+            updateList();
+        });
     }
 
     private void bindKeys() {
@@ -646,6 +654,7 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
         microbotPluginManager.getBlockedPlugins().keySet().forEach(name -> installedNames.add(name.toLowerCase(Locale.ROOT)));
 
         snapshotUsage();
+        checkHealth();
         applyStartupRules();
         mainPanel.removeAll();
         refresh();
@@ -754,6 +763,10 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
         updateEmptyPanel(query, !hubHits.isEmpty());
 
         List<Component> children = new ArrayList<>();
+        // It names rows the search or chip may be hiding, so it waits until they are cleared.
+        if (healthBanner.hasLinks() && !filtering) {
+            children.add(healthBanner);
+        }
         children.addAll(result.getPinned());
         if (!result.getPinned().isEmpty() && !result.getNormal().isEmpty()) {
             children.add(pinnedDivider);
@@ -1158,6 +1171,7 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
         super.onActivate();
         if (pluginList != null) {
             snapshotUsage();
+            checkHealth();
             updateList();
         }
 
@@ -1201,6 +1215,41 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
         String version = microbotPluginManager.getInstalledPluginVersion(manifest.getInternalName()).orElse(desc.getPlugin() == null
                 ? null : desc.getPlugin().getClass().getAnnotation(PluginDescriptor.class).version());
         return microbotPluginManager.getPluginHealth(manifest, version);
+    }
+
+    private void checkHealth() {
+        Map<String, MicrobotPluginManifest> manifests = microbotPluginManager.getManifestMap();
+        if (pluginList == null || manifests.isEmpty()) {
+            return;
+        }
+        Map<String, MicrobotPluginHealth> health = new HashMap<>();
+        Map<String, String> states = new HashMap<>();
+        Map<String, String> rowNames = new HashMap<>();
+        for (MicrobotPluginListItem row : pluginList) {
+            MicrobotPluginHealth pluginHealth = healthOf(row.getPluginConfig(), manifests);
+            if (pluginHealth != null) {
+                String hubName = row.getPluginConfig().getMicrobotHubName();
+                health.put(hubName, pluginHealth);
+                states.put(hubName, pluginHealth.getState().name());
+                rowNames.put(hubName, MicrobotPluginNames.plainName(row.getPluginConfig().getName()));
+            }
+        }
+        List<String> changed = usage.healthChanges(states, MicrobotPluginListPanel::worthReporting);
+        healthBanner.keepOnly(changed);
+        if (!changed.isEmpty()) {
+            healthBanner.add(changed.stream().map(name -> {
+                // The row's own name, as the list and the search box show it.
+                String rowName = rowNames.get(name).isEmpty() ? name : rowNames.get(name);
+                return new HealthChange(name, states.get(name), rowName, rowName + ": " + health.get(name).getLabel());
+            }).collect(Collectors.toList()));
+        }
+    }
+
+    // Worth a banner: a change into or out of a state that warns (turned off, needs a newer client, broken or an unverified report).
+    // Verified and not reported move with every release and say nothing new.
+    static boolean worthReporting(String state) {
+        MicrobotPluginHealth.State known = Enums.getIfPresent(MicrobotPluginHealth.State.class, state).orNull();
+        return known != null && (known.isBlocking() || known == MicrobotPluginHealth.State.UNVERIFIED);
     }
 
     // The Hub panel's own pre-install checks and dialogs, so no safety prompt is skipped here.
@@ -1265,4 +1314,92 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
         }
     }
 
+    @lombok.Value
+    static class HealthChange {
+        // Hub internal name: one banner line per plugin.
+        String hubName;
+        // The health state this line reports, saved as seen once the player opens or dismisses it.
+        String state;
+        // The row's display name, which is what the search box shows and matches.
+        String query;
+        String text;
+    }
+
+    /** Names installed Hub plugins whose health changed since last seen. Each link opens that row. */
+    final class HealthBanner extends JPanel {
+
+        private final JPanel linkPanel = new JPanel(new GridLayout(0, 1, 0, 2));
+        @Getter
+        private final List<AbstractButton> links = new ArrayList<>();
+        @Getter
+        private final JButton dismissButton = new JButton("✕");
+
+        HealthBanner() {
+            super(new BorderLayout(4, 2));
+            setBackground(ColorScheme.DARKER_GRAY_COLOR);
+            setBorder(new CompoundBorder(new LineBorder(ColorScheme.PROGRESS_INPROGRESS_COLOR), new EmptyBorder(4, 6, 4, 4)));
+            JLabel title = new JLabel("Hub status changed for your plugins");
+            title.setFont(FontManager.getRunescapeSmallFont());
+            title.setForeground(ColorScheme.PROGRESS_INPROGRESS_COLOR);
+            add(title, BorderLayout.NORTH);
+            linkPanel.setOpaque(false);
+            add(linkPanel, BorderLayout.CENTER);
+            SwingUtil.removeButtonDecorations(dismissButton);
+            dismissButton.setToolTipText("Dismiss");
+            dismissButton.getAccessibleContext().setAccessibleName("Dismiss");
+            dismissButton.setVerticalAlignment(SwingConstants.TOP);
+            add(dismissButton, BorderLayout.EAST);
+        }
+
+        // Keyed by Hub internal name: a newer change for one plugin replaces its line, others stay until dismissed.
+        private final Map<String, HealthChange> shown = new LinkedHashMap<>();
+
+        boolean hasLinks() {
+            return !links.isEmpty();
+        }
+
+        void add(List<HealthChange> changes) {
+            changes.forEach(change -> shown.put(change.getHubName(), change));
+            rebuild();
+        }
+
+        void keepOnly(Collection<String> hubNames) {
+            shown.keySet().retainAll(hubNames);
+            rebuild();
+        }
+
+        /** Empties the banner and returns what it showed (Hub name to state), for saving as seen. */
+        Map<String, String> clear() {
+            Map<String, String> seen = new HashMap<>();
+            shown.values().forEach(change -> seen.put(change.getHubName(), change.getState()));
+            shown.clear();
+            rebuild();
+            return seen;
+        }
+
+        // Opening a line is seeing it: it leaves the banner, and the rest stay until dismissed.
+        private void open(HealthChange change) {
+            shown.remove(change.getHubName());
+            usage.markHealthSeen(Collections.singletonMap(change.getHubName(), change.getState()));
+            rebuild();
+            openWithFilter(change.getQuery());
+        }
+
+        private void rebuild() {
+            links.clear();
+            linkPanel.removeAll();
+            for (HealthChange change : shown.values()) {
+                JButton link = new JButton(linkHtml(change.getText()));
+                SwingUtil.removeButtonDecorations(link);
+                link.setHorizontalAlignment(SwingConstants.LEFT);
+                link.setBorder(new EmptyBorder(0, 0, 0, 0));
+                link.setFont(FontManager.getRunescapeSmallFont());
+                link.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+                link.setToolTipText("Show this plugin in the list");
+                link.addActionListener(e -> open(change));
+                links.add(link);
+                linkPanel.add(link);
+            }
+        }
+    }
 }

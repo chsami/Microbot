@@ -1579,6 +1579,45 @@ public class MicrobotPluginListPanelTest
         return manifest;
     }
 
+    private static MicrobotPluginManifest withHealth(MicrobotPluginManifest manifest, String status)
+    {
+        MicrobotPluginHealth.Metadata health = new MicrobotPluginHealth.Metadata();
+        health.setStatus(status);
+        health.setAffectedVersions(Collections.singletonList("*"));
+        manifest.setHealth(health);
+        return manifest;
+    }
+
+    @Test
+    public void aSecondHealthChangeJoinsTheBannerInsteadOfReplacingIt() throws Exception
+    {
+        HtmlPlugin html = new HtmlPlugin();
+        LatePlugin late = new LatePlugin();
+        when(microbotPluginManager.getHubInternalName(html)).thenReturn("HtmlHub");
+        when(microbotPluginManager.getHubInternalName(late)).thenReturn("LateHub");
+        MicrobotPluginManifest htmlHub = withHealth(hubManifest("HtmlHub", "Html Hub"), MicrobotPluginHealth.STATUS_OK);
+        MicrobotPluginManifest lateHub = withHealth(hubManifest("LateHub", "Late Hub"), MicrobotPluginHealth.STATUS_OK);
+        hubManifests(htmlHub, lateHub);
+        rebuild(html, late);
+
+        withHealth(htmlHub, MicrobotPluginHealth.STATUS_BROKEN);
+        rebuild(html, late);
+        withHealth(lateHub, MicrobotPluginHealth.STATUS_BROKEN);
+        rebuild(html, late);
+
+        List<AbstractButton> links = ((MicrobotPluginListPanel.HealthBanner) field(panel, "healthBanner")).getLinks();
+        assertEquals("Html Hub's undismissed line stays beside Late Hub's", 2, links.size());
+        assertTrue(links.get(0).getText(), links.get(0).getText().contains("Html Fixture"));
+        assertTrue(links.get(1).getText(), links.get(1).getText().contains("Late Fixture"));
+
+        withHealth(htmlHub, MicrobotPluginHealth.STATUS_OK);
+        rebuild(html, late);
+        List<AbstractButton> reverted = ((MicrobotPluginListPanel.HealthBanner) field(panel, "healthBanner")).getLinks();
+        assertEquals("A change that reverted before it was seen leaves the banner", 1, reverted.size());
+        assertTrue(reverted.get(0).getText(), reverted.get(0).getText().contains("Late Fixture"));
+        assertFalse(reverted.stream().anyMatch(link -> link.getText().contains("Html Fixture") && link.getText().contains("Confirmed broken")));
+    }
+
     @Test
     public void noInstalledMatchWithHubMatchesSaysOnlyThatAndSitsHigh() throws Exception
     {
@@ -1643,6 +1682,52 @@ public class MicrobotPluginListPanelTest
         assertEquals("Reported issues", row(HTML_NAME).getStatus().getText());
         assertEquals(ColorScheme.PROGRESS_INPROGRESS_COLOR, statusButton(row(HTML_NAME)).getForeground());
         assertEquals("1 to fix", text("fixChip"));
+    }
+
+    @Test
+    public void healthChangeShowsADismissibleBannerThatOpensTheRow() throws Exception
+    {
+        HtmlPlugin plugin = new HtmlPlugin();
+        installedHubPlugin(plugin, MicrobotPluginHealth.STATUS_OK);
+        rebuild(plugin, new LatePlugin());
+        assertFalse("First run only records", inList("healthBanner"));
+
+        installedHubPlugin(plugin, MicrobotPluginHealth.STATUS_BROKEN);
+        rebuild(plugin, new LatePlugin());
+
+        assertTrue(inList("healthBanner"));
+        assertEquals(0, Arrays.asList(mainPanel().getComponents()).indexOf(field(panel, "healthBanner")));
+        List<AbstractButton> links = ((MicrobotPluginListPanel.HealthBanner) field(panel, "healthBanner")).getLinks();
+        assertEquals(1, links.size());
+        assertTrue("The row's own name, as the list shows it", links.get(0).getText().contains("Html Fixture"));
+        assertTrue(links.get(0).getText(), links.get(0).getText().contains("Confirmed broken"));
+        assertEquals("Show this plugin in the list", links.get(0).getToolTipText());
+
+        onEdt(() -> links.get(0).doClick(0));
+        assertEquals("Html Fixture", searchText());
+        assertEquals(Collections.singletonList(HTML_NAME), shownNames());
+        search("");
+        assertFalse("An opened line leaves the banner", inList("healthBanner"));
+        rebuild(plugin, new LatePlugin());
+        assertFalse("and is saved as seen", inList("healthBanner"));
+    }
+
+    @Test
+    public void dismissSavesEveryLineAsSeenButAnUnopenedChangeComesBack() throws Exception
+    {
+        HtmlPlugin plugin = new HtmlPlugin();
+        installedHubPlugin(plugin, MicrobotPluginHealth.STATUS_OK);
+        rebuild(plugin, new LatePlugin());
+        installedHubPlugin(plugin, MicrobotPluginHealth.STATUS_BROKEN);
+        rebuild(plugin, new LatePlugin());
+
+        rebuild(plugin, new LatePlugin());
+        assertTrue("Not opened or dismissed yet, so still shown", inList("healthBanner"));
+
+        onEdt(() -> ((MicrobotPluginListPanel.HealthBanner) unchecked("healthBanner")).getDismissButton().doClick(0));
+        assertFalse(inList("healthBanner"));
+        rebuild(plugin, new LatePlugin());
+        assertFalse("Seen changes stay dismissed", inList("healthBanner"));
     }
 
     private String countLine() throws Exception
@@ -1750,6 +1835,24 @@ public class MicrobotPluginListPanelTest
         assertEquals(1, failureDialogs.size());
         assertNull(row("Always Fixture").getStatus());
         assertFalse(shownNames().contains("Always Fixture"));
+    }
+
+    @Test
+    public void healthBannerHidesWhileSearchingOrFiltering() throws Exception
+    {
+        HtmlPlugin plugin = new HtmlPlugin();
+        installedHubPlugin(plugin, MicrobotPluginHealth.STATUS_OK);
+        rebuild(plugin, new LatePlugin());
+        installedHubPlugin(plugin, MicrobotPluginHealth.STATUS_BROKEN);
+        rebuild(plugin, new LatePlugin());
+        assertTrue(inList("healthBanner"));
+
+        search("late");
+        assertFalse(inList("healthBanner"));
+        search("");
+        assertTrue(inList("healthBanner"));
+        click("fixChip");
+        assertFalse(inList("healthBanner"));
     }
 
     @Test
