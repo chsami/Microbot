@@ -1,7 +1,11 @@
 package net.runelite.client.plugins.microbot.ui;
 
+import com.google.common.base.Enums;
 import com.google.common.base.Splitter;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import net.runelite.client.plugins.config.SearchablePlugin;
+import net.runelite.client.plugins.microbot.externalplugins.MicrobotPluginHealth;
 import net.runelite.client.plugins.microbot.externalplugins.MicrobotPluginManifest;
 import net.runelite.client.plugins.microbot.ui.search.MicrobotPluginNames;
 import net.runelite.client.plugins.microbot.ui.search.MicrobotPluginSearch;
@@ -25,6 +29,46 @@ final class MicrobotPluginHubOrder
     static final String NEWLY_ADDED_FILTER_QUERY = "New";
     private static final Splitter WORDS = Splitter.on(' ').omitEmptyStrings();
 
+    @Getter
+    @RequiredArgsConstructor
+    enum Sort
+    {
+        INSTALLED_FIRST("Installed first"),
+        NEWEST("Newest"),
+        AZ("A-Z");
+
+        private final String label;
+
+        static Sort parse(String saved)
+        {
+            return saved == null ? INSTALLED_FIRST : Enums.getIfPresent(Sort.class, saved).or(INSTALLED_FIRST);
+        }
+    }
+
+    @Getter
+    @RequiredArgsConstructor
+    enum State
+    {
+        NONE(""),
+        INSTALLED("Installed"),
+        UPDATE("Update available"),
+        // Worded by the health itself: disabled upstream or a too-old client is not "broken".
+        BLOCKED("");
+
+        private final String label;
+
+        static State of(boolean installed, boolean blocking, boolean outdated)
+        {
+            return !installed ? NONE : blocking ? BLOCKED : outdated ? UPDATE : INSTALLED;
+        }
+
+        /** What the card says: the health's own label when blocked. */
+        String text(MicrobotPluginHealth health)
+        {
+            return this == BLOCKED ? health.getLabel() : label;
+        }
+    }
+
     private MicrobotPluginHubOrder()
     {
     }
@@ -39,6 +83,7 @@ final class MicrobotPluginHubOrder
     static <T extends SearchablePlugin> List<T> order(
         Collection<T> plugins,
         String query,
+        Sort sort,
         Function<T, MicrobotPluginManifest> manifest,
         Predicate<T> installed,
         ToIntFunction<T> userCount)
@@ -56,8 +101,16 @@ final class MicrobotPluginHubOrder
             return MicrobotPluginSearch.search(plugins, query);
         }
 
+        Comparator<T> byName = Comparator.<T, String>comparing(plugin -> MicrobotPluginNames.sortKey(manifest.apply(plugin).getDisplayName()))
+            .thenComparing(plugin -> manifest.apply(plugin).getInternalName(), Comparator.nullsLast(Comparator.naturalOrder()));
+        Comparator<T> comparator = sort == Sort.NEWEST ? newestFirst(manifest)
+            : sort == Sort.AZ ? byName
+            // Then most used, as before the sort menu; the Hub sends no counts today, so this is A-Z until it does.
+            : Comparator.<T, Boolean>comparing(installed::test).reversed()
+                .thenComparing(Comparator.comparingInt(userCount).reversed())
+                .thenComparing(byName);
         return plugins.stream()
-            .sorted(popularity(manifest, installed, userCount))
+            .sorted(comparator)
             .collect(Collectors.toList());
     }
 
@@ -125,16 +178,5 @@ final class MicrobotPluginHubOrder
             .thenComparing(
                 plugin -> manifest.apply(plugin).getInternalName(),
                 Comparator.nullsLast(Comparator.naturalOrder()));
-    }
-
-    static <T> Comparator<T> popularity(
-        Function<T, MicrobotPluginManifest> manifest,
-        Predicate<T> installed,
-        ToIntFunction<T> userCount)
-    {
-        return Comparator.<T, Boolean>comparing(installed::test)
-            .thenComparingInt(userCount)
-            .reversed()
-            .thenComparing(plugin -> manifest.apply(plugin).getInternalName());
     }
 }
