@@ -97,6 +97,7 @@ public class TaiBwoWannaiTrio extends BasicQuestHelper
 		setupSteps();
 
 		ConditionalStep startQuest = new ConditionalStep(this, goToTimfrakuLadder);
+		startQuest.addStep(startedQuestDuringSession, talkToTimfrakuStart);
 		startQuest.addStep(inTimfrakusHut, talkToTimfrakuStart);
 
 
