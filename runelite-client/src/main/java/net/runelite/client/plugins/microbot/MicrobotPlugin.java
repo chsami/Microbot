@@ -452,16 +452,16 @@ public class MicrobotPlugin extends Plugin
 	   LoginManager.setLastKnownGameState(gameStateChanged.getGameState());
 	}
 
-	private void reportHwidSpoofProblem(String problem)
+	private void reportHwidSpoofProblem(HwidSpoofCheck.Problem problem)
 	{
-		log.warn(problem);
-		chatMessageManager.queue(QueuedMessage.builder()
+		log.info(problem.logMessage());
+		problem.chatMessage().ifPresent(message -> chatMessageManager.queue(QueuedMessage.builder()
 			.type(ChatMessageType.CONSOLE)
 			.runeLiteFormattedMessage(new ChatMessageBuilder()
 				.append(ChatColorType.HIGHLIGHT)
-				.append(problem)
+				.append(message)
 				.build())
-			.build());
+			.build()));
 	}
 
 	static boolean isLoginServerRequest(GameState previous, GameState next)

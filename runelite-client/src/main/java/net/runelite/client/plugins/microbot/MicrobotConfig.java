@@ -66,7 +66,7 @@ public interface MicrobotConfig extends Config
 	@ConfigItem(
 		keyName = keySpoofDeviceId,
 		name = "Spoof device ID",
-		description = "Replace the hardware device ID and random.dat seed sent to the game server at login with random values cached per account",
+		description = "Send a random device ID and login seed (random.dat), kept per account, instead of the real ones. Only works when Spoof hardware IDs is ticked in the Microbot launcher; restart the client after changing that",
 		position = 3,
 		section = generalSection
 	)

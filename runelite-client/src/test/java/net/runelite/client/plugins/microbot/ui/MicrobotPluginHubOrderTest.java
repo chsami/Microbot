@@ -2,6 +2,7 @@ package net.runelite.client.plugins.microbot.ui;
 
 import com.google.gson.Gson;
 import net.runelite.client.plugins.config.SearchablePlugin;
+import net.runelite.client.plugins.microbot.externalplugins.MicrobotPluginHealth;
 import net.runelite.client.plugins.microbot.externalplugins.MicrobotPluginManifest;
 import org.junit.Test;
 
@@ -62,7 +63,12 @@ public class MicrobotPluginHubOrderTest
 
     private static List<String> order(List<Item> items, String query)
     {
-        return names(MicrobotPluginHubOrder.order(items, query, i -> i.manifest, i -> i.installed, i -> i.users));
+        return order(items, query, MicrobotPluginHubOrder.Sort.INSTALLED_FIRST);
+    }
+
+    private static List<String> order(List<Item> items, String query, MicrobotPluginHubOrder.Sort sort)
+    {
+        return names(MicrobotPluginHubOrder.order(items, query, sort, i -> i.manifest, i -> i.installed, i -> i.users));
     }
 
     private static List<String> names(List<Item> items)
@@ -140,20 +146,128 @@ public class MicrobotPluginHubOrderTest
         assertTrue(MicrobotPluginHubOrder.isNewlyAddedFilterQuery(" New"));
     }
 
+    // User counts are gone from the default order: getPluginCounts() is an empty stub.
     @Test
-    public void ordinarySortIsUnchangedInstalledThenPopularityThenName()
+    public void defaultSortIsInstalledFirstThenMostUsedThenAToZByCleanName()
     {
         List<Item> items = Arrays.asList(
             new Item("Delta", daysAgo(1), false, 50),
             new Item("Alpha", null, false, 50),
             new Item("Charlie", daysAgo(300), true, 1),
             new Item("Bravo", daysAgo(2), false, 900),
-            new Item("Echo", null, true, 70));
+            new Item("Echo", null, true, 70),
+            new Item("<html>[<font color=red>A</font>] Zed", null, false, 0));
 
-        List<String> expected = Arrays.asList("Echo", "Charlie", "Bravo", "Alpha", "Delta");
+        List<String> expected = Arrays.asList("Echo", "Charlie", "Bravo", "Alpha", "Delta", "<html>[<font color=red>A</font>] Zed");
         assertEquals(expected, order(items, ""));
         assertEquals(expected, order(items, null));
         assertEquals(expected, order(items, "   "));
+    }
+
+    @Test
+    public void newestAndAToZSortsIgnoreInstalledState()
+    {
+        List<Item> items = Arrays.asList(
+            new Item("Bravo", daysAgo(1), false, 0),
+            new Item("Alpha", daysAgo(9), false, 0),
+            new Item("Charlie", null, true, 0));
+
+        assertEquals(Arrays.asList("Bravo", "Alpha", "Charlie"), order(items, "", MicrobotPluginHubOrder.Sort.NEWEST));
+        assertEquals(Arrays.asList("Alpha", "Bravo", "Charlie"), order(items, "", MicrobotPluginHubOrder.Sort.AZ));
+        assertEquals("A search keeps its own order", Arrays.asList("Charlie"), order(items, "char", MicrobotPluginHubOrder.Sort.NEWEST));
+    }
+
+    @Test
+    public void savedSortParsesWithInstalledFirstAsDefault()
+    {
+        assertEquals(MicrobotPluginHubOrder.Sort.INSTALLED_FIRST, MicrobotPluginHubOrder.Sort.parse(null));
+        assertEquals(MicrobotPluginHubOrder.Sort.INSTALLED_FIRST, MicrobotPluginHubOrder.Sort.parse("POPULAR"));
+        assertEquals(MicrobotPluginHubOrder.Sort.NEWEST, MicrobotPluginHubOrder.Sort.parse("NEWEST"));
+        assertEquals(Arrays.asList("Installed first", "Newest", "A-Z"), Arrays.stream(MicrobotPluginHubOrder.Sort.values())
+            .map(MicrobotPluginHubOrder.Sort::getLabel).collect(Collectors.toList()));
+    }
+
+    private static MicrobotPluginManifest manifest(String internalName, String displayName)
+    {
+        MicrobotPluginManifest manifest = new MicrobotPluginManifest();
+        manifest.setInternalName(internalName);
+        manifest.setDisplayName(displayName);
+        manifest.setVersion("1.0.0");
+        return manifest;
+    }
+
+    private static List<String> hubMatches(List<MicrobotPluginManifest> manifests, String query, String... installed)
+    {
+        return MicrobotPluginHubOrder.hubMatches(manifests, query, Arrays.asList(installed)::contains,
+                m -> "Blocked".equals(m.getInternalName()), 5).stream()
+            .map(MicrobotPluginManifest::getInternalName).collect(Collectors.toList());
+    }
+
+    @Test
+    public void hubMatchesOfferOnlyNotInstalledInstallablePluginsRankedBySearch()
+    {
+        MicrobotPluginManifest disabled = manifest("Disabled", "Zulrah Old");
+        disabled.setDisable(true);
+        List<MicrobotPluginManifest> manifests = Arrays.asList(
+            manifest("Killer", "Big Zulrah Killer"),
+            manifest("Helper", "<html>[<font color=red>M</font>] Zulrah Helper"),
+            manifest("Mine", "Zulrah Mine"),
+            manifest("Blocked", "Zulrah Blocked"),
+            disabled,
+            manifest("Fisher", "Fisher"));
+
+        assertEquals(Arrays.asList("Helper", "Killer"), hubMatches(manifests, "zul", "Mine"));
+        assertTrue(hubMatches(manifests, "").isEmpty());
+        assertTrue(hubMatches(manifests, "   ").isEmpty());
+        assertTrue(hubMatches(Collections.emptyList(), "zul").isEmpty());
+    }
+
+    @Test
+    public void hubMatchesStopAtTheLimit()
+    {
+        List<MicrobotPluginManifest> manifests = new ArrayList<>();
+        for (int i = 0; i < 8; i++)
+        {
+            manifests.add(manifest("P" + i, "Plugin " + i));
+        }
+
+        assertEquals(Arrays.asList("P0", "P1", "P2", "P3", "P4"), hubMatches(manifests, "plugin"));
+    }
+
+    @Test
+    public void manifestWithNullAuthorsTagsAndDescriptionStillSearches()
+    {
+        MicrobotPluginManifest bare = manifest("Bare", null);
+        MicrobotPluginManifest full = manifest("Full", "Full");
+        full.setAuthors(new String[]{"Zoe", null});
+        full.setTags(new String[]{null, "skilling"});
+        full.setDescription("<b>Cuts</b> trees");
+
+        assertTrue(MicrobotPluginHubOrder.keywords(bare).isEmpty());
+        assertEquals(Arrays.asList("Full", "cuts", "trees", "Zoe", "skilling"), MicrobotPluginHubOrder.keywords(full));
+        assertEquals(Collections.singletonList("Full"), hubMatches(Arrays.asList(bare, full), "zoe"));
+        assertEquals(Collections.singletonList("Full"), hubMatches(Arrays.asList(bare, full), "skilling"));
+    }
+
+    @Test
+    public void rowStateInWords()
+    {
+        assertEquals(MicrobotPluginHubOrder.State.NONE, MicrobotPluginHubOrder.State.of(false, true, true));
+        assertEquals(MicrobotPluginHubOrder.State.BLOCKED, MicrobotPluginHubOrder.State.of(true, true, true));
+        assertEquals(MicrobotPluginHubOrder.State.UPDATE, MicrobotPluginHubOrder.State.of(true, false, true));
+        assertEquals(MicrobotPluginHubOrder.State.INSTALLED, MicrobotPluginHubOrder.State.of(true, false, false));
+        assertEquals(Arrays.asList("", "Installed", "Update available", ""), Arrays.stream(MicrobotPluginHubOrder.State.values())
+            .map(MicrobotPluginHubOrder.State::getLabel).collect(Collectors.toList()));
+        MicrobotPluginManifest disabled = new MicrobotPluginManifest();
+        disabled.setInternalName("Old");
+        disabled.setVersion("1.0.0");
+        disabled.setDisable(true);
+        assertEquals("A blocked card says why, not always broken", MicrobotPluginHealth.State.DISABLED.getLabel(),
+            MicrobotPluginHubOrder.State.BLOCKED.text(MicrobotPluginHealth.evaluate(disabled, "1.0.0", true), false));
+        assertEquals("A working update is the fix, so the card says so", MicrobotPluginHealth.State.DISABLED.getLabel() + ", update to fix",
+            MicrobotPluginHubOrder.State.BLOCKED.text(MicrobotPluginHealth.evaluate(disabled, "1.0.0", true), true));
+        assertEquals("Only a blocked card adds it", "Update available",
+            MicrobotPluginHubOrder.State.UPDATE.text(MicrobotPluginHealth.evaluate(disabled, "1.0.0", true), true));
     }
 
     @Test

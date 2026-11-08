@@ -25,7 +25,8 @@ public class MicrobotPluginListPanelOpenConfigTest {
                 mock(EventBus.class),
                 configPanelProvider,
                 localPluginsPanelProvider,
-                mock(MicrobotBugReporter.class));
+                mock(MicrobotBugReporter.class),
+                mock(MicrobotPluginUsage.class));
 
         panel.openConfigurationPanel(new MicrobotPluginConfigurationDescriptor(
                 "No Config", "Plugin without config", new String[0], null, null));

@@ -24,11 +24,15 @@
  */
 package net.runelite.client.plugins.microbot.ui;
 
+import com.google.common.html.HtmlEscapers;
 import lombok.Getter;
+import lombok.Setter;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.microbot.AlwaysOnPlugins;
 import net.runelite.client.plugins.config.SearchablePlugin;
+import net.runelite.client.plugins.microbot.ui.search.MicrobotPluginNames;
 import net.runelite.client.ui.ColorScheme;
+import net.runelite.client.ui.FontManager;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.SwingUtil;
 import org.jetbrains.annotations.NotNull;
@@ -36,18 +40,25 @@ import org.jetbrains.annotations.NotNull;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.FocusAdapter;
+import java.awt.event.KeyEvent;
+import java.awt.event.FocusEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 {
 	private static final ImageIcon ON_STAR;
 	private static final ImageIcon OFF_STAR;
 	private static final int MIN_ITEM_HEIGHT = 20;
+	private static final int SWITCH_WIDTH = 34;
+	private static final float DIMMED_ALPHA = 0.6f;
 
 	private final MicrobotPluginListPanel pluginListPanel;
 
@@ -59,6 +70,34 @@ class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 
 	private final JToggleButton pinButton;
 	private final MicrobotPluginToggleButton onOffToggle;
+	// "Always on" or "Turned off" in place of the switch, when the player cannot flip it.
+	private final JLabel sideLabel;
+
+	// Locked core plugins.
+	@Getter
+	private final boolean alwaysOn;
+
+	private final boolean disabledByAuthor;
+
+	// A settings row such as Microbot's; set by the panel, since a blocked plugin also has no plugin behind it.
+	@Setter
+	private boolean settingsOnly;
+
+	@Getter
+	@Setter
+	private long installTime;
+
+	@Getter
+	@Setter
+	private long usedTime;
+
+	private boolean dimmed;
+
+	@Getter
+	private MicrobotPluginRowStatus status;
+	private final JButton statusButton = new JButton();
+	private final JLabel nameLabel;
+	private final int baseHeight;
 
 	static
 	{
@@ -77,8 +116,8 @@ class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 		this.pluginListPanel = pluginListPanel;
 		this.pluginConfig = pluginConfig;
 
-		Collections.addAll(keywords, pluginConfig.getName().toLowerCase().split(" "));
-		Collections.addAll(keywords, pluginConfig.getDescription().toLowerCase().split(" "));
+		Collections.addAll(keywords, MicrobotPluginNames.sortKey(pluginConfig.getName()).split(" "));
+		Collections.addAll(keywords, MicrobotPluginNames.searchText(pluginConfig.getDescription()).split(" "));
 		Collections.addAll(keywords, pluginConfig.getTags());
 		String internalName = pluginConfig.getInternalPluginHubName();
 		if (internalName != null)
@@ -93,9 +132,49 @@ class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 
 		setLayout(new BorderLayout(3, 0));
 
-		JLabel nameLabel = createNameLabel(pluginConfig);
-		int itemHeight = Math.max(MIN_ITEM_HEIGHT, nameLabel.getPreferredSize().height);
-		setPreferredSize(new Dimension(MicrobotPluginListPanel.LIST_ITEM_WIDTH, itemHeight));
+		PluginDescriptor pluginDescriptor = pluginConfig.getPlugin() == null ? null
+			: pluginConfig.getPlugin().getClass().getAnnotation(PluginDescriptor.class);
+		alwaysOn = AlwaysOnPlugins.isLocked(pluginDescriptor);
+		disabledByAuthor = pluginDescriptor != null && pluginDescriptor.disable();
+		sideLabel = alwaysOn ? createSideLabel("Always on", AlwaysOnPlugins.TOOLTIP)
+			: disabledByAuthor ? createSideLabel("Turned off", "Turned off by its author") : null;
+		nameLabel = createNameLabel(pluginConfig, sideLabel != null ? sideLabel.getPreferredSize().width : SWITCH_WIDTH,
+			pluginDescriptor == null ? "" : pluginDescriptor.version());
+		baseHeight = Math.max(MIN_ITEM_HEIGHT, nameLabel.getPreferredSize().height);
+		setPreferredSize(new Dimension(MicrobotPluginListPanel.LIST_ITEM_WIDTH, baseHeight));
+
+		SwingUtil.removeButtonDecorations(statusButton);
+		statusButton.setFont(FontManager.getRunescapeSmallFont());
+		statusButton.setHorizontalAlignment(SwingConstants.LEFT);
+		statusButton.setBorder(new EmptyBorder(0, 24, 2, 0));
+		// A Tab stop, not focused by a click: Space, or Enter below, runs it, so keyboard users can update or see why.
+		statusButton.setRequestFocusEnabled(false);
+		statusButton.setVisible(false);
+		statusButton.addActionListener(e -> pluginListPanel.onStatusClicked(this));
+		statusButton.getInputMap(WHEN_FOCUSED).put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "activate");
+		statusButton.getActionMap().put("activate", new AbstractAction()
+		{
+			@Override
+			public void actionPerformed(ActionEvent e)
+			{
+				statusButton.doClick(0);
+			}
+		});
+		statusButton.addFocusListener(new FocusAdapter()
+		{
+			@Override
+			public void focusGained(FocusEvent e)
+			{
+				statusButton.setForeground(ColorScheme.BRAND_ORANGE);
+			}
+
+			@Override
+			public void focusLost(FocusEvent e)
+			{
+				statusButton.setForeground(statusColor(status));
+			}
+		});
+		add(statusButton, BorderLayout.SOUTH);
 
 		pinButton = new JToggleButton(OFF_STAR);
 		pinButton.setSelectedIcon(ON_STAR);
@@ -111,7 +190,8 @@ class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 		});
 
 		final JPanel buttonPanel = new JPanel();
-		buttonPanel.setLayout(new GridLayout(1, 2));
+		buttonPanel.setLayout(sideLabel != null ? new BorderLayout(3, 0) : new GridLayout(1, 2));
+		buttonPanel.setOpaque(false);
 		add(buttonPanel, BorderLayout.LINE_END);
 
 		JMenuItem configMenuItem = null;
@@ -140,7 +220,7 @@ class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 		if (internalName != null)
 		{
 			uninstallItem = new JMenuItem("Uninstall");
-			uninstallItem.addActionListener(ev -> pluginListPanel.getExternalPluginManager().remove(internalName));
+			uninstallItem.addActionListener(ev -> pluginListPanel.uninstall(pluginConfig));
 		}
 
 		addLabelPopupMenu(nameLabel, configMenuItem, pluginConfig.createSupportMenuItem(pluginConfig.getPlugin()),
@@ -149,11 +229,18 @@ class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 
 		onOffToggle = new MicrobotPluginToggleButton();
 		onOffToggle.setConflicts(pluginConfig.getConflicts());
-		buttonPanel.add(onOffToggle);
-		if (pluginConfig.getPlugin() != null)
+		if (sideLabel != null)
 		{
-			PluginDescriptor pluginDescriptor = pluginConfig.getPlugin().getClass().getAnnotation(PluginDescriptor.class);
-
+			buttonPanel.add(sideLabel, BorderLayout.LINE_END);
+		}
+		else
+		{
+			// Kept but hidden on the Microbot row so its cog lines up with the others.
+			buttonPanel.add(onOffToggle);
+			onOffToggle.setVisible(pluginConfig.getPlugin() != null);
+		}
+		if (!alwaysOn && pluginConfig.getPlugin() != null)
+		{
 			onOffToggle.addActionListener(i ->
 			{
 				if (onOffToggle.isSelected())
@@ -166,45 +253,91 @@ class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 				}
 			});
 
-			if (AlwaysOnPlugins.isLocked(pluginDescriptor)) {
-				onOffToggle.setEnabled(false);
-				onOffToggle.setSelected(true);
-				onOffToggle.setToolTipText(AlwaysOnPlugins.TOOLTIP);
-				pluginListPanel.startPlugin(pluginConfig.getPlugin());
-			}
-			if (pluginDescriptor.disableOnStartUp()) {
-				onOffToggle.setSelected(false);
-				pluginListPanel.stopPlugin(pluginConfig.getPlugin());
-			}
 			if (pluginDescriptor.disable()) {
 				onOffToggle.setEnabled(false);
 				onOffToggle.setSelected(false);
-				pluginListPanel.stopPlugin(pluginConfig.getPlugin());
 			}
 		}
-		else
+
+		Color background = getBackground();
+		setFocusable(true);
+		getAccessibleContext().setAccessibleName(MicrobotPluginNames.plainName(pluginConfig.getName()));
+		// Space does nothing on these rows, so a screen reader says why.
+		getAccessibleContext().setAccessibleDescription(sideLabel == null ? null : sideLabel.getText());
+		addFocusListener(new FocusAdapter()
 		{
-			onOffToggle.setVisible(false);
-		}
+			@Override
+			public void focusGained(FocusEvent e)
+			{
+				setBackground(ColorScheme.MEDIUM_GRAY_COLOR);
+			}
+
+			@Override
+			public void focusLost(FocusEvent e)
+			{
+				setBackground(background);
+			}
+		});
+	}
+
+	private static JLabel createSideLabel(String text, String tooltip)
+	{
+		JLabel label = new JLabel(text);
+		label.setFont(FontManager.getRunescapeSmallFont());
+		label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+		label.setToolTipText(tooltip);
+		return label;
 	}
 
 	@NotNull
-	private static JLabel createNameLabel(MicrobotPluginConfigurationDescriptor pluginConfig) {
-		int buttons = 21 /*pin*/ + 25 /*config, if present*/ + 34 /*toggle approx*/ + 12 /*margins*/;
+	private static JLabel createNameLabel(MicrobotPluginConfigurationDescriptor pluginConfig, int switchWidth, String version) {
+		int buttons = 21 /*pin*/ + 25 /*config, if present*/ + switchWidth + 12 /*margins*/;
 		int textWidth = MicrobotPluginListPanel.LIST_ITEM_WIDTH - buttons;
 		JLabel nameLabel = new JLabel("<html><div style='width:" + textWidth + "px'>" + htmlBody(pluginConfig.getName()) + "</div></html>");
 		nameLabel.setForeground(Color.WHITE);
 		nameLabel.setHorizontalAlignment(JLabel.LEFT);
 		nameLabel.setVerticalAlignment(JLabel.CENTER);
 
-		if (!pluginConfig.getDescription().isEmpty())
+		String details = (pluginConfig.getDescription().isEmpty() ? "" : "<br>" + htmlBody(pluginConfig.getDescription()))
+			+ (version.isEmpty() ? "" : "<br>Version " + HtmlEscapers.htmlEscaper().escape(version));
+		if (!details.isEmpty())
 		{
-			nameLabel.setToolTipText("<html>" + htmlBody(pluginConfig.getName()) + ":<br>" + htmlBody(pluginConfig.getDescription()) + "</html>");
+			nameLabel.setToolTipText("<html>" + htmlBody(pluginConfig.getName()) + ":" + details + "</html>");
 		}
 		return nameLabel;
 	}
 
-	private static String htmlBody(String html)
+	void setStatus(MicrobotPluginRowStatus status)
+	{
+		if (Objects.equals(this.status, status))
+		{
+			return;
+		}
+		this.status = status;
+		statusButton.setVisible(status != null);
+		if (status != null)
+		{
+			statusButton.setText(MicrobotPluginListPanel.linkHtml(status.getText()));
+			statusButton.setForeground(statusButton.isFocusOwner() ? ColorScheme.BRAND_ORANGE : statusColor(status));
+			statusButton.setToolTipText(status.getKind() == MicrobotPluginRowStatus.Kind.FAILED ? "See why" : status.getFullText());
+		}
+		int height = baseHeight + (status == null ? 0 : statusButton.getPreferredSize().height);
+		setPreferredSize(new Dimension(MicrobotPluginListPanel.LIST_ITEM_WIDTH, height));
+		revalidate();
+	}
+
+	// Orange for an update, as in the Hub, where green means installed.
+	private static Color statusColor(MicrobotPluginRowStatus status)
+	{
+		if (status == null)
+		{
+			return ColorScheme.LIGHT_GRAY_COLOR;
+		}
+		return status.isSevere() ? ColorScheme.PROGRESS_ERROR_COLOR
+			: status.getKind() == MicrobotPluginRowStatus.Kind.UPDATE ? MicrobotPluginHubPanel.PASTEL_ORANGE : ColorScheme.PROGRESS_INPROGRESS_COLOR;
+	}
+
+	static String htmlBody(String html)
 	{
 		return html
 			.replaceFirst("(?i)^\\s*<html>", "")
@@ -233,7 +366,50 @@ class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 		onOffToggle.setSelected(enabled);
 	}
 
-	private void openGroupConfigPanel()
+	/** No switch a user can flip: always on, a settings row, or disabled by its author. Blocked plugins are not included. */
+	boolean isNoSwitch()
+	{
+		return alwaysOn || settingsOnly || disabledByAuthor;
+	}
+
+	boolean isOn()
+	{
+		return onOffToggle.isSelected();
+	}
+
+	void toggle()
+	{
+		if (!alwaysOn && pluginConfig.getPlugin() != null)
+		{
+			onOffToggle.doClick(0);
+		}
+	}
+
+	void setDimmed(boolean dimmed)
+	{
+		if (this.dimmed != dimmed)
+		{
+			this.dimmed = dimmed;
+			repaint();
+		}
+	}
+
+	@Override
+	public void paint(Graphics g)
+	{
+		if (!dimmed)
+		{
+			super.paint(g);
+			return;
+		}
+
+		Graphics2D dimmedGraphics = (Graphics2D) g.create();
+		dimmedGraphics.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, DIMMED_ALPHA));
+		super.paint(dimmedGraphics);
+		dimmedGraphics.dispose();
+	}
+
+	void openGroupConfigPanel()
 	{
 		pluginListPanel.openConfigurationPanel(pluginConfig);
 	}

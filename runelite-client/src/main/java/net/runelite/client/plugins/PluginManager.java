@@ -48,6 +48,8 @@ import net.runelite.client.plugins.microbot.AlwaysOnPlugins;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.externalplugins.PluginJarClassLoader;
 import net.runelite.client.plugins.microbot.recovery.StartupRecovery;
+import net.runelite.client.plugins.microbot.ui.MicrobotPluginFailures;
+import net.runelite.client.plugins.microbot.ui.MicrobotPluginUsage;
 import net.runelite.client.task.Scheduler;
 import net.runelite.client.ui.SplashScreen;
 import net.runelite.client.util.GameEventManager;
@@ -125,7 +127,7 @@ public class PluginManager {
                         if (activePlugins.contains(plugin)) {
                             stopPlugin(plugin);
                         } else {
-                            startPlugin(plugin);
+                            startPlugin(plugin, false);
                         }
                     }
                 } catch (PluginInstantiationException e) {
@@ -202,7 +204,7 @@ public class PluginManager {
             try {
                 Runnable runnable = () -> {
                     try {
-                            startPlugin(plugin);
+                            startPlugin(plugin, false);
                         } catch (PluginInstantiationException ex) {
                             log.error("Unable to start plugin {}", plugin.getClass().getSimpleName(), ex);
                         }
@@ -383,6 +385,11 @@ public class PluginManager {
     }
 
     public boolean startPlugin(Plugin plugin) throws PluginInstantiationException {
+        return startPlugin(plugin, true);
+    }
+
+    /** @param countsAsUse false for restarts nobody asked for: launch, profile switches, installs and reloads */
+    public boolean startPlugin(Plugin plugin, boolean countsAsUse) throws PluginInstantiationException {
         // plugins always start in the EDT
         assert SwingUtilities.isEventDispatchThread();
 
@@ -415,6 +422,7 @@ public class PluginManager {
         try {
             plugin.startUp();
             shutdownFailures.remove(plugin);
+            MicrobotPluginFailures.started(plugin);
 
             log.debug("Plugin {} is now running", plugin.getClass().getSimpleName());
             if (sceneTileManager != null) {
@@ -433,6 +441,7 @@ public class PluginManager {
         } catch (ThreadDeath e) {
             throw e;
         } catch (Throwable ex) {
+            MicrobotPluginFailures.failed(plugin, ex);
             if (external) {
                 StartupRecovery.pluginFailed(pluginName, descriptor.version(), "start", ex);
             }
@@ -445,6 +454,9 @@ public class PluginManager {
             throw new PluginInstantiationException(ex);
         }
 
+        if (countsAsUse) {
+            MicrobotPluginUsage.recordStart(plugin);
+        }
         return true;
     }
 
@@ -615,6 +627,7 @@ public class PluginManager {
         plugins.remove(plugin);
         unloadingPlugins.remove(plugin);
         shutdownFailures.remove(plugin);
+        MicrobotPluginFailures.removed(plugin);
     }
 
     /** Prepare an external instance without publishing it in the live plugin list. */

@@ -19,6 +19,7 @@ This README is intentionally short. Durable details live in the docs below so hi
 - Build scripts safely: `runelite-client/src/main/java/net/runelite/client/plugins/microbot/AGENTS.md`
 - Use entity caches/queryables: `runelite-client/src/main/java/net/runelite/client/plugins/microbot/api/QUERYABLE_API.md`
 - Drive a running client: `docs/MICROBOT_CLI.md`
+- Hardware ID spoofing (opt-in via the launcher's Spoof hardware IDs checkbox; off for new installs, existing installs keep spoofing): `docs/DETECTION_HARDENING.md`, Phase 9
 
 ## Common Commands
 - Compile client: `./gradlew :client:compileJava`

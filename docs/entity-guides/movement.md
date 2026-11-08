@@ -679,3 +679,13 @@ In an instance (player-owned house, Tempoross), `TileObject.getWorldLocation()` 
 **Where this applies:** `Rs2TileObjectModel.click`, `Rs2NpcModel.click`, `Rs2Npc.interact` and any helper that starts a can't-reach recovery walk.
 
 **Defensive check:** `Rs2TileObjectModelClickRecoveryTest.walksToTheTemplateTileInAnInstance`, `clicksWithoutWalkingOrCountingOnTheClientThread` and `CantReachTargetRecoveryTest.staleAttemptsDoNotCarryOverToALaterRecovery`.
+
+## 35. A door next to a walled edge does not always own that edge
+
+When a route click is refused, the walker does not learn the edge as walled if an actioned door sits within one tile of it. This exists for double gates, where only one wing has the Open action. A plain wall can also have an unrelated door beside it. The claim on that edge must not stay alive just because the same refused click keeps renewing it. Track when refusals of this exact edge started in `adjacentRefusalSinceMs`. That tracking is kept apart from the door claim, so it survives a claim that expires between slow walker passes, and it only restarts after a gap of `WalledDoorClaimPolicy.ADJACENT_REFUSAL_GAP_MS`. Once the edge has been refused for longer than `WalledDoorClaimPolicy.FRESH_MS` without opening, drop the claim, learn the edge and replan. The block lasts for this walk only: it is recorded with `DoorAttemptLedger.recordWalkScopedBlock`, and `withdrawWalkScopedDoorBlocks` gives a real double gate that was slow to open a fresh chance on the next walk. A plain wall with no door nearby is still learned for the whole session.
+
+**Why this matters:** In 2.6.50, Mahogany Homes stood still for 20 minutes on East Ardougne 2656,3293 while walking to the bank. The edge 2656,3292 -> 2656,3291 is a wall with a door beside it. Every pass logged `walled_door_owned ... state=await-door-handler`, and the edge was never learned.
+
+**Where this applies:** `Rs2WalkerMovement.learnWalledRouteEdge` and any heuristic that hands a refused edge to the door pipeline instead of learning it.
+
+**Defensive check:** `WalledDoorClaimPolicyTest.adjacentClaimKeptFreshByTheSameRefusalIsSpentAfterOneWindow`, `refusalsSlowerThanTheClaimWindowStillSpendTheAdjacentClaim`, and `WalledEdgeBesideDoorLearningTest.spentClaimLearnsTheEdgeForThisWalkOnlyAndDropsTheClaim`.

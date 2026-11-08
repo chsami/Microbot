@@ -8,7 +8,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class WalledDoorClaimPolicyTest {
-    private static final long NOW = 10_000L;
+    private static final long NOW = 100_000L;
     private static final WorldPoint FROM = new WorldPoint(1770, 3589, 0);
     private static final WorldPoint TO = new WorldPoint(1770, 3590, 0);
 
@@ -90,6 +90,63 @@ public class WalledDoorClaimPolicyTest {
         assertFalse(WalledDoorClaimPolicy.shouldTraverseOpenEdge(true, false, false, false));
         assertFalse(WalledDoorClaimPolicy.shouldTraverseOpenEdge(true, true, true, false));
         assertFalse(WalledDoorClaimPolicy.shouldTraverseOpenEdge(true, true, false, true));
+    }
+
+    @Test
+    public void refreshingTheSameEdgeKeepsTheOriginalClaimStart() {
+        WorldPoint wallFrom = new WorldPoint(2656, 3292, 0);
+        WorldPoint wallTo = new WorldPoint(2656, 3291, 0);
+        long since = NOW - 4_000L;
+        assertEquals(since, WalledDoorClaimPolicy.claimSinceMs(wallFrom, wallTo, NOW - 500L, since,
+                wallFrom, wallTo, NOW));
+    }
+
+    @Test
+    public void aNewEdgeOrALapsedClaimStartsANewClaimWindow() {
+        WorldPoint wallFrom = new WorldPoint(2656, 3292, 0);
+        WorldPoint wallTo = new WorldPoint(2656, 3291, 0);
+        long since = NOW - 4_000L;
+        assertEquals(NOW, WalledDoorClaimPolicy.claimSinceMs(FROM, TO, NOW - 500L, since,
+                wallFrom, wallTo, NOW));
+        assertEquals(NOW, WalledDoorClaimPolicy.claimSinceMs(wallFrom, wallTo,
+                NOW - WalledDoorClaimPolicy.ADJACENT_REFUSAL_GAP_MS - 1, since, wallFrom, wallTo, NOW));
+        assertEquals(NOW, WalledDoorClaimPolicy.claimSinceMs(null, null, 0L, 0L,
+                wallFrom, wallTo, NOW));
+    }
+
+    @Test
+    public void adjacentClaimKeptFreshByTheSameRefusalIsSpentAfterOneWindow() {
+        WorldPoint wallFrom = new WorldPoint(2656, 3292, 0);
+        WorldPoint wallTo = new WorldPoint(2656, 3291, 0);
+        long longAgo = NOW - WalledDoorClaimPolicy.FRESH_MS - 1;
+        assertTrue(WalledDoorClaimPolicy.isAdjacentClaimSpent(wallFrom, wallTo, NOW - 500L, longAgo,
+                wallFrom, wallTo, NOW));
+    }
+
+    @Test
+    public void adjacentClaimIsNotSpentWithinItsWindowOrForAnotherEdge() {
+        WorldPoint wallFrom = new WorldPoint(2656, 3292, 0);
+        WorldPoint wallTo = new WorldPoint(2656, 3291, 0);
+        long longAgo = NOW - WalledDoorClaimPolicy.FRESH_MS - 1;
+        assertFalse(WalledDoorClaimPolicy.isAdjacentClaimSpent(wallFrom, wallTo, NOW - 500L, NOW - 2_000L,
+                wallFrom, wallTo, NOW));
+        assertFalse(WalledDoorClaimPolicy.isAdjacentClaimSpent(FROM, TO, NOW - 500L, longAgo,
+                wallFrom, wallTo, NOW));
+        long lapsed = NOW - WalledDoorClaimPolicy.ADJACENT_REFUSAL_GAP_MS - 1;
+        assertFalse(WalledDoorClaimPolicy.isAdjacentClaimSpent(wallFrom, wallTo,
+                lapsed, lapsed, wallFrom, wallTo, NOW));
+        assertFalse(WalledDoorClaimPolicy.isAdjacentClaimSpent(null, null, 0L, 0L,
+                wallFrom, wallTo, NOW));
+    }
+
+    @Test
+    public void refusalsSlowerThanTheClaimWindowStillSpendTheAdjacentClaim() {
+        WorldPoint wallFrom = new WorldPoint(2656, 3292, 0);
+        WorldPoint wallTo = new WorldPoint(2656, 3291, 0);
+        long firstRefusal = NOW - WalledDoorClaimPolicy.FRESH_MS - 1_000L;
+        long since = WalledDoorClaimPolicy.claimSinceMs(null, null, 0L, 0L, wallFrom, wallTo, firstRefusal);
+        assertTrue(WalledDoorClaimPolicy.isAdjacentClaimSpent(wallFrom, wallTo, firstRefusal, since,
+                wallFrom, wallTo, NOW));
     }
 
     private static WalledDoorClaimPolicy.Decision decide(WorldPoint player,

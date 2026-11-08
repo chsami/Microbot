@@ -614,6 +614,7 @@ public class Rs2Npc {
      */
     @Deprecated(since = "1.7.2", forRemoval = true)
     public static boolean interact(NPC npc, String action) {
+        if (npc == null) return false;
         return interact(new Rs2NpcModel(npc), action);
     }
 
@@ -791,6 +792,7 @@ public class Rs2Npc {
      */
     @Deprecated(since = "1.7.2", forRemoval = true)
     public static boolean interact(NPC npc) {
+        if (npc == null) return false;
         return interact(new Rs2NpcModel(npc), "");
     }
 
@@ -979,6 +981,7 @@ public class Rs2Npc {
      */
     public static boolean pickpocket(Map<NPC, HighlightedNpc> highlightedNpcs) {
         for (NPC npc : highlightedNpcs.keySet()) {
+            if (npc == null) return false;
             return interact(new Rs2NpcModel(npc), "pickpocket");
         }
         return false;
@@ -993,6 +996,7 @@ public class Rs2Npc {
      * @return {@code true} if the pickpocket action was successfully executed, {@code false} otherwise.
      */
     public static boolean pickpocket(NPC npc) {
+        if (npc == null) return false;
         return interact(npc instanceof Rs2NpcModel ? (Rs2NpcModel) npc : new Rs2NpcModel(npc), "pickpocket");
     }
 
