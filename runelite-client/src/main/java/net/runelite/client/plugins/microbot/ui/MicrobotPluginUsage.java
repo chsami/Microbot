@@ -13,9 +13,7 @@ import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
@@ -23,7 +21,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 /**
- * Last start time per plugin class and the health each installed Hub plugin last had. Kept in a local file,
+ * Last start time per plugin class. Kept in a local file,
  * not the profile, so a start does not churn synced config.
  */
 @Slf4j
@@ -37,8 +35,6 @@ public class MicrobotPluginUsage
     private static final class Data
     {
         Map<String, Long> lastStarted = new HashMap<>();
-        // Null until the first check, which records without reporting changes.
-        Map<String, String> health;
     }
 
     private final Path file;
@@ -119,37 +115,6 @@ public class MicrobotPluginUsage
         return data.lastStarted.getOrDefault(className, 0L);
     }
 
-    /**
-     * Records {@code current} (internal name to health state) and returns the names whose state differs from
-     * the last one seen. Names missing from {@code current} keep their old state.
-     */
-    synchronized List<String> healthChanges(Map<String, String> current)
-    {
-        List<String> changed = new ArrayList<>();
-        boolean firstRun = data.health == null;
-        if (firstRun)
-        {
-            data.health = new HashMap<>();
-        }
-        else
-        {
-            current.forEach((name, state) -> {
-                String seen = data.health.get(name);
-                if (seen != null && !seen.equals(state))
-                {
-                    changed.add(name);
-                }
-            });
-        }
-        // Checked on every tab activation, so write only when something is new.
-        if (firstRun || !data.health.entrySet().containsAll(current.entrySet()))
-        {
-            data.health.putAll(current);
-            queueWrite();
-        }
-        return changed;
-    }
-
     /** Writes a start still waiting for its delayed write, so one made just before exit is kept. */
     void flush()
     {
@@ -185,21 +150,13 @@ public class MicrobotPluginUsage
     {
         synchronized (fileLock)
         {
-            // Another client may have written since this one loaded: keep its starts and the health it saw.
+            // Another client may have written since this one loaded: keep its starts.
             Data saved = read(file);
             String json;
             synchronized (this)
             {
                 writeQueued = false;
                 saved.lastStarted.forEach((name, time) -> data.lastStarted.merge(name, time, Math::max));
-                if (saved.health != null)
-                {
-                    if (data.health == null)
-                    {
-                        data.health = new HashMap<>();
-                    }
-                    saved.health.forEach(data.health::putIfAbsent);
-                }
                 json = GSON.toJson(data);
             }
             Path temp = null;
