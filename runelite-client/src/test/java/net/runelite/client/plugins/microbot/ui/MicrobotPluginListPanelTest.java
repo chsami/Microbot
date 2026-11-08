@@ -166,7 +166,7 @@ public class MicrobotPluginListPanelTest
             bugReporter, usage)
         {
             @Override
-            boolean askToReport(String name, String reason)
+            boolean askToReport(String name, String reason, boolean alwaysOn)
             {
                 failureDialogs.add(reason);
                 return chooseReport;
@@ -1255,9 +1255,12 @@ public class MicrobotPluginListPanelTest
     @Test
     public void failureDialogSaysWhatHappenedAndWhatToDoBeforeTheError()
     {
-        assertEquals("Html Fixture hit an error while starting and is switched off. Switch it on to try again, or press Report."
-            + "\n\nError: IllegalStateException: Missing config",
-            MicrobotPluginListPanel.failureMessage("Html Fixture", "IllegalStateException: Missing config"));
+        assertEquals("Html Fixture hit an error while starting and is switched off. Switch it on to try again, or press Report"
+            + " to send a bug report.\n\nError: IllegalStateException: Missing config",
+            MicrobotPluginListPanel.failureMessage("Html Fixture", "IllegalStateException: Missing config", false));
+        assertEquals("Always Fixture hit an error while starting. Restart the client to try again, or press Report to send a"
+            + " bug report. Close hides this message.\n\nError: IllegalStateException: Missing config",
+            MicrobotPluginListPanel.failureMessage("Always Fixture", "IllegalStateException: Missing config", true));
     }
 
     @Test

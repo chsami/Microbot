@@ -16,6 +16,8 @@ class MicrobotPluginRowStatus
     }
 
     private static final int REASON_LENGTH = 35;
+    // A load block's reason is the only clue to what broke, so it gets more room than a health reason.
+    private static final int BLOCKED_REASON_LENGTH = REASON_LENGTH + 45;
 
     Kind kind;
     String text;
@@ -35,12 +37,12 @@ class MicrobotPluginRowStatus
         }
         if (blockedReason != null)
         {
-            return withReason(Kind.BLOCKED, "Not loaded", blockedReason, true);
+            return withReason(Kind.BLOCKED, "Not loaded", blockedReason, BLOCKED_REASON_LENGTH);
         }
         if (health != null && health.isBlocking())
         {
-            // The state's own words: disabled upstream or a too-old client is not "broken".
-            return withReason(Kind.HEALTH, health.getLabel(), health.getReason(), true);
+            // The state's own words: turned off on the Hub or a too-old client is not "broken".
+            return withReason(Kind.HEALTH, health.getLabel(), health.getReason(), REASON_LENGTH);
         }
         if (health != null && health.isWarning())
         {
@@ -53,14 +55,15 @@ class MicrobotPluginRowStatus
         return null;
     }
 
-    private static MicrobotPluginRowStatus withReason(Kind kind, String label, @Nullable String reason, boolean severe)
+    // Both callers are blocking, so severe.
+    private static MicrobotPluginRowStatus withReason(Kind kind, String label, @Nullable String reason, int maxLength)
     {
         if (reason == null || reason.trim().isEmpty())
         {
-            return new MicrobotPluginRowStatus(kind, label, severe, null);
+            return new MicrobotPluginRowStatus(kind, label, true, null);
         }
         String trimmed = reason.trim();
-        String shown = StringUtils.abbreviate(trimmed, REASON_LENGTH);
-        return new MicrobotPluginRowStatus(kind, label + ": " + shown, severe, shown.equals(trimmed) ? null : label + ": " + trimmed);
+        String shown = StringUtils.abbreviate(trimmed, maxLength);
+        return new MicrobotPluginRowStatus(kind, label + ": " + shown, true, shown.equals(trimmed) ? null : label + ": " + trimmed);
     }
 }

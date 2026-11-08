@@ -908,7 +908,7 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
                 if (failure == null) {
                     break;
                 }
-                if (askToReport(name, MicrobotPluginFailures.describe(failure))) {
+                if (askToReport(name, MicrobotPluginFailures.describe(failure), row.isAlwaysOn())) {
                     bugReporter.open(this, plugin);
                 } else {
                     // Seen and closed: the switch already shows it is off, and an always-on plugin has no switch to clear it.
@@ -934,9 +934,9 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
         }
     }
 
-    boolean askToReport(String name, String reason) {
+    boolean askToReport(String name, String reason, boolean alwaysOn) {
         Object[] options = {"Report", "Close"};
-        return JOptionPane.showOptionDialog(this, wrappedMessage(failureMessage(name, reason)), name + " failed to start",
+        return JOptionPane.showOptionDialog(this, wrappedMessage(failureMessage(name, reason, alwaysOn)), name + " failed to start",
                 JOptionPane.DEFAULT_OPTION, JOptionPane.ERROR_MESSAGE, null, options, options[1]) == 0;
     }
 
@@ -945,9 +945,11 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
         return "Microbot Hub: " + (shown >= limit ? "top " + shown + " matches" : shown + (shown == 1 ? " match" : " matches"));
     }
 
-    // What happened and what to do first; the raw error last, for a report.
-    static String failureMessage(String name, String reason) {
-        return name + " hit an error while starting and is switched off. Switch it on to try again, or press Report."
+    // What happened and what to do first; the raw error last, for a report. An always-on plugin has no switch to flip.
+    static String failureMessage(String name, String reason, boolean alwaysOn) {
+        return name + (alwaysOn
+                ? " hit an error while starting. Restart the client to try again, or press Report to send a bug report. Close hides this message."
+                : " hit an error while starting and is switched off. Switch it on to try again, or press Report to send a bug report.")
                 + "\n\nError: " + reason;
     }
 
