@@ -29,8 +29,10 @@ import com.google.common.html.HtmlEscapers;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.RuneLiteProperties;
+import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ExternalPluginsChanged;
+import net.runelite.client.events.ProfileChanged;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.PluginManager;
@@ -40,6 +42,7 @@ import net.runelite.client.plugins.microbot.externalplugins.MicrobotPluginClient
 import net.runelite.client.plugins.microbot.externalplugins.MicrobotPluginHealth;
 import net.runelite.client.plugins.microbot.externalplugins.MicrobotPluginManager;
 import net.runelite.client.plugins.microbot.externalplugins.MicrobotPluginManifest;
+import net.runelite.client.plugins.microbot.ui.search.MicrobotPluginNames;
 import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
 import net.runelite.client.ui.*;
 import net.runelite.client.ui.components.IconTextField;
@@ -70,7 +73,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -79,11 +81,11 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
     private static final ImageIcon MISSING_ICON;
     private static final ImageIcon HELP_ICON;
     private static final ImageIcon CONFIGURE_ICON;
-    private static final Pattern SPACES = Pattern.compile(" +");
     private static final Color PASTEL_GREEN = new Color(0x7CB987);
     // The Hub's update colour; the Installed list uses it for its update line too.
     static final Color PASTEL_ORANGE = new Color(0xD4A574);
     private static final Color HEALTH_RED = new Color(0xBE2828);
+    private static final String SORT_CONFIG_KEY = "pluginHubSort";
 
     static {
         BufferedImage missingIcon = ImageUtil.loadImageResource(MicrobotPluginHubPanel.class, "pluginhub_missingicon.png");
@@ -221,6 +223,8 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
         private MicrobotPluginManifest manifest;
         private String latestVersion;
         private VersionSelector versionSelector;
+        // The border colour alone does not say what it means.
+        private final JLabel stateLabel = new JLabel();
 
         PluginItem(MicrobotPluginManifest manifest, Collection<Plugin> loadedPlugins, int userCount, boolean installed) {
             this.manifest = manifest;
@@ -230,13 +234,7 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
 
             var currentVersion = loadedPlugins.isEmpty() ? manifest.getVersion() : loadedPlugins.iterator().next().getClass().getAnnotation(PluginDescriptor.class).version();
 
-            Collections.addAll(keywords, SPACES.split(manifest.getDisplayName()));
-
-            Collections.addAll(keywords, SPACES.split(manifest.getDescription()));
-
-            Collections.addAll(keywords, manifest.getAuthors());
-
-            Collections.addAll(keywords, manifest.getTags());
+            keywords.addAll(MicrobotPluginHubOrder.keywords(manifest));
 
             if (manifest.isNewlyAdded()) {
                 keywords.add("new");
@@ -258,6 +256,7 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
             pluginName.setFont(FontManager.getRunescapeBoldFont());
             pluginName.setToolTipText(manifest.getDisplayName());
             pluginName.setHorizontalAlignment(JLabel.LEFT);
+            stateLabel.setFont(FontManager.getRunescapeSmallFont());
 
             String[] authorsArr = manifest.getAuthors();
             String authorRaw = manifest.getAuthor();
@@ -295,7 +294,7 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
                     suggestedVersion,
                     installed);
 
-            String descriptionText = manifest.getDescription();
+            String descriptionText = Strings.nullToEmpty(manifest.getDescription());
 
             if (!descriptionText.startsWith("<html>")) {
                 descriptionText = "<html>" + HtmlEscapers.htmlEscaper().escape(descriptionText) + "</html>";
@@ -305,7 +304,7 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
             description.setVerticalAlignment(JLabel.TOP);
             description.setToolTipText(descriptionText);
 
-            JLabel icon = new PluginIcon(manifest.getIconUrl());
+            JLabel icon = new PluginIcon(Strings.nullToEmpty(manifest.getIconUrl()));
             icon.setHorizontalAlignment(JLabel.CENTER);
 
             JLabel badge = createHealthBadge(health);
@@ -353,7 +352,8 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
                                     .addComponent(pluginName, 0, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                                     .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
                                     .addComponent(author))
-                            .addComponent(description, 0, GroupLayout.PREFERRED_SIZE, Short.MAX_VALUE)
+                            .addComponent(stateLabel)
+                            .addComponent(description, 0, 0, Short.MAX_VALUE)
                             .addGroup(bottomRow)));
 
             int lineHeight = description.getFontMetrics(description.getFont()).getHeight();
@@ -370,8 +370,9 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
                             .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
                                     .addComponent(pluginName)
                                     .addComponent(author))
+                            .addComponent(stateLabel)
                             .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED, GroupLayout.PREFERRED_SIZE, Short.MAX_VALUE)
-                            .addComponent(description, lineHeight, GroupLayout.PREFERRED_SIZE, lineHeight * 2)
+                            .addComponent(description, lineHeight * 2, lineHeight * 2, lineHeight * 2)
                             .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED, GroupLayout.PREFERRED_SIZE, Short.MAX_VALUE)
                             .addGroup(bottomRowVertical)
                             .addGap(5)));
@@ -447,25 +448,19 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
 		{
 			boolean outdated = installed
 				&& !Strings.isNullOrEmpty(latestVersion)
-				&& !latestVersion.equals(selectedVersion)
+				&& MicrobotPluginManager.isNewerVersion(latestVersion, selectedVersion)
 				&& !microbotPluginManager.getPluginHealth(manifest, latestVersion).isBlocking();
 
-			if (!installed)
-			{
-				setBorder(BorderFactory.createEmptyBorder(2, 2, 2, 2));
-			}
-			else if (microbotPluginManager.getPluginHealth(manifest, selectedVersion).isBlocking())
-			{
-				setBorder(BorderFactory.createLineBorder(HEALTH_RED, 2));
-			}
-			else if (outdated)
-			{
-				setBorder(BorderFactory.createLineBorder(PASTEL_ORANGE, 2));
-			}
-			else
-			{
-				setBorder(BorderFactory.createLineBorder(PASTEL_GREEN, 2));
-			}
+			MicrobotPluginHubOrder.State state = MicrobotPluginHubOrder.State.of(installed,
+				installed && microbotPluginManager.getPluginHealth(manifest, selectedVersion).isBlocking(), outdated);
+			Color color = state == MicrobotPluginHubOrder.State.BLOCKED ? HEALTH_RED
+				: state == MicrobotPluginHubOrder.State.UPDATE ? PASTEL_ORANGE : PASTEL_GREEN;
+			setBorder(state == MicrobotPluginHubOrder.State.NONE
+				? BorderFactory.createEmptyBorder(2, 2, 2, 2)
+				: BorderFactory.createLineBorder(color, 2));
+			stateLabel.setText(state.text(microbotPluginManager.getPluginHealth(manifest, selectedVersion), outdated));
+			stateLabel.setForeground(color);
+			stateLabel.setVisible(state != MicrobotPluginHubOrder.State.NONE);
 		}
 
 		private void setInstalled(boolean installed, String selectedVersion)
@@ -539,7 +534,7 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
 				{
 					return ActionState.DOWNLOAD;
 				}
-				if (!Strings.isNullOrEmpty(latestVersion) && !latestVersion.equals(installedVersion)
+				if (!Strings.isNullOrEmpty(latestVersion) && MicrobotPluginManager.isNewerVersion(latestVersion, installedVersion)
 					&& !microbotPluginManager.getPluginHealth(manifest, latestVersion).isBlocking())
 				{
 					return ActionState.REFRESH;
@@ -746,6 +741,10 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
     private List<PluginItem> plugins = null;
     private boolean reloadQueued;
     private String pendingSearch = "";
+    private final ConfigManager configManager;
+    private final JPopupMenu sortMenu = new JPopupMenu();
+    private final Map<MicrobotPluginHubOrder.Sort, JMenuItem> sortItems = new EnumMap<>(MicrobotPluginHubOrder.Sort.class);
+    private MicrobotPluginHubOrder.Sort sort;
 
     @Inject
     MicrobotPluginHubPanel(
@@ -753,13 +752,16 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
             MicrobotPluginManager microbotPluginManager,
             PluginManager pluginManager,
             MicrobotPluginClient microbotPluginClient,
-            ScheduledExecutorService executor) {
+            ScheduledExecutorService executor,
+            ConfigManager configManager) {
         super(false);
         this.topLevelConfigPanel = topLevelConfigPanel;
         this.microbotPluginManager = microbotPluginManager;
         this.pluginManager = pluginManager;
         this.microbotPluginClient = microbotPluginClient;
         this.executor = executor;
+        this.configManager = configManager;
+        this.sort = MicrobotPluginHubOrder.Sort.parse(configManager.getConfiguration(MicrobotPluginListPanel.RUNELITE_GROUP_NAME, SORT_CONFIG_KEY));
 
         {
             Object refresh = "this could just be a lambda, but no, it has to be abstracted";
@@ -805,15 +807,6 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
         refreshing.setHorizontalAlignment(JLabel.CENTER);
 
         JPanel mainPanelWrapper = new FixedWidthPanel();
-        JButton openFolderButton = new JButton("Open Folder");
-        SwingUtil.removeButtonDecorations(openFolderButton);
-        openFolderButton.setFocusable(false);
-        openFolderButton.setToolTipText("Open " + microbotPluginManager.getPluginDirectory().getAbsolutePath());
-        openFolderButton.addActionListener(e -> {
-            File pluginDirectory = microbotPluginManager.getPluginDirectory();
-            openFolderButton.setToolTipText("Open " + pluginDirectory.getAbsolutePath());
-            openMicrobotPluginFolder();
-        });
 
         {
             GroupLayout layout = new GroupLayout(mainPanelWrapper);
@@ -836,10 +829,12 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
         scrollPane.setPreferredSize(new Dimension(0x7000, 0x7000));
         scrollPane.setViewportView(mainPanelWrapper);
 
+        // The search field's own preferred width would push the row past the sidebar's 235px.
+        searchBar.setPreferredSize(new Dimension(0, 30));
         JPanel searchRow = new JPanel(new BorderLayout(5, 0));
         searchRow.setOpaque(false);
         searchRow.add(searchBar, BorderLayout.CENTER);
-        searchRow.add(openFolderButton, BorderLayout.EAST);
+        searchRow.add(createSortButton(), BorderLayout.EAST);
 
         {
             GroupLayout layout = new GroupLayout(this);
@@ -938,6 +933,24 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
         dialog.pack();
         dialog.setLocationRelativeTo(parent);
         dialog.setVisible(true);
+    }
+
+    private JButton createSortButton() {
+        JMenuItem openFolder = new JMenuItem("Open plugin folder...");
+        openFolder.setToolTipText("Open " + microbotPluginManager.getPluginDirectory().getAbsolutePath());
+        openFolder.addActionListener(e -> {
+            openFolder.setToolTipText("Open " + microbotPluginManager.getPluginDirectory().getAbsolutePath());
+            openMicrobotPluginFolder();
+        });
+        JButton button = MicrobotPluginListPanel.createSortButton("Sort, or open your plugin folder", sortMenu, sortItems, MicrobotPluginHubOrder.Sort.values(),
+                MicrobotPluginHubOrder.Sort::getLabel, sort, option -> {
+                    sort = option;
+                    configManager.setConfiguration(MicrobotPluginListPanel.RUNELITE_GROUP_NAME, SORT_CONFIG_KEY, option.name());
+                    filter();
+                }, openFolder);
+        // A search lists by best match, so a sort choice only shows once the search box is empty.
+        sortItems.values().forEach(item -> item.setToolTipText("While searching, results are listed by best match"));
+        return button;
     }
 
     private static String healthHtml(MicrobotPluginHealth health) {
@@ -1133,6 +1146,7 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
         List<PluginItem> pluginItems = MicrobotPluginHubOrder.order(
                 plugins,
                 searchBar.getText(),
+                sort,
                 plugin -> plugin.manifest,
                 PluginItem::isInstalled,
                 PluginItem::getUserCount);
@@ -1152,6 +1166,8 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
     @Override
     public void onActivate() {
         revalidate();
+        // Profile changes made on another tab never reach this panel, which is unregistered while hidden.
+        readSort();
         reloadPluginList();
         searchBar.setText(pendingSearch);
         pendingSearch = "";
@@ -1170,6 +1186,19 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
                 pi.loadingStarted = false;
             }
         }
+    }
+
+    @Subscribe
+    void onProfileChanged(ProfileChanged ev) {
+        SwingUtilities.invokeLater(() -> {
+            readSort();
+            filter();
+        });
+    }
+
+    private void readSort() {
+        sort = MicrobotPluginHubOrder.Sort.parse(configManager.getConfiguration(MicrobotPluginListPanel.RUNELITE_GROUP_NAME, SORT_CONFIG_KEY));
+        sortItems.get(sort).setSelected(true);
     }
 
     @Subscribe
