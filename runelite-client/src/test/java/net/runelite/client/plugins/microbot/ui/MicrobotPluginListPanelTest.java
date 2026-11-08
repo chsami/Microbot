@@ -1612,8 +1612,10 @@ public class MicrobotPluginListPanelTest
 
         withHealth(htmlHub, MicrobotPluginHealth.STATUS_OK);
         rebuild(html, late);
-        assertEquals("A newer change for the same plugin replaces its line", 2,
-            ((MicrobotPluginListPanel.HealthBanner) field(panel, "healthBanner")).getLinks().size());
+        List<AbstractButton> reverted = ((MicrobotPluginListPanel.HealthBanner) field(panel, "healthBanner")).getLinks();
+        assertEquals("A change that reverted before it was seen leaves the banner", 1, reverted.size());
+        assertTrue(reverted.get(0).getText(), reverted.get(0).getText().contains("Late Fixture"));
+        assertFalse(reverted.stream().anyMatch(link -> link.getText().contains("Html Fixture") && link.getText().contains("Confirmed broken")));
     }
 
     @Test

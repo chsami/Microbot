@@ -89,6 +89,7 @@ import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -1234,6 +1235,7 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
             }
         }
         List<String> changed = usage.healthChanges(states, MicrobotPluginListPanel::worthReporting);
+        healthBanner.keepOnly(changed);
         if (!changed.isEmpty()) {
             healthBanner.add(changed.stream().map(name -> {
                 // The row's own name, as the list and the search box show it.
@@ -1358,6 +1360,11 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
 
         void add(List<HealthChange> changes) {
             changes.forEach(change -> shown.put(change.getHubName(), change));
+            rebuild();
+        }
+
+        void keepOnly(Collection<String> hubNames) {
+            shown.keySet().retainAll(hubNames);
             rebuild();
         }
 
