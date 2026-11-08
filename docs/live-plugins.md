@@ -18,7 +18,8 @@ Open **Local Plugins** from Microbot's plugin panel:
 - **Change folder** switches to a different plugin folder. Every plugin in the
   current folder is turned off and unloaded, including plugins you installed from
   the Plugin Hub. Their files stay where they are. New Plugin Hub installs go to
-  the new folder, and the Hub's **Open Folder** button opens it.
+  the new folder, and **Open plugin folder...** in the Hub tab's sort menu (the
+  button next to the search bar) opens it.
 - **Watch folder for changes** loads a JAR about two seconds after it stops
   changing. Build somewhere else and copy the finished JAR into the folder. If a
   JAR can't be loaded, watching stops and the error is shown. Fix the JAR, then
