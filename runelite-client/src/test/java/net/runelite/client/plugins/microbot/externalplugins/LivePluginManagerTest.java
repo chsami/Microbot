@@ -847,4 +847,66 @@ public class LivePluginManagerTest {
         method.visitMaxs(0, 0);
         method.visitEnd();
     }
+
+    private Map<String, String> recordBlocked() {
+        Map<String, String> blocked = new java.util.concurrent.ConcurrentHashMap<>();
+        manager.setLoadPolicy(new LivePluginManager.LoadPolicy() {
+            @Override
+            public String blockReason(String internalName, PluginDescriptor descriptor) {
+                return null;
+            }
+
+            @Override
+            public void blocked(String internalName, String version, String phase, String reason) {
+                blocked.put(internalName, reason);
+            }
+
+            @Override
+            public void loaded(String internalName) {
+                blocked.remove(internalName);
+            }
+        });
+        return blocked;
+    }
+
+    @Test
+    public void startupLoadFailureClearsOnceThatJarLoads() throws Exception {
+        Map<String, String> blocked = recordBlocked();
+        Path jar = directory.resolve("MyScript-1.0.jar");
+        Files.write(jar, "not a valid plugin ZIP".getBytes(StandardCharsets.UTF_8));
+        manager.loadAtStartup();
+        assertTrue(blocked.containsKey("MyScript-1.0"));
+
+        Files.copy(fixture("v1.jar", "1.0", false), jar, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        success(manager.rescan());
+
+        assertFalse(blocked.containsKey("MyScript-1.0"));
+    }
+
+    @Test
+    public void startupLoadFailureClearsOnceThatJarIsGone() throws Exception {
+        Map<String, String> blocked = recordBlocked();
+        Path jar = directory.resolve("MyScript-1.0.jar");
+        Files.write(jar, "not a valid plugin ZIP".getBytes(StandardCharsets.UTF_8));
+        manager.loadAtStartup();
+        assertTrue(blocked.containsKey("MyScript-1.0"));
+
+        Files.delete(jar);
+        await(manager.rescan());
+
+        assertFalse(blocked.containsKey("MyScript-1.0"));
+    }
+
+    // The old folder keeps its JARs, but nothing watches them any more.
+    @Test
+    public void startupLoadFailureClearsWhenThePluginFolderChanges() throws Exception {
+        Map<String, String> blocked = recordBlocked();
+        Files.write(directory.resolve("MyScript-1.0.jar"), "not a valid plugin ZIP".getBytes(StandardCharsets.UTF_8));
+        manager.loadAtStartup();
+        assertTrue(blocked.containsKey("MyScript-1.0"));
+
+        manager.changePluginDirectory(temporary.newFolder("moved").toPath()).get();
+
+        assertFalse(blocked.containsKey("MyScript-1.0"));
+    }
 }
