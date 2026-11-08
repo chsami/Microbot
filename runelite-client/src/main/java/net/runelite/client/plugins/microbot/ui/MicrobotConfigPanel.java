@@ -35,7 +35,6 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ExternalPluginsChanged;
 import net.runelite.client.events.PluginChanged;
 import net.runelite.client.events.ProfileChanged;
-import net.runelite.client.externalplugins.ExternalPluginManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginManager;
 import net.runelite.client.plugins.microbot.AlwaysOnPlugins;
@@ -103,7 +102,6 @@ class MicrobotConfigPanel extends MicrobotPluginPanel {
     private final MicrobotPluginListPanel pluginList;
     private final ConfigManager configManager;
     private final PluginManager pluginManager;
-    private final ExternalPluginManager externalPluginManager;
     private final ColorPickerManager colorPickerManager;
     private final Provider<MicrobotNotificationPanel> notificationPanelProvider;
     private final MicrobotBugReporter bugReporter;
@@ -127,7 +125,6 @@ class MicrobotConfigPanel extends MicrobotPluginPanel {
             MicrobotPluginListPanel pluginList,
             ConfigManager configManager,
             PluginManager pluginManager,
-            ExternalPluginManager externalPluginManager,
             ColorPickerManager colorPickerManager,
             Provider<MicrobotNotificationPanel> notificationPanelProvider,
             MicrobotBugReporter bugReporter
@@ -137,7 +134,6 @@ class MicrobotConfigPanel extends MicrobotPluginPanel {
         this.pluginList = pluginList;
         this.configManager = configManager;
         this.pluginManager = pluginManager;
-        this.externalPluginManager = externalPluginManager;
         this.colorPickerManager = colorPickerManager;
         this.notificationPanelProvider = notificationPanelProvider;
         this.bugReporter = bugReporter;
@@ -260,7 +256,7 @@ class MicrobotConfigPanel extends MicrobotPluginPanel {
         JMenuItem uninstallItem = null;
         if (iname != null) {
             uninstallItem = new JMenuItem("Uninstall");
-            uninstallItem.addActionListener(ev -> externalPluginManager.remove(iname));
+            uninstallItem.addActionListener(ev -> pluginList.uninstall(pluginConfig));
         }
 
         MicrobotPluginListItem.addLabelPopupMenu(title, pluginConfig.createSupportMenuItem(pluginConfig.getPlugin()),

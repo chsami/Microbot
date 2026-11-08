@@ -173,4 +173,66 @@ public class MicrobotPluginHubOrderTest
         assertEquals("FreshPlugin", sorted.get(0).getInternalName());
         assertEquals("LegacyPlugin", sorted.get(1).getInternalName());
     }
+
+    private static MicrobotPluginManifest manifest(String internalName, String displayName)
+    {
+        MicrobotPluginManifest manifest = new MicrobotPluginManifest();
+        manifest.setInternalName(internalName);
+        manifest.setDisplayName(displayName);
+        manifest.setVersion("1.0.0");
+        return manifest;
+    }
+
+    private static List<String> hubMatches(List<MicrobotPluginManifest> manifests, String query, String... installed)
+    {
+        return MicrobotPluginHubOrder.hubMatches(manifests, query, Arrays.asList(installed)::contains,
+                m -> "Blocked".equals(m.getInternalName()), 5).stream()
+            .map(MicrobotPluginManifest::getInternalName).collect(Collectors.toList());
+    }
+
+    @Test
+    public void hubMatchesOfferOnlyNotInstalledInstallablePluginsRankedBySearch()
+    {
+        MicrobotPluginManifest disabled = manifest("Disabled", "Zulrah Old");
+        disabled.setDisable(true);
+        List<MicrobotPluginManifest> manifests = Arrays.asList(
+            manifest("Killer", "Big Zulrah Killer"),
+            manifest("Helper", "<html>[<font color=red>M</font>] Zulrah Helper"),
+            manifest("Mine", "Zulrah Mine"),
+            manifest("Blocked", "Zulrah Blocked"),
+            disabled,
+            manifest("Fisher", "Fisher"));
+
+        assertEquals(Arrays.asList("Helper", "Killer"), hubMatches(manifests, "zul", "Mine"));
+        assertTrue(hubMatches(manifests, "").isEmpty());
+        assertTrue(hubMatches(manifests, "   ").isEmpty());
+        assertTrue(hubMatches(Collections.emptyList(), "zul").isEmpty());
+    }
+
+    @Test
+    public void hubMatchesStopAtTheLimit()
+    {
+        List<MicrobotPluginManifest> manifests = new ArrayList<>();
+        for (int i = 0; i < 8; i++)
+        {
+            manifests.add(manifest("P" + i, "Plugin " + i));
+        }
+
+        assertEquals(Arrays.asList("P0", "P1", "P2", "P3", "P4"), hubMatches(manifests, "plugin"));
+    }
+
+    @Test
+    public void manifestWithNullAuthorsTagsAndDescriptionStillSearches()
+    {
+        MicrobotPluginManifest bare = manifest("Bare", null);
+        MicrobotPluginManifest full = manifest("Full", "Full");
+        full.setAuthors(new String[]{"Zoe", null});
+        full.setTags(new String[]{null, "skilling"});
+        full.setDescription("<b>Cuts</b> trees");
+
+        assertTrue(MicrobotPluginHubOrder.keywords(bare).isEmpty());
+        assertEquals(Arrays.asList("Full", "cuts", "trees", "Zoe", "skilling"), MicrobotPluginHubOrder.keywords(full));
+        assertEquals(Collections.singletonList("Full"), hubMatches(Arrays.asList(bare, full), "zoe"));
+        assertEquals(Collections.singletonList("Full"), hubMatches(Arrays.asList(bare, full), "skilling"));
+    }
 }

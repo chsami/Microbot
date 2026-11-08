@@ -106,7 +106,8 @@ public class LivePluginManagerTest {
             enabled.put(call.getArgument(1), call.getArgument(2));
             return null;
         }).when(config).setConfiguration(anyString(), anyString(), any(Boolean.class));
-        when(plugins.startPlugin(any(Plugin.class))).thenAnswer(call -> {
+        // Install, update and reload restarts are not the player using a plugin.
+        when(plugins.startPlugin(any(Plugin.class), eq(false))).thenAnswer(call -> {
             assertTrue("Plugin startup must run on EDT", SwingUtilities.isEventDispatchThread());
             Plugin plugin = call.getArgument(0);
             assertNotSame("EDT callbacks must retain the shared client context loader",
@@ -288,7 +289,7 @@ public class LivePluginManagerTest {
         assertTrue(Files.exists(directory.resolve("FixturePlugin.jar")));
         String reason = hub.getBlockedPlugins().get("FixturePlugin");
         assertNotNull(reason);
-        assertTrue(reason, reason.startsWith("disabled upstream"));
+        assertTrue(reason, reason.startsWith("turned off"));
         verify(plugins, never()).preparePlugin(any(), anyCollection());
     }
 

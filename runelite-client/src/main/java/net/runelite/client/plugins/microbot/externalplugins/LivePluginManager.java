@@ -745,7 +745,7 @@ public class LivePluginManager {
                         }
                     }
                 }
-                if (!startup && shouldStart && !plugins.startPlugin(plugin)) {
+                if (!startup && shouldStart && !plugins.startPlugin(plugin, false)) {
                     throw new IllegalStateException("Plugin did not start: " + plugin.getClass().getSimpleName());
                 }
             }

@@ -81,7 +81,8 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
     private static final ImageIcon CONFIGURE_ICON;
     private static final Pattern SPACES = Pattern.compile(" +");
     private static final Color PASTEL_GREEN = new Color(0x7CB987);
-    private static final Color PASTEL_ORANGE = new Color(0xD4A574);
+    // The Hub's update colour; the Installed list uses it for its update line too.
+    static final Color PASTEL_ORANGE = new Color(0xD4A574);
     private static final Color HEALTH_RED = new Color(0xBE2828);
 
     static {
@@ -425,7 +426,7 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
                 @Override
                 public void mouseClicked(MouseEvent e) {
                     if (e.getClickCount() == 1 && SwingUtilities.isLeftMouseButton(e)) {
-                        showHealthDetails(manifest, health);
+                        showHealthDetails(MicrobotPluginHubPanel.this, manifest, health);
                     }
                 }
             });
@@ -633,7 +634,7 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
 
 			private void installSelectedVersion(String version)
 			{
-				if (!ensureHealthAllows(version) || !ensureClientVersionCompatible())
+				if (!confirmInstall(MicrobotPluginHubPanel.this, microbotPluginManager, manifest, version))
 				{
 					return;
 				}
@@ -649,7 +650,7 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
 
 			private void updateSelectedVersion(String version)
 			{
-				if (!ensureHealthAllows(version) || !ensureClientVersionCompatible())
+				if (!confirmInstall(MicrobotPluginHubPanel.this, microbotPluginManager, manifest, version))
 				{
 					return;
 				}
@@ -727,77 +728,6 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
 				refreshActionButton();
 				MicrobotPluginHubPanel.this.reloadPluginList();
 			}
-
-			private boolean ensureHealthAllows(String version)
-			{
-				MicrobotPluginHealth health = microbotPluginManager.getPluginHealth(manifest, version);
-				if (health.getState() != MicrobotPluginHealth.State.DISABLED
-					&& health.getState() != MicrobotPluginHealth.State.BROKEN)
-				{
-					return true;
-				}
-				showHealthDetails(manifest, health);
-				return false;
-			}
-
-			private boolean ensureClientVersionCompatible()
-			{
-				if (Rs2UiHelper.isClientVersionCompatible(manifest.getMinClientVersion()))
-				{
-					return true;
-				}
-
-				String current = RuneLiteProperties.getMicrobotVersion();
-				String required = manifest.getMinClientVersion();
-				String message = String.format(
-					"Cannot install plugin '%s'.\n\nRequired client version: %s\nCurrent client version: %s\n\nPlease update your Microbot client to use this plugin.",
-					manifest.getDisplayName(),
-					required != null ? required : "Unknown",
-					current != null ? current : "Unknown"
-				);
-
-				JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(MicrobotPluginHubPanel.this),
-					"Version Incompatibility", true);
-				dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
-				dialog.setResizable(false);
-				dialog.setIconImages(Arrays.asList(ClientUI.ICON_128, ClientUI.ICON_16));
-
-				JPanel messagePanel = new JPanel(new BorderLayout(10, 0));
-				messagePanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 10, 20));
-
-				JLabel iconLabel = new JLabel(UIManager.getIcon("OptionPane.warningIcon"));
-				iconLabel.setVerticalAlignment(SwingConstants.TOP);
-				messagePanel.add(iconLabel, BorderLayout.WEST);
-
-				JLabel messageLabel = new JLabel("<html>" + message.replace("\n", "<br>") + "</html>");
-				messageLabel.setHorizontalAlignment(SwingConstants.LEFT);
-				messagePanel.add(messageLabel, BorderLayout.CENTER);
-
-				JButton okButton = new JButton("OK");
-				okButton.setPreferredSize(new Dimension(67, 22));
-				okButton.setBackground(ColorScheme.BRAND_ORANGE);
-				okButton.setForeground(ColorScheme.DARKER_GRAY_COLOR);
-				okButton.setBorder(BorderFactory.createCompoundBorder(
-					BorderFactory.createEmptyBorder(1, 1, 1, 1),
-					BorderFactory.createLineBorder(ColorScheme.MEDIUM_GRAY_COLOR, 1)
-				));
-				okButton.setFocusPainted(false);
-				okButton.setFont(okButton.getFont().deriveFont(Font.BOLD));
-				okButton.addActionListener(e -> dialog.dispose());
-
-				JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
-				buttonPanel.setBorder(BorderFactory.createEmptyBorder(0, 20, 20, 20));
-				buttonPanel.add(okButton);
-
-				dialog.setLayout(new BorderLayout());
-				dialog.add(messagePanel, BorderLayout.CENTER);
-				dialog.add(buttonPanel, BorderLayout.SOUTH);
-
-				dialog.pack();
-				dialog.setLocationRelativeTo(MicrobotPluginHubPanel.this);
-				dialog.setVisible(true);
-				return false;
-			}
 		}
 	}
 
@@ -815,6 +745,7 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
     private final JPanel mainPanel;
     private List<PluginItem> plugins = null;
     private boolean reloadQueued;
+    private String pendingSearch = "";
 
     @Inject
     MicrobotPluginHubPanel(
@@ -934,6 +865,81 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
         reloadPluginList();
     }
 
+    enum InstallBlock { NONE, HEALTH, CLIENT_VERSION }
+
+    static InstallBlock installBlock(MicrobotPluginHealth health, boolean clientCompatible) {
+        if (health.getState() == MicrobotPluginHealth.State.DISABLED || health.getState() == MicrobotPluginHealth.State.BROKEN) {
+            return InstallBlock.HEALTH;
+        }
+        return clientCompatible ? InstallBlock.NONE : InstallBlock.CLIENT_VERSION;
+    }
+
+    /** Every Hub install asks this first, here and from the Installed list: it explains and refuses a broken version or a too-old client. */
+    static boolean confirmInstall(Component parent, MicrobotPluginManager manager, MicrobotPluginManifest manifest, String version) {
+        MicrobotPluginHealth health = manager.getPluginHealth(manifest, version);
+        switch (installBlock(health, Rs2UiHelper.isClientVersionCompatible(manifest.getMinClientVersion()))) {
+            case HEALTH:
+                showHealthDetails(parent, manifest, health);
+                return false;
+            case CLIENT_VERSION:
+                showClientVersionDialog(parent, manifest);
+                return false;
+            default:
+                return true;
+        }
+    }
+
+    private static void showClientVersionDialog(Component parent, MicrobotPluginManifest manifest) {
+        String current = RuneLiteProperties.getMicrobotVersion();
+        String required = manifest.getMinClientVersion();
+        String message = String.format(
+                "Cannot install plugin '%s'.\n\nRequired client version: %s\nCurrent client version: %s\n\nPlease update your Microbot client to use this plugin.",
+                manifest.getDisplayName(),
+                required != null ? required : "Unknown",
+                current != null ? current : "Unknown"
+        );
+
+        JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(parent), "Version Incompatibility", Dialog.ModalityType.APPLICATION_MODAL);
+        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+        dialog.setResizable(false);
+        dialog.setIconImages(Arrays.asList(ClientUI.ICON_128, ClientUI.ICON_16));
+
+        JPanel messagePanel = new JPanel(new BorderLayout(10, 0));
+        messagePanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 10, 20));
+
+        JLabel iconLabel = new JLabel(UIManager.getIcon("OptionPane.warningIcon"));
+        iconLabel.setVerticalAlignment(SwingConstants.TOP);
+        messagePanel.add(iconLabel, BorderLayout.WEST);
+
+        JLabel messageLabel = new JLabel("<html>" + message.replace("\n", "<br>") + "</html>");
+        messageLabel.setHorizontalAlignment(SwingConstants.LEFT);
+        messagePanel.add(messageLabel, BorderLayout.CENTER);
+
+        JButton okButton = new JButton("OK");
+        okButton.setPreferredSize(new Dimension(67, 22));
+        okButton.setBackground(ColorScheme.BRAND_ORANGE);
+        okButton.setForeground(ColorScheme.DARKER_GRAY_COLOR);
+        okButton.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createEmptyBorder(1, 1, 1, 1),
+                BorderFactory.createLineBorder(ColorScheme.MEDIUM_GRAY_COLOR, 1)
+        ));
+        okButton.setFocusPainted(false);
+        okButton.setFont(okButton.getFont().deriveFont(Font.BOLD));
+        okButton.addActionListener(e -> dialog.dispose());
+
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        buttonPanel.setBorder(BorderFactory.createEmptyBorder(0, 20, 20, 20));
+        buttonPanel.add(okButton);
+
+        dialog.setLayout(new BorderLayout());
+        dialog.add(messagePanel, BorderLayout.CENTER);
+        dialog.add(buttonPanel, BorderLayout.SOUTH);
+
+        dialog.pack();
+        dialog.setLocationRelativeTo(parent);
+        dialog.setVisible(true);
+    }
+
     private static String healthHtml(MicrobotPluginHealth health) {
         StringBuilder html = new StringBuilder("<html>");
         for (String line : health.getDetails(RuneLiteProperties.getMicrobotVersion())) {
@@ -947,11 +953,11 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
         return html.append("</html>").toString();
     }
 
-    private void showHealthDetails(MicrobotPluginManifest manifest, MicrobotPluginHealth health) {
+    private static void showHealthDetails(Component parent, MicrobotPluginManifest manifest, MicrobotPluginHealth health) {
         String trackingUrl = health.getTrackingUrl();
         Object[] options = trackingUrl == null ? new Object[]{"OK"} : new Object[]{"Open tracking link", "OK"};
         int choice = JOptionPane.showOptionDialog(
-                this,
+                parent,
                 healthHtml(health),
                 manifest.getDisplayName() + " - " + health.getLabel(),
                 JOptionPane.DEFAULT_OPTION,
@@ -1137,11 +1143,18 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
         mainPanel.repaint();
     }
 
+    /** Opens the Hub on {@code query}: activation clears the search, so the query waits for the next one. */
+    void search(String query) {
+        pendingSearch = query;
+        searchBar.setText(query);
+    }
+
     @Override
     public void onActivate() {
         revalidate();
         reloadPluginList();
-        searchBar.setText("");
+        searchBar.setText(pendingSearch);
+        pendingSearch = "";
         searchBar.requestFocusInWindow();
     }
 
