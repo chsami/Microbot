@@ -266,6 +266,10 @@ public class Rs2Antiban {
      */
 
     public static void actionCooldown() {
+        if (!Rs2AntibanSettings.antibanEnabled) {
+            logDebug("Antiban not enabled, cannot perform action cooldown");
+            return;
+        }
         if (!Rs2AntibanSettings.usePlayStyle) {
             logDebug("PlayStyle not enabled, cannot perform action cooldown");
             return;
