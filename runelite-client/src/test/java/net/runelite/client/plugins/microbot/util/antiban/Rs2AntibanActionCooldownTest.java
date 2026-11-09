@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.util.antiban;
 
+import net.runelite.api.events.GameTick;
 import net.runelite.client.plugins.microbot.util.antiban.enums.ActivityIntensity;
 import net.runelite.client.plugins.microbot.util.antiban.enums.PlayStyle;
 import net.runelite.client.ui.overlay.components.PanelComponent;
@@ -77,6 +78,32 @@ public class Rs2AntibanActionCooldownTest {
 		assertTrue(Rs2AntibanSettings.actionCooldownActive);
 
 		AntibanPlugin.performActionBreak();
+		assertFalse(Rs2AntibanSettings.actionCooldownActive);
+	}
+
+	@Test
+	public void actionCooldownIsSkippedWhenAntibanDisabled() {
+		Rs2AntibanSettings.antibanEnabled = false;
+
+		Rs2Antiban.actionCooldown();
+
+		assertFalse(Rs2AntibanSettings.actionCooldownActive);
+		assertEquals(0, Rs2Antiban.getTIMEOUT());
+	}
+
+	@Test
+	public void cooldownStillCountsDownAfterAntibanDisabled() {
+		Rs2Antiban.actionCooldown();
+		assertTrue(Rs2AntibanSettings.actionCooldownActive);
+		Rs2AntibanSettings.antibanEnabled = false;
+
+		AntibanPlugin plugin = new AntibanPlugin();
+		int ticks = Rs2Antiban.getTIMEOUT();
+		for (int i = 0; i <= ticks; i++) {
+			plugin.onGameTick(new GameTick());
+		}
+
+		assertEquals(0, Rs2Antiban.getTIMEOUT());
 		assertFalse(Rs2AntibanSettings.actionCooldownActive);
 	}
 

@@ -247,6 +247,7 @@ public class AntibanPlugin extends Plugin {
         ticksSinceLogin++;
 
         if (!Rs2AntibanSettings.antibanEnabled) {
+            performActionBreak();
             return;
         }
 
