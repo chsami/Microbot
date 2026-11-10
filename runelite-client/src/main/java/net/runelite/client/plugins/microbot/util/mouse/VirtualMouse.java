@@ -235,7 +235,7 @@ public class VirtualMouse extends Mouse {
      * between them and leave the wheel firing at a point the cursor has left.
      *
      * <p>The pause stays: a human turns the wheel a moment after arriving, not in the same
-     * instant. A takeover during it aborts at the wheel's checkpoint.
+     * instant. A takeover during it ends the gesture at the wheel, which is refused.
      */
     private Mouse scroll(Point point, int wheelRotation, int unitsToScroll) {
         if (point == null) return this;

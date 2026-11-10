@@ -12,7 +12,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Runs one input gesture at a time, since there is one cursor, and unwinds it if the human takes
- * over, a pause begins or its thread is interrupted partway through.
+ * over, a pause begins, its thread is interrupted or one of its events is refused partway through.
  *
  * <p>A lock, not a thread and queue: script threads should block, and the client thread already
  * defers through an executor. A dedicated thread would stall every script whenever one gesture
@@ -67,6 +67,31 @@ public final class InputLoop
 		long gestureGeneration = GESTURE_GENERATION.get();
 		return !ScriptPauseController.isPaused()
 			&& (gestureGeneration < 0 || gestureGeneration == ScriptPauseController.getGeneration());
+	}
+
+	/**
+	 * The pause generation an emit made now answers to: its gesture's, or outside a gesture the
+	 * current one, taken when the call starts.
+	 */
+	static long emitGeneration()
+	{
+		return IN_GESTURE.get() ? GESTURE_GENERATION.get() : ScriptPauseController.getGeneration();
+	}
+
+	/**
+	 * Whether a synthetic event other than a RELEASED may go out, for an emit that took
+	 * {@code generation} from {@link #emitGeneration()}. {@link AwtEmitter} asks immediately before
+	 * each dispatch. Inside a gesture this is {@link #mayContinue()}, whose generation is the
+	 * gesture's; outside one only a pause refuses, since a direct emit has never yielded to the
+	 * human.
+	 */
+	static boolean mayEmit(long generation)
+	{
+		if (IN_GESTURE.get())
+		{
+			return mayContinue();
+		}
+		return !ScriptPauseController.isPaused() && generation == ScriptPauseController.getGeneration();
 	}
 
 	public static Result run(Gesture gesture)
@@ -151,7 +176,15 @@ public final class InputLoop
 		emit.heldButtons.clear();
 	}
 
-	/** The only way to emit inside a gesture; every method checks first. */
+	/**
+	 * The only way to emit inside a gesture. A move, press, click or wheel either puts its event on
+	 * the canvas or ends the gesture, on the emitter's own decision at the dispatch. A move to a
+	 * point off the canvas that sends nothing, because the pointer is already out, carries on.
+	 *
+	 * <p>Bug fix: these used to check before the emit and then ignore what the emitter did, so an
+	 * event refused for a missing canvas or a pause landing inside the emit was dropped while the
+	 * gesture ran on, and a pause and resume inside the emit let the event out.
+	 */
 	public static final class Emit
 	{
 		private final Set<Integer> heldButtons = new LinkedHashSet<>();
@@ -162,23 +195,20 @@ public final class InputLoop
 
 		public void move(int canvasX, int canvasY)
 		{
-			checkpoint();
-			AwtEmitter.moved(canvasX, canvasY);
+			endUnless(AwtEmitter.tryMove(canvasX, canvasY));
 		}
 
-		// Bug fix: the button used to be recorded before the dispatch, so a press the game never
-		// saw (no canvas, or a pause landing after the checkpoint) still got a RELEASED at the end.
+		// Recorded only once delivered: a press the game never saw is owed no RELEASED.
 		public void press(int canvasX, int canvasY, int button)
 		{
-			checkpoint();
-			if (AwtEmitter.pressForGesture(canvasX, canvasY, button))
-			{
-				heldButtons.add(button);
-			}
+			endUnless(AwtEmitter.tryPress(canvasX, canvasY, button));
+			heldButtons.add(button);
 		}
 
-		// Sends nothing for a button the game does not see down: one whose press never landed, or
-		// one the pause cleanup has already released.
+		// The checkpoint is not a dispatch decision, since a RELEASED is never refused. It sends a
+		// gesture the human took over to the sweep, which releases where the pointer now is rather
+		// than at this stale point. Sends nothing for a button the game does not see down: one the
+		// pause cleanup has already released.
 		public void release(int canvasX, int canvasY, int button)
 		{
 			checkpoint();
@@ -188,19 +218,25 @@ public final class InputLoop
 
 		public void click(int canvasX, int canvasY, int button)
 		{
-			checkpoint();
-			AwtEmitter.clicked(canvasX, canvasY, button);
+			endUnless(AwtEmitter.tryClick(canvasX, canvasY, button));
 		}
 
 		public void wheel(int canvasX, int canvasY, int wheelRotation, int unitsToScroll)
 		{
-			checkpoint();
-			AwtEmitter.wheel(canvasX, canvasY, wheelRotation, unitsToScroll);
+			endUnless(AwtEmitter.tryWheel(canvasX, canvasY, wheelRotation, unitsToScroll));
 		}
 
 		public void checkpoint()
 		{
 			if (!mayContinue())
+			{
+				throw ABORTED;
+			}
+		}
+
+		private static void endUnless(boolean accepted)
+		{
+			if (!accepted)
 			{
 				throw ABORTED;
 			}
