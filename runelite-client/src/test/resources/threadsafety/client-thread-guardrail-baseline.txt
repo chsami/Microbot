@@ -437,6 +437,7 @@ net.runelite.client.plugins.microbot.util.inventory.Rs2RunePouch#onWidgetLoaded(
 net.runelite.client.plugins.microbot.util.item.Rs2ExplorersRing#interact(Rs2ItemModel): boolean  ->  net.runelite.api.widgets.Widget#getDynamicChildren(): Widget[]
 net.runelite.client.plugins.microbot.util.item.Rs2ExplorersRing#interact(Rs2ItemModel): boolean  ->  net.runelite.api.widgets.Widget#getItemId(): int
 net.runelite.client.plugins.microbot.util.item.Rs2ItemManager#getPrice(int): int  ->  net.runelite.api.ItemComposition#getPrice(): int
+net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard#acquireKeyboard(long): boolean  ->  net.runelite.api.Client#isClientThread(): boolean
 net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard#getCanvas(): Canvas  ->  net.runelite.api.Client#getCanvas(): Canvas
 net.runelite.client.plugins.microbot.util.magic.Rs2Magic#alch(MagicAction, Rs2ItemModel, int, int): void  ->  net.runelite.api.widgets.Widget#getBounds(): Rectangle
 net.runelite.client.plugins.microbot.util.magic.Rs2Magic#alch(Rs2ItemModel, int, int): void  ->  net.runelite.api.Client#getRealSkillLevel(Skill): int

@@ -14,17 +14,45 @@ import java.awt.event.KeyListener;
 import java.util.ArrayList;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
+import javax.swing.SwingUtilities;
 
 import static java.awt.event.KeyEvent.CHAR_UNDEFINED;
 
 /**
  * Utility class for simulating keyboard input.
+ *
+ * <p>{@link #typeString}, {@link #keyPress(char)}, {@link #keyPress(int)} and {@link #enter()} each
+ * own the keyboard for their whole call. A call made while another thread is in one of them waits
+ * for it to finish, up to {@link #DEFAULT_SEQUENCE_LOCK_TIMEOUT_MS}, and types nothing if it cannot
+ * get the keyboard in that time. Calls on the client thread or the Swing event dispatch thread never
+ * wait. A sequence whose thread is interrupted starts no further character, still releases any key it
+ * has down, and leaves the interrupt flag set; one started on an interrupted thread types nothing.
  */
 public class Rs2Keyboard
 {
 	/** Keys the bot currently holds down. See {@link #releaseHeldKeys()}. */
 	private static final Set<Integer> HELD_KEYS = ConcurrentHashMap.newKeySet();
 	private static final ThreadLocal<Long> INPUT_GENERATION = ThreadLocal.withInitial(() -> -1L);
+
+	/**
+	 * Bug fix: script threads used to type at the same time, interleaving their characters, and every
+	 * event's modifier mask is read from the shared {@link #HELD_KEYS}, so one thread's Shift
+	 * went out on another thread's keys. Held for a whole sequence, the way InputLoop serializes
+	 * mouse gestures, but separate from InputLoop's lock so a long string never holds up a click.
+	 * Fair, so a waiter is served in turn instead of timing out behind threads that keep re-taking it.
+	 */
+	private static final ReentrantLock SEQUENCE_LOCK = new ReentrantLock(true);
+	/** Only catches a wedge: a waiter has to outlast a long string typed by another thread. */
+	static final long DEFAULT_SEQUENCE_LOCK_TIMEOUT_MS = 30_000L;
+	private static volatile long sequenceLockTimeoutMs = DEFAULT_SEQUENCE_LOCK_TIMEOUT_MS;
+
+	/** Shrunk by tests so exercising the timeout is not a thirty second wait. */
+	static void setSequenceLockTimeoutForTest(long millis)
+	{
+		sequenceLockTimeoutMs = millis;
+	}
 
 	private static long beginInputSequence()
 	{
@@ -56,6 +84,71 @@ public class Rs2Keyboard
 	}
 
 	/**
+	 * Call after {@link #beginInputSequence()}, so a sequence that waited here still belongs to the
+	 * pause generation it was requested in, and pass what that returned. When this returns true the
+	 * caller must call {@link #releaseKeyboard()}.
+	 */
+	private static boolean acquireKeyboard(long previousGeneration)
+	{
+		// Checked before waiting: a call made while paused or during a takeover returns at once
+		// instead of queueing behind a thread that a pause may have parked mid-sequence.
+		if (!isInputAllowed() || InputArbiter.isHuman())
+		{
+			return false;
+		}
+		// An interrupted thread starts nothing, the way InputLoop refuses a gesture on one. Not for a
+		// nested call: enter() calls keyPress, and refusing there would send enter()'s trailing
+		// KEY_TYPED without the key press it belongs to.
+		boolean nested = previousGeneration >= 0;
+		if (!nested && Thread.currentThread().isInterrupted())
+		{
+			return false;
+		}
+		// Neither UI thread may freeze behind another thread's typing, which can last the whole bound.
+		// They take no lock and type at once, as before the lock existed.
+		if (Microbot.getClient().isClientThread() || SwingUtilities.isEventDispatchThread())
+		{
+			return true;
+		}
+		if (SEQUENCE_LOCK.isHeldByCurrentThread())
+		{
+			// enter() calls keyPress. Re-entering this way cannot fail on an interrupt the way the
+			// timed wait does, which would cut enter() in half.
+			SEQUENCE_LOCK.lock();
+			return true;
+		}
+		try
+		{
+			if (!SEQUENCE_LOCK.tryLock(sequenceLockTimeoutMs, TimeUnit.MILLISECONDS))
+			{
+				return false;
+			}
+		}
+		catch (InterruptedException interrupted)
+		{
+			// Interrupted while waiting. tryLock cleared the flag, so put it back for the caller.
+			Thread.currentThread().interrupt();
+			return false;
+		}
+		// A pause or takeover may have begun while this thread waited.
+		if (!isInputAllowed() || InputArbiter.isHuman())
+		{
+			SEQUENCE_LOCK.unlock();
+			return false;
+		}
+		return true;
+	}
+
+	/** The client thread and the event dispatch thread never take the lock, so nothing is released there. */
+	private static void releaseKeyboard()
+	{
+		if (SEQUENCE_LOCK.isHeldByCurrentThread())
+		{
+			SEQUENCE_LOCK.unlock();
+		}
+	}
+
+	/**
 	 * Gets the current game canvas.
 	 *
 	 * @return the game canvas
@@ -77,10 +170,11 @@ public class Rs2Keyboard
 	 */
 	private static boolean dispatchKeyEvent(int id, int keyCode, char keyChar)
 	{
-		// Keyboard emission never goes through InputLoop, so this is its only checkpoint. Without
-		// it a takeover mid-typeString sprays the rest of the string into whatever the human just
-		// took over. RELEASED is exempt: releaseHeldKeys runs while the human owns input, and
-		// suppressing it would strand a key down.
+		// Keyboard emission never goes through InputLoop, holds skip acquireKeyboard, and that checks
+		// only when a sequence starts, so this is the checkpoint every event passes. Without it a
+		// takeover mid-typeString sprays the rest of the string into whatever the human just took
+		// over. RELEASED is exempt: releaseHeldKeys runs while the human owns input, and suppressing
+		// it would strand a key down.
 		if (id != KeyEvent.KEY_RELEASED && (!isInputAllowed() || InputArbiter.isHuman()))
 		{
 			return false;
@@ -143,13 +237,26 @@ public class Rs2Keyboard
 		long previous = beginInputSequence();
 		try
 		{
-			for (char c : word.toCharArray())
+			if (!acquireKeyboard(previous))
 			{
-				if (!isInputAllowed() || !typeChar(c))
+				return;
+			}
+			try
+			{
+				for (char c : word.toCharArray())
 				{
-					return;
+					// Bug fix: an interrupt only cut the sleeps short, so the rest of the string went
+					// out at once instead of stopping.
+					if (!isInputAllowed() || Thread.currentThread().isInterrupted() || !typeChar(c))
+					{
+						return;
+					}
+					Global.sleep(Rs2Random.logNormalBounded(KEY_GAP_MIN_MS, KEY_GAP_MAX_MS));
 				}
-				Global.sleep(Rs2Random.logNormalBounded(KEY_GAP_MIN_MS, KEY_GAP_MAX_MS));
+			}
+			finally
+			{
+				releaseKeyboard();
 			}
 		}
 		finally
@@ -168,7 +275,18 @@ public class Rs2Keyboard
 		long previous = beginInputSequence();
 		try
 		{
-			typeChar(key);
+			if (!acquireKeyboard(previous))
+			{
+				return;
+			}
+			try
+			{
+				typeChar(key);
+			}
+			finally
+			{
+				releaseKeyboard();
+			}
 		}
 		finally
 		{
@@ -194,7 +312,8 @@ public class Rs2Keyboard
 			Global.sleep(Rs2Random.logNormalBounded(SHIFT_LEAD_MIN_MS, SHIFT_LEAD_MAX_MS));
 		}
 
-		boolean pressed = dispatchKeyEvent(KeyEvent.KEY_PRESSED, vk, c);
+		// An interrupt during the Shift lead stops the character here; the Shift below is still released.
+		boolean pressed = !Thread.currentThread().isInterrupted() && dispatchKeyEvent(KeyEvent.KEY_PRESSED, vk, c);
 		if (pressed)
 		{
 			dispatchKeyEvent(KeyEvent.KEY_TYPED, KeyEvent.VK_UNDEFINED, c);
@@ -272,10 +391,12 @@ public class Rs2Keyboard
 	}
 
 	/**
-	 * Not locked against {@link #releaseHeldKeys()}. A takeover landing between the dispatch and
-	 * the add leaves the key down until the next {@code Script.run} tick releases it, at most 600ms.
-	 * A lock here would have to be held across the dispatch, which runs the client's own key
-	 * handler, and stalling every script thread behind that is the worse failure.
+	 * Not locked against {@link #releaseHeldKeys()}, and takes no lock itself: called from a sequence
+	 * it runs under that sequence's lock, called from {@link #keyHold} under none. A takeover
+	 * landing between the dispatch and the add leaves the key down until the next
+	 * {@code Script.run} tick releases it, at most 600ms. Sharing {@link #SEQUENCE_LOCK} here would
+	 * make releaseHeldKeys, which runs on a takeover and when a pause begins, wait behind a string
+	 * another thread is typing, and that thread can itself be parked by the pause until resume.
 	 */
 	private static boolean hold(int key)
 	{
@@ -354,27 +475,38 @@ public class Rs2Keyboard
 		long previous = beginInputSequence();
 		try
 		{
-			char typed = toTypedChar(key);
-			if (typed == CHAR_UNDEFINED)
+			if (!acquireKeyboard(previous))
 			{
-				if (hold(key))
+				return;
+			}
+			try
+			{
+				char typed = toTypedChar(key);
+				if (typed == CHAR_UNDEFINED)
 				{
-					Global.sleep(Rs2Random.logNormalBounded(KEY_HOLD_MIN_MS, KEY_HOLD_MAX_MS));
-					keyRelease(key);
+					if (hold(key))
+					{
+						Global.sleep(Rs2Random.logNormalBounded(KEY_HOLD_MIN_MS, KEY_HOLD_MAX_MS));
+						keyRelease(key);
+					}
+					return;
 				}
-				return;
-			}
 
-			// A suppressed press must not be followed by a release.
-			if (!dispatchKeyEvent(KeyEvent.KEY_PRESSED, key, typed))
-			{
-				return;
+				// A suppressed press must not be followed by a release.
+				if (!dispatchKeyEvent(KeyEvent.KEY_PRESSED, key, typed))
+				{
+					return;
+				}
+				dispatchKeyEvent(KeyEvent.KEY_TYPED, KeyEvent.VK_UNDEFINED, typed);
+				Global.sleep(Rs2Random.logNormalBounded(KEY_HOLD_MIN_MS, KEY_HOLD_MAX_MS));
+				// Unconditional: the press went out, so the release owes the client its pair even if the
+				// human took over in between.
+				dispatchKeyEvent(KeyEvent.KEY_RELEASED, key, typed);
 			}
-			dispatchKeyEvent(KeyEvent.KEY_TYPED, KeyEvent.VK_UNDEFINED, typed);
-			Global.sleep(Rs2Random.logNormalBounded(KEY_HOLD_MIN_MS, KEY_HOLD_MAX_MS));
-			// Unconditional: the press went out, so the release owes the client its pair even if the
-			// human took over in between.
-			dispatchKeyEvent(KeyEvent.KEY_RELEASED, key, typed);
+			finally
+			{
+				releaseKeyboard();
+			}
 		}
 		finally
 		{
@@ -410,11 +542,24 @@ public class Rs2Keyboard
 		long previous = beginInputSequence();
 		try
 		{
-			keyPress(KeyEvent.VK_ENTER);
+			// Taken here rather than only inside keyPress, so the trailing KEY_TYPED below belongs
+			// to the same sequence and no other thread's key can land between the two.
+			if (!acquireKeyboard(previous))
+			{
+				return;
+			}
+			try
+			{
+				keyPress(KeyEvent.VK_ENTER);
 
-			// This is to make sure the enter event gets released, because for some reason it
-			// stays pressed and auto logs for jagex accounts
-			resetEnter();
+				// This is to make sure the enter event gets released, because for some reason it
+				// stays pressed and auto logs for jagex accounts
+				resetEnter();
+			}
+			finally
+			{
+				releaseKeyboard();
+			}
 		}
 		finally
 		{
