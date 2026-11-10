@@ -11,11 +11,12 @@ import java.awt.*;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
-import java.util.ArrayList;
-import java.util.Set;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Consumer;
 import javax.swing.SwingUtilities;
 
 import static java.awt.event.KeyEvent.CHAR_UNDEFINED;
@@ -29,16 +30,24 @@ import static java.awt.event.KeyEvent.CHAR_UNDEFINED;
  * get the keyboard in that time. Calls on the client thread or the Swing event dispatch thread never
  * wait. A sequence whose thread is interrupted starts no further character, still releases any key it
  * has down, and leaves the interrupt flag set; one started on an interrupted thread types nothing.
+ *
+ * <p>Every key the bot presses, whichever call pressed it, is recorded until its release, so
+ * {@link #releaseHeldKeys()} releases it on a pause or takeover and the pressing call then sends no
+ * second release.
  */
 public class Rs2Keyboard
 {
-	/** Keys the bot currently holds down. See {@link #releaseHeldKeys()}. */
-	private static final Set<Integer> HELD_KEYS = ConcurrentHashMap.newKeySet();
-	private static final ThreadLocal<Long> INPUT_GENERATION = ThreadLocal.withInitial(() -> -1L);
+	/**
+	 * Bug fix: the one record of the keys the canvas has down from the bot, for every press this class
+	 * sends. Only keys pressed through keyHold and holdShift used to be recorded; a key pressed inside
+	 * typeString, keyPress or enter lived on the call stack, so the pause cleanup could not release it
+	 * and the game saw it down for the whole pause.
+	 */
+	private static final Map<Integer, Press> KEYS_DOWN = new ConcurrentHashMap<>();
 
 	/**
 	 * Bug fix: script threads used to type at the same time, interleaving their characters, and every
-	 * event's modifier mask is read from the shared {@link #HELD_KEYS}, so one thread's Shift
+	 * event's modifier mask is read from the shared {@link #KEYS_DOWN}, so one thread's Shift
 	 * went out on another thread's keys. Held for a whole sequence, the way InputLoop serializes
 	 * mouse gestures, but separate from InputLoop's lock so a long string never holds up a click.
 	 * Fair, so a waiter is served in turn instead of timing out behind threads that keep re-taking it.
@@ -54,98 +63,142 @@ public class Rs2Keyboard
 		sequenceLockTimeoutMs = millis;
 	}
 
-	private static long beginInputSequence()
+	/**
+	 * One key press, from its claim in {@link #KEYS_DOWN} to its release. Nothing guards the record
+	 * while a listener runs: the listeners are foreign code (RuneLite's key manager, plugin hotkeys, the game's
+	 * handler), they run on script threads, the client thread, the event dispatch thread and the pause
+	 * cleanup alike, and a listener that waits for the pause cleanup would deadlock against a sweep
+	 * waiting for that listener's press. So the press and a release coming from another thread meet in
+	 * this state instead, and whichever side the race leaves holding the release sends it.
+	 */
+	private static final class Press
 	{
-		long previous = INPUT_GENERATION.get();
-		if (previous < 0)
+		/** Claimed: its KEY_PRESSED is being decided or delivered. */
+		static final int PRESSING = 0;
+		/** Its KEY_PRESSED reached the listeners. */
+		static final int DOWN = 1;
+		/** Released while PRESSING. The pressing call sends the KEY_RELEASED once its delivery returns. */
+		static final int RELEASE_OWED = 2;
+		/** Its KEY_RELEASED is being delivered. The entry leaves the record once that returns. */
+		static final int RELEASING = 3;
+
+		/** Released with the same character it was pressed with, whoever releases it. */
+		final char keyChar;
+		final AtomicInteger state = new AtomicInteger(PRESSING);
+
+		Press(char keyChar)
 		{
-			INPUT_GENERATION.set(ScriptPauseController.getGeneration());
+			this.keyChar = keyChar;
 		}
-		return previous;
 	}
 
-	private static void endInputSequence(long previous)
+	/** One call to typeString, keyPress or enter, with everything it dispatches. */
+	private static final class Sequence
 	{
-		if (previous < 0)
+		/**
+		 * Taken when the sequence is requested, before any wait for the keyboard, so a pause that
+		 * begins while it waits still stops it.
+		 */
+		final long generation;
+
+		Sequence(long generation)
 		{
-			INPUT_GENERATION.remove();
+			this.generation = generation;
 		}
-		else
+
+		boolean mayContinue()
 		{
-			INPUT_GENERATION.set(previous);
+			return mayEmit(generation);
 		}
 	}
 
-	private static boolean isInputAllowed()
-	{
-		long sequenceGeneration = INPUT_GENERATION.get();
-		return !ScriptPauseController.isPaused()
-			&& (sequenceGeneration < 0 || sequenceGeneration == ScriptPauseController.getGeneration());
-	}
+	/** The sequence running on this thread, absent outside one. */
+	private static final ThreadLocal<Sequence> CURRENT_SEQUENCE = new ThreadLocal<>();
 
 	/**
-	 * Call after {@link #beginInputSequence()}, so a sequence that waited here still belongs to the
-	 * pause generation it was requested in, and pass what that returned. When this returns true the
-	 * caller must call {@link #releaseKeyboard()}.
+	 * Runs {@code body} as one sequence: it owns the keyboard from its first event to its last, and
+	 * every event it sends belongs to the pause generation it was requested in. The only place the
+	 * sequence lock is taken or released.
 	 */
-	private static boolean acquireKeyboard(long previousGeneration)
+	private static void runSequence(Consumer<Sequence> body)
 	{
+		Sequence outer = CURRENT_SEQUENCE.get();
+		if (outer != null)
+		{
+			// enter() calls keyPress: the inner call is part of the outer sequence, which already owns
+			// the keyboard. Not refused on an interrupt either, which would cut enter() in half.
+			body.accept(outer);
+			return;
+		}
+		Sequence sequence = new Sequence(ScriptPauseController.getGeneration());
 		// Checked before waiting: a call made while paused or during a takeover returns at once
-		// instead of queueing behind a thread that a pause may have parked mid-sequence.
-		if (!isInputAllowed() || InputArbiter.isHuman())
+		// instead of queueing behind a thread that a pause may have parked mid-sequence. An
+		// interrupted thread starts nothing, the way InputLoop refuses a gesture on one.
+		if (!sequence.mayContinue() || Thread.currentThread().isInterrupted())
 		{
-			return false;
+			return;
 		}
-		// An interrupted thread starts nothing, the way InputLoop refuses a gesture on one. Not for a
-		// nested call: enter() calls keyPress, and refusing there would send enter()'s trailing
-		// KEY_TYPED without the key press it belongs to.
-		boolean nested = previousGeneration >= 0;
-		if (!nested && Thread.currentThread().isInterrupted())
+		if (isUiThread())
 		{
-			return false;
-		}
-		// Neither UI thread may freeze behind another thread's typing, which can last the whole bound.
-		// They take no lock and type at once, as before the lock existed.
-		if (Microbot.getClient().isClientThread() || SwingUtilities.isEventDispatchThread())
-		{
-			return true;
-		}
-		if (SEQUENCE_LOCK.isHeldByCurrentThread())
-		{
-			// enter() calls keyPress. Re-entering this way cannot fail on an interrupt the way the
-			// timed wait does, which would cut enter() in half.
-			SEQUENCE_LOCK.lock();
-			return true;
+			// Neither UI thread may freeze behind another thread's typing, which can last the whole
+			// bound. They take no lock and type at once, as before the lock existed.
+			run(sequence, body);
+			return;
 		}
 		try
 		{
 			if (!SEQUENCE_LOCK.tryLock(sequenceLockTimeoutMs, TimeUnit.MILLISECONDS))
 			{
-				return false;
+				return;
 			}
 		}
 		catch (InterruptedException interrupted)
 		{
 			// Interrupted while waiting. tryLock cleared the flag, so put it back for the caller.
 			Thread.currentThread().interrupt();
-			return false;
+			return;
 		}
-		// A pause or takeover may have begun while this thread waited.
-		if (!isInputAllowed() || InputArbiter.isHuman())
+		try
+		{
+			// A pause or takeover may have begun while this thread waited.
+			if (sequence.mayContinue())
+			{
+				run(sequence, body);
+			}
+		}
+		finally
 		{
 			SEQUENCE_LOCK.unlock();
-			return false;
 		}
-		return true;
 	}
 
-	/** The client thread and the event dispatch thread never take the lock, so nothing is released there. */
-	private static void releaseKeyboard()
+	private static void run(Sequence sequence, Consumer<Sequence> body)
 	{
-		if (SEQUENCE_LOCK.isHeldByCurrentThread())
+		CURRENT_SEQUENCE.set(sequence);
+		try
 		{
-			SEQUENCE_LOCK.unlock();
+			body.accept(sequence);
 		}
+		finally
+		{
+			CURRENT_SEQUENCE.remove();
+		}
+	}
+
+	private static boolean isUiThread()
+	{
+		return Microbot.getClient().isClientThread() || SwingUtilities.isEventDispatchThread();
+	}
+
+	/**
+	 * The pause generation this call's events belong to: its sequence's, or outside a sequence the
+	 * generation when the call started, so a pause that begins and ends within one keyHold still
+	 * stops it.
+	 */
+	private static long callGeneration()
+	{
+		Sequence sequence = CURRENT_SEQUENCE.get();
+		return sequence != null ? sequence.generation : ScriptPauseController.getGeneration();
 	}
 
 	/**
@@ -159,6 +212,173 @@ public class Rs2Keyboard
 	}
 
 	/**
+	 * The one decision every KEY_PRESSED and KEY_TYPED gets, made after the canvas lookup and right
+	 * before the listeners. Keyboard emission never goes through InputLoop, so without it a takeover
+	 * mid-typeString sprays the rest of the string into whatever the human just took over. Bug fix:
+	 * it used to be made before the canvas lookup, so a pause landing in the lookup did not stop the
+	 * event, and outside a sequence it ignored a pause that had already ended. KEY_RELEASED never gets
+	 * it: a release is owed for a press that went out, and suppressing it would strand the key down.
+	 */
+	private static boolean mayEmit(long generation)
+	{
+		return !ScriptPauseController.isPaused()
+			&& generation == ScriptPauseController.getGeneration()
+			&& !InputArbiter.isHuman();
+	}
+
+	/**
+	 * What one press call achieved, for the call that asked. Closing it releases the press this call
+	 * sent and nothing else, so a try-with-resources around a character's press, KEY_TYPED and hold
+	 * leaves nothing in the record on any path, a listener that throws included.
+	 */
+	private static final class KeyDown implements AutoCloseable
+	{
+		private final int keyCode;
+		/** The press this call sent and so owes a release; null when it sent none. */
+		private final Press sent;
+		/** The key is down now, by this call's press or by another caller's. False when refused. */
+		final boolean down;
+
+		KeyDown(int keyCode, Press sent, boolean down)
+		{
+			this.keyCode = keyCode;
+			this.sent = sent;
+			this.down = down;
+		}
+
+		boolean sentPress()
+		{
+			return sent != null;
+		}
+
+		@Override
+		public void close()
+		{
+			if (sent != null)
+			{
+				release(keyCode, sent);
+			}
+		}
+	}
+
+	/**
+	 * Presses a key and records it as down. Sends nothing when the decision refuses it, and nothing
+	 * either when the key is already down, by keyHold or by a press on another thread: a second
+	 * KEY_PRESSED would leave the canvas expecting two releases, and that caller's press must stay
+	 * down. The result says which, so a character can still be typed on a key that is already down.
+	 */
+	private static KeyDown press(int keyCode, char keyChar, long generation)
+	{
+		Canvas canvas = getCanvas();
+		Press press = new Press(keyChar);
+		// Claimed before the decision. A pause sets its flag before its sweep runs, so either the
+		// decision below sees the pause, or the sweep sees this claim and leaves the release to it.
+		if (KEYS_DOWN.putIfAbsent(keyCode, press) != null)
+		{
+			return new KeyDown(keyCode, null, true);
+		}
+		if (!mayEmit(generation))
+		{
+			KEYS_DOWN.remove(keyCode, press);
+			return new KeyDown(keyCode, null, false);
+		}
+		try
+		{
+			deliver(canvas, KeyEvent.KEY_PRESSED, keyCode, keyChar);
+		}
+		catch (Throwable thrown)
+		{
+			// Bug fix: a listener that threw here used to leave the entry recorded as down with nobody
+			// to release it, which blocked every later press of the key. Every listener got the press
+			// (deliver reaches them all before rethrowing a RuntimeException), so every one gets its
+			// release now. An Error stops delivery where it was thrown and is released the same way.
+			press.state.set(Press.RELEASING);
+			try
+			{
+				sendRelease(keyCode, press);
+			}
+			catch (Throwable alsoThrown)
+			{
+				thrown.addSuppressed(alsoThrown);
+			}
+			throw thrown;
+		}
+		if (!press.state.compareAndSet(Press.PRESSING, Press.DOWN))
+		{
+			// A release came while the press was being delivered. Sent here, after the press it pairs
+			// with, rather than by the releasing thread, which would have had to wait.
+			press.state.set(Press.RELEASING);
+			sendRelease(keyCode, press);
+		}
+		return new KeyDown(keyCode, press, true);
+	}
+
+	/**
+	 * Releases a key the record has down, exactly once per press, whoever asks. Never waits: a key
+	 * whose press is still being delivered is released by the pressing call when its delivery returns.
+	 *
+	 * @param expected the press to release, or null for whichever press has the key down. A call
+	 *                 releasing its own press passes it, so a release that comes after the pause
+	 *                 cleanup already released the key cannot release a later press of the same key.
+	 */
+	private static void release(int keyCode, Press expected)
+	{
+		Press press = KEYS_DOWN.get(keyCode);
+		if (press == null || (expected != null && press != expected))
+		{
+			return;
+		}
+		while (true)
+		{
+			int state = press.state.get();
+			if (state == Press.DOWN)
+			{
+				if (press.state.compareAndSet(Press.DOWN, Press.RELEASING))
+				{
+					sendRelease(keyCode, press);
+					return;
+				}
+			}
+			else if (state == Press.PRESSING)
+			{
+				if (press.state.compareAndSet(Press.PRESSING, Press.RELEASE_OWED))
+				{
+					return;
+				}
+			}
+			else
+			{
+				// Already owed or being released by another thread.
+				return;
+			}
+		}
+	}
+
+	/** Leaves the record only after delivery, so the key cannot be pressed again before its release. */
+	private static void sendRelease(int keyCode, Press press)
+	{
+		try
+		{
+			deliver(getCanvas(), KeyEvent.KEY_RELEASED, keyCode, press.keyChar);
+		}
+		finally
+		{
+			KEYS_DOWN.remove(keyCode, press);
+		}
+	}
+
+	private static boolean type(char keyChar, long generation)
+	{
+		Canvas canvas = getCanvas();
+		if (!mayEmit(generation))
+		{
+			return false;
+		}
+		deliver(canvas, KeyEvent.KEY_TYPED, KeyEvent.VK_UNDEFINED, keyChar);
+		return true;
+	}
+
+	/**
 	 * Delivers a synthetic KeyEvent to the canvas's registered listeners directly,
 	 * bypassing AWT's focus-aware dispatch pipeline. This is what eliminates the
 	 * focus-steal that {@code Canvas.dispatchEvent} combined with a focusable flip
@@ -168,20 +388,15 @@ public class Rs2Keyboard
 	 * @param keyCode  the key code from {@link KeyEvent}
 	 * @param keyChar  the character to type, if applicable
 	 */
-	private static boolean dispatchKeyEvent(int id, int keyCode, char keyChar)
+	private static void deliver(Canvas canvas, int id, int keyCode, char keyChar)
 	{
-		// Keyboard emission never goes through InputLoop, holds skip acquireKeyboard, and that checks
-		// only when a sequence starts, so this is the checkpoint every event passes. Without it a
-		// takeover mid-typeString sprays the rest of the string into whatever the human just took
-		// over. RELEASED is exempt: releaseHeldKeys runs while the human owns input, and suppressing
-		// it would strand a key down.
-		if (id != KeyEvent.KEY_RELEASED && (!isInputAllowed() || InputArbiter.isHuman()))
-		{
-			return false;
-		}
-		Canvas canvas = getCanvas();
 		KeyEvent event = new KeyEvent(canvas, id, System.currentTimeMillis(), modifiersFor(id, keyCode), keyCode, keyChar);
 		KeyListener[] listeners = canvas.getKeyListeners();
+		// Every listener gets the event even when one throws, and the throw is rethrown afterwards:
+		// a release must reach every listener that saw its press, and with presses delivered the same
+		// way that is every listener, so none is left with a key down or sent a release it never
+		// saw the press for.
+		RuntimeException failure = null;
 		// The arbiter's observe-only KeyListener is one of these, so without the guard the bot
 		// reads its own keystrokes as a takeover.
 		BotEventGuard.begin();
@@ -189,17 +404,24 @@ public class Rs2Keyboard
 		{
 			for (KeyListener l : listeners)
 			{
-				switch (id)
+				try
 				{
-					case KeyEvent.KEY_TYPED:
-						l.keyTyped(event);
-						break;
-					case KeyEvent.KEY_PRESSED:
-						l.keyPressed(event);
-						break;
-					case KeyEvent.KEY_RELEASED:
-						l.keyReleased(event);
-						break;
+					switch (id)
+					{
+						case KeyEvent.KEY_TYPED:
+							l.keyTyped(event);
+							break;
+						case KeyEvent.KEY_PRESSED:
+							l.keyPressed(event);
+							break;
+						case KeyEvent.KEY_RELEASED:
+							l.keyReleased(event);
+							break;
+					}
+				}
+				catch (RuntimeException thrown)
+				{
+					failure = collect(failure, thrown);
 				}
 			}
 		}
@@ -207,7 +429,21 @@ public class Rs2Keyboard
 		{
 			BotEventGuard.end();
 		}
-		return true;
+		if (failure != null)
+		{
+			throw failure;
+		}
+	}
+
+	/** Keeps the first failure and attaches later ones to it, so none is lost. */
+	private static RuntimeException collect(RuntimeException first, RuntimeException next)
+	{
+		if (first == null)
+		{
+			return next;
+		}
+		first.addSuppressed(next);
+		return first;
 	}
 
 	static final int KEY_HOLD_MIN_MS = 50;
@@ -234,35 +470,19 @@ public class Rs2Keyboard
 	 */
 	public static void typeString(final String word)
 	{
-		long previous = beginInputSequence();
-		try
+		runSequence(sequence ->
 		{
-			if (!acquireKeyboard(previous))
+			for (char c : word.toCharArray())
 			{
-				return;
-			}
-			try
-			{
-				for (char c : word.toCharArray())
+				// Bug fix: an interrupt only cut the sleeps short, so the rest of the string went
+				// out at once instead of stopping.
+				if (!sequence.mayContinue() || Thread.currentThread().isInterrupted() || !typeChar(c, sequence.generation))
 				{
-					// Bug fix: an interrupt only cut the sleeps short, so the rest of the string went
-					// out at once instead of stopping.
-					if (!isInputAllowed() || Thread.currentThread().isInterrupted() || !typeChar(c))
-					{
-						return;
-					}
-					Global.sleep(Rs2Random.logNormalBounded(KEY_GAP_MIN_MS, KEY_GAP_MAX_MS));
+					return;
 				}
+				Global.sleep(Rs2Random.logNormalBounded(KEY_GAP_MIN_MS, KEY_GAP_MAX_MS));
 			}
-			finally
-			{
-				releaseKeyboard();
-			}
-		}
-		finally
-		{
-			endInputSequence(previous);
-		}
+		});
 	}
 
 	/**
@@ -272,61 +492,59 @@ public class Rs2Keyboard
 	 */
 	public static void keyPress(final char key)
 	{
-		long previous = beginInputSequence();
-		try
-		{
-			if (!acquireKeyboard(previous))
-			{
-				return;
-			}
-			try
-			{
-				typeChar(key);
-			}
-			finally
-			{
-				releaseKeyboard();
-			}
-		}
-		finally
-		{
-			endInputSequence(previous);
-		}
+		runSequence(sequence -> typeChar(key, sequence.generation));
 	}
 
-	private static boolean typeChar(char c)
+	private static boolean typeChar(char c, long generation)
 	{
 		int vk = keyCodeFor(c);
 		if (vk == KeyEvent.VK_UNDEFINED)
 		{
-			return dispatchKeyEvent(KeyEvent.KEY_TYPED, KeyEvent.VK_UNDEFINED, c);
+			return type(c, generation);
 		}
 
-		boolean pressShift = needsShift(c) && !HELD_KEYS.contains(KeyEvent.VK_SHIFT);
-		if (pressShift)
+		// Both presses are closed on every path, a listener that throws included, the letter before the
+		// Shift around it. A null resource is skipped on close.
+		try (KeyDown shift = needsShift(c) && !KEYS_DOWN.containsKey(KeyEvent.VK_SHIFT)
+			? press(KeyEvent.VK_SHIFT, CHAR_UNDEFINED, generation)
+			: null)
 		{
-			if (!hold(KeyEvent.VK_SHIFT))
+			if (shift != null)
 			{
-				return false;
+				if (!shift.down)
+				{
+					return false;
+				}
+				Global.sleep(Rs2Random.logNormalBounded(SHIFT_LEAD_MIN_MS, SHIFT_LEAD_MAX_MS));
 			}
-			Global.sleep(Rs2Random.logNormalBounded(SHIFT_LEAD_MIN_MS, SHIFT_LEAD_MAX_MS));
-		}
 
-		// An interrupt during the Shift lead stops the character here; the Shift below is still released.
-		boolean pressed = !Thread.currentThread().isInterrupted() && dispatchKeyEvent(KeyEvent.KEY_PRESSED, vk, c);
-		if (pressed)
-		{
-			dispatchKeyEvent(KeyEvent.KEY_TYPED, KeyEvent.VK_UNDEFINED, c);
-			Global.sleep(Rs2Random.logNormalBounded(KEY_HOLD_MIN_MS, KEY_HOLD_MAX_MS));
-			dispatchKeyEvent(KeyEvent.KEY_RELEASED, vk, c);
-		}
+			boolean typed = false;
+			// An interrupt during the Shift lead stops the character here; the Shift is still released.
+			if (!Thread.currentThread().isInterrupted())
+			{
+				try (KeyDown key = press(vk, c, generation))
+				{
+					// Bug fix: a key already down, held by keyHold or being pressed on another thread,
+					// used to end the string here. The character is typed on it instead, without a
+					// press or release of this call's own, so that caller's press stays down.
+					typed = key.down;
+					if (typed)
+					{
+						type(c, generation);
+						if (key.sentPress())
+						{
+							Global.sleep(Rs2Random.logNormalBounded(KEY_HOLD_MIN_MS, KEY_HOLD_MAX_MS));
+						}
+					}
+				}
+			}
 
-		if (pressShift)
-		{
-			Global.sleep(Rs2Random.logNormalBounded(SHIFT_LEAD_MIN_MS, SHIFT_LEAD_MAX_MS));
-			keyRelease(KeyEvent.VK_SHIFT);
+			if (shift != null && shift.sentPress())
+			{
+				Global.sleep(Rs2Random.logNormalBounded(SHIFT_LEAD_MIN_MS, SHIFT_LEAD_MAX_MS));
+			}
+			return typed;
 		}
-		return pressed;
 	}
 
 	static int keyCodeFor(char c)
@@ -352,9 +570,9 @@ public class Rs2Keyboard
 	static int modifiersFor(int id, int keyCode)
 	{
 		int mask = 0;
-		for (Integer held : HELD_KEYS)
+		for (Integer down : KEYS_DOWN.keySet())
 		{
-			mask |= modifierMask(held);
+			mask |= modifierMask(down);
 		}
 		if (id == KeyEvent.KEY_PRESSED)
 		{
@@ -387,26 +605,7 @@ public class Rs2Keyboard
 	 */
 	public static void holdShift()
 	{
-		hold(KeyEvent.VK_SHIFT);
-	}
-
-	/**
-	 * Not locked against {@link #releaseHeldKeys()}, and takes no lock itself: called from a sequence
-	 * it runs under that sequence's lock, called from {@link #keyHold} under none. A takeover
-	 * landing between the dispatch and the add leaves the key down until the next
-	 * {@code Script.run} tick releases it, at most 600ms. Sharing {@link #SEQUENCE_LOCK} here would
-	 * make releaseHeldKeys, which runs on a takeover and when a pause begins, wait behind a string
-	 * another thread is typing, and that thread can itself be parked by the pause until resume.
-	 */
-	private static boolean hold(int key)
-	{
-		// Only if the press went out, or releaseHeldKeys would release a key never held.
-		if (dispatchKeyEvent(KeyEvent.KEY_PRESSED, key, CHAR_UNDEFINED))
-		{
-			HELD_KEYS.add(key);
-			return true;
-		}
-		return false;
+		press(KeyEvent.VK_SHIFT, CHAR_UNDEFINED, callGeneration());
 	}
 
 	/**
@@ -414,7 +613,7 @@ public class Rs2Keyboard
 	 */
 	public static void releaseShift()
 	{
-		keyRelease(KeyEvent.VK_SHIFT);
+		release(KeyEvent.VK_SHIFT, null);
 	}
 
 	/**
@@ -424,45 +623,57 @@ public class Rs2Keyboard
 	 */
 	public static void keyHold(int key)
 	{
-		hold(key);
+		press(key, CHAR_UNDEFINED, callGeneration());
 	}
 
 	/**
-	 * Simulates releasing a key using a KEY_RELEASED event.
+	 * Simulates releasing a key using a KEY_RELEASED event. Sends nothing for a key the bot does not
+	 * have down: a takeover suppresses the press, and releasing anyway sends a RELEASED with no PRESSED
+	 * before it, which no keyboard produces.
 	 *
 	 * @param key the key code from {@link KeyEvent}
 	 */
 	public static void keyRelease(int key)
 	{
-		// Only for a key this class saw go down. A takeover suppresses the press, and releasing
-		// anyway sends a RELEASED with no PRESSED before it, which no keyboard produces.
-		if (!HELD_KEYS.remove(key))
-		{
-			return;
-		}
-		dispatchKeyEvent(KeyEvent.KEY_RELEASED, key, CHAR_UNDEFINED);
+		release(key, null);
 	}
 
 	/**
-	 * Releases every key the bot still holds. A hold spans arbitrary script code rather than one
-	 * gesture, so InputLoop cannot unwind it; {@code Script.run} calls this on a takeover instead.
+	 * Releases every key the bot has down, whichever call pressed it, including a key a sequence on
+	 * another thread is holding mid-character; that sequence then sends no second release. A hold
+	 * spans arbitrary script code rather than one gesture, so InputLoop cannot unwind it;
+	 * {@code Script.run} calls this on a takeover and the pause cleanup calls it when a pause begins.
 	 *
-	 * <p>Idempotent and safe from several script threads at once.
+	 * <p>Never waits, so it is safe on any thread: a key whose KEY_PRESSED another thread is still
+	 * delivering is released by that thread as soon as the delivery returns. Idempotent and safe from
+	 * several threads at once.
 	 */
 	public static void releaseHeldKeys()
 	{
-		for (Integer key : new ArrayList<>(HELD_KEYS))
+		// One listener throwing on one release must not leave the other keys down: the pause cleanup
+		// runs this first and reports a failure through its future, so every key is released and the
+		// first failure is rethrown afterwards.
+		RuntimeException failure = null;
+		for (Map.Entry<Integer, Press> down : KEYS_DOWN.entrySet())
 		{
-			if (HELD_KEYS.remove(key))
+			try
 			{
-				dispatchKeyEvent(KeyEvent.KEY_RELEASED, key, CHAR_UNDEFINED);
+				release(down.getKey(), down.getValue());
 			}
+			catch (RuntimeException thrown)
+			{
+				failure = collect(failure, thrown);
+			}
+		}
+		if (failure != null)
+		{
+			throw failure;
 		}
 	}
 
 	static boolean isKeyHeld(int key)
 	{
-		return HELD_KEYS.contains(key);
+		return KEYS_DOWN.containsKey(key);
 	}
 
 	/**
@@ -472,46 +683,23 @@ public class Rs2Keyboard
 	 */
 	public static void keyPress(int key)
 	{
-		long previous = beginInputSequence();
-		try
+		runSequence(sequence ->
 		{
-			if (!acquireKeyboard(previous))
+			char typed = toTypedChar(key);
+			try (KeyDown down = press(key, typed, sequence.generation))
 			{
-				return;
-			}
-			try
-			{
-				char typed = toTypedChar(key);
-				if (typed == CHAR_UNDEFINED)
+				// OSRS dialog options react to the KEY_TYPED, so only a printable key sends one, also
+				// on a key that is already down. A non-printable key already down has nothing to send.
+				if (down.down && typed != CHAR_UNDEFINED)
 				{
-					if (hold(key))
-					{
-						Global.sleep(Rs2Random.logNormalBounded(KEY_HOLD_MIN_MS, KEY_HOLD_MAX_MS));
-						keyRelease(key);
-					}
-					return;
+					type(typed, sequence.generation);
 				}
-
-				// A suppressed press must not be followed by a release.
-				if (!dispatchKeyEvent(KeyEvent.KEY_PRESSED, key, typed))
+				if (down.sentPress())
 				{
-					return;
+					Global.sleep(Rs2Random.logNormalBounded(KEY_HOLD_MIN_MS, KEY_HOLD_MAX_MS));
 				}
-				dispatchKeyEvent(KeyEvent.KEY_TYPED, KeyEvent.VK_UNDEFINED, typed);
-				Global.sleep(Rs2Random.logNormalBounded(KEY_HOLD_MIN_MS, KEY_HOLD_MAX_MS));
-				// Unconditional: the press went out, so the release owes the client its pair even if the
-				// human took over in between.
-				dispatchKeyEvent(KeyEvent.KEY_RELEASED, key, typed);
 			}
-			finally
-			{
-				releaseKeyboard();
-			}
-		}
-		finally
-		{
-			endInputSequence(previous);
-		}
+		});
 	}
 
 	/**
@@ -539,39 +727,22 @@ public class Rs2Keyboard
 	 */
 	public static void enter()
 	{
-		long previous = beginInputSequence();
-		try
+		// One sequence around both, rather than only the one inside keyPress, so the trailing
+		// KEY_TYPED belongs to it and no other thread's key can land between the two.
+		runSequence(sequence ->
 		{
-			// Taken here rather than only inside keyPress, so the trailing KEY_TYPED below belongs
-			// to the same sequence and no other thread's key can land between the two.
-			if (!acquireKeyboard(previous))
-			{
-				return;
-			}
-			try
-			{
-				keyPress(KeyEvent.VK_ENTER);
+			keyPress(KeyEvent.VK_ENTER);
 
-				// This is to make sure the enter event gets released, because for some reason it
-				// stays pressed and auto logs for jagex accounts
-				resetEnter();
-			}
-			finally
-			{
-				releaseKeyboard();
-			}
-		}
-		finally
-		{
-			endInputSequence(previous);
-		}
-
+			// This is to make sure the enter event gets released, because for some reason it
+			// stays pressed and auto logs for jagex accounts
+			resetEnter();
+		});
 	}
 
 	/**
 	 * Sends a KEY_TYPED event for the Enter key to ensure it is released.
 	 */
 	public static void resetEnter() {
-		dispatchKeyEvent(KeyEvent.KEY_TYPED, KeyEvent.VK_UNDEFINED, '\n');
+		type('\n', callGeneration());
 	}
 }

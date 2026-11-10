@@ -3,6 +3,7 @@ package net.runelite.client.plugins.microbot.util.keyboard;
 import net.runelite.api.Client;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.ScriptPauseController;
+import net.runelite.client.plugins.microbot.util.Global;
 import net.runelite.client.plugins.microbot.util.input.InputArbiter;
 import net.runelite.client.plugins.microbot.util.mouse.BotEventGuard;
 import org.junit.After;
@@ -121,6 +122,8 @@ public class Rs2KeyboardSequenceLockTest
 	private final List<Caller> callers = new CopyOnWriteArrayList<>();
 	private final List<CountDownLatch> releaseOnTeardown = new CopyOnWriteArrayList<>();
 	private volatile Consumer<Record> onEvent = r -> { };
+	/** Runs on the asking thread whenever anything asks the client whether it is the client thread. */
+	private volatile Runnable onClientThreadQuery = () -> { };
 	private volatile Thread clientThread;
 	private Object previousClient;
 
@@ -154,7 +157,11 @@ public class Rs2KeyboardSequenceLockTest
 		Client client = mock(Client.class);
 		when(client.getCanvas()).thenReturn(canvas);
 		// Only the designated thread is the client thread, so Global's sleeps stay real on the others.
-		when(client.isClientThread()).thenAnswer(invocation -> Thread.currentThread() == clientThread);
+		when(client.isClientThread()).thenAnswer(invocation ->
+		{
+			onClientThreadQuery.run();
+			return Thread.currentThread() == clientThread;
+		});
 		previousClient = swapClient(client);
 
 		InputArbiter.resetForTest();
@@ -426,9 +433,11 @@ public class Rs2KeyboardSequenceLockTest
 		CountDownLatch holding = new CountDownLatch(1);
 		CountDownLatch release = releasable();
 		Caller sequence = new Caller("sequence", () -> Rs2Keyboard.typeString("a"));
-		parkFirstEventOf(sequence, holding, release);
+		// Parked between events, in the sleep that holds 'a' down, not inside a dispatch: the pause
+		// cleanup may wait for a dispatch in flight, and that wait is not a wait for the sequence.
+		parkInSleepAfterFirstTyped(sequence, holding, release);
 		sequence.start();
-		assertTrue("sequence thread never dispatched its first key", holding.await(5, TimeUnit.SECONDS));
+		assertTrue("sequence thread never reached the sleep after its first key", holding.await(5, TimeUnit.SECONDS));
 
 		Caller holds = new Caller("holds", () ->
 		{
@@ -447,7 +456,16 @@ public class Rs2KeyboardSequenceLockTest
 
 		assertTrue("keyHold/keyRelease/holdShift/releaseShift/releaseHeldKeys waited for another thread's sequence",
 			finishedWhileHeld);
-		List<KeyEvent> events = eventsOf(holds);
+		// releaseHeldKeys may also release the 'a' the sequence has down, so only the keys this thread
+		// pressed are counted here; the pairing check below covers 'a'.
+		List<KeyEvent> events = new ArrayList<>();
+		for (KeyEvent e : eventsOf(holds))
+		{
+			if (e.getKeyCode() != KeyEvent.VK_A)
+			{
+				events.add(e);
+			}
+		}
 		assertEquals("hold and release events: " + describeAll(events), 6, events.size());
 		assertPressOrRelease(events.get(0), KeyEvent.KEY_PRESSED, KeyEvent.VK_UP);
 		assertPressOrRelease(events.get(1), KeyEvent.KEY_RELEASED, KeyEvent.VK_UP);
@@ -456,6 +474,8 @@ public class Rs2KeyboardSequenceLockTest
 		assertPressOrRelease(events.get(4), KeyEvent.KEY_PRESSED, KeyEvent.VK_W);
 		assertPressOrRelease(events.get(5), KeyEvent.KEY_RELEASED, KeyEvent.VK_W);
 		assertEquals("sequence string as typed", "a", typedBy(sequence));
+		List<String> pairing = pairingViolations(snapshot());
+		assertTrue("every KEY_PRESSED must be followed by exactly one KEY_RELEASED: " + pairing, pairing.isEmpty());
 	}
 
 	@Test(timeout = 60_000)
@@ -546,7 +566,12 @@ public class Rs2KeyboardSequenceLockTest
 		awaitFuture(ScriptPauseController.setPaused(false), "resume");
 		join(string);
 
-		List<KeyEvent> events = eventsOf(string);
+		// Every thread's events, not only the string's: the pause cleanup may send the release of 'a'.
+		List<KeyEvent> events = new ArrayList<>();
+		for (Record r : snapshot())
+		{
+			events.add(r.event);
+		}
 		assertEquals("a typeString crossing a pause stops after the character the pause interrupted: "
 			+ describeAll(events), 3, events.size());
 		assertPressOrRelease(events.get(0), KeyEvent.KEY_PRESSED, KeyEvent.VK_A);
@@ -591,10 +616,14 @@ public class Rs2KeyboardSequenceLockTest
 		assertTrue("second thread never made its call", waiting.requested.await(5, TimeUnit.SECONDS));
 		awaitParked(waiting.thread);
 
+		// Neither future is awaited while the first thread is parked inside a dispatch: the cleanup may
+		// wait for that dispatch to return. The pause begins when setPaused returns, before the cleanup.
 		int pauseIndex = records.size();
-		awaitFuture(ScriptPauseController.setPaused(true), "pause cleanup");
-		awaitFuture(ScriptPauseController.setPaused(false), "resume");
+		Future<Void> pause = ScriptPauseController.setPaused(true);
+		Future<Void> resume = ScriptPauseController.setPaused(false);
 		release.countDown();
+		awaitFuture(pause, "pause cleanup");
+		awaitFuture(resume, "resume");
 		join(first, waiting);
 
 		List<String> dispatched = new ArrayList<>();
@@ -725,11 +754,14 @@ public class Rs2KeyboardSequenceLockTest
 
 		List<Caller> calls;
 		List<String> waited;
+		Future<Void> cleanup = null;
 		try
 		{
 			if (pause)
 			{
-				awaitFuture(ScriptPauseController.setPaused(true), "pause cleanup");
+				// Not awaited until the holder is released: the cleanup may wait for the holder's dispatch
+				// in flight. The pause itself has begun once setPaused returns.
+				cleanup = ScriptPauseController.setPaused(true);
 			}
 			else
 			{
@@ -740,6 +772,11 @@ public class Rs2KeyboardSequenceLockTest
 		}
 		finally
 		{
+			release.countDown();
+			if (cleanup != null)
+			{
+				awaitFuture(cleanup, "pause cleanup");
+			}
 			if (pause)
 			{
 				awaitFuture(ScriptPauseController.setPaused(false), "resume");
@@ -748,7 +785,6 @@ public class Rs2KeyboardSequenceLockTest
 			{
 				InputArbiter.resetForTest();
 			}
-			release.countDown();
 		}
 		join(holder);
 		joinAll(calls);
@@ -795,6 +831,81 @@ public class Rs2KeyboardSequenceLockTest
 		first.start();
 		first.thread.join(PATIENT_TIMEOUT_MS + 5_000);
 		assertTrue("the point where the other calls start was never reached", fired.get());
+	}
+
+	/**
+	 * Blocks the caller at its first {@link Global#sleep} after its first KEY_TYPED: mid-sequence with a
+	 * key down, but between events rather than inside a dispatch. Global.sleep asks the client whether
+	 * it is on the client thread before sleeping, which is where the mock parks it.
+	 */
+	private void parkInSleepAfterFirstTyped(Caller caller, CountDownLatch holding, CountDownLatch release)
+	{
+		AtomicBoolean typed = new AtomicBoolean();
+		AtomicBoolean fired = new AtomicBoolean();
+		onEvent = r ->
+		{
+			if (r.thread == caller.thread && r.event.getID() == KeyEvent.KEY_TYPED)
+			{
+				typed.set(true);
+			}
+		};
+		onClientThreadQuery = () ->
+		{
+			if (Thread.currentThread() == caller.thread && typed.get() && insideGlobalSleep()
+				&& fired.compareAndSet(false, true))
+			{
+				holding.countDown();
+				awaitQuietly(release, LISTENER_WAIT_MS);
+			}
+		};
+	}
+
+	private static boolean insideGlobalSleep()
+	{
+		for (StackTraceElement frame : Thread.currentThread().getStackTrace())
+		{
+			if (frame.getClassName().equals(Global.class.getName()) && frame.getMethodName().equals("sleep"))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Every KEY_PRESSED must be followed by exactly one KEY_RELEASED for that key, from any thread, and
+	 * no KEY_RELEASED may come for a key that is not down.
+	 */
+	private static List<String> pairingViolations(List<Record> events)
+	{
+		List<Integer> down = new ArrayList<>();
+		List<String> violations = new ArrayList<>();
+		for (int i = 0; i < events.size(); i++)
+		{
+			KeyEvent e = events.get(i).event;
+			Integer key = e.getKeyCode();
+			if (e.getID() == KeyEvent.KEY_PRESSED)
+			{
+				if (down.contains(key))
+				{
+					violations.add(i + ": " + KeyEvent.getKeyText(key) + " pressed again while already down");
+				}
+				else
+				{
+					down.add(key);
+				}
+			}
+			else if (e.getID() == KeyEvent.KEY_RELEASED && !down.remove(key))
+			{
+				violations.add(i + ": " + KeyEvent.getKeyText(key) + " released while not down, from "
+					+ events.get(i).thread.getName());
+			}
+		}
+		for (Integer key : down)
+		{
+			violations.add(KeyEvent.getKeyText(key) + " never released");
+		}
+		return violations;
 	}
 
 	/** Blocks the caller inside its first dispatched event, so it holds the keyboard mid-sequence. */
