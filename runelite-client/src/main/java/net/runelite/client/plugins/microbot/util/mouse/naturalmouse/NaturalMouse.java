@@ -54,9 +54,6 @@ public class NaturalMouse {
             new Flow(FlowTemplates.random())
     );
 
-    private volatile MouseMotionFactory cachedFactory;
-    private volatile ActivityIntensity cachedIntensity;
-
     @Inject
     public NaturalMouse() {
         nature = new DefaultMouseMotionNature();
@@ -128,11 +125,14 @@ public class NaturalMouse {
         }
     }
 
+    /**
+     * Bug fix: builds from the templates on every call. A cache keyed on the intensity alone handed
+     * out a motion built from stale settings, because the templates also read simulateFatigue,
+     * simulateMistakes and ticksSinceLogin, and draw fresh fatigue noise for each motion. A build
+     * allocates about 8 to 13 KB, once per trajectory, on a trajectory that sleeps between its steps.
+     */
     public MouseMotionFactory getFactory() {
         ActivityIntensity intensity = Rs2Antiban.getActivityIntensity();
-        if (cachedFactory != null && intensity == cachedIntensity) {
-            return cachedFactory;
-        }
         MouseMotionFactory factory;
         if (intensity == ActivityIntensity.VERY_LOW) {
             log.debug("Creating average computer user motion factory");
@@ -153,8 +153,6 @@ public class NaturalMouse {
             log.debug("Default: Creating super fast gamer motion factory");
             factory = FactoryTemplates.createSuperFastGamerMotionFactory(nature);
         }
-        cachedIntensity = intensity;
-        cachedFactory = factory;
         return factory;
 
 //		var factory = new MouseMotionFactory();

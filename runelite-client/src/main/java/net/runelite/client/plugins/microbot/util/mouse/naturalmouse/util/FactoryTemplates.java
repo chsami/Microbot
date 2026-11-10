@@ -10,6 +10,7 @@ import net.runelite.client.plugins.microbot.util.mouse.naturalmouse.support.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Random;
 
 public class FactoryTemplates {
     /**
@@ -44,7 +45,7 @@ public class FactoryTemplates {
         factory.setNoiseProvider(new DefaultNoiseProvider(1.6));
         factory.getNature().setReactionTimeBaseMs(100);
 
-        DefaultOvershootManager overshootManager = (DefaultOvershootManager) factory.getOvershootManager();
+        DefaultOvershootManager overshootManager = newOvershootManager(factory);
         if (Rs2AntibanSettings.simulateMistakes)
             overshootManager.setOvershoots(3);
         else
@@ -89,7 +90,7 @@ public class FactoryTemplates {
         factory.setDeviationProvider((totalDistanceInPixels, completionFraction) -> DoublePoint.ZERO);
         factory.setNoiseProvider(((random, xStepSize, yStepSize) -> DoublePoint.ZERO));
 
-        DefaultOvershootManager overshootManager = (DefaultOvershootManager) factory.getOvershootManager();
+        DefaultOvershootManager overshootManager = newOvershootManager(factory);
         overshootManager.setOvershoots(0);
 
         factory.setSpeedManager(manager);
@@ -133,7 +134,7 @@ public class FactoryTemplates {
         factory.getNature().setReactionTimeVariationMs(100);
         manager.setMouseMovementBaseTimeMs(currentBaseTime);
 
-        DefaultOvershootManager overshootManager = (DefaultOvershootManager) factory.getOvershootManager();
+        DefaultOvershootManager overshootManager = newOvershootManager(factory);
         if (Rs2AntibanSettings.simulateMistakes)
             overshootManager.setOvershoots(4);
         else
@@ -182,7 +183,7 @@ public class FactoryTemplates {
         factory.getNature().setReactionTimeVariationMs(100);
         manager.setMouseMovementBaseTimeMs(currentBaseTime);
 
-        DefaultOvershootManager overshootManager = (DefaultOvershootManager) factory.getOvershootManager();
+        DefaultOvershootManager overshootManager = newOvershootManager(factory);
         if (Rs2AntibanSettings.simulateMistakes)
             overshootManager.setOvershoots(3);
         else
@@ -220,7 +221,7 @@ public class FactoryTemplates {
         factory.getNature().setReactionTimeVariationMs(90);
         manager.setMouseMovementBaseTimeMs(currentBaseTime);
 
-        DefaultOvershootManager overshootManager = (DefaultOvershootManager) factory.getOvershootManager();
+        DefaultOvershootManager overshootManager = newOvershootManager(factory);
         if (Rs2AntibanSettings.simulateMistakes)
             overshootManager.setOvershoots(2);
         else
@@ -267,7 +268,7 @@ public class FactoryTemplates {
         factory.getNature().setReactionTimeVariationMs(110);
         manager.setMouseMovementBaseTimeMs(400);
 
-        DefaultOvershootManager overshootManager = (DefaultOvershootManager) factory.getOvershootManager();
+        DefaultOvershootManager overshootManager = newOvershootManager(factory);
         if (Rs2AntibanSettings.simulateMistakes)
             overshootManager.setOvershoots(4);
         else
@@ -275,5 +276,19 @@ public class FactoryTemplates {
 
         factory.setSpeedManager(manager);
         return factory;
+    }
+
+    /**
+     * Bug fix: the templates used to configure the overshoot manager already on the nature, so a
+     * setting one template leaves alone kept the value of whichever template ran before. The average
+     * user template sets only the count, so after a gamer template it overshot from 3 px instead of 10
+     * and kept that template's minimum overshoot time. A motion also reads its manager when it moves,
+     * so a later build changed the overshoots of a motion built before it. A new manager per build
+     * starts every overshoot setting from its default.
+     */
+    private static DefaultOvershootManager newOvershootManager(MouseMotionFactory factory) {
+        DefaultOvershootManager overshootManager = new DefaultOvershootManager(new Random());
+        factory.setOvershootManager(overshootManager);
+        return overshootManager;
     }
 }
