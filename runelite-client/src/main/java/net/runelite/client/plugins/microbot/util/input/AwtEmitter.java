@@ -9,6 +9,7 @@ import java.awt.Canvas;
 import java.awt.event.InputEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
+import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
@@ -41,6 +42,24 @@ public final class AwtEmitter
 	private static final Map<Integer, Object> HELD_BUTTONS = new ConcurrentHashMap<>();
 	private static final Object HELD_BUTTONS_LOCK = new Object();
 	private static final Object NO_GESTURE = new Object();
+
+	/*
+	 * The canvas's focusable flag is derived in applyFocusable and only there, from the user's setting
+	 * and from whether any synthetic dispatch is guarding that canvas, both written only under
+	 * FOCUSABLE_LOCK. Bug fix: each dispatch used to read the flag, clear it, and write back what it
+	 * had read, so a setting the user wrote while a dispatch was in flight was undone when it
+	 * returned, and of two overlapping dispatches the first to return made the canvas focusable under
+	 * the second.
+	 *
+	 * The lock is held for the bookkeeping and the one setFocusable call, which runs the component's
+	 * "focusable" property listeners on the calling thread; never across dispatchEvent.
+	 */
+	private static final Object FOCUSABLE_LOCK = new Object();
+	// True before anyone sets it: the Component default and the input-enabled state, so a canvas
+	// nobody configured comes out of a dispatch focusable, as it always did.
+	private static boolean focusableSetting = true;
+	/** Synthetic dispatches guarding each canvas; a canvas is in here only while its count is above zero. */
+	private static final Map<Canvas, Integer> FOCUS_GUARDS = new IdentityHashMap<>();
 
 	private AwtEmitter()
 	{
@@ -495,6 +514,52 @@ public final class AwtEmitter
 		}
 	}
 
+	/**
+	 * The user's input setting for the canvas's focusable flag. The flag must not be written any
+	 * other way, or a synthetic dispatch ending later overwrites the write.
+	 *
+	 * <p>Takes effect at once when no synthetic dispatch is guarding the canvas, otherwise when the
+	 * last one returns. Never waits for a dispatch: the lock it takes is held only around
+	 * bookkeeping and the write to the canvas, never across a listener the game runs.
+	 */
+	public static void setCanvasFocusable(boolean focusable)
+	{
+		// Outside the lock, for the reason given in button().
+		Canvas canvas = canvas();
+		synchronized (FOCUSABLE_LOCK)
+		{
+			focusableSetting = focusable;
+			if (canvas != null)
+			{
+				applyFocusable(canvas);
+			}
+		}
+	}
+
+	/** Derives the flag; call under {@link #FOCUSABLE_LOCK}. */
+	private static void applyFocusable(Canvas canvas)
+	{
+		canvas.setFocusable(focusableSetting && !FOCUS_GUARDS.containsKey(canvas));
+	}
+
+	private static void enterFocusGuard(Canvas canvas)
+	{
+		synchronized (FOCUSABLE_LOCK)
+		{
+			FOCUS_GUARDS.merge(canvas, 1, Integer::sum);
+			applyFocusable(canvas);
+		}
+	}
+
+	private static void exitFocusGuard(Canvas canvas)
+	{
+		synchronized (FOCUSABLE_LOCK)
+		{
+			FOCUS_GUARDS.computeIfPresent(canvas, (guarded, count) -> count == 1 ? null : count - 1);
+			applyFocusable(canvas);
+		}
+	}
+
 	// Jagex's MOUSE_PRESSED listener calls canvas.requestFocus(), stealing OS focus from whatever
 	// the user is typing in. Non-focusable for the dispatch neuters it; mouse delivery ignores
 	// focusable state. Skipped when the canvas already owns focus, where setFocusable(false) would
@@ -508,25 +573,31 @@ public final class AwtEmitter
 		{
 			return false;
 		}
-		boolean canvasIsFocused = canvas.isFocusOwner();
-		boolean wasFocusable = canvas.isFocusable();
-		boolean shouldGuard = wasFocusable && !canvasIsFocused;
-		if (shouldGuard)
-		{
-			canvas.setFocusable(false);
-		}
-		BotEventGuard.begin();
+		boolean guard = !canvas.isFocusOwner();
 		try
 		{
-			canvas.dispatchEvent(event);
-			return true;
+			// Inside the try: the count goes up before anything here can throw, so it always comes
+			// down again.
+			if (guard)
+			{
+				enterFocusGuard(canvas);
+			}
+			BotEventGuard.begin();
+			try
+			{
+				canvas.dispatchEvent(event);
+				return true;
+			}
+			finally
+			{
+				BotEventGuard.end();
+			}
 		}
 		finally
 		{
-			BotEventGuard.end();
-			if (shouldGuard)
+			if (guard)
 			{
-				canvas.setFocusable(true);
+				exitFocusGuard(canvas);
 			}
 		}
 	}
