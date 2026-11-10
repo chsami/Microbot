@@ -29,8 +29,8 @@ import java.util.concurrent.locks.ReentrantLock;
 public final class InputLoop
 {
 	private static final ReentrantLock LOCK = new ReentrantLock();
-	private static final ThreadLocal<Boolean> IN_GESTURE = ThreadLocal.withInitial(() -> Boolean.FALSE);
-	private static final ThreadLocal<Long> GESTURE_GENERATION = ThreadLocal.withInitial(() -> -1L);
+	/** The gesture running on this thread, or null. Its Emit is the gesture's whole context. */
+	private static final ThreadLocal<Emit> CURRENT = new ThreadLocal<>();
 
 	/** Generous: a healthy gesture holds the lock for milliseconds, so this only catches a wedge. */
 	private static volatile long lockTimeoutMs = 5_000L;
@@ -59,14 +59,14 @@ public final class InputLoop
 
 	public static boolean isInGesture()
 	{
-		return IN_GESTURE.get();
+		return CURRENT.get() != null;
 	}
 
 	public static boolean isInputAllowed()
 	{
-		long gestureGeneration = GESTURE_GENERATION.get();
+		Emit gesture = CURRENT.get();
 		return !ScriptPauseController.isPaused()
-			&& (gestureGeneration < 0 || gestureGeneration == ScriptPauseController.getGeneration());
+			&& (gesture == null || gesture.generation == ScriptPauseController.getGeneration());
 	}
 
 	/**
@@ -75,35 +75,50 @@ public final class InputLoop
 	 */
 	static long emitGeneration()
 	{
-		return IN_GESTURE.get() ? GESTURE_GENERATION.get() : ScriptPauseController.getGeneration();
+		Emit gesture = CURRENT.get();
+		return gesture != null ? gesture.generation : ScriptPauseController.getGeneration();
 	}
 
 	/**
 	 * Whether a synthetic event other than a RELEASED may go out, for an emit that took
 	 * {@code generation} from {@link #emitGeneration()}. {@link AwtEmitter} asks immediately before
-	 * each dispatch. Inside a gesture this is {@link #mayContinue()}, whose generation is the
-	 * gesture's; outside one only a pause refuses, since a direct emit has never yielded to the
-	 * human.
+	 * each dispatch.
 	 */
 	static boolean mayEmit(long generation)
 	{
-		if (IN_GESTURE.get())
+		return allowed(generation, isInGesture());
+	}
+
+	/**
+	 * The one test behind every decision here. A gesture also yields to the human and to an
+	 * interrupt; a direct emit outside one only ever answered to a pause.
+	 *
+	 * <p>Interrupt is checked because the waits inside a gesture return at once for an interrupted
+	 * thread: before it was, an interrupted click still pressed, released and clicked at once.
+	 * isInterrupted() leaves the flag for the caller to see.
+	 */
+	private static boolean allowed(long generation, boolean asGesture)
+	{
+		boolean beforeAnyPause = !ScriptPauseController.isPaused()
+			&& generation == ScriptPauseController.getGeneration();
+		if (!asGesture)
 		{
-			return mayContinue();
+			return beforeAnyPause;
 		}
-		return !ScriptPauseController.isPaused() && generation == ScriptPauseController.getGeneration();
+		return beforeAnyPause && !InputArbiter.isHuman() && !Thread.currentThread().isInterrupted();
 	}
 
 	public static Result run(Gesture gesture)
 	{
 		// An inner run would get its own Emit, so an inner abort would clear targetMenu and release
 		// its buttons while the outer gesture carried on believing it held them.
-		if (IN_GESTURE.get())
+		if (CURRENT.get() != null)
 		{
 			throw new IllegalStateException("InputLoop.run is already running a gesture on this thread");
 		}
 		long generation = ScriptPauseController.getGeneration();
-		if (!mayContinue())
+		// Before waiting for the lock, so a request already stale does not queue for it.
+		if (!allowed(generation, true))
 		{
 			return Result.ABORTED;
 		}
@@ -121,17 +136,16 @@ public final class InputLoop
 			Thread.currentThread().interrupt();
 			return Result.ABORTED;
 		}
-		IN_GESTURE.set(Boolean.TRUE);
-		GESTURE_GENERATION.set(generation);
+		Emit emit = new Emit(generation);
+		CURRENT.set(emit);
 		try
 		{
 			// The human may have taken over while this thread waited, and a deferred client-thread
 			// item may have been queued long before it ran.
-			if (!mayContinue() || generation != ScriptPauseController.getGeneration())
+			if (!allowed(generation, true))
 			{
 				return Result.ABORTED;
 			}
-			Emit emit = new Emit();
 			try
 			{
 				gesture.run(emit);
@@ -151,8 +165,7 @@ public final class InputLoop
 		}
 		finally
 		{
-			IN_GESTURE.remove();
-			GESTURE_GENERATION.remove();
+			CURRENT.remove();
 			LOCK.unlock();
 		}
 	}
@@ -184,23 +197,32 @@ public final class InputLoop
 	 * <p>Bug fix: these used to check before the emit and then ignore what the emitter did, so an
 	 * event refused for a missing canvas or a pause landing inside the emit was dropped while the
 	 * gesture ran on, and a pause and resume inside the emit let the event out.
+	 *
+	 * <p>Works only inside its own gesture, on the thread running it. Bug fix: an Emit kept past its
+	 * gesture, or handed to another thread, used to dispatch outside any turn on the pointer, under
+	 * whatever gesture happened to be running there.
 	 */
 	public static final class Emit
 	{
+		/** The pause generation the gesture's request was made in. */
+		private final long generation;
 		private final Set<Integer> heldButtons = new LinkedHashSet<>();
 
-		private Emit()
+		private Emit(long generation)
 		{
+			this.generation = generation;
 		}
 
 		public void move(int canvasX, int canvasY)
 		{
+			requireOwnTurn();
 			endUnless(AwtEmitter.tryMove(canvasX, canvasY));
 		}
 
 		// Recorded only once delivered: a press the game never saw is owed no RELEASED.
 		public void press(int canvasX, int canvasY, int button)
 		{
+			requireOwnTurn();
 			endUnless(AwtEmitter.tryPress(canvasX, canvasY, button));
 			heldButtons.add(button);
 		}
@@ -218,19 +240,34 @@ public final class InputLoop
 
 		public void click(int canvasX, int canvasY, int button)
 		{
+			requireOwnTurn();
 			endUnless(AwtEmitter.tryClick(canvasX, canvasY, button));
 		}
 
 		public void wheel(int canvasX, int canvasY, int wheelRotation, int unitsToScroll)
 		{
+			requireOwnTurn();
 			endUnless(AwtEmitter.tryWheel(canvasX, canvasY, wheelRotation, unitsToScroll));
 		}
 
 		public void checkpoint()
 		{
-			if (!mayContinue())
+			requireOwnTurn();
+			if (!allowed(generation, true))
 			{
 				throw ABORTED;
+			}
+		}
+
+		/**
+		 * Misuse, so an exception the caller sees rather than the gesture's silent abort, which would
+		 * end whatever unrelated gesture is running on this thread.
+		 */
+		private void requireOwnTurn()
+		{
+			if (CURRENT.get() != this)
+			{
+				throw new IllegalStateException("Emit used outside its own gesture");
 			}
 		}
 
@@ -250,18 +287,11 @@ public final class InputLoop
 	 */
 	public static void checkpoint()
 	{
-		if (IN_GESTURE.get() && !mayContinue())
+		Emit gesture = CURRENT.get();
+		if (gesture != null)
 		{
-			throw ABORTED;
+			gesture.checkpoint();
 		}
-	}
-
-	// Interrupt is checked because the waits inside a gesture return at once for an interrupted
-	// thread: before this, an interrupted click still pressed, released and clicked at once.
-	// isInterrupted() leaves the flag for the caller to see.
-	private static boolean mayContinue()
-	{
-		return isInputAllowed() && !InputArbiter.isHuman() && !Thread.currentThread().isInterrupted();
 	}
 
 	private static final Aborted ABORTED = new Aborted();
