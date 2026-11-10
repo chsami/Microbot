@@ -328,8 +328,16 @@ public class Rs2BoatModel implements WorldEntity, IEntity {
     public boolean clickSailButton()
     {
         var widget = Rs2Widget.getWidget(InterfaceID.SailingSidepanel.FACILITIES_ROWS);
-        var setSailButton = widget.getDynamicChildren()[0];
-        return Rs2Widget.clickWidget(setSailButton);
+        if (widget == null)
+        {
+            return false;
+        }
+        var rows = widget.getDynamicChildren();
+        if (rows == null || rows.length == 0)
+        {
+            return false;
+        }
+        return Rs2Widget.clickWidget(rows[0]);
     }
 
     public void setSails()
@@ -339,9 +347,8 @@ public class Rs2BoatModel implements WorldEntity, IEntity {
             return;
         }
         Rs2Tab.switchTo(InterfaceTab.COMBAT);
-        if (!isMovingForward())
+        if (!isMovingForward() && clickSailButton())
         {
-            clickSailButton();
             sleepUntil(() -> isMovingForward(), 2500);
         }
     }
@@ -353,9 +360,8 @@ public class Rs2BoatModel implements WorldEntity, IEntity {
             return;
         }
         Rs2Tab.switchTo(InterfaceTab.COMBAT);
-        if (!isStandingStill())
+        if (!isStandingStill() && clickSailButton())
         {
-            clickSailButton();
             sleepUntil(() -> isStandingStill(), 2500);
         }
     }
