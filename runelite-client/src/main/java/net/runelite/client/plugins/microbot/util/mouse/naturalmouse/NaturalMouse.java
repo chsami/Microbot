@@ -36,7 +36,6 @@ public class NaturalMouse {
     /** How late a trajectory's wait between steps notices a pause or a takeover. */
     private static final long STEP_WAIT_SLICE_MS = 10;
     public final MouseMotionNature nature;
-    private final ThreadLocalRandom random = ThreadLocalRandom.current();
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
     @Inject
     private Client client;
@@ -157,7 +156,6 @@ public class NaturalMouse {
 
 //		var factory = new MouseMotionFactory();
 //		factory.setNature(nature);
-//		factory.setRandom(random);
 //
 //		var manager = new SpeedManagerImpl(flows);
 //		factory.setDeviationProvider(new SinusoidalDeviationProvider(15.0));
@@ -194,6 +192,10 @@ public class NaturalMouse {
             return;
         }
 
+        // Bug fix: these draws used a ThreadLocalRandom stored when this object was built. Its state
+        // lives in whichever thread calls it, and only current() seeds that state, so a thread that
+        // had not called current() itself drew a fixed sequence and left at a fixed point.
+        ThreadLocalRandom random = ThreadLocalRandom.current();
         int horizontal = random.nextBoolean() ? -1 : client.getCanvasWidth() + 1;
         int vertical = random.nextBoolean() ? -1 : client.getCanvasHeight() + 1;
 
@@ -220,6 +222,8 @@ public class NaturalMouse {
 
     // Move to a random point on the screen
     public void moveRandom() {
+        // current() on the calling thread, for the reason in moveOffScreen.
+        ThreadLocalRandom random = ThreadLocalRandom.current();
         moveTo(random.nextInt(0, client.getCanvasWidth() + 1), random.nextInt(0, client.getCanvasHeight() + 1));
     }
 
