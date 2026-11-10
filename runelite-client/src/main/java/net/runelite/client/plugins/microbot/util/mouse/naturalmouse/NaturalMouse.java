@@ -62,7 +62,7 @@ public class NaturalMouse {
         nature.setMouseInfo(new MouseInfoImpl());
     }
 
-    public synchronized void moveTo(int dx, int dy) {
+    public void moveTo(int dx, int dy) {
 //		if(Rs2UiHelper.isStretchedEnabled())
 //		{
 //			dx = Rs2UiHelper.stretchX(dx);
@@ -77,10 +77,28 @@ public class NaturalMouse {
         }
 
         if (!Microbot.getClient().isClientThread()) {
-            move(finalDx, finalDy);
+            inTurn(() -> move(finalDx, finalDy));
         } else {
 
-            executorService.submit(() -> move(finalDx, finalDy));
+            executorService.submit(() -> inTurn(() -> move(finalDx, finalDy)));
+        }
+    }
+
+    /**
+     * Bug fix: a trajectory started outside any gesture (a hover helper, an antiban off-screen or
+     * random move, a plugin calling moveTo) used to take only this object's monitor, so its steps
+     * landed between another thread's click MOVED and PRESSED. Run as a gesture of its own, it takes
+     * turns with clicks on InputLoop's lock. Inside a gesture the lock is already this thread's.
+     *
+     * <p>InputLoop's lock is the only lock on any trajectory path, so no lock order can invert. A
+     * bare trajectory that cannot get the lock within InputLoop's timeout, or starts during a takeover
+     * or pause, returns without dispatching.
+     */
+    private static void inTurn(Runnable trajectory) {
+        if (InputLoop.isInGesture()) {
+            trajectory.run();
+        } else {
+            InputLoop.run(emit -> trajectory.run());
         }
     }
 
@@ -96,16 +114,17 @@ public class NaturalMouse {
         }
     };
 
-    private synchronized void move(int dx, int dy) {
+    private void move(int dx, int dy) {
         var motion = getFactory().build(dx, dy);
         try {
             motion.move(STOP_WHEN_INPUT_IS_NOT_THE_BOTS);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         } catch (TrajectoryStopped stopped) {
-            // The checkpoint below decides whether the enclosing gesture, if any, ends too.
+            // The checkpoint below decides whether the enclosing gesture ends too.
         }
-        // Inside a gesture, a trajectory cut short must end the gesture before it reaches its press.
+        // Always inside a gesture (see inTurn). A trajectory cut short must end it: a click's before
+        // it reaches its press, a bare one's before anything after the trajectory goes out.
         InputLoop.checkpoint();
     }
 
@@ -195,15 +214,17 @@ public class NaturalMouse {
 
         Runnable travelThenCross = () -> {
             // MouseMotion clamps to the canvas, so this reaches the edge and the next call crosses.
+            // A travel cut short ends the gesture inside move, so it never crosses.
             move(targetX, targetY);
             Microbot.getMouse().move(targetX, targetY);
         };
 
-        // One task: moveTo is async on the client thread, where two calls would cross first.
+        // One task and one turn: moveTo is async on the client thread, where two calls would cross
+        // first, and a click must not land between the travel and the crossing.
         if (Microbot.getClient().isClientThread()) {
-            executorService.submit(travelThenCross);
+            executorService.submit(() -> inTurn(travelThenCross));
         } else {
-            travelThenCross.run();
+            inTurn(travelThenCross);
         }
     }
 

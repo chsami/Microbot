@@ -18,6 +18,9 @@ import java.util.concurrent.locks.ReentrantLock;
  * defers through an executor. A dedicated thread would stall every script whenever one gesture
  * waited on a busy client thread.
  *
+ * <p>A NaturalMouse trajectory started outside any gesture runs as a gesture of its own, so it
+ * takes turns here too. Called inside a gesture, it runs under that gesture's turn.
+ *
  * <p>The held-button set exists for drag and for the hold inside a click; a trajectory has
  * nothing to unwind. Keys are not gesture-scoped and live in {@code Rs2Keyboard}.
  */
