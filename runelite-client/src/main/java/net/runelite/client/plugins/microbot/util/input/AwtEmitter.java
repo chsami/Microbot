@@ -9,8 +9,8 @@ import java.awt.Canvas;
 import java.awt.event.InputEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
+import java.util.Map;
 import java.util.Random;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -32,8 +32,14 @@ public final class AwtEmitter
 	private static final int COVERED_SIGMA_PX = 120;
 	private static final double COVERED_EDGE_RETURN_CHANCE = 0.35;
 
-	private static final Set<Integer> HELD_BUTTONS = ConcurrentHashMap.newKeySet();
+	/**
+	 * Every synthetic button the game sees down, with the press that owns it: the gesture's
+	 * {@link InputLoop.Emit} that pressed it, or {@link #NO_GESTURE} for a direct press. Written only
+	 * under {@link #HELD_BUTTONS_LOCK}, together with the dispatch that changed it.
+	 */
+	private static final Map<Integer, Object> HELD_BUTTONS = new ConcurrentHashMap<>();
 	private static final Object HELD_BUTTONS_LOCK = new Object();
+	private static final Object NO_GESTURE = new Object();
 
 	private AwtEmitter()
 	{
@@ -46,12 +52,12 @@ public final class AwtEmitter
 
 	public static void pressed(int canvasX, int canvasY, int button)
 	{
-		tryPress(canvasX, canvasY, button);
+		tryPress(canvasX, canvasY, button, null);
 	}
 
 	public static void released(int canvasX, int canvasY, int button)
 	{
-		button(MouseEvent.MOUSE_RELEASED, canvasX, canvasY, button, InputLoop.emitGeneration(), false);
+		button(MouseEvent.MOUSE_RELEASED, canvasX, canvasY, button, InputLoop.emitGeneration(), null);
 	}
 
 	public static void clicked(int canvasX, int canvasY, int button)
@@ -103,15 +109,19 @@ public final class AwtEmitter
 			component.getX(), component.getY(), 0, false), generation);
 	}
 
-	/** A RELEASED is owed only for a press this returned true for. */
-	static boolean tryPress(int canvasX, int canvasY, int button)
+	/**
+	 * A RELEASED is owed only for a press this returned true for.
+	 *
+	 * @param gesture the gesture the press belongs to, or null for a direct press
+	 */
+	static boolean tryPress(int canvasX, int canvasY, int button, InputLoop.Emit gesture)
 	{
-		return button(MouseEvent.MOUSE_PRESSED, canvasX, canvasY, button, InputLoop.emitGeneration(), false);
+		return button(MouseEvent.MOUSE_PRESSED, canvasX, canvasY, button, InputLoop.emitGeneration(), gesture);
 	}
 
 	static boolean tryClick(int canvasX, int canvasY, int button)
 	{
-		return button(MouseEvent.MOUSE_CLICKED, canvasX, canvasY, button, InputLoop.emitGeneration(), false);
+		return button(MouseEvent.MOUSE_CLICKED, canvasX, canvasY, button, InputLoop.emitGeneration(), null);
 	}
 
 	static boolean tryWheel(int canvasX, int canvasY, int wheelRotation, int unitsToScroll)
@@ -138,15 +148,47 @@ public final class AwtEmitter
 	}
 
 	/**
-	 * A gesture's release, sent only while the button is tracked as held. Checked under the lock the
-	 * pause cleanup sweeps under, so a button comes up once whichever of the two gets there first.
+	 * A gesture's release, sent only while this gesture's own press of the button is down. Bug fix:
+	 * this used to ask only whether the button was down, so once the pause cleanup had released the
+	 * gesture's press, a later press of the same button by another caller was released as if it were
+	 * the gesture's, and a gesture that never pressed released whatever another caller held. Checked
+	 * under the lock the pause cleanup sweeps under, so a press comes up once whichever of the two
+	 * gets there first.
 	 */
-	static void releaseForGesture(int canvasX, int canvasY, int button)
+	static void releaseOwned(int canvasX, int canvasY, int button, InputLoop.Emit gesture)
 	{
-		button(MouseEvent.MOUSE_RELEASED, canvasX, canvasY, button, InputLoop.emitGeneration(), true);
+		// Outside the lock, for the reason given in button().
+		Canvas canvas = canvas();
+		synchronized (HELD_BUTTONS_LOCK)
+		{
+			if (HELD_BUTTONS.get(button) == gesture)
+			{
+				buttonEvent(canvas, MouseEvent.MOUSE_RELEASED, canvasX, canvasY, button, InputLoop.emitGeneration(),
+					gesture);
+			}
+		}
 	}
 
-	private static boolean button(int id, int canvasX, int canvasY, int button, long generation, boolean onlyIfHeld)
+	/** The end-of-gesture sweep: releases what the gesture pressed that is still its own and down. */
+	static void releaseAllOwned(InputLoop.Emit gesture)
+	{
+		Canvas canvas = canvas();
+		synchronized (HELD_BUTTONS_LOCK)
+		{
+			Point at = PointerState.get();
+			for (Map.Entry<Integer, Object> held : HELD_BUTTONS.entrySet())
+			{
+				if (held.getValue() == gesture)
+				{
+					buttonEvent(canvas, MouseEvent.MOUSE_RELEASED, at.getX(), at.getY(), held.getKey(),
+						InputLoop.emitGeneration(), gesture);
+				}
+			}
+		}
+	}
+
+	private static boolean button(int id, int canvasX, int canvasY, int button, long generation,
+		InputLoop.Emit gesture)
 	{
 		boolean releasing = id == MouseEvent.MOUSE_RELEASED;
 		// Early out only, as in tryMove. A RELEASED is never refused: it ends a hold the game sees.
@@ -159,48 +201,52 @@ public final class AwtEmitter
 		Canvas canvas = canvas();
 		synchronized (HELD_BUTTONS_LOCK)
 		{
-			if (onlyIfHeld && !HELD_BUTTONS.contains(button))
-			{
-				return true;
-			}
-			if (canvas == null)
-			{
-				return false;
-			}
-			// A refused ENTERED does not hold back a RELEASED, which must still end the hold.
-			if (!enterIfOutside(canvas, canvasX, canvasY, generation) && !releasing)
-			{
-				return false;
-			}
-			Point component = StretchMapper.toComponent(canvasX, canvasY);
-			recordPosition(canvasX, canvasY);
-			int modifiers = heldMask();
-			if (id == MouseEvent.MOUSE_PRESSED)
-			{
-				modifiers |= InputEvent.getMaskForButton(button);
-			}
-			else if (id == MouseEvent.MOUSE_RELEASED)
-			{
-				modifiers &= ~InputEvent.getMaskForButton(button);
-			}
-			boolean delivered = dispatch(canvas, new MouseEvent(canvas, id, System.currentTimeMillis(), modifiers,
-				component.getX(), component.getY(), 1, false, button), generation);
-			if (delivered && id == MouseEvent.MOUSE_PRESSED)
-			{
-				HELD_BUTTONS.add(button);
-			}
-			else if (delivered && id == MouseEvent.MOUSE_RELEASED)
-			{
-				HELD_BUTTONS.remove(button);
-			}
-			return delivered;
+			return buttonEvent(canvas, id, canvasX, canvasY, button, generation, gesture);
 		}
+	}
+
+	/** Under {@link #HELD_BUTTONS_LOCK}, so the dispatch and the record it changes are one step. */
+	private static boolean buttonEvent(Canvas canvas, int id, int canvasX, int canvasY, int button, long generation,
+		InputLoop.Emit gesture)
+	{
+		boolean releasing = id == MouseEvent.MOUSE_RELEASED;
+		if (canvas == null)
+		{
+			return false;
+		}
+		// A refused ENTERED does not hold back a RELEASED, which must still end the hold.
+		if (!enterIfOutside(canvas, canvasX, canvasY, generation) && !releasing)
+		{
+			return false;
+		}
+		Point component = StretchMapper.toComponent(canvasX, canvasY);
+		recordPosition(canvasX, canvasY);
+		int modifiers = heldMask();
+		if (id == MouseEvent.MOUSE_PRESSED)
+		{
+			modifiers |= InputEvent.getMaskForButton(button);
+		}
+		else if (id == MouseEvent.MOUSE_RELEASED)
+		{
+			modifiers &= ~InputEvent.getMaskForButton(button);
+		}
+		boolean delivered = dispatch(canvas, new MouseEvent(canvas, id, System.currentTimeMillis(), modifiers,
+			component.getX(), component.getY(), 1, false, button), generation);
+		if (delivered && id == MouseEvent.MOUSE_PRESSED)
+		{
+			HELD_BUTTONS.put(button, gesture != null ? gesture : NO_GESTURE);
+		}
+		else if (delivered && id == MouseEvent.MOUSE_RELEASED)
+		{
+			HELD_BUTTONS.remove(button);
+		}
+		return delivered;
 	}
 
 	public static int heldMask()
 	{
 		int mask = 0;
-		for (Integer button : HELD_BUTTONS)
+		for (Integer button : HELD_BUTTONS.keySet())
 		{
 			mask |= InputEvent.getMaskForButton(button);
 		}
@@ -216,15 +262,15 @@ public final class AwtEmitter
 	}
 
 	/**
-	 * Releases synthetic buttons after the pause has fenced off new input. A gesture holding one of
-	 * them skips its own RELEASED afterwards, see {@link #releaseForGesture}.
+	 * Releases synthetic buttons after the pause has fenced off new input, whoever pressed them. A
+	 * gesture holding one of them sends no RELEASED for it afterwards, see {@link #releaseOwned}.
 	 */
 	public static void releaseHeldButtons()
 	{
 		synchronized (HELD_BUTTONS_LOCK)
 		{
 			Point at = PointerState.get();
-			for (Integer button : HELD_BUTTONS.toArray(new Integer[0]))
+			for (Integer button : HELD_BUTTONS.keySet().toArray(new Integer[0]))
 			{
 				released(at.getX(), at.getY(), button);
 			}

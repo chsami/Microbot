@@ -1,12 +1,8 @@
 package net.runelite.client.plugins.microbot.util.input;
 
-import net.runelite.api.Point;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.ScriptPauseController;
 
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -21,10 +17,11 @@ import java.util.concurrent.locks.ReentrantLock;
  * <p>A NaturalMouse trajectory started outside any gesture runs as a gesture of its own, so it
  * takes turns here too. Called inside a gesture, it runs under that gesture's turn.
  *
- * <p>The held-button set exists for drag and for the hold inside a click; a trajectory has
- * nothing to unwind. It records only presses the game saw, and its releases defer to
- * {@link AwtEmitter}'s own record, which the pause cleanup also releases from, so each button
- * comes up once. Keys are not gesture-scoped and live in {@code Rs2Keyboard}.
+ * <p>What a gesture must unwind is read from {@link AwtEmitter}'s one record of buttons that are
+ * down, which notes the gesture whose press put each one there: drag and the hold inside a click
+ * are the gestures that hold one, and a trajectory has nothing to unwind. A gesture releases only
+ * its own press, and the pause cleanup releases from the same record, so each press comes up once.
+ * Keys are not gesture-scoped and live in {@code Rs2Keyboard}.
  */
 public final class InputLoop
 {
@@ -160,7 +157,9 @@ public final class InputLoop
 			}
 			finally
 			{
-				releaseHeldButtons(emit);
+				// At the current point rather than where the gesture was heading. Also runs on
+				// normal completion and on an unexpected throw.
+				AwtEmitter.releaseAllOwned(emit);
 			}
 		}
 		finally
@@ -168,25 +167,6 @@ public final class InputLoop
 			CURRENT.remove();
 			LOCK.unlock();
 		}
-	}
-
-	/**
-	 * Emits the matching RELEASED for anything still held, at the current point rather than where
-	 * the gesture was heading, unless the pause cleanup already released it. Also runs on normal
-	 * completion and on an unexpected throw.
-	 */
-	private static void releaseHeldButtons(Emit emit)
-	{
-		if (emit.heldButtons.isEmpty())
-		{
-			return;
-		}
-		Point at = PointerState.get();
-		for (Integer button : new ArrayList<>(emit.heldButtons))
-		{
-			AwtEmitter.releaseForGesture(at.getX(), at.getY(), button);
-		}
-		emit.heldButtons.clear();
 	}
 
 	/**
@@ -206,7 +186,6 @@ public final class InputLoop
 	{
 		/** The pause generation the gesture's request was made in. */
 		private final long generation;
-		private final Set<Integer> heldButtons = new LinkedHashSet<>();
 
 		private Emit(long generation)
 		{
@@ -219,23 +198,22 @@ public final class InputLoop
 			endUnless(AwtEmitter.tryMove(canvasX, canvasY));
 		}
 
-		// Recorded only once delivered: a press the game never saw is owed no RELEASED.
+		// Recorded as this gesture's press only once delivered: one the game never saw is owed no
+		// RELEASED.
 		public void press(int canvasX, int canvasY, int button)
 		{
 			requireOwnTurn();
-			endUnless(AwtEmitter.tryPress(canvasX, canvasY, button));
-			heldButtons.add(button);
+			endUnless(AwtEmitter.tryPress(canvasX, canvasY, button, this));
 		}
 
 		// The checkpoint is not a dispatch decision, since a RELEASED is never refused. It sends a
 		// gesture the human took over to the sweep, which releases where the pointer now is rather
-		// than at this stale point. Sends nothing for a button the game does not see down: one the
-		// pause cleanup has already released.
+		// than at this stale point. Sends nothing unless this gesture's own press of the button is
+		// down: not for one the pause cleanup has already released, nor for another caller's.
 		public void release(int canvasX, int canvasY, int button)
 		{
 			checkpoint();
-			AwtEmitter.releaseForGesture(canvasX, canvasY, button);
-			heldButtons.remove(button);
+			AwtEmitter.releaseOwned(canvasX, canvasY, button, this);
 		}
 
 		public void click(int canvasX, int canvasY, int button)
