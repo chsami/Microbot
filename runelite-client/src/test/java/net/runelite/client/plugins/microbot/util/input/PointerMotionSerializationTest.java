@@ -75,6 +75,7 @@ public class PointerMotionSerializationTest
 	private volatile Consumer<Dispatched> hook = d -> { };
 
 	private final List<Thread> started = new CopyOnWriteArrayList<>();
+	private final List<CountDownLatch> holdReleases = new CopyOnWriteArrayList<>();
 	private final List<Throwable> threadFailures = new CopyOnWriteArrayList<>();
 
 	private Object previousClient;
@@ -196,6 +197,11 @@ public class PointerMotionSerializationTest
 		{
 			hook = d -> { };
 			designatedClientThread = null;
+			// A deferral's worker is not one of ours to join, so a hold left closed would park it for good.
+			for (CountDownLatch release : holdReleases)
+			{
+				release.countDown();
+			}
 			// Whatever a failed test left behind, end the states that can park a trajectory.
 			ScriptPauseController.setPaused(false).get(2, TimeUnit.SECONDS);
 			InputArbiter.resetForTest();
@@ -598,6 +604,297 @@ public class PointerMotionSerializationTest
 		assertTrue("the factory motion threw: " + threadFailures, threadFailures.isEmpty());
 		assertTrajectoryReached(mover, FAR_DEST, "a motion built from NaturalMouse.getFactory()");
 		assertTrue("the pointer must rest on the destination", PointerState.isAt(FAR_DEST.getX(), FAR_DEST.getY()));
+	}
+
+	@Test(timeout = 30_000)
+	public void aDeferredMoveToQueuedAcrossAPauseAndResumeDispatchesNothing() throws Exception
+	{
+		PointerState.setFromBot(START.getX(), START.getY());
+
+		List<Dispatched> late = requestBeforeAPause(
+			() -> naturalMouse.moveTo(FAR_DEST.getX(), FAR_DEST.getY()),
+			() -> naturalMouse.moveTo(OTHER_DEST.getX(), OTHER_DEST.getY()),
+			true);
+
+		assertTrue("moveTo requested on the client thread before a pause dispatched after the resume: "
+			+ describe(late), late.isEmpty());
+	}
+
+	@Test(timeout = 30_000)
+	public void aDeferredMoveOffScreenQueuedAcrossAPauseAndResumeDispatchesNothing() throws Exception
+	{
+		PointerState.setFromBot(START.getX(), START.getY());
+
+		List<Dispatched> late = requestBeforeAPause(
+			() -> naturalMouse.moveTo(FAR_DEST.getX(), FAR_DEST.getY()),
+			() -> naturalMouse.moveOffScreen(),
+			true);
+
+		assertTrue("moveOffScreen requested on the client thread before a pause dispatched after the resume: "
+			+ describe(late), late.isEmpty());
+	}
+
+	@Test(timeout = 30_000)
+	public void aDeferredMoveRandomQueuedAcrossAPauseAndResumeDispatchesNothing() throws Exception
+	{
+		PointerState.setFromBot(START.getX(), START.getY());
+
+		List<Dispatched> late = requestBeforeAPause(
+			() -> naturalMouse.moveTo(FAR_DEST.getX(), FAR_DEST.getY()),
+			() -> naturalMouse.moveRandom(),
+			true);
+
+		assertTrue("moveRandom requested on the client thread before a pause dispatched after the resume: "
+			+ describe(late), late.isEmpty());
+	}
+
+	@Test(timeout = 30_000)
+	public void aDeferredMoveToWhoseTurnComesDuringThePauseDispatchesNothing() throws Exception
+	{
+		PointerState.setFromBot(START.getX(), START.getY());
+
+		List<Dispatched> late = requestBeforeAPause(
+			() -> naturalMouse.moveTo(FAR_DEST.getX(), FAR_DEST.getY()),
+			() -> naturalMouse.moveTo(OTHER_DEST.getX(), OTHER_DEST.getY()),
+			false);
+
+		assertTrue("moveTo requested on the client thread before a pause dispatched during or after it: "
+			+ describe(late), late.isEmpty());
+	}
+
+	@Test(timeout = 30_000)
+	public void aDeferredClickQueuedAcrossAPauseAndResumeDispatchesNothing() throws Exception
+	{
+		PointerState.setFromBot(START.getX(), START.getY());
+		VirtualMouse mouse = new VirtualMouse();
+
+		List<Dispatched> late = requestBeforeAPause(
+			() -> mouse.click(CLICK_TARGET, false),
+			() -> mouse.click(OTHER_DEST, false),
+			true);
+
+		assertTrue("a click requested on the client thread before a pause dispatched after the resume: "
+			+ describe(late), late.isEmpty());
+	}
+
+	@Test(timeout = 30_000)
+	public void aDeferredDragQueuedAcrossAPauseAndResumeDispatchesNothing() throws Exception
+	{
+		PointerState.setFromBot(START.getX(), START.getY());
+		VirtualMouse mouse = new VirtualMouse();
+
+		List<Dispatched> late = requestBeforeAPause(
+			() -> mouse.click(CLICK_TARGET, false),
+			() -> mouse.drag(new Point(300, 300), new Point(420, 300)),
+			true);
+
+		assertTrue("a drag requested on the client thread before a pause dispatched after the resume: "
+			+ describe(late), late.isEmpty());
+	}
+
+	@Test(timeout = 30_000)
+	public void aDeferredScrollQueuedAcrossAPauseAndResumeDispatchesNothing() throws Exception
+	{
+		PointerState.setFromBot(START.getX(), START.getY());
+		VirtualMouse mouse = new VirtualMouse();
+
+		List<Dispatched> late = requestBeforeAPause(
+			() -> mouse.click(CLICK_TARGET, false),
+			() -> mouse.scrollDown(new Point(300, 200)),
+			true);
+
+		assertTrue("a scroll requested on the client thread before a pause dispatched after the resume: "
+			+ describe(late), late.isEmpty());
+	}
+
+	@Test(timeout = 30_000)
+	public void aDeferredClickWhoseTurnComesDuringThePauseDispatchesNothing() throws Exception
+	{
+		PointerState.setFromBot(START.getX(), START.getY());
+		VirtualMouse mouse = new VirtualMouse();
+
+		List<Dispatched> late = requestBeforeAPause(
+			() -> mouse.click(CLICK_TARGET, false),
+			() -> mouse.click(OTHER_DEST, false),
+			false);
+
+		assertTrue("a click requested on the client thread before a pause dispatched during or after it: "
+			+ describe(late), late.isEmpty());
+	}
+
+	@Test(timeout = 30_000)
+	public void requestsWaitingForThePointerAcrossAPauseAndResumeDispatchNothing() throws Exception
+	{
+		PointerState.setFromBot(START.getX(), START.getY());
+		Hold hold = holdNextMove();
+
+		Thread older = daemon("older-bare-moveTo", () -> naturalMouse.moveTo(FAR_DEST.getX(), FAR_DEST.getY()));
+		older.start();
+		assertTrue("the older moveTo never dispatched, so nothing could wait behind it",
+			hold.entered.await(5, TimeUnit.SECONDS));
+
+		// The older moveTo is parked mid-turn in the listener, so neither of these can dispatch yet.
+		Thread bare = daemon("waiting-bare-moveTo", () -> naturalMouse.moveTo(OTHER_DEST.getX(), OTHER_DEST.getY()));
+		Thread click = daemon("waiting-click", () -> new VirtualMouse().click(new Point(300, 200), false));
+		bare.start();
+		click.start();
+		awaitParkedOrDone(bare, 1_000L);
+		awaitParkedOrDone(click, 1_000L);
+		int madeAt = snapshot().size();
+
+		ScriptPauseController.setPaused(true).get(2, TimeUnit.SECONDS);
+		ScriptPauseController.setPaused(false).get(2, TimeUnit.SECONDS);
+		hold.release.countDown();
+		joinOrFail(older, "the older moveTo");
+		joinOrFail(bare, "the waiting moveTo");
+		joinOrFail(click, "the waiting click");
+
+		List<Dispatched> late = since(madeAt);
+		assertTrue("requests made before a pause, waiting for the pointer, dispatched after the resume: "
+			+ describe(late), late.isEmpty());
+	}
+
+	@Test(timeout = 30_000)
+	public void aMoveToRequestedAfterTheResumeRunsWhileAnOlderOneUnwinds() throws Exception
+	{
+		PointerState.setFromBot(START.getX(), START.getY());
+		designatedClientThread = Thread.currentThread();
+		Hold hold = holdNextMove();
+
+		naturalMouse.moveTo(FAR_DEST.getX(), FAR_DEST.getY());
+		assertTrue("the older client-thread moveTo never dispatched", hold.entered.await(5, TimeUnit.SECONDS));
+		ScriptPauseController.setPaused(true).get(2, TimeUnit.SECONDS);
+		ScriptPauseController.setPaused(false).get(2, TimeUnit.SECONDS);
+
+		naturalMouse.moveTo(OTHER_DEST.getX(), OTHER_DEST.getY());
+		designatedClientThread = null;
+		hold.release.countDown();
+
+		assertTrue("moveTo requested on the client thread after the resume never reached its destination: "
+				+ describe(snapshot()),
+			awaitEvent(e -> e.isMoveTo(OTHER_DEST), 5_000L));
+	}
+
+	@Test(timeout = 30_000)
+	public void aClickRequestedAfterTheResumeRunsWhileAnOlderOneUnwinds() throws Exception
+	{
+		PointerState.setFromBot(START.getX(), START.getY());
+		VirtualMouse mouse = new VirtualMouse();
+		designatedClientThread = Thread.currentThread();
+		Hold hold = holdNextMove();
+
+		mouse.click(CLICK_TARGET, false);
+		assertTrue("the older client-thread click never dispatched", hold.entered.await(5, TimeUnit.SECONDS));
+		ScriptPauseController.setPaused(true).get(2, TimeUnit.SECONDS);
+		ScriptPauseController.setPaused(false).get(2, TimeUnit.SECONDS);
+
+		mouse.quickClick(OTHER_DEST, new NewMenuEntry());
+		designatedClientThread = null;
+		hold.release.countDown();
+
+		assertTrue("a click requested on the client thread after the resume never clicked: " + describe(snapshot()),
+			awaitEvent(e -> e.id == MouseEvent.MOUSE_CLICKED && e.x == OTHER_DEST.getX() && e.y == OTHER_DEST.getY(),
+				5_000L));
+	}
+
+	/** One-shot: the first MOVED dispatched after arming is held in the listener until released. */
+	private static final class Hold
+	{
+		final CountDownLatch entered = new CountDownLatch(1);
+		final CountDownLatch release = new CountDownLatch(1);
+		volatile Thread thread;
+	}
+
+	/**
+	 * Arms a {@link Hold}. Whatever dispatches that MOVED is mid-turn on the pointer while it is held,
+	 * so no request made after it can dispatch until it opens (S1, S6), on whatever thread it waits.
+	 */
+	private Hold holdNextMove()
+	{
+		Hold hold = new Hold();
+		holdReleases.add(hold.release);
+		AtomicBoolean armed = new AtomicBoolean(true);
+		hook = d -> {
+			if (d.id == MouseEvent.MOUSE_MOVED && armed.compareAndSet(true, false))
+			{
+				hold.thread = Thread.currentThread();
+				hold.entered.countDown();
+				awaitQuietly(hold.release, JOIN_MS);
+			}
+		};
+		return hold;
+	}
+
+	/**
+	 * Makes {@code older} on the client thread and holds it at its first MOVED, makes
+	 * {@code underTest} on the client thread behind it, then pauses (and resumes, if asked) before
+	 * the hold opens, so the request under test cannot have started before the pause. Returns what
+	 * was dispatched from the moment the request under test was made.
+	 */
+	private List<Dispatched> requestBeforeAPause(Runnable older, Runnable underTest, boolean resumeBeforeItsTurn)
+		throws Exception
+	{
+		designatedClientThread = Thread.currentThread();
+		Hold hold = holdNextMove();
+		older.run();
+		assertTrue("the older client-thread request never dispatched, so nothing was queued behind it",
+			hold.entered.await(5, TimeUnit.SECONDS));
+		underTest.run();
+		designatedClientThread = null;
+		int madeAt = snapshot().size();
+
+		ScriptPauseController.setPaused(true).get(2, TimeUnit.SECONDS);
+		if (resumeBeforeItsTurn)
+		{
+			ScriptPauseController.setPaused(false).get(2, TimeUnit.SECONDS);
+		}
+		hold.release.countDown();
+		awaitIdle(hold.thread, 5_000L);
+		if (!resumeBeforeItsTurn)
+		{
+			ScriptPauseController.setPaused(false).get(2, TimeUnit.SECONDS);
+		}
+		awaitQuiet(100L, JOIN_MS);
+		return since(madeAt);
+	}
+
+	/**
+	 * Waits until a deferral's worker has run out of queued work: parked untimed on a
+	 * java.util.concurrent blocker, the way an idle executor waits for its next task, or gone.
+	 * Running out of time is not a failure; the quiet wait after it still bounds the observation.
+	 */
+	private static void awaitIdle(Thread worker, long timeoutMs) throws InterruptedException
+	{
+		long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMs);
+		while (System.nanoTime() < deadline)
+		{
+			if (!worker.isAlive()
+				|| (worker.getState() == Thread.State.WAITING && LockSupport.getBlocker(worker) != null))
+			{
+				return;
+			}
+			Thread.sleep(1L);
+		}
+	}
+
+	private List<Dispatched> since(int index)
+	{
+		List<Dispatched> all = snapshot();
+		return new ArrayList<>(all.subList(Math.min(index, all.size()), all.size()));
+	}
+
+	private static String describe(List<Dispatched> list)
+	{
+		List<String> out = new ArrayList<>();
+		for (Dispatched event : list)
+		{
+			out.add(event + " on " + event.thread.getName());
+		}
+		if (out.size() > 8)
+		{
+			return out.size() + " events " + out.subList(0, 4) + " ... " + out.subList(out.size() - 2, out.size());
+		}
+		return out.toString();
 	}
 
 	/**

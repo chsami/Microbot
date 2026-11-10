@@ -5,6 +5,7 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.ScriptPauseController;
 import net.runelite.client.plugins.microbot.util.Global;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.antiban.enums.ActivityIntensity;
@@ -76,11 +77,11 @@ public class NaturalMouse {
             return;
         }
 
+        long generation = ScriptPauseController.getGeneration();
         if (!Microbot.getClient().isClientThread()) {
-            inTurn(() -> move(finalDx, finalDy));
+            inTurn(generation, () -> move(finalDx, finalDy));
         } else {
-
-            executorService.submit(() -> inTurn(() -> move(finalDx, finalDy)));
+            executorService.submit(() -> inTurn(generation, () -> move(finalDx, finalDy)));
         }
     }
 
@@ -93,12 +94,16 @@ public class NaturalMouse {
      * <p>InputLoop's lock is the only lock on any trajectory path, so no lock order can invert. A
      * bare trajectory that cannot get the lock within InputLoop's timeout, or starts during a takeover
      * or pause, returns without dispatching.
+     *
+     * <p>Bug fix: {@code generation} is the pause generation when the trajectory was requested. A
+     * request deferred from the client thread used to take its generation only when its turn came,
+     * so one made before a pause and queued behind another trajectory ran after the resume.
      */
-    private static void inTurn(Runnable trajectory) {
+    private static void inTurn(long generation, Runnable trajectory) {
         if (InputLoop.isInGesture()) {
             trajectory.run();
         } else {
-            InputLoop.run(emit -> trajectory.run());
+            InputLoop.run(generation, emit -> trajectory.run());
         }
     }
 
@@ -221,10 +226,11 @@ public class NaturalMouse {
 
         // One task and one turn: moveTo is async on the client thread, where two calls would cross
         // first, and a click must not land between the travel and the crossing.
+        long generation = ScriptPauseController.getGeneration();
         if (Microbot.getClient().isClientThread()) {
-            executorService.submit(() -> inTurn(travelThenCross));
+            executorService.submit(() -> inTurn(generation, travelThenCross));
         } else {
-            inTurn(travelThenCross);
+            inTurn(generation, travelThenCross);
         }
     }
 

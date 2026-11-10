@@ -105,7 +105,20 @@ public final class InputLoop
 		return beforeAnyPause && !InputArbiter.isHuman() && !Thread.currentThread().isInterrupted();
 	}
 
+	/** Runs a gesture requested now, in the current pause generation. */
 	public static Result run(Gesture gesture)
+	{
+		return run(ScriptPauseController.getGeneration(), gesture);
+	}
+
+	/**
+	 * Runs a gesture requested earlier, in the pause generation that was current when it was
+	 * requested, from {@link ScriptPauseController#getGeneration()}. For a request whose turn is
+	 * deferred to another thread or comes after a wait for the lock: it never dispatches once a pause
+	 * has begun after it was made, even if that pause is over by the time its turn comes. Public
+	 * because the deferring callers, VirtualMouse and NaturalMouse, live in other packages.
+	 */
+	public static Result run(long generation, Gesture gesture)
 	{
 		// An inner run would get its own Emit, so an inner abort would clear targetMenu and release
 		// its buttons while the outer gesture carried on believing it held them.
@@ -113,7 +126,6 @@ public final class InputLoop
 		{
 			throw new IllegalStateException("InputLoop.run is already running a gesture on this thread");
 		}
-		long generation = ScriptPauseController.getGeneration();
 		// Before waiting for the lock, so a request already stale does not queue for it.
 		if (!allowed(generation, true))
 		{
