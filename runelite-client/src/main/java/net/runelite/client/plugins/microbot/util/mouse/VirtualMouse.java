@@ -196,13 +196,11 @@ public class VirtualMouse extends Mouse {
         return click(Microbot.getClient().getMouseCanvasPosition());
     }
 
-    // NaturalMouse steps through here. A step dropped here does not end its trajectory: NaturalMouse
-    // stops after any step that could not go out, and inside a gesture ends the gesture too.
+    // NaturalMouse steps through here. Inside a gesture the emitter decides, and a step it refuses
+    // ends the gesture, trajectory and all. Outside one a move yields to the human and to a held
+    // button here, since no gesture is there to end.
     public Mouse move(Point point) {
-        if (InputArbiter.isHuman()) {
-            return this;
-        }
-        if (AwtEmitter.heldMask() != 0 && !InputLoop.isInGesture()) {
+        if (!InputLoop.isInGesture() && (InputArbiter.isHuman() || AwtEmitter.heldMask() != 0)) {
             return this;
         }
         recordTrailPoint(point);

@@ -45,14 +45,21 @@ public final class AwtEmitter
 	{
 	}
 
+	/*
+	 * Called inside a gesture, a refused move, press, click or wheel ends that gesture, as it would
+	 * through the gesture's Emit. Bug fix: a NaturalMouse step comes through here, and a refused step
+	 * used to be dropped, leaving NaturalMouse to look at the input state again afterwards; by then a
+	 * takeover could have lapsed and the gesture went on to jump to its target and press.
+	 */
+
 	public static void moved(int canvasX, int canvasY)
 	{
-		tryMove(canvasX, canvasY);
+		endGestureUnless(tryMove(canvasX, canvasY));
 	}
 
 	public static void pressed(int canvasX, int canvasY, int button)
 	{
-		tryPress(canvasX, canvasY, button, null);
+		endGestureUnless(tryPress(canvasX, canvasY, button, null));
 	}
 
 	public static void released(int canvasX, int canvasY, int button)
@@ -62,12 +69,20 @@ public final class AwtEmitter
 
 	public static void clicked(int canvasX, int canvasY, int button)
 	{
-		tryClick(canvasX, canvasY, button);
+		endGestureUnless(tryClick(canvasX, canvasY, button));
 	}
 
 	public static void wheel(int canvasX, int canvasY, int wheelRotation, int unitsToScroll)
 	{
-		tryWheel(canvasX, canvasY, wheelRotation, unitsToScroll);
+		endGestureUnless(tryWheel(canvasX, canvasY, wheelRotation, unitsToScroll));
+	}
+
+	private static void endGestureUnless(boolean accepted)
+	{
+		if (!accepted)
+		{
+			InputLoop.endGestureOnRefusal();
+		}
 	}
 
 	/*

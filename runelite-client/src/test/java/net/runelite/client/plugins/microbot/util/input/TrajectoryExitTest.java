@@ -12,6 +12,7 @@ import net.runelite.client.plugins.microbot.util.mouse.BotEventGuard;
 import net.runelite.client.plugins.microbot.util.mouse.Mouse;
 import net.runelite.client.plugins.microbot.util.mouse.VirtualMouse;
 import net.runelite.client.plugins.microbot.util.mouse.naturalmouse.NaturalMouse;
+import net.runelite.client.plugins.microbot.util.mouse.naturalmouse.api.MouseMotion;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -102,6 +103,8 @@ public class TrajectoryExitTest
 	private volatile Point nudgeTarget;
 	private volatile java.awt.Point stubPosition;
 	private volatile java.awt.Point stubDestination;
+	private volatile boolean humanInsideTheTrajectory;
+	private volatile boolean markingActivity;
 
 	private Canvas canvas;
 	private VirtualMouse mouse;
@@ -462,6 +465,80 @@ public class TrajectoryExitTest
 		assertClickSequence(events, TARGET);
 	}
 
+	// T8: a trajectory stopped because input was not the bot's ends its gesture there, even when
+	// input is the bot's again by the time anything after the trajectory asks.
+
+	@Test(timeout = 20_000)
+	public void aClickWhoseTrajectoryStoppedNeitherJumpsToTheTargetNorPresses() throws Exception
+	{
+		nudgeTarget = TARGET;
+		humanOnlyWhileTheTrajectoryRuns();
+		arm(MouseEvent.MOUSE_MOVED, () -> humanInsideTheTrajectory = true);
+		Thread click = startSubject("click", () -> mouse.click(TARGET, false));
+
+		awaitTrigger();
+		click.join(1_000);
+
+		assertFalse("click still running 1 s after its trajectory stopped", click.isAlive());
+		assertTheTrajectoryStoppedAtTheTrigger(MouseEvent.MOUSE_MOVED, TARGET);
+		assertEquals("a click whose trajectory stopped while input was not the bot's went on once input was"
+			+ " the bot's again, jumping to the target and pressing", "[]", sinceMark().toString());
+		assertFalse("the pointer was moved onto the target after the trajectory stopped short of it",
+			PointerState.isAt(TARGET.getX(), TARGET.getY()));
+		assertEquals("another thread's gesture must get InputLoop once the stopped click returned",
+			InputLoop.Result.COMPLETED, gestureFromAnotherThread());
+	}
+
+	@Test(timeout = 20_000)
+	public void aDragWhoseTravelStoppedNeverJumpsToItsEndPoint() throws Exception
+	{
+		nudgeTarget = DRAG_END;
+		humanOnlyWhileTheTrajectoryRuns();
+		arm(MouseEvent.MOUSE_DRAGGED, () -> humanInsideTheTrajectory = true);
+		Thread drag = startSubject("drag", () -> mouse.drag(DRAG_START, DRAG_END));
+
+		awaitTrigger();
+		drag.join(1_000);
+
+		assertFalse("drag still running 1 s after its travel stopped", drag.isAlive());
+		assertTheTrajectoryStoppedAtTheTrigger(MouseEvent.MOUSE_DRAGGED, DRAG_END);
+		// The release that unwinds the held button is expected; where it lands is the question.
+		List<Recorded> atTheEnd = at(sinceMark(), DRAG_END);
+		assertEquals("a drag whose travel stopped while input was not the bot's went on once input was the"
+			+ " bot's again, dispatching at its end point " + DRAG_END + "; everything after the stop: "
+			+ sinceMark(), "[]", atTheEnd.toString());
+		assertFalse("the pointer was moved onto the drag's end point after its travel stopped short of it",
+			PointerState.isAt(DRAG_END.getX(), DRAG_END.getY()));
+		assertEquals("another thread's gesture must get InputLoop once the stopped drag returned",
+			InputLoop.Result.COMPLETED, gestureFromAnotherThread());
+	}
+
+	@Test(timeout = 20_000)
+	public void aMoveOffScreenWhoseTravelStoppedNeverCrossesTheEdge() throws Exception
+	{
+		NaturalMouse naturalMouse = Microbot.naturalMouse;
+		// moveOffScreen reads the injected client, not Microbot.getClient().
+		Field injected = NaturalMouse.class.getDeclaredField("client");
+		injected.setAccessible(true);
+		injected.set(naturalMouse, Microbot.getClient());
+		// From the centre every edge is hundreds of pixels away, so the trigger step is mid-travel.
+		PointerState.setFromBot(CANVAS_W / 2, CANVAS_H / 2);
+		humanOnlyWhileTheTrajectoryRuns();
+		arm(MouseEvent.MOUSE_MOVED, () -> humanInsideTheTrajectory = true);
+		Thread mover = startSubject("moveOffScreen", naturalMouse::moveOffScreen);
+
+		awaitTrigger();
+		mover.join(1_000);
+
+		assertFalse("moveOffScreen still running 1 s after its travel stopped", mover.isAlive());
+		assertTheTrajectoryStoppedAtTheTrigger(MouseEvent.MOUSE_MOVED, null);
+		assertEquals("a moveOffScreen whose travel stopped while input was not the bot's went on once input"
+			+ " was the bot's again and crossed the edge", "[]", sinceMark().toString());
+		assertFalse("the pointer was taken off the canvas after the travel stopped", PointerState.isOutside());
+		assertEquals("another thread's gesture must get InputLoop once the stopped moveOffScreen returned",
+			InputLoop.Result.COMPLETED, gestureFromAnotherThread());
+	}
+
 	// Scenario steps.
 
 	private void pauseThenResumeAndAwaitReturn(Thread subjectThread, String what) throws Exception
@@ -513,6 +590,80 @@ public class TrajectoryExitTest
 	private void useFakeArbiterClock()
 	{
 		InputArbiter.setClockForTest(fakeNanos::get);
+	}
+
+	/**
+	 * Once armed, the arbiter answers "human" to every question the subject thread asks from inside
+	 * MouseMotion, and "not human" to every question asked anywhere else. So the trajectory's own
+	 * check is the one that sees the human, and anything after the trajectory sees the bot again,
+	 * with no dependence on timing or on how many times either side reads the arbiter.
+	 *
+	 * <p>The answer goes through the arbiter's clock: the idle window is the only part of
+	 * {@link InputArbiter#isHuman()} that is read through code a test supplies.
+	 */
+	private void humanOnlyWhileTheTrajectoryRuns()
+	{
+		long activityAt = 1_000_000_000L;
+		long longIdle = TimeUnit.SECONDS.toNanos(60);
+		InputArbiter.setClockForTest(() ->
+			markingActivity || (humanInsideTheTrajectory && Thread.currentThread() == subject && insideMouseMotion())
+				? activityAt
+				: activityAt + longIdle);
+		// A press and release with no button left down: from here on the idle window alone decides.
+		markingActivity = true;
+		InputArbiter.onRealButtonPressed(MouseEvent.BUTTON1);
+		InputArbiter.onRealButtonReleased(MouseEvent.BUTTON1);
+		markingActivity = false;
+		assertFalse("setup: input must be the bot's until the trigger step", InputArbiter.isHuman());
+	}
+
+	private static boolean insideMouseMotion()
+	{
+		String motion = MouseMotion.class.getName();
+		for (StackTraceElement frame : Thread.currentThread().getStackTrace())
+		{
+			String name = frame.getClassName();
+			if (name.equals(motion) || name.startsWith(motion + "$"))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Without this a test could pass or fail for the wrong reason: if the "human" answers never reach
+	 * a check that stops the trajectory, it simply carries on, and what follows is a normal click.
+	 * Steps at the destination are left out because a jump there is the defect, not a carried-on
+	 * trajectory, which always has intermediate steps left after the trigger.
+	 */
+	private void assertTheTrajectoryStoppedAtTheTrigger(int stepId, Point destination)
+	{
+		List<Recorded> steps = new ArrayList<>();
+		for (Recorded event : sinceMark())
+		{
+			boolean atDestination = destination != null && event.x == destination.getX()
+				&& event.y == destination.getY();
+			if (event.id == stepId && !atDestination)
+			{
+				steps.add(event);
+			}
+		}
+		assertEquals("setup: the trajectory kept stepping after the arbiter answered human inside it, so no"
+			+ " check in the trajectory stopped it and this scenario did not run", "[]", steps.toString());
+	}
+
+	private static List<Recorded> at(List<Recorded> recorded, Point point)
+	{
+		List<Recorded> out = new ArrayList<>();
+		for (Recorded event : recorded)
+		{
+			if (event.x == point.getX() && event.y == point.getY())
+			{
+				out.add(event);
+			}
+		}
+		return out;
 	}
 
 	// Harness.

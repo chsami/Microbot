@@ -271,16 +271,15 @@ public final class InputLoop
 	}
 
 	/**
-	 * Ends the gesture running on this thread the way a failed {@link Emit#checkpoint()} does, for
-	 * code that is handed no {@link Emit}: a NaturalMouse trajectory inside a gesture calls it when
-	 * it stops, so the gesture cannot carry on to its press. Does nothing outside a gesture.
+	 * Ends the gesture running on this thread, for an emit refused on a path that is handed no
+	 * {@link Emit}: a NaturalMouse step goes through VirtualMouse to {@link AwtEmitter#moved}. The
+	 * refusal is the decision; nothing is checked again. Does nothing outside a gesture.
 	 */
-	public static void checkpoint()
+	static void endGestureOnRefusal()
 	{
-		Emit gesture = CURRENT.get();
-		if (gesture != null)
+		if (CURRENT.get() != null)
 		{
-			gesture.checkpoint();
+			throw ABORTED;
 		}
 	}
 

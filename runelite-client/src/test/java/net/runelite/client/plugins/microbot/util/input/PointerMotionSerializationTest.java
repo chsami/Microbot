@@ -12,6 +12,7 @@ import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
 import net.runelite.client.plugins.microbot.util.mouse.BotEventGuard;
 import net.runelite.client.plugins.microbot.util.mouse.VirtualMouse;
 import net.runelite.client.plugins.microbot.util.mouse.naturalmouse.NaturalMouse;
+import net.runelite.client.plugins.microbot.util.mouse.naturalmouse.api.MouseMotion;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -60,6 +61,19 @@ public class PointerMotionSerializationTest
 	 */
 	private static final long OVERLAP_WAIT_MS = 200L;
 	private static final long JOIN_MS = 15_000L;
+	/**
+	 * The least a slow-profile motion (see useSlowProfileWithoutOvershoots) can take when it waits
+	 * between its steps. Its one movement is planned at 400ms or more; MouseMotion splits it into
+	 * ceil(time / 8) steps and floors each step's share to whole milliseconds, which loses at most an
+	 * eighth: 7 / 8 of 400ms.
+	 */
+	private static final long PLANNED_FLOOR_MS = 350L;
+	/**
+	 * The same motion with its waits skipped took 6 to 8ms here, and 11ms at most with every core
+	 * saturated (measured 2026-11-09 against a one-line fix). This leaves over 18 times that for a
+	 * loaded machine and still sits 150ms under PLANNED_FLOOR_MS, which no machine can undercut.
+	 */
+	private static final long NO_WAIT_CEILING_MS = 200L;
 
 	private static final Point START = new Point(40, 40);
 	private static final Point CLICK_TARGET = new Point(620, 90);
@@ -82,6 +96,7 @@ public class PointerMotionSerializationTest
 	private Object previousNaturalMouse;
 	private ActivityIntensity previousIntensity;
 	private boolean previousDynamicIntensity;
+	private boolean previousSimulateMistakes;
 
 	private static final class Dispatched
 	{
@@ -178,6 +193,7 @@ public class PointerMotionSerializationTest
 		previousNaturalMouse = swapStatic("naturalMouse", naturalMouse);
 		previousIntensity = Rs2Antiban.getActivityIntensity();
 		previousDynamicIntensity = Rs2AntibanSettings.dynamicIntensity;
+		previousSimulateMistakes = Rs2AntibanSettings.simulateMistakes;
 
 		PointerState.reset();
 		InputArbiter.resetForTest();
@@ -226,6 +242,7 @@ public class PointerMotionSerializationTest
 			swapStatic("naturalMouse", previousNaturalMouse);
 			Rs2Antiban.setActivityIntensity(previousIntensity);
 			Rs2AntibanSettings.dynamicIntensity = previousDynamicIntensity;
+			Rs2AntibanSettings.simulateMistakes = previousSimulateMistakes;
 			Microbot.targetMenu = null;
 			PointerState.reset();
 			InputArbiter.resetForTest();
@@ -604,6 +621,60 @@ public class PointerMotionSerializationTest
 		assertTrue("the factory motion threw: " + threadFailures, threadFailures.isEmpty());
 		assertTrajectoryReached(mover, FAR_DEST, "a motion built from NaturalMouse.getFactory()");
 		assertTrue("the pointer must rest on the destination", PointerState.isAt(FAR_DEST.getX(), FAR_DEST.getY()));
+	}
+
+	@Test(timeout = 30_000)
+	public void aFactoryMotionOnTheClientThreadNeverWaitsBetweenItsSteps() throws Exception
+	{
+		useSlowProfileWithoutOvershoots();
+		designatedClientThread = Thread.currentThread();
+		// Class loading and first-use cost stay out of the measured span.
+		PointerState.setFromBot(START.getX(), START.getY());
+		naturalMouse.getFactory().build(START.getX() + 60, START.getY() + 40).move();
+
+		PointerState.setFromBot(START.getX(), START.getY());
+		MouseMotion motion = naturalMouse.getFactory().build(FAR_DEST.getX(), FAR_DEST.getY());
+		int before = snapshot().size();
+		long t0 = System.nanoTime();
+		motion.move();
+		long tookMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0);
+
+		assertTrue("a factory motion on the client thread took " + tookMs + "ms; one that waits between its steps"
+				+ " takes at least " + PLANNED_FLOOR_MS + "ms, and one that does not stays under " + NO_WAIT_CEILING_MS + "ms",
+			tookMs < NO_WAIT_CEILING_MS);
+		List<Dispatched> moved = since(before);
+		assertTrue("a factory motion on the client thread must still dispatch its steps", moved.size() > 1);
+		assertTrue("a factory motion on the client thread must still end on its destination: " + describe(moved),
+			moved.get(moved.size() - 1).isMoveTo(FAR_DEST) && PointerState.isAt(FAR_DEST.getX(), FAR_DEST.getY()));
+	}
+
+	@Test(timeout = 30_000)
+	public void aFactoryMotionOffTheClientThreadStillTakesItsPlannedTime() throws Exception
+	{
+		useSlowProfileWithoutOvershoots();
+		PointerState.setFromBot(START.getX(), START.getY());
+		MouseMotion motion = naturalMouse.getFactory().build(FAR_DEST.getX(), FAR_DEST.getY());
+		int before = snapshot().size();
+		long t0 = System.nanoTime();
+		motion.move();
+		long tookMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0);
+
+		assertTrue("a factory motion off the client thread took " + tookMs + "ms, under the " + PLANNED_FLOOR_MS
+			+ "ms its plan allows, so it skipped the waits between its steps", tookMs >= PLANNED_FLOOR_MS);
+		List<Dispatched> moved = since(before);
+		assertTrue("a factory motion off the client thread must end on its destination: " + describe(moved),
+			!moved.isEmpty() && moved.get(moved.size() - 1).isMoveTo(FAR_DEST));
+	}
+
+	/**
+	 * VERY_LOW builds FactoryTemplates.createAverageComputerUserMotionFactory: a 400ms base time, to
+	 * which DefaultSpeedManager adds 0 to 100 percent and more for idle flow buckets. Without
+	 * mistakes there are no overshoots, so a motion is one movement planned at 400ms or more.
+	 */
+	private static void useSlowProfileWithoutOvershoots()
+	{
+		Rs2Antiban.setActivityIntensity(ActivityIntensity.VERY_LOW);
+		Rs2AntibanSettings.simulateMistakes = false;
 	}
 
 	@Test(timeout = 30_000)

@@ -6,7 +6,6 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.ScriptPauseController;
-import net.runelite.client.plugins.microbot.util.Global;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.antiban.enums.ActivityIntensity;
 import net.runelite.client.plugins.microbot.util.input.InputArbiter;
@@ -14,7 +13,6 @@ import net.runelite.client.plugins.microbot.util.input.InputLoop;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.mouse.naturalmouse.api.MouseInfoAccessor;
 import net.runelite.client.plugins.microbot.util.mouse.naturalmouse.api.MouseMotionFactory;
-import net.runelite.client.plugins.microbot.util.mouse.naturalmouse.api.MouseMotionObserver;
 import net.runelite.client.plugins.microbot.util.mouse.naturalmouse.api.SystemCalls;
 import net.runelite.client.plugins.microbot.util.mouse.naturalmouse.support.DefaultMouseMotionNature;
 import net.runelite.client.plugins.microbot.util.mouse.naturalmouse.support.DefaultSpeedManager;
@@ -31,9 +29,12 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 public class NaturalMouse {
+    /** How late a trajectory's wait between steps notices a pause or a takeover. */
+    private static final long STEP_WAIT_SLICE_MS = 10;
     public final MouseMotionNature nature;
     private final ThreadLocalRandom random = ThreadLocalRandom.current();
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
@@ -108,37 +109,22 @@ public class NaturalMouse {
     }
 
     /**
-     * Bug fix: a pause or a takeover makes VirtualMouse drop each step without moving the pointer,
-     * and Global.sleep parks during a pause and returns at once under a takeover, so the motion
-     * used to park until the resume and then never arrive, or spin until the human went idle.
-     * Checking after every step ends it at the first step once input is no longer the bot's.
+     * Always inside a gesture (see inTurn). Each step goes out through the emitter, whose refusal
+     * of a step, for a pause, a takeover or an interrupt, ends the gesture right there, so nothing
+     * after the trajectory goes out: not a click's press, not a drag's release point, not
+     * moveOffScreen's crossing.
+     *
+     * <p>Bug fix: a stopped trajectory used to be stopped by one check and its gesture ended by a
+     * second look at the input state afterwards. A takeover that lapsed in between let the gesture
+     * carry on, jumping the pointer to the target and pressing.
      */
-    private static final MouseMotionObserver STOP_WHEN_INPUT_IS_NOT_THE_BOTS = (x, y) -> {
-        if (!InputLoop.isInputAllowed() || InputArbiter.isHuman()) {
-            throw TrajectoryStopped.INSTANCE;
-        }
-    };
-
     private void move(int dx, int dy) {
         var motion = getFactory().build(dx, dy);
         try {
-            motion.move(STOP_WHEN_INPUT_IS_NOT_THE_BOTS);
+            motion.move();
         } catch (InterruptedException e) {
+            // Kept set, so the gesture's next emit is refused and ends it.
             Thread.currentThread().interrupt();
-        } catch (TrajectoryStopped stopped) {
-            // The checkpoint below decides whether the enclosing gesture ends too.
-        }
-        // Always inside a gesture (see inTurn). A trajectory cut short must end it: a click's before
-        // it reaches its press, a bare one's before anything after the trajectory goes out.
-        InputLoop.checkpoint();
-    }
-
-    /** Control flow out of MouseMotion's loop, not an error, so shared and stack-traceless. */
-    private static final class TrajectoryStopped extends RuntimeException {
-        private static final TrajectoryStopped INSTANCE = new TrajectoryStopped();
-
-        private TrajectoryStopped() {
-            super(null, null, false, false);
         }
     }
 
@@ -264,9 +250,32 @@ public class NaturalMouse {
             return System.currentTimeMillis();
         }
 
+        /**
+         * Not Global.sleep, which parks through a pause while this trajectory holds the pointer's
+         * turn. The wait is only cut short here; what ends the trajectory is its next step, which the
+         * emitter refuses.
+         *
+         * <p>Bug fix: the client thread never waits, as Global.sleep already ensured. A motion built
+         * from getFactory() and run there slept between its steps once this wait replaced it.
+         */
         @Override
         public void sleep(long time) {
-            Global.sleep((int) time);
+            if (Microbot.getClient().isClientThread()) {
+                return;
+            }
+            long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(time);
+            long left;
+            while ((left = deadline - System.nanoTime()) > 0) {
+                if (ScriptPauseController.isPaused() || InputArbiter.isHuman()) {
+                    return;
+                }
+                try {
+                    Thread.sleep(Math.min(TimeUnit.NANOSECONDS.toMillis(left) + 1, STEP_WAIT_SLICE_MS));
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+            }
         }
 
         @Override
