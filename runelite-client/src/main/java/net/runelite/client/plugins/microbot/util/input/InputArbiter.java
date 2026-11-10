@@ -124,7 +124,8 @@ public final class InputArbiter
 	/**
 	 * Drops everything held: a key down when the window deactivates never delivers its
 	 * KEY_RELEASED, and since a held key suppresses idle resume the stale entry would pin HUMAN
-	 * forever. Ctrl held for a screenshot is the usual way in.
+	 * forever. Ctrl held for a screenshot is the usual way in. {@link CanvasInputListener#detach()}
+	 * calls it too, since a listener that stops listening never hears those releases either.
 	 *
 	 * <p>Marks activity rather than clearing it, so the idle window runs from the focus loss.
 	 */

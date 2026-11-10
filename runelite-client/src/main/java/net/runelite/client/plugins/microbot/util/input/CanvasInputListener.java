@@ -73,6 +73,9 @@ public final class CanvasInputListener implements MouseListener, MouseMotionList
 		previous.removeKeyListener(INSTANCE);
 		previous.removeFocusListener(INSTANCE);
 		attachedCanvas = null;
+		// Bug fix: anything held now can never deliver its release to a removed listener, so the
+		// arbiter used to stay pinned on HUMAN until the next focus loss. Same transition as one.
+		InputArbiter.onFocusLost();
 	}
 
 	static boolean isAttachedTo(Canvas canvas)
