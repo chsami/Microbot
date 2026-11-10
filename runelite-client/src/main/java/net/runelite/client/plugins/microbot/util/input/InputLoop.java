@@ -10,6 +10,10 @@ import java.util.concurrent.locks.ReentrantLock;
  * Runs one input gesture at a time, since there is one cursor, and unwinds it if the human takes
  * over, a pause begins, its thread is interrupted or one of its events is refused partway through.
  *
+ * <p>A gesture answers to the pause generation in force when it was requested, not when its turn
+ * came, so a request made before a pause never dispatches after it. Its {@link Emit} is its context
+ * and works only inside it.
+ *
  * <p>A lock, not a thread and queue: script threads should block, and the client thread already
  * defers through an executor. A dedicated thread would stall every script whenever one gesture
  * waited on a busy client thread.

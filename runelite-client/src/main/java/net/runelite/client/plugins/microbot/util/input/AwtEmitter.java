@@ -18,8 +18,9 @@ import java.util.concurrent.ThreadLocalRandom;
  * Dispatches synthetic AWT mouse events on the game canvas, taking canvas coordinates.
  *
  * <p>Whether an event may go out is decided once, at its dispatch, by {@link InputLoop#mayEmit}, and
- * the package-private try methods report that decision so a gesture can end on it. A RELEASED is
- * never refused.
+ * the package-private try methods report that decision. Inside a gesture a refused event ends the
+ * gesture, whichever method it came through. A RELEASED is never refused. The tracked pointer in
+ * {@link PointerState} changes only with an event that went out.
  */
 public final class AwtEmitter
 {
@@ -64,7 +65,7 @@ public final class AwtEmitter
 
 	public static void released(int canvasX, int canvasY, int button)
 	{
-		button(MouseEvent.MOUSE_RELEASED, canvasX, canvasY, button, InputLoop.emitGeneration(), null);
+		button(MouseEvent.MOUSE_RELEASED, canvasX, canvasY, button, null);
 	}
 
 	public static void clicked(int canvasX, int canvasY, int button)
@@ -86,42 +87,40 @@ public final class AwtEmitter
 	}
 
 	/*
-	 * The try methods return false when their event was refused, by InputLoop.mayEmit or for want
-	 * of a canvas, and true when it went out or, for a move off the canvas, nothing was due. Each
-	 * takes its pause generation on entry: the gesture's inside one, the current one outside, so an
-	 * event never goes out once a pause has begun after its gesture or its call started.
+	 * The try methods return false when their event was refused, by InputLoop.mayEmit at the
+	 * dispatch or for want of a canvas, and true when it went out or, for a move off the canvas,
+	 * nothing was due. Each takes its pause generation on entry: the gesture's inside one, the current
+	 * one outside, so an event never goes out once a pause has begun after its gesture or its call
+	 * started. Nothing is decided before the dispatch, and PointerState changes only after one.
+	 *
+	 * Bug fix: PointerState used to be written before the dispatch, so an event refused there still
+	 * moved the tracked pointer, or recorded it as inside or outside, though the game never saw it.
+	 * A pointer recorded inside after a refused ENTERED never announced its return.
 	 */
 
 	static boolean tryMove(int canvasX, int canvasY)
 	{
 		long generation = InputLoop.emitGeneration();
-		// Early out only, so a move already refused leaves the tracked pointer alone. It is the
-		// predicate the dispatch applies, and a refusal here reaches the caller exactly as one there
-		// does. For a pause the two cannot differ, since the generation only ever moves on.
-		if (!InputLoop.mayEmit(generation))
-		{
-			return false;
-		}
 		// Here, not at the callers: every motion funnels through this method.
 		if (isOffCanvas(canvasX, canvasY))
 		{
 			return exitCanvas(canvasX, canvasY, generation);
 		}
 		Canvas canvas = canvas();
-		if (canvas == null)
-		{
-			return false;
-		}
-		if (!enterIfOutside(canvas, canvasX, canvasY, generation))
+		if (canvas == null || !enterIfOutside(canvas, canvasX, canvasY, generation))
 		{
 			return false;
 		}
 		Point component = StretchMapper.toComponent(canvasX, canvasY);
-		recordPosition(canvasX, canvasY);
 		int held = heldMask();
 		int id = held == 0 ? MouseEvent.MOUSE_MOVED : MouseEvent.MOUSE_DRAGGED;
-		return dispatch(canvas, new MouseEvent(canvas, id, System.currentTimeMillis(), held,
-			component.getX(), component.getY(), 0, false), generation);
+		if (!dispatch(canvas, new MouseEvent(canvas, id, System.currentTimeMillis(), held,
+			component.getX(), component.getY(), 0, false), generation))
+		{
+			return false;
+		}
+		recordPosition(canvasX, canvasY);
+		return true;
 	}
 
 	/**
@@ -131,35 +130,30 @@ public final class AwtEmitter
 	 */
 	static boolean tryPress(int canvasX, int canvasY, int button, InputLoop.Emit gesture)
 	{
-		return button(MouseEvent.MOUSE_PRESSED, canvasX, canvasY, button, InputLoop.emitGeneration(), gesture);
+		return button(MouseEvent.MOUSE_PRESSED, canvasX, canvasY, button, gesture);
 	}
 
 	static boolean tryClick(int canvasX, int canvasY, int button)
 	{
-		return button(MouseEvent.MOUSE_CLICKED, canvasX, canvasY, button, InputLoop.emitGeneration(), null);
+		return button(MouseEvent.MOUSE_CLICKED, canvasX, canvasY, button, null);
 	}
 
 	static boolean tryWheel(int canvasX, int canvasY, int wheelRotation, int unitsToScroll)
 	{
 		long generation = InputLoop.emitGeneration();
-		// Early out only, as in tryMove.
-		if (!InputLoop.mayEmit(generation))
-		{
-			return false;
-		}
 		Canvas canvas = canvas();
-		if (canvas == null)
-		{
-			return false;
-		}
-		if (!enterIfOutside(canvas, canvasX, canvasY, generation))
+		if (canvas == null || !enterIfOutside(canvas, canvasX, canvasY, generation))
 		{
 			return false;
 		}
 		Point component = StretchMapper.toComponent(canvasX, canvasY);
+		if (!dispatch(canvas, new MouseWheelEvent(canvas, MouseEvent.MOUSE_WHEEL, System.currentTimeMillis(), 0,
+			component.getX(), component.getY(), 0, false, 0, unitsToScroll, wheelRotation), generation))
+		{
+			return false;
+		}
 		recordPosition(canvasX, canvasY);
-		return dispatch(canvas, new MouseWheelEvent(canvas, MouseEvent.MOUSE_WHEEL, System.currentTimeMillis(), 0,
-			component.getX(), component.getY(), 0, false, 0, unitsToScroll, wheelRotation), generation);
+		return true;
 	}
 
 	/**
@@ -178,8 +172,7 @@ public final class AwtEmitter
 		{
 			if (HELD_BUTTONS.get(button) == gesture)
 			{
-				buttonEvent(canvas, MouseEvent.MOUSE_RELEASED, canvasX, canvasY, button, InputLoop.emitGeneration(),
-					gesture);
+				releaseEvent(canvas, canvasX, canvasY, button);
 			}
 		}
 	}
@@ -195,47 +188,56 @@ public final class AwtEmitter
 			{
 				if (held.getValue() == gesture)
 				{
-					buttonEvent(canvas, MouseEvent.MOUSE_RELEASED, at.getX(), at.getY(), held.getKey(),
-						InputLoop.emitGeneration(), gesture);
+					releaseEvent(canvas, at.getX(), at.getY(), held.getKey());
 				}
 			}
 		}
 	}
 
-	private static boolean button(int id, int canvasX, int canvasY, int button, long generation,
-		InputLoop.Emit gesture)
+	private static boolean button(int id, int canvasX, int canvasY, int button, InputLoop.Emit gesture)
 	{
-		boolean releasing = id == MouseEvent.MOUSE_RELEASED;
-		// Early out only, as in tryMove. A RELEASED is never refused: it ends a hold the game sees.
-		if (!releasing && !InputLoop.mayEmit(generation))
-		{
-			return false;
-		}
+		long generation = InputLoop.emitGeneration();
 		// Outside the lock: the pause cleanup takes it, and a lookup that waits on the client would
 		// otherwise hold the cleanup up with it.
 		Canvas canvas = canvas();
+		if (canvas == null)
+		{
+			return false;
+		}
+		// Outside the lock too, so no lock is held across a dispatch that is not a button's. A
+		// RELEASED announces no entry: a real release after the pointer left reaches the canvas
+		// without one, since the canvas that took the press keeps the button's events.
+		if (id != MouseEvent.MOUSE_RELEASED && !enterIfOutside(canvas, canvasX, canvasY, generation))
+		{
+			return false;
+		}
 		synchronized (HELD_BUTTONS_LOCK)
 		{
 			return buttonEvent(canvas, id, canvasX, canvasY, button, generation, gesture);
 		}
 	}
 
-	/** Under {@link #HELD_BUTTONS_LOCK}, so the dispatch and the record it changes are one step. */
+	/** A RELEASED is never refused, so the generation it is dispatched under does not matter. */
+	private static boolean releaseEvent(Canvas canvas, int canvasX, int canvasY, int button)
+	{
+		return buttonEvent(canvas, MouseEvent.MOUSE_RELEASED, canvasX, canvasY, button, InputLoop.emitGeneration(),
+			null);
+	}
+
+	/**
+	 * Under {@link #HELD_BUTTONS_LOCK}, so the dispatch and the record it changes are one step against
+	 * the pause cleanup. A press, click or release only; any ENTERED went out before the lock.
+	 *
+	 * @param gesture the gesture a press belongs to, or null for a direct press
+	 */
 	private static boolean buttonEvent(Canvas canvas, int id, int canvasX, int canvasY, int button, long generation,
 		InputLoop.Emit gesture)
 	{
-		boolean releasing = id == MouseEvent.MOUSE_RELEASED;
 		if (canvas == null)
 		{
 			return false;
 		}
-		// A refused ENTERED does not hold back a RELEASED, which must still end the hold.
-		if (!enterIfOutside(canvas, canvasX, canvasY, generation) && !releasing)
-		{
-			return false;
-		}
 		Point component = StretchMapper.toComponent(canvasX, canvasY);
-		recordPosition(canvasX, canvasY);
 		int modifiers = heldMask();
 		if (id == MouseEvent.MOUSE_PRESSED)
 		{
@@ -245,17 +247,21 @@ public final class AwtEmitter
 		{
 			modifiers &= ~InputEvent.getMaskForButton(button);
 		}
-		boolean delivered = dispatch(canvas, new MouseEvent(canvas, id, System.currentTimeMillis(), modifiers,
-			component.getX(), component.getY(), 1, false, button), generation);
-		if (delivered && id == MouseEvent.MOUSE_PRESSED)
+		if (!dispatch(canvas, new MouseEvent(canvas, id, System.currentTimeMillis(), modifiers,
+			component.getX(), component.getY(), 1, false, button), generation))
+		{
+			return false;
+		}
+		recordPosition(canvasX, canvasY);
+		if (id == MouseEvent.MOUSE_PRESSED)
 		{
 			HELD_BUTTONS.put(button, gesture != null ? gesture : NO_GESTURE);
 		}
-		else if (delivered && id == MouseEvent.MOUSE_RELEASED)
+		else if (id == MouseEvent.MOUSE_RELEASED)
 		{
 			HELD_BUTTONS.remove(button);
 		}
-		return delivered;
+		return true;
 	}
 
 	public static int heldMask()
@@ -282,12 +288,14 @@ public final class AwtEmitter
 	 */
 	public static void releaseHeldButtons()
 	{
+		// Outside the lock, for the reason given in button().
+		Canvas canvas = canvas();
 		synchronized (HELD_BUTTONS_LOCK)
 		{
 			Point at = PointerState.get();
 			for (Integer button : HELD_BUTTONS.keySet().toArray(new Integer[0]))
 			{
-				released(at.getX(), at.getY(), button);
+				releaseEvent(canvas, at.getX(), at.getY(), button);
 			}
 			if (!HELD_BUTTONS.isEmpty())
 			{
@@ -301,7 +309,8 @@ public final class AwtEmitter
 	 * the canvas. A real MOUSE_EXITED leaves it tracking (-1,-1), so a bare MOVED or PRESSED after
 	 * that delivers motion for a pointer it does not think exists.
 	 *
-	 * @return false when the ENTERED was refused
+	 * @return false when the ENTERED was refused, which leaves the pointer recorded as outside, so
+	 * the next event that does go out announces the return
 	 */
 	private static boolean enterIfOutside(Canvas canvas, int fallbackX, int fallbackY, long generation)
 	{
@@ -309,19 +318,21 @@ public final class AwtEmitter
 		{
 			return true;
 		}
-		// Cleared first: the ENTERED below must not re-enter this method.
-		PointerState.markInside();
-
 		Point at = PointerState.get();
 		int exitX = at.getX() < 0 ? fallbackX : at.getX();
 		int exitY = at.getY() < 0 ? fallbackY : at.getY();
 
 		Point entry = reentryPoint(exitX, exitY, canvasWidth(), canvasHeight(), ThreadLocalRandom.current());
 		Point component = StretchMapper.toComponent(entry.getX(), entry.getY());
+		if (!dispatch(canvas, new MouseEvent(canvas, MouseEvent.MOUSE_ENTERED, System.currentTimeMillis(), 0,
+			component.getX(), component.getY(), 0, false), generation))
+		{
+			return false;
+		}
+		PointerState.markInside();
 		// Recorded too, or the next click presses where the pointer never travelled.
 		recordPosition(entry.getX(), entry.getY());
-		return dispatch(canvas, new MouseEvent(canvas, MouseEvent.MOUSE_ENTERED, System.currentTimeMillis(), 0,
-			component.getX(), component.getY(), 0, false), generation);
+		return true;
 	}
 
 	private static boolean isOffCanvas(int canvasX, int canvasY)
@@ -341,7 +352,7 @@ public final class AwtEmitter
 	 * destination: antiban parks the cursor there, so sending nothing because the pointer is already
 	 * out is not a refusal.
 	 *
-	 * @return false when the EXITED was refused
+	 * @return false when the EXITED was refused, which leaves the pointer recorded as inside
 	 */
 	private static boolean exitCanvas(int canvasX, int canvasY, long generation)
 	{
@@ -349,12 +360,12 @@ public final class AwtEmitter
 		{
 			return true;
 		}
-		// Real events win, same rule recordPosition applies: a synthetic exit must not move the
-		// human's pointer off the canvas underneath them. Outside a gesture that is simply nothing to
-		// send; inside one a takeover refuses the move, as the dispatch would have.
-		if (InputArbiter.isHuman())
+		// Real events win, same rule recordPosition applies: outside a gesture a synthetic exit must
+		// not move the human's pointer off the canvas underneath them, and there is nothing to send.
+		// Inside one the dispatch decides, and a takeover refuses it.
+		if (!InputLoop.isInGesture() && InputArbiter.isHuman())
 		{
-			return !InputLoop.isInGesture();
+			return true;
 		}
 
 		Canvas canvas = canvas();
@@ -362,13 +373,17 @@ public final class AwtEmitter
 		{
 			return false;
 		}
+		Point component = StretchMapper.toComponent(canvasX, canvasY);
+		if (!dispatch(canvas, new MouseEvent(canvas, MouseEvent.MOUSE_EXITED, System.currentTimeMillis(), 0,
+			component.getX(), component.getY(), 0, false), generation))
+		{
+			return false;
+		}
 		// Through recordPosition, so the bot reference moves out with the pointer. Left behind, the
 		// motion threshold would be measured from a point the bot has already left.
 		recordPosition(canvasX, canvasY);
 		PointerState.markOutside();
-		Point component = StretchMapper.toComponent(canvasX, canvasY);
-		return dispatch(canvas, new MouseEvent(canvas, MouseEvent.MOUSE_EXITED, System.currentTimeMillis(), 0,
-			component.getX(), component.getY(), 0, false), generation);
+		return true;
 	}
 
 	/**
