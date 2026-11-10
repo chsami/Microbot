@@ -12,7 +12,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Runs one input gesture at a time, since there is one cursor, and unwinds it if the human takes
- * over partway through.
+ * over, a pause begins or its thread is interrupted partway through.
  *
  * <p>A lock, not a thread and queue: script threads should block, and the client thread already
  * defers through an executor. A dedicated thread would stall every script whenever one gesture
@@ -73,7 +73,7 @@ public final class InputLoop
 			throw new IllegalStateException("InputLoop.run is already running a gesture on this thread");
 		}
 		long generation = ScriptPauseController.getGeneration();
-		if (!isInputAllowed() || InputArbiter.isHuman())
+		if (!mayContinue())
 		{
 			return Result.ABORTED;
 		}
@@ -97,7 +97,7 @@ public final class InputLoop
 		{
 			// The human may have taken over while this thread waited, and a deferred client-thread
 			// item may have been queued long before it ran.
-			if (!isInputAllowed() || generation != ScriptPauseController.getGeneration() || InputArbiter.isHuman())
+			if (!mayContinue() || generation != ScriptPauseController.getGeneration())
 			{
 				return Result.ABORTED;
 			}
@@ -188,11 +188,32 @@ public final class InputLoop
 
 		public void checkpoint()
 		{
-			if (!isInputAllowed() || InputArbiter.isHuman())
+			if (!mayContinue())
 			{
 				throw ABORTED;
 			}
 		}
+	}
+
+	/**
+	 * Ends the gesture running on this thread the way a failed {@link Emit#checkpoint()} does, for
+	 * code that is handed no {@link Emit}: a NaturalMouse trajectory inside a gesture calls it when
+	 * it stops, so the gesture cannot carry on to its press. Does nothing outside a gesture.
+	 */
+	public static void checkpoint()
+	{
+		if (IN_GESTURE.get() && !mayContinue())
+		{
+			throw ABORTED;
+		}
+	}
+
+	// Interrupt is checked because the waits inside a gesture return at once for an interrupted
+	// thread: before this, an interrupted click still pressed, released and clicked at once.
+	// isInterrupted() leaves the flag for the caller to see.
+	private static boolean mayContinue()
+	{
+		return isInputAllowed() && !InputArbiter.isHuman() && !Thread.currentThread().isInterrupted();
 	}
 
 	private static final Aborted ABORTED = new Aborted();

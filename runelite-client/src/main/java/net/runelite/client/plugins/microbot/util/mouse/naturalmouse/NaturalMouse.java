@@ -8,9 +8,12 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.Global;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.antiban.enums.ActivityIntensity;
+import net.runelite.client.plugins.microbot.util.input.InputArbiter;
+import net.runelite.client.plugins.microbot.util.input.InputLoop;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.mouse.naturalmouse.api.MouseInfoAccessor;
 import net.runelite.client.plugins.microbot.util.mouse.naturalmouse.api.MouseMotionFactory;
+import net.runelite.client.plugins.microbot.util.mouse.naturalmouse.api.MouseMotionObserver;
 import net.runelite.client.plugins.microbot.util.mouse.naturalmouse.api.SystemCalls;
 import net.runelite.client.plugins.microbot.util.mouse.naturalmouse.support.DefaultMouseMotionNature;
 import net.runelite.client.plugins.microbot.util.mouse.naturalmouse.support.DefaultSpeedManager;
@@ -81,12 +84,37 @@ public class NaturalMouse {
         }
     }
 
+    /**
+     * Bug fix: a pause or a takeover makes VirtualMouse drop each step without moving the pointer,
+     * and Global.sleep parks during a pause and returns at once under a takeover, so the motion
+     * used to park until the resume and then never arrive, or spin until the human went idle.
+     * Checking after every step ends it at the first step once input is no longer the bot's.
+     */
+    private static final MouseMotionObserver STOP_WHEN_INPUT_IS_NOT_THE_BOTS = (x, y) -> {
+        if (!InputLoop.isInputAllowed() || InputArbiter.isHuman()) {
+            throw TrajectoryStopped.INSTANCE;
+        }
+    };
+
     private synchronized void move(int dx, int dy) {
         var motion = getFactory().build(dx, dy);
         try {
-            motion.move();
+            motion.move(STOP_WHEN_INPUT_IS_NOT_THE_BOTS);
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            Thread.currentThread().interrupt();
+        } catch (TrajectoryStopped stopped) {
+            // The checkpoint below decides whether the enclosing gesture, if any, ends too.
+        }
+        // Inside a gesture, a trajectory cut short must end the gesture before it reaches its press.
+        InputLoop.checkpoint();
+    }
+
+    /** Control flow out of MouseMotion's loop, not an error, so shared and stack-traceless. */
+    private static final class TrajectoryStopped extends RuntimeException {
+        private static final TrajectoryStopped INSTANCE = new TrajectoryStopped();
+
+        private TrajectoryStopped() {
+            super(null, null, false, false);
         }
     }
 
