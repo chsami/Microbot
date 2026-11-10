@@ -96,16 +96,40 @@ public final class AwtEmitter
 			component.getX(), component.getY(), 0, false, 0, unitsToScroll, wheelRotation));
 	}
 
-	private static void button(int id, int canvasX, int canvasY, int button)
+	/**
+	 * A gesture's press. Its RELEASED is owed only if this returns true: the game never saw a press
+	 * that found no canvas or met a pause before its dispatch.
+	 */
+	static boolean pressForGesture(int canvasX, int canvasY, int button)
+	{
+		return button(MouseEvent.MOUSE_PRESSED, canvasX, canvasY, button);
+	}
+
+	/**
+	 * A gesture's release, sent only while the button is tracked as held. Checked under the lock the
+	 * pause cleanup sweeps under, so a button comes up once whichever of the two gets there first.
+	 */
+	static void releaseForGesture(int canvasX, int canvasY, int button)
+	{
+		synchronized (HELD_BUTTONS_LOCK)
+		{
+			if (HELD_BUTTONS.contains(button))
+			{
+				button(MouseEvent.MOUSE_RELEASED, canvasX, canvasY, button);
+			}
+		}
+	}
+
+	private static boolean button(int id, int canvasX, int canvasY, int button)
 	{
 		if (id != MouseEvent.MOUSE_RELEASED && !InputLoop.isInputAllowed())
 		{
-			return;
+			return false;
 		}
 		Canvas canvas = canvas();
 		if (canvas == null)
 		{
-			return;
+			return false;
 		}
 		synchronized (HELD_BUTTONS_LOCK)
 		{
@@ -131,6 +155,7 @@ public final class AwtEmitter
 			{
 				HELD_BUTTONS.remove(button);
 			}
+			return delivered;
 		}
 	}
 
@@ -152,7 +177,10 @@ public final class AwtEmitter
 		}
 	}
 
-	/** Releases synthetic buttons after the pause has fenced off new input. */
+	/**
+	 * Releases synthetic buttons after the pause has fenced off new input. A gesture holding one of
+	 * them skips its own RELEASED afterwards, see {@link #releaseForGesture}.
+	 */
 	public static void releaseHeldButtons()
 	{
 		synchronized (HELD_BUTTONS_LOCK)

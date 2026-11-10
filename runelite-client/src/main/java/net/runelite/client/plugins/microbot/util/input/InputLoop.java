@@ -22,7 +22,9 @@ import java.util.concurrent.locks.ReentrantLock;
  * takes turns here too. Called inside a gesture, it runs under that gesture's turn.
  *
  * <p>The held-button set exists for drag and for the hold inside a click; a trajectory has
- * nothing to unwind. Keys are not gesture-scoped and live in {@code Rs2Keyboard}.
+ * nothing to unwind. It records only presses the game saw, and its releases defer to
+ * {@link AwtEmitter}'s own record, which the pause cleanup also releases from, so each button
+ * comes up once. Keys are not gesture-scoped and live in {@code Rs2Keyboard}.
  */
 public final class InputLoop
 {
@@ -132,7 +134,8 @@ public final class InputLoop
 
 	/**
 	 * Emits the matching RELEASED for anything still held, at the current point rather than where
-	 * the gesture was heading. Also runs on normal completion and on an unexpected throw.
+	 * the gesture was heading, unless the pause cleanup already released it. Also runs on normal
+	 * completion and on an unexpected throw.
 	 */
 	private static void releaseHeldButtons(Emit emit)
 	{
@@ -143,7 +146,7 @@ public final class InputLoop
 		Point at = PointerState.get();
 		for (Integer button : new ArrayList<>(emit.heldButtons))
 		{
-			AwtEmitter.released(at.getX(), at.getY(), button);
+			AwtEmitter.releaseForGesture(at.getX(), at.getY(), button);
 		}
 		emit.heldButtons.clear();
 	}
@@ -163,17 +166,23 @@ public final class InputLoop
 			AwtEmitter.moved(canvasX, canvasY);
 		}
 
+		// Bug fix: the button used to be recorded before the dispatch, so a press the game never
+		// saw (no canvas, or a pause landing after the checkpoint) still got a RELEASED at the end.
 		public void press(int canvasX, int canvasY, int button)
 		{
 			checkpoint();
-			heldButtons.add(button);
-			AwtEmitter.pressed(canvasX, canvasY, button);
+			if (AwtEmitter.pressForGesture(canvasX, canvasY, button))
+			{
+				heldButtons.add(button);
+			}
 		}
 
+		// Sends nothing for a button the game does not see down: one whose press never landed, or
+		// one the pause cleanup has already released.
 		public void release(int canvasX, int canvasY, int button)
 		{
 			checkpoint();
-			AwtEmitter.released(canvasX, canvasY, button);
+			AwtEmitter.releaseForGesture(canvasX, canvasY, button);
 			heldButtons.remove(button);
 		}
 
