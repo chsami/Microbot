@@ -27,7 +27,10 @@ public class KhazardTowerCrumbledWallTest {
 	private static final WorldPoint WALL_OUTSIDE = new WorldPoint(2509, 3252, 0);
 	private static final WorldPoint WALL_INSIDE = new WorldPoint(2509, 3254, 0);
 	private static final WorldPoint LADDER_APPROACH = new WorldPoint(2502, 3252, 0);
-	private static final int PLANE = 0;
+	private static final int LADDER_UP_ID = 16683;
+	private static final int LADDER_DOWN_ID = 16679;
+	private static final WorldPoint LADDER_UPSTAIRS = new WorldPoint(2502, 3252, 1);
+	private static final WorldPoint CHEST_APPROACH = new WorldPoint(2506, 3258, 1);
 	private static final int MIN_X = 2480;
 	private static final int MAX_X = 2530;
 	private static final int MIN_Y = 3230;
@@ -84,16 +87,42 @@ public class KhazardTowerCrumbledWallTest {
 		assertTrue(reachableOnFoot(map, config, WALL_OUTSIDE).contains(DOOR_OUTSIDE));
 	}
 
+	@Test
+	public void towerLadderConnectsBothFloors() {
+		Transport up = findTransport(LADDER_UP_ID, LADDER_APPROACH, LADDER_UPSTAIRS);
+		Transport down = findTransport(LADDER_DOWN_ID, LADDER_UPSTAIRS, LADDER_APPROACH);
+
+		assertEquals("Climb-up", up.getAction());
+		assertEquals("Ladder", up.getName());
+		assertTrue(up.getVarplayers().isEmpty());
+		assertEquals("Climb-down", down.getAction());
+		assertEquals("Ladder", down.getName());
+		assertTrue(down.getVarplayers().isEmpty());
+	}
+
+	@Test
+	public void chestIsReachableOnFootFromTheTopOfTheLadder() {
+		PathfinderConfig config = createConfig();
+		CollisionMap map = new CollisionMap(collisionData);
+
+		assertTrue(reachableOnFoot(map, config, LADDER_UPSTAIRS).contains(CHEST_APPROACH));
+	}
+
 	private static Transport findCrumbledWall(WorldPoint origin, WorldPoint destination) {
+		return findTransport(CRUMBLED_WALL_ID, origin, destination);
+	}
+
+	private static Transport findTransport(int objectId, WorldPoint origin, WorldPoint destination) {
 		Set<Transport> atOrigin = transports.get(origin);
 		assertNotNull("no transports at " + origin, atOrigin);
 		return atOrigin.stream()
-				.filter(t -> t.getObjectId() == CRUMBLED_WALL_ID && destination.equals(t.getDestination()))
+				.filter(t -> t.getObjectId() == objectId && destination.equals(t.getDestination()))
 				.findFirst()
-				.orElseThrow(() -> new AssertionError("no Crumbled wall transport " + origin + " -> " + destination));
+				.orElseThrow(() -> new AssertionError("no transport " + objectId + " " + origin + " -> " + destination));
 	}
 
 	private static Set<WorldPoint> reachableOnFoot(CollisionMap map, PathfinderConfig config, WorldPoint start) {
+		final int plane = start.getPlane();
 		Set<WorldPoint> seen = new HashSet<>();
 		ArrayDeque<WorldPoint> queue = new ArrayDeque<>();
 		seen.add(start);
@@ -105,11 +134,11 @@ public class KhazardTowerCrumbledWallTest {
 					if (dx == 0 && dy == 0) {
 						continue;
 					}
-					WorldPoint next = new WorldPoint(cur.getX() + dx, cur.getY() + dy, PLANE);
+					WorldPoint next = new WorldPoint(cur.getX() + dx, cur.getY() + dy, plane);
 					if (next.getX() < MIN_X || next.getX() > MAX_X || next.getY() < MIN_Y || next.getY() > MAX_Y) {
 						continue;
 					}
-					if (seen.contains(next) || !map.canStep(cur.getX(), cur.getY(), PLANE, dx, dy)) {
+					if (seen.contains(next) || !map.canStep(cur.getX(), cur.getY(), plane, dx, dy)) {
 						continue;
 					}
 					if (config.isBlockedTransportStep(
