@@ -1110,6 +1110,7 @@ public class ShortestPathPlugin extends Plugin {
         if (entry.getOption().equals(SET) && entry.getTarget().equals(TARGET)) {
             WorldPoint worldPoint = getClickedWalkablePoint("Target");
             if (worldPoint != null) {
+                walkingNoticeOverlay.clear();
                 shortestPathScript.setTriggerWalker(worldPoint);
             }
         }

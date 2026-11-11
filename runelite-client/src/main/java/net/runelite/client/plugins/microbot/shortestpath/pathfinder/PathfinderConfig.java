@@ -1354,7 +1354,8 @@ public class PathfinderConfig {
                 return "it needs a quest step or unlock you have not done yet";
             case CURRENCY:
                 return "it needs " + transport.getCurrencyAmount() + " " + transport.getCurrencyName()
-                        + " (you have " + currencyOnHand(transport.getCurrencyName()) + ")";
+                        + " (you have " + currencyOnHand(transport.getCurrencyName())
+                        + (useBankItems ? " in your inventory and bank)" : " in your inventory)");
             case TELEPORTS_DISABLED:
                 return "teleports are turned off for this walk";
             case TELEPORT_ITEM:

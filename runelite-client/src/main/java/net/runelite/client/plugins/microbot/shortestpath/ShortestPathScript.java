@@ -172,8 +172,7 @@ public class ShortestPathScript extends Script {
                 String reason = state == WalkerState.UNREACHABLE ? unreachableReason() : null;
                 if (state == WalkerState.UNREACHABLE && reason == null) {
                     reason = "Can't reach " + target.getX() + ", " + target.getY()
-                            + ": the walker found no route it can use from where you are."
-                            + " Check your Web Walker transport settings or start from somewhere else.";
+                            + ": the walker stopped before getting there.";
                 }
                 // Client-thread reads must not hold this monitor: hotkeys also acquire it.
                 boolean retryAllowed = state == WalkerState.EXIT

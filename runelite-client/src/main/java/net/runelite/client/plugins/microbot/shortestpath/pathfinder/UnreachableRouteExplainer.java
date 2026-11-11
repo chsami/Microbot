@@ -126,7 +126,7 @@ public final class UnreachableRouteExplainer
 	{
 		if (isUsable(live, transport))
 		{
-			return "it was found blocked earlier this session";
+			return "the walker could not get through it earlier and will skip it until you restart the client";
 		}
 		String reason = live.describeTransportRejection(transport);
 		return reason == null ? "it is not available to you right now" : reason;

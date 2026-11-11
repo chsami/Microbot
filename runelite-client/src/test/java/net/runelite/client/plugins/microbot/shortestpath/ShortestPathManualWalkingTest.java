@@ -141,7 +141,7 @@ public class ShortestPathManualWalkingTest {
         try (Harness script = new Harness(new ArrayList<>(), new ArrayList<>(), unreachable)) {
             script.result = WalkerState.UNREACHABLE;
             script.reason = "Can't reach 2933, 3148: the route needs the ship to Musa Point (Captain Tobias), "
-                    + "but it needs 30 Coins (you have 15).";
+                    + "but it needs 30 Coins (you have 15 in your inventory).";
             script.setTriggerWalker(FIRST);
             script.flushPreview();
             script.startWalkTask();
