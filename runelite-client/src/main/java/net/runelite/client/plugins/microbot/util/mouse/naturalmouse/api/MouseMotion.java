@@ -75,25 +75,22 @@ public class MouseMotion {
 
     /**
      * Blocking call, starts to move the cursor to the specified location from where it currently is.
+     * Returns once the cursor reads as arrived or the planned movements are used up, whichever is first.
      *
      * @param observer Provide observer if you are interested receiving the location of mouse on every step
-     * @throws InterruptedException when interrupted
+     * @throws InterruptedException when the thread is interrupted, checked before every step
      */
     public void move(MouseMotionObserver observer) throws InterruptedException {
         updateMouseInfo();
 
         MovementFactory movementFactory = new MovementFactory(xDest, yDest, speedManager, overshootManager, screenSize);
         ArrayDeque<MouseMovement> movements = movementFactory.createMovements(mousePosition);
-        int overshoots = movements.size() - 1;
-        while (mousePosition.x != xDest || mousePosition.y != yDest) {
-            if (movements.isEmpty()) {
-                // This shouldn't usually happen, but it's possible that somehow we won't end up on the target,
-                // Then just re-attempt from mouse new position. (There are known JDK bugs, that can cause sending the cursor
-                // to wrong pixel)
-                updateMouseInfo();
-                movements = movementFactory.createMovements(mousePosition);
-            }
-
+        // Bug fix: this loop used to re-plan from the current position whenever the plan ran out
+        // short of the destination, so a pointer that never moved (every step dropped) never
+        // ended. The plan's last movement ends with a correcting step onto the destination, so
+        // an undisturbed motion always arrives within its own plan; the bound is that plan,
+        // overshoots and reaction pauses included, however slow the profile.
+        while ((mousePosition.x != xDest || mousePosition.y != yDest) && !movements.isEmpty()) {
             MouseMovement movement = movements.removeFirst();
             double distance = movement.distance;
             long mouseMovementMs = movement.time;
@@ -153,7 +150,7 @@ public class MouseMotion {
                 mousePosX = limitByScreenWidth(mousePosX);
                 mousePosY = limitByScreenHeight(mousePosY);
 
-                systemCalls.setMousePosition(mousePosX, mousePosY);
+                setMousePosition(mousePosX, mousePosY);
 
                 // Allow other action to take place or just observe, we'll later compensate by sleeping less.
                 observer.observe(mousePosX, mousePosY);
@@ -167,7 +164,7 @@ public class MouseMotion {
                 // It's possible that mouse is manually moved or for some other reason.
                 // Let's start next step from pre-calculated location to prevent errors from accumulating.
                 // But print warning as this is not expected behavior.
-                systemCalls.setMousePosition(movement.destX, movement.destY);
+                setMousePosition(movement.destX, movement.destY);
                 // Let's wait a bit before getting mouse info.
                 sleepAround(SLEEP_AFTER_ADJUSTMENT_MS, 0);
                 updateMouseInfo();
@@ -178,6 +175,15 @@ public class MouseMotion {
                 sleepAround(reactionTimeBaseMs, reactionTimeVariationMs);
             }
         }
+    }
+
+    // Bug fix: nothing here honored the interrupt this method declares, and SystemCalls.sleep may
+    // return at once for an interrupted thread, so the rest of the trajectory went out in a burst.
+    private void setMousePosition(int x, int y) throws InterruptedException {
+        if (Thread.interrupted()) {
+            throw new InterruptedException();
+        }
+        systemCalls.setMousePosition(x, y);
     }
 
     private int limitByScreenWidth(int value) {

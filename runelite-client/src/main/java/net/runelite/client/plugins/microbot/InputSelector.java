@@ -1,6 +1,7 @@
 package net.runelite.client.plugins.microbot;
 
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.util.input.AwtEmitter;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.ClientUI;
 import net.runelite.client.ui.NavigationButton;
@@ -62,7 +63,7 @@ public class InputSelector {
         if (transitionPending) return;
         if (ScriptPauseController.isPaused()) inputChangedDuringPause = true;
         ClientUI.getClient().setEnabled(true);
-        Microbot.getClient().getCanvas().setFocusable(true);
+        AwtEmitter.setCanvasFocusable(true);
         addAndRemoveButtons();
     }
 
@@ -70,7 +71,7 @@ public class InputSelector {
         if (transitionPending) return;
         if (ScriptPauseController.isPaused()) inputChangedDuringPause = true;
         ClientUI.getClient().setEnabled(false);
-        Microbot.getClient().getCanvas().setFocusable(false);
+        AwtEmitter.setCanvasFocusable(false);
         addAndRemoveButtons();
     }
 
@@ -86,7 +87,7 @@ public class InputSelector {
         if (pause) {
             // Keep user input fenced until any bot-held keys/buttons have been released.
             ClientUI.getClient().setEnabled(false);
-            Microbot.getClient().getCanvas().setFocusable(false);
+            AwtEmitter.setCanvasFocusable(false);
             addAndRemoveButtons();
         }
         updatePauseButton();
@@ -101,7 +102,7 @@ public class InputSelector {
             }
             if (pause && error == null && ScriptPauseController.isPaused()) {
                 ClientUI.getClient().setEnabled(true);
-                Microbot.getClient().getCanvas().setFocusable(true);
+                AwtEmitter.setCanvasFocusable(true);
                 Microbot.getClient().getCanvas().requestFocusInWindow();
                 addAndRemoveButtons();
                 Microbot.log("All scripts paused. Manual input is on. Click the amber play button next to the Enable/Disable Input button to resume.", Level.WARN);
@@ -109,7 +110,7 @@ public class InputSelector {
             if (!pause && error == null && !ScriptPauseController.isPaused()) {
                 if (!inputChangedDuringPause) {
                     ClientUI.getClient().setEnabled(inputEnabledBeforePause);
-                    Microbot.getClient().getCanvas().setFocusable(inputEnabledBeforePause);
+                    AwtEmitter.setCanvasFocusable(inputEnabledBeforePause);
                     addAndRemoveButtons();
                 }
                 Microbot.log("All scripts resumed. If Break Handler had a break due while paused, it starts now.", Level.WARN);

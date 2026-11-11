@@ -5,9 +5,11 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.util.Global;
+import net.runelite.client.plugins.microbot.ScriptPauseController;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.antiban.enums.ActivityIntensity;
+import net.runelite.client.plugins.microbot.util.input.InputArbiter;
+import net.runelite.client.plugins.microbot.util.input.InputLoop;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.mouse.naturalmouse.api.MouseInfoAccessor;
 import net.runelite.client.plugins.microbot.util.mouse.naturalmouse.api.MouseMotionFactory;
@@ -27,11 +29,13 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 public class NaturalMouse {
+    /** How late a trajectory's wait between steps notices a pause or a takeover. */
+    private static final long STEP_WAIT_SLICE_MS = 10;
     public final MouseMotionNature nature;
-    private final ThreadLocalRandom random = ThreadLocalRandom.current();
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
     @Inject
     private Client client;
@@ -49,9 +53,6 @@ public class NaturalMouse {
             new Flow(FlowTemplates.random())
     );
 
-    private volatile MouseMotionFactory cachedFactory;
-    private volatile ActivityIntensity cachedIntensity;
-
     @Inject
     public NaturalMouse() {
         nature = new DefaultMouseMotionNature();
@@ -59,7 +60,7 @@ public class NaturalMouse {
         nature.setMouseInfo(new MouseInfoImpl());
     }
 
-    public synchronized void moveTo(int dx, int dy) {
+    public void moveTo(int dx, int dy) {
 //		if(Rs2UiHelper.isStretchedEnabled())
 //		{
 //			dx = Rs2UiHelper.stretchX(dx);
@@ -73,28 +74,64 @@ public class NaturalMouse {
             return;
         }
 
+        long generation = ScriptPauseController.getGeneration();
         if (!Microbot.getClient().isClientThread()) {
-            move(finalDx, finalDy);
+            inTurn(generation, () -> move(finalDx, finalDy));
         } else {
-
-            executorService.submit(() -> move(finalDx, finalDy));
+            executorService.submit(() -> inTurn(generation, () -> move(finalDx, finalDy)));
         }
     }
 
-    private synchronized void move(int dx, int dy) {
+    /**
+     * Bug fix: a trajectory started outside any gesture (a hover helper, an antiban off-screen or
+     * random move, a plugin calling moveTo) used to take only this object's monitor, so its steps
+     * landed between another thread's click MOVED and PRESSED. Run as a gesture of its own, it takes
+     * turns with clicks on InputLoop's lock. Inside a gesture the lock is already this thread's.
+     *
+     * <p>InputLoop's lock is the only lock on any trajectory path, so no lock order can invert. A
+     * bare trajectory that cannot get the lock within InputLoop's timeout, or starts during a takeover
+     * or pause, returns without dispatching.
+     *
+     * <p>Bug fix: {@code generation} is the pause generation when the trajectory was requested. A
+     * request deferred from the client thread used to take its generation only when its turn came,
+     * so one made before a pause and queued behind another trajectory ran after the resume.
+     */
+    private static void inTurn(long generation, Runnable trajectory) {
+        if (InputLoop.isInGesture()) {
+            trajectory.run();
+        } else {
+            InputLoop.run(generation, emit -> trajectory.run());
+        }
+    }
+
+    /**
+     * Always inside a gesture (see inTurn). Each step goes out through the emitter, whose refusal
+     * of a step, for a pause, a takeover or an interrupt, ends the gesture right there, so nothing
+     * after the trajectory goes out: not a click's press, not a drag's release point, not
+     * moveOffScreen's crossing.
+     *
+     * <p>Bug fix: a stopped trajectory used to be stopped by one check and its gesture ended by a
+     * second look at the input state afterwards. A takeover that lapsed in between let the gesture
+     * carry on, jumping the pointer to the target and pressing.
+     */
+    private void move(int dx, int dy) {
         var motion = getFactory().build(dx, dy);
         try {
             motion.move();
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            // Kept set, so the gesture's next emit is refused and ends it.
+            Thread.currentThread().interrupt();
         }
     }
 
+    /**
+     * Bug fix: builds from the templates on every call. A cache keyed on the intensity alone handed
+     * out a motion built from stale settings, because the templates also read simulateFatigue,
+     * simulateMistakes and ticksSinceLogin, and draw fresh fatigue noise for each motion. A build
+     * allocates about 8 to 13 KB, once per trajectory, on a trajectory that sleeps between its steps.
+     */
     public MouseMotionFactory getFactory() {
         ActivityIntensity intensity = Rs2Antiban.getActivityIntensity();
-        if (cachedFactory != null && intensity == cachedIntensity) {
-            return cachedFactory;
-        }
         MouseMotionFactory factory;
         if (intensity == ActivityIntensity.VERY_LOW) {
             log.debug("Creating average computer user motion factory");
@@ -115,13 +152,10 @@ public class NaturalMouse {
             log.debug("Default: Creating super fast gamer motion factory");
             factory = FactoryTemplates.createSuperFastGamerMotionFactory(nature);
         }
-        cachedIntensity = intensity;
-        cachedFactory = factory;
         return factory;
 
 //		var factory = new MouseMotionFactory();
 //		factory.setNature(nature);
-//		factory.setRandom(random);
 //
 //		var manager = new SpeedManagerImpl(flows);
 //		factory.setDeviationProvider(new SinusoidalDeviationProvider(15.0));
@@ -158,6 +192,10 @@ public class NaturalMouse {
             return;
         }
 
+        // Bug fix: these draws used a ThreadLocalRandom stored when this object was built. Its state
+        // lives in whichever thread calls it, and only current() seeds that state, so a thread that
+        // had not called current() itself drew a fixed sequence and left at a fixed point.
+        ThreadLocalRandom random = ThreadLocalRandom.current();
         int horizontal = random.nextBoolean() ? -1 : client.getCanvasWidth() + 1;
         int vertical = random.nextBoolean() ? -1 : client.getCanvasHeight() + 1;
 
@@ -167,20 +205,25 @@ public class NaturalMouse {
 
         Runnable travelThenCross = () -> {
             // MouseMotion clamps to the canvas, so this reaches the edge and the next call crosses.
+            // A travel cut short ends the gesture inside move, so it never crosses.
             move(targetX, targetY);
             Microbot.getMouse().move(targetX, targetY);
         };
 
-        // One task: moveTo is async on the client thread, where two calls would cross first.
+        // One task and one turn: moveTo is async on the client thread, where two calls would cross
+        // first, and a click must not land between the travel and the crossing.
+        long generation = ScriptPauseController.getGeneration();
         if (Microbot.getClient().isClientThread()) {
-            executorService.submit(travelThenCross);
+            executorService.submit(() -> inTurn(generation, travelThenCross));
         } else {
-            travelThenCross.run();
+            inTurn(generation, travelThenCross);
         }
     }
 
     // Move to a random point on the screen
     public void moveRandom() {
+        // current() on the calling thread, for the reason in moveOffScreen.
+        ThreadLocalRandom random = ThreadLocalRandom.current();
         moveTo(random.nextInt(0, client.getCanvasWidth() + 1), random.nextInt(0, client.getCanvasHeight() + 1));
     }
 
@@ -209,9 +252,32 @@ public class NaturalMouse {
             return System.currentTimeMillis();
         }
 
+        /**
+         * Not Global.sleep, which parks through a pause while this trajectory holds the pointer's
+         * turn. The wait is only cut short here; what ends the trajectory is its next step, which the
+         * emitter refuses.
+         *
+         * <p>Bug fix: the client thread never waits, as Global.sleep already ensured. A motion built
+         * from getFactory() and run there slept between its steps once this wait replaced it.
+         */
         @Override
         public void sleep(long time) {
-            Global.sleep((int) time);
+            if (Microbot.getClient().isClientThread()) {
+                return;
+            }
+            long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(time);
+            long left;
+            while ((left = deadline - System.nanoTime()) > 0) {
+                if (ScriptPauseController.isPaused() || InputArbiter.isHuman()) {
+                    return;
+                }
+                try {
+                    Thread.sleep(Math.min(TimeUnit.NANOSECONDS.toMillis(left) + 1, STEP_WAIT_SLICE_MS));
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+            }
         }
 
         @Override
