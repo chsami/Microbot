@@ -9,6 +9,7 @@ import net.runelite.api.WorldView;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.api.boat.data.Heading;
 import net.runelite.client.plugins.microbot.api.boat.models.Rs2BoatModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import org.junit.After;
@@ -70,26 +71,26 @@ public class Rs2BoatModelPlayerBoatLocationTest {
     }
 
     @Test
-    public void returnsPlayerLocationWhenProjectionLookupThrowsForGoneBoatWorldView() {
+    public void returnsNullWhenProjectionLookupThrowsForGoneBoatWorldView() {
         when(boatWorldView.getMainWorldProjection()).thenThrow(new NullPointerException());
 
-        assertEquals(PLAYER_LOCATION, boat.getPlayerBoatLocation());
+        assertNull(boat.getPlayerBoatLocation());
     }
 
     @Test
-    public void returnsPlayerLocationWhenProjectingThrows() {
+    public void returnsNullWhenProjectingThrows() {
         Projection projection = mock(Projection.class);
         when(projection.project(anyFloat(), anyFloat(), anyFloat())).thenThrow(new NullPointerException());
         when(boatWorldView.getMainWorldProjection()).thenReturn(projection);
 
-        assertEquals(PLAYER_LOCATION, boat.getPlayerBoatLocation());
+        assertNull(boat.getPlayerBoatLocation());
     }
 
     @Test
-    public void returnsPlayerLocationWhenProjectionIsMissing() {
+    public void returnsNullWhenProjectionIsMissing() {
         when(boatWorldView.getMainWorldProjection()).thenReturn(null);
 
-        assertEquals(PLAYER_LOCATION, boat.getPlayerBoatLocation());
+        assertNull(boat.getPlayerBoatLocation());
     }
 
     @Test
@@ -108,10 +109,10 @@ public class Rs2BoatModelPlayerBoatLocationTest {
     }
 
     @Test
-    public void returnsPlayerLocationWhenPlayerIsOutsideWorldViewScene() {
+    public void returnsNullWhenPlayerIsOutsideWorldViewScene() {
         when(boatWorldView.getPlane()).thenReturn(1);
 
-        assertEquals(PLAYER_LOCATION, boat.getPlayerBoatLocation());
+        assertNull(boat.getPlayerBoatLocation());
         verify(boatWorldView, never()).getMainWorldProjection();
     }
 
@@ -141,5 +142,26 @@ public class Rs2BoatModelPlayerBoatLocationTest {
         when(boatWorldView.getMainWorldProjection()).thenReturn(projection);
 
         assertEquals(new WorldPoint(2005, 2507, 0), boat.getPlayerBoatLocation());
+    }
+
+    @Test
+    public void directionIsUnknownWhenBoatLocationCannotBeProjected() {
+        when(boatWorldView.getMainWorldProjection()).thenThrow(new NullPointerException());
+
+        assertEquals(-1, boat.getDirection(new WorldPoint(2100, 2600, 0)));
+    }
+
+    @Test
+    public void directionUsesProjectedBoatLocation() {
+        WorldView topLevel = mock(WorldView.class);
+        when(topLevel.getBaseX()).thenReturn(2000);
+        when(topLevel.getBaseY()).thenReturn(2500);
+        when(client.getTopLevelWorldView()).thenReturn(topLevel);
+        Projection projection = mock(Projection.class);
+        when(projection.project(anyFloat(), anyFloat(), anyFloat()))
+                .thenReturn(new float[]{5 * 128 + 64, 0, 7 * 128 + 64});
+        when(boatWorldView.getMainWorldProjection()).thenReturn(projection);
+
+        assertEquals(Heading.NORTH.getValue(), boat.getDirection(new WorldPoint(2005, 2600, 0)));
     }
 }

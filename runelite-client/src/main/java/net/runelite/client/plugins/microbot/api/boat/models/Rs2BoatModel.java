@@ -9,6 +9,7 @@ import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.api.IEntity;
+import net.runelite.client.plugins.microbot.api.actor.Rs2ActorModel;
 import net.runelite.client.plugins.microbot.api.boat.data.BoatType;
 import net.runelite.client.plugins.microbot.api.boat.data.Heading;
 import net.runelite.client.plugins.microbot.api.boat.data.PortTaskData;
@@ -263,43 +264,7 @@ public class Rs2BoatModel implements WorldEntity, IEntity {
                 return playerLocation;
             }
 
-            LocalPoint localPoint = LocalPoint.fromWorld(
-                    playerWorldView,
-                    playerLocation
-            );
-            if (localPoint == null)
-            {
-                return playerLocation;
-            }
-
-            float[] projection;
-            try
-            {
-                var mainWorldProjection = playerWorldView.getMainWorldProjection();
-                if (mainWorldProjection == null)
-                {
-                    return playerLocation;
-                }
-
-                projection = mainWorldProjection
-                        .project(localPoint.getX(), 0, localPoint.getY());
-            }
-            catch (NullPointerException e)
-            {
-                return playerLocation;
-            }
-
-            if (projection == null)
-            {
-                return playerLocation;
-            }
-
-            return Microbot.getClientThread().invoke(() -> WorldPoint.fromLocal(
-                    Microbot.getClient().getTopLevelWorldView(),
-                    (int) projection[0],
-                    (int) projection[2],
-                    0
-            ));
+            return Rs2ActorModel.projectToMainWorld(playerWorldView, playerLocation);
         });
     }
 
@@ -409,6 +374,10 @@ public class Rs2BoatModel implements WorldEntity, IEntity {
 
         var direction = getDirection(target);
         var heading = Heading.getHeading(direction);
+        if (heading == null)
+        {
+            return;
+        }
         setHeading(heading);
 
         if (!isMovingForward())
@@ -420,6 +389,10 @@ public class Rs2BoatModel implements WorldEntity, IEntity {
     public int getDirection(WorldPoint target)
     {
         WorldPoint current = getPlayerBoatLocation();
+        if (current == null)
+        {
+            return -1;
+        }
         int deltaX = target.getX() - current.getX();
         int deltaY = target.getY() - current.getY();
 
