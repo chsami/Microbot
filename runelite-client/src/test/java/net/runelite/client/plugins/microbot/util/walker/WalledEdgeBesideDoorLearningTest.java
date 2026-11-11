@@ -187,6 +187,28 @@ public class WalledEdgeBesideDoorLearningTest {
         assertFalse(routeState.adjacentRefusalDoorAttempted);
     }
 
+    @Test
+    public void anEdgeWhoseDoorOpenedButStayedWalledIsNotClaimedAgainOnTheNextWalk() {
+        refusedBesideTheDoorSince(System.currentTimeMillis() - 2_000L);
+        routeState.adjacentRefusalDoorAttempted = true;
+        doorBesideTheEdgeIs(WalledDoorClaimPolicy.AdjacentDoor.UNUSABLE);
+        Rs2WalkerMovement.learnWalledRouteEdge(RAW_PATH, PLAYER, REACHABLE);
+        assertTrue("a door that was tried and left the step walled must strike the edge out",
+                routeState.struckOutAdjacentDoorEdges.containsKey(EDGE_KEY));
+        Rs2Walker.resetWalkSessionState();
+        Rs2Walker.doorAttemptLedger.drainWalkScopedBlocks();
+        doorBesideTheEdgeIs(WalledDoorClaimPolicy.AdjacentDoor.ACTIONABLE);
+
+        Rs2WalkerMovement.learnWalledRouteEdge(RAW_PATH, PLAYER, REACHABLE);
+
+        pathApi.verify(() -> Rs2PathApi.learnBlockedEdge(eq(WALL_FROM), eq(WALL_TO), anyString()),
+                Mockito.times(2));
+        assertNull("the door shut again, but the edge must not be handed back to the door pipeline",
+                routeState.walledDoorEdgeFrom);
+        assertNull(routeState.adjacentRefusalFrom);
+        assertLearnedForThisWalkOnly();
+    }
+
     private void doorBesideTheEdgeIs(WalledDoorClaimPolicy.AdjacentDoor door) {
         doors.when(() -> Rs2WalkerDoors.classifyDoorAdjacentToEdge(WALL_FROM, WALL_TO, PLAYER)).thenReturn(door);
     }

@@ -78,7 +78,7 @@ final class WalledDoorClaimPolicy {
 
     static boolean strikesOutAdjacentDoor(AdjacentDoor door, boolean struckOut, boolean claimSpent,
                                           boolean doorAttempted) {
-        return door == AdjacentDoor.ACTIONABLE && !struckOut && claimSpent && doorAttempted;
+        return !struckOut && doorAttempted && (claimSpent || door != AdjacentDoor.ACTIONABLE);
     }
 
     private static boolean continuesClaim(WorldPoint claimFrom, WorldPoint claimTo, long claimedAtMs,

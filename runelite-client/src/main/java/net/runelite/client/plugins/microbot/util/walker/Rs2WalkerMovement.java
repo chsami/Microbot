@@ -537,8 +537,9 @@ final class Rs2WalkerMovement {
                 rememberWalledDoorEdge(edge);
                 return;
             }
-            if (WalledDoorClaimPolicy.strikesOutAdjacentDoor(door, struckOut, spent,
-                    routeState.adjacentRefusalDoorAttempted)) {
+            boolean strikesOut = WalledDoorClaimPolicy.strikesOutAdjacentDoor(door, struckOut, spent,
+                    routeState.adjacentRefusalDoorAttempted);
+            if (strikesOut) {
                 routeState.struckOutAdjacentDoorEdges.put(edgeKey, now);
             } else if (!struckOut) {
                 routeState.struckOutAdjacentDoorEdges.remove(edgeKey);
@@ -555,8 +556,12 @@ final class Rs2WalkerMovement {
                     WebWalkLog.spInfo("walled_edge_learned | {} -> {} — the door beside this wall failed to open it earlier this session, skipping the wait and routing around it for this walk (the door is tried again within {} min)",
                             compactWorldPoint(edge[0]), compactWorldPoint(edge[1]),
                             WalledDoorClaimPolicy.ADJACENT_STRIKE_OUT_MS / 60_000L);
+                } else if (strikesOut && door != WalledDoorClaimPolicy.AdjacentDoor.ACTIONABLE) {
+                    WebWalkLog.spInfo("walled_edge_learned | {} -> {} — the door beside this wall was tried and the step is still blocked, routing around it for this walk and skipping that door here for {} min",
+                            compactWorldPoint(edge[0]), compactWorldPoint(edge[1]),
+                            WalledDoorClaimPolicy.ADJACENT_STRIKE_OUT_MS / 60_000L);
                 } else if (door != WalledDoorClaimPolicy.AdjacentDoor.ACTIONABLE) {
-                    WebWalkLog.spInfo("walled_edge_learned | {} -> {} — door beside this wall is already open or cannot be used, routing around it for this walk",
+                    WebWalkLog.spInfo("walled_edge_learned | {} -> {} — the door beside this wall is open, was just tried, or cannot be used, routing around it for this walk",
                             compactWorldPoint(edge[0]), compactWorldPoint(edge[1]));
                 } else {
                     WebWalkLog.spInfo("walled_edge_learned | {} -> {} — door beside this wall did not open it within {}s, routing around it for this walk",

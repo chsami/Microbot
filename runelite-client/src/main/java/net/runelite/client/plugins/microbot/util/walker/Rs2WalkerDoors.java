@@ -276,7 +276,7 @@ final class Rs2WalkerDoors {
             return WalledDoorClaimPolicy.AdjacentDoorOutcome.NO_CANDIDATE;
         }
 
-        WebWalkLog.spInfo("frontier_adjacent_door_owned | opening the door at {} beside blocked step {}->{} player={}",
+        WebWalkLog.spInfo("frontier_adjacent_door_owned | trying the door at {} beside blocked step {}->{} player={}",
                 compactWorldPoint(candidate.location), compactWorldPoint(from), compactWorldPoint(to),
                 compactWorldPoint(playerLoc));
         Long attemptBefore = doorAttemptLedger.attemptAtMs(from, to);

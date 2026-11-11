@@ -203,7 +203,7 @@ public class WalledDoorClaimPolicyTest {
     }
 
     @Test
-    public void anEdgeIsStruckOutOnlyAfterTheHandlerTriedItsDoorForAFullWindow() {
+    public void anEdgeIsStruckOutOnlyAfterTheHandlerTriedItsDoorAndTheEdgeStayedWalled() {
         assertTrue(WalledDoorClaimPolicy.strikesOutAdjacentDoor(
                 WalledDoorClaimPolicy.AdjacentDoor.ACTIONABLE, false, true, true));
         assertFalse("a claim spent while the player was still walking up never tried the door",
@@ -214,8 +214,16 @@ public class WalledDoorClaimPolicyTest {
         assertFalse("an active strike-out is not renewed by the walks it skips",
                 WalledDoorClaimPolicy.strikesOutAdjacentDoor(
                         WalledDoorClaimPolicy.AdjacentDoor.ACTIONABLE, true, true, true));
+        assertTrue("a tried door that opened and left the edge walled strikes out before the window is spent",
+                WalledDoorClaimPolicy.strikesOutAdjacentDoor(
+                        WalledDoorClaimPolicy.AdjacentDoor.UNUSABLE, false, false, true));
+        assertTrue(WalledDoorClaimPolicy.strikesOutAdjacentDoor(
+                WalledDoorClaimPolicy.AdjacentDoor.NONE, false, false, true));
+        assertFalse("a door that was never tried does not strike the edge out",
+                WalledDoorClaimPolicy.strikesOutAdjacentDoor(
+                        WalledDoorClaimPolicy.AdjacentDoor.UNUSABLE, false, false, false));
         assertFalse(WalledDoorClaimPolicy.strikesOutAdjacentDoor(
-                WalledDoorClaimPolicy.AdjacentDoor.UNUSABLE, false, true, true));
+                WalledDoorClaimPolicy.AdjacentDoor.UNUSABLE, true, false, true));
     }
 
     private static WalledDoorClaimPolicy.Decision decide(WorldPoint player,
