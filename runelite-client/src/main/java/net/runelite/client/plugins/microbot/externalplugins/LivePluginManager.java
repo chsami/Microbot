@@ -193,12 +193,6 @@ public class LivePluginManager {
         if (!Files.exists(file) || installed.values().stream().anyMatch(i -> i.source.equals(file))) {
             throw new IllegalArgumentException("Plugin is not installed.");
         }
-        String digest = hash(file);
-        Properties origin = readOrigin(file);
-        boolean fromOrigin = hubId.equals(origin.getProperty("hubId")) && digest.equalsIgnoreCase(origin.getProperty("sha256", ""));
-        if (!fromOrigin && !hubId.equals(recordedHubInstall(file, digest))) {
-            throw new IllegalArgumentException(file.getFileName() + " was not installed from the Plugin Hub. Remove it in Local Plugins.");
-        }
         Files.deleteIfExists(file);
         skipped.remove(file);
         Files.deleteIfExists(originPath(file));

@@ -406,6 +406,26 @@ public class LivePluginManagerTest {
     }
 
     @Test
+    public void hubRemoveDeletesAnUnloadableJarThatWasNotRecordedAsAHubInstall() throws Exception {
+        Path stub = directory.resolve("HueyPrayerPlugin.jar");
+        Manifest manifest = new Manifest();
+        manifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, "1.0");
+        try (JarOutputStream output = new JarOutputStream(Files.newOutputStream(stub), manifest)) {
+            output.putNextEntry(new JarEntry("readme.txt"));
+            output.write("no plugin here".getBytes(StandardCharsets.UTF_8));
+            output.closeEntry();
+        }
+        await(manager.rescan());
+        assertTrue(manager.getInstalledPlugins().isEmpty());
+
+        OperationResult result = await(manager.removeHub("HueyPrayerPlugin"));
+
+        assertTrue(result.getMessage(), result.isSuccess());
+        assertEquals("Removed HueyPrayerPlugin. Settings were kept.", result.getMessage());
+        assertFalse(Files.exists(stub));
+    }
+
+    @Test
     public void failedReplacementRestoresRunningPreviousVersionAndInstalledBytes() throws Exception {
         Path v1 = fixture("v1.jar", "1.0", false);
         Path bad = fixture("bad.jar", "2.0", true);
