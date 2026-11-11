@@ -44,7 +44,8 @@ public final class UnreachableRouteExplainer
 		String nearest = closest != null && !closest.equals(start)
 			? " The closest the walker can get is " + format(closest) + "."
 			: "";
-		return prefix + ": there is no known route from where you are." + nearest;
+		return prefix + ": the walker found no route it can use from where you are."
+			+ " Check your Web Walker transport settings or start from somewhere else." + nearest;
 	}
 
 	static List<Transport> fewestBlockersRoute(PathfinderConfig live, WorldPoint start, WorldPoint target, long budgetMs)

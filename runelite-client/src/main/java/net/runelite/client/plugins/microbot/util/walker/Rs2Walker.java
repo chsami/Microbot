@@ -1444,6 +1444,7 @@ public class Rs2Walker {
      * {@link #setTarget(WorldPoint, String) setTarget(null, reason)} when you stop (e.g. once you interact).
      */
     public static WalkerState walkStep(WorldPoint target, int distance) {
+        lastUnreachableReason = null;
         if (config == null) {
             return WalkerState.EXIT;
         }
@@ -7646,6 +7647,7 @@ public class Rs2Walker {
      * @return true if travel was successful, false otherwise
      */
     public static WalkerState walkWithBankedTransportsAndState(WorldPoint target, int distance, boolean forceBanking) {
+        lastUnreachableReason = null;
         if (target == null) {
             log.warn("Cannot travel to null target location");
             return WalkerState.EXIT;

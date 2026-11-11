@@ -60,7 +60,8 @@ public class UnreachableRouteExplainerTest
 
 		String message = UnreachableRouteExplainer.explain(live, FALADOR, sealedOff, FALADOR);
 
-		assertEquals("Can't reach 3500, 9000: there is no known route from where you are.", message);
+		assertEquals("Can't reach 3500, 9000: the walker found no route it can use from where you are."
+			+ " Check your Web Walker transport settings or start from somewhere else.", message);
 	}
 
 	@Test
