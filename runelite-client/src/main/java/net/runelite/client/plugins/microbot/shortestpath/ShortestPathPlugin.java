@@ -273,7 +273,7 @@ public class ShortestPathPlugin extends Plugin {
         clientToolbar.addNavigation(pohNavButton);
 
         Rs2Walker.setConfig(config);
-        shortestPathScript = new ShortestPathScript(this::setTarget, this::showWalkingNotice);
+        shortestPathScript = new ShortestPathScript(this::setTarget, this::showWalkingNotice, this::showUnreachableNotice);
         shortestPathScript.run(config);
 
         overlayManager.add(walkingNoticeOverlay);
@@ -1491,6 +1491,18 @@ public class ShortestPathPlugin extends Plugin {
             String message = WalkingNoticeOverlay.messageFor(notice, config.toggleWalkingHotkey());
             client.addChatMessage(net.runelite.api.ChatMessageType.GAMEMESSAGE, "", message, "");
             walkingNoticeOverlay.show(message);
+        });
+    }
+
+    private void showUnreachableNotice(String reason) {
+        final ShortestPathScript source = shortestPathScript;
+        getClientThread().invokeLater(() -> {
+            if (source != shortestPathScript || !Microbot.isLoggedIn()) {
+                return;
+            }
+            String message = "Web Walker: " + reason;
+            client.addChatMessage(net.runelite.api.ChatMessageType.GAMEMESSAGE, "", message, "");
+            walkingNoticeOverlay.show(message, WalkingNoticeOverlay.UNREACHABLE_DISPLAY_SECONDS);
         });
     }
 

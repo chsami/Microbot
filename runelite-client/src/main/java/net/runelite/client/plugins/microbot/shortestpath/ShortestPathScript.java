@@ -23,6 +23,7 @@ public class ShortestPathScript extends Script {
     private volatile ShortestPathConfig config;
     private final Consumer<WorldPoint> preview;
     private final Consumer<ManualWalkingNotice> notice;
+    private final Consumer<String> unreachableNotice;
 
     enum ManualWalkingNotice {
         PATH_SET, ENABLED, PAUSED, CLEARED
@@ -43,8 +44,14 @@ public class ShortestPathScript extends Script {
     }
 
     ShortestPathScript(Consumer<WorldPoint> preview, Consumer<ManualWalkingNotice> notice) {
+        this(preview, notice, ignored -> {});
+    }
+
+    ShortestPathScript(Consumer<WorldPoint> preview, Consumer<ManualWalkingNotice> notice,
+                       Consumer<String> unreachableNotice) {
         this.preview = preview;
         this.notice = notice;
+        this.unreachableNotice = unreachableNotice;
     }
 
     public boolean run(ShortestPathConfig config) {
@@ -162,6 +169,12 @@ public class ShortestPathScript extends Script {
                     return;
                 }
                 WalkerState state = executeWalk(target);
+                if (state == WalkerState.UNREACHABLE) {
+                    String reason = Rs2Walker.getLastUnreachableReason();
+                    if (reason != null) {
+                        unreachableNotice.accept(reason);
+                    }
+                }
                 // Client-thread reads must not hold this monitor: hotkeys also acquire it.
                 boolean retryAllowed = state == WalkerState.EXIT
                         && !Thread.currentThread().isInterrupted() && !isLocalPlayerDead() && !isRecentUserStopClear();

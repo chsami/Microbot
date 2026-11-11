@@ -19,6 +19,7 @@ import net.runelite.client.plugins.devtools.MovementFlag;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
 import net.runelite.client.plugins.microbot.shortestpath.*;
+import net.runelite.client.plugins.microbot.shortestpath.pathfinder.UnreachableRouteExplainer;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
@@ -1331,6 +1332,7 @@ public class Rs2Walker {
     private static WalkerState walkWithStateInternal(WorldPoint target, int distance) {
         Objects.requireNonNull(target, "walk target");
         currentWalkDistance = Math.max(0, distance);
+        lastUnreachableReason = null;
         if (isClientThread()) {
             log.warn("Please do not call the walker from the main thread");
             return WalkerState.EXIT;
@@ -1757,6 +1759,18 @@ public class Rs2Walker {
         return false;
     }
 
+    private static volatile String lastUnreachableReason;
+
+    public static String getLastUnreachableReason() {
+        return lastUnreachableReason;
+    }
+
+    private static void explainUnreachable(WorldPoint target, WorldPoint player, WorldPoint closest) {
+        String reason = UnreachableRouteExplainer.explain(Rs2PathApi.getPathfinderConfig(), player, target, closest);
+        lastUnreachableReason = reason;
+        log.warn("[Walker] {}", reason);
+    }
+
     private static WalkerState processWalk(WorldPoint target, int distance) {
         // Stage entry and solve the Draynor basement lever puzzle before pathfinding to a basement
         // room. This avoids accepting a closer partial route into an unrelated underground map.
@@ -1807,6 +1821,8 @@ public class Rs2Walker {
                     nearestWalkable != null ? nearestWalkable : "none within 48");
             Telemetry.recordUnreachable("target-not-walkable", Rs2Player.getWorldLocation(),
                     target, nearestWalkable, 0, distance, null);
+            lastUnreachableReason = "Can't reach " + target.getX() + ", " + target.getY()
+                    + ": there is no tile you can stand on at or next to it.";
             setTarget(null, "rs2walker:processWalk:target-not-walkable");
             return WalkerState.UNREACHABLE;
         }
@@ -1931,14 +1947,18 @@ public class Rs2Walker {
             if (dst == null || dst.distanceTo(target) > distance) {
                 final WorldPoint sealedRim = consumeSealedRimRetarget(target, dst, walkLoop.playerLoc, distance);
                 if (sealedRim != null) { return processWalk(sealedRim, distance, partialRetries); }
-                if (path != null && path.size() > 1) {
+                boolean searchExhausted = routeStatus.getTerminationReason().orElse(null)
+                        == Rs2RouteTermination.SEARCH_EXHAUSTED;
+                if (path != null && path.size() > 1 && !searchExhausted) {
                     WebWalkLog.partialSegment(dst, dst.distanceTo(target), target, path.size());
                     partialPath = true;
                 } else {
-                    Telemetry.recordUnreachable("no-walkable-path", walkLoop.playerLoc,
+                    String cause = searchExhausted ? "search-exhausted" : "no-walkable-path";
+                    Telemetry.recordUnreachable(cause, walkLoop.playerLoc,
                             target, dst, path == null ? 0 : path.size(), distance,
                             routeStatus.getMetrics().orElse(null));
-                    setTarget(null, "rs2walker:processWalk:no-walkable-path");
+                    explainUnreachable(target, walkLoop.playerLoc, dst);
+                    setTarget(null, "rs2walker:processWalk:" + cause);
                     return WalkerState.UNREACHABLE;
                 }
             }
