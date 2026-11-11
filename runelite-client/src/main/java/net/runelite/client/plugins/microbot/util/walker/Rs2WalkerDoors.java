@@ -2716,7 +2716,8 @@ final class Rs2WalkerDoors {
 
     static boolean isInStrongholdOfSecurity() {
         List<Integer> mapRegionIds = List.of(7505, 7504, 7760, 7503, 7759, 7758, 7757, 8013, 7756, 8012, 8017, 8530, 9297);
-        return mapRegionIds.contains(Rs2Player.getWorldLocation().getRegionID());
+        WorldPoint playerLocation = Rs2Player.getWorldLocation();
+        return playerLocation != null && mapRegionIds.contains(playerLocation.getRegionID());
     }
 
     static boolean handleStrongholdOfSecurityAnswer(TileObject object, String action) {

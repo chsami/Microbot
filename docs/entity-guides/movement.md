@@ -630,7 +630,7 @@ WorldPoint location = Rs2Player.getWorldLocation();
 return location != null && location.getY() >= 6400;
 ```
 
-**Where this applies:** `Rs2Player.isInCave` and any helper that reads `Rs2Player.getWorldLocation()` during a walk or transport handoff.
+**Where this applies:** `Rs2Player.isInCave`, `Rs2WalkerDoors.isInStrongholdOfSecurity` and any helper that reads `Rs2Player.getWorldLocation()` during a walk or transport handoff.
 
 **Defensive check:** Mock `Rs2PlayerStateCache.getLocalPlayerPosition()` to return `null` and assert the predicate is `false`, as in `Rs2PlayerIsInCaveTest`.
 
