@@ -2,6 +2,10 @@ package net.runelite.client.plugins.microbot.util.walker.state;
 
 import net.runelite.api.coords.WorldPoint;
 
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 /**
  * Consolidated mutable route state for the walker, extracted from {@code Rs2Walker}'s scattered static
  * fields. This is the enabling step for P1 of the walker audit: once the state the {@code processWalk}
@@ -131,6 +135,8 @@ public final class WalkerRouteState {
     public volatile WorldPoint adjacentRefusalTo = null;
     public volatile long adjacentRefusalAtMs = 0L;
     public volatile long adjacentRefusalSinceMs = 0L;
+    public volatile boolean adjacentRefusalDoorAttempted = false;
+    public final Map<List<WorldPoint>, Long> struckOutAdjacentDoorEdges = new ConcurrentHashMap<>();
     /** Immutable caller intent for this walk; currentTarget may temporarily become an effective rim. */
     public volatile WorldPoint requestedGoal = null;
     /** Sealed-goal rim retargets consumed this walk; bounds the chain (a rim tile can itself probe sealed). */

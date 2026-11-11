@@ -7,6 +7,19 @@ import net.runelite.client.plugins.microbot.util.walker.door.Rs2DoorGeometry;
 final class WalledDoorClaimPolicy {
     static final long FRESH_MS = 6_000L;
     static final long ADJACENT_REFUSAL_GAP_MS = 20_000L;
+    static final long ADJACENT_STRIKE_OUT_MS = 600_000L;
+
+    enum AdjacentDoor {
+        NONE,
+        UNUSABLE,
+        ACTIONABLE
+    }
+
+    enum AdjacentDoorOutcome {
+        NO_CANDIDATE,
+        DECLINED,
+        ATTEMPTED
+    }
 
     enum Decision {
         NONE,
@@ -43,6 +56,29 @@ final class WalledDoorClaimPolicy {
                                         long nowMs) {
         return continuesClaim(claimFrom, claimTo, claimedAtMs, claimSinceMs, edgeFrom, edgeTo, nowMs)
                 && nowMs - claimSinceMs > FRESH_MS;
+    }
+
+    static boolean isAdjacentClaimEdge(WorldPoint refusalFrom, WorldPoint refusalTo,
+                                       WorldPoint claimFrom, WorldPoint claimTo) {
+        return refusalFrom != null && refusalTo != null
+                && refusalFrom.equals(claimFrom) && refusalTo.equals(claimTo);
+    }
+
+    static boolean dispatchesAdjacentDoorHandler(Decision decision) {
+        return decision == Decision.HANDLE_AT_EDGE || decision == Decision.APPROACH;
+    }
+
+    static boolean isAdjacentStrikeOutActive(Long struckOutAtMs, long nowMs) {
+        return struckOutAtMs != null && nowMs - struckOutAtMs <= ADJACENT_STRIKE_OUT_MS;
+    }
+
+    static boolean holdsAdjacentClaim(AdjacentDoor door, boolean struckOut, boolean claimSpent) {
+        return door == AdjacentDoor.ACTIONABLE && !struckOut && !claimSpent;
+    }
+
+    static boolean strikesOutAdjacentDoor(AdjacentDoor door, boolean struckOut, boolean claimSpent,
+                                          boolean doorAttempted) {
+        return !struckOut && doorAttempted && (claimSpent || door != AdjacentDoor.ACTIONABLE);
     }
 
     private static boolean continuesClaim(WorldPoint claimFrom, WorldPoint claimTo, long claimedAtMs,
