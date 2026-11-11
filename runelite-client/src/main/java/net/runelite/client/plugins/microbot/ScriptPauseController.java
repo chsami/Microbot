@@ -15,6 +15,7 @@ import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
  */
 public final class ScriptPauseController
 {
+	static final String PAUSED_STATUS = "Paused: click the amber play button to resume";
 	private static final Object LOCK = new Object();
 	private static final ExecutorService CLEANUP = Executors.newSingleThreadExecutor(task ->
 	{
@@ -51,6 +52,11 @@ public final class ScriptPauseController
 		return announcedPauseWaits.add(name);
 	}
 
+	static void clearPauseWaitAnnounced(String name)
+	{
+		announcedPauseWaits.remove(name);
+	}
+
 	/** Returns after held input is released (pause), or workers can proceed (resume). */
 	public static CompletableFuture<Void> setPaused(boolean value)
 	{
@@ -82,6 +88,10 @@ public final class ScriptPauseController
 						pausedNanos += System.nanoTime() - pausedAt;
 						generation++;
 						paused = false;
+						if (PAUSED_STATUS.equals(Microbot.status))
+						{
+							Microbot.status = "IDLE";
+						}
 						LOCK.notifyAll();
 					}
 				}

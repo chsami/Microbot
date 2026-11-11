@@ -9,13 +9,16 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import javax.swing.SwingUtilities;
+import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
+import net.runelite.client.callback.ClientThread;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.PluginManager;
 import net.runelite.client.plugins.microbot.util.Global;
 import net.runelite.client.plugins.microbot.util.input.InputArbiter;
 import net.runelite.client.plugins.microbot.util.input.InputLoop;
+import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.slf4j.event.Level;
 import org.junit.After;
@@ -267,6 +270,70 @@ public class ScriptPauseControllerTest
 		}
 		finally
 		{
+			script.shutdown();
+			script.scheduledExecutorService.shutdownNow();
+		}
+	}
+
+	@Test
+	public void scriptRestartedDuringSamePauseAnnouncesAgain() throws Exception
+	{
+		String message = "Pause Aware Test is waiting: scripts are paused. Click the amber play button next to the Enable/Disable Input button to resume.";
+		String previousStatus = Microbot.status;
+		PauseAwareTestScript script = new PauseAwareTestScript();
+		ScriptPauseController.setPaused(true).get(2, TimeUnit.SECONDS);
+		try (MockedStatic<Microbot> microbot = mockStatic(Microbot.class, CALLS_REAL_METHODS))
+		{
+			microbot.when(Microbot::getEventBus).thenReturn(null);
+			script.startLoop();
+			assertFalse(script.run());
+			microbot.verify(() -> Microbot.log(message, Level.WARN), times(1));
+			assertEquals(ScriptPauseController.PAUSED_STATUS, Microbot.status);
+
+			script.shutdown();
+			Microbot.status = "IDLE";
+			script.startLoop();
+			assertFalse(script.run());
+			assertFalse(script.run());
+			microbot.verify(() -> Microbot.log(message, Level.WARN), times(2));
+			assertEquals(ScriptPauseController.PAUSED_STATUS, Microbot.status);
+
+			ScriptPauseController.setPaused(false).get(2, TimeUnit.SECONDS);
+			assertEquals("IDLE", Microbot.status);
+		}
+		finally
+		{
+			Microbot.status = previousStatus;
+			script.shutdown();
+			script.scheduledExecutorService.shutdownNow();
+		}
+	}
+
+	@Test
+	public void scriptStartedWhilePausedShowsWaitInGameChat() throws Exception
+	{
+		String message = "Pause Aware Test is waiting: scripts are paused. Click the amber play button next to the Enable/Disable Input button to resume.";
+		String previousStatus = Microbot.status;
+		PauseAwareTestScript script = new PauseAwareTestScript();
+		ClientThread clientThread = mock(ClientThread.class);
+		ScriptPauseController.setPaused(true).get(2, TimeUnit.SECONDS);
+		try (MockedStatic<Microbot> microbot = mockStatic(Microbot.class, CALLS_REAL_METHODS))
+		{
+			microbot.when(Microbot::getEventBus).thenReturn(null);
+			microbot.when(Microbot::getClientThread).thenReturn(clientThread);
+			microbot.when(Microbot::isLoggedIn).thenReturn(true);
+			script.startLoop();
+			assertFalse(script.run());
+			assertFalse(script.run());
+
+			ArgumentCaptor<Runnable> notice = ArgumentCaptor.forClass(Runnable.class);
+			verify(clientThread, times(1)).invokeLater(notice.capture());
+			notice.getValue().run();
+			verify(client, times(1)).addChatMessage(ChatMessageType.GAMEMESSAGE, "", message, "");
+		}
+		finally
+		{
+			Microbot.status = previousStatus;
 			script.shutdown();
 			script.scheduledExecutorService.shutdownNow();
 		}
