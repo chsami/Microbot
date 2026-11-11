@@ -27,7 +27,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.FileTime;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -737,24 +737,39 @@ public class LivePluginManagerTest {
         Path origin = directory.resolve("FixturePlugin.jar.origin");
         Files.write(origin, ("hubId=FixturePlugin\nsha256=" + LivePluginManager.hash(jar) + "\n")
                 .getBytes(StandardCharsets.UTF_8));
-        Object jarKey = Files.readAttributes(jar, BasicFileAttributes.class).fileKey();
-        Object originKey = Files.readAttributes(origin, BasicFileAttributes.class).fileKey();
-        Assume.assumeNotNull(jarKey, originKey);
+        FileTime installedAt = FileTime.from(1_600_000_000L, TimeUnit.SECONDS);
+        Files.setLastModifiedTime(jar, installedAt);
+        Files.setLastModifiedTime(origin, installedAt);
 
         manager.loadAtStartup();
 
         assertEquals("1.0", resource(onlyPlugin()));
         assertEquals("FixturePlugin", manager.getInstalledPlugins().get(0).getHubId());
         assertEquals("An unchanged installed JAR must not be replaced on disk",
-                jarKey, Files.readAttributes(jar, BasicFileAttributes.class).fileKey());
+                installedAt, Files.getLastModifiedTime(jar));
         assertEquals("An unchanged origin file must not be replaced on disk",
-                originKey, Files.readAttributes(origin, BasicFileAttributes.class).fileKey());
+                installedAt, Files.getLastModifiedTime(origin));
     }
 
     @Test
-    public void fileSystemFailureMessageNamesTheExceptionClass() {
-        assertEquals("AccessDeniedException: a.jar -> b.jar",
-                LivePluginManager.message(new java.nio.file.AccessDeniedException("a.jar", "b.jar", null)));
+    public void fileSystemFailureMessageIsPlainLanguageWithOnlyTheFileName() {
+        String inUse = "Microbot was not allowed to change AutoFisher.jar, most likely because another Microbot client"
+                + " is using it. Close the other clients and try again.";
+        assertEquals(inUse, LivePluginManager.message(new java.nio.file.AccessDeniedException(
+                "C:\\Users\\me\\.runelite\\microbot-plugins\\.install-1.tmp",
+                "C:\\Users\\me\\.runelite\\microbot-plugins\\AutoFisher.jar", null)));
+        assertEquals(inUse, LivePluginManager.message(new java.nio.file.FileSystemException(
+                "/home/me/.runelite/microbot-plugins/AutoFisher.jar", null,
+                "The process cannot access the file because it is being used by another process")));
+        assertEquals("AutoFisher.jar is no longer in the plugin folder.", LivePluginManager.message(
+                new java.nio.file.NoSuchFileException("/home/me/.runelite/microbot-plugins/AutoFisher.jar")));
+        assertEquals("Could not write AutoFisher.jar in the plugin folder (No space left on device)."
+                        + " Check that the folder is writable and no other client is open.",
+                LivePluginManager.message(new java.nio.file.FileSystemException(
+                        "/home/me/.runelite/microbot-plugins/AutoFisher.jar", null, "No space left on device")));
+        assertEquals("Could not write a plugin file in the plugin folder."
+                        + " Check that the folder is writable and no other client is open.",
+                LivePluginManager.message(new java.nio.file.FileSystemException(null)));
         assertEquals("plain", LivePluginManager.message(new IllegalStateException("plain")));
         assertEquals("IllegalStateException", LivePluginManager.message(new IllegalStateException()));
     }

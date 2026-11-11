@@ -4,11 +4,13 @@ import com.google.common.hash.Hashing;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.FileSystemException;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.LinkOption;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
@@ -891,6 +893,7 @@ public class LivePluginManager {
                     skipped.put(source, digest);
                 }
                 failures.add(source.getFileName() + ": " + message(failure));
+                log.warn("Could not load local plugin {}: {}", source.getFileName(), failure.toString());
                 if (startup) {
                     reportLoadFailure(source, message(failure));
                 }
@@ -1104,11 +1107,31 @@ public class LivePluginManager {
     }
 
     static String message(Throwable failure) {
-        if (failure.getMessage() == null) {
-            return failure.getClass().getSimpleName();
+        if (!(failure instanceof FileSystemException)) {
+            return failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage();
         }
-        return failure instanceof FileSystemException
-                ? failure.getClass().getSimpleName() + ": " + failure.getMessage() : failure.getMessage();
+        FileSystemException fileFailure = (FileSystemException) failure;
+        String name = fileName(fileFailure.getOtherFile() != null ? fileFailure.getOtherFile() : fileFailure.getFile());
+        String reason = fileFailure.getReason();
+        if (failure instanceof AccessDeniedException
+                || (reason != null && reason.toLowerCase(Locale.ROOT).contains("used by another process"))) {
+            return "Microbot was not allowed to change " + name
+                    + ", most likely because another Microbot client is using it. Close the other clients and try again.";
+        }
+        if (failure instanceof NoSuchFileException) {
+            return name + " is no longer in the plugin folder.";
+        }
+        return "Could not write " + name + " in the plugin folder"
+                + (reason == null || reason.trim().isEmpty() ? "" : " (" + reason.trim() + ")")
+                + ". Check that the folder is writable and no other client is open.";
+    }
+
+    private static String fileName(String path) {
+        if (path == null) {
+            return "a plugin file";
+        }
+        String name = path.substring(Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\')) + 1);
+        return name.isEmpty() ? "a plugin file" : name;
     }
 
     private void checkLoadPolicy(LivePluginArtifact candidate) throws LivePluginArtifact.BlockedPluginException {
