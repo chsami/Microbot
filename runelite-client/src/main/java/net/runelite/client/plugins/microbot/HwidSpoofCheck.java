@@ -21,7 +21,10 @@ final class HwidSpoofCheck
 	static final String SIGNER_EXPIRED = "expired";
 
 	static final String LOGIN_BLOCKED_TITLE = "Microbot stopped this login";
-	private static final String LOGIN_BLOCKED_WAY_OUT = "\n\nTo log in anyway, with your real client details, turn off Spoof device ID in Microbot > General.";
+	static final String LOGIN_BLOCKED_STAY = "Stay logged out";
+	static final String LOGIN_BLOCKED_BYPASS = "Log in without spoofing";
+	private static final String LOGIN_BLOCKED_QUESTION = "\n\nSpoofing is not working. Are you sure you want to log in without it?"
+		+ "\nIf you choose \"" + LOGIN_BLOCKED_BYPASS + "\", spoofing is switched off until you restart the client, and your real device ID and client details are sent. Then click Login again.";
 
 	static final String AGENT_MISSING_CHAT = "Spoofing is not active, so this login sent your real device details. Restart the client from the Microbot launcher and check that Spoof hardware IDs is ticked. Already ticked? Report it in the Microbot Discord.";
 	static final String AGENT_INERT_CHAT = "This client started with spoofing off, so this login sent your real device details. Restart from the Microbot launcher, or turn off Spoof device ID in Microbot > General.";
@@ -78,7 +81,7 @@ final class HwidSpoofCheck
 
 		LoginBlock(String reason, String detail)
 		{
-			this.message = "Spoof device ID is on, and this login was stopped before anything was sent.\n\n" + reason + LOGIN_BLOCKED_WAY_OUT;
+			this.message = "Spoof device ID is on, and this login was stopped before anything was sent.\n\n" + reason + LOGIN_BLOCKED_QUESTION;
 			this.detail = detail;
 		}
 

@@ -71,27 +71,18 @@ public class PlatformMetadataTransformerTest
 	}
 
 	@Test
-	public void processNamesLookStockOnMacWhileSpoofing()
+	public void onlyTheAgentNameIsHiddenOnEverySystem()
 	{
-		System.setProperty("os.name", "Mac OS X");
-		System.setProperty(HwidAgent.TOGGLE_PROPERTY, "true");
-		assertEquals("RuneLite", HwidAgent.platformName("java", PlatformMetadataTransformer.PHASE_EXECUTABLE));
-		assertEquals("launchd", HwidAgent.platformName("zsh", PlatformMetadataTransformer.PHASE_PARENT));
-		assertEquals("", HwidAgent.platformName("hwid-agent.jar", PlatformMetadataTransformer.PHASE_AGENT));
-		System.setProperty(HwidAgent.TOGGLE_PROPERTY, "false");
-		assertEquals("java", HwidAgent.platformName("java", PlatformMetadataTransformer.PHASE_EXECUTABLE));
-	}
-
-	@Test
-	public void onlyTheAgentNameIsHiddenOnOtherSystems()
-	{
-		System.setProperty("os.name", "Windows 11");
-		System.setProperty(HwidAgent.TOGGLE_PROPERTY, "true");
-		assertEquals("javaw", HwidAgent.platformName("javaw", PlatformMetadataTransformer.PHASE_EXECUTABLE));
-		assertEquals("explorer", HwidAgent.platformName("explorer", PlatformMetadataTransformer.PHASE_PARENT));
-		assertEquals("", HwidAgent.platformName("hwid-agent.jar", PlatformMetadataTransformer.PHASE_AGENT));
-		System.setProperty(HwidAgent.TOGGLE_PROPERTY, "false");
-		assertEquals("hwid-agent.jar", HwidAgent.platformName("hwid-agent.jar", PlatformMetadataTransformer.PHASE_AGENT));
+		for (String os : new String[]{"Mac OS X", "Windows 11", "Linux"})
+		{
+			System.setProperty("os.name", os);
+			System.setProperty(HwidAgent.TOGGLE_PROPERTY, "true");
+			assertEquals(os, "java", HwidAgent.platformName("java", PlatformMetadataTransformer.PHASE_EXECUTABLE));
+			assertEquals(os, "zsh", HwidAgent.platformName("zsh", PlatformMetadataTransformer.PHASE_PARENT));
+			assertEquals(os, "", HwidAgent.platformName("hwid-agent.jar", PlatformMetadataTransformer.PHASE_AGENT));
+			System.setProperty(HwidAgent.TOGGLE_PROPERTY, "false");
+			assertEquals(os, "hwid-agent.jar", HwidAgent.platformName("hwid-agent.jar", PlatformMetadataTransformer.PHASE_AGENT));
+		}
 	}
 
 	@Test

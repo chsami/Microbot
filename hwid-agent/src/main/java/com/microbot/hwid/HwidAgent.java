@@ -37,9 +37,6 @@ public final class HwidAgent
 	{
 	}
 
-	/** Executable and parent process of the stock macOS RuneLite.app started by LaunchServices. */
-	private static final String[] STOCK_MAC_PROCESS_NAMES = {"RuneLite", "launchd"};
-
 	/** Guards the three platform hook flags and {@link #PLATFORM_HOOK_PROPERTY}; classes load on several threads. */
 	private static final Object PLATFORM_HOOK_LOCK = new Object();
 	private static boolean signerHookInstalled;
@@ -176,24 +173,16 @@ public final class HwidAgent
 		return spoofEnabled() ? StockSignerHash.BUNDLED : Arrays.hashCode(signers);
 	}
 
-	/** Called on each executable, parent process and agent name the game stores before it sizes the login packet. */
+	/**
+	 * Called on each executable, parent process and agent name the game stores before it sizes the login
+	 * packet. Only the agent name is replaced: no stock launch on any system attaches a java agent, so
+	 * empty is known to be what stock sends. The executable and parent names of a stock launch have not
+	 * been captured on any system, and a guessed pair could be one no stock client sends, so they pass
+	 * through unchanged.
+	 */
 	public static String platformName(String collected, int phase)
 	{
-		if (!spoofEnabled())
-		{
-			return collected;
-		}
-		if (phase == PlatformMetadataTransformer.PHASE_AGENT)
-		{
-			// No stock launch on any system attaches a java agent.
-			return "";
-		}
-		if (phase < 0 || phase >= STOCK_MAC_PROCESS_NAMES.length
-			|| !System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT).startsWith("mac"))
-		{
-			return collected;
-		}
-		return STOCK_MAC_PROCESS_NAMES[phase];
+		return spoofEnabled() && phase == PlatformMetadataTransformer.PHASE_AGENT ? "" : collected;
 	}
 
 	public static Object randomDatFile(Object handle)

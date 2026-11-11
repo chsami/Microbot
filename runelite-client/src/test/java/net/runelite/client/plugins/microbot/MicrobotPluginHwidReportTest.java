@@ -140,7 +140,7 @@ public class MicrobotPluginHwidReportTest
 			java.util.List<HwidSpoofCheck.LoginBlock> shown = new java.util.ArrayList<>();
 			Field notice = MicrobotPlugin.class.getDeclaredField("loginBlockNotice");
 			notice.setAccessible(true);
-			notice.set(plugin, (java.util.function.Consumer<HwidSpoofCheck.LoginBlock>) shown::add);
+			notice.set(plugin, (java.util.function.BiConsumer<HwidSpoofCheck.LoginBlock, Runnable>) (shownBlock, bypass) -> shown.add(shownBlock));
 
 			Method method = MicrobotPlugin.class.getDeclaredMethod("blockLogin", HwidSpoofCheck.LoginBlock.class);
 			method.setAccessible(true);
@@ -156,7 +156,8 @@ public class MicrobotPluginHwidReportTest
 			String message = block.message();
 			assertTrue(block.name(), message.contains("this login was stopped before anything was sent"));
 			assertTrue(block.name(), message.contains("Why: ") && message.contains("What to do: "));
-			assertTrue(block.name(), message.contains("turn off Spoof device ID in Microbot > General"));
+			assertTrue(block.name(), message.contains("Are you sure you want to log in without it?"));
+			assertTrue(block.name(), message.contains("your real device ID and client details are sent"));
 			assertFalse(block.name(), message.contains("-javaagent") || message.contains("-D") || message.contains("microbot.hwid"));
 		}
 	}
@@ -167,7 +168,7 @@ public class MicrobotPluginHwidReportTest
 		when(client.getGameState()).thenReturn(GameState.LOGGED_IN);
 		Field notice = MicrobotPlugin.class.getDeclaredField("loginBlockNotice");
 		notice.setAccessible(true);
-		notice.set(plugin, (java.util.function.Consumer<HwidSpoofCheck.LoginBlock>) block -> { });
+		notice.set(plugin, (java.util.function.BiConsumer<HwidSpoofCheck.LoginBlock, Runnable>) (shownBlock, bypass) -> { });
 		Method method = MicrobotPlugin.class.getDeclaredMethod("blockLogin", HwidSpoofCheck.LoginBlock.class);
 		method.setAccessible(true);
 		method.invoke(plugin, HwidSpoofCheck.LoginBlock.SIGNER_CHANGED);
@@ -176,6 +177,49 @@ public class MicrobotPluginHwidReportTest
 		verify(clientThread).invokeLater(later.capture());
 		later.getValue().run();
 		verify(client, never()).setGameState(any());
+	}
+
+	@Test
+	public void choosingToLogInWithoutSpoofingSwitchesItOffForTheSessionAndStopsBlocking() throws Exception
+	{
+		String previous = System.getProperty("microbot.hwid.spoof");
+		try
+		{
+			MicrobotConfig config = mock(MicrobotConfig.class);
+			when(config.spoofDeviceId()).thenReturn(true);
+			Field configField = MicrobotPlugin.class.getDeclaredField("microbotConfig");
+			configField.setAccessible(true);
+			configField.set(plugin, config);
+			Method active = MicrobotPlugin.class.getDeclaredMethod("hwidSpoofActive");
+			active.setAccessible(true);
+			assertTrue((Boolean) active.invoke(plugin));
+
+			when(client.getGameState()).thenReturn(GameState.LOGGING_IN);
+			Runnable[] offered = new Runnable[1];
+			Field notice = MicrobotPlugin.class.getDeclaredField("loginBlockNotice");
+			notice.setAccessible(true);
+			notice.set(plugin, (java.util.function.BiConsumer<HwidSpoofCheck.LoginBlock, Runnable>) (shownBlock, bypass) -> offered[0] = bypass);
+			Method method = MicrobotPlugin.class.getDeclaredMethod("blockLogin", HwidSpoofCheck.LoginBlock.class);
+			method.setAccessible(true);
+			method.invoke(plugin, HwidSpoofCheck.LoginBlock.SIGNER_CHANGED);
+
+			// Nothing changes until the player answers.
+			assertTrue((Boolean) active.invoke(plugin));
+			offered[0].run();
+			assertFalse((Boolean) active.invoke(plugin));
+			assertTrue("false".equals(System.getProperty("microbot.hwid.spoof")));
+		}
+		finally
+		{
+			if (previous == null)
+			{
+				System.clearProperty("microbot.hwid.spoof");
+			}
+			else
+			{
+				System.setProperty("microbot.hwid.spoof", previous);
+			}
+		}
 	}
 
 	private void report(Problem problem) throws Exception
