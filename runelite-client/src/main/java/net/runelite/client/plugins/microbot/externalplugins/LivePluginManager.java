@@ -1116,14 +1116,16 @@ public class LivePluginManager {
         if (failure instanceof AccessDeniedException
                 || (reason != null && reason.toLowerCase(Locale.ROOT).contains("used by another process"))) {
             return "Microbot was not allowed to change " + name
-                    + ", most likely because another Microbot client is using it. Close the other clients and try again.";
+                    + ". Another Microbot client may be using it: close the other clients and try again."
+                    + " If no other client is open, check that the file or folder is not read-only.";
         }
         if (failure instanceof NoSuchFileException) {
-            return name + " is no longer in the plugin folder.";
+            return name + " is no longer in the plugin folder."
+                    + " Put it back or reinstall it from the Plugin Hub, then refresh.";
         }
-        return "Could not write " + name + " in the plugin folder"
+        return "Could not access " + name
                 + (reason == null || reason.trim().isEmpty() ? "" : " (" + reason.trim() + ")")
-                + ". Check that the folder is writable and no other client is open.";
+                + ". Check that the plugin folder is readable and writable and that no other client is open.";
     }
 
     private static String fileName(String path) {

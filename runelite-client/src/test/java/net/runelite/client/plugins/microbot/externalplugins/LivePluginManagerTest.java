@@ -753,22 +753,25 @@ public class LivePluginManagerTest {
 
     @Test
     public void fileSystemFailureMessageIsPlainLanguageWithOnlyTheFileName() {
-        String inUse = "Microbot was not allowed to change AutoFisher.jar, most likely because another Microbot client"
-                + " is using it. Close the other clients and try again.";
+        String inUse = "Microbot was not allowed to change AutoFisher.jar. Another Microbot client may be using it:"
+                + " close the other clients and try again. If no other client is open, check that the file or folder"
+                + " is not read-only.";
         assertEquals(inUse, LivePluginManager.message(new java.nio.file.AccessDeniedException(
                 "C:\\Users\\me\\.runelite\\microbot-plugins\\.install-1.tmp",
                 "C:\\Users\\me\\.runelite\\microbot-plugins\\AutoFisher.jar", null)));
         assertEquals(inUse, LivePluginManager.message(new java.nio.file.FileSystemException(
                 "/home/me/.runelite/microbot-plugins/AutoFisher.jar", null,
                 "The process cannot access the file because it is being used by another process")));
-        assertEquals("AutoFisher.jar is no longer in the plugin folder.", LivePluginManager.message(
-                new java.nio.file.NoSuchFileException("/home/me/.runelite/microbot-plugins/AutoFisher.jar")));
-        assertEquals("Could not write AutoFisher.jar in the plugin folder (No space left on device)."
-                        + " Check that the folder is writable and no other client is open.",
+        assertEquals("AutoFisher.jar is no longer in the plugin folder."
+                        + " Put it back or reinstall it from the Plugin Hub, then refresh.",
+                LivePluginManager.message(
+                        new java.nio.file.NoSuchFileException("/home/me/.runelite/microbot-plugins/AutoFisher.jar")));
+        assertEquals("Could not access AutoFisher.jar (No space left on device)."
+                        + " Check that the plugin folder is readable and writable and that no other client is open.",
                 LivePluginManager.message(new java.nio.file.FileSystemException(
                         "/home/me/.runelite/microbot-plugins/AutoFisher.jar", null, "No space left on device")));
-        assertEquals("Could not write a plugin file in the plugin folder."
-                        + " Check that the folder is writable and no other client is open.",
+        assertEquals("Could not access a plugin file."
+                        + " Check that the plugin folder is readable and writable and that no other client is open.",
                 LivePluginManager.message(new java.nio.file.FileSystemException(null)));
         assertEquals("plain", LivePluginManager.message(new IllegalStateException("plain")));
         assertEquals("IllegalStateException", LivePluginManager.message(new IllegalStateException()));
