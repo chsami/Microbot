@@ -136,6 +136,47 @@ public class ShortestPathManualWalkingTest {
     }
 
     @Test
+    public void unreachableWalkShowsTheWalkerReasonAndClearsTheRoute() throws Exception {
+        List<String> unreachable = new ArrayList<>();
+        try (Harness script = new Harness(new ArrayList<>(), new ArrayList<>(), unreachable)) {
+            script.result = WalkerState.UNREACHABLE;
+            script.reason = "Can't reach 2933, 3148: the route needs the ship to Musa Point (Captain Tobias), "
+                    + "but it needs 30 Coins (you have 15 in your inventory).";
+            script.setTriggerWalker(FIRST);
+            script.flushPreview();
+            script.startWalkTask();
+            assertEquals(FIRST, script.started.poll(5, TimeUnit.SECONDS));
+            script.release.release();
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+            while (script.getTriggerWalker() != null && System.nanoTime() < deadline) {
+                Thread.onSpinWait();
+            }
+            assertNull(script.getTriggerWalker());
+            assertEquals(List.of(script.reason), unreachable);
+        }
+    }
+
+    @Test
+    public void unreachableReasonOfAReplacedWalkIsNotShown() throws Exception {
+        List<WorldPoint> previews = new ArrayList<>();
+        List<String> unreachable = new ArrayList<>();
+        try (Harness script = new Harness(previews, new ArrayList<>(), unreachable)) {
+            script.result = WalkerState.UNREACHABLE;
+            script.reason = "Can't reach 3200, 3200: there is no tile you can stand on at or next to it.";
+            script.setTriggerWalker(FIRST);
+            script.flushPreview();
+            script.startWalkTask();
+            assertEquals(FIRST, script.started.poll(5, TimeUnit.SECONDS));
+            script.setTriggerWalker(SECOND);
+            assertTrue(script.interrupted.await(5, TimeUnit.SECONDS));
+            script.release.release();
+            script.flushPreview();
+            assertEquals(SECOND, script.getTriggerWalker());
+            assertTrue(unreachable.isEmpty());
+        }
+    }
+
+    @Test
     public void pathNoticeUsesConfiguredKeyOrPanelFallback() {
         String keyed = WalkingNoticeOverlay.messageFor(ShortestPathScript.ManualWalkingNotice.PATH_SET,
                 new Keybind(KeyEvent.VK_F6, 0));
@@ -167,8 +208,20 @@ public class ShortestPathManualWalkingTest {
             this(previews, new ArrayList<>());
         }
 
+        volatile WalkerState result = WalkerState.ARRIVED;
+        volatile String reason;
+
         Harness(List<WorldPoint> previews, List<ManualWalkingNotice> notices) {
-            super(previews::add, notices::add);
+            this(previews, notices, new ArrayList<>());
+        }
+
+        Harness(List<WorldPoint> previews, List<ManualWalkingNotice> notices, List<String> unreachable) {
+            super(previews::add, notices::add, unreachable::add);
+        }
+
+        @Override
+        String unreachableReason() {
+            return reason;
         }
 
         @Override
@@ -190,7 +243,7 @@ public class ShortestPathManualWalkingTest {
                     interrupted.countDown();
                 }
             }
-            return WalkerState.ARRIVED;
+            return result;
         }
 
         @Override

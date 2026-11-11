@@ -12,9 +12,11 @@ import net.runelite.client.ui.overlay.components.LineComponent;
 
 /** Transient feedback for explicit manual walker actions; route recalculations stay silent. */
 public class WalkingNoticeOverlay extends OverlayPanel {
-    private static final long DISPLAY_NANOS = TimeUnit.SECONDS.toNanos(5);
+    private static final long DISPLAY_SECONDS = 5;
+    static final long UNREACHABLE_DISPLAY_SECONDS = 12;
     private String message;
     private long shownAt;
+    private long displayNanos = TimeUnit.SECONDS.toNanos(DISPLAY_SECONDS);
 
     @Inject
     WalkingNoticeOverlay() {
@@ -24,7 +26,12 @@ public class WalkingNoticeOverlay extends OverlayPanel {
     }
 
     void show(String message) {
+        show(message, DISPLAY_SECONDS);
+    }
+
+    void show(String message, long seconds) {
         this.message = message;
+        displayNanos = TimeUnit.SECONDS.toNanos(seconds);
         shownAt = System.nanoTime();
     }
 
@@ -51,7 +58,7 @@ public class WalkingNoticeOverlay extends OverlayPanel {
 
     @Override
     public Dimension render(Graphics2D graphics) {
-        if (message == null || System.nanoTime() - shownAt >= DISPLAY_NANOS) {
+        if (message == null || System.nanoTime() - shownAt >= displayNanos) {
             return null;
         }
         panelComponent.getChildren().add(LineComponent.builder()

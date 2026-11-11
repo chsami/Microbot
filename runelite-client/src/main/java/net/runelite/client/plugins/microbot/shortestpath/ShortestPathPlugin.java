@@ -96,7 +96,7 @@ import java.util.regex.Pattern;
         description = "Draws the shortest path to a chosen destination on the map (right click a spot on the world map to use)",
         tags = {"pathfinder", "map", "waypoint", "navigation", "microbot"},
         enabledByDefault = false,
-        version = "1.0.8",
+        version = "1.0.9",
         alwaysOn = true
 )
 public class ShortestPathPlugin extends Plugin {
@@ -273,7 +273,7 @@ public class ShortestPathPlugin extends Plugin {
         clientToolbar.addNavigation(pohNavButton);
 
         Rs2Walker.setConfig(config);
-        shortestPathScript = new ShortestPathScript(this::setTarget, this::showWalkingNotice);
+        shortestPathScript = new ShortestPathScript(this::setTarget, this::showWalkingNotice, this::showUnreachableNotice);
         shortestPathScript.run(config);
 
         overlayManager.add(walkingNoticeOverlay);
@@ -1110,6 +1110,7 @@ public class ShortestPathPlugin extends Plugin {
         if (entry.getOption().equals(SET) && entry.getTarget().equals(TARGET)) {
             WorldPoint worldPoint = getClickedWalkablePoint("Target");
             if (worldPoint != null) {
+                walkingNoticeOverlay.clear();
                 shortestPathScript.setTriggerWalker(worldPoint);
             }
         }
@@ -1491,6 +1492,18 @@ public class ShortestPathPlugin extends Plugin {
             String message = WalkingNoticeOverlay.messageFor(notice, config.toggleWalkingHotkey());
             client.addChatMessage(net.runelite.api.ChatMessageType.GAMEMESSAGE, "", message, "");
             walkingNoticeOverlay.show(message);
+        });
+    }
+
+    private void showUnreachableNotice(String reason) {
+        final ShortestPathScript source = shortestPathScript;
+        getClientThread().invokeLater(() -> {
+            if (source != shortestPathScript || source.getTriggerWalker() != null || !Microbot.isLoggedIn()) {
+                return;
+            }
+            String message = "Web Walker: " + reason;
+            client.addChatMessage(net.runelite.api.ChatMessageType.GAMEMESSAGE, "", message, "");
+            walkingNoticeOverlay.show(message, WalkingNoticeOverlay.UNREACHABLE_DISPLAY_SECONDS);
         });
     }
 
