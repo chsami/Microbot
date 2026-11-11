@@ -27,8 +27,12 @@ import java.util.regex.Pattern;
  * person computed from a stock RuneLite client; nothing fetched is ever sent. What is fetched can only
  * stop a login: it tells whether stock RuneLite still sends that same hash.
  *
- * <p>On start a background thread reads RuneLite's public bootstrap, the same file the stock launcher
- * reads, and compares the listed client jar with the one last checked. Only when RuneLite has released
+ * <p>The agent itself never opens a connection. {@code premain} only reads the last stored check from
+ * disk ({@link #loadStored()}). The lookup starts when the client calls
+ * {@link HwidAgent#checkStockSigner(String)}, which it does after it has applied its proxy settings, so
+ * the request leaves through the same proxy as the rest of the client's traffic. A background thread
+ * then reads RuneLite's public bootstrap, the same file the stock launcher reads, and compares the
+ * listed client jar with the one last checked. Only when RuneLite has released
  * a new client is the jar read again: from the stock launcher's own copy when it matches the bootstrap
  * checksum, otherwise downloaded once. The hash is computed from the verified signers of the callbacks
  * class, exactly as {@code Class.getSigners()} reports them, and compared with {@link #BUNDLED}.
@@ -75,6 +79,11 @@ final class StockSignerHash
 	private static final Pattern CLIENT_JAR = Pattern.compile("client-[0-9][0-9A-Za-z.\\-]*\\.jar");
 	private static final Pattern SHA256 = Pattern.compile("[0-9a-f]{64}");
 
+	static final String LOOKUP_THREAD = "hwid-stock-signer";
+	private static final java.util.concurrent.atomic.AtomicBoolean LOOKUP_STARTED = new java.util.concurrent.atomic.AtomicBoolean();
+	/** Builds the remote for a lookup from the client's User-Agent; replaced in tests. */
+	private static volatile java.util.function.Function<String, Remote> remoteFactory = HttpRemote::new;
+
 	private static volatile java.util.function.LongSupplier clock = System::currentTimeMillis;
 	/** Always {@link #BUNDLED} outside tests, which cannot sign a jar with RuneLite's key. */
 	private static volatile int expected = BUNDLED;
@@ -91,19 +100,30 @@ final class StockSignerHash
 		void download(String url, File target, long maxBytes) throws IOException;
 	}
 
-	/** Applies the last stored check at once, then checks stock again off the calling thread. */
-	static void start()
+	/** Applies the last stored check from disk. Opens no connection and starts no thread; safe in premain. */
+	static void loadStored()
 	{
+		loadCached(storeFile());
+	}
+
+	/**
+	 * Checks stock again off the calling thread, at most once per JVM. Must only be called once the
+	 * client's proxy settings are in place. Returns the thread, or null when no lookup was started.
+	 */
+	static Thread startLookup(String userAgent)
+	{
+		if ("false".equalsIgnoreCase(System.getProperty(LOOKUP_PROPERTY, "true").trim())
+			|| !LOOKUP_STARTED.compareAndSet(false, true))
+		{
+			return null;
+		}
 		File store = storeFile();
 		File repository = new File(runeliteHome(), "repository2");
-		loadCached(store);
-		if ("false".equalsIgnoreCase(System.getProperty(LOOKUP_PROPERTY, "true").trim()))
-		{
-			return;
-		}
-		Thread thread = new Thread(() -> refresh(new HttpRemote(), store, repository), "hwid-stock-signer");
+		Remote remote = remoteFactory.apply(userAgent);
+		Thread thread = new Thread(() -> refresh(remote, store, repository), LOOKUP_THREAD);
 		thread.setDaemon(true);
 		thread.start();
+		return thread;
 	}
 
 	/** Returns the status afterwards. Never throws. */
@@ -343,10 +363,17 @@ final class StockSignerHash
 		expected = hash;
 	}
 
+	static void setRemoteFactoryForTesting(java.util.function.Function<String, Remote> factory)
+	{
+		remoteFactory = factory;
+	}
+
 	static void resetForTesting()
 	{
 		clock = System::currentTimeMillis;
 		expected = BUNDLED;
+		remoteFactory = HttpRemote::new;
+		LOOKUP_STARTED.set(false);
 		System.clearProperty(STATUS_PROPERTY);
 	}
 
@@ -368,6 +395,14 @@ final class StockSignerHash
 
 	private static final class HttpRemote implements Remote
 	{
+		/** The client's own User-Agent, so the request reads like the client's other RuneLite requests. */
+		private final String userAgent;
+
+		HttpRemote(String userAgent)
+		{
+			this.userAgent = userAgent == null || userAgent.isBlank() || userAgent.matches("(?s).*[\\r\\n].*") ? null : userAgent.trim();
+		}
+
 		@Override
 		public byte[] bootstrap() throws IOException
 		{
@@ -385,12 +420,16 @@ final class StockSignerHash
 			}
 		}
 
-		private static void copy(String url, OutputStream out, long maxBytes) throws IOException
+		private void copy(String url, OutputStream out, long maxBytes) throws IOException
 		{
 			HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
 			connection.setConnectTimeout(5000);
 			connection.setReadTimeout(15000);
 			connection.setInstanceFollowRedirects(false);
+			if (userAgent != null)
+			{
+				connection.setRequestProperty("User-Agent", userAgent);
+			}
 			try
 			{
 				if (connection.getResponseCode() != HttpURLConnection.HTTP_OK)

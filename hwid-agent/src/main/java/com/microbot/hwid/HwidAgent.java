@@ -64,12 +64,29 @@ public final class HwidAgent
 			inst.addTransformer(new RandomDatTransformer());
 			inst.addTransformer(new RandomDatWriteTransformer());
 			System.setProperty(AGENT_PROPERTY, AGENT_LOADED);
-			StockSignerHash.start();
+			// Disk only. The network lookup waits for checkStockSigner, after the client's proxy is set.
+			StockSignerHash.loadStored();
 			launcherCharacterId();
 		}
 		catch (Throwable t)
 		{
 			log.severe("hwid-agent failed to register transformer: " + t);
+		}
+	}
+
+	/**
+	 * Called by the client once its proxy settings are applied: checks, in the background and at most
+	 * once, that stock RuneLite still sends the bundled signer hash. Nothing in {@link #premain} opens a
+	 * connection, because premain runs before the client has read its {@code --proxy} option and a
+	 * request made then would leave from the real address. Does nothing when the agent is inert.
+	 *
+	 * @param userAgent the client's HTTP User-Agent, or null to send Java's default
+	 */
+	public static void checkStockSigner(String userAgent)
+	{
+		if (AGENT_LOADED.equals(System.getProperty(AGENT_PROPERTY)))
+		{
+			StockSignerHash.startLookup(userAgent);
 		}
 	}
 
