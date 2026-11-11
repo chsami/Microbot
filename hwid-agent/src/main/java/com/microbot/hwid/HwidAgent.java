@@ -23,6 +23,8 @@ public final class HwidAgent
 	public static final String PLATFORM_HOOK_PROPERTY = "microbot.hwid.platform.installed";
 	/** Set once a signer call could not be rewritten: the next login would mix real and spoofed details. */
 	public static final String PLATFORM_MISSED_PROPERTY = "microbot.hwid.platform.missed";
+	/** Set once every game class the platform transformer could act on has been loaded; see {@link PlatformScan}. */
+	public static final String PLATFORM_SCANNED_PROPERTY = "microbot.hwid.platform.scanned";
 	public static final String RANDOM_DAT_CALL_PROPERTY = "microbot.hwid.randomdat.lastCall";
 
 	private static volatile boolean deviceHookInstalled;

@@ -238,4 +238,17 @@ public class HwidSpoofCheckTest
 		properties.put(HwidSpoofCheck.LAUNCHER_DISABLED_PROPERTY, "true");
 		assertFalse(check.loginBlock(true).isPresent());
 	}
+
+	@Test
+	public void firstLoginIsBlockedWhenTheStartupScanFoundAHookMissing()
+	{
+		agentLoadedWithDeviceHook();
+		properties.remove(HwidSpoofCheck.PLATFORM_HOOK_PROPERTY);
+		// Scan still running: nothing is known yet, so the login is not blocked.
+		assertFalse(check.loginBlock(true).isPresent());
+		properties.put(HwidSpoofCheck.PLATFORM_SCANNED_PROPERTY, "true");
+		assertEquals(Optional.of(HwidSpoofCheck.LoginBlock.PLATFORM_DETAILS_MIXED), check.loginBlock(true));
+		properties.put(HwidSpoofCheck.PLATFORM_HOOK_PROPERTY, "true");
+		assertFalse(check.loginBlock(true).isPresent());
+	}
 }

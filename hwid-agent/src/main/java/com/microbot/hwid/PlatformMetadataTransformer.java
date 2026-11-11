@@ -45,9 +45,10 @@ public final class PlatformMetadataTransformer implements ClassFileTransformer
 			return null;
 		}
 
-		boolean signerCandidate = containsBytes(classfileBuffer, "getSigners");
-		boolean processCandidate = containsBytes(classfileBuffer, "ProcessHandle")
-			&& containsBytes(classfileBuffer, "getInputArguments");
+		PlatformScan.startOnce(loader, className);
+
+		boolean signerCandidate = isSignerCandidate(classfileBuffer);
+		boolean processCandidate = isProcessCandidate(classfileBuffer);
 		if (!signerCandidate && !processCandidate)
 		{
 			return null;
@@ -114,6 +115,22 @@ public final class PlatformMetadataTransformer implements ClassFileTransformer
 			log.warning("Platform metadata patch failed for " + className + ": " + t);
 			return null;
 		}
+	}
+
+	/** A class this transformer has to look inside; everything else is skipped on a byte search alone. */
+	static boolean isCandidate(byte[] classfile)
+	{
+		return isSignerCandidate(classfile) || isProcessCandidate(classfile);
+	}
+
+	private static boolean isSignerCandidate(byte[] classfile)
+	{
+		return containsBytes(classfile, "getSigners");
+	}
+
+	private static boolean isProcessCandidate(byte[] classfile)
+	{
+		return containsBytes(classfile, "ProcessHandle") && containsBytes(classfile, "getInputArguments");
 	}
 
 	/** Every {@code Class.getSigners()} call in the class, whatever surrounds it. */

@@ -16,6 +16,7 @@ final class HwidSpoofCheck
 	static final String PLATFORM_HOOK_PROPERTY = "microbot.hwid.platform.installed";
 	static final String RANDOM_DAT_CALL_PROPERTY = "microbot.hwid.randomdat.lastCall";
 	static final String PLATFORM_MISSED_PROPERTY = "microbot.hwid.platform.missed";
+	static final String PLATFORM_SCANNED_PROPERTY = "microbot.hwid.platform.scanned";
 	static final String SIGNER_STATUS_PROPERTY = "microbot.hwid.signer.status";
 	static final String SIGNER_CHANGED = "changed";
 	static final String SIGNER_EXPIRED = "expired";
@@ -74,7 +75,7 @@ final class HwidSpoofCheck
 		PLATFORM_DETAILS_MIXED(
 			"Why: the game changed how it reads client details, and this Microbot version can only hide some of them. The login would send a mix of real and spoofed details that no real RuneLite client sends."
 				+ "\n\nWhat to do: update Microbot. If you are already on the newest version, report this in the Microbot Discord.",
-			"Login blocked: a Class.getSigners call could not be rewritten in this client version (microbot.hwid.platform.missed=true), so the signer hash would be sent partly unspoofed.");
+			"Login blocked: the signer hash or agent name hook is not fully installed in this client version (microbot.hwid.platform.missed=true, or microbot.hwid.platform.scanned=true without microbot.hwid.platform.installed), so those details would be sent partly unspoofed.");
 
 		private final String message;
 		private final String detail;
@@ -140,6 +141,11 @@ final class HwidSpoofCheck
 			return Optional.of(LoginBlock.SIGNER_EXPIRED);
 		}
 		if (properties.apply(PLATFORM_MISSED_PROPERTY) != null)
+		{
+			return Optional.of(LoginBlock.PLATFORM_DETAILS_MIXED);
+		}
+		// Once the agent has loaded every class it could hook, a hook that is still not installed never will be.
+		if (properties.apply(PLATFORM_SCANNED_PROPERTY) != null && properties.apply(PLATFORM_HOOK_PROPERTY) == null)
 		{
 			return Optional.of(LoginBlock.PLATFORM_DETAILS_MIXED);
 		}
