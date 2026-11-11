@@ -41,8 +41,11 @@ public final class HwidAgent
 	/** Same values as the stock macOS RuneLite.app, started by LaunchServices without any java agent. */
 	private static final String[] STOCK_MAC_PROCESS_NAMES = {"RuneLite", "launchd", ""};
 
-	private static volatile boolean signerHookInstalled;
-	private static volatile boolean processHookInstalled;
+	/** Guards the three platform hook flags and {@link #PLATFORM_HOOK_PROPERTY}; classes load on several threads. */
+	private static final Object PLATFORM_HOOK_LOCK = new Object();
+	private static boolean signerHookInstalled;
+	private static boolean processHookInstalled;
+	private static boolean signerSiteMissed;
 
 	/**
 	 * Attaching the agent is the opt-in, so a missing -Dmicrobot.hwid.spoof registers the transformers.
@@ -79,20 +82,39 @@ public final class HwidAgent
 
 	static void markSignerHookInstalled()
 	{
-		signerHookInstalled = true;
-		publishPlatformHook();
+		synchronized (PLATFORM_HOOK_LOCK)
+		{
+			signerHookInstalled = true;
+			publishPlatformHook();
+		}
 	}
 
 	static void markProcessHookInstalled()
 	{
-		processHookInstalled = true;
-		publishPlatformHook();
+		synchronized (PLATFORM_HOOK_LOCK)
+		{
+			processHookInstalled = true;
+			publishPlatformHook();
+		}
 	}
 
-	/** The platform property is only set once both the signer hash and the process names are hooked. */
+	/**
+	 * A class had a {@code getSigners} call the transformer could not rewrite, so that site sends the real
+	 * hash. Sticky for the session: the platform property is cleared and never set again, whatever loads later.
+	 */
+	static void markSignerSiteMissed()
+	{
+		synchronized (PLATFORM_HOOK_LOCK)
+		{
+			signerSiteMissed = true;
+			System.clearProperty(PLATFORM_HOOK_PROPERTY);
+		}
+	}
+
+	/** Set only once the signer hash and the process names are hooked and no signer site was missed. */
 	private static void publishPlatformHook()
 	{
-		if (signerHookInstalled && processHookInstalled)
+		if (signerHookInstalled && processHookInstalled && !signerSiteMissed)
 		{
 			System.setProperty(PLATFORM_HOOK_PROPERTY, "true");
 		}
@@ -100,9 +122,13 @@ public final class HwidAgent
 
 	static void resetPlatformHooksForTest()
 	{
-		signerHookInstalled = false;
-		processHookInstalled = false;
-		System.clearProperty(PLATFORM_HOOK_PROPERTY);
+		synchronized (PLATFORM_HOOK_LOCK)
+		{
+			signerHookInstalled = false;
+			processHookInstalled = false;
+			signerSiteMissed = false;
+			System.clearProperty(PLATFORM_HOOK_PROPERTY);
+		}
 	}
 
 	public static boolean isDeviceHookInstalled()

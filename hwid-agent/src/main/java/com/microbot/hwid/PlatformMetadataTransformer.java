@@ -20,7 +20,8 @@ import org.objectweb.asm.tree.MethodNode;
  * Routes the platform details the game puts in its login packet through {@link HwidAgent} so they
  * can look like a stock RuneLite launch: the hash of the callbacks class signers, and the executable,
  * parent process and java agent names. The classes are found by what they call, never by their
- * obfuscated names. A shape that is not an exact match is left alone.
+ * obfuscated names. A shape that is not an exact match is left alone. The signer hook only counts as
+ * installed when every {@code Class.getSigners()} call in every class that has one was rewritten.
  */
 public final class PlatformMetadataTransformer implements ClassFileTransformer
 {
@@ -58,6 +59,17 @@ public final class PlatformMetadataTransformer implements ClassFileTransformer
 			new ClassReader(classfileBuffer).accept(node, ClassReader.SKIP_FRAMES);
 
 			List<MethodInsnNode> signerHashes = signerCandidate ? signerHashCalls(node) : new ArrayList<>();
+			int signerSites = signerCandidate ? getSignersCalls(node) : 0;
+			if (signerHashes.size() != signerSites)
+			{
+				// A getSigners call in a shape we do not know would still send the real hash. Leave every
+				// signer site in this class alone, so the class stays self-consistent, and keep the platform
+				// hook unreported for the whole session, so the login check warns.
+				HwidAgent.markSignerSiteMissed();
+				log.warning("Platform metadata: " + (signerSites - signerHashes.size()) + " of " + signerSites
+					+ " signer calls in " + className + " have an unknown shape; signer hash left unchanged there");
+				signerHashes = new ArrayList<>();
+			}
 			List<StringWrite> processWrites = processCandidate ? processWrites(node) : new ArrayList<>();
 			if (signerHashes.isEmpty() && processWrites.isEmpty())
 			{
@@ -94,9 +106,31 @@ public final class PlatformMetadataTransformer implements ClassFileTransformer
 		}
 		catch (Throwable t)
 		{
+			if (signerCandidate)
+			{
+				// The class may hold signer calls that now go out unchanged; never let another class report them as hooked.
+				HwidAgent.markSignerSiteMissed();
+			}
 			log.warning("Platform metadata patch failed for " + className + ": " + t);
 			return null;
 		}
+	}
+
+	/** Every {@code Class.getSigners()} call in the class, whatever surrounds it. */
+	static int getSignersCalls(ClassNode node)
+	{
+		int calls = 0;
+		for (MethodNode method : node.methods)
+		{
+			for (AbstractInsnNode insn : method.instructions)
+			{
+				if (isCall(insn, Opcodes.INVOKEVIRTUAL, "java/lang/Class", "getSigners", "()[Ljava/lang/Object;"))
+				{
+					calls++;
+				}
+			}
+		}
+		return calls;
 	}
 
 	/** Every {@code Arrays.hashCode(callbacks.getClass().getSigners())}; the obfuscator duplicates the writer. */
