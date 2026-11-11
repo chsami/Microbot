@@ -1312,6 +1312,119 @@ public class PathfinderConfig {
     }
 
     private boolean useTransport(Transport transport, boolean inCombat) {
+        return transportRejection(transport, inCombat) == null;
+    }
+
+    public String describeTransportRejection(Transport transport) {
+        if (client == null || transport == null) {
+            return null;
+        }
+        boolean inCombat = Rs2Player.isInCombat();
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            TransportRejection rejection = transportRejection(transport, inCombat);
+            return rejection == null ? null : rejectionText(transport, rejection);
+        }).orElse(null);
+    }
+
+    private String rejectionText(Transport transport, TransportRejection rejection) {
+        switch (rejection) {
+            case NO_EXECUTOR:
+                return "the walker cannot use it yet";
+            case IN_COMBAT:
+                return "it cannot be used while you are in combat";
+            case TYPE_DISABLED:
+                return isTransportTypeEnabled(transport.getType())
+                        ? "it needs a members world"
+                        : humanize(transport.getType()) + " travel is turned off in the Web Walker settings or not unlocked yet";
+            case MEMBERS_WORLD:
+                return "it needs a members world";
+            case SPIRIT_TREE_DISABLED:
+                return "this spirit tree is turned off in the Web Walker settings";
+            case SKILL_LEVELS:
+                return "it needs " + missingLevelsText(transport.getSkillLevels());
+            case QUESTS:
+                return "it needs the quest " + transport.getQuests().entrySet().stream()
+                        .filter(entry -> !TransportRequirementPolicy.meetsQuestRequirement(
+                                entry.getKey(), entry.getValue(), questStateOrder))
+                        .map(entry -> entry.getKey().getName())
+                        .sorted()
+                        .collect(Collectors.joining(", "));
+            case VARBITS:
+            case VARPLAYERS:
+                return "it needs a quest step or unlock you have not done yet";
+            case CURRENCY:
+                return "it needs " + transport.getCurrencyAmount() + " " + transport.getCurrencyName()
+                        + " (you have " + currencyOnHand(transport.getCurrencyName())
+                        + (useBankItems ? " in your inventory and bank)" : " in your inventory)");
+            case TELEPORTS_DISABLED:
+                return "teleports are turned off for this walk";
+            case TELEPORT_ITEM:
+            case TELEPORT_SPELL:
+            case ITEMS:
+                return "you do not have the item or runes it needs";
+            default:
+                return "you do not meet its requirements";
+        }
+    }
+
+    private String missingLevelsText(int[] requiredLevels) {
+        List<String> missing = new ArrayList<>();
+        for (int i = 0; i < requiredLevels.length; i++) {
+            if (requiredLevels[i] <= 0) {
+                continue;
+            }
+            int current = currentRequirementLevel(i);
+            if (current >= requiredLevels[i]) {
+                continue;
+            }
+            missing.add(requirementLevelName(i) + " " + requiredLevels[i] + " (you have " + current + ")");
+        }
+        return missing.isEmpty() ? "higher levels" : String.join(", ", missing);
+    }
+
+    private static String requirementLevelName(int index) {
+        if (index >= 0 && index < SKILLS.length) {
+            return SKILLS[index].getName();
+        }
+        if (index == Transport.TOTAL_LEVEL_INDEX) {
+            return "total level";
+        }
+        if (index == Transport.COMBAT_LEVEL_INDEX) {
+            return "combat level";
+        }
+        return "quest points";
+    }
+
+    private int currencyOnHand(String currencyName) {
+        int carried = Math.max(0, Rs2Inventory.itemQuantity(currencyName));
+        return useBankItems ? carried + Math.max(0, Rs2Bank.count(currencyName)) : carried;
+    }
+
+    static String humanize(TransportType type) {
+        if (type == null) {
+            return "Transport";
+        }
+        String lower = type.name().toLowerCase(Locale.ROOT).replace('_', ' ');
+        return Character.toUpperCase(lower.charAt(0)) + lower.substring(1);
+    }
+
+    public PathfinderConfig copyIgnoringTransportRequirements() {
+        Map<WorldPoint, Set<Transport>> catalog;
+        synchronized (allTransports) {
+            catalog = new HashMap<>(allTransports);
+        }
+        PathfinderConfig copy = new PathfinderConfig(mapData, catalog, Collections.emptyList(), null, null);
+        for (Map.Entry<WorldPoint, Set<Transport>> entry : copy.allTransports.entrySet()) {
+            if (entry.getKey() == null || entry.getValue().isEmpty()) {
+                continue;
+            }
+            copy.transports.put(entry.getKey(), entry.getValue());
+            copy.transportsPacked.put(WorldPointUtil.packWorldPoint(entry.getKey()), entry.getValue());
+        }
+        return copy;
+    }
+
+    private TransportRejection transportRejection(Transport transport, boolean inCombat) {
         // This runs once per expanded catalog edge during every refresh. Keep individual rejection
         // reasons at TRACE; DEBUG already receives the per-type aggregate emitted by refreshTransports.
         if (transport == null || !transportPlanningPolicy.isAdmitted(transport)) {
@@ -1319,48 +1432,48 @@ public class PathfinderConfig {
                     transport == null ? null : transport.getOrigin(),
                     transport == null ? null : transport.getDestination(),
                     transport == null ? null : transport.getType());
-            return false;
+            return TransportRejection.NO_EXECUTOR;
         }
         if (!isTransportAllowedDuringCombat(transport, inCombat)) {
             log.trace("Transport ( O: {} D: {} ) is a home teleport unavailable during combat",
                     transport.getOrigin(), transport.getDestination());
-            return false;
+            return TransportRejection.IN_COMBAT;
         }
         // Check if the feature flag is disabled
         if (!isFeatureEnabled(transport)) {
             log.trace("Transport Type {} is disabled by feature flag", transport.getType());
-            return false;
+            return TransportRejection.TYPE_DISABLED;
         }
         // If the transport requires you to be in a members world (used for more granular member requirements)
         if (transport.isMembers() && !client.getWorldType().contains(WorldType.MEMBERS)) {
             log.trace("Transport ( O: {} D: {} ) requires members world", transport.getOrigin(), transport.getDestination());
-            return false;
+            return TransportRejection.MEMBERS_WORLD;
         }
         if (transport.getType() == TransportType.SPIRIT_TREE && !isSpiritTreeRouteEnabled(transport)) {
             log.trace("Transport ( O: {} D: {} ) is a spirit tree route but the tree is disabled", transport.getOrigin(), transport.getDestination());
-            return false;
+            return TransportRejection.SPIRIT_TREE_DISABLED;
         }
         // If you don't meet level requirements
         if (!hasRequiredLevels(transport)) {
             log.trace("Transport ( O: {} D: {} ) requires skill levels {}", transport.getOrigin(), transport.getDestination(), Arrays.toString(transport.getSkillLevels()));
-            return false;
+            return TransportRejection.SKILL_LEVELS;
         }
         // If the transport has quest requirements & the quest haven't been completed
         if (transport.isQuestLocked() && !completedQuests(transport)) {
             log.trace("Transport ( O: {} D: {} ) requires quests {}", transport.getOrigin(), transport.getDestination(), transport.getQuests());
-            return false;
+            return TransportRejection.QUESTS;
         }
 
         // If the transport has varbit requirements & the varbits do not match
         if (!varbitChecks(transport)) {
             log.trace("Transport ( O: {} D: {} ) requires varbits {}", transport.getOrigin(), transport.getDestination(), transport.getVarbits());
-            return false;
+            return TransportRejection.VARBITS;
         }
 
         // If the transport has varplayer requirements & the varplayers do not match
         if (!varplayerChecks(transport)) {
             log.trace("Transport ( O: {} D: {} ) requires varplayers {}", transport.getOrigin(), transport.getDestination(), transport.getVarplayers());
-            return false;
+            return TransportRejection.VARPLAYERS;
         }
 
         // If you don't have the required currency & amount for transport
@@ -1371,7 +1484,7 @@ public class PathfinderConfig {
                 // Bank rows restored from saved IDs load item names on the client thread. The
                 // name-based bank lookup below can therefore take seconds even for Coins.
                 if (knownCurrencyQuantity < transport.getCurrencyAmount()) {
-                    return false;
+                    return TransportRejection.CURRENCY;
                 }
             } else if (refreshCurrencyCache != null) {
                 int[] cached = refreshCurrencyCache.computeIfAbsent(transport.getCurrencyName(), name -> {
@@ -1382,21 +1495,21 @@ public class PathfinderConfig {
                 if (!hasAvailableCurrencyForFare(cached[0], cached[1],
                         transport.getCurrencyAmount(), useBankItems)) {
                     log.trace("Transport ( O: {} D: {} ) requires {} x {}", transport.getOrigin(), transport.getDestination(), transport.getCurrencyAmount(), transport.getCurrencyName());
-                    return false;
+                    return TransportRejection.CURRENCY;
                 }
             } else if (!hasAvailableCurrencyForFare(
                     Rs2Inventory.itemQuantity(transport.getCurrencyName()),
                     useBankItems ? Rs2Bank.count(transport.getCurrencyName()) : 0,
                     transport.getCurrencyAmount(), useBankItems)) {
                 log.trace("Transport ( O: {} D: {} ) requires {} x {}", transport.getOrigin(), transport.getDestination(), transport.getCurrencyAmount(), transport.getCurrencyName());
-                return false;
+                return TransportRejection.CURRENCY;
             }
         }
 
         // Check if Teleports are globally disabled
         if (TransportType.isTeleport(transport.getType(), transport.getOrigin()) && Rs2Walker.disableTeleports) {
             log.trace("Transport ( O: {} D: {} ) is a teleport but teleports are globally disabled", transport.getOrigin(), transport.getDestination());
-            return false;
+            return TransportRejection.TELEPORTS_DISABLED;
         }
 
         // Check Teleport Item Settings
@@ -1405,7 +1518,7 @@ public class PathfinderConfig {
             if (!isUsable) {
                 log.trace("Transport ( O: {} D: {} ) is a teleport item but is not usable", transport.getOrigin(), transport.getDestination());
             }
-            return isUsable;
+            return isUsable ? null : TransportRejection.TELEPORT_ITEM;
         }
         // Check Teleport Spell Settings
         if (transport.getType() == TELEPORTATION_SPELL) {
@@ -1413,7 +1526,7 @@ public class PathfinderConfig {
             if (!isUsable) {
                 log.trace("Transport ( O: {} D: {} ) is a teleport spell but is not usable", transport.getOrigin(), transport.getDestination());
             }
-            return isUsable;
+            return isUsable ? null : TransportRejection.TELEPORT_SPELL;
         }
 
         // Used for Generic Item Requirements
@@ -1422,10 +1535,10 @@ public class PathfinderConfig {
             if (!hasRequiredItems) {
                 log.trace("Transport ( O: {} D: {} ) requires items {}", transport.getOrigin(), transport.getDestination(), transport.getItemIdRequirements().stream().flatMap(Set::stream).collect(Collectors.toSet()));
             }
-            return hasRequiredItems;
+            return hasRequiredItems ? null : TransportRejection.ITEMS;
         }
 
-        return true;
+        return null;
     }
 
     /**
