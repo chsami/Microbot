@@ -81,6 +81,8 @@ public class Rs2Keyboard
 		static final int RELEASE_OWED = 2;
 		/** Its KEY_RELEASED is being delivered. The entry leaves the record once that returns. */
 		static final int RELEASING = 3;
+		static final int HELD_PRESSING = 4;
+		static final int HELD_DOWN = 5;
 
 		/** Released with the same character it was pressed with, whoever releases it. */
 		final char keyChar;
@@ -89,6 +91,14 @@ public class Rs2Keyboard
 		Press(char keyChar)
 		{
 			this.keyChar = keyChar;
+		}
+
+		void adopt()
+		{
+			if (!state.compareAndSet(PRESSING, HELD_PRESSING))
+			{
+				state.compareAndSet(DOWN, HELD_DOWN);
+			}
 		}
 	}
 
@@ -256,7 +266,7 @@ public class Rs2Keyboard
 		{
 			if (sent != null)
 			{
-				release(keyCode, sent);
+				release(keyCode, sent, true);
 			}
 		}
 	}
@@ -269,12 +279,22 @@ public class Rs2Keyboard
 	 */
 	private static KeyDown press(int keyCode, char keyChar, long generation)
 	{
+		return press(keyCode, keyChar, generation, false);
+	}
+
+	private static KeyDown press(int keyCode, char keyChar, long generation, boolean hold)
+	{
 		Canvas canvas = getCanvas();
 		Press press = new Press(keyChar);
 		// Claimed before the decision. A pause sets its flag before its sweep runs, so either the
 		// decision below sees the pause, or the sweep sees this claim and leaves the release to it.
-		if (KEYS_DOWN.putIfAbsent(keyCode, press) != null)
+		Press existing = KEYS_DOWN.putIfAbsent(keyCode, press);
+		if (existing != null)
 		{
+			if (hold)
+			{
+				existing.adopt();
+			}
 			return new KeyDown(keyCode, null, true);
 		}
 		if (!mayEmit(generation))
@@ -303,7 +323,8 @@ public class Rs2Keyboard
 			}
 			throw thrown;
 		}
-		if (!press.state.compareAndSet(Press.PRESSING, Press.DOWN))
+		if (!press.state.compareAndSet(Press.PRESSING, Press.DOWN)
+			&& !press.state.compareAndSet(Press.HELD_PRESSING, Press.HELD_DOWN))
 		{
 			// A release came while the press was being delivered. Sent here, after the press it pairs
 			// with, rather than by the releasing thread, which would have had to wait.
@@ -321,7 +342,7 @@ public class Rs2Keyboard
 	 *                 releasing its own press passes it, so a release that comes after the pause
 	 *                 cleanup already released the key cannot release a later press of the same key.
 	 */
-	private static void release(int keyCode, Press expected)
+	private static void release(int keyCode, Press expected, boolean own)
 	{
 		Press press = KEYS_DOWN.get(keyCode);
 		if (press == null || (expected != null && press != expected))
@@ -331,17 +352,22 @@ public class Rs2Keyboard
 		while (true)
 		{
 			int state = press.state.get();
-			if (state == Press.DOWN)
+			boolean held = state == Press.HELD_PRESSING || state == Press.HELD_DOWN;
+			if (own && held)
 			{
-				if (press.state.compareAndSet(Press.DOWN, Press.RELEASING))
+				return;
+			}
+			if (state == Press.DOWN || state == Press.HELD_DOWN)
+			{
+				if (press.state.compareAndSet(state, Press.RELEASING))
 				{
 					sendRelease(keyCode, press);
 					return;
 				}
 			}
-			else if (state == Press.PRESSING)
+			else if (state == Press.PRESSING || state == Press.HELD_PRESSING)
 			{
-				if (press.state.compareAndSet(Press.PRESSING, Press.RELEASE_OWED))
+				if (press.state.compareAndSet(state, Press.RELEASE_OWED))
 				{
 					return;
 				}
@@ -605,7 +631,7 @@ public class Rs2Keyboard
 	 */
 	public static void holdShift()
 	{
-		press(KeyEvent.VK_SHIFT, CHAR_UNDEFINED, callGeneration());
+		press(KeyEvent.VK_SHIFT, CHAR_UNDEFINED, callGeneration(), true);
 	}
 
 	/**
@@ -613,7 +639,7 @@ public class Rs2Keyboard
 	 */
 	public static void releaseShift()
 	{
-		release(KeyEvent.VK_SHIFT, null);
+		release(KeyEvent.VK_SHIFT, null, false);
 	}
 
 	/**
@@ -623,7 +649,7 @@ public class Rs2Keyboard
 	 */
 	public static void keyHold(int key)
 	{
-		press(key, CHAR_UNDEFINED, callGeneration());
+		press(key, CHAR_UNDEFINED, callGeneration(), true);
 	}
 
 	/**
@@ -635,7 +661,7 @@ public class Rs2Keyboard
 	 */
 	public static void keyRelease(int key)
 	{
-		release(key, null);
+		release(key, null, false);
 	}
 
 	/**
@@ -658,7 +684,7 @@ public class Rs2Keyboard
 		{
 			try
 			{
-				release(down.getKey(), down.getValue());
+				release(down.getKey(), down.getValue(), false);
 			}
 			catch (RuntimeException thrown)
 			{
