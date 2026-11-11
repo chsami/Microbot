@@ -169,18 +169,11 @@ public class ShortestPathScript extends Script {
                     return;
                 }
                 WalkerState state = executeWalk(target);
-                boolean currentWalk;
-                synchronized (ShortestPathScript.this) {
-                    currentWalk = !stopped && taskRevision == revision;
-                }
-                if (state == WalkerState.UNREACHABLE && currentWalk) {
-                    String reason = unreachableReason();
-                    if (reason == null) {
-                        reason = "Can't reach " + target.getX() + ", " + target.getY()
-                                + ": the walker found no route it can use from where you are."
-                                + " Check your Web Walker transport settings or start from somewhere else.";
-                    }
-                    unreachableNotice.accept(reason);
+                String reason = state == WalkerState.UNREACHABLE ? unreachableReason() : null;
+                if (state == WalkerState.UNREACHABLE && reason == null) {
+                    reason = "Can't reach " + target.getX() + ", " + target.getY()
+                            + ": the walker found no route it can use from where you are."
+                            + " Check your Web Walker transport settings or start from somewhere else.";
                 }
                 // Client-thread reads must not hold this monitor: hotkeys also acquire it.
                 boolean retryAllowed = state == WalkerState.EXIT
@@ -196,6 +189,9 @@ public class ShortestPathScript extends Script {
                         return;
                     }
                     if (state == WalkerState.ARRIVED || state == WalkerState.UNREACHABLE || state == WalkerState.EXIT) {
+                        if (reason != null) {
+                            unreachableNotice.accept(reason);
+                        }
                         resetExitRetryState();
                         triggerWalker = null;
                         revision++;

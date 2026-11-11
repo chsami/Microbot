@@ -1319,8 +1319,9 @@ public class PathfinderConfig {
         if (client == null || transport == null) {
             return null;
         }
+        boolean inCombat = Rs2Player.isInCombat();
         return Microbot.getClientThread().runOnClientThreadOptional(() -> {
-            TransportRejection rejection = transportRejection(transport, Rs2Player.isInCombat());
+            TransportRejection rejection = transportRejection(transport, inCombat);
             return rejection == null ? null : rejectionText(transport, rejection);
         }).orElse(null);
     }
@@ -1342,8 +1343,10 @@ public class PathfinderConfig {
             case SKILL_LEVELS:
                 return "it needs " + missingLevelsText(transport.getSkillLevels());
             case QUESTS:
-                return "it needs the quest " + transport.getQuests().keySet().stream()
-                        .map(Quest::getName)
+                return "it needs the quest " + transport.getQuests().entrySet().stream()
+                        .filter(entry -> !TransportRequirementPolicy.meetsQuestRequirement(
+                                entry.getKey(), entry.getValue(), questStateOrder))
+                        .map(entry -> entry.getKey().getName())
                         .sorted()
                         .collect(Collectors.joining(", "));
             case VARBITS:

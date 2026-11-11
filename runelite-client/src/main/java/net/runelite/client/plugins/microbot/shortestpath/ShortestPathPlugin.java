@@ -96,7 +96,7 @@ import java.util.regex.Pattern;
         description = "Draws the shortest path to a chosen destination on the map (right click a spot on the world map to use)",
         tags = {"pathfinder", "map", "waypoint", "navigation", "microbot"},
         enabledByDefault = false,
-        version = "1.0.8",
+        version = "1.0.9",
         alwaysOn = true
 )
 public class ShortestPathPlugin extends Plugin {
@@ -1497,7 +1497,7 @@ public class ShortestPathPlugin extends Plugin {
     private void showUnreachableNotice(String reason) {
         final ShortestPathScript source = shortestPathScript;
         getClientThread().invokeLater(() -> {
-            if (source != shortestPathScript || !Microbot.isLoggedIn()) {
+            if (source != shortestPathScript || source.getTriggerWalker() != null || !Microbot.isLoggedIn()) {
                 return;
             }
             String message = "Web Walker: " + reason;

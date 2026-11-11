@@ -157,6 +157,26 @@ public class ShortestPathManualWalkingTest {
     }
 
     @Test
+    public void unreachableReasonOfAReplacedWalkIsNotShown() throws Exception {
+        List<WorldPoint> previews = new ArrayList<>();
+        List<String> unreachable = new ArrayList<>();
+        try (Harness script = new Harness(previews, new ArrayList<>(), unreachable)) {
+            script.result = WalkerState.UNREACHABLE;
+            script.reason = "Can't reach 3200, 3200: there is no tile you can stand on at or next to it.";
+            script.setTriggerWalker(FIRST);
+            script.flushPreview();
+            script.startWalkTask();
+            assertEquals(FIRST, script.started.poll(5, TimeUnit.SECONDS));
+            script.setTriggerWalker(SECOND);
+            assertTrue(script.interrupted.await(5, TimeUnit.SECONDS));
+            script.release.release();
+            script.flushPreview();
+            assertEquals(SECOND, script.getTriggerWalker());
+            assertTrue(unreachable.isEmpty());
+        }
+    }
+
+    @Test
     public void pathNoticeUsesConfiguredKeyOrPanelFallback() {
         String keyed = WalkingNoticeOverlay.messageFor(ShortestPathScript.ManualWalkingNotice.PATH_SET,
                 new Keybind(KeyEvent.VK_F6, 0));
