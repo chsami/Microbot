@@ -31,6 +31,9 @@ dependencies {
 
 tasks.test {
     inputs.files(historicalClients)
+    // Tests never contact RuneLite; StockSignerHashTest drives the lookup with a local remote.
+    systemProperty("microbot.hwid.signer.lookup", "false")
+    systemProperty("microbot.hwid.signer.store", layout.buildDirectory.file("tmp/stock-signer-test.properties").get().asFile.path)
     jvmArgumentProviders.add(CommandLineArgumentProvider {
         listOf("-Dhwid.historicalClients=" + historicalClients.files.joinToString(File.pathSeparator))
     })

@@ -35,11 +35,8 @@ public final class HwidAgent
 	{
 	}
 
-	/** Stock RuneLite reports the hash of its signing certificate; the unsigned Microbot build would report 0. */
-	private static final int STOCK_SIGNER_HASH = -991467620;
-
-	/** Same values as the stock macOS RuneLite.app, started by LaunchServices without any java agent. */
-	private static final String[] STOCK_MAC_PROCESS_NAMES = {"RuneLite", "launchd", ""};
+	/** Executable and parent process of the stock macOS RuneLite.app started by LaunchServices. */
+	private static final String[] STOCK_MAC_PROCESS_NAMES = {"RuneLite", "launchd"};
 
 	/** Guards the three platform hook flags and {@link #PLATFORM_HOOK_PROPERTY}; classes load on several threads. */
 	private static final Object PLATFORM_HOOK_LOCK = new Object();
@@ -66,6 +63,7 @@ public final class HwidAgent
 			inst.addTransformer(new RandomDatTransformer());
 			inst.addTransformer(new RandomDatWriteTransformer());
 			System.setProperty(AGENT_PROPERTY, AGENT_LOADED);
+			StockSignerHash.start();
 			launcherCharacterId();
 		}
 		catch (Throwable t)
@@ -165,16 +163,28 @@ public final class HwidAgent
 		return value != null && "false".equalsIgnoreCase(value.trim());
 	}
 
-	/** Replaces the {@code Arrays.hashCode(getSigners())} call the game makes while collecting platform info. */
+	/**
+	 * Replaces the {@code Arrays.hashCode(getSigners())} call the game makes while collecting platform info.
+	 * Stock RuneLite reports the hash of its signing certificate; the unsigned Microbot build would report 0.
+	 */
 	public static int signerHash(Object[] signers)
 	{
-		return spoofEnabled() ? STOCK_SIGNER_HASH : Arrays.hashCode(signers);
+		return spoofEnabled() ? StockSignerHash.get() : Arrays.hashCode(signers);
 	}
 
 	/** Called on each executable, parent process and agent name the game stores before it sizes the login packet. */
 	public static String platformName(String collected, int phase)
 	{
-		if (!spoofEnabled() || phase < 0 || phase >= STOCK_MAC_PROCESS_NAMES.length
+		if (!spoofEnabled())
+		{
+			return collected;
+		}
+		if (phase == PlatformMetadataTransformer.PHASE_AGENT)
+		{
+			// No stock launch on any system attaches a java agent.
+			return "";
+		}
+		if (phase < 0 || phase >= STOCK_MAC_PROCESS_NAMES.length
 			|| !System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT).startsWith("mac"))
 		{
 			return collected;

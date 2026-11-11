@@ -43,6 +43,7 @@ public class PlatformMetadataTransformerTest
 		restore(HwidAgent.TOGGLE_PROPERTY, previousSpoof);
 		restore("os.name", previousOs);
 		HwidAgent.resetPlatformHooksForTest();
+		StockSignerHash.resetForTesting();
 	}
 
 	private static void restore(String key, String value)
@@ -62,8 +63,8 @@ public class PlatformMetadataTransformerTest
 	{
 		Object[] signers = {"unsigned build"};
 		System.setProperty(HwidAgent.TOGGLE_PROPERTY, "true");
-		assertEquals(-991467620, HwidAgent.signerHash(signers));
-		assertEquals(-991467620, HwidAgent.signerHash(null));
+		assertEquals(StockSignerHash.BUNDLED, HwidAgent.signerHash(signers));
+		assertEquals(StockSignerHash.BUNDLED, HwidAgent.signerHash(null));
 		System.setProperty(HwidAgent.TOGGLE_PROPERTY, "false");
 		assertEquals(Arrays.hashCode(signers), HwidAgent.signerHash(signers));
 		assertEquals(0, HwidAgent.signerHash(null));
@@ -82,11 +83,14 @@ public class PlatformMetadataTransformerTest
 	}
 
 	@Test
-	public void processNamesAreLeftAloneOnOtherSystems()
+	public void onlyTheAgentNameIsHiddenOnOtherSystems()
 	{
 		System.setProperty("os.name", "Windows 11");
 		System.setProperty(HwidAgent.TOGGLE_PROPERTY, "true");
 		assertEquals("javaw", HwidAgent.platformName("javaw", PlatformMetadataTransformer.PHASE_EXECUTABLE));
+		assertEquals("explorer", HwidAgent.platformName("explorer", PlatformMetadataTransformer.PHASE_PARENT));
+		assertEquals("", HwidAgent.platformName("hwid-agent.jar", PlatformMetadataTransformer.PHASE_AGENT));
+		System.setProperty(HwidAgent.TOGGLE_PROPERTY, "false");
 		assertEquals("hwid-agent.jar", HwidAgent.platformName("hwid-agent.jar", PlatformMetadataTransformer.PHASE_AGENT));
 	}
 
