@@ -473,29 +473,51 @@ public class Rs2ActorModel implements Actor
             return null;
         }
         WorldPoint actorLocation = actor.getWorldLocation();
-        WorldView wv = actor.getWorldView();
-        LocalPoint localPoint = LocalPoint.fromWorld(wv, actorLocation);
+        WorldPoint projected = projectToMainWorld(actor.getWorldView(), actorLocation);
+        return projected != null ? projected : actorLocation;
+    }
 
-        if (localPoint == null)
-        {
-            return actorLocation;
+    public static WorldPoint projectToMainWorld(WorldView worldView, WorldPoint worldPoint) {
+        if (worldView == null || worldPoint == null) {
+            return null;
         }
+        return Microbot.getClientThread().invoke(() -> {
+            LocalPoint localPoint = LocalPoint.fromWorld(worldView, worldPoint);
 
-        var mainWorldProjection = wv.getMainWorldProjection();
+            if (localPoint == null)
+            {
+                return null;
+            }
 
-        if (mainWorldProjection == null)
-        {
-            return actorLocation;
-        }
+            float[] projection;
+            try
+            {
+                var mainWorldProjection = worldView.getMainWorldProjection();
 
-        float[] projection = mainWorldProjection
-                .project(localPoint.getX(), 0, localPoint.getY());
+                if (mainWorldProjection == null)
+                {
+                    return null;
+                }
 
-        return WorldPoint.fromLocal(
-                Microbot.getClient().getTopLevelWorldView(),
-                (int) projection[0],
-                (int) projection[2],
-                0
-        );
+                projection = mainWorldProjection
+                        .project(localPoint.getX(), 0, localPoint.getY());
+            }
+            catch (NullPointerException e)
+            {
+                return null;
+            }
+
+            if (projection == null)
+            {
+                return null;
+            }
+
+            return WorldPoint.fromLocal(
+                    Microbot.getClient().getTopLevelWorldView(),
+                    (int) projection[0],
+                    (int) projection[2],
+                    0
+            );
+        });
     }
 }

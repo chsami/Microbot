@@ -12,11 +12,6 @@ net.runelite.client.plugins.microbot.api.actor.Rs2ActorModel#getLocalLocation():
 net.runelite.client.plugins.microbot.api.actor.Rs2ActorModel#getModel(): Model  ->  net.runelite.api.Actor#getModel(): Model
 net.runelite.client.plugins.microbot.api.actor.Rs2ActorModel#projectActorLocationToMainWorld(): WorldPoint  ->  net.runelite.api.Actor#getWorldLocation(): WorldPoint
 net.runelite.client.plugins.microbot.api.actor.Rs2ActorModel#projectActorLocationToMainWorld(): WorldPoint  ->  net.runelite.api.Actor#getWorldView(): WorldView
-net.runelite.client.plugins.microbot.api.actor.Rs2ActorModel#projectActorLocationToMainWorld(): WorldPoint  ->  net.runelite.api.Client#getTopLevelWorldView(): WorldView
-net.runelite.client.plugins.microbot.api.actor.Rs2ActorModel#projectActorLocationToMainWorld(): WorldPoint  ->  net.runelite.api.Projection#project(float, float, float): float[]
-net.runelite.client.plugins.microbot.api.actor.Rs2ActorModel#projectActorLocationToMainWorld(): WorldPoint  ->  net.runelite.api.WorldView#getMainWorldProjection(): Projection
-net.runelite.client.plugins.microbot.api.actor.Rs2ActorModel#projectActorLocationToMainWorld(): WorldPoint  ->  net.runelite.api.coords.LocalPoint#fromWorld(WorldView, WorldPoint): LocalPoint
-net.runelite.client.plugins.microbot.api.actor.Rs2ActorModel#projectActorLocationToMainWorld(): WorldPoint  ->  net.runelite.api.coords.WorldPoint#fromLocal(WorldView, int, int, int): WorldPoint
 net.runelite.client.plugins.microbot.api.actor.Rs2ActorModel#setDead(boolean): void  ->  net.runelite.api.Actor#setDead(boolean): void
 net.runelite.client.plugins.microbot.api.actor.Rs2ActorModel#setOverheadText(String): void  ->  net.runelite.api.Actor#setOverheadText(String): void
 net.runelite.client.plugins.microbot.api.boat.Rs2BoatCache#getBoat(Rs2PlayerModel): Rs2BoatModel  ->  net.runelite.api.Client#getTickCount(): int
