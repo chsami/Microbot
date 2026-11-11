@@ -170,7 +170,7 @@ public class ShortestPathScript extends Script {
                 }
                 WalkerState state = executeWalk(target);
                 if (state == WalkerState.UNREACHABLE) {
-                    String reason = Rs2Walker.getLastUnreachableReason();
+                    String reason = unreachableReason();
                     if (reason != null) {
                         unreachableNotice.accept(reason);
                     }
@@ -224,6 +224,10 @@ public class ShortestPathScript extends Script {
         return config.walkWithBankedTransports()
                 ? Rs2Walker.walkWithBankedTransportsAndState(target, config.reachedDistance(), false)
                 : Rs2Walker.walkWithState(target);
+    }
+
+    String unreachableReason() {
+        return Rs2Walker.getLastUnreachableReason();
     }
 
     void clearRoute(String reason) {
