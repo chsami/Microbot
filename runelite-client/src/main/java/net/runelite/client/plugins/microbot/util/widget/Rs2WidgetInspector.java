@@ -19,7 +19,7 @@ public class Rs2WidgetInspector {
 	public static List<WidgetDescription> getVisibleInterfaces() {
 		return Microbot.getClientThread().runOnClientThreadOptional(() -> {
 			List<WidgetDescription> results = new ArrayList<>();
-			Widget[] roots = Microbot.getClient().getWidgetRoots();
+			Widget[] roots = Rs2Widget.widgetRoots();
 			if (roots == null) return results;
 
 			for (Widget root : roots) {
@@ -56,7 +56,7 @@ public class Rs2WidgetInspector {
 	public static List<WidgetDescription> search(String... keywords) {
 		return Microbot.getClientThread().runOnClientThreadOptional(() -> {
 			List<WidgetDescription> results = new ArrayList<>();
-			Widget[] roots = Microbot.getClient().getWidgetRoots();
+			Widget[] roots = Rs2Widget.widgetRoots();
 			if (roots == null) return results;
 
 			String[] lowerKeywords = Arrays.stream(keywords)
