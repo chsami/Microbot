@@ -257,22 +257,42 @@ public class Rs2BoatModel implements WorldEntity, IEntity {
             }
 
             WorldPoint playerLocation = Rs2Player.getWorldLocation();
-            LocalPoint localPoint = LocalPoint.fromWorld(
-                    player.getWorldView(),
-                    playerLocation
-            );
-
-            var mainWorldProjection = player
-                    .getWorldView()
-                    .getMainWorldProjection();
-
-            if (mainWorldProjection == null)
+            WorldView playerWorldView = player.getWorldView();
+            if (playerLocation == null || playerWorldView == null || playerWorldView.isTopLevel())
             {
                 return playerLocation;
             }
 
-            float[] projection = mainWorldProjection
-                    .project(localPoint.getX(), 0, localPoint.getY());
+            LocalPoint localPoint = LocalPoint.fromWorld(
+                    playerWorldView,
+                    playerLocation
+            );
+            if (localPoint == null)
+            {
+                return playerLocation;
+            }
+
+            float[] projection;
+            try
+            {
+                var mainWorldProjection = playerWorldView.getMainWorldProjection();
+                if (mainWorldProjection == null)
+                {
+                    return playerLocation;
+                }
+
+                projection = mainWorldProjection
+                        .project(localPoint.getX(), 0, localPoint.getY());
+            }
+            catch (NullPointerException e)
+            {
+                return playerLocation;
+            }
+
+            if (projection == null)
+            {
+                return playerLocation;
+            }
 
             return Microbot.getClientThread().invoke(() -> WorldPoint.fromLocal(
                     Microbot.getClient().getTopLevelWorldView(),
