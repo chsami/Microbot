@@ -3,7 +3,7 @@ package net.runelite.client.plugins.microbot.util.walker.state;
 import net.runelite.api.coords.WorldPoint;
 
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -135,7 +135,8 @@ public final class WalkerRouteState {
     public volatile WorldPoint adjacentRefusalTo = null;
     public volatile long adjacentRefusalAtMs = 0L;
     public volatile long adjacentRefusalSinceMs = 0L;
-    public final Set<List<WorldPoint>> struckOutAdjacentDoorEdges = ConcurrentHashMap.newKeySet();
+    public volatile boolean adjacentRefusalDoorAttempted = false;
+    public final Map<List<WorldPoint>, Long> struckOutAdjacentDoorEdges = new ConcurrentHashMap<>();
     /** Immutable caller intent for this walk; currentTarget may temporarily become an effective rim. */
     public volatile WorldPoint requestedGoal = null;
     /** Sealed-goal rim retargets consumed this walk; bounds the chain (a rim tile can itself probe sealed). */

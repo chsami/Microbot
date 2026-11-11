@@ -452,6 +452,7 @@ public class Rs2Walker {
         routeState.adjacentRefusalTo = null;
         routeState.adjacentRefusalAtMs = 0L;
         routeState.adjacentRefusalSinceMs = 0L;
+        routeState.adjacentRefusalDoorAttempted = false;
         routeState.requestedGoal = null;
         routeState.sealedRimRetargets = 0;
         resetRouteProgress();
@@ -6189,7 +6190,8 @@ public class Rs2Walker {
         if (WalledDoorClaimPolicy.dispatchesAdjacentDoorHandler(decision)
                 && WalledDoorClaimPolicy.isAdjacentClaimEdge(routeState.adjacentRefusalFrom,
                 routeState.adjacentRefusalTo, from, to)
-                && handleDoorAdjacentToClaimedEdge(from, to, playerLoc, routePath)) {
+                && handleDoorAdjacentToClaimedEdge(from, to, playerLoc, routePath)
+                == WalledDoorClaimPolicy.AdjacentDoorOutcome.ATTEMPTED) {
             return WalkExit.DOOR_HANDLED_LOCAL_REACHABILITY_RAW_SCAN;
         }
         switch (decision) {
