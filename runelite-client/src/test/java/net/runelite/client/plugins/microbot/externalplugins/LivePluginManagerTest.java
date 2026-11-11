@@ -27,6 +27,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -727,6 +728,35 @@ public class LivePluginManagerTest {
         assertEquals(0, runtimeJarCount());
         assertTrue(registered.isEmpty());
         assertTrue(active.isEmpty());
+    }
+
+    @Test
+    public void startupLoadsInstalledHubJarWithoutRewritingItOrItsOrigin() throws Exception {
+        Path jar = directory.resolve("FixturePlugin.jar");
+        Files.copy(fixture("v1.jar", "1.0", false), jar);
+        Path origin = directory.resolve("FixturePlugin.jar.origin");
+        Files.write(origin, ("hubId=FixturePlugin\nsha256=" + LivePluginManager.hash(jar) + "\n")
+                .getBytes(StandardCharsets.UTF_8));
+        Object jarKey = Files.readAttributes(jar, BasicFileAttributes.class).fileKey();
+        Object originKey = Files.readAttributes(origin, BasicFileAttributes.class).fileKey();
+        Assume.assumeNotNull(jarKey, originKey);
+
+        manager.loadAtStartup();
+
+        assertEquals("1.0", resource(onlyPlugin()));
+        assertEquals("FixturePlugin", manager.getInstalledPlugins().get(0).getHubId());
+        assertEquals("An unchanged installed JAR must not be replaced on disk",
+                jarKey, Files.readAttributes(jar, BasicFileAttributes.class).fileKey());
+        assertEquals("An unchanged origin file must not be replaced on disk",
+                originKey, Files.readAttributes(origin, BasicFileAttributes.class).fileKey());
+    }
+
+    @Test
+    public void fileSystemFailureMessageNamesTheExceptionClass() {
+        assertEquals("AccessDeniedException: a.jar -> b.jar",
+                LivePluginManager.message(new java.nio.file.AccessDeniedException("a.jar", "b.jar", null)));
+        assertEquals("plain", LivePluginManager.message(new IllegalStateException("plain")));
+        assertEquals("IllegalStateException", LivePluginManager.message(new IllegalStateException()));
     }
 
     private long runtimeJarCount() throws Exception {

@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.FileSystemException;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.LinkOption;
@@ -1029,6 +1030,9 @@ public class LivePluginManager {
         Properties values = new Properties();
         values.setProperty("hubId", current.hubId);
         values.setProperty("sha256", current.expectedHash);
+        if (Files.isRegularFile(target, LinkOption.NOFOLLOW_LINKS) && values.equals(readOrigin(current.source))) {
+            return;
+        }
         Path temporary = Files.createTempFile(pluginDirectory, ".origin-", ".tmp");
         try {
             try (OutputStream output = Files.newOutputStream(temporary)) {
@@ -1042,6 +1046,9 @@ public class LivePluginManager {
 
     private void replaceFile(Path source, Path target) throws Exception {
         checkManagedPath(target);
+        if (Files.isRegularFile(target, LinkOption.NOFOLLOW_LINKS) && hash(target).equals(hash(source))) {
+            return;
+        }
         Path temporary = Files.createTempFile(pluginDirectory, ".install-", ".tmp");
         try {
             Files.copy(source, temporary, StandardCopyOption.REPLACE_EXISTING);
@@ -1096,8 +1103,12 @@ public class LivePluginManager {
         }
     }
 
-    private static String message(Throwable failure) {
-        return failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage();
+    static String message(Throwable failure) {
+        if (failure.getMessage() == null) {
+            return failure.getClass().getSimpleName();
+        }
+        return failure instanceof FileSystemException
+                ? failure.getClass().getSimpleName() + ": " + failure.getMessage() : failure.getMessage();
     }
 
     private void checkLoadPolicy(LivePluginArtifact candidate) throws LivePluginArtifact.BlockedPluginException {
