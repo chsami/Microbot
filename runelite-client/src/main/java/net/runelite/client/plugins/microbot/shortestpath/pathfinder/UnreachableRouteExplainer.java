@@ -25,12 +25,17 @@ public final class UnreachableRouteExplainer
 
 	public static String explain(PathfinderConfig live, WorldPoint start, WorldPoint target, WorldPoint closest)
 	{
+		return explain(live, start, target, closest, SEARCH_BUDGET_MS);
+	}
+
+	static String explain(PathfinderConfig live, WorldPoint start, WorldPoint target, WorldPoint closest, long budgetMs)
+	{
 		String prefix = "Can't reach " + format(target);
 		if (live != null && start != null && target != null)
 		{
 			try
 			{
-				List<Transport> blockers = fewestBlockersRoute(live, start, target, SEARCH_BUDGET_MS);
+				List<Transport> blockers = fewestBlockersRoute(live, start, target, budgetMs);
 				if (blockers != null && !blockers.isEmpty())
 				{
 					return prefix + ": " + describeBlockers(live, blockers) + ".";

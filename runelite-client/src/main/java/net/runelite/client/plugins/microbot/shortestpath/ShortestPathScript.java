@@ -169,7 +169,11 @@ public class ShortestPathScript extends Script {
                     return;
                 }
                 WalkerState state = executeWalk(target);
-                if (state == WalkerState.UNREACHABLE) {
+                boolean currentWalk;
+                synchronized (ShortestPathScript.this) {
+                    currentWalk = !stopped && taskRevision == revision;
+                }
+                if (state == WalkerState.UNREACHABLE && currentWalk) {
                     String reason = unreachableReason();
                     if (reason == null) {
                         reason = "Can't reach " + target.getX() + ", " + target.getY()

@@ -1319,8 +1319,10 @@ public class PathfinderConfig {
         if (client == null || transport == null) {
             return null;
         }
-        TransportRejection rejection = transportRejection(transport, Rs2Player.isInCombat());
-        return rejection == null ? null : rejectionText(transport, rejection);
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            TransportRejection rejection = transportRejection(transport, Rs2Player.isInCombat());
+            return rejection == null ? null : rejectionText(transport, rejection);
+        }).orElse(null);
     }
 
     private String rejectionText(Transport transport, TransportRejection rejection) {

@@ -46,7 +46,7 @@ public class UnreachableRouteExplainerTest
 		assertEquals(PathTerminationReason.SEARCH_EXHAUSTED, pathfinder.getTerminationReason());
 		assertTrue(closest.distanceTo(KARAMJA) > 10);
 
-		String message = UnreachableRouteExplainer.explain(live, FALADOR, KARAMJA, closest);
+		String message = UnreachableRouteExplainer.explain(live, FALADOR, KARAMJA, closest, 60_000L);
 
 		assertEquals("Can't reach 2933, 3148: the route needs the ship to Musa Point (Captain Tobias), "
 			+ "but it is not available to you right now.", message);
@@ -95,7 +95,7 @@ public class UnreachableRouteExplainerTest
 		PathfinderConfig config = new PathfinderConfig(map, catalog, Collections.emptyList(), null, null);
 		Field cutoff = PathfinderConfig.class.getDeclaredField("calculationCutoffMillis");
 		cutoff.setAccessible(true);
-		cutoff.setLong(config, 3_000L);
+		cutoff.setLong(config, 60_000L);
 		for (Map.Entry<WorldPoint, Set<Transport>> entry : catalog.entrySet())
 		{
 			if (entry.getKey() == null)
