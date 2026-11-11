@@ -27,6 +27,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.FileTime;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -727,6 +728,53 @@ public class LivePluginManagerTest {
         assertEquals(0, runtimeJarCount());
         assertTrue(registered.isEmpty());
         assertTrue(active.isEmpty());
+    }
+
+    @Test
+    public void startupLoadsInstalledHubJarWithoutRewritingItOrItsOrigin() throws Exception {
+        Path jar = directory.resolve("FixturePlugin.jar");
+        Files.copy(fixture("v1.jar", "1.0", false), jar);
+        Path origin = directory.resolve("FixturePlugin.jar.origin");
+        Files.write(origin, ("hubId=FixturePlugin\nsha256=" + LivePluginManager.hash(jar) + "\n")
+                .getBytes(StandardCharsets.UTF_8));
+        FileTime installedAt = FileTime.from(1_600_000_000L, TimeUnit.SECONDS);
+        Files.setLastModifiedTime(jar, installedAt);
+        Files.setLastModifiedTime(origin, installedAt);
+
+        manager.loadAtStartup();
+
+        assertEquals("1.0", resource(onlyPlugin()));
+        assertEquals("FixturePlugin", manager.getInstalledPlugins().get(0).getHubId());
+        assertEquals("An unchanged installed JAR must not be replaced on disk",
+                installedAt, Files.getLastModifiedTime(jar));
+        assertEquals("An unchanged origin file must not be replaced on disk",
+                installedAt, Files.getLastModifiedTime(origin));
+    }
+
+    @Test
+    public void fileSystemFailureMessageIsPlainLanguageWithOnlyTheFileName() {
+        String inUse = "Microbot was not allowed to change AutoFisher.jar. Another Microbot client may be using it:"
+                + " close the other clients and try again. If no other client is open, check that the file or folder"
+                + " is not read-only.";
+        assertEquals(inUse, LivePluginManager.message(new java.nio.file.AccessDeniedException(
+                "C:\\Users\\me\\.runelite\\microbot-plugins\\.install-1.tmp",
+                "C:\\Users\\me\\.runelite\\microbot-plugins\\AutoFisher.jar", null)));
+        assertEquals(inUse, LivePluginManager.message(new java.nio.file.FileSystemException(
+                "/home/me/.runelite/microbot-plugins/AutoFisher.jar", null,
+                "The process cannot access the file because it is being used by another process")));
+        assertEquals("AutoFisher.jar is no longer in the plugin folder."
+                        + " Put it back or reinstall it from the Plugin Hub, then refresh.",
+                LivePluginManager.message(
+                        new java.nio.file.NoSuchFileException("/home/me/.runelite/microbot-plugins/AutoFisher.jar")));
+        assertEquals("Could not access AutoFisher.jar (No space left on device)."
+                        + " Check that the plugin folder is readable and writable and that no other client is open.",
+                LivePluginManager.message(new java.nio.file.FileSystemException(
+                        "/home/me/.runelite/microbot-plugins/AutoFisher.jar", null, "No space left on device")));
+        assertEquals("Could not access a plugin file."
+                        + " Check that the plugin folder is readable and writable and that no other client is open.",
+                LivePluginManager.message(new java.nio.file.FileSystemException(null)));
+        assertEquals("plain", LivePluginManager.message(new IllegalStateException("plain")));
+        assertEquals("IllegalStateException", LivePluginManager.message(new IllegalStateException()));
     }
 
     private long runtimeJarCount() throws Exception {
