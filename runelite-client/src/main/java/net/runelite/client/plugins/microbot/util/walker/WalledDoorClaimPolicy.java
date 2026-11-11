@@ -45,6 +45,16 @@ final class WalledDoorClaimPolicy {
                 && nowMs - claimSinceMs > FRESH_MS;
     }
 
+    static boolean isAdjacentClaimEdge(WorldPoint refusalFrom, WorldPoint refusalTo,
+                                       WorldPoint claimFrom, WorldPoint claimTo) {
+        return refusalFrom != null && refusalTo != null
+                && refusalFrom.equals(claimFrom) && refusalTo.equals(claimTo);
+    }
+
+    static boolean dispatchesAdjacentDoorHandler(Decision decision) {
+        return decision == Decision.HANDLE_AT_EDGE || decision == Decision.APPROACH;
+    }
+
     private static boolean continuesClaim(WorldPoint claimFrom, WorldPoint claimTo, long claimedAtMs,
                                           long claimSinceMs, WorldPoint edgeFrom, WorldPoint edgeTo,
                                           long nowMs) {

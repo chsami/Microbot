@@ -519,9 +519,11 @@ final class Rs2WalkerMovement {
         // beside the gate) and (1903,5242)->(1904,5243) (diagonal sharing the gate's corner) both
         // learned mid-corridor, each costing a replan. Not learning is always recoverable — the
         // refused click just falls back as before; learning wrongly poisons routing for the session.
-        if (sceneDoorAdjacentToEdge(edge[0], edge[1])) {
+        List<WorldPoint> edgeKey = List.of(edge[0], edge[1]);
+        boolean struckOut = routeState.struckOutAdjacentDoorEdges.contains(edgeKey);
+        if (struckOut || sceneDoorAdjacentToEdge(edge[0], edge[1], playerLoc)) {
             long now = System.currentTimeMillis();
-            if (!WalledDoorClaimPolicy.isAdjacentClaimSpent(routeState.adjacentRefusalFrom,
+            if (!struckOut && !WalledDoorClaimPolicy.isAdjacentClaimSpent(routeState.adjacentRefusalFrom,
                     routeState.adjacentRefusalTo, routeState.adjacentRefusalAtMs,
                     routeState.adjacentRefusalSinceMs, edge[0], edge[1], now)) {
                 WebWalkLog.spInfo("walled_edge_not_learned | {} -> {} — scene door adjacent to the edge (double-gate wing), the door pipeline owns it",
@@ -532,6 +534,7 @@ final class Rs2WalkerMovement {
             }
             forgetAdjacentRefusal();
             clearWalledDoorClaim();
+            routeState.struckOutAdjacentDoorEdges.add(edgeKey);
             if (Rs2PathApi.learnBlockedEdge(edge[0], edge[1], "route-click-walled-beside-door")) {
                 doorAttemptLedger.recordWalkScopedBlock(edge[0], edge[1]);
                 WebWalkLog.spInfo("walled_edge_learned | {} -> {} — door beside this wall did not open it within {}s, routing around it for this walk",

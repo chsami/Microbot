@@ -149,6 +149,35 @@ public class WalledDoorClaimPolicyTest {
                 wallFrom, wallTo, NOW));
     }
 
+    @Test
+    public void onlyTheEdgeRefusedBesideADoorIsAnAdjacentClaim() {
+        WorldPoint wallFrom = new WorldPoint(2656, 3292, 0);
+        WorldPoint wallTo = new WorldPoint(2656, 3291, 0);
+        assertTrue(WalledDoorClaimPolicy.isAdjacentClaimEdge(wallFrom, wallTo, wallFrom, wallTo));
+        assertFalse(WalledDoorClaimPolicy.isAdjacentClaimEdge(wallFrom, wallTo, wallTo, wallFrom));
+        assertFalse(WalledDoorClaimPolicy.isAdjacentClaimEdge(wallFrom, wallTo, FROM, TO));
+        assertFalse(WalledDoorClaimPolicy.isAdjacentClaimEdge(null, null, wallFrom, wallTo));
+        assertFalse(WalledDoorClaimPolicy.isAdjacentClaimEdge(wallFrom, wallTo, null, null));
+    }
+
+    @Test
+    public void adjacentDoorHandlerRunsWhileTheClaimIsHeldAndNoActionIsInFlight() {
+        assertTrue(WalledDoorClaimPolicy.dispatchesAdjacentDoorHandler(
+                WalledDoorClaimPolicy.Decision.HANDLE_AT_EDGE));
+        assertTrue(WalledDoorClaimPolicy.dispatchesAdjacentDoorHandler(
+                WalledDoorClaimPolicy.Decision.APPROACH));
+        assertFalse(WalledDoorClaimPolicy.dispatchesAdjacentDoorHandler(
+                WalledDoorClaimPolicy.Decision.ACTION_IN_FLIGHT));
+        assertFalse(WalledDoorClaimPolicy.dispatchesAdjacentDoorHandler(
+                WalledDoorClaimPolicy.Decision.CROSSED));
+        assertFalse(WalledDoorClaimPolicy.dispatchesAdjacentDoorHandler(
+                WalledDoorClaimPolicy.Decision.EXPIRED));
+        assertFalse(WalledDoorClaimPolicy.dispatchesAdjacentDoorHandler(
+                WalledDoorClaimPolicy.Decision.INVALID));
+        assertFalse(WalledDoorClaimPolicy.dispatchesAdjacentDoorHandler(
+                WalledDoorClaimPolicy.Decision.NONE));
+    }
+
     private static WalledDoorClaimPolicy.Decision decide(WorldPoint player,
                                                          boolean moving,
                                                          boolean reachable) {

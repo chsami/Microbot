@@ -34,10 +34,11 @@ public class WalledEdgeBesideDoorLearningTest {
         Rs2Walker.currentTarget = null;
         Rs2Walker.resetWalkSessionState();
         Rs2Walker.doorAttemptLedger.drainWalkScopedBlocks();
+        routeState.struckOutAdjacentDoorEdges.clear();
         pathApi = Mockito.mockStatic(Rs2PathApi.class);
         pathApi.when(() -> Rs2PathApi.learnBlockedEdge(any(), any(), anyString())).thenReturn(true);
         doors = Mockito.mockStatic(Rs2WalkerDoors.class);
-        doors.when(() -> Rs2WalkerDoors.sceneDoorAdjacentToEdge(WALL_FROM, WALL_TO)).thenReturn(true);
+        doors.when(() -> Rs2WalkerDoors.sceneDoorAdjacentToEdge(WALL_FROM, WALL_TO, PLAYER)).thenReturn(true);
     }
 
     @After
@@ -46,6 +47,7 @@ public class WalledEdgeBesideDoorLearningTest {
         pathApi.close();
         Rs2Walker.resetWalkSessionState();
         Rs2Walker.doorAttemptLedger.drainWalkScopedBlocks();
+        routeState.struckOutAdjacentDoorEdges.clear();
     }
 
     @Test
@@ -90,12 +92,43 @@ public class WalledEdgeBesideDoorLearningTest {
 
     @Test
     public void aPlainWallIsStillLearnedForTheSession() {
-        doors.when(() -> Rs2WalkerDoors.sceneDoorAdjacentToEdge(WALL_FROM, WALL_TO)).thenReturn(false);
+        doors.when(() -> Rs2WalkerDoors.sceneDoorAdjacentToEdge(WALL_FROM, WALL_TO, PLAYER)).thenReturn(false);
 
         Rs2WalkerMovement.learnWalledRouteEdge(RAW_PATH, PLAYER, REACHABLE);
 
         pathApi.verify(() -> Rs2PathApi.learnBlockedEdge(eq(WALL_FROM), eq(WALL_TO), anyString()));
         assertTrue(Rs2Walker.doorAttemptLedger.drainWalkScopedBlocks().isEmpty());
+    }
+
+    @Test
+    public void anEdgeThatStruckOutBesideADoorIsNotClaimedAgainOnTheNextWalk() {
+        refusedBesideTheDoorSince(System.currentTimeMillis() - WalledDoorClaimPolicy.FRESH_MS - 1_000L);
+        Rs2WalkerMovement.learnWalledRouteEdge(RAW_PATH, PLAYER, REACHABLE);
+        Rs2Walker.resetWalkSessionState();
+        Rs2Walker.doorAttemptLedger.drainWalkScopedBlocks();
+
+        Rs2WalkerMovement.learnWalledRouteEdge(RAW_PATH, PLAYER, REACHABLE);
+
+        pathApi.verify(() -> Rs2PathApi.learnBlockedEdge(eq(WALL_FROM), eq(WALL_TO), anyString()),
+                Mockito.times(2));
+        assertNull("a struck-out edge must be learned at once, not handed back to the door pipeline",
+                routeState.walledDoorEdgeFrom);
+        assertNull(routeState.adjacentRefusalFrom);
+        List<WorldPoint[]> walkScoped = Rs2Walker.doorAttemptLedger.drainWalkScopedBlocks();
+        assertEquals(1, walkScoped.size());
+        assertArrayEquals(new WorldPoint[]{WALL_FROM, WALL_TO}, walkScoped.get(0));
+    }
+
+    @Test
+    public void aDoorTheHandlerCannotActOnDoesNotClaimTheEdge() {
+        doors.when(() -> Rs2WalkerDoors.sceneDoorAdjacentToEdge(WALL_FROM, WALL_TO, PLAYER)).thenReturn(false);
+
+        Rs2WalkerMovement.learnWalledRouteEdge(RAW_PATH, PLAYER, REACHABLE);
+
+        pathApi.verify(() -> Rs2PathApi.learnBlockedEdge(eq(WALL_FROM), eq(WALL_TO), anyString()));
+        assertNull(routeState.walledDoorEdgeFrom);
+        assertNull(routeState.adjacentRefusalFrom);
+        assertEquals(0L, routeState.adjacentRefusalSinceMs);
     }
 
     private static void refusedBesideTheDoorSince(long sinceMs) {
