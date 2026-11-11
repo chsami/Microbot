@@ -2,7 +2,6 @@ package com.microbot.hwid;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -83,31 +82,46 @@ public class StockSignerHashTest
 	}
 
 	@Test
-	public void bundledValueIsUsedBeforeAnyLookup()
+	public void theHashSentIsAlwaysTheBundledOneWhateverStockReports() throws Exception
 	{
-		FakeRemote remote = new FakeRemote(null, null);
-		assertEquals(StockSignerHash.SOURCE_BUNDLED, StockSignerHash.refresh(remote, store, repository));
-		assertEquals(StockSignerHash.BUNDLED, StockSignerHash.get());
-		assertEquals(StockSignerHash.SOURCE_BUNDLED, System.getProperty(StockSignerHash.SOURCE_PROPERTY));
+		File jar = signedJar("client-9.9.1.jar", "first");
+		System.setProperty(HwidAgent.TOGGLE_PROPERTY, "true");
+		assertEquals(StockSignerHash.STATUS_CHANGED, StockSignerHash.refresh(new FakeRemote(bootstrap(jar), jar), store, repository));
+		assertEquals(StockSignerHash.BUNDLED, HwidAgent.signerHash(null));
 	}
 
 	@Test
-	public void newStockReleaseIsDownloadedOnceThenConfirmedFromTheStore() throws Exception
+	public void uncheckedWhileRuneLiteCannotBeReachedAndTheCertificateIsValid()
+	{
+		StockSignerHash.setClockForTesting(() -> StockSignerHash.BUNDLED_CERTIFICATE_EXPIRY - 1);
+		assertEquals(StockSignerHash.STATUS_UNCHECKED, StockSignerHash.refresh(new FakeRemote(null, null), store, repository));
+		assertEquals(StockSignerHash.STATUS_UNCHECKED, System.getProperty(StockSignerHash.STATUS_PROPERTY));
+	}
+
+	@Test
+	public void expiredOnceTheCertificateRanOutUnlessStockStillMatches() throws Exception
 	{
 		File jar = signedJar("client-9.9.1.jar", "first");
-		int expected = StockSignerHash.signerHash(jar);
-		assertNotEquals(StockSignerHash.BUNDLED, expected);
+		StockSignerHash.setExpectedForTesting(StockSignerHash.signerHash(jar));
+		StockSignerHash.setClockForTesting(() -> StockSignerHash.BUNDLED_CERTIFICATE_EXPIRY);
+
+		assertEquals(StockSignerHash.STATUS_EXPIRED, StockSignerHash.refresh(new FakeRemote(null, null), store, repository));
+		// RuneLite kept signing with the same certificate: a live match lifts the stop.
+		assertEquals(StockSignerHash.STATUS_CONFIRMED, StockSignerHash.refresh(new FakeRemote(bootstrap(jar), jar), store, repository));
+		// A match stored on an earlier start is not enough once RuneLite cannot be reached again.
+		assertEquals(StockSignerHash.STATUS_EXPIRED, StockSignerHash.refresh(new FakeRemote(null, null), store, repository));
+	}
+
+	@Test
+	public void matchingReleaseIsDownloadedOnceThenConfirmedFromTheStore() throws Exception
+	{
+		File jar = signedJar("client-9.9.1.jar", "first");
+		StockSignerHash.setExpectedForTesting(StockSignerHash.signerHash(jar));
 		FakeRemote remote = new FakeRemote(bootstrap(jar), jar);
 
-		assertEquals(StockSignerHash.SOURCE_LIVE, StockSignerHash.refresh(remote, store, repository));
-		assertEquals(expected, StockSignerHash.get());
+		assertEquals(StockSignerHash.STATUS_CONFIRMED, StockSignerHash.refresh(remote, store, repository));
 		assertEquals(1, remote.downloads);
-		System.setProperty(HwidAgent.TOGGLE_PROPERTY, "true");
-		assertEquals(expected, HwidAgent.signerHash(null));
-
-		StockSignerHash.resetForTesting();
-		assertEquals(StockSignerHash.SOURCE_LIVE, StockSignerHash.refresh(remote, store, repository));
-		assertEquals(expected, StockSignerHash.get());
+		assertEquals(StockSignerHash.STATUS_CONFIRMED, StockSignerHash.refresh(remote, store, repository));
 		assertEquals("same release must not be downloaded again", 1, remote.downloads);
 		assertEquals(0, leftoverJars());
 	}
@@ -116,58 +130,53 @@ public class StockSignerHashTest
 	public void stockLaunchersOwnCopyIsUsedInsteadOfADownload() throws Exception
 	{
 		File jar = signedJar("client-9.9.1.jar", "first");
+		StockSignerHash.setExpectedForTesting(StockSignerHash.signerHash(jar));
 		Files.copy(jar.toPath(), new File(repository, jar.getName()).toPath());
 		FakeRemote remote = new FakeRemote(bootstrap(jar), jar);
 
-		assertEquals(StockSignerHash.SOURCE_LIVE, StockSignerHash.refresh(remote, store, repository));
-		assertEquals(StockSignerHash.signerHash(jar).intValue(), StockSignerHash.get());
+		assertEquals(StockSignerHash.STATUS_CONFIRMED, StockSignerHash.refresh(remote, store, repository));
 		assertEquals(0, remote.downloads);
 	}
 
 	@Test
-	public void reSignedReleaseReplacesTheStoredHash() throws Exception
+	public void reSignedReleaseIsReportedAndRememberedWhileOffline() throws Exception
 	{
 		File first = signedJar("client-9.9.1.jar", "first");
-		StockSignerHash.refresh(new FakeRemote(bootstrap(first), first), store, repository);
-		int before = StockSignerHash.get();
+		StockSignerHash.setExpectedForTesting(StockSignerHash.signerHash(first));
+		assertEquals(StockSignerHash.STATUS_CONFIRMED,
+			StockSignerHash.refresh(new FakeRemote(bootstrap(first), first), store, repository));
 
 		File second = signedJar("client-9.9.2.jar", "second");
-		assertEquals(StockSignerHash.SOURCE_LIVE,
+		assertEquals(StockSignerHash.STATUS_CHANGED,
 			StockSignerHash.refresh(new FakeRemote(bootstrap(second), second), store, repository));
-		assertNotEquals(before, StockSignerHash.get());
-		assertEquals(StockSignerHash.signerHash(second).intValue(), StockSignerHash.get());
+		assertEquals(StockSignerHash.STATUS_CHANGED, System.getProperty(StockSignerHash.STATUS_PROPERTY));
+
+		// Next start, RuneLite unreachable: the difference found earlier still stands.
+		assertEquals(StockSignerHash.STATUS_CHANGED, StockSignerHash.refresh(new FakeRemote(null, null), store, repository));
+
+		// A Microbot build that bundles the new hash clears it.
+		StockSignerHash.setExpectedForTesting(StockSignerHash.signerHash(second));
+		assertEquals(StockSignerHash.STATUS_UNCHECKED, StockSignerHash.refresh(new FakeRemote(null, null), store, repository));
+		assertEquals(StockSignerHash.STATUS_CONFIRMED,
+			StockSignerHash.refresh(new FakeRemote(bootstrap(second), second), store, repository));
 	}
 
 	@Test
-	public void lastConfirmedHashIsKeptWhenRuneLiteCannotBeReached() throws Exception
-	{
-		File jar = signedJar("client-9.9.1.jar", "first");
-		StockSignerHash.refresh(new FakeRemote(bootstrap(jar), jar), store, repository);
-		int confirmed = StockSignerHash.get();
-
-		StockSignerHash.resetForTesting();
-		assertEquals(StockSignerHash.SOURCE_CACHED, StockSignerHash.refresh(new FakeRemote(null, null), store, repository));
-		assertEquals(confirmed, StockSignerHash.get());
-	}
-
-	@Test
-	public void tamperedOrUnsignedDownloadsNeverChangeTheHash() throws Exception
+	public void tamperedOrUnsignedDownloadsNeverChangeTheStatus() throws Exception
 	{
 		File jar = signedJar("client-9.9.1.jar", "first");
 		File other = signedJar("client-9.9.2.jar", "second");
 		// Checksum in the bootstrap is for a different file than the one served.
-		assertEquals(StockSignerHash.SOURCE_BUNDLED,
+		assertEquals(StockSignerHash.STATUS_UNCHECKED,
 			StockSignerHash.refresh(new FakeRemote(bootstrap(jar), other), store, repository));
-		assertEquals(StockSignerHash.BUNDLED, StockSignerHash.get());
 
 		File unsigned = unsignedJar("client-9.9.3.jar");
-		assertEquals(StockSignerHash.SOURCE_BUNDLED,
+		assertEquals(StockSignerHash.STATUS_UNCHECKED,
 			StockSignerHash.refresh(new FakeRemote(bootstrap(unsigned), unsigned), store, repository));
-		assertEquals(StockSignerHash.BUNDLED, StockSignerHash.get());
 
 		String elsewhere = bootstrap(jar).replace("https://repo.runelite.net/", "https://example.com/");
 		FakeRemote remote = new FakeRemote(elsewhere, jar);
-		assertEquals(StockSignerHash.SOURCE_BUNDLED, StockSignerHash.refresh(remote, store, repository));
+		assertEquals(StockSignerHash.STATUS_UNCHECKED, StockSignerHash.refresh(remote, store, repository));
 		assertEquals(0, remote.downloads);
 		assertFalse(store.exists());
 		assertEquals(0, leftoverJars());

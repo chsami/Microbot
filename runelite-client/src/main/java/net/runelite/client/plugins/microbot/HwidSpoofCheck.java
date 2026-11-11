@@ -15,6 +15,13 @@ final class HwidSpoofCheck
 	static final String DEVICE_HOOK_PROPERTY = "microbot.hwid.device.installed";
 	static final String PLATFORM_HOOK_PROPERTY = "microbot.hwid.platform.installed";
 	static final String RANDOM_DAT_CALL_PROPERTY = "microbot.hwid.randomdat.lastCall";
+	static final String PLATFORM_MISSED_PROPERTY = "microbot.hwid.platform.missed";
+	static final String SIGNER_STATUS_PROPERTY = "microbot.hwid.signer.status";
+	static final String SIGNER_CHANGED = "changed";
+	static final String SIGNER_EXPIRED = "expired";
+
+	static final String LOGIN_BLOCKED_TITLE = "Microbot stopped this login";
+	private static final String LOGIN_BLOCKED_WAY_OUT = "\n\nTo log in anyway, with your real client details, turn off Spoof device ID in Microbot > General.";
 
 	static final String AGENT_MISSING_CHAT = "Spoofing is not active, so this login sent your real device details. Restart the client from the Microbot launcher and check that Spoof hardware IDs is ticked. Already ticked? Report it in the Microbot Discord.";
 	static final String AGENT_INERT_CHAT = "This client started with spoofing off, so this login sent your real device details. Restart from the Microbot launcher, or turn off Spoof device ID in Microbot > General.";
@@ -50,6 +57,43 @@ final class HwidSpoofCheck
 		}
 	}
 
+	/** A reason a login must not be sent at all: it would carry details no stock RuneLite client sends. */
+	enum LoginBlock
+	{
+		SIGNER_CHANGED(
+			"Why: RuneLite now signs its client with a new certificate. This Microbot version would send the old signature, which no real RuneLite client sends any more, so the login would stand out."
+				+ "\n\nWhat to do: update Microbot, then log in again.",
+			"Login blocked: the stock RuneLite client jar no longer hashes to the bundled signer hash (microbot.hwid.signer.status=changed). Rebundle StockSignerHash.BUNDLED."),
+		SIGNER_EXPIRED(
+			"Why: the RuneLite certificate this Microbot version copies ran out on 15 April 2027, and Microbot could not reach RuneLite to check that real clients still send the same signature. Sending a signature that may be out of date would make the login stand out."
+				+ "\n\nWhat to do: check your internet connection and restart the client, or update Microbot.",
+			"Login blocked: the bundled signer certificate is past its expiry and the stock client could not be checked (microbot.hwid.signer.status=expired)."),
+		PLATFORM_DETAILS_MIXED(
+			"Why: the game changed how it reads client details, and this Microbot version can only hide some of them. The login would send a mix of real and spoofed details that no real RuneLite client sends."
+				+ "\n\nWhat to do: update Microbot. If you are already on the newest version, report this in the Microbot Discord.",
+			"Login blocked: a Class.getSigners call could not be rewritten in this client version (microbot.hwid.platform.missed=true), so the signer hash would be sent partly unspoofed.");
+
+		private final String message;
+		private final String detail;
+
+		LoginBlock(String reason, String detail)
+		{
+			this.message = "Spoof device ID is on, and this login was stopped before anything was sent.\n\n" + reason + LOGIN_BLOCKED_WAY_OUT;
+			this.detail = detail;
+		}
+
+		/** Shown to the player: why the login was stopped and what to do. */
+		String message()
+		{
+			return message;
+		}
+
+		String logMessage()
+		{
+			return detail;
+		}
+	}
+
 	private final Function<String, String> properties;
 	private final LongSupplier clock;
 	private final Set<Problem> reported = EnumSet.noneOf(Problem.class);
@@ -69,6 +113,34 @@ final class HwidSpoofCheck
 	synchronized void loginStarted()
 	{
 		loginStartedAt = clock.getAsLong();
+	}
+
+	/**
+	 * Asked when a login starts, before the client has sent anything. Only blocks on what is known to be
+	 * wrong while the agent is spoofing; a missing or inert agent is the player's launcher choice and is
+	 * reported after login as before.
+	 */
+	Optional<LoginBlock> loginBlock(boolean spoofEnabled)
+	{
+		if (!spoofEnabled || Boolean.parseBoolean(properties.apply(LAUNCHER_DISABLED_PROPERTY))
+			|| !AGENT_LOADED.equals(properties.apply(AGENT_PROPERTY)))
+		{
+			return Optional.empty();
+		}
+		String signer = properties.apply(SIGNER_STATUS_PROPERTY);
+		if (SIGNER_CHANGED.equals(signer))
+		{
+			return Optional.of(LoginBlock.SIGNER_CHANGED);
+		}
+		if (SIGNER_EXPIRED.equals(signer))
+		{
+			return Optional.of(LoginBlock.SIGNER_EXPIRED);
+		}
+		if (properties.apply(PLATFORM_MISSED_PROPERTY) != null)
+		{
+			return Optional.of(LoginBlock.PLATFORM_DETAILS_MIXED);
+		}
+		return Optional.empty();
 	}
 
 	synchronized Optional<Problem> loggedIn(boolean spoofEnabled)

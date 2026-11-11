@@ -130,6 +130,54 @@ public class MicrobotPluginHwidReportTest
 		}
 	}
 
+	@Test
+	public void aBlockedLoginGoesBackToTheLoginScreenAndTellsThePlayerWhy() throws Exception
+	{
+		for (HwidSpoofCheck.LoginBlock block : HwidSpoofCheck.LoginBlock.values())
+		{
+			Mockito.clearInvocations(client, clientThread);
+			when(client.getGameState()).thenReturn(GameState.LOGGING_IN);
+			java.util.List<HwidSpoofCheck.LoginBlock> shown = new java.util.ArrayList<>();
+			Field notice = MicrobotPlugin.class.getDeclaredField("loginBlockNotice");
+			notice.setAccessible(true);
+			notice.set(plugin, (java.util.function.Consumer<HwidSpoofCheck.LoginBlock>) shown::add);
+
+			Method method = MicrobotPlugin.class.getDeclaredMethod("blockLogin", HwidSpoofCheck.LoginBlock.class);
+			method.setAccessible(true);
+			method.invoke(plugin, block);
+
+			ArgumentCaptor<Runnable> later = ArgumentCaptor.forClass(Runnable.class);
+			verify(clientThread, times(1)).invokeLater(later.capture());
+			verify(client, never()).setGameState(any());
+			later.getValue().run();
+			verify(client, times(1)).setGameState(GameState.LOGIN_SCREEN);
+			assertTrue(block.name(), shown.equals(java.util.List.of(block)));
+
+			String message = block.message();
+			assertTrue(block.name(), message.contains("this login was stopped before anything was sent"));
+			assertTrue(block.name(), message.contains("Why: ") && message.contains("What to do: "));
+			assertTrue(block.name(), message.contains("turn off Spoof device ID in Microbot > General"));
+			assertFalse(block.name(), message.contains("-javaagent") || message.contains("-D") || message.contains("microbot.hwid"));
+		}
+	}
+
+	@Test
+	public void aLoginThatAlreadyLeftTheLoggingInStateIsNotTouched() throws Exception
+	{
+		when(client.getGameState()).thenReturn(GameState.LOGGED_IN);
+		Field notice = MicrobotPlugin.class.getDeclaredField("loginBlockNotice");
+		notice.setAccessible(true);
+		notice.set(plugin, (java.util.function.Consumer<HwidSpoofCheck.LoginBlock>) block -> { });
+		Method method = MicrobotPlugin.class.getDeclaredMethod("blockLogin", HwidSpoofCheck.LoginBlock.class);
+		method.setAccessible(true);
+		method.invoke(plugin, HwidSpoofCheck.LoginBlock.SIGNER_CHANGED);
+
+		ArgumentCaptor<Runnable> later = ArgumentCaptor.forClass(Runnable.class);
+		verify(clientThread).invokeLater(later.capture());
+		later.getValue().run();
+		verify(client, never()).setGameState(any());
+	}
+
 	private void report(Problem problem) throws Exception
 	{
 		Method method = MicrobotPlugin.class.getDeclaredMethod("reportHwidSpoofProblem", Problem.class);

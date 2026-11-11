@@ -184,4 +184,58 @@ public class HwidSpoofCheckTest
 		check.loginStarted();
 		assertFalse(check.loggedIn(true).isPresent());
 	}
+
+	@Test
+	public void loginIsBlockedWhenStockRuneLiteSignsWithAnotherCertificate()
+	{
+		agentLoadedWithDeviceHook();
+		properties.put(HwidSpoofCheck.SIGNER_STATUS_PROPERTY, "changed");
+		assertEquals(Optional.of(HwidSpoofCheck.LoginBlock.SIGNER_CHANGED), check.loginBlock(true));
+	}
+
+	@Test
+	public void loginIsBlockedWhenTheCertificateRanOutAndStockCouldNotBeChecked()
+	{
+		agentLoadedWithDeviceHook();
+		properties.put(HwidSpoofCheck.SIGNER_STATUS_PROPERTY, "expired");
+		assertEquals(Optional.of(HwidSpoofCheck.LoginBlock.SIGNER_EXPIRED), check.loginBlock(true));
+	}
+
+	@Test
+	public void loginIsBlockedWhenASignerCallCouldNotBeHidden()
+	{
+		agentLoadedWithDeviceHook();
+		properties.put(HwidSpoofCheck.SIGNER_STATUS_PROPERTY, "confirmed");
+		properties.put(HwidSpoofCheck.PLATFORM_MISSED_PROPERTY, "true");
+		assertEquals(Optional.of(HwidSpoofCheck.LoginBlock.PLATFORM_DETAILS_MIXED), check.loginBlock(true));
+	}
+
+	@Test
+	public void loginIsAllowedWhenStockIsConfirmedOrCouldNotBeReachedYet()
+	{
+		agentLoadedWithDeviceHook();
+		assertFalse(check.loginBlock(true).isPresent());
+		properties.put(HwidSpoofCheck.SIGNER_STATUS_PROPERTY, "confirmed");
+		assertFalse(check.loginBlock(true).isPresent());
+		properties.put(HwidSpoofCheck.SIGNER_STATUS_PROPERTY, "unchecked");
+		assertFalse(check.loginBlock(true).isPresent());
+	}
+
+	@Test
+	public void loginIsNeverBlockedWhenThePlayerIsNotSpoofing()
+	{
+		properties.put(HwidSpoofCheck.SIGNER_STATUS_PROPERTY, "changed");
+		properties.put(HwidSpoofCheck.PLATFORM_MISSED_PROPERTY, "true");
+		// No agent attached: nothing is spoofed, so nothing sent can be a wrong spoof.
+		assertFalse(check.loginBlock(true).isPresent());
+		properties.put(HwidSpoofCheck.AGENT_PROPERTY, HwidSpoofCheck.AGENT_INERT);
+		assertFalse(check.loginBlock(true).isPresent());
+
+		agentLoadedWithDeviceHook();
+		assertTrue(check.loginBlock(true).isPresent());
+		// Spoof device ID turned off is the stated way to log in anyway.
+		assertFalse(check.loginBlock(false).isPresent());
+		properties.put(HwidSpoofCheck.LAUNCHER_DISABLED_PROPERTY, "true");
+		assertFalse(check.loginBlock(true).isPresent());
+	}
 }

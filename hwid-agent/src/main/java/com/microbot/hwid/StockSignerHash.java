@@ -23,17 +23,20 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * The signer hash a stock RuneLite client sends, taken from the client jar RuneLite currently ships
- * rather than from a constant that goes stale when RuneLite signs with a new certificate.
+ * Guards the signer hash sent while spoofing. The value sent is always {@link #BUNDLED}, the hash a
+ * person computed from a stock RuneLite client; nothing fetched is ever sent. What is fetched can only
+ * stop a login: it tells whether stock RuneLite still sends that same hash.
  *
  * <p>On start a background thread reads RuneLite's public bootstrap, the same file the stock launcher
- * reads, and compares the listed client jar with the one the stored hash was computed from. Only when
- * RuneLite has released a new client is the jar read again: from the stock launcher's own copy when it
- * matches the bootstrap checksum, otherwise downloaded once. The hash is computed from the verified
- * signers of the callbacks class, exactly as {@code Class.getSigners()} reports them.
+ * reads, and compares the listed client jar with the one last checked. Only when RuneLite has released
+ * a new client is the jar read again: from the stock launcher's own copy when it matches the bootstrap
+ * checksum, otherwise downloaded once. The hash is computed from the verified signers of the callbacks
+ * class, exactly as {@code Class.getSigners()} reports them, and compared with {@link #BUNDLED}.
  *
- * <p>The value in use is always a stock one, never the unsigned build's 0: the live value, else the
- * last one confirmed on this machine, else {@link #BUNDLED}.
+ * <p>{@link #STATUS_PROPERTY} then reads {@code confirmed} (stock sends the bundled hash),
+ * {@code changed} (stock sends another one; remembered across starts), {@code expired} (RuneLite's
+ * certificate has run out and stock could not be checked) or {@code unchecked} (RuneLite could not be
+ * reached, certificate still valid). The client refuses to log in on {@code changed} and {@code expired}.
  */
 final class StockSignerHash
 {
@@ -41,21 +44,24 @@ final class StockSignerHash
 
 	/**
 	 * {@code Arrays.hashCode(Hooks.class.getSigners())} of stock client-1.13.6.jar, checked 2026-11-11:
-	 * one self-signed certificate, CN=runelite, valid 2017-04-17 to 2027-04-15. Used only until the first
-	 * live lookup on a machine succeeds. To recompute, load {@code net.runelite.client.callback.Hooks}
+	 * one self-signed certificate, CN=runelite, valid 2017-04-17 to 2027-04-15
+	 * ({@link #BUNDLED_CERTIFICATE_EXPIRY}). To recompute, load {@code net.runelite.client.callback.Hooks}
 	 * from a stock signed client jar and take {@code Arrays.hashCode(getSigners())}.
 	 */
 	static final int BUNDLED = -991467620;
 
-	/** {@code live}, {@code cached} or {@code bundled}: where the hash in use came from. */
-	static final String SOURCE_PROPERTY = "microbot.hwid.signer.source";
-	/** Set to {@code false} to skip the lookup and use the cached or bundled value. */
+	/** notAfter of that certificate, 2027-04-15T19:25:40Z. From then on an unchecked hash is not trusted. */
+	static final long BUNDLED_CERTIFICATE_EXPIRY = 1807817140000L;
+
+	static final String STATUS_PROPERTY = "microbot.hwid.signer.status";
+	/** Set to {@code false} to skip the lookup; the status then comes from the last stored check and the date. */
 	static final String LOOKUP_PROPERTY = "microbot.hwid.signer.lookup";
 	static final String STORE_PROPERTY = "microbot.hwid.signer.store";
 
-	static final String SOURCE_LIVE = "live";
-	static final String SOURCE_CACHED = "cached";
-	static final String SOURCE_BUNDLED = "bundled";
+	static final String STATUS_CONFIRMED = "confirmed";
+	static final String STATUS_CHANGED = "changed";
+	static final String STATUS_EXPIRED = "expired";
+	static final String STATUS_UNCHECKED = "unchecked";
 
 	private static final String BOOTSTRAP_URL = "https://static.runelite.net/bootstrap.json";
 	private static final String CALLBACKS_ENTRY = "net/runelite/client/callback/Hooks.class";
@@ -69,7 +75,9 @@ final class StockSignerHash
 	private static final Pattern CLIENT_JAR = Pattern.compile("client-[0-9][0-9A-Za-z.\\-]*\\.jar");
 	private static final Pattern SHA256 = Pattern.compile("[0-9a-f]{64}");
 
-	private static volatile int current = BUNDLED;
+	private static volatile java.util.function.LongSupplier clock = System::currentTimeMillis;
+	/** Always {@link #BUNDLED} outside tests, which cannot sign a jar with RuneLite's key. */
+	private static volatile int expected = BUNDLED;
 
 	private StockSignerHash()
 	{
@@ -83,12 +91,7 @@ final class StockSignerHash
 		void download(String url, File target, long maxBytes) throws IOException;
 	}
 
-	static int get()
-	{
-		return current;
-	}
-
-	/** Uses the stored value at once, then refreshes it off the calling thread. */
+	/** Applies the last stored check at once, then checks stock again off the calling thread. */
 	static void start()
 	{
 		File store = storeFile();
@@ -103,10 +106,10 @@ final class StockSignerHash
 		thread.start();
 	}
 
-	/** Returns the source of the value in use afterwards. Never throws. */
+	/** Returns the status afterwards. Never throws. */
 	static String refresh(Remote remote, File store, File stockRepository)
 	{
-		String source = loadCached(store);
+		String status = loadCached(store);
 		File downloaded = null;
 		try
 		{
@@ -118,7 +121,7 @@ final class StockSignerHash
 			Properties stored = readStore(store);
 			if (client.sha256.equals(stored.getProperty(STORE_ARTIFACT)) && parse(stored.getProperty(STORE_HASH)) != null)
 			{
-				return use(parse(stored.getProperty(STORE_HASH)), SOURCE_LIVE);
+				return publish(parse(stored.getProperty(STORE_HASH)) == expected ? STATUS_CONFIRMED : STATUS_CHANGED);
 			}
 
 			File jar = new File(stockRepository, client.name);
@@ -152,12 +155,12 @@ final class StockSignerHash
 			stored.setProperty(STORE_ARTIFACT, client.sha256);
 			stored.setProperty(STORE_HASH, Integer.toString(hash));
 			writeStore(store, stored);
-			return use(hash, SOURCE_LIVE);
+			return publish(hash == expected ? STATUS_CONFIRMED : STATUS_CHANGED);
 		}
 		catch (Throwable t)
 		{
-			log.info("Stock signer lookup failed, using the " + source + " value: " + t);
-			return source;
+			log.info("Stock signer check failed, status stays " + status + ": " + t);
+			return status;
 		}
 		finally
 		{
@@ -231,17 +234,25 @@ final class StockSignerHash
 		return matcher.find() ? matcher.group(1) : null;
 	}
 
+	/**
+	 * Without a live answer: a difference found on an earlier start still stands (a new Microbot build
+	 * bundles the new hash and clears it), a match found earlier proves nothing about today, and past the
+	 * certificate's expiry the bundled hash is no longer trusted unchecked.
+	 */
 	private static String loadCached(File store)
 	{
-		Integer cached = parse(readStore(store).getProperty(STORE_HASH));
-		return cached != null ? use(cached, SOURCE_CACHED) : use(BUNDLED, SOURCE_BUNDLED);
+		Integer stored = parse(readStore(store).getProperty(STORE_HASH));
+		if (stored != null && stored != expected)
+		{
+			return publish(STATUS_CHANGED);
+		}
+		return publish(clock.getAsLong() >= BUNDLED_CERTIFICATE_EXPIRY ? STATUS_EXPIRED : STATUS_UNCHECKED);
 	}
 
-	private static String use(int hash, String source)
+	private static String publish(String status)
 	{
-		current = hash;
-		System.setProperty(SOURCE_PROPERTY, source);
-		return source;
+		System.setProperty(STATUS_PROPERTY, status);
+		return status;
 	}
 
 	private static Integer parse(String value)
@@ -322,10 +333,21 @@ final class StockSignerHash
 		return override != null && !override.isBlank() ? new File(override) : new File(runeliteHome(), "stock-signer.properties");
 	}
 
+	static void setClockForTesting(java.util.function.LongSupplier testClock)
+	{
+		clock = testClock;
+	}
+
+	static void setExpectedForTesting(int hash)
+	{
+		expected = hash;
+	}
+
 	static void resetForTesting()
 	{
-		current = BUNDLED;
-		System.clearProperty(SOURCE_PROPERTY);
+		clock = System::currentTimeMillis;
+		expected = BUNDLED;
+		System.clearProperty(STATUS_PROPERTY);
 	}
 
 	static final class Artifact

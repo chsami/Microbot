@@ -105,6 +105,8 @@ public class MicrobotPlugin extends Plugin
 	private static final String HWID_SPOOF_PROPERTY = "microbot.hwid.spoof";
 	private EnumSet<WorldType> lastWorldTypeProfile = null;
 	private final HwidSpoofCheck hwidSpoofCheck = new HwidSpoofCheck();
+	private final java.util.concurrent.atomic.AtomicBoolean loginBlockDialogOpen = new java.util.concurrent.atomic.AtomicBoolean();
+	private java.util.function.Consumer<HwidSpoofCheck.LoginBlock> loginBlockNotice = this::showLoginBlockDialog;
 
 	@Inject
 	private Provider<MicrobotPluginListPanel> pluginListPanelProvider;
@@ -431,6 +433,10 @@ public class MicrobotPlugin extends Plugin
 		   }
 		   hwidSpoofCheck.loggedIn(microbotConfig.spoofDeviceId()).ifPresent(this::reportHwidSpoofProblem);
 	   }
+	   if (gameStateChanged.getGameState() == GameState.LOGGING_IN)
+	   {
+		   hwidSpoofCheck.loginBlock(microbotConfig.spoofDeviceId()).ifPresent(this::blockLogin);
+	   }
 	   if (gameStateChanged.getGameState() == GameState.LOGIN_SCREEN || gameStateChanged.getGameState() == GameState.HOPPING)
 	   {
 		   hwidSpoofCheck.loginStarted();
@@ -450,6 +456,44 @@ public class MicrobotPlugin extends Plugin
 	   }
 	   // update last known game state to track login/logout transitions
 	   LoginManager.setLastKnownGameState(gameStateChanged.getGameState());
+	}
+
+	/**
+	 * Returns the client to the login screen on its next cycle, before the login step that builds the
+	 * packet, and tells the player why in a window that cannot be missed.
+	 */
+	private void blockLogin(HwidSpoofCheck.LoginBlock block)
+	{
+		log.info(block.logMessage());
+		Microbot.getClientThread().invokeLater(() ->
+		{
+			if (Microbot.getClient().getGameState() == GameState.LOGGING_IN)
+			{
+				Microbot.getClient().setGameState(GameState.LOGIN_SCREEN);
+			}
+		});
+		loginBlockNotice.accept(block);
+	}
+
+	/** One window at a time, so a script that keeps retrying the login cannot stack them. */
+	private void showLoginBlockDialog(HwidSpoofCheck.LoginBlock block)
+	{
+		if (java.awt.GraphicsEnvironment.isHeadless() || !loginBlockDialogOpen.compareAndSet(false, true))
+		{
+			return;
+		}
+		javax.swing.SwingUtilities.invokeLater(() ->
+		{
+			try
+			{
+				javax.swing.JOptionPane.showMessageDialog(null, block.message(),
+					HwidSpoofCheck.LOGIN_BLOCKED_TITLE, javax.swing.JOptionPane.WARNING_MESSAGE);
+			}
+			finally
+			{
+				loginBlockDialogOpen.set(false);
+			}
+		});
 	}
 
 	private void reportHwidSpoofProblem(HwidSpoofCheck.Problem problem)

@@ -21,6 +21,8 @@ public final class HwidAgent
 	public static final String AGENT_INERT = "inert";
 	public static final String DEVICE_HOOK_PROPERTY = "microbot.hwid.device.installed";
 	public static final String PLATFORM_HOOK_PROPERTY = "microbot.hwid.platform.installed";
+	/** Set once a signer call could not be rewritten: the next login would mix real and spoofed details. */
+	public static final String PLATFORM_MISSED_PROPERTY = "microbot.hwid.platform.missed";
 	public static final String RANDOM_DAT_CALL_PROPERTY = "microbot.hwid.randomdat.lastCall";
 
 	private static volatile boolean deviceHookInstalled;
@@ -106,6 +108,7 @@ public final class HwidAgent
 		{
 			signerSiteMissed = true;
 			System.clearProperty(PLATFORM_HOOK_PROPERTY);
+			System.setProperty(PLATFORM_MISSED_PROPERTY, "true");
 		}
 	}
 
@@ -126,6 +129,7 @@ public final class HwidAgent
 			processHookInstalled = false;
 			signerSiteMissed = false;
 			System.clearProperty(PLATFORM_HOOK_PROPERTY);
+			System.clearProperty(PLATFORM_MISSED_PROPERTY);
 		}
 	}
 
@@ -169,7 +173,7 @@ public final class HwidAgent
 	 */
 	public static int signerHash(Object[] signers)
 	{
-		return spoofEnabled() ? StockSignerHash.get() : Arrays.hashCode(signers);
+		return spoofEnabled() ? StockSignerHash.BUNDLED : Arrays.hashCode(signers);
 	}
 
 	/** Called on each executable, parent process and agent name the game stores before it sizes the login packet. */
