@@ -519,24 +519,55 @@ final class Rs2WalkerMovement {
         // beside the gate) and (1903,5242)->(1904,5243) (diagonal sharing the gate's corner) both
         // learned mid-corridor, each costing a replan. Not learning is always recoverable — the
         // refused click just falls back as before; learning wrongly poisons routing for the session.
-        if (sceneDoorAdjacentToEdge(edge[0], edge[1])) {
+        WalledDoorClaimPolicy.AdjacentDoor door = classifyDoorAdjacentToEdge(edge[0], edge[1], playerLoc);
+        boolean claimHeld = WalledDoorClaimPolicy.isAdjacentClaimEdge(routeState.adjacentRefusalFrom,
+                routeState.adjacentRefusalTo, edge[0], edge[1]);
+        if (door != WalledDoorClaimPolicy.AdjacentDoor.NONE || claimHeld) {
             long now = System.currentTimeMillis();
-            if (!WalledDoorClaimPolicy.isAdjacentClaimSpent(routeState.adjacentRefusalFrom,
+            List<WorldPoint> edgeKey = List.of(edge[0], edge[1]);
+            boolean struckOut = WalledDoorClaimPolicy.isAdjacentStrikeOutActive(
+                    routeState.struckOutAdjacentDoorEdges.get(edgeKey), now);
+            boolean spent = WalledDoorClaimPolicy.isAdjacentClaimSpent(routeState.adjacentRefusalFrom,
                     routeState.adjacentRefusalTo, routeState.adjacentRefusalAtMs,
-                    routeState.adjacentRefusalSinceMs, edge[0], edge[1], now)) {
+                    routeState.adjacentRefusalSinceMs, edge[0], edge[1], now);
+            if (WalledDoorClaimPolicy.holdsAdjacentClaim(door, struckOut, spent)) {
                 WebWalkLog.spInfo("walled_edge_not_learned | {} -> {} — scene door adjacent to the edge (double-gate wing), the door pipeline owns it",
                         compactWorldPoint(edge[0]), compactWorldPoint(edge[1]));
                 rememberAdjacentRefusal(edge, now);
                 rememberWalledDoorEdge(edge);
                 return;
             }
+            boolean strikesOut = WalledDoorClaimPolicy.strikesOutAdjacentDoor(door, struckOut, spent,
+                    routeState.adjacentRefusalDoorAttempted);
+            if (strikesOut) {
+                routeState.struckOutAdjacentDoorEdges.put(edgeKey, now);
+            } else if (!struckOut) {
+                routeState.struckOutAdjacentDoorEdges.remove(edgeKey);
+            }
             forgetAdjacentRefusal();
             clearWalledDoorClaim();
+            DoorAttemptLedger.Attempt latestAttempt = doorAttemptLedger.latestAttempt();
+            if (latestAttempt != null && latestAttempt.isSameDirectedEdge(edge[0], edge[1])) {
+                doorAttemptLedger.clearLatestAttempt();
+            }
             if (Rs2PathApi.learnBlockedEdge(edge[0], edge[1], "route-click-walled-beside-door")) {
                 doorAttemptLedger.recordWalkScopedBlock(edge[0], edge[1]);
-                WebWalkLog.spInfo("walled_edge_learned | {} -> {} — door beside this wall did not open it within {}s, routing around it for this walk",
-                        compactWorldPoint(edge[0]), compactWorldPoint(edge[1]),
-                        WalledDoorClaimPolicy.FRESH_MS / 1000L);
+                if (struckOut) {
+                    WebWalkLog.spInfo("walled_edge_learned | {} -> {} — the door beside this wall failed to open it earlier this session, skipping the wait and routing around it for this walk (the door is tried again within {} min)",
+                            compactWorldPoint(edge[0]), compactWorldPoint(edge[1]),
+                            WalledDoorClaimPolicy.ADJACENT_STRIKE_OUT_MS / 60_000L);
+                } else if (strikesOut && door != WalledDoorClaimPolicy.AdjacentDoor.ACTIONABLE) {
+                    WebWalkLog.spInfo("walled_edge_learned | {} -> {} — the door beside this wall was tried and the step is still blocked, routing around it for this walk and skipping that door here for {} min",
+                            compactWorldPoint(edge[0]), compactWorldPoint(edge[1]),
+                            WalledDoorClaimPolicy.ADJACENT_STRIKE_OUT_MS / 60_000L);
+                } else if (door != WalledDoorClaimPolicy.AdjacentDoor.ACTIONABLE) {
+                    WebWalkLog.spInfo("walled_edge_learned | {} -> {} — the door beside this wall is open, was just tried, or cannot be used, routing around it for this walk",
+                            compactWorldPoint(edge[0]), compactWorldPoint(edge[1]));
+                } else {
+                    WebWalkLog.spInfo("walled_edge_learned | {} -> {} — door beside this wall did not open it within {}s, routing around it for this walk",
+                            compactWorldPoint(edge[0]), compactWorldPoint(edge[1]),
+                            WalledDoorClaimPolicy.FRESH_MS / 1000L);
+                }
                 recalculatePath();
             }
             return;
@@ -559,9 +590,13 @@ final class Rs2WalkerMovement {
     }
 
     private static void rememberAdjacentRefusal(WorldPoint[] edge, long now) {
-        routeState.adjacentRefusalSinceMs = WalledDoorClaimPolicy.claimSinceMs(routeState.adjacentRefusalFrom,
+        long sinceMs = WalledDoorClaimPolicy.claimSinceMs(routeState.adjacentRefusalFrom,
                 routeState.adjacentRefusalTo, routeState.adjacentRefusalAtMs, routeState.adjacentRefusalSinceMs,
                 edge[0], edge[1], now);
+        if (sinceMs != routeState.adjacentRefusalSinceMs) {
+            routeState.adjacentRefusalDoorAttempted = false;
+        }
+        routeState.adjacentRefusalSinceMs = sinceMs;
         routeState.adjacentRefusalFrom = edge[0];
         routeState.adjacentRefusalTo = edge[1];
         routeState.adjacentRefusalAtMs = now;
@@ -572,6 +607,7 @@ final class Rs2WalkerMovement {
         routeState.adjacentRefusalTo = null;
         routeState.adjacentRefusalAtMs = 0L;
         routeState.adjacentRefusalSinceMs = 0L;
+        routeState.adjacentRefusalDoorAttempted = false;
     }
 
     /**

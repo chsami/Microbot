@@ -1,17 +1,23 @@
 package net.runelite.client.plugins.microbot.util.antiban;
 
+import net.runelite.api.events.GameTick;
+import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.antiban.enums.ActivityIntensity;
 import net.runelite.client.plugins.microbot.util.antiban.enums.PlayStyle;
 import net.runelite.client.ui.overlay.components.PanelComponent;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.MockedStatic;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.times;
 
 public class Rs2AntibanActionCooldownTest {
 
@@ -78,6 +84,88 @@ public class Rs2AntibanActionCooldownTest {
 
 		AntibanPlugin.performActionBreak();
 		assertFalse(Rs2AntibanSettings.actionCooldownActive);
+	}
+
+	@Test
+	public void actionCooldownIsSkippedWhenAntibanDisabled() {
+		Rs2AntibanSettings.antibanEnabled = false;
+
+		Rs2Antiban.actionCooldown();
+
+		assertFalse(Rs2AntibanSettings.actionCooldownActive);
+		assertEquals(0, Rs2Antiban.getTIMEOUT());
+	}
+
+	@Test
+	public void cooldownStillCountsDownAfterAntibanDisabled() {
+		Rs2Antiban.actionCooldown();
+		assertTrue(Rs2AntibanSettings.actionCooldownActive);
+		Rs2AntibanSettings.antibanEnabled = false;
+
+		AntibanPlugin plugin = new AntibanPlugin();
+		int ticks = Rs2Antiban.getTIMEOUT();
+		for (int i = 0; i <= ticks; i++) {
+			plugin.onGameTick(new GameTick());
+		}
+
+		assertEquals(0, Rs2Antiban.getTIMEOUT());
+		assertFalse(Rs2AntibanSettings.actionCooldownActive);
+	}
+
+	@Test
+	public void universalCooldownPauseIsReleasedWhenNoBreakHandlerConsumesMicroBreak() {
+		Rs2AntibanSettings.universalAntiban = true;
+		Rs2AntibanSettings.takeMicroBreaks = true;
+		AntibanPlugin plugin = new AntibanPlugin();
+
+		try (MockedStatic<Microbot> microbot = mockStatic(Microbot.class)) {
+			Microbot.pauseAllScripts.set(false);
+
+			for (int round = 0; round < 3; round++) {
+				Rs2Antiban.actionCooldown();
+				Rs2AntibanSettings.microBreakActive = true;
+				assertTrue(Microbot.pauseAllScripts.get());
+
+				plugin.handleMicroBreakIntegration();
+				assertFalse(Rs2AntibanSettings.microBreakActive);
+				assertTrue(Microbot.pauseAllScripts.get());
+
+				int ticks = Rs2Antiban.getTIMEOUT();
+				for (int i = 0; i < ticks; i++) {
+					plugin.handleMicroBreakIntegration();
+					AntibanPlugin.performActionBreak();
+					assertTrue(Microbot.pauseAllScripts.get());
+				}
+
+				plugin.handleMicroBreakIntegration();
+				AntibanPlugin.performActionBreak();
+				assertFalse(Rs2AntibanSettings.actionCooldownActive);
+				assertFalse(Microbot.pauseAllScripts.get());
+			}
+
+			microbot.verify(() -> Microbot.showMessage(anyString()), times(1));
+		} finally {
+			Microbot.pauseAllScripts.set(false);
+		}
+	}
+
+	@Test
+	public void staleMicroBreakIsCancelledOnEveryTickWithoutBreakHandler() {
+		Rs2AntibanSettings.takeMicroBreaks = true;
+		AntibanPlugin plugin = new AntibanPlugin();
+
+		try (MockedStatic<Microbot> microbot = mockStatic(Microbot.class)) {
+			plugin.handleMicroBreakIntegration();
+
+			Rs2AntibanSettings.microBreakActive = true;
+			Microbot.pauseAllScripts.set(true);
+			plugin.handleMicroBreakIntegration();
+
+			assertFalse(Rs2AntibanSettings.microBreakActive);
+			assertFalse(Microbot.pauseAllScripts.get());
+		} finally {
+			Microbot.pauseAllScripts.set(false);
+		}
 	}
 
 	@Test

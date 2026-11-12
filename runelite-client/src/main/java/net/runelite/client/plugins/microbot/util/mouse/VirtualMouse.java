@@ -86,33 +86,29 @@ public class VirtualMouse extends Mouse {
     /**
      * A gesture takes the {@link InputLoop} lock and sleeps while holding it, and neither may
      * happen on the client thread. Every gesture goes through here so none can forget.
+     *
+     * <p>The pause generation is taken once, here, when the click, drag or scroll is requested, and
+     * the gesture's turn runs in it however long it waits, so a request made before a pause never
+     * dispatches after it.
      */
-    private void runGesture(Runnable gesture) {
-        if (ScriptPauseController.isPaused()) {
-            return;
-        }
+    private void runGesture(InputLoop.Gesture gesture) {
         long generation = ScriptPauseController.getGeneration();
-        Runnable fencedGesture = () -> {
-            if (!ScriptPauseController.isPaused() && generation == ScriptPauseController.getGeneration()) {
-                gesture.run();
-            }
-        };
         if (Microbot.getClient().isClientThread()) {
-            scheduledExecutorService.schedule(fencedGesture, 0, TimeUnit.MILLISECONDS);
+            scheduledExecutorService.schedule(() -> InputLoop.run(generation, gesture), 0, TimeUnit.MILLISECONDS);
         } else {
-            fencedGesture.run();
+            InputLoop.run(generation, gesture);
         }
     }
 
     public Mouse click(Point point, boolean rightClick) {
         if (point == null) return this;
 
-        runGesture(() -> InputLoop.run(emit -> {
+        runGesture(emit -> {
             if (shouldMoveNaturally(point)) {
                 Microbot.naturalMouse.moveTo(point.getX(), point.getY());
             }
             handleClick(emit, point, rightClick);
-        }));
+        });
 
         return this;
     }
@@ -130,7 +126,7 @@ public class VirtualMouse extends Mouse {
     private Mouse click(Point point, boolean rightClick, NewMenuEntry entry, boolean quick) {
         if (point == null) return this;
 
-        runGesture(() -> InputLoop.run(emit -> {
+        runGesture(emit -> {
             Point newPoint = point;
             if (!quick && shouldMoveNaturally(point)) {
                 Microbot.naturalMouse.moveTo(point.getX(), point.getY());
@@ -145,7 +141,7 @@ public class VirtualMouse extends Mouse {
             }
 
             handleClick(emit, newPoint, rightClick, quick, () -> Microbot.targetMenu = entry);
-        }));
+        });
 
         return this;
     }
@@ -200,12 +196,11 @@ public class VirtualMouse extends Mouse {
         return click(Microbot.getClient().getMouseCanvasPosition());
     }
 
-    // NaturalMouse steps through here, so this one check also stops a trajectory mid-curve.
+    // NaturalMouse steps through here. Inside a gesture the emitter decides, and a step it refuses
+    // ends the gesture, trajectory and all. Outside one a move yields to the human and to a held
+    // button here, since no gesture is there to end.
     public Mouse move(Point point) {
-        if (InputArbiter.isHuman()) {
-            return this;
-        }
-        if (AwtEmitter.heldMask() != 0 && !InputLoop.isInGesture()) {
+        if (!InputLoop.isInGesture() && (InputArbiter.isHuman() || AwtEmitter.heldMask() != 0)) {
             return this;
         }
         recordTrailPoint(point);
@@ -234,17 +229,17 @@ public class VirtualMouse extends Mouse {
      * between them and leave the wheel firing at a point the cursor has left.
      *
      * <p>The pause stays: a human turns the wheel a moment after arriving, not in the same
-     * instant. A takeover during it aborts at the wheel's checkpoint.
+     * instant. A takeover during it ends the gesture at the wheel, which is refused.
      */
     private Mouse scroll(Point point, int wheelRotation, int unitsToScroll) {
         if (point == null) return this;
 
-        runGesture(() -> InputLoop.run(emit -> {
+        runGesture(emit -> {
             emit.move(point.getX(), point.getY());
             recordTrailPoint(point);
             sleep(Rs2Random.logNormalBounded(40, 100));
             emit.wheel(point.getX(), point.getY(), wheelRotation, unitsToScroll);
-        }));
+        });
 
         return this;
     }
@@ -282,7 +277,7 @@ public class VirtualMouse extends Mouse {
     public Mouse drag(Point startPoint, Point endPoint) {
         if (startPoint == null || endPoint == null) return this;
 
-        runGesture(() -> InputLoop.run(emit -> {
+        runGesture(emit -> {
             moveTowards(startPoint);
             sleep(Rs2Random.logNormalBounded(50, 80));
             emit.press(startPoint.getX(), startPoint.getY(), MouseEvent.BUTTON1);
@@ -290,7 +285,7 @@ public class VirtualMouse extends Mouse {
             moveTowards(endPoint);
             sleep(Rs2Random.logNormalBounded(80, 120));
             emit.release(endPoint.getX(), endPoint.getY(), MouseEvent.BUTTON1);
-        }));
+        });
 
         return this;
     }

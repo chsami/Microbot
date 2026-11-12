@@ -156,6 +156,28 @@ public class LiveCollisionTest {
     }
 
     @Test
+    public void wallBesideAWallDoorIsLeftToTheStaticMap() {
+        int[][][] flags = openScene();
+        final int dx = 50, dy = 50;
+        flags[0][dx][dy] |= CollisionDataFlag.BLOCK_MOVEMENT_WEST | CollisionDataFlag.BLOCK_MOVEMENT_SOUTH;
+        flags[0][dx - 1][dy] |= CollisionDataFlag.BLOCK_MOVEMENT_EAST;
+        flags[0][dx][dy - 1] |= CollisionDataFlag.BLOCK_MOVEMENT_NORTH;
+
+        LiveCollisionDoorMask doorEdges = new LiveCollisionDoorMask(1);
+        doorEdges.markWall(0, dx, dy, 1, 0);
+        doorEdges.markWallFootprint(0, dx, dy);
+        LiveCollisionSnapshot snap = LiveCollisionCapture.build(BASE_X, BASE_Y, 1, flags, doorEdges);
+
+        assertEquals("the door's own edge stays routable",
+                Boolean.TRUE, snap.edge(BASE_X + dx - 1, BASE_Y + dy, 0, FLAG_EAST));
+        assertNull("a fixed wall sharing the door's tile must not be recorded as a doorway",
+                snap.edge(BASE_X + dx, BASE_Y + dy - 1, 0, FLAG_NORTH));
+        assertNull(snap.edge(BASE_X + dx, BASE_Y + dy, 0, FLAG_NORTH));
+        assertNull(snap.edge(BASE_X + dx, BASE_Y + dy, 0, FLAG_EAST));
+        assertEquals(Boolean.TRUE, snap.edge(BASE_X + dx, BASE_Y + dy + 1, 0, FLAG_NORTH));
+    }
+
+    @Test
     public void gameObjectDoorEdgesRecordedPassableWhenTilesStandable() {
         int[][][] flags = openScene();
         final int dx = 50, dy = 50;

@@ -149,6 +149,83 @@ public class WalledDoorClaimPolicyTest {
                 wallFrom, wallTo, NOW));
     }
 
+    @Test
+    public void onlyTheEdgeRefusedBesideADoorIsAnAdjacentClaim() {
+        WorldPoint wallFrom = new WorldPoint(2656, 3292, 0);
+        WorldPoint wallTo = new WorldPoint(2656, 3291, 0);
+        assertTrue(WalledDoorClaimPolicy.isAdjacentClaimEdge(wallFrom, wallTo, wallFrom, wallTo));
+        assertFalse(WalledDoorClaimPolicy.isAdjacentClaimEdge(wallFrom, wallTo, wallTo, wallFrom));
+        assertFalse(WalledDoorClaimPolicy.isAdjacentClaimEdge(wallFrom, wallTo, FROM, TO));
+        assertFalse(WalledDoorClaimPolicy.isAdjacentClaimEdge(null, null, wallFrom, wallTo));
+        assertFalse(WalledDoorClaimPolicy.isAdjacentClaimEdge(wallFrom, wallTo, null, null));
+    }
+
+    @Test
+    public void adjacentDoorHandlerRunsWhileTheClaimIsHeldAndNoActionIsInFlight() {
+        assertTrue(WalledDoorClaimPolicy.dispatchesAdjacentDoorHandler(
+                WalledDoorClaimPolicy.Decision.HANDLE_AT_EDGE));
+        assertTrue(WalledDoorClaimPolicy.dispatchesAdjacentDoorHandler(
+                WalledDoorClaimPolicy.Decision.APPROACH));
+        assertFalse(WalledDoorClaimPolicy.dispatchesAdjacentDoorHandler(
+                WalledDoorClaimPolicy.Decision.ACTION_IN_FLIGHT));
+        assertFalse(WalledDoorClaimPolicy.dispatchesAdjacentDoorHandler(
+                WalledDoorClaimPolicy.Decision.CROSSED));
+        assertFalse(WalledDoorClaimPolicy.dispatchesAdjacentDoorHandler(
+                WalledDoorClaimPolicy.Decision.EXPIRED));
+        assertFalse(WalledDoorClaimPolicy.dispatchesAdjacentDoorHandler(
+                WalledDoorClaimPolicy.Decision.INVALID));
+        assertFalse(WalledDoorClaimPolicy.dispatchesAdjacentDoorHandler(
+                WalledDoorClaimPolicy.Decision.NONE));
+    }
+
+    @Test
+    public void aStrikeOutExpiresSoTheDoorIsTriedAgainLater() {
+        assertTrue(WalledDoorClaimPolicy.isAdjacentStrikeOutActive(NOW - 1_000L, NOW));
+        assertTrue(WalledDoorClaimPolicy.isAdjacentStrikeOutActive(
+                NOW - WalledDoorClaimPolicy.ADJACENT_STRIKE_OUT_MS, NOW));
+        assertFalse(WalledDoorClaimPolicy.isAdjacentStrikeOutActive(
+                NOW - WalledDoorClaimPolicy.ADJACENT_STRIKE_OUT_MS - 1L, NOW));
+        assertFalse(WalledDoorClaimPolicy.isAdjacentStrikeOutActive(null, NOW));
+    }
+
+    @Test
+    public void onlyADoorTheHandlerCanActOnHoldsTheEdgeAndOnlyWhileUnspentAndNotStruckOut() {
+        assertTrue(WalledDoorClaimPolicy.holdsAdjacentClaim(
+                WalledDoorClaimPolicy.AdjacentDoor.ACTIONABLE, false, false));
+        assertFalse(WalledDoorClaimPolicy.holdsAdjacentClaim(
+                WalledDoorClaimPolicy.AdjacentDoor.ACTIONABLE, true, false));
+        assertFalse(WalledDoorClaimPolicy.holdsAdjacentClaim(
+                WalledDoorClaimPolicy.AdjacentDoor.ACTIONABLE, false, true));
+        assertFalse(WalledDoorClaimPolicy.holdsAdjacentClaim(
+                WalledDoorClaimPolicy.AdjacentDoor.UNUSABLE, false, false));
+        assertFalse(WalledDoorClaimPolicy.holdsAdjacentClaim(
+                WalledDoorClaimPolicy.AdjacentDoor.NONE, false, false));
+    }
+
+    @Test
+    public void anEdgeIsStruckOutOnlyAfterTheHandlerTriedItsDoorAndTheEdgeStayedWalled() {
+        assertTrue(WalledDoorClaimPolicy.strikesOutAdjacentDoor(
+                WalledDoorClaimPolicy.AdjacentDoor.ACTIONABLE, false, true, true));
+        assertFalse("a claim spent while the player was still walking up never tried the door",
+                WalledDoorClaimPolicy.strikesOutAdjacentDoor(
+                        WalledDoorClaimPolicy.AdjacentDoor.ACTIONABLE, false, true, false));
+        assertFalse(WalledDoorClaimPolicy.strikesOutAdjacentDoor(
+                WalledDoorClaimPolicy.AdjacentDoor.ACTIONABLE, false, false, true));
+        assertFalse("an active strike-out is not renewed by the walks it skips",
+                WalledDoorClaimPolicy.strikesOutAdjacentDoor(
+                        WalledDoorClaimPolicy.AdjacentDoor.ACTIONABLE, true, true, true));
+        assertTrue("a tried door that opened and left the edge walled strikes out before the window is spent",
+                WalledDoorClaimPolicy.strikesOutAdjacentDoor(
+                        WalledDoorClaimPolicy.AdjacentDoor.UNUSABLE, false, false, true));
+        assertTrue(WalledDoorClaimPolicy.strikesOutAdjacentDoor(
+                WalledDoorClaimPolicy.AdjacentDoor.NONE, false, false, true));
+        assertFalse("a door that was never tried does not strike the edge out",
+                WalledDoorClaimPolicy.strikesOutAdjacentDoor(
+                        WalledDoorClaimPolicy.AdjacentDoor.UNUSABLE, false, false, false));
+        assertFalse(WalledDoorClaimPolicy.strikesOutAdjacentDoor(
+                WalledDoorClaimPolicy.AdjacentDoor.UNUSABLE, true, false, true));
+    }
+
     private static WalledDoorClaimPolicy.Decision decide(WorldPoint player,
                                                          boolean moving,
                                                          boolean reachable) {
