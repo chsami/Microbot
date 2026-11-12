@@ -2,11 +2,14 @@ package net.runelite.client.plugins.microbot.util.mouse.naturalmouse;
 
 import lombok.Getter;
 import lombok.Setter;
+import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.ScriptPauseController;
+import net.runelite.client.plugins.microbot.util.antiban.AntibanPlugin;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
+import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.antiban.enums.ActivityIntensity;
 import net.runelite.client.plugins.microbot.util.input.InputArbiter;
 import net.runelite.client.plugins.microbot.util.input.InputLoop;
@@ -52,6 +55,22 @@ public class NaturalMouse {
             new Flow(FlowTemplates.adjustingFlow()),
             new Flow(FlowTemplates.random())
     );
+
+    private volatile CachedFactory cachedFactory;
+
+    @Value
+    private static class FactoryKey {
+        ActivityIntensity intensity;
+        boolean simulateFatigue;
+        boolean simulateMistakes;
+        long fatigueStepMs;
+    }
+
+    @Value
+    private static class CachedFactory {
+        FactoryKey key;
+        MouseMotionFactory factory;
+    }
 
     @Inject
     public NaturalMouse() {
@@ -124,14 +143,14 @@ public class NaturalMouse {
         }
     }
 
-    /**
-     * Bug fix: builds from the templates on every call. A cache keyed on the intensity alone handed
-     * out a motion built from stale settings, because the templates also read simulateFatigue,
-     * simulateMistakes and ticksSinceLogin, and draw fresh fatigue noise for each motion. A build
-     * allocates about 8 to 13 KB, once per trajectory, on a trajectory that sleeps between its steps.
-     */
     public MouseMotionFactory getFactory() {
         ActivityIntensity intensity = Rs2Antiban.getActivityIntensity();
+        FactoryKey key = new FactoryKey(intensity, Rs2AntibanSettings.simulateFatigue, Rs2AntibanSettings.simulateMistakes,
+                Rs2AntibanSettings.simulateFatigue ? (long) (AntibanPlugin.ticksSinceLogin * Rs2Antiban.mouseFatigue.increaseRate) : 0);
+        CachedFactory cached = cachedFactory;
+        if (cached != null && cached.key.equals(key)) {
+            return cached.factory;
+        }
         MouseMotionFactory factory;
         if (intensity == ActivityIntensity.VERY_LOW) {
             log.debug("Creating average computer user motion factory");
@@ -152,6 +171,7 @@ public class NaturalMouse {
             log.debug("Default: Creating super fast gamer motion factory");
             factory = FactoryTemplates.createSuperFastGamerMotionFactory(nature);
         }
+        cachedFactory = new CachedFactory(key, factory);
         return factory;
 
 //		var factory = new MouseMotionFactory();
