@@ -158,6 +158,8 @@ public class Rs2Inventory {
      * @return True if the combine operation was successful, false otherwise.
      */
     public static boolean combine(Rs2ItemModel primary, Rs2ItemModel secondary) {
+        if (primary == null || secondary == null) return false;
+
         // Get the primary item
         Rs2ItemModel primaryItem = get(item -> item.getId() == primary.getId());
         if (primaryItem == null) {
