@@ -318,6 +318,14 @@ After sending Destroy, `Rs2Inventory` waits for the confirm dialog (`584:0`) and
 
 **Defensive check:** Run `Rs2InventoryInvokeMenuTest`.
 
+## 21. An inventory lookup returns null when the item is not there
+
+`Rs2Inventory.get(id)` and `get(name, exact)` return null for an item that is not in the inventory. A helper that takes `Rs2ItemModel` arguments, or delegates to one with the result of `get`, must return false for a null item before it sends any click. `Rs2Inventory.combine` returns false when either item is null, before selecting the primary item.
+
+**Why this matters:** `combine(int, int)` and `combine(String, String)` passed the lookups straight through, so a script that ran out of one material got an NPE on its script thread, and when only the secondary item was missing the primary item stayed selected with the Use cursor active.
+
+**Defensive check:** Run `Rs2InventoryCombineTest`.
+
 ## Terminal supply stops need observed logout
 
 An owning script can set `withMissingSupplyHandler` on its Inventory Setup loader to keep its scheduled loop alive while `TerminalLogoutPrompt` closes the bank and requests logout. Do not show a blocking shortage notification or cancel that loop until `LOGGED_OUT` is observed. The default loader policy stays unchanged when no handler is supplied; ordinary breaks and world hops do not arm terminal Auto Login suppression.
