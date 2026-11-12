@@ -13,8 +13,10 @@ import java.util.Collections;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -71,6 +73,29 @@ public class AgentHandlerClientDisconnectTest {
 
 		verify(exchange, times(1)).sendResponseHeaders(eq(200), anyLong());
 		verify(exchange, never()).sendResponseHeaders(eq(500), anyLong());
+	}
+
+	@Test
+	public void closedStreamOnResponseHeadersIsTreatedAsDisconnectWithoutErrorResponse() throws Exception {
+		AgentHandler.setTokenSupplier(null);
+		HttpExchange exchange = mock(HttpExchange.class);
+		Headers requestHeaders = new Headers();
+		requestHeaders.add("Host", "127.0.0.1:8081");
+		when(exchange.getRequestHeaders()).thenReturn(requestHeaders);
+		when(exchange.getResponseHeaders()).thenReturn(new Headers());
+		when(exchange.getRequestURI()).thenReturn(URI.create("/ping"));
+		doThrow(new IOException("stream is closed")).when(exchange).sendResponseHeaders(anyInt(), anyLong());
+
+		new PingHandler().handle(exchange);
+
+		verify(exchange, times(1)).sendResponseHeaders(eq(200), anyLong());
+		verify(exchange, never()).sendResponseHeaders(eq(500), anyLong());
+		verify(exchange, never()).getResponseBody();
+	}
+
+	@Test
+	public void recognisesClosedResponseStream() {
+		assertTrue(AgentHandler.isClientDisconnect(new IOException("stream is closed")));
 	}
 
 	@Test
