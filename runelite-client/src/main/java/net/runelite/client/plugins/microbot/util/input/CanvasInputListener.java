@@ -17,7 +17,8 @@ import java.awt.event.MouseMotionListener;
 
 /**
  * Observe-only listeners on the game canvas: they read real input and never consume, transform or
- * dispatch anything.
+ * dispatch anything. The one write outside the arbiter is disarming {@code Microbot.targetMenu} on
+ * a real press.
  *
  * <p>Synthetic events are filtered by {@link BotEventGuard}, which works because
  * {@code Canvas.dispatchEvent} runs listeners synchronously on the dispatching thread.
@@ -73,6 +74,9 @@ public final class CanvasInputListener implements MouseListener, MouseMotionList
 		previous.removeKeyListener(INSTANCE);
 		previous.removeFocusListener(INSTANCE);
 		attachedCanvas = null;
+		// Bug fix: anything held now can never deliver its release to a removed listener, so the
+		// arbiter used to stay pinned on HUMAN until the next focus loss. Same transition as one.
+		InputArbiter.onFocusLost();
 	}
 
 	static boolean isAttachedTo(Canvas canvas)
@@ -116,6 +120,10 @@ public final class CanvasInputListener implements MouseListener, MouseMotionList
 		{
 			return;
 		}
+		// Bug fix: an armed entry rewrites every menu the client builds, so a human click arriving
+		// before the game consumed it performed the bot's action. The human's press ends the bot's
+		// claim to the next click, regardless of the arbiter's verdict or whether yielding is disabled.
+		Microbot.targetMenu = null;
 		position(event);
 		InputArbiter.onRealButtonPressed(event.getButton());
 	}

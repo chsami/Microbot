@@ -118,6 +118,9 @@ import static net.runelite.client.plugins.microbot.util.walker.Rs2WalkerTranspor
 final class Rs2WalkerDoors {
 
     private static final ThreadLocal<Boolean> ADJACENT_BLOCKED_EDGE_ALLOWED = new ThreadLocal<>();
+    private static final List<String> ADJACENT_DOOR_ACTIONS =
+            List.of("pay-toll", "pick-lock", "walk-through", "go-through", "open", "pass");
+    private static final int ADJACENT_DOOR_SCAN_RADIUS = 3;
     private static final ThreadLocal<Boolean> VERIFIED_FIRST_ROUTE_DOOR = new ThreadLocal<>();
 
     private Rs2WalkerDoors() {
@@ -248,23 +251,46 @@ final class Rs2WalkerDoors {
     }
 
     /**
-     * Whether an ACTIONED scene door sits within one tile of either endpoint of the edge — the
-     * double-gate wing case above. One scene scan (this path is rare and about to replan anyway),
-     * geometric filter via {@link #doorTileAdjacentToEdgeEndpoints}.
+     * Which ACTIONED scene door sits within one tile of either endpoint of the edge — the double-gate
+     * wing case above. One bounded scene scan, geometric filter via
+     * {@link #doorTileAdjacentToEdgeEndpoints}. ACTIONABLE uses the same candidate test as
+     * {@link #handleDoorAdjacentToClaimedEdge}, minus the handler range: a claimed door out of range
+     * is approached first.
      */
-    static boolean sceneDoorAdjacentToEdge(WorldPoint a, WorldPoint b) {
-        List<String> doorActions = List.of("pay-toll", "pick-lock", "walk-through", "go-through", "open", "pass");
-        return !Rs2WalkerSceneObjects.near(TileObject.class, o -> {
-            WorldPoint loc = o.getWorldLocation();
-            if (!doorTileAdjacentToEdgeEndpoints(loc, a, b)) {
-                return false;
-            }
-            if (!Rs2DoorDetection.isDoorLikeSceneObject(o)) {
-                return false;
-            }
-            ObjectComposition comp = Rs2DoorDetection.resolveCompositionForDoorProbe(o);
-            return Rs2DoorClassifier.getDoorAction(comp, doorActions) != null;
-        }, a, 3).isEmpty();
+    static WalledDoorClaimPolicy.AdjacentDoor classifyDoorAdjacentToEdge(WorldPoint a, WorldPoint b,
+                                                                         WorldPoint playerLoc) {
+        AdjacentDoorScan scan = scanDoorsAdjacentToEdge(a, b, playerLoc, ADJACENT_DOOR_ACTIONS);
+        if (scan == null || !scan.doorBeside) {
+            return WalledDoorClaimPolicy.AdjacentDoor.NONE;
+        }
+        return scan.nearestUsable == null
+                ? WalledDoorClaimPolicy.AdjacentDoor.UNUSABLE
+                : WalledDoorClaimPolicy.AdjacentDoor.ACTIONABLE;
+    }
+
+    static WalledDoorClaimPolicy.AdjacentDoorOutcome handleDoorAdjacentToClaimedEdge(
+            WorldPoint from, WorldPoint to, WorldPoint playerLoc, List<WorldPoint> routePath) {
+        AdjacentDoorScan scan = scanDoorsAdjacentToEdge(from, to, playerLoc, ADJACENT_DOOR_ACTIONS);
+        AdjacentDoorCandidate candidate = scan == null ? null : scan.nearestUsable;
+        if (candidate == null || candidate.location.distanceTo2D(playerLoc) > HANDLER_RANGE) {
+            return WalledDoorClaimPolicy.AdjacentDoorOutcome.NO_CANDIDATE;
+        }
+
+        WebWalkLog.spInfo("frontier_adjacent_door_owned | trying the door at {} beside blocked step {}->{} player={}",
+                compactWorldPoint(candidate.location), compactWorldPoint(from), compactWorldPoint(to),
+                compactWorldPoint(playerLoc));
+        Long attemptBefore = doorAttemptLedger.attemptAtMs(from, to);
+        boolean handled = tryHandleAdjacentBlockedDoorObject(candidate.object, candidate.location,
+                from, to, ADJACENT_DOOR_ACTIONS, routePath);
+        Long attemptAfter = doorAttemptLedger.attemptAtMs(from, to);
+        if (!handled && (attemptAfter == null || attemptAfter.equals(attemptBefore))) {
+            return WalledDoorClaimPolicy.AdjacentDoorOutcome.DECLINED;
+        }
+        if (WalledDoorClaimPolicy.isAdjacentClaimEdge(routeState.adjacentRefusalFrom,
+                routeState.adjacentRefusalTo, from, to)) {
+            routeState.adjacentRefusalDoorAttempted = true;
+        }
+        return WalledDoorClaimPolicy.AdjacentDoorOutcome.ATTEMPTED;
     }
 
     /**
@@ -285,20 +311,8 @@ final class Rs2WalkerDoors {
         if (edge == null) {
             return false;
         }
-
-        List<String> doorActions = List.of("pay-toll", "pick-lock", "walk-through", "go-through", "open", "pass");
-        AdjacentDoorCandidate candidate = captureActionedDoorAdjacentToBlockedEdge(
-                edge[0], edge[1], playerLoc, doorActions);
-        if (candidate == null) {
-            return false;
-        }
-
-        WebWalkLog.spInfo("frontier_adjacent_door_owned | probe={} edge={}->{} player={}",
-                compactWorldPoint(candidate.location), compactWorldPoint(edge[0]), compactWorldPoint(edge[1]),
-                compactWorldPoint(playerLoc));
-        tryHandleAdjacentBlockedDoorObject(candidate.object, candidate.location,
-                edge[0], edge[1], doorActions, rawPath);
-        return true;
+        return handleDoorAdjacentToClaimedEdge(edge[0], edge[1], playerLoc, rawPath)
+                != WalledDoorClaimPolicy.AdjacentDoorOutcome.NO_CANDIDATE;
     }
 
     static boolean handleFirstRecoveryDoor(List<WorldPoint> rawPath, long timeoutMs,
@@ -2716,7 +2730,8 @@ final class Rs2WalkerDoors {
 
     static boolean isInStrongholdOfSecurity() {
         List<Integer> mapRegionIds = List.of(7505, 7504, 7760, 7503, 7759, 7758, 7757, 8013, 7756, 8012, 8017, 8530, 9297);
-        return mapRegionIds.contains(Rs2Player.getWorldLocation().getRegionID());
+        WorldPoint playerLocation = Rs2Player.getWorldLocation();
+        return playerLocation != null && mapRegionIds.contains(playerLocation.getRegionID());
     }
 
     static boolean handleStrongholdOfSecurityAnswer(TileObject object, String action) {
@@ -2981,31 +2996,35 @@ final class Rs2WalkerDoors {
         Rs2WalkerLifecycleRuntime.applyWalkerDestination(target);
     }
 
-    private static AdjacentDoorCandidate captureActionedDoorAdjacentToBlockedEdge(
+    private static AdjacentDoorScan scanDoorsAdjacentToEdge(
             WorldPoint fromWp, WorldPoint toWp, WorldPoint playerLoc, List<String> doorActions) {
         if (fromWp == null || toWp == null || playerLoc == null || doorActions == null) {
             return null;
         }
         return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            boolean doorBeside = false;
             TileObject best = null;
             WorldPoint bestLocation = null;
             int bestDistance = Integer.MAX_VALUE;
-            for (TileObject candidate : Rs2WalkerSceneObjects.all()) {
+            for (TileObject candidate : Rs2WalkerSceneObjects.near(
+                    TileObject.class, fromWp, ADJACENT_DOOR_SCAN_RADIUS)) {
                 if (candidate == null) {
                     continue;
                 }
                 WorldPoint location = candidate.getWorldLocation();
                 if (!doorTileAdjacentToEdgeEndpoints(location, fromWp, toWp)
                         || location.getPlane() != playerLoc.getPlane()
-                        || location.distanceTo2D(playerLoc) > HANDLER_RANGE
-                        || doorAttemptLedger.isDoorBlacklisted(location)
-                        || wasStationaryDoorOpenedRecently(location)
-                        || Rs2DoorProbe.isCatalogTransportObject(candidate)
                         || !Rs2DoorDetection.isDoorLikeSceneObject(candidate)) {
                     continue;
                 }
                 ObjectComposition comp = Rs2DoorDetection.resolveCompositionForDoorProbe(candidate);
                 if (Rs2DoorClassifier.getDoorAction(comp, doorActions) == null) {
+                    continue;
+                }
+                doorBeside = true;
+                if (doorAttemptLedger.isDoorBlacklisted(location)
+                        || wasStationaryDoorOpenedRecently(location)
+                        || Rs2DoorProbe.isCatalogTransportObject(candidate)) {
                     continue;
                 }
                 int distance = location.distanceTo2D(playerLoc);
@@ -3015,8 +3034,19 @@ final class Rs2WalkerDoors {
                     bestDistance = distance;
                 }
             }
-            return best == null ? null : new AdjacentDoorCandidate(best, bestLocation);
+            return new AdjacentDoorScan(doorBeside,
+                    best == null ? null : new AdjacentDoorCandidate(best, bestLocation));
         }).orElse(null);
+    }
+
+    private static final class AdjacentDoorScan {
+        private final boolean doorBeside;
+        private final AdjacentDoorCandidate nearestUsable;
+
+        private AdjacentDoorScan(boolean doorBeside, AdjacentDoorCandidate nearestUsable) {
+            this.doorBeside = doorBeside;
+            this.nearestUsable = nearestUsable;
+        }
     }
 
     private static final class AdjacentDoorCandidate {

@@ -13,6 +13,7 @@ import java.awt.event.KeyEvent;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -31,6 +32,7 @@ public class Rs2KeyboardHeldKeysTest
 	private final List<Boolean> syntheticDuringDelivery = new ArrayList<>();
 	private Object previousClient;
 	private boolean takeOverAfterFirstChar;
+	private Consumer<KeyEvent> duringDelivery;
 
 	@Before
 	public void before() throws Exception
@@ -76,6 +78,7 @@ public class Rs2KeyboardHeldKeysTest
 		received.clear();
 		syntheticDuringDelivery.clear();
 		takeOverAfterFirstChar = false;
+		duringDelivery = null;
 	}
 
 	@After
@@ -241,10 +244,105 @@ public class Rs2KeyboardHeldKeysTest
 		assertFalse("guard must not leak past delivery", BotEventGuard.isSynthetic());
 	}
 
+	@Test
+	public void aShiftHoldMadeDuringASequencesShiftPressOutlivesTheSequence()
+	{
+		duringDelivery = event ->
+		{
+			if (event.getID() == KeyEvent.KEY_PRESSED && event.getKeyCode() == KeyEvent.VK_SHIFT)
+			{
+				Rs2Keyboard.holdShift();
+			}
+		};
+
+		Rs2Keyboard.typeString("A");
+
+		assertTrue("the sequence released the Shift a hold had taken over",
+			Rs2Keyboard.isKeyHeld(KeyEvent.VK_SHIFT));
+		assertEquals(0, count(KeyEvent.KEY_RELEASED, KeyEvent.VK_SHIFT));
+		assertEquals(1, count(KeyEvent.KEY_PRESSED, KeyEvent.VK_SHIFT));
+		assertEquals(1, count(KeyEvent.KEY_RELEASED, KeyEvent.VK_A));
+
+		Rs2Keyboard.releaseShift();
+
+		assertFalse(Rs2Keyboard.isKeyHeld(KeyEvent.VK_SHIFT));
+		assertEquals(1, count(KeyEvent.KEY_RELEASED, KeyEvent.VK_SHIFT));
+	}
+
+	@Test
+	public void aKeyHoldMadeWhileASequenceHasTheKeyDownOutlivesTheSequence()
+	{
+		duringDelivery = event ->
+		{
+			if (event.getID() == KeyEvent.KEY_TYPED)
+			{
+				Rs2Keyboard.keyHold(KeyEvent.VK_A);
+			}
+		};
+
+		Rs2Keyboard.keyPress(KeyEvent.VK_A);
+
+		assertTrue("the sequence released the key a hold had taken over",
+			Rs2Keyboard.isKeyHeld(KeyEvent.VK_A));
+		assertEquals(1, count(KeyEvent.KEY_PRESSED, KeyEvent.VK_A));
+		assertEquals(0, count(KeyEvent.KEY_RELEASED, KeyEvent.VK_A));
+
+		Rs2Keyboard.keyRelease(KeyEvent.VK_A);
+
+		assertFalse(Rs2Keyboard.isKeyHeld(KeyEvent.VK_A));
+		assertEquals(1, count(KeyEvent.KEY_RELEASED, KeyEvent.VK_A));
+	}
+
+	@Test
+	public void aHoldTakenOverFromASequenceIsStillReleasedByThePauseCleanup()
+	{
+		duringDelivery = event ->
+		{
+			if (event.getID() == KeyEvent.KEY_PRESSED && event.getKeyCode() == KeyEvent.VK_SHIFT)
+			{
+				Rs2Keyboard.holdShift();
+			}
+		};
+		Rs2Keyboard.typeString("A");
+
+		Rs2Keyboard.releaseHeldKeys();
+
+		assertFalse(Rs2Keyboard.isKeyHeld(KeyEvent.VK_SHIFT));
+		assertEquals(1, count(KeyEvent.KEY_RELEASED, KeyEvent.VK_SHIFT));
+	}
+
+	@Test
+	public void aSequenceStillReleasesAKeyNoHoldTookOver()
+	{
+		Rs2Keyboard.typeString("A");
+
+		assertFalse(Rs2Keyboard.isKeyHeld(KeyEvent.VK_SHIFT));
+		assertFalse(Rs2Keyboard.isKeyHeld(KeyEvent.VK_A));
+		assertEquals(1, count(KeyEvent.KEY_RELEASED, KeyEvent.VK_SHIFT));
+		assertEquals(1, count(KeyEvent.KEY_RELEASED, KeyEvent.VK_A));
+	}
+
+	private int count(int id, int keyCode)
+	{
+		int matches = 0;
+		for (KeyEvent event : received)
+		{
+			if (event.getID() == id && event.getKeyCode() == keyCode)
+			{
+				matches++;
+			}
+		}
+		return matches;
+	}
+
 	private void record(KeyEvent event)
 	{
 		received.add(event);
 		syntheticDuringDelivery.add(BotEventGuard.isSynthetic());
+		if (duringDelivery != null)
+		{
+			duringDelivery.accept(event);
+		}
 	}
 
 	private static Object swapStatic(String name, Object value) throws Exception

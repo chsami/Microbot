@@ -5,8 +5,10 @@ import java.util.BitSet;
 import static net.runelite.api.Constants.SCENE_SIZE;
 
 /**
- * Edges owned by the walker's runtime door handler. Marked edges are left unknown in the live snapshot,
- * so they fall back to the static map and remain available to the door interaction pipeline.
+ * Edges owned by the walker's runtime door handler. Exempt edges ({@link #markWall},
+ * {@link #markGameObject}) ignore the door's transient block flags and are recorded passable when both
+ * tiles are standable. Deferred edges ({@link #markWallFootprint}) are left unknown in the live
+ * snapshot, so they fall back to the static map.
  */
 public final class LiveCollisionDoorMask {
     private static final int PLANE_STRIDE = SCENE_SIZE * SCENE_SIZE;
@@ -14,12 +16,16 @@ public final class LiveCollisionDoorMask {
     private final int planeCount;
     private final BitSet north;
     private final BitSet east;
+    private final BitSet deferredNorth;
+    private final BitSet deferredEast;
 
     public LiveCollisionDoorMask(int planeCount) {
         this.planeCount = Math.max(0, planeCount);
         final int cells = this.planeCount * PLANE_STRIDE;
         this.north = new BitSet(cells);
         this.east = new BitSet(cells);
+        this.deferredNorth = new BitSet(cells);
+        this.deferredEast = new BitSet(cells);
     }
 
     /**
@@ -30,6 +36,13 @@ public final class LiveCollisionDoorMask {
     public void markWall(int plane, int sceneX, int sceneY, int orientationA, int orientationB) {
         markOrientation(plane, sceneX, sceneY, orientationA);
         markOrientation(plane, sceneX, sceneY, orientationB);
+    }
+
+    public void markWallFootprint(int plane, int sceneX, int sceneY) {
+        markCardinal(plane, sceneX, sceneY, -1, 0, deferredNorth, deferredEast);
+        markCardinal(plane, sceneX, sceneY, 1, 0, deferredNorth, deferredEast);
+        markCardinal(plane, sceneX, sceneY, 0, -1, deferredNorth, deferredEast);
+        markCardinal(plane, sceneX, sceneY, 0, 1, deferredNorth, deferredEast);
     }
 
     /**
@@ -53,6 +66,14 @@ public final class LiveCollisionDoorMask {
 
     public boolean exemptsEast(int plane, int sceneX, int sceneY) {
         return valid(plane, sceneX, sceneY) && east.get(index(plane, sceneX, sceneY));
+    }
+
+    public boolean defersNorth(int plane, int sceneX, int sceneY) {
+        return valid(plane, sceneX, sceneY) && deferredNorth.get(index(plane, sceneX, sceneY));
+    }
+
+    public boolean defersEast(int plane, int sceneX, int sceneY) {
+        return valid(plane, sceneX, sceneY) && deferredEast.get(index(plane, sceneX, sceneY));
     }
 
     private void markOrientation(int plane, int sceneX, int sceneY, int orientation) {
@@ -91,6 +112,11 @@ public final class LiveCollisionDoorMask {
     }
 
     private void markCardinal(int plane, int sceneX, int sceneY, int dx, int dy) {
+        markCardinal(plane, sceneX, sceneY, dx, dy, north, east);
+    }
+
+    private void markCardinal(int plane, int sceneX, int sceneY, int dx, int dy,
+                              BitSet northEdges, BitSet eastEdges) {
         int edgeX = sceneX;
         int edgeY = sceneY;
         final BitSet edges;
@@ -98,12 +124,12 @@ public final class LiveCollisionDoorMask {
             if (dx < 0) {
                 edgeX--;
             }
-            edges = east;
+            edges = eastEdges;
         } else {
             if (dy < 0) {
                 edgeY--;
             }
-            edges = north;
+            edges = northEdges;
         }
         if (valid(plane, edgeX, edgeY)) {
             edges.set(index(plane, edgeX, edgeY));

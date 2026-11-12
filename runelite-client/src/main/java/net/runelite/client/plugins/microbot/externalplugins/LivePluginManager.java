@@ -4,10 +4,13 @@ import com.google.common.hash.Hashing;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.FileSystemException;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.LinkOption;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
@@ -192,12 +195,6 @@ public class LivePluginManager {
         checkManagedPath(file);
         if (!Files.exists(file) || installed.values().stream().anyMatch(i -> i.source.equals(file))) {
             throw new IllegalArgumentException("Plugin is not installed.");
-        }
-        String digest = hash(file);
-        Properties origin = readOrigin(file);
-        boolean fromOrigin = hubId.equals(origin.getProperty("hubId")) && digest.equalsIgnoreCase(origin.getProperty("sha256", ""));
-        if (!fromOrigin && !hubId.equals(recordedHubInstall(file, digest))) {
-            throw new IllegalArgumentException(file.getFileName() + " was not installed from the Plugin Hub. Remove it in Local Plugins.");
         }
         Files.deleteIfExists(file);
         skipped.remove(file);
@@ -890,6 +887,7 @@ public class LivePluginManager {
                     skipped.put(source, digest);
                 }
                 failures.add(source.getFileName() + ": " + message(failure));
+                log.warn("Could not load local plugin {}: {}", source.getFileName(), failure.toString());
                 if (startup) {
                     reportLoadFailure(source, message(failure));
                 }
@@ -1029,6 +1027,9 @@ public class LivePluginManager {
         Properties values = new Properties();
         values.setProperty("hubId", current.hubId);
         values.setProperty("sha256", current.expectedHash);
+        if (Files.isRegularFile(target, LinkOption.NOFOLLOW_LINKS) && values.equals(readOrigin(current.source))) {
+            return;
+        }
         Path temporary = Files.createTempFile(pluginDirectory, ".origin-", ".tmp");
         try {
             try (OutputStream output = Files.newOutputStream(temporary)) {
@@ -1042,6 +1043,9 @@ public class LivePluginManager {
 
     private void replaceFile(Path source, Path target) throws Exception {
         checkManagedPath(target);
+        if (Files.isRegularFile(target, LinkOption.NOFOLLOW_LINKS) && hash(target).equals(hash(source))) {
+            return;
+        }
         Path temporary = Files.createTempFile(pluginDirectory, ".install-", ".tmp");
         try {
             Files.copy(source, temporary, StandardCopyOption.REPLACE_EXISTING);
@@ -1096,8 +1100,34 @@ public class LivePluginManager {
         }
     }
 
-    private static String message(Throwable failure) {
-        return failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage();
+    static String message(Throwable failure) {
+        if (!(failure instanceof FileSystemException)) {
+            return failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage();
+        }
+        FileSystemException fileFailure = (FileSystemException) failure;
+        String name = fileName(fileFailure.getOtherFile() != null ? fileFailure.getOtherFile() : fileFailure.getFile());
+        String reason = fileFailure.getReason();
+        if (failure instanceof AccessDeniedException
+                || (reason != null && reason.toLowerCase(Locale.ROOT).contains("used by another process"))) {
+            return "Microbot was not allowed to change " + name
+                    + ". Another Microbot client may be using it: close the other clients and try again."
+                    + " If no other client is open, check that the file or folder is not read-only.";
+        }
+        if (failure instanceof NoSuchFileException) {
+            return name + " is no longer in the plugin folder."
+                    + " Put it back or reinstall it from the Plugin Hub, then refresh.";
+        }
+        return "Could not access " + name
+                + (reason == null || reason.trim().isEmpty() ? "" : " (" + reason.trim() + ")")
+                + ". Check that the plugin folder is readable and writable and that no other client is open.";
+    }
+
+    private static String fileName(String path) {
+        if (path == null) {
+            return "a plugin file";
+        }
+        String name = path.substring(Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\')) + 1);
+        return name.isEmpty() ? "a plugin file" : name;
     }
 
     private void checkLoadPolicy(LivePluginArtifact candidate) throws LivePluginArtifact.BlockedPluginException {

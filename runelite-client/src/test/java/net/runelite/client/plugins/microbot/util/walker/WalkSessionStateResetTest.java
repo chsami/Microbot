@@ -107,6 +107,7 @@ public class WalkSessionStateResetTest
 		routeState.adjacentRefusalTo = new WorldPoint(2656, 3291, 0);
 		routeState.adjacentRefusalAtMs = 456L;
 		routeState.adjacentRefusalSinceMs = 123L;
+		routeState.adjacentRefusalDoorAttempted = true;
 		routeState.requestedGoal = new WorldPoint(2907, 3539, 0);
 		routeState.sealedRimRetargets = 2;
 
@@ -120,6 +121,7 @@ public class WalkSessionStateResetTest
 		assertNull(routeState.adjacentRefusalTo);
 		assertEquals(0L, routeState.adjacentRefusalAtMs);
 		assertEquals(0L, routeState.adjacentRefusalSinceMs);
+		assertFalse(routeState.adjacentRefusalDoorAttempted);
 		assertNull("requested goal belongs to the previous walk", routeState.requestedGoal);
 		assertEquals("rim-retarget budget belongs to the walk that spent it",
 			0, routeState.sealedRimRetargets);

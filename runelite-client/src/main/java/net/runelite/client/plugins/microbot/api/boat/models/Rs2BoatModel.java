@@ -9,6 +9,7 @@ import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.api.IEntity;
+import net.runelite.client.plugins.microbot.api.actor.Rs2ActorModel;
 import net.runelite.client.plugins.microbot.api.boat.data.BoatType;
 import net.runelite.client.plugins.microbot.api.boat.data.Heading;
 import net.runelite.client.plugins.microbot.api.boat.data.PortTaskData;
@@ -257,29 +258,13 @@ public class Rs2BoatModel implements WorldEntity, IEntity {
             }
 
             WorldPoint playerLocation = Rs2Player.getWorldLocation();
-            LocalPoint localPoint = LocalPoint.fromWorld(
-                    player.getWorldView(),
-                    playerLocation
-            );
-
-            var mainWorldProjection = player
-                    .getWorldView()
-                    .getMainWorldProjection();
-
-            if (mainWorldProjection == null)
+            WorldView playerWorldView = player.getWorldView();
+            if (playerLocation == null || playerWorldView == null || playerWorldView.isTopLevel())
             {
                 return playerLocation;
             }
 
-            float[] projection = mainWorldProjection
-                    .project(localPoint.getX(), 0, localPoint.getY());
-
-            return Microbot.getClientThread().invoke(() -> WorldPoint.fromLocal(
-                    Microbot.getClient().getTopLevelWorldView(),
-                    (int) projection[0],
-                    (int) projection[2],
-                    0
-            ));
+            return Rs2ActorModel.projectToMainWorld(playerWorldView, playerLocation);
         });
     }
 
@@ -328,8 +313,16 @@ public class Rs2BoatModel implements WorldEntity, IEntity {
     public boolean clickSailButton()
     {
         var widget = Rs2Widget.getWidget(InterfaceID.SailingSidepanel.FACILITIES_ROWS);
-        var setSailButton = widget.getDynamicChildren()[0];
-        return Rs2Widget.clickWidget(setSailButton);
+        if (widget == null)
+        {
+            return false;
+        }
+        var rows = widget.getDynamicChildren();
+        if (rows == null || rows.length == 0)
+        {
+            return false;
+        }
+        return Rs2Widget.clickWidget(rows[0]);
     }
 
     public void setSails()
@@ -339,9 +332,8 @@ public class Rs2BoatModel implements WorldEntity, IEntity {
             return;
         }
         Rs2Tab.switchTo(InterfaceTab.COMBAT);
-        if (!isMovingForward())
+        if (!isMovingForward() && clickSailButton())
         {
-            clickSailButton();
             sleepUntil(() -> isMovingForward(), 2500);
         }
     }
@@ -353,9 +345,8 @@ public class Rs2BoatModel implements WorldEntity, IEntity {
             return;
         }
         Rs2Tab.switchTo(InterfaceTab.COMBAT);
-        if (!isStandingStill())
+        if (!isStandingStill() && clickSailButton())
         {
-            clickSailButton();
             sleepUntil(() -> isStandingStill(), 2500);
         }
     }
@@ -383,6 +374,10 @@ public class Rs2BoatModel implements WorldEntity, IEntity {
 
         var direction = getDirection(target);
         var heading = Heading.getHeading(direction);
+        if (heading == null)
+        {
+            return;
+        }
         setHeading(heading);
 
         if (!isMovingForward())
@@ -394,6 +389,10 @@ public class Rs2BoatModel implements WorldEntity, IEntity {
     public int getDirection(WorldPoint target)
     {
         WorldPoint current = getPlayerBoatLocation();
+        if (current == null)
+        {
+            return -1;
+        }
         int deltaX = target.getX() - current.getX();
         int deltaY = target.getY() - current.getY();
 

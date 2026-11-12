@@ -1688,6 +1688,12 @@
 2526 3172 0	2526 3172 1	Climb-up;Ladder;17026									
 2525 3171 1	2525 3171 0	Climb-down;Ladder;16679									
 
+# Khazard Battlefield tower (Tree Gnome Village)
+2509 3252 0	2509 3254 0	Climb-over;Crumbled wall;2185						111>4		3
+2509 3254 0	2509 3252 0	Climb-over;Crumbled wall;2185								3
+2502 3252 0	2502 3252 1	Climb-up;Ladder;16683								2
+2502 3252 1	2502 3252 0	Climb-down;Ladder;16679								2
+
 # Combat Training Camp
 2522 3375 0	2523 3375 0	Squeeze-through;Loose Railing;19171
 2523 3375 0	2522 3375 0	Squeeze-through;Loose Railing;19171

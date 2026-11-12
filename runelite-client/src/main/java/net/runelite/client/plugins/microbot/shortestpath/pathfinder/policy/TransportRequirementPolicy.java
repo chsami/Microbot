@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.shortestpath.pathfinder.policy;
 
+import net.runelite.api.Quest;
 import net.runelite.api.QuestState;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
@@ -13,16 +14,13 @@ public final class TransportRequirementPolicy {
 
     public static boolean completedQuests(Transport transport, List<QuestState> questStateOrder) {
         return transport.getQuests().entrySet().stream()
-                .allMatch(entry -> {
-                    QuestState playerState = Rs2Player.getQuestState(entry.getKey());
-                    QuestState requiredState = entry.getValue();
-                    int playerIndex = questStateOrder.indexOf(playerState);
-                    int requiredIndex = questStateOrder.indexOf(requiredState);
-                    if (requiredIndex < 0 || playerIndex < 0) {
-                        return false;
-                    }
-                    return playerIndex >= requiredIndex;
-                });
+                .allMatch(entry -> meetsQuestRequirement(entry.getKey(), entry.getValue(), questStateOrder));
+    }
+
+    public static boolean meetsQuestRequirement(Quest quest, QuestState requiredState, List<QuestState> questStateOrder) {
+        int playerIndex = questStateOrder.indexOf(Rs2Player.getQuestState(quest));
+        int requiredIndex = questStateOrder.indexOf(requiredState);
+        return requiredIndex >= 0 && playerIndex >= 0 && playerIndex >= requiredIndex;
     }
 
     public static boolean varbitChecks(Transport transport) {

@@ -2,9 +2,11 @@ package net.runelite.client.plugins.microbot;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.ChatMessageType;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
+import net.runelite.client.callback.ClientThread;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.PluginManager;
@@ -39,6 +41,7 @@ public abstract class Script extends Global implements IScript {
     static final long EXECUTOR_KEEP_ALIVE_SECONDS = 60;
     private final AtomicBoolean startAnnounced = new AtomicBoolean();
     private final AtomicBoolean pauseWaitAnnounced = new AtomicBoolean();
+    private volatile String announcedPauseWaitName;
 
     private void announceStart() {
         if (ScriptPauseController.isPaused()) {
@@ -55,7 +58,27 @@ public abstract class Script extends Global implements IScript {
             if (!ScriptPauseController.markPauseWaitAnnounced(name)) {
                 return;
             }
-            Microbot.log(name + " is waiting: scripts are paused. Click the amber play button next to the Enable/Disable Input button to resume.", Level.WARN);
+            announcedPauseWaitName = name;
+            String message = name + " is waiting: scripts are paused. Click the amber play button next to the Enable/Disable Input button to resume.";
+            Microbot.log(message, Level.WARN);
+            Microbot.status = ScriptPauseController.PAUSED_STATUS;
+            ClientThread clientThread = Microbot.getClientThread();
+            if (clientThread != null) {
+                clientThread.invokeLater(() -> {
+                    if (ScriptPauseController.isPaused() && Microbot.isLoggedIn()) {
+                        Microbot.getClient().addChatMessage(ChatMessageType.GAMEMESSAGE, "", message, "");
+                    }
+                });
+            }
+        }
+    }
+
+    private void resetPauseWaitAnnouncement() {
+        pauseWaitAnnounced.set(false);
+        String name = announcedPauseWaitName;
+        announcedPauseWaitName = null;
+        if (name != null) {
+            ScriptPauseController.clearPauseWaitAnnounced(name);
         }
     }
 
@@ -166,7 +189,7 @@ public abstract class Script extends Global implements IScript {
      */
     public void shutdown() {
         startAnnounced.set(false);
-        pauseWaitAnnounced.set(false);
+        resetPauseWaitAnnouncement();
         synchronized (lifecycleLock) {
             ScriptHeartbeatRegistry.remove(this.getClass().getName());
             heartbeatRecorded = false;

@@ -267,6 +267,7 @@ public class ClientUI
 		{
 			boolean closingOpenTab = !selectedTabHistory.isEmpty() && selectedTabHistory.getLast().navBtn == navBtn;
 			selectedTabHistory.removeIf(it -> it.navBtn == navBtn);
+			sidebarEntries.remove(navBtn);
 			updatingNavigation = true;
 			try
 			{
@@ -289,8 +290,6 @@ public class ClientUI
 				updatingNavigation = false;
 			}
 		}
-
-		sidebarEntries.remove(navBtn);
 	}
 
 	@Subscribe(priority = 100)

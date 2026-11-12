@@ -107,6 +107,31 @@ public class ClientUITest
 	}
 
 	@Test
+	public void removingTheOpenTabBeforeTheLastTabSelectsTheLastTab() throws Exception
+	{
+		NavigationButton first = button("First", 1);
+		NavigationButton second = button("Second", 2);
+		NavigationButton third = button("Third", 3);
+		AtomicReference<JTabbedPane> sidebar = new AtomicReference<>();
+		onEdt(() ->
+		{
+			installSidebar();
+			sidebar.set((JTabbedPane) get("sidebar"));
+			clientUI.addNavigation(first);
+			clientUI.addNavigation(second);
+			clientUI.addNavigation(third);
+			clientUI.openPanel(third, true);
+			clientUI.openPanel(second, true);
+			clientUI.removeNavigation(second);
+		});
+
+		assertEquals(2, sidebar.get().getTabCount());
+		assertEquals(1, sidebar.get().getSelectedIndex());
+		assertEquals(third, get("selectedTab"));
+		verify(configManager).setConfiguration(CONFIG_GROUP, SIDEBAR_TAB, "Third");
+	}
+
+	@Test
 	public void removingTheOpenTabWhileClosingKeepsTheSavedTab() throws Exception
 	{
 		NavigationButton first = button("First", 1);

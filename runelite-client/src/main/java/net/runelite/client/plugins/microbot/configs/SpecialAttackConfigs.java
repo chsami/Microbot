@@ -94,7 +94,8 @@ public class SpecialAttackConfigs {
 
         if (Rs2Combat.getSpecEnergy() < specEnergy) {
             Rs2ItemModel rs2Item = currentEquipment.stream().filter(x -> x.getSlot() == EquipmentInventorySlot.WEAPON.getSlotIdx()).findFirst().orElse(null);
-            if (rs2Item != null && rs2Item.getId() != Rs2Equipment.get(EquipmentInventorySlot.WEAPON).getId()) {
+            Rs2ItemModel equippedWeapon = Rs2Equipment.get(EquipmentInventorySlot.WEAPON);
+            if (rs2Item != null && (equippedWeapon == null || rs2Item.getId() != equippedWeapon.getId())) {
                 Rs2ItemModel weapon = currentEquipment
                         .stream()
                         .filter(x -> x.getSlot() == EquipmentInventorySlot.WEAPON.getSlotIdx())

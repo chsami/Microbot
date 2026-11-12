@@ -23,6 +23,7 @@ public class ShortestPathScript extends Script {
     private volatile ShortestPathConfig config;
     private final Consumer<WorldPoint> preview;
     private final Consumer<ManualWalkingNotice> notice;
+    private final Consumer<String> unreachableNotice;
 
     enum ManualWalkingNotice {
         PATH_SET, ENABLED, PAUSED, CLEARED
@@ -43,8 +44,14 @@ public class ShortestPathScript extends Script {
     }
 
     ShortestPathScript(Consumer<WorldPoint> preview, Consumer<ManualWalkingNotice> notice) {
+        this(preview, notice, ignored -> {});
+    }
+
+    ShortestPathScript(Consumer<WorldPoint> preview, Consumer<ManualWalkingNotice> notice,
+                       Consumer<String> unreachableNotice) {
         this.preview = preview;
         this.notice = notice;
+        this.unreachableNotice = unreachableNotice;
     }
 
     public boolean run(ShortestPathConfig config) {
@@ -162,6 +169,11 @@ public class ShortestPathScript extends Script {
                     return;
                 }
                 WalkerState state = executeWalk(target);
+                String reason = state == WalkerState.UNREACHABLE ? unreachableReason() : null;
+                if (state == WalkerState.UNREACHABLE && reason == null) {
+                    reason = "Can't reach " + target.getX() + ", " + target.getY()
+                            + ": the walker stopped before getting there.";
+                }
                 // Client-thread reads must not hold this monitor: hotkeys also acquire it.
                 boolean retryAllowed = state == WalkerState.EXIT
                         && !Thread.currentThread().isInterrupted() && !isLocalPlayerDead() && !isRecentUserStopClear();
@@ -176,6 +188,9 @@ public class ShortestPathScript extends Script {
                         return;
                     }
                     if (state == WalkerState.ARRIVED || state == WalkerState.UNREACHABLE || state == WalkerState.EXIT) {
+                        if (reason != null) {
+                            unreachableNotice.accept(reason);
+                        }
                         resetExitRetryState();
                         triggerWalker = null;
                         revision++;
@@ -211,6 +226,10 @@ public class ShortestPathScript extends Script {
         return config.walkWithBankedTransports()
                 ? Rs2Walker.walkWithBankedTransportsAndState(target, config.reachedDistance(), false)
                 : Rs2Walker.walkWithState(target);
+    }
+
+    String unreachableReason() {
+        return Rs2Walker.getLastUnreachableReason();
     }
 
     void clearRoute(String reason) {
