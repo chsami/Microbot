@@ -52,6 +52,15 @@ public class CantReachTargetRecoveryTest
 	}
 
 	@Test
+	public void onlyAKnownDistanceInsideTheRangeCountsAsBesideTheTarget()
+	{
+		assertTrue(CantReachTargetRecovery.withinRange(0, 2));
+		assertTrue(CantReachTargetRecovery.withinRange(2, 2));
+		assertFalse(CantReachTargetRecovery.withinRange(3, 2));
+		assertFalse(CantReachTargetRecovery.withinRange(-1, 2));
+	}
+
+	@Test
 	public void givingUpClearsTheLatchAndReportsTheAttempts()
 	{
 		boolean savedCantReach = Microbot.cantReachTarget;

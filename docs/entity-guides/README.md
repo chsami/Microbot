@@ -44,6 +44,8 @@ A door beside a refused edge owns it for one claim window, then the edge is lear
 
 A clicked home teleport needs its cast animation before the landing wait: [movement gotcha 36](movement.md#36-a-clicked-home-teleport-is-not-a-cast-that-started).
 
+A can't-reach recovery walk that ends within 2 tiles of the object still sends the click: [movement gotcha 37](movement.md#37-a-cant-reach-recovery-walk-that-ends-beside-the-object-still-clicks-it).
+
 ## Format
 
 Each entity guide is a numbered list of gotchas. Each entry follows this structure:

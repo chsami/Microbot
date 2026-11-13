@@ -719,3 +719,13 @@ landed = settleHomeTeleport(transport, awaitHomeTeleportLanding(
 **Where this applies:** `Rs2WalkerTransports.awaitHomeTeleportLanding`, `settleHomeTeleport`, `PathfinderConfig.blockTeleportForWalk` and any wait that follows a spell or item click whose only success signal is the click itself.
 
 **Defensive check:** `Rs2WalkerTransportsCombatTest.refusedHomeTeleportCastDoesNotWaitForTheLanding`, `abortedWaitIsNotReportedAsARefusedCast`, `onlyAnAnimationAfterTheClickCountsAsACastStart`, `onlyARefusedCastBlocksTheHomeTeleportForTheWalk`, `refusedHomeTeleportIsNotPlannedAgainFromAnyStartTileUntilTheNextWalk` and `everySpellbookHomeTeleportSharesTheHomeTeleportWait`.
+
+## 37. A can't-reach recovery walk that ends beside the object still clicks it
+
+The recovery walk asks the walker for a tile within 2 of the object's own tile. An object set into a wall (a cave mouth) has no tile around it that the walker accepts as an arrival, so `Rs2Walker.walkTo` returns `false` while the player already stands 2 tiles away, where the game accepts the click. When the walk returns `false`, check `CantReachTargetRecovery.withinRange(distanceToPlayer(), CANT_REACH_RECOVERY_DISTANCE)`. Inside the range, clear `Microbot.cantReachTarget` and send the click. Keep the attempt count: only the game answering can't-reach again raises it, so the paused-scripts box still shows after 3 to 5 refused clicks. Outside the range, or with an unknown distance, refuse the click as before.
+
+**Why this matters:** In 2.6.57, Gem Crab Killer never crawled through cave 57631 at (1279,3168) to the next crab. Three recovery walks stopped at (1277,3168) with `arrival_declined_unreachable` and `path-endpoint-short-of-target`, the cave was never clicked again, and the third attempt paused all scripts. The player then crawled through by hand from (1277,3169).
+
+**Where this applies:** `Rs2TileObjectModel.click` (`recoverFromCantReach`).
+
+**Defensive check:** `Rs2TileObjectModelClickRecoveryTest.clicksWhenTheRecoveryWalkEndsWithinRangeOfTheObject`, `doesNotClickWhenTheRecoveryWalkFailsAwayFromTheObject`, `pausesOnlyAfterTheGameKeepsRefusingClicksBesideTheObject` and `CantReachTargetRecoveryTest.onlyAKnownDistanceInsideTheRangeCountsAsBesideTheTarget`.
