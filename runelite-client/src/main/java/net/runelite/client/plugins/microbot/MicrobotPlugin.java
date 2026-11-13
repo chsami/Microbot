@@ -105,6 +105,10 @@ public class MicrobotPlugin extends Plugin
 	private static final String HWID_SPOOF_PROPERTY = "microbot.hwid.spoof";
 	private EnumSet<WorldType> lastWorldTypeProfile = null;
 	private final HwidSpoofCheck hwidSpoofCheck = new HwidSpoofCheck();
+	private final java.util.concurrent.atomic.AtomicBoolean loginBlockDialogOpen = new java.util.concurrent.atomic.AtomicBoolean();
+	private java.util.function.BiConsumer<HwidSpoofCheck.LoginBlock, Runnable> loginBlockNotice = this::showLoginBlockDialog;
+	/** Set when the player chose to log in without spoofing after a blocked login; lasts until restart. */
+	private volatile boolean hwidSpoofBypassed;
 
 	@Inject
 	private Provider<MicrobotPluginListPanel> pluginListPanelProvider;
@@ -207,7 +211,7 @@ public class MicrobotPlugin extends Plugin
 		gameChatAppender = new GameChatAppender();
 		gameChatAppender.setName("GAME_CHAT");
 
-		System.setProperty(HWID_SPOOF_PROPERTY, Boolean.toString(microbotConfig.spoofDeviceId()));
+		System.setProperty(HWID_SPOOF_PROPERTY, Boolean.toString(hwidSpoofActive()));
 
 		// Set pattern based on new configuration
 		String pattern = microbotConfig.getGameChatLogPattern().getPattern();
@@ -429,7 +433,11 @@ public class MicrobotPlugin extends Plugin
 					Microbot.setLastKnownRegions(currentRegions.clone());
 				}
 		   }
-		   hwidSpoofCheck.loggedIn(microbotConfig.spoofDeviceId()).ifPresent(this::reportHwidSpoofProblem);
+		   hwidSpoofCheck.loggedIn(hwidSpoofActive()).ifPresent(this::reportHwidSpoofProblem);
+	   }
+	   if (gameStateChanged.getGameState() == GameState.LOGGING_IN)
+	   {
+		   hwidSpoofCheck.loginBlock(hwidSpoofActive()).ifPresent(this::blockLogin);
 	   }
 	   if (gameStateChanged.getGameState() == GameState.LOGIN_SCREEN || gameStateChanged.getGameState() == GameState.HOPPING)
 	   {
@@ -450,6 +458,66 @@ public class MicrobotPlugin extends Plugin
 	   }
 	   // update last known game state to track login/logout transitions
 	   LoginManager.setLastKnownGameState(gameStateChanged.getGameState());
+	}
+
+	/**
+	 * Returns the client to the login screen on its next cycle, before the login step that builds the
+	 * packet, and tells the player why in a window that cannot be missed.
+	 */
+	private void blockLogin(HwidSpoofCheck.LoginBlock block)
+	{
+		log.info(block.logMessage());
+		Microbot.getClientThread().invokeLater(() ->
+		{
+			if (Microbot.getClient().getGameState() == GameState.LOGGING_IN)
+			{
+				Microbot.getClient().setGameState(GameState.LOGIN_SCREEN);
+			}
+		});
+		loginBlockNotice.accept(block, this::bypassHwidSpoof);
+	}
+
+	/** Spoof device ID is on and the player has not chosen to log in without spoofing this session. */
+	private boolean hwidSpoofActive()
+	{
+		return microbotConfig.spoofDeviceId() && !hwidSpoofBypassed;
+	}
+
+	/**
+	 * The player's answer to a blocked login. Everything is switched off together, so the next login sends
+	 * only real details rather than a mix; the saved setting is left as it is.
+	 */
+	private void bypassHwidSpoof()
+	{
+		hwidSpoofBypassed = true;
+		System.setProperty(HWID_SPOOF_PROPERTY, "false");
+		log.info("Spoof device ID switched off for this session by the player after a blocked login.");
+	}
+
+	/** One window at a time, so a script that keeps retrying the login cannot stack them. */
+	private void showLoginBlockDialog(HwidSpoofCheck.LoginBlock block, Runnable bypass)
+	{
+		if (java.awt.GraphicsEnvironment.isHeadless() || !loginBlockDialogOpen.compareAndSet(false, true))
+		{
+			return;
+		}
+		javax.swing.SwingUtilities.invokeLater(() ->
+		{
+			try
+			{
+				String[] choices = {HwidSpoofCheck.LOGIN_BLOCKED_STAY, HwidSpoofCheck.LOGIN_BLOCKED_BYPASS};
+				int choice = javax.swing.JOptionPane.showOptionDialog(null, block.message(), HwidSpoofCheck.LOGIN_BLOCKED_TITLE,
+					javax.swing.JOptionPane.DEFAULT_OPTION, javax.swing.JOptionPane.WARNING_MESSAGE, null, choices, choices[0]);
+				if (choice == 1)
+				{
+					bypass.run();
+				}
+			}
+			finally
+			{
+				loginBlockDialogOpen.set(false);
+			}
+		});
 	}
 
 	private void reportHwidSpoofProblem(HwidSpoofCheck.Problem problem)
@@ -637,7 +705,7 @@ public class MicrobotPlugin extends Plugin
 					Microbot.useStaminaPotsIfNeeded = microbotConfig.useStaminaPotsIfNeeded();
 					break;
 				case MicrobotConfig.keySpoofDeviceId:
-					System.setProperty(HWID_SPOOF_PROPERTY, Boolean.toString(microbotConfig.spoofDeviceId()));
+					System.setProperty(HWID_SPOOF_PROPERTY, Boolean.toString(hwidSpoofActive()));
 					break;
 				case MicrobotConfig.keyDisableInputYielding:
 					InputArbiter.setDisabled(microbotConfig.disableInputYielding());

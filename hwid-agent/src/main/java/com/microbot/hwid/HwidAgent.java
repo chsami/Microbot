@@ -20,6 +20,11 @@ public final class HwidAgent
 	/** {@link #AGENT_PROPERTY} value when the agent was attached with -Dmicrobot.hwid.spoof=false. */
 	public static final String AGENT_INERT = "inert";
 	public static final String DEVICE_HOOK_PROPERTY = "microbot.hwid.device.installed";
+	public static final String PLATFORM_HOOK_PROPERTY = "microbot.hwid.platform.installed";
+	/** Set once a signer call could not be rewritten: the next login would mix real and spoofed details. */
+	public static final String PLATFORM_MISSED_PROPERTY = "microbot.hwid.platform.missed";
+	/** Set once every game class the platform transformer could act on has been loaded; see {@link PlatformScan}. */
+	public static final String PLATFORM_SCANNED_PROPERTY = "microbot.hwid.platform.scanned";
 	public static final String RANDOM_DAT_CALL_PROPERTY = "microbot.hwid.randomdat.lastCall";
 
 	private static volatile boolean deviceHookInstalled;
@@ -33,6 +38,12 @@ public final class HwidAgent
 	private HwidAgent()
 	{
 	}
+
+	/** Guards the three platform hook flags and {@link #PLATFORM_HOOK_PROPERTY}; classes load on several threads. */
+	private static final Object PLATFORM_HOOK_LOCK = new Object();
+	private static boolean signerHookInstalled;
+	private static boolean processHookInstalled;
+	private static boolean signerSiteMissed;
 
 	/**
 	 * Attaching the agent is the opt-in, so a missing -Dmicrobot.hwid.spoof registers the transformers.
@@ -48,10 +59,13 @@ public final class HwidAgent
 		}
 		try
 		{
+			inst.addTransformer(new PlatformMetadataTransformer());
 			inst.addTransformer(new PlatformInfoTransformer());
 			inst.addTransformer(new RandomDatTransformer());
 			inst.addTransformer(new RandomDatWriteTransformer());
 			System.setProperty(AGENT_PROPERTY, AGENT_LOADED);
+			// Disk only. The network lookup waits for checkStockSigner, after the client's proxy is set.
+			StockSignerHash.loadStored();
 			launcherCharacterId();
 		}
 		catch (Throwable t)
@@ -60,10 +74,79 @@ public final class HwidAgent
 		}
 	}
 
+	/**
+	 * Called by the client once its proxy settings are applied: checks, in the background and at most
+	 * once, that stock RuneLite still sends the bundled signer hash. Nothing in {@link #premain} opens a
+	 * connection, because premain runs before the client has read its {@code --proxy} option and a
+	 * request made then would leave from the real address. Does nothing when the agent is inert.
+	 *
+	 * @param userAgent the client's HTTP User-Agent, or null to send Java's default
+	 */
+	public static void checkStockSigner(String userAgent)
+	{
+		if (AGENT_LOADED.equals(System.getProperty(AGENT_PROPERTY)))
+		{
+			StockSignerHash.startLookup(userAgent);
+		}
+	}
+
 	static void markDeviceHookInstalled()
 	{
 		deviceHookInstalled = true;
 		System.setProperty(DEVICE_HOOK_PROPERTY, "true");
+	}
+
+	static void markSignerHookInstalled()
+	{
+		synchronized (PLATFORM_HOOK_LOCK)
+		{
+			signerHookInstalled = true;
+			publishPlatformHook();
+		}
+	}
+
+	static void markProcessHookInstalled()
+	{
+		synchronized (PLATFORM_HOOK_LOCK)
+		{
+			processHookInstalled = true;
+			publishPlatformHook();
+		}
+	}
+
+	/**
+	 * A class had a {@code getSigners} call the transformer could not rewrite, so that site sends the real
+	 * hash. Sticky for the session: the platform property is cleared and never set again, whatever loads later.
+	 */
+	static void markSignerSiteMissed()
+	{
+		synchronized (PLATFORM_HOOK_LOCK)
+		{
+			signerSiteMissed = true;
+			System.clearProperty(PLATFORM_HOOK_PROPERTY);
+			System.setProperty(PLATFORM_MISSED_PROPERTY, "true");
+		}
+	}
+
+	/** Set only once the signer hash and the process names are hooked and no signer site was missed. */
+	private static void publishPlatformHook()
+	{
+		if (signerHookInstalled && processHookInstalled && !signerSiteMissed)
+		{
+			System.setProperty(PLATFORM_HOOK_PROPERTY, "true");
+		}
+	}
+
+	static void resetPlatformHooksForTest()
+	{
+		synchronized (PLATFORM_HOOK_LOCK)
+		{
+			signerHookInstalled = false;
+			processHookInstalled = false;
+			signerSiteMissed = false;
+			System.clearProperty(PLATFORM_HOOK_PROPERTY);
+			System.clearProperty(PLATFORM_MISSED_PROPERTY);
+		}
 	}
 
 	public static boolean isDeviceHookInstalled()
@@ -98,6 +181,27 @@ public final class HwidAgent
 	{
 		String value = System.getProperty(TOGGLE_PROPERTY);
 		return value != null && "false".equalsIgnoreCase(value.trim());
+	}
+
+	/**
+	 * Replaces the {@code Arrays.hashCode(getSigners())} call the game makes while collecting platform info.
+	 * Stock RuneLite reports the hash of its signing certificate; the unsigned Microbot build would report 0.
+	 */
+	public static int signerHash(Object[] signers)
+	{
+		return spoofEnabled() ? StockSignerHash.BUNDLED : Arrays.hashCode(signers);
+	}
+
+	/**
+	 * Called on each executable, parent process and agent name the game stores before it sizes the login
+	 * packet. Only the agent name is replaced: no stock launch on any system attaches a java agent, so
+	 * empty is known to be what stock sends. The executable and parent names of a stock launch have not
+	 * been captured on any system, and a guessed pair could be one no stock client sends, so they pass
+	 * through unchanged.
+	 */
+	public static String platformName(String collected, int phase)
+	{
+		return spoofEnabled() && phase == PlatformMetadataTransformer.PHASE_AGENT ? "" : collected;
 	}
 
 	public static Object randomDatFile(Object handle)

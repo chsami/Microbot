@@ -48,7 +48,7 @@ public class HwidAgentOptInTest
 		System.clearProperty(HwidAgent.TOGGLE_PROPERTY);
 		AtomicInteger transformers = new AtomicInteger();
 		HwidAgent.premain(null, countingInstrumentation(transformers));
-		assertEquals(3, transformers.get());
+		assertEquals(4, transformers.get());
 		assertEquals(HwidAgent.AGENT_LOADED, System.getProperty(HwidAgent.AGENT_PROPERTY));
 		assertTrue(HwidAgent.spoofEnabled());
 	}
@@ -69,7 +69,7 @@ public class HwidAgentOptInTest
 		System.setProperty(HwidAgent.TOGGLE_PROPERTY, "0");
 		AtomicInteger transformers = new AtomicInteger();
 		HwidAgent.premain(null, countingInstrumentation(transformers));
-		assertEquals(3, transformers.get());
+		assertEquals(4, transformers.get());
 		assertEquals(HwidAgent.AGENT_LOADED, System.getProperty(HwidAgent.AGENT_PROPERTY));
 	}
 
@@ -79,7 +79,7 @@ public class HwidAgentOptInTest
 		System.setProperty(HwidAgent.TOGGLE_PROPERTY, "true");
 		AtomicInteger transformers = new AtomicInteger();
 		HwidAgent.premain(null, countingInstrumentation(transformers));
-		assertEquals(3, transformers.get());
+		assertEquals(4, transformers.get());
 		assertEquals(HwidAgent.AGENT_LOADED, System.getProperty(HwidAgent.AGENT_PROPERTY));
 	}
 

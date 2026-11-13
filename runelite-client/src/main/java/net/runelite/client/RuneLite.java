@@ -82,6 +82,7 @@ import net.runelite.client.discord.DiscordService;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.externalplugins.ExternalPluginManager;
 import net.runelite.client.plugins.PluginManager;
+import net.runelite.client.plugins.microbot.HwidStockSignerCheck;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.externalplugins.MicrobotPluginManager;
 import net.runelite.client.plugins.microbot.recovery.RecoveryPrompt;
@@ -297,6 +298,8 @@ public class RuneLite
 		}
 
 		ProxyConfiguration.setupProxy(options, proxyInfo);
+		// Only now may the HWID agent contact RuneLite: before this line the request would skip the proxy.
+		HwidStockSignerCheck.start(USER_AGENT);
 
         Thread.setDefaultUncaughtExceptionHandler((thread, throwable) ->
         {
