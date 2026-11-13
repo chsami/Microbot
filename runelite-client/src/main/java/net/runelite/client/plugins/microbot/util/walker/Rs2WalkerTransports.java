@@ -814,7 +814,9 @@ final class Rs2WalkerTransports {
                         if (attemptObserved(transport, () -> handleTeleportSpell(transport))) {
                             boolean landed;
                             if (isLumbridgeHomeTeleport(transport)) {
-                                landed = sleepUntilTrue(() -> isPlayerWithinChebyshevOf(transport.getDestination(), OFFSET), 600, 35000);
+                                landed = awaitHomeTeleportLanding(Rs2Player::isAnimating,
+                                        () -> isPlayerWithinChebyshevOf(transport.getDestination(), OFFSET),
+                                        HOME_TELEPORT_CAST_START_TIMEOUT_MS, HOME_TELEPORT_LANDING_TIMEOUT_MS);
                             } else {
                                 sleepUntil(() -> !Rs2Player.isAnimating());
                                 landed = sleepUntilTrue(() -> isPlayerWithinChebyshevOf(transport.getDestination(), OFFSET),
@@ -2225,6 +2227,21 @@ final class Rs2WalkerTransports {
     private static boolean isLumbridgeHomeTeleport(Transport transport) {
         return transport.getDisplayInfo() != null
                 && transport.getDisplayInfo().toLowerCase().startsWith("lumbridge home teleport");
+    }
+
+    static final int HOME_TELEPORT_CAST_START_TIMEOUT_MS = 3000;
+    static final int HOME_TELEPORT_LANDING_TIMEOUT_MS = 35000;
+
+    static boolean awaitHomeTeleportLanding(BooleanSupplier casting, BooleanSupplier landed,
+                                            int castStartTimeoutMs, int landingTimeoutMs) {
+        boolean castStarted = sleepUntilTrue(() -> casting.getAsBoolean() || landed.getAsBoolean(),
+                TRANSPORT_LANDING_WAIT_POLL_MS, castStartTimeoutMs);
+        if (!castStarted) {
+            WebWalkLog.spInfo("home_teleport_refused | cast animation did not start within {}ms; not waiting for landing",
+                    castStartTimeoutMs);
+            return false;
+        }
+        return sleepUntilTrue(landed, 600, landingTimeoutMs);
     }
 
     private static boolean handleTeleportItem(Transport transport) {

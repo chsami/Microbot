@@ -42,6 +42,8 @@ Can't-reach recovery walks to the template tile, off the client thread: [movemen
 
 A door beside a refused edge owns it for one claim window, then the edge is learned for this walk: [movement gotcha 35](movement.md#35-a-door-next-to-a-walled-edge-does-not-always-own-that-edge).
 
+A clicked home teleport needs its cast animation before the landing wait: [movement gotcha 36](movement.md#36-a-clicked-home-teleport-is-not-a-cast-that-started).
+
 ## Format
 
 Each entity guide is a numbered list of gotchas. Each entry follows this structure:
