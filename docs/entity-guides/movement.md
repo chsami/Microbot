@@ -696,7 +696,7 @@ The walker should not be sent across such a wall in the first place. `LiveCollis
 
 ## 36. A clicked home teleport is not a cast that started
 
-`Rs2Magic.quickCast(String)` returns `true` once the spell widget was clicked. The game can still answer with "You can't use that teleport at the moment." and never start the cast. Before waiting the long home teleport landing window, confirm that the cast animation started (or that the player already landed). When it did not, report the transport as not handled so the dispatch verdict and the refusal ledger see it.
+`Rs2Magic.quickCast(String)` returns `true` once the spell widget was clicked. The game can still answer with "You can't use that teleport at the moment." and never start the cast. Before waiting the long home teleport landing window, confirm that an animation started after the click (or that the player already landed). `Rs2Player.isAnimating()` is not that signal: it stays true for 600 ms after any earlier animation. When no cast started, block that home teleport for the rest of the walk, whatever tile the next plan starts from, and report the transport as not handled. The tile-keyed refusal ledger alone lets a replan from another tile cast it again. All four spellbook home teleports share this path.
 
 **Why this matters:** In 2.6.57 a quest walk from Varrock chose the Lumbridge Home Teleport as its first leg. The game refused the cast, and the walker waited the full 35 s landing window with no log line while the character stood still.
 
@@ -706,12 +706,16 @@ The walker should not be sent across such a wall in the first place. `LiveCollis
 // Wrong: the click succeeded, so wait 35 s for a landing that may never come.
 landed = sleepUntilTrue(() -> isPlayerWithinChebyshevOf(dest, OFFSET), 600, 35000);
 
-// Right: give the cast a short window to start, then wait for the landing.
-landed = awaitHomeTeleportLanding(Rs2Player::isAnimating,
+// Right: give the cast a short window to start, then wait for the landing, and act on the outcome.
+Instant animationBeforeCast = Rs2Player.lastAnimationTime;
+// ... click the spell ...
+landed = settleHomeTeleport(transport, awaitHomeTeleportLanding(
+        () -> animationStartedAfter(animationBeforeCast, Rs2Player.lastAnimationTime),
         () -> isPlayerWithinChebyshevOf(dest, OFFSET),
-        HOME_TELEPORT_CAST_START_TIMEOUT_MS, HOME_TELEPORT_LANDING_TIMEOUT_MS);
+        () -> Thread.currentThread().isInterrupted() || InputArbiter.isHuman(),
+        HOME_TELEPORT_CAST_START_TIMEOUT_MS, HOME_TELEPORT_LANDING_TIMEOUT_MS));
 ```
 
-**Where this applies:** `Rs2WalkerTransports.awaitHomeTeleportLanding` and any wait that follows a spell or item click whose only success signal is the click itself.
+**Where this applies:** `Rs2WalkerTransports.awaitHomeTeleportLanding`, `settleHomeTeleport`, `PathfinderConfig.blockTeleportForWalk` and any wait that follows a spell or item click whose only success signal is the click itself.
 
-**Defensive check:** `Rs2WalkerTransportsCombatTest.refusedHomeTeleportCastDoesNotWaitForTheLanding`, `startedHomeTeleportCastWaitsForTheLanding` and `homeTeleportThatAlreadyLandedNeedsNoCastAnimation`.
+**Defensive check:** `Rs2WalkerTransportsCombatTest.refusedHomeTeleportCastDoesNotWaitForTheLanding`, `abortedWaitIsNotReportedAsARefusedCast`, `onlyAnAnimationAfterTheClickCountsAsACastStart`, `onlyARefusedCastBlocksTheHomeTeleportForTheWalk`, `refusedHomeTeleportIsNotPlannedAgainFromAnyStartTileUntilTheNextWalk` and `everySpellbookHomeTeleportSharesTheHomeTeleportWait`.

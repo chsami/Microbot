@@ -29,6 +29,7 @@ import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.api.tileobject.Rs2ObjectIds;
 import net.runelite.client.plugins.microbot.api.tileobject.models.Rs2TileObjectModel;
+import net.runelite.client.plugins.microbot.util.input.InputArbiter;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
@@ -90,6 +91,7 @@ import net.runelite.client.ui.overlay.worldmap.WorldMapPoint;
 import net.runelite.client.ui.overlay.worldmap.WorldMapPointManager;
 import javax.inject.Named;
 import java.awt.*;
+import java.time.Instant;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -811,12 +813,15 @@ final class Rs2WalkerTransports {
                     }
 
                     if (transport.getType() == TransportType.TELEPORTATION_SPELL) {
+                        Instant animationBeforeCast = Rs2Player.lastAnimationTime;
                         if (attemptObserved(transport, () -> handleTeleportSpell(transport))) {
                             boolean landed;
-                            if (isLumbridgeHomeTeleport(transport)) {
-                                landed = awaitHomeTeleportLanding(Rs2Player::isAnimating,
+                            if (isHomeTeleport(transport)) {
+                                landed = settleHomeTeleport(transport, awaitHomeTeleportLanding(
+                                        () -> animationStartedAfter(animationBeforeCast, Rs2Player.lastAnimationTime),
                                         () -> isPlayerWithinChebyshevOf(transport.getDestination(), OFFSET),
-                                        HOME_TELEPORT_CAST_START_TIMEOUT_MS, HOME_TELEPORT_LANDING_TIMEOUT_MS);
+                                        () -> Thread.currentThread().isInterrupted() || InputArbiter.isHuman(),
+                                        HOME_TELEPORT_CAST_START_TIMEOUT_MS, HOME_TELEPORT_LANDING_TIMEOUT_MS));
                             } else {
                                 sleepUntil(() -> !Rs2Player.isAnimating());
                                 landed = sleepUntilTrue(() -> isPlayerWithinChebyshevOf(transport.getDestination(), OFFSET),
@@ -1064,6 +1069,7 @@ final class Rs2WalkerTransports {
         for (WorldPoint[] edge : transportRefusalLedger.drainWalkScopedBlocks()) {
             Rs2PathApi.unlearnBlockedEdge(edge[0], edge[1], "walk-scoped transport strike-out expired");
         }
+        Rs2PathApi.clearWalkBlockedTeleports();
     }
 
     private static boolean waitForPostHandleObjectLanding(Transport transport,
@@ -2224,24 +2230,53 @@ final class Rs2WalkerTransports {
                 && sleepUntil(() -> Rs2Equipment.isWearing(itemId), 3000);
     }
 
-    private static boolean isLumbridgeHomeTeleport(Transport transport) {
-        return transport.getDisplayInfo() != null
-                && transport.getDisplayInfo().toLowerCase().startsWith("lumbridge home teleport");
+    static boolean isHomeTeleport(Transport transport) {
+        return transport != null
+                && TransportExecutionRegistry.homeTeleportFor(transport.getDisplayInfo()).isPresent();
     }
 
     static final int HOME_TELEPORT_CAST_START_TIMEOUT_MS = 3000;
     static final int HOME_TELEPORT_LANDING_TIMEOUT_MS = 35000;
 
-    static boolean awaitHomeTeleportLanding(BooleanSupplier casting, BooleanSupplier landed,
-                                            int castStartTimeoutMs, int landingTimeoutMs) {
-        boolean castStarted = sleepUntilTrue(() -> casting.getAsBoolean() || landed.getAsBoolean(),
-                TRANSPORT_LANDING_WAIT_POLL_MS, castStartTimeoutMs);
-        if (!castStarted) {
-            WebWalkLog.spInfo("home_teleport_refused | cast animation did not start within {}ms; not waiting for landing",
-                    castStartTimeoutMs);
-            return false;
+    enum HomeTeleportOutcome {
+        LANDED,
+        CAST_NOT_STARTED,
+        LANDING_TIMED_OUT,
+        WAIT_ABORTED
+    }
+
+    static boolean animationStartedAfter(Instant beforeCast, Instant lastAnimation) {
+        return lastAnimation != null && (beforeCast == null || lastAnimation.isAfter(beforeCast));
+    }
+
+    static HomeTeleportOutcome awaitHomeTeleportLanding(BooleanSupplier castStarted, BooleanSupplier landed,
+                                                        BooleanSupplier waitAborted,
+                                                        int castStartTimeoutMs, int landingTimeoutMs) {
+        if (!sleepUntilTrue(() -> castStarted.getAsBoolean() || landed.getAsBoolean(),
+                TRANSPORT_LANDING_WAIT_POLL_MS, castStartTimeoutMs)) {
+            return waitAborted.getAsBoolean() ? HomeTeleportOutcome.WAIT_ABORTED : HomeTeleportOutcome.CAST_NOT_STARTED;
         }
-        return sleepUntilTrue(landed, 600, landingTimeoutMs);
+        if (sleepUntilTrue(landed, 600, landingTimeoutMs)) {
+            return HomeTeleportOutcome.LANDED;
+        }
+        return waitAborted.getAsBoolean() ? HomeTeleportOutcome.WAIT_ABORTED : HomeTeleportOutcome.LANDING_TIMED_OUT;
+    }
+
+    static boolean settleHomeTeleport(Transport transport, HomeTeleportOutcome outcome) {
+        String spell = transport.getDisplayInfo().trim();
+        if (outcome == HomeTeleportOutcome.CAST_NOT_STARTED) {
+            WebWalkLog.spInfo("home_teleport_refused | {} did not start within {}ms (refused by the game or on cooldown); "
+                            + "not casting it again on this walk, taking another route",
+                    spell, HOME_TELEPORT_CAST_START_TIMEOUT_MS);
+            Microbot.status = spell + " refused, taking another route";
+            if (Rs2PathApi.blockTeleportForWalk(spell, "cast refused")) {
+                recalculatePath();
+            }
+        } else if (outcome == HomeTeleportOutcome.LANDING_TIMED_OUT) {
+            WebWalkLog.spInfo("home_teleport_timeout | {} did not land within {}ms",
+                    spell, HOME_TELEPORT_LANDING_TIMEOUT_MS);
+        }
+        return outcome == HomeTeleportOutcome.LANDED;
     }
 
     private static boolean handleTeleportItem(Transport transport) {
