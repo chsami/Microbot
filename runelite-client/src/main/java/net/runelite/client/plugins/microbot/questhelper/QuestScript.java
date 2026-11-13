@@ -1579,7 +1579,11 @@ public class QuestScript extends Script {
                     .where(x -> x.getTileObjectType() == TileObjectType.WALL)
                     .toList();
 
-            for (var tile : Rs2Tile.getWalkableTilesAroundTile(object.getWorldLocation(), unreachableTargetCheckDist)) {
+            WorldPoint objectLocation = currentStepObjectLocation(step, object);
+            if (objectLocation == null)
+                return false;
+
+            for (var tile : Rs2Tile.getWalkableTilesAroundTile(objectLocation, unreachableTargetCheckDist)) {
                 if (tileObjects.stream().noneMatch(x -> x.getWorldLocation().equals(tile))) {
                     if (!Rs2Walker.walkTo(tile) && !Rs2PathApi.getActiveRouteStatus().isPresent())
                         return false;
@@ -1604,7 +1608,9 @@ public class QuestScript extends Script {
         if (step.getDefinedPoint().getWorldPoint() != null && Rs2Player.getWorldLocation().distanceTo2D(step.getDefinedPoint().getWorldPoint()) > 1
                 && (object == null || !isInteractableFromReachableTile(step, object))) {
             WorldPoint targetTile = null;
-            WorldPoint stepLocation = object == null ? step.getDefinedPoint().getWorldPoint() : object.getWorldLocation();
+            WorldPoint stepLocation = object == null ? step.getDefinedPoint().getWorldPoint() : currentStepObjectLocation(step, object);
+            if (stepLocation == null)
+                return false;
             int radius = 0;
             while (targetTile == null) {
                 if (mainScheduledFuture.isCancelled())
@@ -1649,11 +1655,18 @@ public class QuestScript extends Script {
             sleepUntil(() -> !Rs2Player.isMoving() && !Rs2Player.isAnimating());
             objectsHandeled.add(object.getHash());
         } else if (object != null) {
-            Rs2Walker.walkTo(object.getWorldLocation(), 1);
+            WorldPoint objectLocation = currentStepObjectLocation(step, object);
+            if (objectLocation != null)
+                Rs2Walker.walkTo(objectLocation, 1);
             return false;
         }
 
         return true;
+    }
+
+    static WorldPoint currentStepObjectLocation(ObjectStep step, Rs2TileObjectModel object) {
+        WorldPoint location = object.getWorldLocation();
+        return step.getObjects().contains(object.getTileObject()) ? location : null;
     }
 
     private static boolean isInteractableFromReachableTile(ObjectStep step, Rs2TileObjectModel object) {
