@@ -149,6 +149,15 @@ final class Rs2WalkerTransports {
                 && pl.distanceTo2D(dest) <= maxInclusiveChebyshev;
     }
 
+    static boolean isTeleportAlreadyLanded(WorldPoint player, WorldPoint destination, WorldPoint lastHandledDestination) {
+        if (player == null || destination == null || player.getPlane() != destination.getPlane()) {
+            return false;
+        }
+        int distance = player.distanceTo2D(destination);
+        return distance < TELEPORT_NEAR_SKIP_CHEBYSHEV
+                || (distance < OFFSET && destination.equals(lastHandledDestination));
+    }
+
     private static void waitForSamePlaneTransportStart(Transport transport, WorldPoint before) {
         WorldPoint dest = transport.getDestination();
         boolean landsFar = dest != null && before != null && before.distanceTo2D(dest) > OFFSET;
@@ -360,7 +369,8 @@ final class Rs2WalkerTransports {
                     }
                 }
                 if (TransportType.isTeleport(transport.getType(), transport.getOrigin())) {
-                    if (isPlayerWithinChebyshevOf(transport.getDestination(), TELEPORT_NEAR_SKIP_CHEBYSHEV)) {
+                    if (isTeleportAlreadyLanded(plOriginLoop, transport.getDestination(),
+                            routeState.lastTransportDestinationLocation)) {
                         log.debug("[Walker] skip {}: already near destination", transport.getDisplayInfo());
                         noteDeliberateSkip(TransportDispatchTrace.DeliberateSkip.ALREADY_AT_DESTINATION);
                         continue;
