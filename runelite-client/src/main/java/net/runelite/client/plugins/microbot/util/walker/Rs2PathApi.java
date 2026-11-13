@@ -1250,6 +1250,7 @@ public final class Rs2PathApi
 		{
 			admitted.addAll(usableTeleports);
 		}
+		admitted.removeIf(config::isWalkBlockedTeleport);
 		List<Rs2TransportEdge> edges = new ArrayList<>(admitted.size());
 		for (Transport transport : admitted)
 		{
@@ -1787,6 +1788,32 @@ public final class Rs2PathApi
 		synchronized (getPathfinderMutex())
 		{
 			return config.unlearnBlockedEdge(origin, destination, reason);
+		}
+	}
+
+	public static boolean blockTeleportForWalk(String displayInfo, String reason)
+	{
+		PathfinderConfig config = getPathfinderConfig();
+		if (config == null)
+		{
+			return false;
+		}
+		synchronized (getPathfinderMutex())
+		{
+			return config.blockTeleportForWalk(displayInfo, reason);
+		}
+	}
+
+	public static void clearWalkBlockedTeleports()
+	{
+		PathfinderConfig config = getPathfinderConfig();
+		if (config == null)
+		{
+			return;
+		}
+		synchronized (getPathfinderMutex())
+		{
+			config.clearWalkBlockedTeleports();
 		}
 	}
 

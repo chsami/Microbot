@@ -307,6 +307,9 @@ public class CollisionMap {
                     node.packedPosition, WorldPointUtil.packWorldPoint(transport.getDestination()))) {
                 continue;
             }
+            if (config.isWalkBlockedTeleport(transport)) {
+                continue;
+            }
 
             if (TransportType.isTeleport(transport.getType(), transport.getOrigin())) {
                 if (config.isIgnoreTeleportAndItems()) {

@@ -118,6 +118,7 @@ public class PathfinderConfig {
      * they survive. Loaded once in the constructor; grown by {@link #learnBlockedEdge}.
      */
     private final Set<Long> learnedBlockedEdgeKeys = ConcurrentHashMap.newKeySet();
+    private final Set<String> walkBlockedTeleports = ConcurrentHashMap.newKeySet();
 
     private final Client client;
     private final ShortestPathConfig config;
@@ -967,6 +968,33 @@ public class PathfinderConfig {
         invalidateTransportRefreshCache();
         log.info("[Walker] Unlearned blocked edge {} -> {} ({})", origin, destination, reason);
         return true;
+    }
+
+    public boolean blockTeleportForWalk(String displayInfo, String reason) {
+        if (displayInfo == null || displayInfo.trim().isEmpty()) {
+            return false;
+        }
+        if (!walkBlockedTeleports.add(walkBlockedTeleportKey(displayInfo))) {
+            return false;
+        }
+        log.info("[Walker] Blocked teleport {} for this walk ({})", displayInfo.trim(), reason);
+        return true;
+    }
+
+    public boolean isWalkBlockedTeleport(Transport transport) {
+        return !walkBlockedTeleports.isEmpty()
+                && transport != null
+                && transport.getOrigin() == null
+                && transport.getDisplayInfo() != null
+                && walkBlockedTeleports.contains(walkBlockedTeleportKey(transport.getDisplayInfo()));
+    }
+
+    public void clearWalkBlockedTeleports() {
+        walkBlockedTeleports.clear();
+    }
+
+    private static String walkBlockedTeleportKey(String displayInfo) {
+        return displayInfo.trim().toLowerCase(Locale.ROOT);
     }
 
     private void addBlockedEdge(WorldPoint origin, WorldPoint destination) {
