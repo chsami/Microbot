@@ -35,6 +35,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.IntFunction;
+import java.util.function.IntUnaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -148,6 +149,8 @@ public class PathfinderConfig {
     private volatile int previousRefreshInvFingerprint;
     /** Which verification component moved on the most recent verify-miss; see the miss log. */
     private volatile String lastVerifyMissDetail = "";
+    static final int SPELL_REJECTION_LOG_RADIUS = 64;
+    private volatile String lastSpellRejectionLog = "";
     @Getter
     private volatile boolean avoidWilderness;
     @Getter
@@ -662,6 +665,8 @@ public class PathfinderConfig {
         int checkedTransports = 0;
         long useTransportTimeNanos = 0;
         Map<TransportType, int[]> typeStats = new java.util.EnumMap<>(TransportType.class);
+        List<String> rejectedSpellsNearTarget = new ArrayList<>();
+        boolean usableSpellNearTarget = false;
 
         // One snapshot for this refreshTransports pass (avoid re-querying unlocked regions per transport).
         // Trade-off: unlock mid-refresh is picked up on next refresh — acceptable vs client-thread churn per edge.
@@ -690,8 +695,13 @@ public class PathfinderConfig {
                 if (usable) stats[1]++;
 
                 // stats[1] is incremented when useTransport() is true; isTransportAllowed may still reject below.
+                boolean spellNearTarget = isSpellTeleportNearTarget(transport, target);
                 if (!usable) {
                     addBlockedTransportEdgeIfNeeded(transport);
+                    if (spellNearTarget) {
+                        rejectedSpellsNearTarget.add(spellRejectionLogLine(transport, target,
+                                transportRejection(transport, inCombat), Microbot::getVarbitValue));
+                    }
                     continue;
                 }
 
@@ -699,6 +709,7 @@ public class PathfinderConfig {
                     continue;
                 }
                 checkedTransports++;
+                usableSpellNearTarget |= spellNearTarget;
                 if (point == null) {
                     usableTeleports.add(transport);
                 } else {
@@ -719,6 +730,7 @@ public class PathfinderConfig {
                 transports,
                 transportsPacked,
                 typeStats);
+        logRejectedSpellsNearTarget(rejectedSpellsNearTarget, usableSpellNearTarget);
         long filterTime = System.currentTimeMillis() - filterStart;
 
         long verifyStart = System.currentTimeMillis();
@@ -1422,6 +1434,40 @@ public class PathfinderConfig {
             copy.transportsPacked.put(WorldPointUtil.packWorldPoint(entry.getKey()), entry.getValue());
         }
         return copy;
+    }
+
+    static boolean isSpellTeleportNearTarget(Transport transport, WorldPoint target) {
+        return target != null
+                && transport.getType() == TELEPORTATION_SPELL
+                && transport.getOrigin() == null
+                && transport.getDestination() != null
+                && transport.getDestination().distanceTo2D(target) <= SPELL_REJECTION_LOG_RADIUS;
+    }
+
+    static String spellRejectionLogLine(Transport transport, WorldPoint target, TransportRejection rejection,
+            IntUnaryOperator varbitReader) {
+        WorldPoint destination = transport.getDestination();
+        String varbits = transport.getVarbits().stream()
+                .sorted(Comparator.comparingInt(TransportVarbit::getVarbitId))
+                .map(check -> check.getVarbitId() + " " + check.getOperator() + " " + check.getValue()
+                        + " is " + varbitReader.applyAsInt(check.getVarbitId()))
+                .collect(Collectors.joining(", "));
+        return "spell=\"" + transport.getDisplayInfo() + "\" dest=" + destination.getX() + "," + destination.getY()
+                + "," + destination.getPlane() + " goalDist=" + destination.distanceTo2D(target)
+                + " reason=" + rejection + " varbits=[" + varbits + "]";
+    }
+
+    private void logRejectedSpellsNearTarget(List<String> rejected, boolean usableSpellNearTarget) {
+        if (rejected.isEmpty() || usableSpellNearTarget) {
+            return;
+        }
+        Collections.sort(rejected);
+        String summary = String.join("; ", rejected);
+        if (summary.equals(lastSpellRejectionLog)) {
+            return;
+        }
+        lastSpellRejectionLog = summary;
+        WebWalkLog.cfgSlow("spell_teleport_rejected {}", summary);
     }
 
     private TransportRejection transportRejection(Transport transport, boolean inCombat) {
