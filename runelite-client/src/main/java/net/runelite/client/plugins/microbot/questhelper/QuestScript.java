@@ -109,6 +109,9 @@ public class QuestScript extends Script {
 
     private static final long OPTION_SELECTION_PENDING_LIMIT_MS = 5_000L;
     private static final long OPTION_SELECTION_PENDING_GAP_MS = 3_000L;
+    private static final long OPTION_PRESS_SETTLE_MS = 1_800L;
+    private static final String OPTION_SELECTION_WAIT_STATUS = "Quest helper: waiting for the dialogue option to be accepted";
+    private long optionPressedAt = 0;
     private long optionSelectionPendingSince = 0;
     private long optionSelectionPendingSeenAt = 0;
 
@@ -148,6 +151,7 @@ public class QuestScript extends Script {
                         for (var dialogChoice : dialogChoices) {
                             if (dialogChoice.getText().endsWith(choice.getChoice())) {
                                 Rs2Keyboard.keyPress(dialogChoice.getOnKeyListener()[7].toString().charAt(0));
+                                noteOptionPressed(System.currentTimeMillis());
                                 return;
                             }
                         }
@@ -204,11 +208,15 @@ public class QuestScript extends Script {
                         boolean hasOption = Rs2Dialogue.handleQuestOptionDialogueSelection();
                         //if there is no quest option in the dialogue, just click player location to remove
                         // the dialogue to avoid getting stuck in an infinite loop of dialogues
-                        if (!hasOption) {
+                        if (hasOption) {
+                            noteOptionPressed(System.currentTimeMillis());
+                        } else {
                             if (isAwaitingOptionSelection(Rs2Dialogue.isOptionSelectionPending(), System.currentTimeMillis())) {
+                                Microbot.status = OPTION_SELECTION_WAIT_STATUS;
                                 return;
                             }
                             if (Rs2Dialogue.acceptQuestStartDialogue()) {
+                                noteOptionPressed(System.currentTimeMillis());
                                 return;
                             }
                             if (selectedQuest != null &&
@@ -221,6 +229,8 @@ public class QuestScript extends Script {
                         }
                         return;
                     }
+
+                    optionSelectionPendingSince = 0;
 
                     if (selectedQuest != null &&
                             selectedQuest.getQuest().getId() == Quest.COOKS_ASSISTANT.getId() &&
@@ -305,7 +315,15 @@ public class QuestScript extends Script {
         return true;
     }
 
+    void noteOptionPressed(long now) {
+        optionPressedAt = now;
+        optionSelectionPendingSince = 0;
+    }
+
     boolean isAwaitingOptionSelection(boolean pending, long now) {
+        if (optionPressedAt != 0 && now - optionPressedAt < OPTION_PRESS_SETTLE_MS) {
+            return true;
+        }
         if (!pending) {
             optionSelectionPendingSince = 0;
             return false;
