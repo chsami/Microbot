@@ -107,6 +107,11 @@ public class QuestScript extends Script {
      */
     private long dialogueCooldownEndsAt = 0;
 
+    private static final long OPTION_SELECTION_PENDING_LIMIT_MS = 5_000L;
+    private static final long OPTION_SELECTION_PENDING_GAP_MS = 3_000L;
+    private long optionSelectionPendingSince = 0;
+    private long optionSelectionPendingSeenAt = 0;
+
 
 
     public boolean run(QuestHelperConfig config, QuestHelperPlugin mQuestPlugin) {
@@ -200,6 +205,9 @@ public class QuestScript extends Script {
                         //if there is no quest option in the dialogue, just click player location to remove
                         // the dialogue to avoid getting stuck in an infinite loop of dialogues
                         if (!hasOption) {
+                            if (isAwaitingOptionSelection(Rs2Dialogue.isOptionSelectionPending(), System.currentTimeMillis())) {
+                                return;
+                            }
                             if (Rs2Dialogue.acceptQuestStartDialogue()) {
                                 return;
                             }
@@ -295,6 +303,18 @@ public class QuestScript extends Script {
         };
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> runTracked(iteration), 0, Rs2Random.between(400, 1000), TimeUnit.MILLISECONDS);
         return true;
+    }
+
+    boolean isAwaitingOptionSelection(boolean pending, long now) {
+        if (!pending) {
+            optionSelectionPendingSince = 0;
+            return false;
+        }
+        if (optionSelectionPendingSince == 0 || now - optionSelectionPendingSeenAt > OPTION_SELECTION_PENDING_GAP_MS) {
+            optionSelectionPendingSince = now;
+        }
+        optionSelectionPendingSeenAt = now;
+        return now - optionSelectionPendingSince < OPTION_SELECTION_PENDING_LIMIT_MS;
     }
 
     void runTracked(Runnable iteration) {

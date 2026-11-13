@@ -19,6 +19,7 @@ import static net.runelite.client.plugins.microbot.util.Global.sleepUntilTrue;
 
 public class Rs2Dialogue {
     private static final String CLICK_HERE_TO_CONTINUE = "Click here to continue";
+    private static final String OPTION_PLEASE_WAIT = "Please wait...";
 
     /**
      * Checks if the player is currently in a dialogue state.
@@ -751,6 +752,19 @@ public class Rs2Dialogue {
             }
         }
         return false;
+    }
+
+    public static boolean isOptionSelectionPending() {
+        if (!hasSelectAnOption()) return false;
+
+        return isPendingOptionList(getDialogueOptions().stream().map(Widget::getText).collect(Collectors.toList()));
+    }
+
+    static boolean isPendingOptionList(List<String> optionTexts) {
+        if (optionTexts == null || optionTexts.isEmpty()) return true;
+
+        return optionTexts.stream()
+                .anyMatch(text -> text != null && Rs2UiHelper.stripTagsToSpace(text).trim().equalsIgnoreCase(OPTION_PLEASE_WAIT));
     }
 
     /**
