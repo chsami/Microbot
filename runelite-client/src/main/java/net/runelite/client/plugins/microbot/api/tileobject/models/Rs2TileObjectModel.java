@@ -79,6 +79,7 @@ public class Rs2TileObjectModel implements TileObject, IEntity {
     }
 
     static final int MAX_INTERACT_DISTANCE = 51;
+    static final int CANT_REACH_RECOVERY_DISTANCE = 2;
 
     @Getter
     private final TileObjectType tileObjectType;
@@ -487,8 +488,15 @@ public class Rs2TileObjectModel implements TileObject, IEntity {
         int attempt = CantReachTargetRecovery.countAttempt();
         Microbot.log("[Interact] can't-reach recovery: walking to object " + getId()
                 + " at " + objectLocation + " (attempt " + attempt + ")");
-        if (!CantReachTargetRecovery.walkTo(objectLocation, 2)) {
-            return false;
+        if (!CantReachTargetRecovery.walkTo(objectLocation, CANT_REACH_RECOVERY_DISTANCE)) {
+            int distance = distanceToPlayer();
+            if (!CantReachTargetRecovery.withinRange(distance, CANT_REACH_RECOVERY_DISTANCE)) {
+                return false;
+            }
+            Microbot.log("[Interact] can't-reach recovery: walk to object " + getId()
+                    + " ended " + distance + " tile(s) away, clicking it from here (attempt " + attempt + ")");
+            Microbot.cantReachTarget = false;
+            return true;
         }
         Microbot.pauseAllScripts.compareAndSet(true, false);
         CantReachTargetRecovery.reset();
