@@ -115,6 +115,18 @@ public class QuestScript extends Script {
     private long optionSelectionPendingSince = 0;
     private long optionSelectionPendingSeenAt = 0;
 
+    private static final int UNHANDLED_OPTION_DISMISS_LIMIT = 3;
+    private static final long UNHANDLED_OPTION_QUIET_RESET_MS = 60_000L;
+    private static final String OPTION_CHOICE_NEEDED_STATUS = "Quest helper: paused, I don't know which dialogue option to pick here. Choose it yourself (see the step text in the Quest Helper panel) and I will continue.";
+    private static final String OPTION_RETRY_STATUS_PREFIX = "Quest helper: no matching dialogue option, retrying (";
+    private static final String OPTION_CONTINUING_STATUS = "Quest helper: continuing";
+    private static final int UNHANDLED_OPTION_CLOSE_WAIT_MS = 1_800;
+    private volatile Object unhandledOptionStep;
+    private volatile int unhandledOptionDismissals = 0;
+    private volatile long unhandledOptionSeenAt = 0;
+    private volatile boolean unhandledOptionHeld = false;
+    private volatile boolean unhandledOptionNoticeSent = false;
+
 
 
     public boolean run(QuestHelperConfig config, QuestHelperPlugin mQuestPlugin) {
@@ -179,7 +191,8 @@ public class QuestScript extends Script {
                                     Rs2Widget.clickWidget(widgetHighlight.getNameToCheckFor());
                                 } else {
                                     Rs2Widget.clickWidget(widget.getId());
-                                    if (Rs2Shop.isOpen() && getQuestHelperPlugin().getSelectedQuest().getQuest().getId() == Quest.PIRATES_TREASURE.getId()) {
+                                    int shopQuestId = getQuestHelperPlugin().getSelectedQuest().getQuest().getId();
+                                    if (Rs2Shop.isOpen() && (shopQuestId == Quest.PIRATES_TREASURE.getId() || shopQuestId == Quest.TAI_BWO_WANNAI_TRIO.getId())) {
                                         Rs2Shop.buyItemOptimally("karamjan rum", 1);
                                     }
                                 }
@@ -224,13 +237,24 @@ public class QuestScript extends Script {
                                     && Microbot.getClient().getTopLevelWorldView().getPlane() == 1) {
                                 Rs2Dialogue.keyPressForDialogueOption(1); // presses option 1
                                 sleep(1200,1800);
+                            } else {
+                                if (!allowUnhandledOptionDismiss(questStep, System.currentTimeMillis())) {
+                                    Microbot.status = OPTION_CHOICE_NEEDED_STATUS;
+                                    if (takeUnhandledOptionNotice()) {
+                                        Microbot.log(unhandledOptionNotice(questStep), Level.WARN);
+                                    }
+                                    return;
+                                }
+                                Microbot.status = unhandledOptionRetryStatus();
                             }
                             Rs2Walker.walkFastCanvas(Rs2Player.getWorldLocation());
+                            sleepUntil(() -> !Rs2Widget.isWidgetVisible(ComponentID.DIALOG_OPTION_OPTIONS), UNHANDLED_OPTION_CLOSE_WAIT_MS);
                         }
                         return;
                     }
 
                     optionSelectionPendingSince = 0;
+                    noteOptionDialogueClosed();
 
                     if (selectedQuest != null &&
                             selectedQuest.getQuest().getId() == Quest.COOKS_ASSISTANT.getId() &&
@@ -318,6 +342,58 @@ public class QuestScript extends Script {
     void noteOptionPressed(long now) {
         optionPressedAt = now;
         optionSelectionPendingSince = 0;
+        resetUnhandledOptionDismissals();
+        String status = Microbot.status;
+        if (status != null && status.startsWith(OPTION_RETRY_STATUS_PREFIX)) {
+            Microbot.status = OPTION_CONTINUING_STATUS;
+        }
+    }
+
+    boolean allowUnhandledOptionDismiss(Object step, long now) {
+        if (step != unhandledOptionStep || now - unhandledOptionSeenAt > UNHANDLED_OPTION_QUIET_RESET_MS) {
+            unhandledOptionStep = step;
+            resetUnhandledOptionDismissals();
+        }
+        unhandledOptionSeenAt = now;
+        if (unhandledOptionDismissals >= UNHANDLED_OPTION_DISMISS_LIMIT) {
+            unhandledOptionHeld = true;
+            return false;
+        }
+        unhandledOptionDismissals++;
+        return true;
+    }
+
+    void noteOptionDialogueClosed() {
+        if (unhandledOptionHeld) {
+            resetUnhandledOptionDismissals();
+            if (OPTION_CHOICE_NEEDED_STATUS.equals(Microbot.status)) {
+                Microbot.status = OPTION_CONTINUING_STATUS;
+            }
+        }
+    }
+
+    String unhandledOptionRetryStatus() {
+        return OPTION_RETRY_STATUS_PREFIX + unhandledOptionDismissals + "/" + UNHANDLED_OPTION_DISMISS_LIMIT + ")";
+    }
+
+    boolean takeUnhandledOptionNotice() {
+        if (unhandledOptionNoticeSent) {
+            return false;
+        }
+        unhandledOptionNoticeSent = true;
+        return true;
+    }
+
+    private void resetUnhandledOptionDismissals() {
+        unhandledOptionDismissals = 0;
+        unhandledOptionHeld = false;
+        unhandledOptionNoticeSent = false;
+    }
+
+    static String unhandledOptionNotice(QuestStep step) {
+        List<String> text = step == null ? null : step.getText();
+        String name = text == null || text.isEmpty() ? "the current step" : text.get(0);
+        return "Quest helper: paused, pick the dialogue option yourself and it will continue. It does not know which option to pick for: " + name;
     }
 
     boolean isAwaitingOptionSelection(boolean pending, long now) {
@@ -365,6 +441,8 @@ public class QuestScript extends Script {
         }
         ScriptHeartbeatRegistry.remove(getClass().getName());
         multiNpcTarget.release();
+        unhandledOptionStep = null;
+        resetUnhandledOptionDismissals();
         reset();
     }
 
