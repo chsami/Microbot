@@ -118,11 +118,14 @@ public class QuestScript extends Script {
     private static final int UNHANDLED_OPTION_DISMISS_LIMIT = 3;
     private static final long UNHANDLED_OPTION_QUIET_RESET_MS = 60_000L;
     private static final String OPTION_CHOICE_NEEDED_STATUS = "Quest helper: paused, I don't know which dialogue option to pick here. Choose it yourself (see the step text in the Quest Helper panel) and I will continue.";
-    private Object unhandledOptionStep;
-    private int unhandledOptionDismissals = 0;
-    private long unhandledOptionSeenAt = 0;
-    private boolean unhandledOptionHeld = false;
-    private boolean unhandledOptionNoticeSent = false;
+    private static final String OPTION_RETRY_STATUS_PREFIX = "Quest helper: no matching dialogue option, retrying (";
+    private static final String OPTION_CONTINUING_STATUS = "Quest helper: continuing";
+    private static final int UNHANDLED_OPTION_CLOSE_WAIT_MS = 1_800;
+    private volatile Object unhandledOptionStep;
+    private volatile int unhandledOptionDismissals = 0;
+    private volatile long unhandledOptionSeenAt = 0;
+    private volatile boolean unhandledOptionHeld = false;
+    private volatile boolean unhandledOptionNoticeSent = false;
 
 
 
@@ -234,14 +237,18 @@ public class QuestScript extends Script {
                                     && Microbot.getClient().getTopLevelWorldView().getPlane() == 1) {
                                 Rs2Dialogue.keyPressForDialogueOption(1); // presses option 1
                                 sleep(1200,1800);
-                            } else if (!allowUnhandledOptionDismiss(questStep, System.currentTimeMillis())) {
-                                Microbot.status = OPTION_CHOICE_NEEDED_STATUS;
-                                if (takeUnhandledOptionNotice()) {
-                                    Microbot.log(unhandledOptionNotice(questStep), Level.WARN);
+                            } else {
+                                if (!allowUnhandledOptionDismiss(questStep, System.currentTimeMillis())) {
+                                    Microbot.status = OPTION_CHOICE_NEEDED_STATUS;
+                                    if (takeUnhandledOptionNotice()) {
+                                        Microbot.log(unhandledOptionNotice(questStep), Level.WARN);
+                                    }
+                                    return;
                                 }
-                                return;
+                                Microbot.status = unhandledOptionRetryStatus();
                             }
                             Rs2Walker.walkFastCanvas(Rs2Player.getWorldLocation());
+                            sleepUntil(() -> !Rs2Widget.isWidgetVisible(ComponentID.DIALOG_OPTION_OPTIONS), UNHANDLED_OPTION_CLOSE_WAIT_MS);
                         }
                         return;
                     }
@@ -336,6 +343,10 @@ public class QuestScript extends Script {
         optionPressedAt = now;
         optionSelectionPendingSince = 0;
         resetUnhandledOptionDismissals();
+        String status = Microbot.status;
+        if (status != null && status.startsWith(OPTION_RETRY_STATUS_PREFIX)) {
+            Microbot.status = OPTION_CONTINUING_STATUS;
+        }
     }
 
     boolean allowUnhandledOptionDismiss(Object step, long now) {
@@ -355,7 +366,14 @@ public class QuestScript extends Script {
     void noteOptionDialogueClosed() {
         if (unhandledOptionHeld) {
             resetUnhandledOptionDismissals();
+            if (OPTION_CHOICE_NEEDED_STATUS.equals(Microbot.status)) {
+                Microbot.status = OPTION_CONTINUING_STATUS;
+            }
         }
+    }
+
+    String unhandledOptionRetryStatus() {
+        return OPTION_RETRY_STATUS_PREFIX + unhandledOptionDismissals + "/" + UNHANDLED_OPTION_DISMISS_LIMIT + ")";
     }
 
     boolean takeUnhandledOptionNotice() {
@@ -372,11 +390,10 @@ public class QuestScript extends Script {
         unhandledOptionNoticeSent = false;
     }
 
-    private static String unhandledOptionNotice(QuestStep step) {
+    static String unhandledOptionNotice(QuestStep step) {
         List<String> text = step == null ? null : step.getText();
-        String name = text == null || text.isEmpty() ? "the current step" : "'" + text.get(0) + "'";
-        return "Quest Helper is waiting: it does not know which dialogue option to pick for " + name
-                + ". Pick the option yourself and it will continue.";
+        String name = text == null || text.isEmpty() ? "the current step" : text.get(0);
+        return "Quest helper: paused, pick the dialogue option yourself and it will continue. It does not know which option to pick for: " + name;
     }
 
     boolean isAwaitingOptionSelection(boolean pending, long now) {

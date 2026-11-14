@@ -1,7 +1,9 @@
 package net.runelite.client.plugins.microbot.questhelper;
 
+import net.runelite.client.plugins.microbot.Microbot;
 import org.junit.Test;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -226,6 +228,59 @@ public class QuestScriptOptionSelectionPendingTest
 		reachTheLimit(script, step, now + 1_400L);
 
 		assertTrue(script.takeUnhandledOptionNotice());
+	}
+
+	@Test
+	public void pausedStatusIsReplacedOnceTheHeldMenuCloses()
+	{
+		QuestScript script = new QuestScript();
+		Object step = new Object();
+
+		reachTheLimit(script, step, 100_000L);
+		String paused = "Quest helper: paused, I don't know which dialogue option to pick here. Choose it yourself (see the step text in the Quest Helper panel) and I will continue.";
+		Microbot.status = paused;
+
+		script.noteOptionDialogueClosed();
+
+		assertEquals("Quest helper: continuing", Microbot.status);
+	}
+
+	@Test
+	public void otherStatusIsKeptWhenTheHeldMenuCloses()
+	{
+		QuestScript script = new QuestScript();
+		Object step = new Object();
+
+		reachTheLimit(script, step, 100_000L);
+		Microbot.status = "Walking";
+
+		script.noteOptionDialogueClosed();
+
+		assertEquals("Walking", Microbot.status);
+	}
+
+	@Test
+	public void retryStatusCountsTheAttemptsAndClearsOnAPress()
+	{
+		QuestScript script = new QuestScript();
+		Object step = new Object();
+
+		assertTrue(script.allowUnhandledOptionDismiss(step, 100_000L));
+		assertEquals("Quest helper: no matching dialogue option, retrying (1/3)", script.unhandledOptionRetryStatus());
+		assertTrue(script.allowUnhandledOptionDismiss(step, 110_000L));
+		assertEquals("Quest helper: no matching dialogue option, retrying (2/3)", script.unhandledOptionRetryStatus());
+		Microbot.status = script.unhandledOptionRetryStatus();
+
+		script.noteOptionPressed(111_000L);
+
+		assertEquals("Quest helper: continuing", Microbot.status);
+	}
+
+	@Test
+	public void noticePutsTheActionFirst()
+	{
+		assertEquals("Quest helper: paused, pick the dialogue option yourself and it will continue. It does not know which option to pick for: the current step",
+			QuestScript.unhandledOptionNotice(null));
 	}
 
 	@Test
