@@ -126,6 +126,7 @@ public class Rs2Antiban {
     @Getter
     @Setter
     public static int TIMEOUT = 0;
+    static volatile boolean cooldownPausedScripts = false;
     @Getter
     private static Activity activity;
     @Getter
@@ -221,6 +222,23 @@ public class Rs2Antiban {
     public static boolean isCategoryBusy() {
         Category current = category;
         return current != null && current.isBusy();
+    }
+
+    public static boolean isCombatCategory() {
+        Category current = category;
+        return current == Category.COMBAT_LOW || current == Category.COMBAT_MID || current == Category.COMBAT_HIGH;
+    }
+
+    static void pauseScriptsForCooldown() {
+        if (Microbot.pauseAllScripts.compareAndSet(false, true))
+            cooldownPausedScripts = true;
+    }
+
+    static void releaseCooldownPause() {
+        if (!cooldownPausedScripts)
+            return;
+        cooldownPausedScripts = false;
+        Microbot.pauseAllScripts.compareAndSet(true, false);
     }
 
     /**
@@ -324,8 +342,8 @@ public class Rs2Antiban {
         // The pause (universal antiban only) and the always-set active flag both happen only after
         // TIMEOUT is computed: if computing the interval ever throws, scripts must not be left
         // paused with no countdown to clear them.
-        if (Rs2AntibanSettings.universalAntiban)
-			Microbot.pauseAllScripts.compareAndSet(false, true);
+        if (Rs2AntibanSettings.universalAntiban && !(isCombatCategory() && isCategoryBusy()))
+			pauseScriptsForCooldown();
 
         Rs2AntibanSettings.actionCooldownActive = true;
 
