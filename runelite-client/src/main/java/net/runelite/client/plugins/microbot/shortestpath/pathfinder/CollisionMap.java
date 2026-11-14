@@ -495,19 +495,14 @@ public class CollisionMap {
                 } else {
                     neighbors.add(new Node(prevPacked, node));
                 }
-            } else if (Math.abs(d.x + d.y) == 1
-                    && isBlocked(WorldPointUtil.unpackWorldX(prevPacked), WorldPointUtil.unpackWorldY(prevPacked), z)) {
-                int wx = WorldPointUtil.unpackWorldX(prevPacked);
-                int wy = WorldPointUtil.unpackWorldY(prevPacked);
-                Set<Transport> ts = config.getTransportsPacked().getOrDefault(prevPacked, Collections.emptySet());
+            } else if (Math.abs(d.x + d.y) == 1 && isBlocked(x, y, z)) {
+                Set<Transport> ts = config.getTransportsPacked().getOrDefault(node.packedPosition, Collections.emptySet());
                 for (Transport transport : ts) {
                     if (transport.getOrigin() == null) {
                         continue;
                     }
-                    if (WorldPointUtil.packWorldPoint(transport.getOrigin()) != prevPacked) {
-                        continue;
-                    }
-                    neighbors.add(new Node(WorldPointUtil.packWorldPoint(wx, wy, z), node));
+                    neighbors.add(new Node(prevPacked, node));
+                    break;
                 }
             }
         }
