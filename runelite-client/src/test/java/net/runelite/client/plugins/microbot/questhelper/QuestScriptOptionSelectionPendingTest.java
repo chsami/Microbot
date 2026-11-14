@@ -91,32 +91,36 @@ public class QuestScriptOptionSelectionPendingTest
 		assertFalse(script.isAwaitingOptionSelection(false, 11_800L));
 	}
 
+	private static long reachTheLimit(QuestScript script, Object step, long now)
+	{
+		for (int i = 0; i < 3; i++)
+		{
+			assertTrue(script.allowUnhandledOptionDismiss(step, now));
+			now += 10_000L;
+		}
+		assertFalse(script.allowUnhandledOptionDismiss(step, now));
+		return now;
+	}
+
 	@Test
 	public void unhandledMenuOfTheSameStepStopsBeingDismissedAfterTheLimit()
 	{
 		QuestScript script = new QuestScript();
 		Object step = new Object();
 
-		assertTrue(script.allowUnhandledOptionDismiss(step));
-		assertTrue(script.allowUnhandledOptionDismiss(step));
-		assertTrue(script.allowUnhandledOptionDismiss(step));
-		assertFalse(script.allowUnhandledOptionDismiss(step));
-		assertFalse(script.allowUnhandledOptionDismiss(step));
+		long now = reachTheLimit(script, step, 100_000L);
+
+		assertFalse(script.allowUnhandledOptionDismiss(step, now + 700L));
 	}
 
 	@Test
 	public void newStepGetsItsOwnDismissAttempts()
 	{
 		QuestScript script = new QuestScript();
-		Object step = new Object();
 
-		for (int i = 0; i < 3; i++)
-		{
-			assertTrue(script.allowUnhandledOptionDismiss(step));
-		}
-		assertFalse(script.allowUnhandledOptionDismiss(step));
+		long now = reachTheLimit(script, new Object(), 100_000L);
 
-		assertTrue(script.allowUnhandledOptionDismiss(new Object()));
+		assertTrue(script.allowUnhandledOptionDismiss(new Object(), now + 700L));
 	}
 
 	@Test
@@ -125,15 +129,103 @@ public class QuestScriptOptionSelectionPendingTest
 		QuestScript script = new QuestScript();
 		Object step = new Object();
 
-		for (int i = 0; i < 3; i++)
+		long now = reachTheLimit(script, step, 100_000L);
+
+		script.noteOptionPressed(now + 700L);
+
+		assertTrue(script.allowUnhandledOptionDismiss(step, now + 1_400L));
+	}
+
+	@Test
+	public void menuClosedByThePlayerAfterTheLimitRestoresTheDismissAttempts()
+	{
+		QuestScript script = new QuestScript();
+		Object step = new Object();
+
+		long now = reachTheLimit(script, step, 100_000L);
+
+		script.noteOptionDialogueClosed();
+
+		assertTrue(script.allowUnhandledOptionDismiss(step, now + 700L));
+		assertTrue(script.allowUnhandledOptionDismiss(step, now + 1_400L));
+		assertTrue(script.allowUnhandledOptionDismiss(step, now + 2_100L));
+		assertFalse(script.allowUnhandledOptionDismiss(step, now + 2_800L));
+	}
+
+	@Test
+	public void menuClosedByTheScriptBelowTheLimitKeepsTheCount()
+	{
+		QuestScript script = new QuestScript();
+		Object step = new Object();
+
+		assertTrue(script.allowUnhandledOptionDismiss(step, 100_000L));
+		script.noteOptionDialogueClosed();
+		assertTrue(script.allowUnhandledOptionDismiss(step, 110_000L));
+		script.noteOptionDialogueClosed();
+		assertTrue(script.allowUnhandledOptionDismiss(step, 120_000L));
+		script.noteOptionDialogueClosed();
+
+		assertFalse(script.allowUnhandledOptionDismiss(step, 130_000L));
+	}
+
+	@Test
+	public void stoppingTheScriptRestoresTheDismissAttempts()
+	{
+		QuestScript script = new QuestScript();
+		Object step = new Object();
+
+		long now = reachTheLimit(script, step, 100_000L);
+
+		script.stopLoop();
+
+		assertTrue(script.allowUnhandledOptionDismiss(step, now + 700L));
+	}
+
+	@Test
+	public void quietMinuteWithoutAnUnhandledMenuRestoresTheDismissAttempts()
+	{
+		QuestScript script = new QuestScript();
+		Object step = new Object();
+
+		assertTrue(script.allowUnhandledOptionDismiss(step, 100_000L));
+		assertTrue(script.allowUnhandledOptionDismiss(step, 110_000L));
+		assertTrue(script.allowUnhandledOptionDismiss(step, 120_000L));
+
+		assertTrue(script.allowUnhandledOptionDismiss(step, 181_000L));
+		assertTrue(script.allowUnhandledOptionDismiss(step, 191_000L));
+		assertTrue(script.allowUnhandledOptionDismiss(step, 201_000L));
+		assertFalse(script.allowUnhandledOptionDismiss(step, 211_000L));
+	}
+
+	@Test
+	public void heldMenuDoesNotExpireWhileItStaysOpen()
+	{
+		QuestScript script = new QuestScript();
+		Object step = new Object();
+
+		long now = reachTheLimit(script, step, 100_000L);
+		for (int i = 0; i < 200; i++)
 		{
-			assertTrue(script.allowUnhandledOptionDismiss(step));
+			now += 700L;
+			assertFalse(script.allowUnhandledOptionDismiss(step, now));
 		}
-		assertFalse(script.allowUnhandledOptionDismiss(step));
+	}
 
-		script.noteOptionPressed(10_000L);
+	@Test
+	public void playerIsToldOncePerHeldMenu()
+	{
+		QuestScript script = new QuestScript();
+		Object step = new Object();
 
-		assertTrue(script.allowUnhandledOptionDismiss(step));
+		long now = reachTheLimit(script, step, 100_000L);
+		assertTrue(script.takeUnhandledOptionNotice());
+		assertFalse(script.allowUnhandledOptionDismiss(step, now + 700L));
+		assertFalse(script.takeUnhandledOptionNotice());
+
+		script.noteOptionDialogueClosed();
+		reachTheLimit(script, step, now + 1_400L);
+
+		assertTrue(script.takeUnhandledOptionNotice());
 	}
 
 	@Test
@@ -146,3 +238,4 @@ public class QuestScriptOptionSelectionPendingTest
 		assertFalse(script.isAwaitingOptionSelection(false, 20_000L));
 	}
 }
+

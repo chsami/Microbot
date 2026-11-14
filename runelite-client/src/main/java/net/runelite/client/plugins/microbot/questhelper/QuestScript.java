@@ -116,9 +116,13 @@ public class QuestScript extends Script {
     private long optionSelectionPendingSeenAt = 0;
 
     private static final int UNHANDLED_OPTION_DISMISS_LIMIT = 3;
-    private static final String OPTION_CHOICE_NEEDED_STATUS = "Quest helper: no dialogue option is highlighted for this step, choose one to continue";
+    private static final long UNHANDLED_OPTION_QUIET_RESET_MS = 60_000L;
+    private static final String OPTION_CHOICE_NEEDED_STATUS = "Quest helper: paused, I don't know which dialogue option to pick here. Choose it yourself (see the step text in the Quest Helper panel) and I will continue.";
     private Object unhandledOptionStep;
     private int unhandledOptionDismissals = 0;
+    private long unhandledOptionSeenAt = 0;
+    private boolean unhandledOptionHeld = false;
+    private boolean unhandledOptionNoticeSent = false;
 
 
 
@@ -230,8 +234,11 @@ public class QuestScript extends Script {
                                     && Microbot.getClient().getTopLevelWorldView().getPlane() == 1) {
                                 Rs2Dialogue.keyPressForDialogueOption(1); // presses option 1
                                 sleep(1200,1800);
-                            } else if (!allowUnhandledOptionDismiss(questStep)) {
+                            } else if (!allowUnhandledOptionDismiss(questStep, System.currentTimeMillis())) {
                                 Microbot.status = OPTION_CHOICE_NEEDED_STATUS;
+                                if (takeUnhandledOptionNotice()) {
+                                    Microbot.log(unhandledOptionNotice(questStep), Level.WARN);
+                                }
                                 return;
                             }
                             Rs2Walker.walkFastCanvas(Rs2Player.getWorldLocation());
@@ -240,6 +247,7 @@ public class QuestScript extends Script {
                     }
 
                     optionSelectionPendingSince = 0;
+                    noteOptionDialogueClosed();
 
                     if (selectedQuest != null &&
                             selectedQuest.getQuest().getId() == Quest.COOKS_ASSISTANT.getId() &&
@@ -327,19 +335,48 @@ public class QuestScript extends Script {
     void noteOptionPressed(long now) {
         optionPressedAt = now;
         optionSelectionPendingSince = 0;
-        unhandledOptionDismissals = 0;
+        resetUnhandledOptionDismissals();
     }
 
-    boolean allowUnhandledOptionDismiss(Object step) {
-        if (step != unhandledOptionStep) {
+    boolean allowUnhandledOptionDismiss(Object step, long now) {
+        if (step != unhandledOptionStep || now - unhandledOptionSeenAt > UNHANDLED_OPTION_QUIET_RESET_MS) {
             unhandledOptionStep = step;
-            unhandledOptionDismissals = 0;
+            resetUnhandledOptionDismissals();
         }
+        unhandledOptionSeenAt = now;
         if (unhandledOptionDismissals >= UNHANDLED_OPTION_DISMISS_LIMIT) {
+            unhandledOptionHeld = true;
             return false;
         }
         unhandledOptionDismissals++;
         return true;
+    }
+
+    void noteOptionDialogueClosed() {
+        if (unhandledOptionHeld) {
+            resetUnhandledOptionDismissals();
+        }
+    }
+
+    boolean takeUnhandledOptionNotice() {
+        if (unhandledOptionNoticeSent) {
+            return false;
+        }
+        unhandledOptionNoticeSent = true;
+        return true;
+    }
+
+    private void resetUnhandledOptionDismissals() {
+        unhandledOptionDismissals = 0;
+        unhandledOptionHeld = false;
+        unhandledOptionNoticeSent = false;
+    }
+
+    private static String unhandledOptionNotice(QuestStep step) {
+        List<String> text = step == null ? null : step.getText();
+        String name = text == null || text.isEmpty() ? "the current step" : "'" + text.get(0) + "'";
+        return "Quest Helper is waiting: it does not know which dialogue option to pick for " + name
+                + ". Pick the option yourself and it will continue.";
     }
 
     boolean isAwaitingOptionSelection(boolean pending, long now) {
@@ -387,6 +424,8 @@ public class QuestScript extends Script {
         }
         ScriptHeartbeatRegistry.remove(getClass().getName());
         multiNpcTarget.release();
+        unhandledOptionStep = null;
+        resetUnhandledOptionDismissals();
         reset();
     }
 
