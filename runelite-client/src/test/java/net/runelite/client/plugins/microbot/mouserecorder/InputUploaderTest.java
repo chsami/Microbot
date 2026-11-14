@@ -152,6 +152,40 @@ public class InputUploaderTest
 	}
 
 	@Test
+	public void relinkingAfterARemovedLinkLetsRecordingStartAgain() throws Exception
+	{
+		server.enqueue(new MockResponse().setResponseCode(401).setBody("{\"code\":\"unauthorized\"}"));
+		uploader.beginSession(info());
+		uploader.submit("{\"t\":1,\"e\":\"mv\"}\n");
+		uploader.drain();
+		assertEquals(InputUploader.State.LINK_REMOVED, uploader.state());
+
+		token.set("mbc_" + "d".repeat(43));
+		uploader.drain();
+		uploader.drain();
+
+		assertEquals(0, uploader.queued());
+		assertEquals(InputUploader.State.IDLE, uploader.state());
+		assertTrue(uploader.isLinked());
+	}
+
+	@Test
+	public void turningUploadOffDropsWhatWasNotSentYet() throws Exception
+	{
+		uploader.beginSession(info());
+		uploader.submit("{\"t\":1,\"e\":\"mv\"}\n");
+		uploader.submit("{\"t\":2,\"e\":\"mv\"}\n");
+
+		uploader.dropPending();
+		uploader.endSession();
+		uploader.drain();
+
+		assertEquals(0, server.getRequestCount());
+		assertEquals(0, uploader.queued());
+		assertEquals(0, uploader.dropped());
+	}
+
+	@Test
 	public void aRefusedTokenStopsUploading() throws Exception
 	{
 		server.enqueue(new MockResponse().setResponseCode(401).setBody("{\"code\":\"unauthorized\"}"));

@@ -232,6 +232,11 @@ final class InputUploader
 		limitUntilMs = 0;
 	}
 
+	synchronized void dropPending()
+	{
+		queue.removeIf(item -> !item.close);
+	}
+
 	synchronized int queued()
 	{
 		return queue.size();
@@ -282,7 +287,7 @@ final class InputUploader
 			}
 			if (item == null)
 			{
-				if (state == State.UPLOADING || state == State.RETRYING)
+				if (state == State.UPLOADING || state == State.RETRYING || state == State.LINK_REMOVED && isLinked())
 				{
 					state = State.IDLE;
 				}

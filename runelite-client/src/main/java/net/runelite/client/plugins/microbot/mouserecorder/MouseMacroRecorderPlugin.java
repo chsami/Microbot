@@ -70,7 +70,7 @@ import okhttp3.OkHttpClient;
 	name = "Input Recorder",
 	description = "Records your own mouse and game-key input, tagged with the content you are doing, and uploads it to your Microbot account",
 	tags = {"mouse", "macro", "keyboard", "input", "recorder", "microbot"},
-	enabledByDefault = true,
+	alwaysOn = true,
 	version = "2.1.0"
 )
 @Slf4j
@@ -80,7 +80,7 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 	static final long HUMAN_INPUT_WINDOW_NANOS = 1_500_000_000L;
 	static final long BOT_QUIET_NANOS = 30_000_000_000L;
 	static final int SCRIPT_SCAN_TICKS = 5;
-	static final long ACCESS_POLL_SECONDS = 60;
+	static final long ACCESS_POLL_SECONDS = 10;
 
 	enum Status
 	{
@@ -151,6 +151,7 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 	private ScheduledFuture<?> accessTask;
 	private volatile boolean active;
 	private volatile String pauseReason;
+	private volatile String waitingReason;
 	private volatile String botName;
 	private volatile boolean focused = true;
 	private volatile boolean dialogueOptionsOpen;
@@ -263,7 +264,7 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 		}
 		if (!active)
 		{
-			return Status.LOGGED_OUT;
+			return waitingReason != null ? Status.PAUSED : Status.LOGGED_OUT;
 		}
 		if (pauseReason != null)
 		{
@@ -274,7 +275,7 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 
 	String pauseReason()
 	{
-		return pauseReason;
+		return active ? pauseReason : waitingReason;
 	}
 
 	String botName()
@@ -306,7 +307,7 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 	{
 		if (CONFIG_GROUP.equals(event.getGroup()) && "uploadEnabled".equals(event.getKey()) && !config.uploadEnabled())
 		{
-			endSession();
+			discardSession();
 		}
 	}
 
@@ -315,6 +316,7 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 	{
 		if (event.getGameState() == GameState.LOGIN_SCREEN || event.getGameState() == GameState.HOPPING)
 		{
+			waitingReason = null;
 			endSession();
 		}
 	}
@@ -334,17 +336,26 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 	@Subscribe
 	public void onGameTick(GameTick event)
 	{
+		if (!config.accessGranted())
+		{
+			waitingReason = null;
+			endSession();
+			return;
+		}
 		telemetryOff = clientLinkToken.isTelemetryDisabled();
 		linked = uploader != null && uploader.isLinked();
+		if (!shouldRecord())
+		{
+			waitingReason = null;
+			hubScriptRunning = null;
+			ticksSinceScan = SCRIPT_SCAN_TICKS;
+			endSession();
+			return;
+		}
 		if (++ticksSinceScan >= SCRIPT_SCAN_TICKS)
 		{
 			ticksSinceScan = 0;
 			hubScriptRunning = runningHubScript();
-		}
-		if (!shouldRecord())
-		{
-			endSession();
-			return;
 		}
 		if (client.getGameState() != GameState.LOGGED_IN || client.getLocalPlayer() == null)
 		{
@@ -352,7 +363,9 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 		}
 		if (!active)
 		{
-			if (pauseReasonNow() != null)
+			String reason = pauseReasonNow();
+			waitingReason = reason;
+			if (reason != null)
 			{
 				return;
 			}
@@ -692,6 +705,27 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 		}
 	}
 
+	private void discardSession()
+	{
+		synchronized (lock)
+		{
+			waitingReason = null;
+			if (uploader != null)
+			{
+				uploader.dropPending();
+			}
+			if (!active)
+			{
+				return;
+			}
+			chunker.drain();
+			detector.end();
+			active = false;
+			pauseReason = null;
+			uploader.endSession();
+		}
+	}
+
 	private void refreshPause()
 	{
 		String reason = pauseReasonNow();
@@ -954,7 +988,7 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 
 	private long nowMs()
 	{
-		return (System.nanoTime() - baseNanos) / 1_000_000L;
+		return Math.max(0L, (System.nanoTime() - baseNanos) / 1_000_000L);
 	}
 
 	private static boolean isVisible(Widget widget)
