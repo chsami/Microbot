@@ -12,7 +12,7 @@ import static net.runelite.client.plugins.microbot.util.antiban.ui.UiHelper.setu
 
 public class MousePanel extends JPanel
 {
-    private final JCheckBox useNaturalMouse = new JCheckBox("Use Natural Mouse");
+    private final JCheckBox useNaturalMouse = new JCheckBox("Aim Clicks From Cursor");
     private final JCheckBox simulateMistakes = new JCheckBox("Simulate Mistakes");
     private final JCheckBox moveMouseOffScreen = new JCheckBox("Move Mouse Off Screen");
     private final JSlider moveMouseOffScreenChance = new JSlider(0, 100, (int) (Rs2AntibanSettings.moveMouseOffScreenChance * 100));
@@ -27,7 +27,9 @@ public class MousePanel extends JPanel
 
     public MousePanel()
     {
-        useNaturalMouse.setToolTipText("Simulate human-like mouse movements");
+        useNaturalMouse.setToolTipText("<html>On (recommended): clicks are aimed from where the cursor is now, and scripts can hover their next target.<br>"
+                + "Off: clicks are aimed from the last click spot, and scripts do not hover their next target.<br>"
+                + "Script antiban templates do not change this setting. Human-like mouse movement is always on and cannot be turned off.</html>");
         simulateMistakes.setToolTipText("Simulate mistakes in mouse movements");
         moveMouseOffScreen.setToolTipText("Move the mouse off screen if activity cooldown is active");
         moveMouseOffScreenChance.setToolTipText("Chance to move the mouse off screen when activity cooldown is active");
@@ -51,7 +53,6 @@ public class MousePanel extends JPanel
         gbc.gridx = 0;
         gbc.gridy = GridBagConstraints.RELATIVE;
 
-        // Add the "Use Natural Mouse" checkbox
         add(useNaturalMouse, gbc);
 
         // Add a gap

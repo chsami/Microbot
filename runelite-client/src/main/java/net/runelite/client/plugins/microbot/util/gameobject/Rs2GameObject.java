@@ -1842,7 +1842,7 @@ public class Rs2GameObject {
     public static boolean hoverOverObject(TileObject object) {
         if (!Rs2AntibanSettings.naturalMouse) {
             if (Rs2AntibanSettings.devDebug)
-                Microbot.log("Natural mouse is not enabled, can't hover");
+                Microbot.log("Hover skipped: 'Aim Clicks From Cursor' is off in Antiban > Mouse");
             return false;
         }
         Rectangle clickbox = Rs2UiHelper.getObjectClickbox(object);

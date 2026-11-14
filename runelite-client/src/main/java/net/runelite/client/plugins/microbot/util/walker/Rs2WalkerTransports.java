@@ -29,6 +29,7 @@ import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.api.tileobject.Rs2ObjectIds;
 import net.runelite.client.plugins.microbot.api.tileobject.models.Rs2TileObjectModel;
+import net.runelite.client.plugins.microbot.util.input.InputArbiter;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
@@ -90,6 +91,7 @@ import net.runelite.client.ui.overlay.worldmap.WorldMapPoint;
 import net.runelite.client.ui.overlay.worldmap.WorldMapPointManager;
 import javax.inject.Named;
 import java.awt.*;
+import java.time.Instant;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -147,6 +149,15 @@ final class Rs2WalkerTransports {
         WorldPoint pl = Rs2Player.getWorldLocation();
         return pl != null && pl.getPlane() == dest.getPlane()
                 && pl.distanceTo2D(dest) <= maxInclusiveChebyshev;
+    }
+
+    static boolean isTeleportAlreadyLanded(WorldPoint player, WorldPoint destination, WorldPoint lastHandledDestination) {
+        if (player == null || destination == null || player.getPlane() != destination.getPlane()) {
+            return false;
+        }
+        int distance = player.distanceTo2D(destination);
+        return distance < TELEPORT_NEAR_SKIP_CHEBYSHEV
+                || (distance < OFFSET && destination.equals(lastHandledDestination));
     }
 
     private static void waitForSamePlaneTransportStart(Transport transport, WorldPoint before) {
@@ -213,9 +224,19 @@ final class Rs2WalkerTransports {
         if (verdict == TransportDispatchTrace.Verdict.HANDLED) {
             transportRefusalLedger.clear(origin, destination);
         } else if (verdict == TransportDispatchTrace.Verdict.REFUSED_AFTER_INTERACTION) {
-            struckOut = registerTransportRefusal(origin, destination, "interaction-refused");
+            struckOut = registerTransportRefusal(transport, origin, destination, "interaction-refused");
+        } else if (isTeleportItemHandlerFailure(transport, verdict, trace)) {
+            struckOut = registerTransportFallThrough(transport, origin, destination, trace.reason());
         }
         return new DispatchResult(handled, verdict, trace, struckOut);
+    }
+
+    static boolean isTeleportItemHandlerFailure(Transport transport, TransportDispatchTrace.Verdict verdict,
+                                                TransportDispatchTrace trace) {
+        return transport != null && trace != null
+                && transport.getType() == TransportType.TELEPORTATION_ITEM
+                && verdict == TransportDispatchTrace.Verdict.REFUSED_WITHOUT_INTERACTION
+                && trace.refusal() == TransportDispatchTrace.Refusal.HANDLER_FAILED;
     }
 
     static boolean dispatchRecoveryTransport(List<WorldPoint> path, int index) {
@@ -232,7 +253,10 @@ final class Rs2WalkerTransports {
             return false;
         }
         Transport transport = selection.get().getLocalExecutionTransport();
-        return registerTransportFallThrough(refusalOrigin(transport, path, selection.get()),
+        if (isTeleportItemHandlerFailure(transport, result.verdict, result.trace)) {
+            return false;
+        }
+        return registerTransportFallThrough(transport, refusalOrigin(transport, path, selection.get()),
                 transport.getDestination(), result.trace.reason());
     }
 
@@ -360,7 +384,8 @@ final class Rs2WalkerTransports {
                     }
                 }
                 if (TransportType.isTeleport(transport.getType(), transport.getOrigin())) {
-                    if (isPlayerWithinChebyshevOf(transport.getDestination(), TELEPORT_NEAR_SKIP_CHEBYSHEV)) {
+                    if (isTeleportAlreadyLanded(plOriginLoop, transport.getDestination(),
+                            routeState.lastTransportDestinationLocation)) {
                         log.debug("[Walker] skip {}: already near destination", transport.getDisplayInfo());
                         noteDeliberateSkip(TransportDispatchTrace.DeliberateSkip.ALREADY_AT_DESTINATION);
                         continue;
@@ -801,10 +826,15 @@ final class Rs2WalkerTransports {
                     }
 
                     if (transport.getType() == TransportType.TELEPORTATION_SPELL) {
+                        Instant animationBeforeCast = Rs2Player.lastAnimationTime;
                         if (attemptObserved(transport, () -> handleTeleportSpell(transport))) {
                             boolean landed;
-                            if (isLumbridgeHomeTeleport(transport)) {
-                                landed = sleepUntilTrue(() -> isPlayerWithinChebyshevOf(transport.getDestination(), OFFSET), 600, 35000);
+                            if (isHomeTeleport(transport)) {
+                                landed = settleHomeTeleport(transport, awaitHomeTeleportLanding(
+                                        () -> animationStartedAfter(animationBeforeCast, Rs2Player.lastAnimationTime),
+                                        () -> isPlayerWithinChebyshevOf(transport.getDestination(), OFFSET),
+                                        () -> Thread.currentThread().isInterrupted() || InputArbiter.isHuman(),
+                                        HOME_TELEPORT_CAST_START_TIMEOUT_MS, HOME_TELEPORT_LANDING_TIMEOUT_MS));
                             } else {
                                 sleepUntil(() -> !Rs2Player.isAnimating());
                                 landed = sleepUntilTrue(() -> isPlayerWithinChebyshevOf(transport.getDestination(), OFFSET),
@@ -1003,7 +1033,8 @@ final class Rs2WalkerTransports {
         return transportRefusalLedger.strikes(origin, destination);
     }
 
-    static boolean registerTransportRefusal(WorldPoint origin, WorldPoint destination, String mode) {
+    static boolean registerTransportRefusal(Transport transport, WorldPoint origin, WorldPoint destination,
+                                            String mode) {
         if (origin == null || destination == null) {
             return false;
         }
@@ -1014,11 +1045,12 @@ final class Rs2WalkerTransports {
                     strikes, TransportRefusalLedger.STRIKE_LIMIT);
             return false;
         }
-        strikeOutTransport(origin, destination, mode, TransportRefusalLedger.STRIKE_LIMIT);
+        strikeOutTransport(transport, origin, destination, mode, TransportRefusalLedger.STRIKE_LIMIT);
         return true;
     }
 
-    static boolean registerTransportFallThrough(WorldPoint origin, WorldPoint destination, String reason) {
+    static boolean registerTransportFallThrough(Transport transport, WorldPoint origin, WorldPoint destination,
+                                                String reason) {
         if (origin == null || destination == null) {
             return false;
         }
@@ -1029,7 +1061,7 @@ final class Rs2WalkerTransports {
                     fallThroughs, TransportRefusalLedger.FALL_THROUGH_STRIKE_LIMIT);
             return false;
         }
-        strikeOutTransport(origin, destination, "fall-through " + reason,
+        strikeOutTransport(transport, origin, destination, "fall-through " + reason,
                 TransportRefusalLedger.FALL_THROUGH_STRIKE_LIMIT);
         return true;
     }
@@ -1038,20 +1070,37 @@ final class Rs2WalkerTransports {
         return transportRefusalLedger.fallThroughs(origin, destination);
     }
 
-    private static void strikeOutTransport(WorldPoint origin, WorldPoint destination, String mode, int limit) {
+    private static void strikeOutTransport(Transport transport, WorldPoint origin, WorldPoint destination,
+                                           String mode, int limit) {
         if (Rs2PathApi.learnBlockedEdge(origin, destination, "transport-refused (" + mode + ")")) {
             transportRefusalLedger.recordWalkScopedBlock(origin, destination);
         }
         WebWalkLog.spInfo("transport_strike_out | origin={} dest={} mode={} — {} refusals; "
                         + "blocking transport for this walk and replanning",
                 compactWorldPoint(origin), compactWorldPoint(destination), mode, limit);
+        String teleport = originlessTeleportName(transport);
+        if (teleport != null && Rs2PathApi.blockTeleportForWalk(teleport, "failed " + limit + " times")) {
+            WebWalkLog.spInfo("teleport_failed | {} teleport failed {} times (out of charges, refused by the game "
+                            + "or option not found); not using it again on this walk, taking another route",
+                    teleport, limit);
+            Microbot.status = teleport + " failed, taking another route";
+        }
         recalculatePath();
+    }
+
+    static String originlessTeleportName(Transport transport) {
+        if (transport == null || transport.getOrigin() != null || transport.getDisplayInfo() == null) {
+            return null;
+        }
+        String name = transport.getDisplayInfo().trim();
+        return name.isEmpty() ? null : name;
     }
 
     static void withdrawWalkScopedTransportBlocks() {
         for (WorldPoint[] edge : transportRefusalLedger.drainWalkScopedBlocks()) {
             Rs2PathApi.unlearnBlockedEdge(edge[0], edge[1], "walk-scoped transport strike-out expired");
         }
+        Rs2PathApi.clearWalkBlockedTeleports();
     }
 
     private static boolean waitForPostHandleObjectLanding(Transport transport,
@@ -2212,9 +2261,53 @@ final class Rs2WalkerTransports {
                 && sleepUntil(() -> Rs2Equipment.isWearing(itemId), 3000);
     }
 
-    private static boolean isLumbridgeHomeTeleport(Transport transport) {
-        return transport.getDisplayInfo() != null
-                && transport.getDisplayInfo().toLowerCase().startsWith("lumbridge home teleport");
+    static boolean isHomeTeleport(Transport transport) {
+        return transport != null
+                && TransportExecutionRegistry.homeTeleportFor(transport.getDisplayInfo()).isPresent();
+    }
+
+    static final int HOME_TELEPORT_CAST_START_TIMEOUT_MS = 3000;
+    static final int HOME_TELEPORT_LANDING_TIMEOUT_MS = 35000;
+
+    enum HomeTeleportOutcome {
+        LANDED,
+        CAST_NOT_STARTED,
+        LANDING_TIMED_OUT,
+        WAIT_ABORTED
+    }
+
+    static boolean animationStartedAfter(Instant beforeCast, Instant lastAnimation) {
+        return lastAnimation != null && (beforeCast == null || lastAnimation.isAfter(beforeCast));
+    }
+
+    static HomeTeleportOutcome awaitHomeTeleportLanding(BooleanSupplier castStarted, BooleanSupplier landed,
+                                                        BooleanSupplier waitAborted,
+                                                        int castStartTimeoutMs, int landingTimeoutMs) {
+        if (!sleepUntilTrue(() -> castStarted.getAsBoolean() || landed.getAsBoolean(),
+                TRANSPORT_LANDING_WAIT_POLL_MS, castStartTimeoutMs)) {
+            return waitAborted.getAsBoolean() ? HomeTeleportOutcome.WAIT_ABORTED : HomeTeleportOutcome.CAST_NOT_STARTED;
+        }
+        if (sleepUntilTrue(landed, 600, landingTimeoutMs)) {
+            return HomeTeleportOutcome.LANDED;
+        }
+        return waitAborted.getAsBoolean() ? HomeTeleportOutcome.WAIT_ABORTED : HomeTeleportOutcome.LANDING_TIMED_OUT;
+    }
+
+    static boolean settleHomeTeleport(Transport transport, HomeTeleportOutcome outcome) {
+        String spell = transport.getDisplayInfo().trim();
+        if (outcome == HomeTeleportOutcome.CAST_NOT_STARTED) {
+            WebWalkLog.spInfo("home_teleport_refused | {} did not start within {}ms (refused by the game or on cooldown); "
+                            + "not casting it again on this walk, taking another route",
+                    spell, HOME_TELEPORT_CAST_START_TIMEOUT_MS);
+            Microbot.status = spell + " refused, taking another route";
+            if (Rs2PathApi.blockTeleportForWalk(spell, "cast refused")) {
+                recalculatePath();
+            }
+        } else if (outcome == HomeTeleportOutcome.LANDING_TIMED_OUT) {
+            WebWalkLog.spInfo("home_teleport_timeout | {} did not land within {}ms",
+                    spell, HOME_TELEPORT_LANDING_TIMEOUT_MS);
+        }
+        return outcome == HomeTeleportOutcome.LANDED;
     }
 
     private static boolean handleTeleportItem(Transport transport) {
@@ -2335,6 +2428,10 @@ final class Rs2WalkerTransports {
                 if (!Rs2Equipment.invokeMenu(rs2Item, "teleport")) return false;
                 Rs2Dialogue.sleepUntilSelectAnOption();
                 Rs2Dialogue.clickOption(destination);
+            } else if (usesGenericWornTeleport(transport.getDisplayInfo(), rs2Item.getEquipmentActions(),
+                    rs2Item.getIndexOfSubAction(destination) != null, destination)) {
+                if (!Rs2Equipment.invokeMenu(rs2Item, WORN_GENERIC_TELEPORT_ACTION)) return false;
+                if (!Rs2Dialogue.sleepUntilSelectAnOption() || !Rs2Dialogue.clickOption(destination)) return false;
             } else {
                 if (!Rs2Equipment.invokeMenu(rs2Item, destination)) return false;
                 if (transport.getDisplayInfo().toLowerCase().contains("burning amulet")) {
@@ -2346,6 +2443,28 @@ final class Rs2WalkerTransports {
             return true;
         }
         return false;
+    }
+
+    private static final String WORN_GENERIC_TELEPORT_ACTION = "teleport";
+
+    static boolean usesGenericWornTeleport(String displayInfo, List<String> equipmentActions,
+                                           boolean hasDestinationSubAction, String destination) {
+        if (hasDestinationSubAction || equipmentActions == null || destination == null
+                || !isDialogueBasedTeleportItem(displayInfo)) {
+            return false;
+        }
+        boolean hasGenericAction = false;
+        for (String equipmentAction : equipmentActions) {
+            if (equipmentAction == null) continue;
+            String lowerAction = equipmentAction.toLowerCase(Locale.ROOT);
+            if (lowerAction.contains(destination)) {
+                return false;
+            }
+            if (lowerAction.contains(WORN_GENERIC_TELEPORT_ACTION)) {
+                hasGenericAction = true;
+            }
+        }
+        return hasGenericAction;
     }
 
     /**
@@ -2384,7 +2503,8 @@ final class Rs2WalkerTransports {
                 || lowerDisplayInfo.contains("combat bracelet")
                 || lowerDisplayInfo.contains("digsite pendant")
                 || lowerDisplayInfo.contains("necklace of passage")
-                || lowerDisplayInfo.contains("giantsoul amulet");
+                || lowerDisplayInfo.contains("giantsoul amulet")
+                || lowerDisplayInfo.contains("hunter cape");
     }
 
     /**
@@ -3085,6 +3205,10 @@ final class Rs2WalkerTransports {
         return sleepUntilTrue(() -> Rs2Player.getPoseAnimation() != flyingPoseAnimation, 600,60000);
     }
 
+    private static final int CHARTER_CONFIRM_PROMPT_WAIT_MS = 5000;
+    private static final int CHARTER_CONFIRM_ANSWER_WAIT_MS = 6000;
+    private static final int CHARTER_CONFIRM_ANSWER_POLL_MS = 600;
+
     private static boolean handleCharterShip(Transport transport) {
         String npcName = transport.getName();
 
@@ -3098,11 +3222,11 @@ final class Rs2WalkerTransports {
             }
 
             Widget destinationWidget = findCharterDestinationWidget(transport.getDisplayInfo());
+            WorldPoint departure = Rs2Player.getWorldLocation();
             if (!invokeCharterDestinationWidget(destinationWidget, transport.getDisplayInfo())) {
                 return false;
             }
-            confirmCharterTravelIfPrompted();
-            return true;
+            return confirmCharterTravelIfPrompted(transport.getDisplayInfo(), departure);
         }
         return false;
     }
@@ -3234,10 +3358,89 @@ final class Rs2WalkerTransports {
                 .orElse(null);
     }
 
-    private static void confirmCharterTravelIfPrompted() {
-        if (sleepUntil(Rs2Dialogue::hasSelectAnOption, 2000)) {
-            Rs2Dialogue.clickOption("Yes", true);
+    private static boolean confirmCharterTravelIfPrompted(String destinationName, WorldPoint departure) {
+        sleepUntil(() -> Rs2Dialogue.hasSelectAnOption() || Rs2Dialogue.hasContinue()
+                || !Objects.equals(departure, Rs2Player.getWorldLocation()), CHARTER_CONFIRM_PROMPT_WAIT_MS);
+        if (!Rs2Dialogue.hasSelectAnOption()) {
+            return true;
         }
+        AtomicBoolean fallbackLogged = new AtomicBoolean();
+        if (sleepUntilTrue(() -> answerCharterConfirmPrompt(fallbackLogged),
+                CHARTER_CONFIRM_ANSWER_POLL_MS, CHARTER_CONFIRM_ANSWER_WAIT_MS)) {
+            return true;
+        }
+        List<String> optionTexts = charterPromptOptionTexts();
+        if (optionTexts.isEmpty() && !Rs2Dialogue.hasSelectAnOption()) {
+            return true;
+        }
+        WebWalkLog.spWarn("Charter ship to {}: could not confirm the fare prompt (options: {}). "
+                        + "Confirm it manually, or check you have enough coins for the fare.",
+                destinationName, charterOptionSummary(optionTexts));
+        return false;
+    }
+
+    private static List<String> charterPromptOptionTexts() {
+        return Rs2Dialogue.getDialogueOptions().stream()
+                .map(Widget::getText)
+                .collect(Collectors.toList());
+    }
+
+    private static boolean answerCharterConfirmPrompt(AtomicBoolean fallbackLogged) {
+        if (!Rs2Dialogue.hasSelectAnOption()) {
+            return true;
+        }
+        if (Rs2Dialogue.isOptionSelectionPending()) {
+            return false;
+        }
+        List<String> optionTexts = charterPromptOptionTexts();
+        int optionIndex = charterConfirmOptionIndex(optionTexts);
+        if (optionIndex > 0) {
+            String chosen = optionTexts.get(optionIndex - 1);
+            if (!isCharterAffirmativeOption(chosen) && fallbackLogged.compareAndSet(false, true)) {
+                WebWalkLog.spInfo("Charter ship: no Yes/Okay option found, choosing \"{}\"",
+                        charterOptionSummary(Collections.singletonList(chosen)));
+            }
+            Rs2Dialogue.keyPressForDialogueOption(optionIndex);
+        }
+        return false;
+    }
+
+    static boolean isCharterAffirmativeOption(String optionText) {
+        String option = normalizeCharterWidgetText(optionText);
+        return option.startsWith("yes") || option.startsWith("ok");
+    }
+
+    static String charterOptionSummary(List<String> optionTexts) {
+        if (optionTexts == null) {
+            return "none";
+        }
+        String summary = optionTexts.stream()
+                .filter(Objects::nonNull)
+                .map(text -> Rs2UiHelper.stripTagsToSpace(text).trim().replaceAll("\\s+", " "))
+                .filter(text -> !text.isEmpty())
+                .collect(Collectors.joining(" / "));
+        return summary.isEmpty() ? "none" : summary;
+    }
+
+    static int charterConfirmOptionIndex(List<String> optionTexts) {
+        if (optionTexts == null) {
+            return -1;
+        }
+        int fallbackIndex = -1;
+        for (int i = 0; i < optionTexts.size(); i++) {
+            String option = normalizeCharterWidgetText(optionTexts.get(i));
+            if (option.isEmpty()) {
+                continue;
+            }
+            if (isCharterAffirmativeOption(option)) {
+                return i + 1;
+            }
+            if (fallbackIndex < 0 && !option.startsWith("no") && !option.startsWith("cancel")
+                    && !option.startsWith("choose")) {
+                fallbackIndex = i + 1;
+            }
+        }
+        return fallbackIndex;
     }
 
     private static boolean isMinecartMenuVisible() {

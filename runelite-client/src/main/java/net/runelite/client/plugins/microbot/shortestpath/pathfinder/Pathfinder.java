@@ -772,6 +772,9 @@ public class Pathfinder implements Runnable {
 
                 final int nodePos = node.packedPosition;
                 if (nodePos == goalPacked) {
+                    if (meetF[0] != null && meetB[0] != null && bestMeetingCost[0] < node.cost) {
+                        break;
+                    }
                     joinedPathEdges = PathEdge.fromForwardChain(node);
                     joinedPath = node.getPath();
                     selectedPathCost = node.cost;
@@ -809,6 +812,9 @@ public class Pathfinder implements Runnable {
                 }
 
                 if (node.packedPosition == start) {
+                    if (meetF[0] != null && meetB[0] != null && bestMeetingCost[0] < node.cost) {
+                        break;
+                    }
                     joinedPath = combineBidirectionalPath(forwardAt.get(start), node);
                     selectedPathCost = node.cost;
                     bestLastNode = null;

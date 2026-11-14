@@ -542,6 +542,24 @@ public class LivePluginManagerTest {
     }
 
     @Test
+    public void folderWatchingTheUserTurnedOnSurvivesARestart() throws Exception {
+        manager.setWatching(true);
+        verify(config).setConfiguration("microbotPluginManager", "watchFolder", true);
+
+        success(manager.shutdown());
+        verify(config, never()).setConfiguration("microbotPluginManager", "watchFolder", false);
+
+        when(config.getConfiguration("microbotPluginManager", "watchFolder")).thenReturn("true");
+        manager = newManager(false);
+        assertFalse(manager.isWatching());
+        manager.loadAtStartup();
+        assertTrue(manager.isWatching());
+
+        manager.setWatching(false);
+        verify(config).setConfiguration("microbotPluginManager", "watchFolder", false);
+    }
+
+    @Test
     public void safeModeBlocksInstallStartupScanAndFolderWatching() throws Exception {
         success(manager.shutdown());
         manager = newManager(true);
@@ -723,6 +741,8 @@ public class LivePluginManagerTest {
         assertTrue(manager.getInstalledPlugins().isEmpty());
         assertFalse(manager.getWatchStatus().isEmpty());
         assertTrue(registered.isEmpty());
+        // A watch that stopped on a bad JAR stays off at the next start, matching the unticked box.
+        verify(config).setConfiguration("microbotPluginManager", "watchFolder", false);
         manager.setWatching(false);
         assertEquals("", manager.getWatchStatus());
     }

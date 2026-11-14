@@ -158,6 +158,8 @@ public class Rs2Inventory {
      * @return True if the combine operation was successful, false otherwise.
      */
     public static boolean combine(Rs2ItemModel primary, Rs2ItemModel secondary) {
+        if (primary == null || secondary == null) return false;
+
         // Get the primary item
         Rs2ItemModel primaryItem = get(item -> item.getId() == primary.getId());
         if (primaryItem == null) {
@@ -2331,7 +2333,7 @@ public class Rs2Inventory {
         if (item == null) return false;
         if (!Rs2AntibanSettings.naturalMouse) {
             if(Rs2AntibanSettings.devDebug)
-                Microbot.log("Natural mouse is not enabled, can't hover");
+                Microbot.log("Hover skipped: 'Aim Clicks From Cursor' is off in Antiban > Mouse");
             return false;
         }
         Rectangle bounds = itemBounds(item);

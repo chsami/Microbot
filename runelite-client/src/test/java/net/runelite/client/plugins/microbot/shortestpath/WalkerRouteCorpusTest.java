@@ -988,4 +988,37 @@ public class WalkerRouteCorpusTest {
         assertFalse("a mound dig alone must not claim deterministic access to the randomized tunnel",
                 arrives(attempted, tunnelChest, 2));
     }
+
+    private static final WorldPoint GRAND_EXCHANGE = new WorldPoint(3166, 3487, 0);
+    private static final WorldPoint KALPHITE_LAIR = new WorldPoint(3307, 9528, 0);
+    private static final WorldPoint OFF_MAP = new WorldPoint(1, 1, 0);
+
+    private static boolean isNetworkTransport(Transport transport) {
+        return transport.getType() == TransportType.FAIRY_RING
+                || transport.getType() == TransportType.SPIRIT_TREE
+                || transport.getType() == TransportType.GNOME_GLIDER;
+    }
+
+    @Test
+    public void grandExchangeToKalphiteLairTakesTheFairyRingAtForwardSearchCost() {
+        PathfinderConfig config = configWith(transport -> unrestricted(transport) || isNetworkTransport(transport));
+
+        Pathfinder forwardOnly = new Pathfinder(config, GRAND_EXCHANGE,
+                new HashSet<>(Arrays.asList(KALPHITE_LAIR, OFF_MAP)));
+        forwardOnly.run();
+        assertTrue("forward search must reach the lair",
+                arrives(forwardOnly.getPath(), KALPHITE_LAIR, 0));
+
+        Pathfinder surfaceToUnderground = runPathfinder(config, GRAND_EXCHANGE, KALPHITE_LAIR);
+        List<WorldPoint> path = surfaceToUnderground.getPath();
+
+        assertTrue("surface to underground route must reach the lair", arrives(path, KALPHITE_LAIR, 0));
+        assertTrue("surface to underground route must take the fairy ring beside the Grand Exchange: " + path,
+                usesTransportType(path, TransportType.FAIRY_RING));
+        assertFalse("surface to underground route must not detour through the Lumbridge castle cellar",
+                visits(path, new WorldPoint(3219, 9618, 0), 5));
+        assertTrue("surface to underground route cost " + surfaceToUnderground.getSelectedPathCost()
+                        + " must not exceed the forward search cost " + forwardOnly.getSelectedPathCost(),
+                surfaceToUnderground.getSelectedPathCost() <= forwardOnly.getSelectedPathCost());
+    }
 }

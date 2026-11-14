@@ -123,8 +123,9 @@ public class Rs2TileObjectModelClickRecoveryTest {
     }
 
     @Test
-    public void doesNotClickWhenTheRecoveryWalkFails() {
+    public void doesNotClickWhenTheRecoveryWalkFailsAwayFromTheObject() {
         Microbot.cantReachTarget = true;
+        when(player.getLocalLocation()).thenReturn(scene(49, 50));
         walker.when(() -> Rs2Walker.walkTo(eq(DOOR), eq(2))).thenReturn(false);
 
         assertFalse(new Rs2TileObjectModel(object).click("Open"));
@@ -132,6 +133,50 @@ public class Rs2TileObjectModelClickRecoveryTest {
         microbot.verify(() -> Microbot.doInvoke(any(NewMenuEntry.class), any(Rectangle.class)), never());
         assertTrue(Microbot.cantReachTarget);
         assertEquals(1, Microbot.cantReachTargetRetries);
+    }
+
+    @Test
+    public void clicksWhenTheRecoveryWalkEndsWithinRangeOfTheObject() {
+        Microbot.cantReachTarget = true;
+        walker.when(() -> Rs2Walker.walkTo(eq(DOOR), eq(2))).thenReturn(false);
+        boolean savedPause = Microbot.pauseAllScripts.get();
+        try {
+            assertTrue(new Rs2TileObjectModel(object).click("Open"));
+
+            walker.verify(() -> Rs2Walker.walkTo(eq(DOOR), eq(2)), times(1));
+            microbot.verify(() -> Microbot.doInvoke(any(NewMenuEntry.class), any(Rectangle.class)), times(1));
+            microbot.verify(() -> Microbot.showMessage(any(String.class)), never());
+            assertFalse(Microbot.cantReachTarget);
+            assertEquals(1, Microbot.cantReachTargetRetries);
+            assertEquals(savedPause, Microbot.pauseAllScripts.get());
+        } finally {
+            Microbot.pauseAllScripts.set(savedPause);
+        }
+    }
+
+    @Test
+    public void pausesOnlyAfterTheGameKeepsRefusingClicksBesideTheObject() {
+        walker.when(() -> Rs2Walker.walkTo(eq(DOOR), eq(2))).thenReturn(false);
+        boolean savedPause = Microbot.pauseAllScripts.get();
+        try {
+            Microbot.pauseAllScripts.set(false);
+            int sent = 0;
+            boolean clicked = true;
+            while (clicked && sent < 10) {
+                Microbot.cantReachTarget = true;
+                clicked = new Rs2TileObjectModel(object).click("Open");
+                if (clicked) {
+                    sent++;
+                }
+            }
+
+            assertFalse(clicked);
+            assertTrue(sent >= 3 && sent <= 5);
+            assertTrue(Microbot.pauseAllScripts.get());
+            microbot.verify(() -> Microbot.showMessage(any(String.class)), times(1));
+        } finally {
+            Microbot.pauseAllScripts.set(savedPause);
+        }
     }
 
     @Test
