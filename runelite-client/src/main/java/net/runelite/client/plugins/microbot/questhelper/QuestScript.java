@@ -96,6 +96,11 @@ public class QuestScript extends Script {
 
     private final MultiNpcTargetTracker multiNpcTarget = new MultiNpcTargetTracker();
 
+    static final String RELOCATION_WAIT_STATUS = "Quest helper: the game moved you, waiting up to "
+            + DialogueRelocationGuard.MAX_HOLD_MS / 1000
+            + " seconds in case a cutscene is playing, then continuing";
+    private final DialogueRelocationGuard dialogueRelocation = new DialogueRelocationGuard();
+
     private final AtomicReference<Thread> iterationThread = new AtomicReference<>();
 
     /**
@@ -148,6 +153,9 @@ public class QuestScript extends Script {
 
                 if (Rs2Dialogue.isInDialogue() && dialogueStartedStep == null)
                     dialogueStartedStep = questStep;
+
+                if (Rs2Dialogue.isInDialogue())
+                    noteDialogueAt(Rs2Player.getWorldLocation(), System.currentTimeMillis());
 
                 if (questStep != null && Rs2Widget.isWidgetVisible(ComponentID.DIALOG_OPTION_OPTIONS)) {
                     var dialogOptions = Rs2Widget.getWidget(ComponentID.DIALOG_OPTION_OPTIONS);
@@ -291,6 +299,10 @@ public class QuestScript extends Script {
                         return;
                     }
 
+                    if (holdForDialogueRelocation(Rs2Player.getWorldLocation(), stepWorldPoint(questStep), System.currentTimeMillis())) {
+                        return;
+                    }
+
 					if (questStep instanceof DetailedQuestStep && handleRequirements((DetailedQuestStep) questStep)) {
 						sleep(500, 1000);
 						return;
@@ -411,6 +423,33 @@ public class QuestScript extends Script {
         return now - optionSelectionPendingSince < OPTION_SELECTION_PENDING_LIMIT_MS;
     }
 
+    void noteDialogueAt(WorldPoint position, long now) {
+        dialogueRelocation.noteDialogue(position, now);
+    }
+
+    boolean holdForDialogueRelocation(WorldPoint position, WorldPoint target, long now) {
+        if (dialogueRelocation.shouldHold(position, target, now)) {
+            Microbot.status = RELOCATION_WAIT_STATUS;
+            return true;
+        }
+        clearRelocationWaitStatus();
+        return false;
+    }
+
+    private void clearRelocationWaitStatus() {
+        if (RELOCATION_WAIT_STATUS.equals(Microbot.status)) {
+            Microbot.status = OPTION_CONTINUING_STATUS;
+        }
+    }
+
+    static WorldPoint stepWorldPoint(QuestStep step) {
+        if (!(step instanceof DetailedQuestStep)) {
+            return null;
+        }
+        var definedPoint = ((DetailedQuestStep) step).getDefinedPoint();
+        return definedPoint == null ? null : definedPoint.getWorldPoint();
+    }
+
     void runTracked(Runnable iteration) {
         Thread current = Thread.currentThread();
         iterationThread.set(current);
@@ -441,6 +480,8 @@ public class QuestScript extends Script {
         }
         ScriptHeartbeatRegistry.remove(getClass().getName());
         multiNpcTarget.release();
+        dialogueRelocation.reset();
+        clearRelocationWaitStatus();
         unhandledOptionStep = null;
         resetUnhandledOptionDismissals();
         reset();
