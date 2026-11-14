@@ -31,12 +31,14 @@ public class Rs2AntibanActionCooldownTest {
 		Rs2AntibanSettings.usePlayStyle = true;
 		Rs2AntibanSettings.actionCooldownChance = 1.0;
 		Rs2Antiban.setTIMEOUT(0);
+		Rs2Antiban.cooldownPausedScripts = false;
 	}
 
 	@After
 	public void tearDown() {
 		Rs2Antiban.resetAntibanSettings(true);
 		Rs2Antiban.setTIMEOUT(0);
+		Rs2Antiban.cooldownPausedScripts = false;
 	}
 
 	@Test
@@ -214,6 +216,68 @@ public class Rs2AntibanActionCooldownTest {
 
 			assertTrue(Rs2AntibanSettings.actionCooldownActive);
 			assertTrue(Microbot.pauseAllScripts.get());
+		} finally {
+			Microbot.pauseAllScripts.set(false);
+		}
+	}
+
+	@Test
+	public void externalPauseSurvivesPendingUniversalCooldownInCombat() {
+		Rs2AntibanSettings.universalAntiban = true;
+
+		try (MockedStatic<Microbot> microbot = mockStatic(Microbot.class);
+			 MockedStatic<Rs2Combat> combat = mockStatic(Rs2Combat.class)) {
+			Microbot.pauseAllScripts.set(false);
+			microbot.when(Microbot::isLoggedIn).thenReturn(true);
+			combat.when(Rs2Combat::inCombat).thenReturn(true);
+			Rs2Antiban.setActivity(Activity.GENERAL_SLAYER);
+
+			Rs2Antiban.actionCooldown();
+			assertTrue(Rs2AntibanSettings.actionCooldownActive);
+			assertFalse(Microbot.pauseAllScripts.get());
+
+			Microbot.pauseAllScripts.set(true);
+			for (int i = 0; i < 10; i++) {
+				AntibanPlugin.performActionBreak();
+				assertTrue(Microbot.pauseAllScripts.get());
+			}
+
+			combat.when(Rs2Combat::inCombat).thenReturn(false);
+			int ticks = Rs2Antiban.getTIMEOUT();
+			for (int i = 0; i <= ticks; i++) {
+				AntibanPlugin.performActionBreak();
+				assertTrue(Microbot.pauseAllScripts.get());
+			}
+			assertFalse(Rs2AntibanSettings.actionCooldownActive);
+			assertTrue(Microbot.pauseAllScripts.get());
+		} finally {
+			Microbot.pauseAllScripts.set(false);
+		}
+	}
+
+	@Test
+	public void cooldownStartedOutOfCombatIsReleasedWhenActivityTurnsToCombat() {
+		Rs2AntibanSettings.universalAntiban = true;
+
+		try (MockedStatic<Microbot> microbot = mockStatic(Microbot.class);
+			 MockedStatic<Rs2Combat> combat = mockStatic(Rs2Combat.class)) {
+			Microbot.pauseAllScripts.set(false);
+			microbot.when(Microbot::isLoggedIn).thenReturn(true);
+			combat.when(Rs2Combat::inCombat).thenReturn(true);
+			Rs2Antiban.setActivity(Activity.GENERAL_SMITHING);
+
+			Rs2Antiban.actionCooldown();
+			assertTrue(Rs2AntibanSettings.actionCooldownActive);
+			assertTrue(Microbot.pauseAllScripts.get());
+			int ticks = Rs2Antiban.getTIMEOUT();
+
+			Rs2Antiban.setActivity(Activity.GENERAL_SLAYER);
+			for (int i = 0; i < 50; i++) {
+				AntibanPlugin.performActionBreak();
+				assertFalse(Microbot.pauseAllScripts.get());
+			}
+			assertEquals(ticks, Rs2Antiban.getTIMEOUT());
+			assertTrue(Rs2AntibanSettings.actionCooldownActive);
 		} finally {
 			Microbot.pauseAllScripts.set(false);
 		}

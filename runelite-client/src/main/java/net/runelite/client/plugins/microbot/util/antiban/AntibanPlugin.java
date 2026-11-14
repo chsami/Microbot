@@ -152,15 +152,15 @@ public class AntibanPlugin extends Plugin {
             if (Rs2Antiban.getTIMEOUT() > 0) {
                 if (!Rs2Antiban.isCategoryBusy()) {
                     if (Rs2AntibanSettings.universalAntiban)
-                        Microbot.pauseAllScripts.compareAndSet(false, true);
+                        Rs2Antiban.pauseScriptsForCooldown();
                     Rs2Antiban.TIMEOUT--;
                 } else if (Rs2AntibanSettings.universalAntiban && !Rs2AntibanSettings.microBreakActive && Rs2Antiban.isCombatCategory()) {
-                    Microbot.pauseAllScripts.compareAndSet(true, false);
+                    Rs2Antiban.releaseCooldownPause();
                 }
             } else {
                 Rs2AntibanSettings.actionCooldownActive = false;
                 if (Rs2AntibanSettings.universalAntiban && !Rs2AntibanSettings.microBreakActive)
-					Microbot.pauseAllScripts.compareAndSet(true, false);
+                    Rs2Antiban.releaseCooldownPause();
             }
         }
     }
@@ -336,6 +336,7 @@ public class AntibanPlugin extends Plugin {
      */
     private void clearPauseFlags() {
         PluginPauseEvent.setPaused(false);
+        Rs2Antiban.cooldownPausedScripts = false;
         Microbot.pauseAllScripts.compareAndSet(true, false);
     }
 
