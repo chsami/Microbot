@@ -224,9 +224,19 @@ final class Rs2WalkerTransports {
         if (verdict == TransportDispatchTrace.Verdict.HANDLED) {
             transportRefusalLedger.clear(origin, destination);
         } else if (verdict == TransportDispatchTrace.Verdict.REFUSED_AFTER_INTERACTION) {
-            struckOut = registerTransportRefusal(origin, destination, "interaction-refused");
+            struckOut = registerTransportRefusal(transport, origin, destination, "interaction-refused");
+        } else if (isTeleportItemHandlerFailure(transport, verdict, trace)) {
+            struckOut = registerTransportFallThrough(transport, origin, destination, trace.reason());
         }
         return new DispatchResult(handled, verdict, trace, struckOut);
+    }
+
+    static boolean isTeleportItemHandlerFailure(Transport transport, TransportDispatchTrace.Verdict verdict,
+                                                TransportDispatchTrace trace) {
+        return transport != null && trace != null
+                && transport.getType() == TransportType.TELEPORTATION_ITEM
+                && verdict == TransportDispatchTrace.Verdict.REFUSED_WITHOUT_INTERACTION
+                && trace.refusal() == TransportDispatchTrace.Refusal.HANDLER_FAILED;
     }
 
     static boolean dispatchRecoveryTransport(List<WorldPoint> path, int index) {
@@ -243,7 +253,10 @@ final class Rs2WalkerTransports {
             return false;
         }
         Transport transport = selection.get().getLocalExecutionTransport();
-        return registerTransportFallThrough(refusalOrigin(transport, path, selection.get()),
+        if (isTeleportItemHandlerFailure(transport, result.verdict, result.trace)) {
+            return false;
+        }
+        return registerTransportFallThrough(transport, refusalOrigin(transport, path, selection.get()),
                 transport.getDestination(), result.trace.reason());
     }
 
@@ -1020,7 +1033,8 @@ final class Rs2WalkerTransports {
         return transportRefusalLedger.strikes(origin, destination);
     }
 
-    static boolean registerTransportRefusal(WorldPoint origin, WorldPoint destination, String mode) {
+    static boolean registerTransportRefusal(Transport transport, WorldPoint origin, WorldPoint destination,
+                                            String mode) {
         if (origin == null || destination == null) {
             return false;
         }
@@ -1031,11 +1045,12 @@ final class Rs2WalkerTransports {
                     strikes, TransportRefusalLedger.STRIKE_LIMIT);
             return false;
         }
-        strikeOutTransport(origin, destination, mode, TransportRefusalLedger.STRIKE_LIMIT);
+        strikeOutTransport(transport, origin, destination, mode, TransportRefusalLedger.STRIKE_LIMIT);
         return true;
     }
 
-    static boolean registerTransportFallThrough(WorldPoint origin, WorldPoint destination, String reason) {
+    static boolean registerTransportFallThrough(Transport transport, WorldPoint origin, WorldPoint destination,
+                                                String reason) {
         if (origin == null || destination == null) {
             return false;
         }
@@ -1046,7 +1061,7 @@ final class Rs2WalkerTransports {
                     fallThroughs, TransportRefusalLedger.FALL_THROUGH_STRIKE_LIMIT);
             return false;
         }
-        strikeOutTransport(origin, destination, "fall-through " + reason,
+        strikeOutTransport(transport, origin, destination, "fall-through " + reason,
                 TransportRefusalLedger.FALL_THROUGH_STRIKE_LIMIT);
         return true;
     }
@@ -1055,14 +1070,30 @@ final class Rs2WalkerTransports {
         return transportRefusalLedger.fallThroughs(origin, destination);
     }
 
-    private static void strikeOutTransport(WorldPoint origin, WorldPoint destination, String mode, int limit) {
+    private static void strikeOutTransport(Transport transport, WorldPoint origin, WorldPoint destination,
+                                           String mode, int limit) {
         if (Rs2PathApi.learnBlockedEdge(origin, destination, "transport-refused (" + mode + ")")) {
             transportRefusalLedger.recordWalkScopedBlock(origin, destination);
         }
         WebWalkLog.spInfo("transport_strike_out | origin={} dest={} mode={} — {} refusals; "
                         + "blocking transport for this walk and replanning",
                 compactWorldPoint(origin), compactWorldPoint(destination), mode, limit);
+        String teleport = originlessTeleportName(transport);
+        if (teleport != null && Rs2PathApi.blockTeleportForWalk(teleport, "failed " + limit + " times")) {
+            WebWalkLog.spInfo("teleport_failed | {} teleport failed {} times (out of charges, refused by the game "
+                            + "or option not found); not using it again on this walk, taking another route",
+                    teleport, limit);
+            Microbot.status = teleport + " failed, taking another route";
+        }
         recalculatePath();
+    }
+
+    static String originlessTeleportName(Transport transport) {
+        if (transport == null || transport.getOrigin() != null || transport.getDisplayInfo() == null) {
+            return null;
+        }
+        String name = transport.getDisplayInfo().trim();
+        return name.isEmpty() ? null : name;
     }
 
     static void withdrawWalkScopedTransportBlocks() {
@@ -2397,6 +2428,10 @@ final class Rs2WalkerTransports {
                 if (!Rs2Equipment.invokeMenu(rs2Item, "teleport")) return false;
                 Rs2Dialogue.sleepUntilSelectAnOption();
                 Rs2Dialogue.clickOption(destination);
+            } else if (usesGenericWornTeleport(transport.getDisplayInfo(), rs2Item.getEquipmentActions(),
+                    rs2Item.getIndexOfSubAction(destination) != null, destination)) {
+                if (!Rs2Equipment.invokeMenu(rs2Item, WORN_GENERIC_TELEPORT_ACTION)) return false;
+                if (!Rs2Dialogue.sleepUntilSelectAnOption() || !Rs2Dialogue.clickOption(destination)) return false;
             } else {
                 if (!Rs2Equipment.invokeMenu(rs2Item, destination)) return false;
                 if (transport.getDisplayInfo().toLowerCase().contains("burning amulet")) {
@@ -2408,6 +2443,28 @@ final class Rs2WalkerTransports {
             return true;
         }
         return false;
+    }
+
+    private static final String WORN_GENERIC_TELEPORT_ACTION = "teleport";
+
+    static boolean usesGenericWornTeleport(String displayInfo, List<String> equipmentActions,
+                                           boolean hasDestinationSubAction, String destination) {
+        if (hasDestinationSubAction || equipmentActions == null || destination == null
+                || !isDialogueBasedTeleportItem(displayInfo)) {
+            return false;
+        }
+        boolean hasGenericAction = false;
+        for (String equipmentAction : equipmentActions) {
+            if (equipmentAction == null) continue;
+            String lowerAction = equipmentAction.toLowerCase(Locale.ROOT);
+            if (lowerAction.contains(destination)) {
+                return false;
+            }
+            if (lowerAction.contains(WORN_GENERIC_TELEPORT_ACTION)) {
+                hasGenericAction = true;
+            }
+        }
+        return hasGenericAction;
     }
 
     /**
@@ -2446,7 +2503,8 @@ final class Rs2WalkerTransports {
                 || lowerDisplayInfo.contains("combat bracelet")
                 || lowerDisplayInfo.contains("digsite pendant")
                 || lowerDisplayInfo.contains("necklace of passage")
-                || lowerDisplayInfo.contains("giantsoul amulet");
+                || lowerDisplayInfo.contains("giantsoul amulet")
+                || lowerDisplayInfo.contains("hunter cape");
     }
 
     /**

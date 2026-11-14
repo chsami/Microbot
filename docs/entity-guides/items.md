@@ -326,6 +326,16 @@ After sending Destroy, `Rs2Inventory` waits for the confirm dialog (`584:0`) and
 
 **Defensive check:** Run `Rs2InventoryCombineTest`.
 
+## 22. A worn teleport item may only expose a generic Teleport op
+
+Walker teleport rows name the destination after the colon (`Hunter cape: Feldip Hills`), but not every worn item has that destination as an equipment op or sub-op. The Hunter cape only has `Teleport`, which opens a destination choice. `Rs2Equipment.invokeMenu` logs an error and returns false for an op the item does not have.
+
+**Why this matters:** the walker asked the worn Hunter cape for `feldip hills` on every attempt, the teleport never fired, and the failed handler was never struck out, so the same route was retried in a loop.
+
+A teleport item works from any tile, so a strike-out keyed on the route-step tile alone lets the same teleport be picked again after the replan moves the player. A struck-out teleport without a catalog origin is also blocked by name for the rest of the walk (`Rs2PathApi.blockTeleportForWalk`), and the player is told once through `Microbot.status`.
+
+**Defensive check:** Run `Rs2WalkerUnitTest` and `TransportRefusalExecutorTest`. A new multi-destination item belongs in `isDialogueBasedTeleportItem`.
+
 ## Terminal supply stops need observed logout
 
 An owning script can set `withMissingSupplyHandler` on its Inventory Setup loader to keep its scheduled loop alive while `TerminalLogoutPrompt` closes the bank and requests logout. Do not show a blocking shortage notification or cancel that loop until `LOGGED_OUT` is observed. The default loader policy stays unchanged when no handler is supplied; ordinary breaks and world hops do not arm terminal Auto Login suppression.

@@ -61,6 +61,30 @@ public class Rs2WalkerUnitTest {
     }
 
     @Test
+    public void wornHunterCapeWithoutADestinationActionUsesTheGenericTeleportAction() {
+        assertTrue(Rs2WalkerTransports.usesGenericWornTeleport("Hunter cape: Feldip Hills",
+                Arrays.asList("Teleport", null), false, "feldip hills"));
+        assertTrue(Rs2WalkerTransports.usesGenericWornTeleport("Hunter cape: Black chinchompa",
+                Arrays.asList("Teleport"), false, "black chinchompa"));
+    }
+
+    @Test
+    public void wornTeleportItemsWithADestinationActionKeepTheDirectAction() {
+        assertFalse(Rs2WalkerTransports.usesGenericWornTeleport("Hunter cape: Feldip Hills",
+                Arrays.asList("Teleport", "Feldip Hills"), false, "feldip hills"));
+        assertFalse(Rs2WalkerTransports.usesGenericWornTeleport("Hunter cape: Feldip Hills",
+                Arrays.asList("Teleport"), true, "feldip hills"));
+        assertFalse(Rs2WalkerTransports.usesGenericWornTeleport("Amulet of glory: Edgeville",
+                Arrays.asList("Edgeville", "Karamja"), false, "edgeville"));
+        assertFalse(Rs2WalkerTransports.usesGenericWornTeleport("Hunter cape: Feldip Hills",
+                Arrays.asList("Check"), false, "feldip hills"));
+        assertFalse(Rs2WalkerTransports.usesGenericWornTeleport("Fishing cape: Fishing Guild",
+                Arrays.asList("Teleport"), false, "fishing guild"));
+        assertFalse(Rs2WalkerTransports.usesGenericWornTeleport("Hunter cape: Feldip Hills",
+                null, false, "feldip hills"));
+    }
+
+    @Test
     public void teleportWildernessLimitIsInclusiveWithoutOffByOne() {
         assertTrue(Rs2WalkerTransports.isTeleportAllowedAtWildernessLevel(20, 20));
         assertFalse(Rs2WalkerTransports.isTeleportAllowedAtWildernessLevel(21, 20));

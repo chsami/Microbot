@@ -11,8 +11,11 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.TransportType;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.PathfinderConfig;
+import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.leaguetransport.Rs2LeaguesTransport;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+import net.runelite.client.plugins.microbot.util.player.Rs2Pvp;
 import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
 import net.runelite.client.plugins.microbot.util.walker.door.Rs2DoorDetection;
 import net.runelite.client.plugins.microbot.util.walker.transport.TransportDispatchTrace;
@@ -58,10 +61,13 @@ public class TransportRefusalExecutorTest
 	private boolean originReachable;
 	private int travelClicks;
 	private Rs2PathApi.ActiveTransportSelection selection;
+	private Transport cape;
+	private String statusBefore;
 
 	@Before
 	public void setUp()
 	{
+		statusBefore = Microbot.status;
 		playerLocation = ORIGIN;
 		spiritTreeTravelEnabled = true;
 		originReachable = true;
@@ -77,6 +83,7 @@ public class TransportRefusalExecutorTest
 			statics.get(i).close();
 		}
 		statics.clear();
+		Microbot.status = statusBefore;
 	}
 
 	@Test
@@ -176,6 +183,65 @@ public class TransportRefusalExecutorTest
 		assertEquals(TransportDispatchTrace.Verdict.DELIBERATE_SKIP, dispatch().verdict);
 	}
 
+	@Test
+	public void teleportItemHandlerFailureIsStruckOutByNormalDispatch() throws Exception
+	{
+		installFailingTeleportItem();
+
+		for (int pass = 1; pass < TransportRefusalLedger.FALL_THROUGH_STRIKE_LIMIT; pass++)
+		{
+			Rs2WalkerTransports.DispatchResult result = dispatch();
+			assertFalse(result.handled);
+			assertEquals(TransportDispatchTrace.Verdict.REFUSED_WITHOUT_INTERACTION, result.verdict);
+			assertEquals(TransportDispatchTrace.Refusal.HANDLER_FAILED, result.trace.refusal());
+			assertFalse("pass " + pass + " must not strike out yet", result.struckOut);
+			assertEquals(pass, Rs2WalkerTransports.transportFallThroughs(ORIGIN, DESTINATION));
+		}
+		assertTrue(learnedEdges.isEmpty());
+
+		assertFalse(config.isWalkBlockedTeleport(cape));
+
+		assertTrue("repeated handler failure strikes the teleport out", dispatch().struckOut);
+		assertEquals(List.of(edge(ORIGIN, DESTINATION)), learnedEdges);
+		assertTrue("the teleport is blocked by name, from every tile", config.isWalkBlockedTeleport(cape));
+		assertEquals("Hunter cape: Feldip Hills failed, taking another route", Microbot.status);
+
+		Rs2WalkerTransports.withdrawWalkScopedTransportBlocks();
+		assertFalse("the block ends with the walk", config.isWalkBlockedTeleport(cape));
+	}
+
+	@Test
+	public void onlyOriginlessTeleportsAreBlockedByName()
+	{
+		Transport door = new Transport(ORIGIN, DESTINATION, "Zanaris shed",
+			TransportType.TRANSPORT, true, "Open", "Door", 2406, 1);
+		Transport teleport = new Transport(DESTINATION, " Hunter cape: Feldip Hills ",
+			TransportType.TELEPORTATION_ITEM, true, 20, Set.of(Set.of(9949)));
+
+		assertEquals("Hunter cape: Feldip Hills", Rs2WalkerTransports.originlessTeleportName(teleport));
+		assertEquals(null, Rs2WalkerTransports.originlessTeleportName(door));
+		assertEquals(null, Rs2WalkerTransports.originlessTeleportName(null));
+	}
+
+	@Test
+	public void recoveryDoesNotCountATeleportItemHandlerFailureTwice() throws Exception
+	{
+		installFailingTeleportItem();
+
+		assertFalse(Rs2WalkerTransports.dispatchRecoveryTransport(List.of(ORIGIN, DESTINATION), 0));
+		assertEquals(1, Rs2WalkerTransports.transportFallThroughs(ORIGIN, DESTINATION));
+	}
+
+	private void installFailingTeleportItem() throws Exception
+	{
+		cape = new Transport(DESTINATION, "Hunter cape: Feldip Hills",
+			TransportType.TELEPORTATION_ITEM, true, 20, Set.of(Set.of(9949)));
+		install(cape);
+		open(Rs2Pvp.class);
+		open(Rs2Equipment.class);
+		open(Rs2Inventory.class);
+	}
+
 	private Rs2WalkerTransports.DispatchResult dispatch()
 	{
 		return Rs2WalkerTransports.dispatchSelectedTransport(List.of(ORIGIN, DESTINATION), 0, selection, false);
@@ -260,6 +326,12 @@ public class TransportRefusalExecutorTest
 		});
 		pathApi.when(() -> Rs2PathApi.unlearnBlockedEdge(any(), any(), anyString())).thenAnswer(inv ->
 			config.unlearnBlockedEdge(inv.getArgument(0), inv.getArgument(1), inv.getArgument(2)));
+		pathApi.when(() -> Rs2PathApi.blockTeleportForWalk(anyString(), anyString())).thenAnswer(inv ->
+			config.blockTeleportForWalk(inv.getArgument(0), inv.getArgument(1)));
+		pathApi.when(Rs2PathApi::clearWalkBlockedTeleports).thenAnswer(inv -> {
+			config.clearWalkBlockedTeleports();
+			return null;
+		});
 
 		open(Rs2LeaguesTransport.class);
 		open(Rs2Widget.class);
