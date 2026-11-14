@@ -65,7 +65,7 @@ import okhttp3.OkHttpClient;
 	name = "Input Recorder",
 	description = "Records your own mouse and game-key input, tagged with the content you are doing, and uploads it to your Microbot account",
 	tags = {"mouse", "macro", "keyboard", "input", "recorder", "microbot"},
-	version = "2.0.0"
+	version = "2.0.1"
 )
 @Slf4j
 public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, MouseWheelListener, KeyListener
@@ -676,7 +676,10 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 			long now = nowMs();
 			if (reason != null)
 			{
-				endContent(now);
+				if ("script".equals(reason))
+				{
+					endContent(now);
+				}
 				JsonObject pause = event("pause", now);
 				pause.addProperty("why", reason);
 				chunker.add(pause, now);
