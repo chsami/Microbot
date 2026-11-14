@@ -25,6 +25,7 @@ public class Rs2PlayerStateCacheTest
 {
 	private static final int VARP_ID = 100;
 	private static final int VARBIT_ID = 200;
+	private static final int UNKNOWN_VARBIT_ID = 16971;
 	private static final int VARP_COUNT = 5996;
 
 	private Client client;
@@ -75,6 +76,51 @@ public class Rs2PlayerStateCacheTest
 		assertEquals(6, cache.getVarbitValue(VARBIT_ID));
 
 		verify(client, times(2)).getVarbitValue(VARBIT_ID);
+	}
+
+	@Test
+	public void unknownVarbitReturnsZeroWithoutCaching()
+	{
+		when(client.getGameState()).thenReturn(GameState.LOGGED_IN);
+		when(client.getVarbitValue(UNKNOWN_VARBIT_ID))
+			.thenThrow(new IndexOutOfBoundsException("Varbit 16971 does not exist"));
+
+		assertEquals(0, cache.getVarbitValue(UNKNOWN_VARBIT_ID));
+		assertEquals(0, cache.getVarbitValue(UNKNOWN_VARBIT_ID));
+
+		verify(client, times(2)).getVarbitValue(UNKNOWN_VARBIT_ID);
+	}
+
+	@Test
+	public void isValidVarbitIdRejectsUnknownAndNegativeIds()
+	{
+		when(client.getVarbitValue(UNKNOWN_VARBIT_ID))
+			.thenThrow(new IndexOutOfBoundsException("Varbit 16971 does not exist"));
+		when(client.getVarbitValue(VARBIT_ID)).thenReturn(0);
+
+		assertEquals(Optional.of(true), cache.isValidVarbitId(VARBIT_ID));
+		assertEquals(Optional.of(false), cache.isValidVarbitId(UNKNOWN_VARBIT_ID));
+		assertEquals(Optional.of(false), cache.isValidVarbitId(-1));
+		verify(client, never()).getVarbitValue(-1);
+	}
+
+	@Test
+	public void isValidVarbitIdAcceptsIdWhileVarbitTableIsUnloaded()
+	{
+		when(client.getVarbitValue(VARBIT_ID)).thenThrow(new NullPointerException());
+
+		assertEquals(Optional.of(true), cache.isValidVarbitId(VARBIT_ID));
+	}
+
+	@Test
+	public void isValidVarbitIdIsEmptyWhenClientThreadUnavailable()
+	{
+		ClientThread unavailable = mock(ClientThread.class);
+		when(unavailable.runOnClientThreadOptional(any())).thenReturn(Optional.empty());
+		Rs2PlayerStateCache stalled = new Rs2PlayerStateCache(eventBus, client, unavailable);
+
+		assertEquals(Optional.empty(), stalled.isValidVarbitId(VARBIT_ID));
+		assertEquals(Optional.of(false), stalled.isValidVarbitId(-1));
 	}
 
 	@Test

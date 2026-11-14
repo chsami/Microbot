@@ -199,7 +199,7 @@ public final class Rs2PlayerStateCache {
 			int value;
 			try {
 				value = client.getVarbitValue(varbitId);
-			} catch (NullPointerException e) {
+			} catch (NullPointerException | IndexOutOfBoundsException e) {
 				return 0;
 			}
 			// Only cache while logged in: before the initial varp sync completes the client
@@ -210,6 +210,22 @@ public final class Rs2PlayerStateCache {
 			}
 			return value;
 		}).orElse(0);
+	}
+
+	public Optional<Boolean> isValidVarbitId(int varbitId) {
+		if (varbitId < 0) {
+			return Optional.of(false);
+		}
+		return clientThread.runOnClientThreadOptional(() -> {
+			try {
+				client.getVarbitValue(varbitId);
+			} catch (IndexOutOfBoundsException e) {
+				return false;
+			} catch (NullPointerException e) {
+				return true;
+			}
+			return true;
+		});
 	}
 
 	/**

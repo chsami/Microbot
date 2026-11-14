@@ -136,6 +136,7 @@ public abstract class AgentHandler implements HttpHandler {
 							|| lower.contains("connection closed")
 							|| lower.contains("connection was aborted")
 							|| lower.contains("forcibly closed")
+							|| lower.contains("stream is closed")
 							|| lower.contains("insufficient bytes written")) {
 						return true;
 					}

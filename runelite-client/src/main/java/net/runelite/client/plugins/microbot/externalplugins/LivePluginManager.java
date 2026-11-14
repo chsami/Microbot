@@ -54,6 +54,7 @@ import net.runelite.client.plugins.microbot.Microbot;
 public class LivePluginManager {
     private static final String CONFIG_GROUP = "microbotPluginManager";
     private static final String PLUGIN_DIRECTORY_KEY = "pluginDirectory";
+    private static final String WATCH_FOLDER_KEY = "watchFolder";
     private final PluginManager plugins;
     private final ConfigManager config;
     private final EventBus events;
@@ -237,7 +238,7 @@ public class LivePluginManager {
         }
 
         boolean resumeWatching = watching;
-        setWatching(false);
+        applyWatching(false);
         try {
             unloadManagedPluginsKeepingFiles();
             pluginDirectory = next;
@@ -248,7 +249,7 @@ public class LivePluginManager {
             observed = Collections.emptyMap();
             OperationResult scanned = scan(false);
             if (resumeWatching) {
-                setWatching(true);
+                applyWatching(true);
             }
             return scanned.isSuccess()
                     ? OperationResult.success("Plugin folder changed. JAR files remain in their previous folders.")
@@ -265,7 +266,7 @@ public class LivePluginManager {
             observed = Collections.emptyMap();
             OperationResult restored = scan(false);
             if (resumeWatching) {
-                setWatching(true);
+                applyWatching(true);
             }
             if (!restored.isSuccess()) {
                 detail += "\nPrevious folder recovery also reported errors:\n" + restored.getMessage();
@@ -327,13 +328,25 @@ public class LivePluginManager {
         if (!result.success) {
             log.warn("Some local plugins could not be loaded: {}", result.message);
         }
+        if ("true".equals(config.getConfiguration(CONFIG_GROUP, WATCH_FOLDER_KEY))) {
+            applyWatching(true);
+        }
     }
 
     public boolean isWatching() {
         return watching;
     }
 
+    /** The user's choice: remembered in the profile and restored at the next start. */
     public synchronized void setWatching(boolean enabled) {
+        applyWatching(enabled);
+        if (!closed && !safeMode) {
+            config.setConfiguration(CONFIG_GROUP, WATCH_FOLDER_KEY, enabled);
+        }
+    }
+
+    // Internal stops (shutdown, a folder change) leave the saved choice alone. A failed watch saves "off" itself.
+    private synchronized void applyWatching(boolean enabled) {
         if (closed || safeMode) {
             watching = false;
             return;
@@ -352,7 +365,7 @@ public class LivePluginManager {
     }
 
     public synchronized CompletableFuture<OperationResult> shutdown() {
-        setWatching(false);
+        applyWatching(false);
         CompletableFuture<OperationResult> result = submit(() -> {
             List<String> errors = new ArrayList<>();
             Set<Installation> remaining = new HashSet<>(installed.values());
@@ -943,19 +956,30 @@ public class LivePluginManager {
                 if (!current.equals(expected)) {
                     OperationResult result = scan(false);
                     if (!result.success) {
-                        watching = false;
-                        watchStatus = watchStopped(result.message);
-                        log.warn("Plugin folder watch stopped: {}", result.message);
+                        watchFailed(result.message);
                     }
                     publish();
                 }
             }
             observed = current;
         } catch (Exception | LinkageError | AssertionError failure) {
-            watching = false;
-            watchStatus = watchStopped(message(failure));
-            log.warn("Plugin folder watch stopped: {}", message(failure));
+            watchFailed(message(failure));
             publish();
+        }
+    }
+
+    // The box unticks when the watch stops on a bad JAR, so save "off" too: the next start matches what the user saw.
+    private synchronized void watchFailed(String detail) {
+        if (closed) {
+            return; // shutdown() cancelled this scan mid-run; keep the saved choice for the next start
+        }
+        watching = false;
+        watchStatus = watchStopped(detail);
+        log.warn("Plugin folder watch stopped: {}", detail);
+        try {
+            config.setConfiguration(CONFIG_GROUP, WATCH_FOLDER_KEY, false);
+        } catch (RuntimeException saveFailure) {
+            log.warn("Could not save that folder watching stopped", saveFailure);
         }
     }
 

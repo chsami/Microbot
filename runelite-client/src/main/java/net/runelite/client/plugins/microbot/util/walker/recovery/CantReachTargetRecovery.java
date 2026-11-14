@@ -40,6 +40,11 @@ public final class CantReachTargetRecovery
 		return retries >= retryLimit;
 	}
 
+	public static boolean withinRange(int distanceToTarget, int range)
+	{
+		return distanceToTarget >= 0 && distanceToTarget <= range;
+	}
+
 	public static int retries()
 	{
 		return retries(System.currentTimeMillis());

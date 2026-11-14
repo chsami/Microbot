@@ -82,7 +82,6 @@ public class AntibanSetupTemplates {
         Rs2AntibanSettings.profileSwitching = true;
         Rs2AntibanSettings.timeOfDayAdjust = false;
         Rs2AntibanSettings.simulateMistakes = false;
-        Rs2AntibanSettings.naturalMouse = true;
         Rs2AntibanSettings.contextualVariability = true;
         Rs2AntibanSettings.dynamicIntensity = false;
         Rs2AntibanSettings.dynamicActivity = false;
@@ -116,7 +115,6 @@ public class AntibanSetupTemplates {
         Rs2AntibanSettings.profileSwitching = true;
         Rs2AntibanSettings.timeOfDayAdjust = false;
         Rs2AntibanSettings.simulateMistakes = false;
-        Rs2AntibanSettings.naturalMouse = true;
         Rs2AntibanSettings.contextualVariability = true;
         Rs2AntibanSettings.dynamicIntensity = false;
         Rs2AntibanSettings.dynamicActivity = false;
@@ -150,7 +148,6 @@ public class AntibanSetupTemplates {
         Rs2AntibanSettings.profileSwitching = true;
         Rs2AntibanSettings.timeOfDayAdjust = false;
         Rs2AntibanSettings.simulateMistakes = false;
-        Rs2AntibanSettings.naturalMouse = true;
         Rs2AntibanSettings.contextualVariability = true;
         Rs2AntibanSettings.dynamicIntensity = false;
         Rs2AntibanSettings.dynamicActivity = false;
@@ -185,7 +182,6 @@ public class AntibanSetupTemplates {
         Rs2AntibanSettings.profileSwitching = true;
         Rs2AntibanSettings.timeOfDayAdjust = false;
         Rs2AntibanSettings.simulateMistakes = false;
-        Rs2AntibanSettings.naturalMouse = true;
         Rs2AntibanSettings.contextualVariability = true;
         Rs2AntibanSettings.dynamicIntensity = false;
         Rs2AntibanSettings.dynamicActivity = false;
@@ -219,7 +215,6 @@ public class AntibanSetupTemplates {
         Rs2AntibanSettings.profileSwitching = true;
         Rs2AntibanSettings.timeOfDayAdjust = false;
         Rs2AntibanSettings.simulateMistakes = false;
-        Rs2AntibanSettings.naturalMouse = true;
         Rs2AntibanSettings.contextualVariability = true;
         Rs2AntibanSettings.dynamicIntensity = false;
         Rs2AntibanSettings.dynamicActivity = false;
@@ -253,7 +248,6 @@ public class AntibanSetupTemplates {
         Rs2AntibanSettings.profileSwitching = true;
         Rs2AntibanSettings.timeOfDayAdjust = false;
         Rs2AntibanSettings.simulateMistakes = false;
-        Rs2AntibanSettings.naturalMouse = true;
         Rs2AntibanSettings.contextualVariability = true;
         Rs2AntibanSettings.dynamicIntensity = false;
         Rs2AntibanSettings.dynamicActivity = false;
@@ -287,7 +281,6 @@ public class AntibanSetupTemplates {
         Rs2AntibanSettings.profileSwitching = true;
         Rs2AntibanSettings.timeOfDayAdjust = false;
         Rs2AntibanSettings.simulateMistakes = false;
-        Rs2AntibanSettings.naturalMouse = true;
         Rs2AntibanSettings.contextualVariability = true;
         Rs2AntibanSettings.dynamicIntensity = false;
         Rs2AntibanSettings.dynamicActivity = false;
@@ -321,7 +314,6 @@ public class AntibanSetupTemplates {
         Rs2AntibanSettings.profileSwitching = true;
         Rs2AntibanSettings.timeOfDayAdjust = false;
         Rs2AntibanSettings.simulateMistakes = false;
-        Rs2AntibanSettings.naturalMouse = true;
         Rs2AntibanSettings.contextualVariability = true;
         Rs2AntibanSettings.dynamicIntensity = false;
         Rs2AntibanSettings.dynamicActivity = false;
@@ -362,7 +354,6 @@ public class AntibanSetupTemplates {
         Rs2AntibanSettings.profileSwitching = true;
         Rs2AntibanSettings.timeOfDayAdjust = false;
         Rs2AntibanSettings.simulateMistakes = false;
-        Rs2AntibanSettings.naturalMouse = true;
         Rs2AntibanSettings.contextualVariability = true;
         Rs2AntibanSettings.dynamicIntensity = false;
         Rs2AntibanSettings.dynamicActivity = false;
@@ -396,7 +387,6 @@ public class AntibanSetupTemplates {
         Rs2AntibanSettings.profileSwitching = true;
         Rs2AntibanSettings.timeOfDayAdjust = false;
         Rs2AntibanSettings.simulateMistakes = true;
-        Rs2AntibanSettings.naturalMouse = true;
         Rs2AntibanSettings.contextualVariability = false;
         Rs2AntibanSettings.dynamicIntensity = false;
         Rs2AntibanSettings.dynamicActivity = false;
@@ -430,7 +420,6 @@ public class AntibanSetupTemplates {
         Rs2AntibanSettings.profileSwitching = true;
         Rs2AntibanSettings.timeOfDayAdjust = false;
         Rs2AntibanSettings.simulateMistakes = false;
-        Rs2AntibanSettings.naturalMouse = true;
         Rs2AntibanSettings.contextualVariability = true;
         Rs2AntibanSettings.dynamicIntensity = false;
         Rs2AntibanSettings.dynamicActivity = false;
@@ -464,7 +453,6 @@ public class AntibanSetupTemplates {
         Rs2AntibanSettings.profileSwitching = true;
         Rs2AntibanSettings.timeOfDayAdjust = false;
         Rs2AntibanSettings.simulateMistakes = false;
-        Rs2AntibanSettings.naturalMouse = true;
         Rs2AntibanSettings.contextualVariability = true;
         Rs2AntibanSettings.dynamicIntensity = false;
         Rs2AntibanSettings.dynamicActivity = false;
@@ -498,7 +486,6 @@ public class AntibanSetupTemplates {
         Rs2AntibanSettings.profileSwitching = true;
         Rs2AntibanSettings.timeOfDayAdjust = false;
         Rs2AntibanSettings.simulateMistakes = false;
-        Rs2AntibanSettings.naturalMouse = true;
         Rs2AntibanSettings.contextualVariability = true;
         Rs2AntibanSettings.dynamicIntensity = false;
         Rs2AntibanSettings.dynamicActivity = false;
@@ -532,7 +519,6 @@ public class AntibanSetupTemplates {
         Rs2AntibanSettings.profileSwitching = true;
         Rs2AntibanSettings.timeOfDayAdjust = false;
         Rs2AntibanSettings.simulateMistakes = false;
-        Rs2AntibanSettings.naturalMouse = true;
         Rs2AntibanSettings.contextualVariability = true;
         Rs2AntibanSettings.dynamicIntensity = false;
         Rs2AntibanSettings.dynamicActivity = false;
@@ -566,7 +552,6 @@ public class AntibanSetupTemplates {
         Rs2AntibanSettings.profileSwitching = true;
         Rs2AntibanSettings.timeOfDayAdjust = false;
         Rs2AntibanSettings.simulateMistakes = false;
-        Rs2AntibanSettings.naturalMouse = true;
         Rs2AntibanSettings.contextualVariability = true;
         Rs2AntibanSettings.dynamicIntensity = false;
         Rs2AntibanSettings.dynamicActivity = false;
@@ -600,7 +585,6 @@ public class AntibanSetupTemplates {
         Rs2AntibanSettings.profileSwitching = true;
         Rs2AntibanSettings.timeOfDayAdjust = false;
         Rs2AntibanSettings.simulateMistakes = false;
-        Rs2AntibanSettings.naturalMouse = true;
         Rs2AntibanSettings.contextualVariability = false;
         Rs2AntibanSettings.dynamicIntensity = false;
         Rs2AntibanSettings.dynamicActivity = false;
@@ -635,7 +619,6 @@ public class AntibanSetupTemplates {
         Rs2AntibanSettings.profileSwitching = false;
         Rs2AntibanSettings.timeOfDayAdjust = false;
         Rs2AntibanSettings.simulateMistakes = true;
-        Rs2AntibanSettings.naturalMouse = true;
         Rs2AntibanSettings.contextualVariability = false;
         Rs2AntibanSettings.dynamicIntensity = false;
         Rs2AntibanSettings.dynamicActivity = false;
@@ -668,7 +651,6 @@ public class AntibanSetupTemplates {
         Rs2AntibanSettings.profileSwitching = true;
         Rs2AntibanSettings.timeOfDayAdjust = false;
         Rs2AntibanSettings.simulateMistakes = true;
-        Rs2AntibanSettings.naturalMouse = true;
         Rs2AntibanSettings.contextualVariability = true;
         Rs2AntibanSettings.dynamicIntensity = true;
         Rs2AntibanSettings.dynamicActivity = true;
