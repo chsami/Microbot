@@ -3205,6 +3205,10 @@ final class Rs2WalkerTransports {
         return sleepUntilTrue(() -> Rs2Player.getPoseAnimation() != flyingPoseAnimation, 600,60000);
     }
 
+    private static final int CHARTER_CONFIRM_PROMPT_WAIT_MS = 5000;
+    private static final int CHARTER_CONFIRM_ANSWER_WAIT_MS = 6000;
+    private static final int CHARTER_CONFIRM_ANSWER_POLL_MS = 600;
+
     private static boolean handleCharterShip(Transport transport) {
         String npcName = transport.getName();
 
@@ -3221,8 +3225,7 @@ final class Rs2WalkerTransports {
             if (!invokeCharterDestinationWidget(destinationWidget, transport.getDisplayInfo())) {
                 return false;
             }
-            confirmCharterTravelIfPrompted();
-            return true;
+            return confirmCharterTravelIfPrompted();
         }
         return false;
     }
@@ -3354,10 +3357,50 @@ final class Rs2WalkerTransports {
                 .orElse(null);
     }
 
-    private static void confirmCharterTravelIfPrompted() {
-        if (sleepUntil(Rs2Dialogue::hasSelectAnOption, 2000)) {
-            Rs2Dialogue.clickOption("Yes", true);
+    private static boolean confirmCharterTravelIfPrompted() {
+        if (!sleepUntil(Rs2Dialogue::hasSelectAnOption, CHARTER_CONFIRM_PROMPT_WAIT_MS)) {
+            return !Rs2Dialogue.hasSelectAnOption();
         }
+        return sleepUntilTrue(Rs2WalkerTransports::answerCharterConfirmPrompt,
+                CHARTER_CONFIRM_ANSWER_POLL_MS, CHARTER_CONFIRM_ANSWER_WAIT_MS);
+    }
+
+    private static boolean answerCharterConfirmPrompt() {
+        if (!Rs2Dialogue.hasSelectAnOption()) {
+            return true;
+        }
+        if (Rs2Dialogue.isOptionSelectionPending()) {
+            return false;
+        }
+        List<String> optionTexts = Rs2Dialogue.getDialogueOptions().stream()
+                .map(Widget::getText)
+                .collect(Collectors.toList());
+        int optionIndex = charterConfirmOptionIndex(optionTexts);
+        if (optionIndex > 0) {
+            Rs2Dialogue.keyPressForDialogueOption(optionIndex);
+        }
+        return false;
+    }
+
+    static int charterConfirmOptionIndex(List<String> optionTexts) {
+        if (optionTexts == null) {
+            return -1;
+        }
+        int fallbackIndex = -1;
+        for (int i = 0; i < optionTexts.size(); i++) {
+            String option = normalizeCharterWidgetText(optionTexts.get(i));
+            if (option.isEmpty()) {
+                continue;
+            }
+            if (option.startsWith("yes") || option.startsWith("ok")) {
+                return i + 1;
+            }
+            if (fallbackIndex < 0 && !option.startsWith("no") && !option.startsWith("cancel")
+                    && !option.startsWith("choose")) {
+                fallbackIndex = i + 1;
+            }
+        }
+        return fallbackIndex;
     }
 
     private static boolean isMinecartMenuVisible() {
