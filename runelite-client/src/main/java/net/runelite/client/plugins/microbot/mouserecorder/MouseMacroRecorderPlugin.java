@@ -299,8 +299,16 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 			endSession();
 			return;
 		}
+		if (client.getGameState() != GameState.LOGGED_IN || client.getLocalPlayer() == null)
+		{
+			return;
+		}
 		if (!active)
 		{
+			if (pauseReasonNow() != null)
+			{
+				return;
+			}
 			beginSession();
 		}
 		long now = nowMs();
@@ -309,9 +317,12 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 			recordTick(now);
 		}
 		xpSkillThisTick = null;
-		if (chunker.isDue(now))
+		synchronized (lock)
 		{
-			uploader.submit(chunker.drain());
+			if (active && chunker.isDue(now))
+			{
+				uploader.submit(chunker.drain());
+			}
 		}
 	}
 
@@ -456,6 +467,10 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 	@Override
 	public MouseEvent mouseReleased(MouseEvent mouseEvent)
 	{
+		if (!BotEventGuard.isSynthetic())
+		{
+			lastRealInputNanos = System.nanoTime();
+		}
 		recordButton(mouseEvent, "up");
 		return mouseEvent;
 	}
@@ -579,14 +594,18 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 	private boolean shouldRecord()
 	{
 		return config.uploadEnabled() && !telemetryOff && linked
-			&& uploader.state() != InputUploader.State.DAILY_LIMIT && uploader.state() != InputUploader.State.LINK_REMOVED
-			&& client.getGameState() == GameState.LOGGED_IN && client.getLocalPlayer() != null;
+			&& uploader.state() != InputUploader.State.DAILY_LIMIT && uploader.state() != InputUploader.State.LINK_REMOVED;
 	}
 
 	private void beginSession()
 	{
 		synchronized (lock)
 		{
+			Optional<String> value = clientLinkToken.get();
+			if (active || !config.uploadEnabled() || value.isEmpty())
+			{
+				return;
+			}
 			baseNanos = System.nanoTime();
 			lastHover = null;
 			lastPos = null;
@@ -601,7 +620,7 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 			meta.addProperty("stretched", client.isStretchedEnabled());
 			meta.addProperty("os", System.getProperty("os.name", ""));
 			UUID clientSession = clientSessionManager.getMicrobotSessionId();
-			uploader.beginSession(new InputUploader.SessionInfo(Instant.now(), clientSession, clientVersion(), meta));
+			uploader.beginSession(new InputUploader.SessionInfo(Instant.now(), clientSession, clientVersion(), meta, value.get()));
 			active = true;
 		}
 	}

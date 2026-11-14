@@ -35,7 +35,7 @@ public class InputUploaderTest
 	public void setUp() throws IOException
 	{
 		server.start();
-		uploader = new InputUploader(new OkHttpClient(), new Gson(), () -> Optional.ofNullable(token.get()), rejected::set, server.url("/api").toString());
+		uploader = new InputUploader(new OkHttpClient(), new Gson(), this::currentToken, rejected::set, server.url("/api").toString());
 	}
 
 	@After
@@ -44,11 +44,17 @@ public class InputUploaderTest
 		server.shutdown();
 	}
 
-	private static InputUploader.SessionInfo info()
+	private Optional<String> currentToken()
+	{
+		String value = token.get();
+		return value == null || value.equals(rejected.get()) ? Optional.empty() : Optional.of(value);
+	}
+
+	private InputUploader.SessionInfo info()
 	{
 		JsonObject meta = new JsonObject();
 		meta.addProperty("canvasWidth", 765);
-		return new InputUploader.SessionInfo(Instant.parse("2026-11-14T12:00:00Z"), UUID.fromString("22222222-2222-2222-2222-222222222222"), "2.6.50", meta);
+		return new InputUploader.SessionInfo(Instant.parse("2026-11-14T12:00:00Z"), UUID.fromString("22222222-2222-2222-2222-222222222222"), "2.6.50", meta, token.get());
 	}
 
 	private static String gunzip(byte[] body) throws IOException
@@ -130,6 +136,7 @@ public class InputUploaderTest
 
 		uploader.beginSession(info());
 		uploader.submit("{\"t\":1,\"e\":\"mv\"}\n");
+		uploader.drain();
 		uploader.drain();
 		uploader.drain();
 
@@ -219,6 +226,19 @@ public class InputUploaderTest
 		uploader.drain();
 
 		assertEquals(3, server.getRequestCount());
+		assertEquals(0, uploader.queued());
+		assertEquals(1, uploader.dropped());
+	}
+
+	@Test
+	public void relinkingBeforeTheFirstUploadNeverSendsToTheNewAccount()
+	{
+		uploader.beginSession(info());
+		uploader.submit("{\"t\":1,\"e\":\"mv\"}\n");
+		token.set("mbc_" + "c".repeat(43));
+		uploader.drain();
+
+		assertEquals(0, server.getRequestCount());
 		assertEquals(0, uploader.queued());
 		assertEquals(1, uploader.dropped());
 	}

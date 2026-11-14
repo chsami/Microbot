@@ -54,13 +54,15 @@ final class InputUploader
 		final UUID clientSessionId;
 		final String clientVersion;
 		final JsonObject meta;
+		final String token;
 
-		SessionInfo(Instant startedAt, UUID clientSessionId, String clientVersion, JsonObject meta)
+		SessionInfo(Instant startedAt, UUID clientSessionId, String clientVersion, JsonObject meta, String token)
 		{
 			this.startedAt = startedAt;
 			this.clientSessionId = clientSessionId;
 			this.clientVersion = clientVersion;
 			this.meta = meta;
+			this.token = token;
 		}
 	}
 
@@ -75,6 +77,7 @@ final class InputUploader
 		Generation(SessionInfo info)
 		{
 			this.info = info;
+			this.token = info.token;
 		}
 	}
 
@@ -159,6 +162,7 @@ final class InputUploader
 	synchronized void beginSession(SessionInfo info)
 	{
 		current = new Generation(info);
+		dropped.set(0);
 	}
 
 	synchronized boolean hasSession()
@@ -302,7 +306,7 @@ final class InputUploader
 		Optional<String> value = token.get();
 		if (value.isEmpty())
 		{
-			state = State.NOT_LINKED;
+			state = rejectedToken != null ? State.LINK_REMOVED : State.NOT_LINKED;
 			return null;
 		}
 		if (value.get().equals(rejectedToken))
