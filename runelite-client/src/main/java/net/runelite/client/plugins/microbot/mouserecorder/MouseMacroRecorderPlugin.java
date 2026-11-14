@@ -1,56 +1,81 @@
 package net.runelite.client.plugins.microbot.mouserecorder;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import com.google.inject.Provides;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseWheelEvent;
+import java.time.Instant;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+import javax.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.Actor;
 import net.runelite.api.Client;
-import net.runelite.api.KeyCode;
-import net.runelite.api.Point;
+import net.runelite.api.GameState;
+import net.runelite.api.MenuEntry;
+import net.runelite.api.NPC;
+import net.runelite.api.Player;
+import net.runelite.api.Skill;
+import net.runelite.api.coords.LocalPoint;
+import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.events.AnimationChanged;
+import net.runelite.api.events.ClientTick;
+import net.runelite.api.events.FocusChanged;
+import net.runelite.api.events.GameStateChanged;
+import net.runelite.api.events.GameTick;
+import net.runelite.api.events.MenuOpened;
 import net.runelite.api.events.MenuOptionClicked;
-import net.runelite.client.RuneLite;
+import net.runelite.api.events.StatChanged;
+import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.gameval.VarClientID;
+import net.runelite.api.widgets.Widget;
+import net.runelite.client.ClientSessionManager;
+import net.runelite.client.RuneLiteProperties;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
+import net.runelite.client.input.KeyListener;
+import net.runelite.client.input.KeyManager;
 import net.runelite.client.input.MouseListener;
 import net.runelite.client.input.MouseManager;
 import net.runelite.client.input.MouseWheelListener;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.plugins.PluginManager;
+import net.runelite.client.plugins.microbot.Script;
+import net.runelite.client.plugins.microbot.alerts.ClientAlertReporter;
+import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.alerts.ClientLinkToken;
+import net.runelite.client.plugins.microbot.util.mouse.BotEventGuard;
 import net.runelite.client.ui.overlay.OverlayManager;
-
-import javax.inject.Inject;
-import java.awt.Desktop;
-import java.awt.event.InputEvent;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseWheelEvent;
-import java.util.ArrayList;
-import java.util.List;
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
-import java.util.UUID;
-import java.awt.Dimension;
-import java.awt.Toolkit;
+import okhttp3.OkHttpClient;
 
 @PluginDescriptor(
 	name = "Mouse Macro Recorder",
-	description = "Record mouse movements and clicked menu entries",
-	tags = {"mouse", "macro", "recorder", "microbot"}
+	description = "Records your own mouse and game-key input, tagged with the content you are doing, and uploads it to your Microbot account",
+	tags = {"mouse", "keyboard", "input", "recorder", "microbot"}
 )
 @Slf4j
-public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, MouseWheelListener
+public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, MouseWheelListener, KeyListener
 {
-	private static final Gson GSON = new Gson();
-	public static final String CONFIG_GROUP = "mouseMacroRecorder";
-	private static final Path RECORDINGS_DIR = RuneLite.RUNELITE_DIR.toPath().resolve("mouse-macro-recordings");
-	private static final DateTimeFormatter FILE_NAME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
-	private static final int RECORD_VERSION = 1;
+	public static final String CONFIG_GROUP = MouseMacroRecorderConfig.CONFIG_GROUP;
+	static final long HUMAN_CLICK_WINDOW_NANOS = 1_500_000_000L;
+
+	enum Status
+	{
+		OFF,
+		NOT_LINKED,
+		LOGGED_OUT,
+		RECORDING,
+		PAUSED,
+		DAILY_LIMIT
+	}
 
 	@Inject
 	private Client client;
@@ -59,10 +84,10 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 	private MouseManager mouseManager;
 
 	@Inject
-	private MouseMacroRecorderConfig config;
+	private KeyManager keyManager;
 
 	@Inject
-	private ConfigManager configManager;
+	private MouseMacroRecorderConfig config;
 
 	@Inject
 	private OverlayManager overlayManager;
@@ -70,16 +95,38 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 	@Inject
 	private MouseMacroRecorderOverlay overlay;
 
+	@Inject
+	private OkHttpClient okHttpClient;
+
+	@Inject
+	private Gson gson;
+
+	@Inject
+	private ClientLinkToken clientLinkToken;
+
+	@Inject
+	private ClientSessionManager clientSessionManager;
+
+	@Inject
+	private PluginManager pluginManager;
+
 	private final Object lock = new Object();
-	private final List<MouseMacroEvent> events = new ArrayList<>();
-	private long recordingStartMs;
-	private long lastMoveTimeMs;
-	private java.awt.Point lastMovePoint;
-	private boolean recording;
-	private BufferedWriter jsonlWriter;
-	private Path currentRecordingPath;
-	private boolean jsonlWriterFailed;
-	private String sessionId;
+	private final InputChunker chunker = new InputChunker();
+	private final ContentDetector detector = new ContentDetector();
+	private final Map<Skill, Integer> lastXp = new EnumMap<>(Skill.class);
+	private InputUploader uploader;
+	private volatile boolean active;
+	private volatile String pauseReason;
+	private volatile boolean scriptRunning;
+	private volatile boolean focused = true;
+	private volatile boolean dialogueOptionsOpen;
+	private long baseNanos;
+	private long lastMoveNanos;
+	private volatile long lastRealPressNanos;
+	private String lastHover;
+	private String lastPos;
+	private String lastCam;
+	private Skill xpSkillThisTick;
 
 	@Provides
 	MouseMacroRecorderConfig provideConfig(ConfigManager configManager)
@@ -90,13 +137,13 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 	@Override
 	protected void startUp()
 	{
+		String apiUrl = System.getProperty("microbot.apiUrl", "https://microbot.cloud/api");
+		uploader = new InputUploader(okHttpClient, gson, clientLinkToken::get, apiUrl);
+		uploader.startWorker();
 		mouseManager.registerMouseListener(this);
 		mouseManager.registerMouseWheelListener(this);
+		keyManager.registerKeyListener(this);
 		overlayManager.add(overlay);
-		if (config.recordingEnabled())
-		{
-			startRecording();
-		}
 	}
 
 	@Override
@@ -104,105 +151,235 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 	{
 		mouseManager.unregisterMouseListener(this);
 		mouseManager.unregisterMouseWheelListener(this);
+		keyManager.unregisterKeyListener(this);
 		overlayManager.remove(overlay);
-		stopRecording();
-	}
-
-	public void startRecording()
-	{
-		synchronized (lock)
+		endSession();
+		if (uploader != null)
 		{
-			closeJsonlWriterLocked();
-			events.clear();
-			recordingStartMs = System.currentTimeMillis();
-			lastMoveTimeMs = 0;
-			lastMovePoint = null;
-			jsonlWriterFailed = false;
-			sessionId = UUID.randomUUID().toString();
-			openJsonlWriterLocked(recordingStartMs);
-			recording = true;
+			uploader.stopWorker();
 		}
 	}
 
-	public void stopRecording()
+	Status status()
 	{
-		synchronized (lock)
+		if (!config.recordingEnabled())
 		{
-			recording = false;
-			closeJsonlWriterLocked();
+			return Status.OFF;
 		}
+		if (uploader == null || !uploader.isLinked() || uploader.state() == InputUploader.State.NOT_LINKED)
+		{
+			return Status.NOT_LINKED;
+		}
+		if (uploader.state() == InputUploader.State.DAILY_LIMIT)
+		{
+			return Status.DAILY_LIMIT;
+		}
+		if (!active)
+		{
+			return Status.LOGGED_OUT;
+		}
+		return pauseReason == null ? Status.RECORDING : Status.PAUSED;
+	}
+
+	String pauseReason()
+	{
+		return pauseReason;
+	}
+
+	String contentName()
+	{
+		ContentDetector.Content content = detector.current();
+		return content == null ? null : content.getName();
+	}
+
+	long uploadedParts()
+	{
+		return uploader == null ? 0 : uploader.uploadedParts();
+	}
+
+	int droppedParts()
+	{
+		return uploader == null ? 0 : uploader.dropped();
 	}
 
 	@Subscribe
 	public void onConfigChanged(ConfigChanged event)
 	{
-		if (!MouseMacroRecorderConfig.CONFIG_GROUP.equals(event.getGroup()))
+		if (CONFIG_GROUP.equals(event.getGroup()) && "recordingEnabled".equals(event.getKey()) && !config.recordingEnabled())
+		{
+			endSession();
+		}
+	}
+
+	@Subscribe
+	public void onGameStateChanged(GameStateChanged event)
+	{
+		if (event.getGameState() == GameState.LOGIN_SCREEN || event.getGameState() == GameState.HOPPING)
+		{
+			endSession();
+		}
+	}
+
+	@Subscribe
+	public void onFocusChanged(FocusChanged event)
+	{
+		focused = event.isFocused();
+	}
+
+	@Subscribe
+	public void onGameTick(GameTick event)
+	{
+		if (!shouldRecord())
+		{
+			endSession();
+			return;
+		}
+		if (!active)
+		{
+			beginSession();
+		}
+		scriptRunning = isAnyScriptRunning();
+		dialogueOptionsOpen = isVisible(client.getWidget(InterfaceID.CHATMENU, 0));
+		refreshPause();
+		long now = nowMs();
+		if (pauseReason == null)
+		{
+			recordTick(now);
+		}
+		xpSkillThisTick = null;
+		if (chunker.isDue(now))
+		{
+			uploader.submit(chunker.drain());
+		}
+	}
+
+	@Subscribe
+	public void onClientTick(ClientTick event)
+	{
+		if (!recordingNow() || client.isMenuOpen())
 		{
 			return;
 		}
-
-		String key = event.getKey();
-		if ("recordingEnabled".equals(key))
+		MenuEntry[] entries = client.getMenuEntries();
+		if (entries == null || entries.length == 0)
 		{
-			if (config.recordingEnabled())
-			{
-				startRecording();
-			}
-			else
-			{
-				stopRecording();
-			}
+			return;
 		}
+		MenuEntry top = entries[entries.length - 1];
+		String option = InputPrivacy.option(top.getOption());
+		String target = InputPrivacy.target(top.getTarget(), top.getType().getId());
+		String key = option + '|' + target + '|' + top.getType().getId() + '|' + top.getIdentifier();
+		if (key.equals(lastHover))
+		{
+			return;
+		}
+		lastHover = key;
+		JsonObject hover = event("hov");
+		hover.addProperty("o", option);
+		hover.addProperty("tg", target);
+		hover.addProperty("ty", top.getType().getId());
+		hover.addProperty("id", top.getIdentifier());
+		add(hover);
+	}
+
+	@Subscribe
+	public void onMenuOpened(MenuOpened event)
+	{
+		if (!recordingNow() || BotEventGuard.isSynthetic())
+		{
+			return;
+		}
+		MenuEntry[] entries = event.getMenuEntries();
+		JsonObject menu = event("menu");
+		JsonArray list = new JsonArray();
+		for (int i = entries.length - 1; i >= 0 && list.size() < 20; i--)
+		{
+			list.add(entry(entries[i]));
+		}
+		menu.addProperty("n", entries.length);
+		menu.add("entries", list);
+		add(menu);
 	}
 
 	@Subscribe
 	public void onMenuOptionClicked(MenuOptionClicked event)
 	{
-		if (!recording)
+		if (!recordingNow())
 		{
 			return;
 		}
+		boolean human = Microbot.targetMenu == null && !BotEventGuard.isSynthetic()
+			&& System.nanoTime() - lastRealPressNanos < HUMAN_CLICK_WINDOW_NANOS;
+		JsonObject act = entry(event.getMenuEntry());
+		JsonObject wrapped = event("act");
+		act.entrySet().forEach(e -> wrapped.add(e.getKey(), e.getValue()));
+		wrapped.addProperty("h", human);
+		add(wrapped);
+	}
 
-		if (!recordEvent())
+	@Subscribe
+	public void onAnimationChanged(AnimationChanged event)
+	{
+		Actor actor = event.getActor();
+		if (!recordingNow() || actor == null || actor != client.getLocalPlayer())
 		{
 			return;
 		}
+		JsonObject anim = event("anim");
+		anim.addProperty("id", actor.getAnimation());
+		add(anim);
+	}
 
-		Point mousePosition = client.getMouseCanvasPosition();
-		recordEvent(MouseMacroEventType.UP, mousePosition.getX(), mousePosition.getY(), MouseButton.LEFT, modifiersFromClient(), null, null, new MenuEntrySnapshot(event.getMenuEntry()));
+	@Subscribe
+	public void onStatChanged(StatChanged event)
+	{
+		Integer previous = lastXp.put(event.getSkill(), event.getXp());
+		if (previous == null || event.getXp() <= previous || !recordingNow())
+		{
+			return;
+		}
+		xpSkillThisTick = event.getSkill();
+		JsonObject xp = event("xp");
+		xp.addProperty("s", event.getSkill().getName());
+		xp.addProperty("d", event.getXp() - previous);
+		add(xp);
 	}
 
 	@Override
 	public MouseEvent mouseMoved(MouseEvent mouseEvent)
 	{
-		recordMouseMove(mouseEvent);
+		recordMove(mouseEvent);
 		return mouseEvent;
 	}
 
 	@Override
 	public MouseEvent mouseDragged(MouseEvent mouseEvent)
 	{
-		recordMouseMove(mouseEvent);
-		return mouseEvent;
-	}
-
-	@Override
-	public MouseEvent mouseClicked(MouseEvent mouseEvent)
-	{
+		recordMove(mouseEvent);
 		return mouseEvent;
 	}
 
 	@Override
 	public MouseEvent mousePressed(MouseEvent mouseEvent)
 	{
-		recordMouseButton(mouseEvent, MouseMacroEventType.DOWN);
+		if (!BotEventGuard.isSynthetic())
+		{
+			lastRealPressNanos = System.nanoTime();
+		}
+		recordButton(mouseEvent, "dn");
 		return mouseEvent;
 	}
 
 	@Override
 	public MouseEvent mouseReleased(MouseEvent mouseEvent)
 	{
-		recordMouseButton(mouseEvent, MouseMacroEventType.UP);
+		recordButton(mouseEvent, "up");
+		return mouseEvent;
+	}
+
+	@Override
+	public MouseEvent mouseClicked(MouseEvent mouseEvent)
+	{
 		return mouseEvent;
 	}
 
@@ -219,321 +396,322 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 	}
 
 	@Override
-	public MouseWheelEvent mouseWheelMoved(MouseWheelEvent mouseWheelEvent)
+	public MouseWheelEvent mouseWheelMoved(MouseWheelEvent event)
 	{
-		recordMouseScroll(mouseWheelEvent);
-		return mouseWheelEvent;
+		if (acceptInput())
+		{
+			JsonObject wheel = event("wh");
+			wheel.addProperty("x", event.getX());
+			wheel.addProperty("y", event.getY());
+			wheel.addProperty("r", event.getWheelRotation());
+			add(wheel);
+		}
+		return event;
 	}
 
-	private void recordMouseMove(MouseEvent mouseEvent)
+	@Override
+	public void keyTyped(KeyEvent e)
 	{
-		if (!recording || !config.recordMouseMovement())
+	}
+
+	@Override
+	public void keyPressed(KeyEvent e)
+	{
+		recordKey(e, "kd");
+	}
+
+	@Override
+	public void keyReleased(KeyEvent e)
+	{
+		recordKey(e, "ku");
+	}
+
+	private void recordMove(MouseEvent mouseEvent)
+	{
+		if (!config.recordMouseMovement() || !acceptInput())
 		{
 			return;
 		}
-
-		long now = System.currentTimeMillis();
-		if (now - lastMoveTimeMs < config.movementSampleIntervalMs())
+		long nanos = System.nanoTime();
+		int interval = config.movementSampleIntervalMs();
+		if (interval > 0 && nanos - lastMoveNanos < interval * 1_000_000L)
 		{
 			return;
 		}
+		lastMoveNanos = nanos;
+		JsonObject move = event("mv");
+		move.addProperty("x", mouseEvent.getX());
+		move.addProperty("y", mouseEvent.getY());
+		add(move);
+	}
 
-		int minDistance = config.movementMinDistance();
-		java.awt.Point point = mouseEvent.getPoint();
-		if (lastMovePoint != null && minDistance > 0)
+	private void recordButton(MouseEvent mouseEvent, String type)
+	{
+		if (!acceptInput())
 		{
-			int dx = point.x - lastMovePoint.x;
-			int dy = point.y - lastMovePoint.y;
-			if (dx * dx + dy * dy < minDistance * minDistance)
+			return;
+		}
+		JsonObject button = event(type);
+		button.addProperty("x", mouseEvent.getX());
+		button.addProperty("y", mouseEvent.getY());
+		button.addProperty("b", mouseEvent.getButton());
+		int modifiers = (mouseEvent.isShiftDown() ? 1 : 0) | (mouseEvent.isControlDown() ? 2 : 0) | (mouseEvent.isAltDown() ? 4 : 0);
+		if (modifiers != 0)
+		{
+			button.addProperty("m", modifiers);
+		}
+		add(button);
+	}
+
+	private void recordKey(KeyEvent e, String type)
+	{
+		if (!acceptInput())
+		{
+			return;
+		}
+		JsonObject key = event(type);
+		Integer code = InputPrivacy.keyCode(e.getKeyCode(), dialogueOptionsOpen);
+		if (code != null)
+		{
+			key.addProperty("k", code);
+		}
+		else
+		{
+			key.addProperty("c", 1);
+		}
+		add(key);
+	}
+
+	private boolean acceptInput()
+	{
+		return recordingNow() && focused && !BotEventGuard.isSynthetic();
+	}
+
+	private boolean recordingNow()
+	{
+		return active && pauseReason == null;
+	}
+
+	private boolean shouldRecord()
+	{
+		return config.recordingEnabled() && uploader != null && uploader.isLinked()
+			&& uploader.state() != InputUploader.State.DAILY_LIMIT
+			&& client.getGameState() == GameState.LOGGED_IN && client.getLocalPlayer() != null;
+	}
+
+	private void beginSession()
+	{
+		synchronized (lock)
+		{
+			baseNanos = System.nanoTime();
+			lastHover = null;
+			lastPos = null;
+			lastCam = null;
+			lastXp.clear();
+			pauseReason = null;
+			JsonObject meta = new JsonObject();
+			meta.addProperty("canvasWidth", client.getCanvasWidth());
+			meta.addProperty("canvasHeight", client.getCanvasHeight());
+			meta.addProperty("resizable", client.isResized());
+			meta.addProperty("stretched", client.isStretchedEnabled());
+			meta.addProperty("os", System.getProperty("os.name", ""));
+			UUID clientSession = clientSessionManager.getMicrobotSessionId();
+			uploader.beginSession(new InputUploader.SessionInfo(Instant.now(), clientSession, clientVersion(), meta));
+			active = true;
+		}
+	}
+
+	private void endSession()
+	{
+		synchronized (lock)
+		{
+			if (!active)
 			{
 				return;
 			}
-		}
-
-		if (!recordEvent())
-		{
-			return;
-		}
-
-		recordEvent(MouseMacroEventType.MOVE, point.x, point.y, buttonFromModifiers(mouseEvent.getModifiersEx()), modifiersFromMouseEvent(mouseEvent), null, null, null);
-		lastMoveTimeMs = now;
-		lastMovePoint = point;
-	}
-
-	private void recordMouseButton(MouseEvent mouseEvent, MouseMacroEventType type)
-	{
-		if (!recordEvent())
-		{
-			return;
-		}
-
-		MouseButton button = buttonFromMouseEvent(mouseEvent);
-		MouseModifiers modifiers = modifiersFromMouseEvent(mouseEvent);
-		recordEvent(type, mouseEvent.getX(), mouseEvent.getY(), button, modifiers, null, null, null);
-	}
-
-	private void recordMouseScroll(MouseWheelEvent mouseWheelEvent)
-	{
-		if (!recordEvent())
-		{
-			return;
-		}
-
-		MouseModifiers modifiers = modifiersFromMouseEvent(mouseWheelEvent);
-		int deltaY = (int) Math.round(mouseWheelEvent.getPreciseWheelRotation() * mouseWheelEvent.getScrollAmount());
-		recordEvent(MouseMacroEventType.SCROLL, mouseWheelEvent.getX(), mouseWheelEvent.getY(), null, modifiers,
-			null, deltaY, null);
-	}
-
-	private boolean recordEvent()
-	{
-        return recording;
-    }
-
-	private void recordEvent(
-		MouseMacroEventType type,
-		int x,
-		int y,
-		MouseButton button,
-		MouseModifiers modifiers,
-		Integer scrollDeltaX,
-		Integer scrollDeltaY,
-		MenuEntrySnapshot menuEntry)
-	{
-		long now = System.currentTimeMillis();
-		MouseMacroEvent event = new MouseMacroEvent(type, now - recordingStartMs, x, y, button, modifiers, scrollDeltaX, scrollDeltaY, menuEntry);
-		synchronized (lock)
-		{
-			events.add(event);
-			writeJsonlEventLocked(event);
-		}
-	}
-
-	private void openJsonlWriterLocked(long startedAtEpochMs)
-	{
-		try
-		{
-			Files.createDirectories(RECORDINGS_DIR);
-			String filename = "mouse-macro-recording-" + FILE_NAME_FORMATTER.format(
-				Instant.ofEpochMilli(startedAtEpochMs).atZone(ZoneId.systemDefault())
-			) + ".jsonl";
-			currentRecordingPath = RECORDINGS_DIR.resolve(filename);
-			jsonlWriter = Files.newBufferedWriter(currentRecordingPath, StandardCharsets.UTF_8,
-				StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-			writeMetadataLineLocked(startedAtEpochMs);
-		}
-		catch (IOException e)
-		{
-			jsonlWriterFailed = true;
-			jsonlWriter = null;
-			currentRecordingPath = null;
-			log.warn("Failed to open mouse macro JSONL writer", e);
-		}
-	}
-
-	private void writeMetadataLineLocked(long startedAtEpochMs)
-	{
-		if (jsonlWriter == null)
-		{
-			return;
-		}
-
-		try
-		{
-			jsonlWriter.write(GSON.toJson(buildStartRecord(startedAtEpochMs)));
-			jsonlWriter.newLine();
-			jsonlWriter.flush();
-		}
-		catch (IOException e)
-		{
-			jsonlWriterFailed = true;
-			log.warn("Failed to write mouse macro recording metadata to JSONL", e);
-			closeJsonlWriterLocked();
-		}
-	}
-
-	private void writeJsonlEventLocked(MouseMacroEvent event)
-	{
-		if (jsonlWriter == null || jsonlWriterFailed)
-		{
-			return;
-		}
-
-		try
-		{
-			jsonlWriter.write(GSON.toJson(new JsonlEventRecord(sessionId, recordingStartMs, event)));
-			jsonlWriter.newLine();
-			jsonlWriter.flush();
-		}
-		catch (IOException e)
-		{
-			jsonlWriterFailed = true;
-			log.warn("Failed to write mouse macro event to JSONL {}", currentRecordingPath, e);
-			closeJsonlWriterLocked();
-		}
-	}
-
-	int getRecordedEventCount()
-	{
-		synchronized (lock)
-		{
-			return events.size();
-		}
-	}
-
-	boolean isRecording()
-	{
-		return recording;
-	}
-
-	public static void openRecordingsFolderStatic()
-	{
-		try
-		{
-			Files.createDirectories(RECORDINGS_DIR);
-			if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.OPEN))
+			long now = nowMs();
+			for (ContentDetector.Transition transition : detector.end())
 			{
-				Desktop.getDesktop().open(RECORDINGS_DIR.toFile());
+				add(content(transition, now));
 			}
-			else
-			{
-				log.warn("Desktop OPEN action not supported; cannot open recordings folder");
-			}
+			active = false;
+			pauseReason = null;
+			uploader.submit(chunker.drain());
+			uploader.endSession();
 		}
-		catch (IOException e)
+	}
+
+	private void refreshPause()
+	{
+		String reason = null;
+		if (scriptRunning)
 		{
-			log.warn("Failed to open mouse macro recordings folder {}", RECORDINGS_DIR, e);
+			reason = "script";
 		}
-	}
-
-	private JsonlStartRecord buildStartRecord(long startedAtEpochMs)
-	{
-		Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
-		return new JsonlStartRecord(
-			RECORD_VERSION,
-			sessionId,
-			startedAtEpochMs,
-			screen.width,
-			screen.height,
-			client.getCanvasWidth(),
-			client.getCanvasHeight(),
-			client.getScale()
-		);
-	}
-
-	private MouseButton buttonFromMouseEvent(MouseEvent event)
-	{
-		switch (event.getButton())
+		else if (!focused)
 		{
-			case MouseEvent.BUTTON1:
-				return MouseButton.LEFT;
-			case MouseEvent.BUTTON2:
-				return MouseButton.MIDDLE;
-			case MouseEvent.BUTTON3:
-				return MouseButton.RIGHT;
-			default:
-				return null;
+			reason = "focus";
 		}
-	}
-
-	private MouseButton buttonFromModifiers(int modifiersEx)
-	{
-		if ((modifiersEx & InputEvent.BUTTON1_DOWN_MASK) != 0)
+		else if (isVisible(client.getWidget(InterfaceID.BANKPIN_KEYPAD, 0)))
 		{
-			return MouseButton.LEFT;
+			reason = "bank-pin";
 		}
-		if ((modifiersEx & InputEvent.BUTTON2_DOWN_MASK) != 0)
+		else if (client.getVarcIntValue(VarClientID.MESLAYERMODE) != 0)
 		{
-			return MouseButton.MIDDLE;
+			reason = "text-input";
 		}
-		if ((modifiersEx & InputEvent.BUTTON3_DOWN_MASK) != 0)
-		{
-			return MouseButton.RIGHT;
-		}
-		return null;
-	}
-
-	private MouseModifiers modifiersFromMouseEvent(MouseEvent mouseEvent)
-	{
-		return new MouseModifiers(mouseEvent.isShiftDown(), mouseEvent.isControlDown(), mouseEvent.isAltDown());
-	}
-
-	private MouseModifiers modifiersFromClient()
-	{
-		return new MouseModifiers(
-			client.isKeyPressed(KeyCode.KC_SHIFT),
-			client.isKeyPressed(KeyCode.KC_CONTROL),
-			client.isKeyPressed(KeyCode.KC_ALT)
-		);
-	}
-
-	private void closeJsonlWriterLocked()
-	{
-		if (jsonlWriter == null)
+		String previous = pauseReason;
+		if (reason == null ? previous == null : reason.equals(previous))
 		{
 			return;
 		}
-
-		try
+		if (reason != null)
 		{
-			jsonlWriter.close();
+			JsonObject pause = event("pause");
+			pause.addProperty("why", reason);
+			add(pause);
+			pauseReason = reason;
+			lastHover = null;
 		}
-		catch (IOException e)
+		else
 		{
-			log.warn("Failed to close mouse macro JSONL writer", e);
-		}
-		finally
-		{
-			jsonlWriter = null;
-			currentRecordingPath = null;
-		}
-	}
-
-	private static class JsonlStartRecord
-	{
-		private final String recordType = "start";
-		private final int recordVersion;
-		private final String sessionId;
-		private final long startedAtEpochMs;
-		private final int screenWidth;
-		private final int screenHeight;
-		private final int canvasWidth;
-		private final int canvasHeight;
-		private final int clientScale;
-
-		private JsonlStartRecord(
-			int recordVersion,
-			String sessionId,
-			long startedAtEpochMs,
-			int screenWidth,
-			int screenHeight,
-			int canvasWidth,
-			int canvasHeight,
-			int clientScale)
-		{
-			this.recordVersion = recordVersion;
-			this.sessionId = sessionId;
-			this.startedAtEpochMs = startedAtEpochMs;
-			this.screenWidth = screenWidth;
-			this.screenHeight = screenHeight;
-			this.canvasWidth = canvasWidth;
-			this.canvasHeight = canvasHeight;
-			this.clientScale = clientScale;
+			pauseReason = null;
+			JsonObject resume = event("resume");
+			resume.addProperty("why", previous);
+			add(resume);
 		}
 	}
 
-	private static class JsonlEventRecord
+	private void recordTick(long now)
 	{
-		private final String recordType = "event";
-		private final String sessionId;
-		private final long startedAtEpochMs;
-		private final MouseMacroEvent event;
-
-		private JsonlEventRecord(String sessionId, long startedAtEpochMs, MouseMacroEvent event)
+		JsonObject tick = event("tick");
+		tick.addProperty("n", client.getTickCount());
+		add(tick);
+		Player player = client.getLocalPlayer();
+		if (player == null)
 		{
-			this.sessionId = sessionId;
-			this.startedAtEpochMs = startedAtEpochMs;
-			this.event = event;
+			return;
 		}
+		WorldPoint world = player.getWorldLocation();
+		boolean instanced = client.isInInstancedRegion();
+		int template = -1;
+		LocalPoint local = player.getLocalLocation();
+		if (instanced && local != null)
+		{
+			WorldPoint real = WorldPoint.fromLocalInstance(client, local);
+			template = real == null ? -1 : real.getRegionID();
+		}
+		String pos = world.getX() + "," + world.getY() + "," + world.getPlane() + "," + template;
+		if (!pos.equals(lastPos))
+		{
+			lastPos = pos;
+			JsonObject move = event("pos");
+			move.addProperty("x", world.getX());
+			move.addProperty("y", world.getY());
+			move.addProperty("p", world.getPlane());
+			move.addProperty("r", world.getRegionID());
+			if (template >= 0)
+			{
+				move.addProperty("tr", template);
+			}
+			add(move);
+		}
+		String cam = client.getCameraYaw() + "," + client.getCameraPitch() + "," + client.getScale();
+		if (!cam.equals(lastCam))
+		{
+			lastCam = cam;
+			JsonObject camera = event("cam");
+			camera.addProperty("yaw", client.getCameraYaw());
+			camera.addProperty("pitch", client.getCameraPitch());
+			camera.addProperty("zoom", client.getScale());
+			add(camera);
+		}
+		ContentDetector.Tick input = new ContentDetector.Tick(instanced, template, fightingNpc(player), xpSkillThisTick);
+		List<ContentDetector.Transition> transitions = detector.update(input, now);
+		for (ContentDetector.Transition transition : transitions)
+		{
+			add(content(transition, now));
+		}
+	}
+
+	private boolean isAnyScriptRunning()
+	{
+		boolean hubScript = pluginManager.getPlugins().stream()
+			.anyMatch(plugin -> ClientAlertReporter.isScript(plugin) && pluginManager.isPluginActive(plugin));
+		return hubScript || Microbot.getActiveScripts().stream().anyMatch(Script::isRunning);
+	}
+
+	private static String fightingNpc(Player player)
+	{
+		Actor target = player.getInteracting();
+		if (!(target instanceof NPC))
+		{
+			return null;
+		}
+		NPC npc = (NPC) target;
+		if (npc.getCombatLevel() <= 0 || npc.getName() == null)
+		{
+			return null;
+		}
+		String name = InputPrivacy.target(npc.getName(), -1);
+		return name.isEmpty() ? null : name;
+	}
+
+	private JsonObject content(ContentDetector.Transition transition, long now)
+	{
+		JsonObject content = event("content", transition.isStart() ? transition.getStartMs() : now);
+		content.addProperty("s", transition.isStart() ? "start" : "end");
+		content.addProperty("c", transition.getContent().getName());
+		content.addProperty("k", transition.getContent().getKind());
+		if (!transition.isStart())
+		{
+			content.addProperty("st", transition.getStartMs());
+		}
+		return content;
+	}
+
+	private JsonObject entry(MenuEntry entry)
+	{
+		JsonObject json = new JsonObject();
+		int type = entry.getType().getId();
+		json.addProperty("o", InputPrivacy.option(entry.getOption()));
+		json.addProperty("tg", InputPrivacy.target(entry.getTarget(), type));
+		json.addProperty("ty", type);
+		json.addProperty("id", entry.getIdentifier());
+		return json;
+	}
+
+	private JsonObject event(String type)
+	{
+		return event(type, nowMs());
+	}
+
+	private static JsonObject event(String type, long ms)
+	{
+		JsonObject json = new JsonObject();
+		json.addProperty("t", ms);
+		json.addProperty("e", type);
+		return json;
+	}
+
+	private void add(JsonObject event)
+	{
+		chunker.add(event, event.get("t").getAsLong());
+	}
+
+	private long nowMs()
+	{
+		return (System.nanoTime() - baseNanos) / 1_000_000L;
+	}
+
+	private static boolean isVisible(Widget widget)
+	{
+		return widget != null && !widget.isHidden();
+	}
+
+	private static String clientVersion()
+	{
+		String version = Optional.ofNullable(RuneLiteProperties.getMicrobotVersion()).orElse("unknown").replaceAll("[^0-9A-Za-z.+_-]", "");
+		return version.isEmpty() ? "unknown" : version.length() > 32 ? version.substring(0, 32) : version;
 	}
 }

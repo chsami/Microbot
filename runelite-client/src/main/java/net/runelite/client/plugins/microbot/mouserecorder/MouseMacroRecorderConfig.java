@@ -1,7 +1,6 @@
 package net.runelite.client.plugins.microbot.mouserecorder;
 
 import net.runelite.client.config.Config;
-import net.runelite.client.config.ConfigButton;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
@@ -14,7 +13,7 @@ public interface MouseMacroRecorderConfig extends Config
 
 	@ConfigSection(
 		name = "Recording",
-		description = "Configure how movement samples are recorded",
+		description = "Your input is uploaded to your Microbot account only; nothing is saved on this computer",
 		position = 0
 	)
 	String recordingSection = "recording";
@@ -22,7 +21,7 @@ public interface MouseMacroRecorderConfig extends Config
 	@ConfigItem(
 		keyName = "recordingEnabled",
 		name = "Recording enabled",
-		description = "Toggle to start or stop recording",
+		description = "Record your own mouse and game-key input and upload it to your linked Microbot account. Pauses while a script runs, on the login screen, the bank PIN and text prompts. Needs the client linked (Microbot alerts).",
 		position = 0,
 		section = recordingSection
 	)
@@ -46,38 +45,13 @@ public interface MouseMacroRecorderConfig extends Config
 	@ConfigItem(
 		keyName = "movementSampleIntervalMs",
 		name = "Movement sample interval (ms)",
-		description = "Minimum time between recorded mouse movement samples",
+		description = "Minimum time between recorded mouse moves; 0 records every move",
 		position = 2,
 		section = recordingSection
 	)
-	@Range(min = 5, max = 500)
+	@Range(min = 0, max = 500)
 	default int movementSampleIntervalMs()
 	{
-		return 30;
-	}
-
-	@ConfigItem(
-		keyName = "movementMinDistance",
-		name = "Movement min distance",
-		description = "Minimum pixel distance before recording a move",
-		position = 3,
-		section = recordingSection
-	)
-	@Range(min = 0, max = 50)
-	default int movementMinDistance()
-	{
-		return 2;
-	}
-
-	@ConfigItem(
-		keyName = "openRecordingsFolder",
-		name = "Open recordings folder",
-		description = "Open the folder containing JSONL mouse macro recordings",
-		position = 4,
-		section = recordingSection
-	)
-	default ConfigButton openRecordingsFolder()
-	{
-		return new ConfigButton();
+		return 0;
 	}
 }
