@@ -18,7 +18,7 @@ public enum MicrobotPluginChoice {
     AUTO_LOGIN("Auto Login", AutoLoginPlugin.class),
     QUEST_HELPER("Quest Helper", QuestHelperPlugin.class),
     SHORTEST_PATH("Shortest Path", ShortestPathPlugin.class),
-    MOUSE_MACRO_RECORDER("Mouse Macro Recorder", MouseMacroRecorderPlugin.class),
+    MOUSE_MACRO_RECORDER("Input Recorder", MouseMacroRecorderPlugin.class),
     INVENTORY_SETUPS("Inventory Setups", MInventorySetupsPlugin.class),
     BREAK_HANDLER("BreakHandler (v1)", BreakHandlerPlugin.class),
     BREAK_HANDLER_V2("BreakHandler V2", BreakHandlerV2Plugin.class);
