@@ -21,6 +21,7 @@ public class HwidSpoofCheckTest
 	{
 		properties.put(HwidSpoofCheck.AGENT_PROPERTY, HwidSpoofCheck.AGENT_LOADED);
 		properties.put(HwidSpoofCheck.DEVICE_HOOK_PROPERTY, "true");
+		properties.put(HwidSpoofCheck.PLATFORM_HOOK_PROPERTY, "true");
 	}
 
 	@Test
@@ -68,6 +69,28 @@ public class HwidSpoofCheckTest
 	public void reportsRandomDatHookThatOnlyRanBeforeThisLogin()
 	{
 		agentLoadedWithDeviceHook();
+		properties.put(HwidSpoofCheck.RANDOM_DAT_CALL_PROPERTY, "900");
+		check.loginStarted();
+		assertEquals(Optional.of(Problem.RANDOM_DAT_HOOK_MISSED), check.loggedIn(true));
+	}
+
+	@Test
+	public void reportsMissingPlatformHookOnlyAfterTheOtherHooksRan()
+	{
+		properties.put(HwidSpoofCheck.AGENT_PROPERTY, HwidSpoofCheck.AGENT_LOADED);
+		properties.put(HwidSpoofCheck.DEVICE_HOOK_PROPERTY, "true");
+		properties.put(HwidSpoofCheck.RANDOM_DAT_CALL_PROPERTY, "1500");
+		check.loginStarted();
+		assertEquals(Optional.of(Problem.PLATFORM_HOOK_MISSING), check.loggedIn(true));
+		assertEquals(Optional.of(HwidSpoofCheck.PLATFORM_HOOK_MISSING_CHAT), Problem.PLATFORM_HOOK_MISSING.chatMessage());
+		assertTrue(Problem.PLATFORM_HOOK_MISSING.logMessage().contains(HwidSpoofCheck.PLATFORM_HOOK_PROPERTY));
+	}
+
+	@Test
+	public void missedRandomDatHookWinsOverAMissingPlatformHook()
+	{
+		properties.put(HwidSpoofCheck.AGENT_PROPERTY, HwidSpoofCheck.AGENT_LOADED);
+		properties.put(HwidSpoofCheck.DEVICE_HOOK_PROPERTY, "true");
 		properties.put(HwidSpoofCheck.RANDOM_DAT_CALL_PROPERTY, "900");
 		check.loginStarted();
 		assertEquals(Optional.of(Problem.RANDOM_DAT_HOOK_MISSED), check.loggedIn(true));
@@ -160,5 +183,72 @@ public class HwidSpoofCheckTest
 		clock.set(2_000);
 		check.loginStarted();
 		assertFalse(check.loggedIn(true).isPresent());
+	}
+
+	@Test
+	public void loginIsBlockedWhenStockRuneLiteSignsWithAnotherCertificate()
+	{
+		agentLoadedWithDeviceHook();
+		properties.put(HwidSpoofCheck.SIGNER_STATUS_PROPERTY, "changed");
+		assertEquals(Optional.of(HwidSpoofCheck.LoginBlock.SIGNER_CHANGED), check.loginBlock(true));
+	}
+
+	@Test
+	public void loginIsBlockedWhenTheCertificateRanOutAndStockCouldNotBeChecked()
+	{
+		agentLoadedWithDeviceHook();
+		properties.put(HwidSpoofCheck.SIGNER_STATUS_PROPERTY, "expired");
+		assertEquals(Optional.of(HwidSpoofCheck.LoginBlock.SIGNER_EXPIRED), check.loginBlock(true));
+	}
+
+	@Test
+	public void loginIsBlockedWhenASignerCallCouldNotBeHidden()
+	{
+		agentLoadedWithDeviceHook();
+		properties.put(HwidSpoofCheck.SIGNER_STATUS_PROPERTY, "confirmed");
+		properties.put(HwidSpoofCheck.PLATFORM_MISSED_PROPERTY, "true");
+		assertEquals(Optional.of(HwidSpoofCheck.LoginBlock.PLATFORM_DETAILS_MIXED), check.loginBlock(true));
+	}
+
+	@Test
+	public void loginIsAllowedWhenStockIsConfirmedOrCouldNotBeReachedYet()
+	{
+		agentLoadedWithDeviceHook();
+		assertFalse(check.loginBlock(true).isPresent());
+		properties.put(HwidSpoofCheck.SIGNER_STATUS_PROPERTY, "confirmed");
+		assertFalse(check.loginBlock(true).isPresent());
+		properties.put(HwidSpoofCheck.SIGNER_STATUS_PROPERTY, "unchecked");
+		assertFalse(check.loginBlock(true).isPresent());
+	}
+
+	@Test
+	public void loginIsNeverBlockedWhenThePlayerIsNotSpoofing()
+	{
+		properties.put(HwidSpoofCheck.SIGNER_STATUS_PROPERTY, "changed");
+		properties.put(HwidSpoofCheck.PLATFORM_MISSED_PROPERTY, "true");
+		// No agent attached: nothing is spoofed, so nothing sent can be a wrong spoof.
+		assertFalse(check.loginBlock(true).isPresent());
+		properties.put(HwidSpoofCheck.AGENT_PROPERTY, HwidSpoofCheck.AGENT_INERT);
+		assertFalse(check.loginBlock(true).isPresent());
+
+		agentLoadedWithDeviceHook();
+		assertTrue(check.loginBlock(true).isPresent());
+		// Spoof device ID turned off is the stated way to log in anyway.
+		assertFalse(check.loginBlock(false).isPresent());
+		properties.put(HwidSpoofCheck.LAUNCHER_DISABLED_PROPERTY, "true");
+		assertFalse(check.loginBlock(true).isPresent());
+	}
+
+	@Test
+	public void firstLoginIsBlockedWhenTheStartupScanFoundAHookMissing()
+	{
+		agentLoadedWithDeviceHook();
+		properties.remove(HwidSpoofCheck.PLATFORM_HOOK_PROPERTY);
+		// Scan still running: nothing is known yet, so the login is not blocked.
+		assertFalse(check.loginBlock(true).isPresent());
+		properties.put(HwidSpoofCheck.PLATFORM_SCANNED_PROPERTY, "true");
+		assertEquals(Optional.of(HwidSpoofCheck.LoginBlock.PLATFORM_DETAILS_MIXED), check.loginBlock(true));
+		properties.put(HwidSpoofCheck.PLATFORM_HOOK_PROPERTY, "true");
+		assertFalse(check.loginBlock(true).isPresent());
 	}
 }
