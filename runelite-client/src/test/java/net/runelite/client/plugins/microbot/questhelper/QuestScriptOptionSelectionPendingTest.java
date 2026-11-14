@@ -92,6 +92,51 @@ public class QuestScriptOptionSelectionPendingTest
 	}
 
 	@Test
+	public void unhandledMenuOfTheSameStepStopsBeingDismissedAfterTheLimit()
+	{
+		QuestScript script = new QuestScript();
+		Object step = new Object();
+
+		assertTrue(script.allowUnhandledOptionDismiss(step));
+		assertTrue(script.allowUnhandledOptionDismiss(step));
+		assertTrue(script.allowUnhandledOptionDismiss(step));
+		assertFalse(script.allowUnhandledOptionDismiss(step));
+		assertFalse(script.allowUnhandledOptionDismiss(step));
+	}
+
+	@Test
+	public void newStepGetsItsOwnDismissAttempts()
+	{
+		QuestScript script = new QuestScript();
+		Object step = new Object();
+
+		for (int i = 0; i < 3; i++)
+		{
+			assertTrue(script.allowUnhandledOptionDismiss(step));
+		}
+		assertFalse(script.allowUnhandledOptionDismiss(step));
+
+		assertTrue(script.allowUnhandledOptionDismiss(new Object()));
+	}
+
+	@Test
+	public void pressedOptionRestoresTheDismissAttempts()
+	{
+		QuestScript script = new QuestScript();
+		Object step = new Object();
+
+		for (int i = 0; i < 3; i++)
+		{
+			assertTrue(script.allowUnhandledOptionDismiss(step));
+		}
+		assertFalse(script.allowUnhandledOptionDismiss(step));
+
+		script.noteOptionPressed(10_000L);
+
+		assertTrue(script.allowUnhandledOptionDismiss(step));
+	}
+
+	@Test
 	public void pressDoesNotHoldALaterUnrelatedMenu()
 	{
 		QuestScript script = new QuestScript();

@@ -196,6 +196,7 @@ public class TaiBwoWannaiTrio extends BasicQuestHelper
 		goToLubufu = new NpcStep(this, NpcID.TBWT_LUBUFU, lubufuWorldPoint, "Go to Brimhaven and talk to Lubufu. " +
 			"You have to talk to him multiple times. You'll need to ask him twice about what he does, then talk to " +
 			"him to give him the karambwanji.", karambwanji.quantity(20));
+		goToLubufu.addDialogStep("I wasn't going anywhere...");
 		goToLubufu.addDialogStep("Talk about him...");
 		goToLubufu.addDialogStep("What do you do?");
 		goToLubufu.addDialogStepWithExclusion("What do you do with your Karambwan?", "I could help collect the bait.");
@@ -225,6 +226,8 @@ public class TaiBwoWannaiTrio extends BasicQuestHelper
 
 		getRum = new NpcStep(this, NpcID.ZEMBO, new WorldPoint(2925, 3143, 0),
 			"Go east to Musa point to buy some Karamjan rum from Zembo.", coins.quantity(30));
+		getRum.addDialogStep("Yes please.");
+		getRum.addWidgetHighlightWithItemIdRequirement(300, 16, ItemID.KARAMJA_RUM, true);
 
 		sliceBanana = new DetailedQuestStep(this, "Slice a banana with a knife. You can get a banana from one of the " +
 			"trees in the plantation.", knife.highlighted(), banana.highlighted());

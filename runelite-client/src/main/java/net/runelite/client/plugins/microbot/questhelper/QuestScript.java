@@ -115,6 +115,11 @@ public class QuestScript extends Script {
     private long optionSelectionPendingSince = 0;
     private long optionSelectionPendingSeenAt = 0;
 
+    private static final int UNHANDLED_OPTION_DISMISS_LIMIT = 3;
+    private static final String OPTION_CHOICE_NEEDED_STATUS = "Quest helper: no dialogue option is highlighted for this step, choose one to continue";
+    private Object unhandledOptionStep;
+    private int unhandledOptionDismissals = 0;
+
 
 
     public boolean run(QuestHelperConfig config, QuestHelperPlugin mQuestPlugin) {
@@ -179,7 +184,8 @@ public class QuestScript extends Script {
                                     Rs2Widget.clickWidget(widgetHighlight.getNameToCheckFor());
                                 } else {
                                     Rs2Widget.clickWidget(widget.getId());
-                                    if (Rs2Shop.isOpen() && getQuestHelperPlugin().getSelectedQuest().getQuest().getId() == Quest.PIRATES_TREASURE.getId()) {
+                                    int shopQuestId = getQuestHelperPlugin().getSelectedQuest().getQuest().getId();
+                                    if (Rs2Shop.isOpen() && (shopQuestId == Quest.PIRATES_TREASURE.getId() || shopQuestId == Quest.TAI_BWO_WANNAI_TRIO.getId())) {
                                         Rs2Shop.buyItemOptimally("karamjan rum", 1);
                                     }
                                 }
@@ -224,6 +230,9 @@ public class QuestScript extends Script {
                                     && Microbot.getClient().getTopLevelWorldView().getPlane() == 1) {
                                 Rs2Dialogue.keyPressForDialogueOption(1); // presses option 1
                                 sleep(1200,1800);
+                            } else if (!allowUnhandledOptionDismiss(questStep)) {
+                                Microbot.status = OPTION_CHOICE_NEEDED_STATUS;
+                                return;
                             }
                             Rs2Walker.walkFastCanvas(Rs2Player.getWorldLocation());
                         }
@@ -318,6 +327,19 @@ public class QuestScript extends Script {
     void noteOptionPressed(long now) {
         optionPressedAt = now;
         optionSelectionPendingSince = 0;
+        unhandledOptionDismissals = 0;
+    }
+
+    boolean allowUnhandledOptionDismiss(Object step) {
+        if (step != unhandledOptionStep) {
+            unhandledOptionStep = step;
+            unhandledOptionDismissals = 0;
+        }
+        if (unhandledOptionDismissals >= UNHANDLED_OPTION_DISMISS_LIMIT) {
+            return false;
+        }
+        unhandledOptionDismissals++;
+        return true;
     }
 
     boolean isAwaitingOptionSelection(boolean pending, long now) {
