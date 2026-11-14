@@ -526,7 +526,7 @@ public class Rs2Antiban {
             panelComponent.getChildren().add(LineComponent.builder().left("enableProfileSwitching: " + (Rs2AntibanSettings.profileSwitching ? "✔" : "❌")).build());
             panelComponent.getChildren().add(LineComponent.builder().left("adjustForTimeOfDay: " + (Rs2AntibanSettings.timeOfDayAdjust ? "✔" : "❌")).build());
             panelComponent.getChildren().add(LineComponent.builder().left("simulateMistakes: " + (Rs2AntibanSettings.simulateMistakes ? "✔" : "❌")).build());
-            panelComponent.getChildren().add(LineComponent.builder().left("useNaturalMouse: " + (Rs2AntibanSettings.naturalMouse ? "✔" : "❌")).build());
+            panelComponent.getChildren().add(LineComponent.builder().left("aimClicksFromCursor: " + (Rs2AntibanSettings.naturalMouse ? "✔" : "❌")).build());
             panelComponent.getChildren().add(LineComponent.builder().left("useContextualVariability: " + (Rs2AntibanSettings.contextualVariability ? "✔" : "❌")).build());
         }
         if (playStyle != null) {
@@ -601,6 +601,9 @@ public class Rs2Antiban {
     public static void resetAntibanSettings(boolean forceReset) {
         if (!forceReset && Rs2AntibanSettings.overwriteScriptSettings) return;
         Rs2AntibanSettings.reset();
+        if (!forceReset) {
+            Rs2AntibanSettings.loadNaturalMouseFromProfile();
+        }
         Rs2Antiban.playStyle = null;
         Rs2Antiban.activity = null;
         Rs2Antiban.activityIntensity = ActivityIntensity.EXTREME;

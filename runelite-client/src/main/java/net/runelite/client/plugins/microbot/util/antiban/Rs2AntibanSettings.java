@@ -44,7 +44,8 @@ import net.runelite.client.plugins.microbot.Microbot;
  *   <li><code>profileSwitching</code>: Simulates user behavior switching profiles at intervals.</li>
  *   <li><code>timeOfDayAdjust</code>: (TODO) Adjusts behaviors based on the time of day.</li>
  *   <li><code>simulateMistakes</code>: Simulates user mistakes, often controlled by natural mouse movements.</li>
- *   <li><code>naturalMouse</code>: Enables natural-looking mouse movements.</li>
+ *   <li><code>naturalMouse</code>: Picks click points from the current cursor position and enables the hover helpers.
+ *       Mouse trajectories run regardless of this flag.</li>
  *   <li><code>moveMouseOffScreen</code>: Moves the mouse off-screen during breaks to simulate user behavior.</li>
  *   <li><code>moveMouseRandomly</code>: Moves the mouse randomly to simulate human inconsistency.</li>
  *   <li><code>contextualVariability</code>: Adjusts behaviors based on the context of the user's actions.</li>
@@ -135,24 +136,36 @@ public class Rs2AntibanSettings {
     }
 
     public static void loadFromProfile() {
+        PersistentSettings settings = readFromProfile();
+        if (settings != null) {
+            apply(settings);
+        }
+    }
+
+    public static void loadNaturalMouseFromProfile() {
+        PersistentSettings settings = readFromProfile();
+        if (settings != null && settings.naturalMouse != null) {
+            naturalMouse = settings.naturalMouse;
+        }
+    }
+
+    private static PersistentSettings readFromProfile() {
         ConfigManager configManager = Microbot.getConfigManager();
         if (configManager == null) {
             log.debug("ConfigManager not available, skipping antiban settings load");
-            return;
+            return null;
         }
 
         String json = configManager.getConfiguration(CONFIG_GROUP, CONFIG_KEY);
         if (json == null || json.isEmpty()) {
-            return;
+            return null;
         }
 
         try {
-            PersistentSettings settings = GSON.fromJson(json, PersistentSettings.class);
-            if (settings != null) {
-                apply(settings);
-            }
+            return GSON.fromJson(json, PersistentSettings.class);
         } catch (JsonSyntaxException ex) {
             log.warn("Unable to parse antiban settings from profile", ex);
+            return null;
         }
     }
 
