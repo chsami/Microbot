@@ -39,6 +39,7 @@ import net.runelite.api.widgets.Widget;
 import net.runelite.client.ClientSessionManager;
 import net.runelite.client.RuneLiteProperties;
 import net.runelite.client.config.ConfigManager;
+import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ClientShutdown;
 import net.runelite.client.events.ConfigChanged;
@@ -123,6 +124,11 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 	@Inject
 	private ChatboxPanelManager chatboxPanelManager;
 
+	@Inject
+	private EventBus eventBus;
+
+	private final BotMenuProbe botMenuProbe = new BotMenuProbe();
+
 	private final Object lock = new Object();
 	private final InputChunker chunker = new InputChunker();
 	private final ContentDetector detector = new ContentDetector();
@@ -164,6 +170,7 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 		mouseManager.registerMouseListener(this);
 		mouseManager.registerMouseWheelListener(this);
 		keyManager.registerKeyListener(this);
+		eventBus.register(botMenuProbe);
 		overlayManager.add(overlay);
 	}
 
@@ -173,6 +180,7 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 		mouseManager.unregisterMouseListener(this);
 		mouseManager.unregisterMouseWheelListener(this);
 		keyManager.unregisterKeyListener(this);
+		eventBus.unregister(botMenuProbe);
 		overlayManager.remove(overlay);
 		endSession();
 		if (uploader != null)
@@ -379,10 +387,13 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 		add(menu);
 	}
 
-	@Subscribe(priority = 1)
-	public void onMenuOptionClickedEarly(MenuOptionClicked event)
+	public final class BotMenuProbe
 	{
-		botMenuPending = Microbot.targetMenu != null;
+		@Subscribe(priority = 1)
+		public void onMenuOptionClicked(MenuOptionClicked event)
+		{
+			botMenuPending = Microbot.targetMenu != null;
+		}
 	}
 
 	@Subscribe
