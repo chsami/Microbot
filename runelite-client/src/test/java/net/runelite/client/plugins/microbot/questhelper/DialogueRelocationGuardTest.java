@@ -69,6 +69,48 @@ public class DialogueRelocationGuardTest
 	}
 
 	@Test
+	public void holdsWhenTheCutsceneOpensWithADialogueBeforeTheFirstCheck()
+	{
+		guard.noteDialogue(BESIDE_TAMAYU, START);
+		guard.noteDialogue(HUNT_CUTSCENE, START + 1_200);
+		guard.noteDialogue(HUNT_CUTSCENE, START + 18_000);
+
+		assertTrue(guard.shouldHold(HUNT_CUTSCENE, TAMAYU, START + 24_000));
+		assertFalse(guard.shouldHold(HUNT_CUTSCENE, TAMAYU, START + 18_000 + DialogueRelocationGuard.MAX_HOLD_MS));
+	}
+
+	@Test
+	public void aSecondCutsceneSceneKeepsHolding()
+	{
+		WorldPoint secondScene = new WorldPoint(2600, 4700, 0);
+		guard.noteDialogue(BESIDE_TAMAYU, START);
+		assertTrue(guard.shouldHold(HUNT_CUTSCENE, TAMAYU, START + 5_000));
+		guard.noteDialogue(HUNT_CUTSCENE, START + 6_000);
+
+		guard.noteDialogue(secondScene, START + 8_000);
+
+		assertTrue(guard.shouldHold(secondScene, TAMAYU, START + 13_000));
+	}
+
+	@Test
+	public void aDialogueTripThatLandsNearTheStepIsNotHeldWhenADialogueFollows()
+	{
+		guard.noteDialogue(HUNT_CUTSCENE, START);
+		guard.noteDialogue(BESIDE_TAMAYU, START + 1_200);
+
+		assertFalse(guard.shouldHold(BESIDE_TAMAYU, TAMAYU, START + 6_000));
+	}
+
+	@Test
+	public void anOldDialogueElsewhereDoesNotStartAHoldAtTheNextDialogue()
+	{
+		guard.noteDialogue(BESIDE_TAMAYU, START);
+		guard.noteDialogue(HUNT_CUTSCENE, START + DialogueRelocationGuard.ANCHOR_TTL_MS + 1);
+
+		assertFalse(guard.shouldHold(HUNT_CUTSCENE, TAMAYU, START + DialogueRelocationGuard.ANCHOR_TTL_MS + 5_000));
+	}
+
+	@Test
 	public void doesNotHoldWhenTheDialogueLeavesThePlayerInPlace()
 	{
 		guard.noteDialogue(BESIDE_TAMAYU, START);

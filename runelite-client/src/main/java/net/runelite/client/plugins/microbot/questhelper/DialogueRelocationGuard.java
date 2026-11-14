@@ -6,7 +6,7 @@ final class DialogueRelocationGuard
 {
 	static final int RELOCATION_DISTANCE = 32;
 	static final long ANCHOR_TTL_MS = 15_000L;
-	static final long MAX_HOLD_MS = 30_000L;
+	static final long MAX_HOLD_MS = 20_000L;
 
 	private WorldPoint dialogueAnchor;
 	private long dialogueSeenAt;
@@ -19,12 +19,18 @@ final class DialogueRelocationGuard
 		{
 			return;
 		}
-		dialogueAnchor = position;
-		dialogueSeenAt = now;
-		if (heldAt != null)
+		boolean anchorLive = dialogueAnchor != null && now - dialogueSeenAt <= ANCHOR_TTL_MS;
+		if (anchorLive && isFar(dialogueAnchor, position))
+		{
+			heldAt = position;
+			heldSince = now;
+		}
+		else if (heldAt != null)
 		{
 			heldSince = now;
 		}
+		dialogueAnchor = position;
+		dialogueSeenAt = now;
 	}
 
 	synchronized boolean shouldHold(WorldPoint position, WorldPoint target, long now)
