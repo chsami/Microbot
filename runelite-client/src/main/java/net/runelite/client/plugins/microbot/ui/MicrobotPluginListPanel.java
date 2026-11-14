@@ -589,7 +589,7 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
                         pluginManager.getPlugins().stream()
                                 .filter(plugin -> {
                                     PluginDescriptor d = plugin.getClass().getAnnotation(PluginDescriptor.class);
-                                    return !d.hidden() && (isMicrobotPlugin.test(plugin) || d.isExternal());
+                                    return !d.hidden() && isListed(plugin) && (isMicrobotPlugin.test(plugin) || d.isExternal());
                                 })
                                 .map(plugin ->
                                 {
@@ -1193,6 +1193,15 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
     @Subscribe
     private void onProfileChanged(ProfileChanged ev) {
         SwingUtilities.invokeLater(this::rebuildPluginList);
+    }
+
+    @Subscribe
+    public void onPluginListingChanged(PluginListingChanged ev) {
+        SwingUtilities.invokeLater(this::rebuildPluginList);
+    }
+
+    private static boolean isListed(Plugin plugin) {
+        return !(plugin instanceof ConditionallyListed) || ((ConditionallyListed) plugin).isListed();
     }
 
     // Read on activation and rebuild only, so a plugin starting while the list is visible does not jump.

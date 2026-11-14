@@ -10,6 +10,7 @@ import net.runelite.client.config.Range;
 public interface MouseMacroRecorderConfig extends Config
 {
 	String CONFIG_GROUP = "mouseMacroRecorder";
+	String ACCESS_GRANTED = "accessGranted";
 
 	@ConfigSection(
 		name = "Recording",
@@ -53,5 +54,16 @@ public interface MouseMacroRecorderConfig extends Config
 	default int movementSampleIntervalMs()
 	{
 		return 10;
+	}
+
+	@ConfigItem(
+		keyName = ACCESS_GRANTED,
+		name = "Access granted",
+		description = "Whether microbot.cloud allows this account to use input recording",
+		hidden = true
+	)
+	default boolean accessGranted()
+	{
+		return false;
 	}
 }

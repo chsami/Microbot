@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.zip.GZIPInputStream;
 import okhttp3.OkHttpClient;
@@ -126,6 +127,27 @@ public class InputUploaderTest
 		byte[] firstTry = server.takeRequest().getBody().readByteArray();
 		byte[] secondTry = server.takeRequest().getBody().readByteArray();
 		assertArrayEquals(firstTry, secondTry);
+		assertEquals(0, uploader.queued());
+	}
+
+	@Test
+	public void anAccountWithoutAccessStopsTheSessionAndHidesThePlugin() throws Exception
+	{
+		AtomicInteger notAvailable = new AtomicInteger();
+		uploader.setOnNotAvailable(notAvailable::incrementAndGet);
+		server.enqueue(new MockResponse().setResponseCode(403).setBody("{\"message\":\"Input recording is not available for your account.\",\"code\":\"not-available\"}"));
+
+		uploader.beginSession(info());
+		uploader.submit("{\"t\":1,\"e\":\"mv\"}\n");
+		uploader.submit("{\"t\":2,\"e\":\"mv\"}\n");
+		uploader.endSession();
+		uploader.drain();
+		uploader.drain();
+		uploader.drain();
+		uploader.drain();
+
+		assertEquals(1, notAvailable.get());
+		assertEquals(1, server.getRequestCount());
 		assertEquals(0, uploader.queued());
 	}
 

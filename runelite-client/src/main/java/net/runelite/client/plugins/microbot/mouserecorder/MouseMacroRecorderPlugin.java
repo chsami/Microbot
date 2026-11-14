@@ -14,6 +14,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import javax.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Actor;
@@ -56,6 +59,8 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.ScriptStarted;
 import net.runelite.client.plugins.microbot.alerts.ClientAlertReporter;
+import net.runelite.client.plugins.microbot.ui.ConditionallyListed;
+import net.runelite.client.plugins.microbot.ui.PluginListingChanged;
 import net.runelite.client.plugins.microbot.alerts.ClientLinkToken;
 import net.runelite.client.plugins.microbot.util.mouse.BotEventGuard;
 import net.runelite.client.ui.overlay.OverlayManager;
@@ -65,15 +70,17 @@ import okhttp3.OkHttpClient;
 	name = "Input Recorder",
 	description = "Records your own mouse and game-key input, tagged with the content you are doing, and uploads it to your Microbot account",
 	tags = {"mouse", "macro", "keyboard", "input", "recorder", "microbot"},
-	version = "2.0.1"
+	enabledByDefault = true,
+	version = "2.1.0"
 )
 @Slf4j
-public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, MouseWheelListener, KeyListener
+public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, MouseWheelListener, KeyListener, ConditionallyListed
 {
 	public static final String CONFIG_GROUP = MouseMacroRecorderConfig.CONFIG_GROUP;
 	static final long HUMAN_INPUT_WINDOW_NANOS = 1_500_000_000L;
 	static final long BOT_QUIET_NANOS = 30_000_000_000L;
 	static final int SCRIPT_SCAN_TICKS = 5;
+	static final long ACCESS_POLL_SECONDS = 60;
 
 	enum Status
 	{
@@ -127,6 +134,12 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 	@Inject
 	private EventBus eventBus;
 
+	@Inject
+	private ConfigManager configManager;
+
+	@Inject
+	private ScheduledExecutorService executor;
+
 	private final BotMenuProbe botMenuProbe = new BotMenuProbe();
 
 	private final Object lock = new Object();
@@ -134,6 +147,8 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 	private final ContentDetector detector = new ContentDetector();
 	private final Map<Skill, Integer> lastXp = new EnumMap<>(Skill.class);
 	private InputUploader uploader;
+	private InputAccessCheck accessCheck;
+	private ScheduledFuture<?> accessTask;
 	private volatile boolean active;
 	private volatile String pauseReason;
 	private volatile String botName;
@@ -166,7 +181,9 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 	{
 		String apiUrl = System.getProperty("microbot.apiUrl", "https://microbot.cloud/api");
 		uploader = new InputUploader(okHttpClient, gson, clientLinkToken::get, clientLinkToken::reject, apiUrl);
-		uploader.startWorker();
+		uploader.setOnNotAvailable(() -> setAccess(false));
+		accessCheck = new InputAccessCheck(okHttpClient, clientLinkToken::get, this::setAccess, apiUrl);
+		accessTask = executor.scheduleWithFixedDelay(accessCheck::poll, 0, ACCESS_POLL_SECONDS, TimeUnit.SECONDS);
 		mouseManager.registerMouseListener(this);
 		mouseManager.registerMouseWheelListener(this);
 		keyManager.registerKeyListener(this);
@@ -177,6 +194,11 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 	@Override
 	protected void shutDown()
 	{
+		if (accessTask != null)
+		{
+			accessTask.cancel(false);
+			accessTask = null;
+		}
 		mouseManager.unregisterMouseListener(this);
 		mouseManager.unregisterMouseWheelListener(this);
 		keyManager.unregisterKeyListener(this);
@@ -199,9 +221,26 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 		}
 	}
 
+	@Override
+	public boolean isListed()
+	{
+		return config.accessGranted();
+	}
+
+	private void setAccess(boolean allowed)
+	{
+		if (allowed == config.accessGranted())
+		{
+			return;
+		}
+		configManager.setConfiguration(CONFIG_GROUP, MouseMacroRecorderConfig.ACCESS_GRANTED, allowed);
+		log.info(allowed ? "Input recording is available for this Microbot account." : "Input recording is not available for this Microbot account.");
+		eventBus.post(new PluginListingChanged());
+	}
+
 	Status status()
 	{
-		if (!config.uploadEnabled())
+		if (!config.accessGranted() || !config.uploadEnabled())
 		{
 			return Status.OFF;
 		}
@@ -604,7 +643,7 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 
 	private boolean shouldRecord()
 	{
-		return config.uploadEnabled() && !telemetryOff && linked
+		return config.accessGranted() && config.uploadEnabled() && !telemetryOff && linked
 			&& uploader.state() != InputUploader.State.DAILY_LIMIT && uploader.state() != InputUploader.State.LINK_REMOVED;
 	}
 
@@ -617,6 +656,7 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 			{
 				return;
 			}
+			uploader.startWorker();
 			baseNanos = System.nanoTime();
 			lastHover = null;
 			lastPos = null;

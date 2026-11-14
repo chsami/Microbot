@@ -119,6 +119,7 @@ final class InputUploader
 	private volatile State state = State.IDLE;
 	private volatile String rejectedToken;
 	private volatile long limitUntilMs;
+	private volatile Runnable onNotAvailable = () -> { };
 	private long backoffMs;
 	private long retryAtMs;
 
@@ -129,6 +130,11 @@ final class InputUploader
 		this.token = token;
 		this.onRejected = onRejected;
 		this.apiUrl = apiUrl.endsWith("/") ? apiUrl.substring(0, apiUrl.length() - 1) : apiUrl;
+	}
+
+	void setOnNotAvailable(Runnable onNotAvailable)
+	{
+		this.onNotAvailable = onNotAvailable;
 	}
 
 	synchronized void startWorker()
@@ -466,6 +472,15 @@ final class InputUploader
 			state = State.LINK_REMOVED;
 			onRejected.accept(value);
 			log.warn("Your Microbot account link was removed, so input recording stopped uploading. Link this client again in Microbot Cloud to resume.");
+			return false;
+		}
+		if (code == 403 && (text.contains("not-available") || text.contains("account-inactive")))
+		{
+			item.generation.dead = true;
+			remove(item, true);
+			state = State.IDLE;
+			log.info("Input recording is not available for this Microbot account, so nothing more is uploaded.");
+			onNotAvailable.run();
 			return false;
 		}
 		if (code == 429 && (text.contains("daily-limit") || text.contains("too-many-sessions")))
