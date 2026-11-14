@@ -2109,7 +2109,7 @@ public class Rs2WalkerUnitTest {
 
     @Test
     public void sceneClickRejectsPointsCoveredByVisibleInterfaces() {
-        java.util.List<java.awt.Rectangle> interfaces = Arrays.asList(
+        java.util.List<java.awt.Rectangle> interfaces = java.util.Arrays.asList(
                 new java.awt.Rectangle(1030, 380, 250, 340),
                 new java.awt.Rectangle(0, 555, 519, 165),
                 new java.awt.Rectangle(0, 0, 0, 0),
@@ -2705,7 +2705,7 @@ public class Rs2WalkerUnitTest {
         WorldPoint p = new WorldPoint(2740, 3469, 0);
         WorldPoint a = new WorldPoint(2740, 3468, 0);
         WorldPoint b = new WorldPoint(2740, 3467, 0);
-        java.util.List<WorldPoint> raw = Arrays.asList(p, a, b, new WorldPoint(2740, 3466, 0));
+        java.util.List<WorldPoint> raw = java.util.Arrays.asList(p, a, b, new WorldPoint(2740, 3466, 0));
         WorldPoint[] edge = Rs2WalkerMovement.firstWalledRawEdge(raw, p, reachableSet(p, a), 12);
         assertNotNull(edge);
         assertEquals(a, edge[0]);
@@ -2717,7 +2717,7 @@ public class Rs2WalkerUnitTest {
     public void firstWalledRawEdge_allReachableLearnsNothing() {
         WorldPoint p = new WorldPoint(2740, 3469, 0);
         WorldPoint a = new WorldPoint(2740, 3468, 0);
-        java.util.List<WorldPoint> raw = Arrays.asList(p, a);
+        java.util.List<WorldPoint> raw = java.util.Arrays.asList(p, a);
         assertNull(Rs2WalkerMovement.firstWalledRawEdge(raw, p, reachableSet(p, a), 12));
     }
 
@@ -2729,7 +2729,7 @@ public class Rs2WalkerUnitTest {
     public void firstWalledRawEdge_ignoresStepsBeyondTheBfsBudget() {
         WorldPoint p = new WorldPoint(2740, 3469, 0);
         WorldPoint far = new WorldPoint(2740, 3449, 0);
-        java.util.List<WorldPoint> raw = Arrays.asList(p, far);
+        java.util.List<WorldPoint> raw = java.util.Arrays.asList(p, far);
         assertNull(Rs2WalkerMovement.firstWalledRawEdge(raw, p, reachableSet(p), 12));
     }
 
@@ -2747,7 +2747,7 @@ public class Rs2WalkerUnitTest {
         WorldPoint player = new WorldPoint(2772, 3234, 0);
         WorldPoint onFrontier = new WorldPoint(2759, 3230, 0);
         WorldPoint beyond = new WorldPoint(2759, 3231, 0);
-        java.util.List<WorldPoint> raw = Arrays.asList(player, onFrontier, beyond);
+        java.util.List<WorldPoint> raw = java.util.Arrays.asList(player, onFrontier, beyond);
 
         java.util.Map<WorldPoint, Integer> reachable = new java.util.HashMap<>();
         reachable.put(player, 0);
@@ -2765,7 +2765,7 @@ public class Rs2WalkerUnitTest {
         WorldPoint player = new WorldPoint(2772, 3234, 0);
         WorldPoint interior = new WorldPoint(2770, 3234, 0);
         WorldPoint walled = new WorldPoint(2769, 3234, 0);
-        java.util.List<WorldPoint> raw = Arrays.asList(player, interior, walled);
+        java.util.List<WorldPoint> raw = java.util.Arrays.asList(player, interior, walled);
 
         java.util.Map<WorldPoint, Integer> reachable = new java.util.HashMap<>();
         reachable.put(player, 0);
@@ -2782,7 +2782,7 @@ public class Rs2WalkerUnitTest {
         WorldPoint p = new WorldPoint(2740, 3469, 0);
         assertNull(Rs2WalkerMovement.firstWalledRawEdge(null, p, reachableSet(p), 12));
         assertNull(Rs2WalkerMovement.firstWalledRawEdge(java.util.Collections.emptyList(), p, reachableSet(p), 12));
-        assertNull(Rs2WalkerMovement.firstWalledRawEdge(Arrays.asList(p), p, null, 12));
+        assertNull(Rs2WalkerMovement.firstWalledRawEdge(java.util.Arrays.asList(p), p, null, 12));
     }
 
     // ---- post-door route target (chain the click past the opened door) ------------------------------

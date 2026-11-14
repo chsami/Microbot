@@ -61,10 +61,13 @@ public class TransportRefusalExecutorTest
 	private boolean originReachable;
 	private int travelClicks;
 	private Rs2PathApi.ActiveTransportSelection selection;
+	private Transport cape;
+	private String statusBefore;
 
 	@Before
 	public void setUp()
 	{
+		statusBefore = Microbot.status;
 		playerLocation = ORIGIN;
 		spiritTreeTravelEnabled = true;
 		originReachable = true;
@@ -80,6 +83,7 @@ public class TransportRefusalExecutorTest
 			statics.get(i).close();
 		}
 		statics.clear();
+		Microbot.status = statusBefore;
 	}
 
 	@Test
@@ -195,8 +199,28 @@ public class TransportRefusalExecutorTest
 		}
 		assertTrue(learnedEdges.isEmpty());
 
+		assertFalse(config.isWalkBlockedTeleport(cape));
+
 		assertTrue("repeated handler failure strikes the teleport out", dispatch().struckOut);
 		assertEquals(List.of(edge(ORIGIN, DESTINATION)), learnedEdges);
+		assertTrue("the teleport is blocked by name, from every tile", config.isWalkBlockedTeleport(cape));
+		assertEquals("Hunter cape: Feldip Hills failed, taking another route", Microbot.status);
+
+		Rs2WalkerTransports.withdrawWalkScopedTransportBlocks();
+		assertFalse("the block ends with the walk", config.isWalkBlockedTeleport(cape));
+	}
+
+	@Test
+	public void onlyOriginlessTeleportsAreBlockedByName()
+	{
+		Transport door = new Transport(ORIGIN, DESTINATION, "Zanaris shed",
+			TransportType.TRANSPORT, true, "Open", "Door", 2406, 1);
+		Transport teleport = new Transport(DESTINATION, " Hunter cape: Feldip Hills ",
+			TransportType.TELEPORTATION_ITEM, true, 20, Set.of(Set.of(9949)));
+
+		assertEquals("Hunter cape: Feldip Hills", Rs2WalkerTransports.originlessTeleportName(teleport));
+		assertEquals(null, Rs2WalkerTransports.originlessTeleportName(door));
+		assertEquals(null, Rs2WalkerTransports.originlessTeleportName(null));
 	}
 
 	@Test
@@ -210,7 +234,7 @@ public class TransportRefusalExecutorTest
 
 	private void installFailingTeleportItem() throws Exception
 	{
-		Transport cape = new Transport(DESTINATION, "Hunter cape: Feldip Hills",
+		cape = new Transport(DESTINATION, "Hunter cape: Feldip Hills",
 			TransportType.TELEPORTATION_ITEM, true, 20, Set.of(Set.of(9949)));
 		install(cape);
 		open(Rs2Pvp.class);
@@ -302,6 +326,12 @@ public class TransportRefusalExecutorTest
 		});
 		pathApi.when(() -> Rs2PathApi.unlearnBlockedEdge(any(), any(), anyString())).thenAnswer(inv ->
 			config.unlearnBlockedEdge(inv.getArgument(0), inv.getArgument(1), inv.getArgument(2)));
+		pathApi.when(() -> Rs2PathApi.blockTeleportForWalk(anyString(), anyString())).thenAnswer(inv ->
+			config.blockTeleportForWalk(inv.getArgument(0), inv.getArgument(1)));
+		pathApi.when(Rs2PathApi::clearWalkBlockedTeleports).thenAnswer(inv -> {
+			config.clearWalkBlockedTeleports();
+			return null;
+		});
 
 		open(Rs2LeaguesTransport.class);
 		open(Rs2Widget.class);

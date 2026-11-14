@@ -332,6 +332,8 @@ Walker teleport rows name the destination after the colon (`Hunter cape: Feldip 
 
 **Why this matters:** the walker asked the worn Hunter cape for `feldip hills` on every attempt, the teleport never fired, and the failed handler was never struck out, so the same route was retried in a loop.
 
+A teleport item works from any tile, so a strike-out keyed on the route-step tile alone lets the same teleport be picked again after the replan moves the player. A struck-out teleport without a catalog origin is also blocked by name for the rest of the walk (`Rs2PathApi.blockTeleportForWalk`), and the player is told once through `Microbot.status`.
+
 **Defensive check:** Run `Rs2WalkerUnitTest` and `TransportRefusalExecutorTest`. A new multi-destination item belongs in `isDialogueBasedTeleportItem`.
 
 ## Terminal supply stops need observed logout

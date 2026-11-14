@@ -224,9 +224,9 @@ final class Rs2WalkerTransports {
         if (verdict == TransportDispatchTrace.Verdict.HANDLED) {
             transportRefusalLedger.clear(origin, destination);
         } else if (verdict == TransportDispatchTrace.Verdict.REFUSED_AFTER_INTERACTION) {
-            struckOut = registerTransportRefusal(origin, destination, "interaction-refused");
+            struckOut = registerTransportRefusal(transport, origin, destination, "interaction-refused");
         } else if (isTeleportItemHandlerFailure(transport, verdict, trace)) {
-            struckOut = registerTransportFallThrough(origin, destination, trace.reason());
+            struckOut = registerTransportFallThrough(transport, origin, destination, trace.reason());
         }
         return new DispatchResult(handled, verdict, trace, struckOut);
     }
@@ -256,7 +256,7 @@ final class Rs2WalkerTransports {
         if (isTeleportItemHandlerFailure(transport, result.verdict, result.trace)) {
             return false;
         }
-        return registerTransportFallThrough(refusalOrigin(transport, path, selection.get()),
+        return registerTransportFallThrough(transport, refusalOrigin(transport, path, selection.get()),
                 transport.getDestination(), result.trace.reason());
     }
 
@@ -1033,7 +1033,8 @@ final class Rs2WalkerTransports {
         return transportRefusalLedger.strikes(origin, destination);
     }
 
-    static boolean registerTransportRefusal(WorldPoint origin, WorldPoint destination, String mode) {
+    static boolean registerTransportRefusal(Transport transport, WorldPoint origin, WorldPoint destination,
+                                            String mode) {
         if (origin == null || destination == null) {
             return false;
         }
@@ -1044,11 +1045,12 @@ final class Rs2WalkerTransports {
                     strikes, TransportRefusalLedger.STRIKE_LIMIT);
             return false;
         }
-        strikeOutTransport(origin, destination, mode, TransportRefusalLedger.STRIKE_LIMIT);
+        strikeOutTransport(transport, origin, destination, mode, TransportRefusalLedger.STRIKE_LIMIT);
         return true;
     }
 
-    static boolean registerTransportFallThrough(WorldPoint origin, WorldPoint destination, String reason) {
+    static boolean registerTransportFallThrough(Transport transport, WorldPoint origin, WorldPoint destination,
+                                                String reason) {
         if (origin == null || destination == null) {
             return false;
         }
@@ -1059,7 +1061,7 @@ final class Rs2WalkerTransports {
                     fallThroughs, TransportRefusalLedger.FALL_THROUGH_STRIKE_LIMIT);
             return false;
         }
-        strikeOutTransport(origin, destination, "fall-through " + reason,
+        strikeOutTransport(transport, origin, destination, "fall-through " + reason,
                 TransportRefusalLedger.FALL_THROUGH_STRIKE_LIMIT);
         return true;
     }
@@ -1068,14 +1070,30 @@ final class Rs2WalkerTransports {
         return transportRefusalLedger.fallThroughs(origin, destination);
     }
 
-    private static void strikeOutTransport(WorldPoint origin, WorldPoint destination, String mode, int limit) {
+    private static void strikeOutTransport(Transport transport, WorldPoint origin, WorldPoint destination,
+                                           String mode, int limit) {
         if (Rs2PathApi.learnBlockedEdge(origin, destination, "transport-refused (" + mode + ")")) {
             transportRefusalLedger.recordWalkScopedBlock(origin, destination);
         }
         WebWalkLog.spInfo("transport_strike_out | origin={} dest={} mode={} — {} refusals; "
                         + "blocking transport for this walk and replanning",
                 compactWorldPoint(origin), compactWorldPoint(destination), mode, limit);
+        String teleport = originlessTeleportName(transport);
+        if (teleport != null && Rs2PathApi.blockTeleportForWalk(teleport, "failed " + limit + " times")) {
+            WebWalkLog.spInfo("teleport_failed | {} teleport failed {} times (out of charges, refused by the game "
+                            + "or option not found); not using it again on this walk, taking another route",
+                    teleport, limit);
+            Microbot.status = teleport + " failed, taking another route";
+        }
         recalculatePath();
+    }
+
+    static String originlessTeleportName(Transport transport) {
+        if (transport == null || transport.getOrigin() != null || transport.getDisplayInfo() == null) {
+            return null;
+        }
+        String name = transport.getDisplayInfo().trim();
+        return name.isEmpty() ? null : name;
     }
 
     static void withdrawWalkScopedTransportBlocks() {
