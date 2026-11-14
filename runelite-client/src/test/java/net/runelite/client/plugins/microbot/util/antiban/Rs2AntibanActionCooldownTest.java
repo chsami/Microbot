@@ -1,9 +1,13 @@
 package net.runelite.client.plugins.microbot.util.antiban;
 
+import net.runelite.api.Skill;
 import net.runelite.api.events.GameTick;
+import net.runelite.api.events.StatChanged;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.util.antiban.enums.Activity;
 import net.runelite.client.plugins.microbot.util.antiban.enums.ActivityIntensity;
 import net.runelite.client.plugins.microbot.util.antiban.enums.PlayStyle;
+import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
 import net.runelite.client.ui.overlay.components.PanelComponent;
 import org.junit.After;
 import org.junit.Before;
@@ -144,6 +148,96 @@ public class Rs2AntibanActionCooldownTest {
 			}
 
 			microbot.verify(() -> Microbot.showMessage(anyString()), times(1));
+		} finally {
+			Microbot.pauseAllScripts.set(false);
+		}
+	}
+
+	@Test
+	public void universalCooldownLeavesScriptsRunningWhileInCombat() {
+		Rs2AntibanSettings.universalAntiban = true;
+
+		try (MockedStatic<Microbot> microbot = mockStatic(Microbot.class);
+			 MockedStatic<Rs2Combat> combat = mockStatic(Rs2Combat.class)) {
+			Microbot.pauseAllScripts.set(false);
+			microbot.when(Microbot::isLoggedIn).thenReturn(true);
+			combat.when(Rs2Combat::inCombat).thenReturn(true);
+			Rs2Antiban.setActivity(Activity.GENERAL_SLAYER);
+
+			Rs2Antiban.actionCooldown();
+			assertTrue(Rs2AntibanSettings.actionCooldownActive);
+			assertFalse(Microbot.pauseAllScripts.get());
+
+			int ticks = Rs2Antiban.getTIMEOUT();
+			assertTrue(ticks >= 2);
+			for (int i = 0; i < 50; i++) {
+				AntibanPlugin.performActionBreak();
+				assertFalse(Microbot.pauseAllScripts.get());
+			}
+			assertEquals(ticks, Rs2Antiban.getTIMEOUT());
+
+			combat.when(Rs2Combat::inCombat).thenReturn(false);
+			AntibanPlugin.performActionBreak();
+			assertTrue(Microbot.pauseAllScripts.get());
+			assertEquals(ticks - 1, Rs2Antiban.getTIMEOUT());
+
+			combat.when(Rs2Combat::inCombat).thenReturn(true);
+			AntibanPlugin.performActionBreak();
+			assertFalse(Microbot.pauseAllScripts.get());
+			assertEquals(ticks - 1, Rs2Antiban.getTIMEOUT());
+
+			combat.when(Rs2Combat::inCombat).thenReturn(false);
+			for (int i = 0; i < ticks - 1; i++) {
+				AntibanPlugin.performActionBreak();
+				assertTrue(Microbot.pauseAllScripts.get());
+			}
+			AntibanPlugin.performActionBreak();
+			assertFalse(Rs2AntibanSettings.actionCooldownActive);
+			assertFalse(Microbot.pauseAllScripts.get());
+		} finally {
+			Microbot.pauseAllScripts.set(false);
+		}
+	}
+
+	@Test
+	public void universalCooldownStartedOutOfCombatPausesScripts() {
+		Rs2AntibanSettings.universalAntiban = true;
+
+		try (MockedStatic<Microbot> microbot = mockStatic(Microbot.class);
+			 MockedStatic<Rs2Combat> combat = mockStatic(Rs2Combat.class)) {
+			Microbot.pauseAllScripts.set(false);
+			microbot.when(Microbot::isLoggedIn).thenReturn(true);
+			combat.when(Rs2Combat::inCombat).thenReturn(false);
+			Rs2Antiban.setActivity(Activity.GENERAL_SLAYER);
+
+			Rs2Antiban.actionCooldown();
+
+			assertTrue(Rs2AntibanSettings.actionCooldownActive);
+			assertTrue(Microbot.pauseAllScripts.get());
+		} finally {
+			Microbot.pauseAllScripts.set(false);
+		}
+	}
+
+	@Test
+	public void activityChangeDoesNotRestartRunningUniversalCooldown() {
+		Rs2AntibanSettings.universalAntiban = true;
+		Rs2AntibanSettings.dynamicActivity = true;
+		AntibanPlugin plugin = new AntibanPlugin();
+
+		try (MockedStatic<Microbot> microbot = mockStatic(Microbot.class)) {
+			Microbot.pauseAllScripts.set(false);
+			plugin.onStatChanged(new StatChanged(Skill.ATTACK, 100, 1, 1));
+			plugin.onStatChanged(new StatChanged(Skill.SLAYER, 100, 1, 1));
+			plugin.onStatChanged(new StatChanged(Skill.ATTACK, 200, 1, 1));
+			assertTrue(Rs2AntibanSettings.actionCooldownActive);
+			assertSame(Activity.GENERAL_COMBAT, Rs2Antiban.getActivity());
+
+			Rs2Antiban.setTIMEOUT(1);
+			plugin.onStatChanged(new StatChanged(Skill.SLAYER, 200, 1, 1));
+
+			assertSame(Activity.GENERAL_SLAYER, Rs2Antiban.getActivity());
+			assertEquals(1, Rs2Antiban.getTIMEOUT());
 		} finally {
 			Microbot.pauseAllScripts.set(false);
 		}
