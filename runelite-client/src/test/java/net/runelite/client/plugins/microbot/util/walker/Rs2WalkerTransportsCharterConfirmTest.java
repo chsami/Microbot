@@ -6,6 +6,8 @@ import java.util.Arrays;
 import java.util.Collections;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class Rs2WalkerTransportsCharterConfirmTest
 {
@@ -43,6 +45,33 @@ public class Rs2WalkerTransportsCharterConfirmTest
 		assertEquals(1, Rs2WalkerTransports.charterConfirmOptionIndex(Arrays.asList("Pay 200 coins", "No")));
 		assertEquals(3, Rs2WalkerTransports.charterConfirmOptionIndex(
 			Arrays.asList("No.", "Choose again.", "Sail to Musa Point", "Cancel")));
+	}
+
+	@Test
+	public void onlyYesAndOkWordingCountsAsAffirmative()
+	{
+		assertTrue(Rs2WalkerTransports.isCharterAffirmativeOption("<col=00ff00>Okay.</col>"));
+		assertTrue(Rs2WalkerTransports.isCharterAffirmativeOption("Yes, pay 480 coins."));
+		assertFalse(Rs2WalkerTransports.isCharterAffirmativeOption("Pay 200 coins"));
+		assertFalse(Rs2WalkerTransports.isCharterAffirmativeOption("No."));
+		assertFalse(Rs2WalkerTransports.isCharterAffirmativeOption(null));
+	}
+
+	@Test
+	public void optionSummaryKeepsTheOnScreenWording()
+	{
+		assertEquals("Okay. / Choose again. / No.", Rs2WalkerTransports.charterOptionSummary(
+			Arrays.asList("<col=00ff00>Okay.</col>", "Choose  again.", "", null, "No.")));
+		assertEquals("Pay 200 coins", Rs2WalkerTransports.charterOptionSummary(
+			Collections.singletonList("Pay 200 coins")));
+	}
+
+	@Test
+	public void optionSummaryIsNoneWhenNothingIsOnScreen()
+	{
+		assertEquals("none", Rs2WalkerTransports.charterOptionSummary(Collections.emptyList()));
+		assertEquals("none", Rs2WalkerTransports.charterOptionSummary(Arrays.asList("", null)));
+		assertEquals("none", Rs2WalkerTransports.charterOptionSummary(null));
 	}
 
 	@Test
