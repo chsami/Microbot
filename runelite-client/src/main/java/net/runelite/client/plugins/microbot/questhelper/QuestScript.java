@@ -96,6 +96,9 @@ public class QuestScript extends Script {
 
     private final MultiNpcTargetTracker multiNpcTarget = new MultiNpcTargetTracker();
 
+    private static final String CUTSCENE_WAIT_STATUS = "Quest helper: waiting for the cutscene to finish";
+    private final DialogueRelocationGuard dialogueRelocation = new DialogueRelocationGuard();
+
     private final AtomicReference<Thread> iterationThread = new AtomicReference<>();
 
     /**
@@ -148,6 +151,9 @@ public class QuestScript extends Script {
 
                 if (Rs2Dialogue.isInDialogue() && dialogueStartedStep == null)
                     dialogueStartedStep = questStep;
+
+                if (Rs2Dialogue.isInDialogue())
+                    dialogueRelocation.noteDialogue(Rs2Player.getWorldLocation(), System.currentTimeMillis());
 
                 if (questStep != null && Rs2Widget.isWidgetVisible(ComponentID.DIALOG_OPTION_OPTIONS)) {
                     var dialogOptions = Rs2Widget.getWidget(ComponentID.DIALOG_OPTION_OPTIONS);
@@ -291,6 +297,11 @@ public class QuestScript extends Script {
                         return;
                     }
 
+                    if (dialogueRelocation.shouldHold(Rs2Player.getWorldLocation(), stepWorldPoint(questStep), System.currentTimeMillis())) {
+                        Microbot.status = CUTSCENE_WAIT_STATUS;
+                        return;
+                    }
+
 					if (questStep instanceof DetailedQuestStep && handleRequirements((DetailedQuestStep) questStep)) {
 						sleep(500, 1000);
 						return;
@@ -411,6 +422,14 @@ public class QuestScript extends Script {
         return now - optionSelectionPendingSince < OPTION_SELECTION_PENDING_LIMIT_MS;
     }
 
+    static WorldPoint stepWorldPoint(QuestStep step) {
+        if (!(step instanceof DetailedQuestStep)) {
+            return null;
+        }
+        var definedPoint = ((DetailedQuestStep) step).getDefinedPoint();
+        return definedPoint == null ? null : definedPoint.getWorldPoint();
+    }
+
     void runTracked(Runnable iteration) {
         Thread current = Thread.currentThread();
         iterationThread.set(current);
@@ -441,6 +460,7 @@ public class QuestScript extends Script {
         }
         ScriptHeartbeatRegistry.remove(getClass().getName());
         multiNpcTarget.release();
+        dialogueRelocation.reset();
         unhandledOptionStep = null;
         resetUnhandledOptionDismissals();
         reset();
