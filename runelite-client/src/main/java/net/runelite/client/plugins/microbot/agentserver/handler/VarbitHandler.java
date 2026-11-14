@@ -7,6 +7,7 @@ import net.runelite.client.plugins.microbot.Microbot;
 import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
 
 public class VarbitHandler extends AgentHandler {
 
@@ -39,6 +40,16 @@ public class VarbitHandler extends AgentHandler {
 		try {
 			varbitId = Integer.parseInt(idStr);
 		} catch (NumberFormatException e) {
+			sendJson(exchange, 400, errorResponse("Invalid varbit id: " + idStr));
+			return;
+		}
+
+		Optional<Boolean> validId = Microbot.getRs2PlayerStateCache().isValidVarbitId(varbitId);
+		if (!validId.isPresent()) {
+			sendJson(exchange, 503, errorResponse("Client thread unavailable"));
+			return;
+		}
+		if (!validId.get()) {
 			sendJson(exchange, 400, errorResponse("Invalid varbit id: " + idStr));
 			return;
 		}
