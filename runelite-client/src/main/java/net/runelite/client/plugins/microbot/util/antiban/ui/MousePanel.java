@@ -27,8 +27,9 @@ public class MousePanel extends JPanel
 
     public MousePanel()
     {
-        useNaturalMouse.setToolTipText("<html>Picks each click spot from where the cursor is now and lets scripts hover their next target.<br>"
-                + "Human-like mouse movement is always on and cannot be turned off here.</html>");
+        useNaturalMouse.setToolTipText("<html>On (recommended): clicks are aimed from where the cursor is now, and scripts can hover their next target.<br>"
+                + "Off: clicks are aimed from the last click spot, and scripts do not hover their next target.<br>"
+                + "Script antiban templates do not change this setting. Human-like mouse movement is always on and cannot be turned off.</html>");
         simulateMistakes.setToolTipText("Simulate mistakes in mouse movements");
         moveMouseOffScreen.setToolTipText("Move the mouse off screen if activity cooldown is active");
         moveMouseOffScreenChance.setToolTipText("Chance to move the mouse off screen when activity cooldown is active");
