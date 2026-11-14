@@ -40,7 +40,7 @@ public final class DiagnosticReport
 		line(out, "GPU", "plugin " + (snapshot.getGpuPluginEnabled() == null ? UNKNOWN : snapshot.getGpuPluginEnabled() ? "enabled" : "disabled")
 			+ ", renderer " + (snapshot.getGpuRendererActive() == null ? UNKNOWN : snapshot.getGpuRendererActive() ? "active" : "inactive"));
 		line(out, "Walker", value(snapshot.getWalker()) + ", planner " + value(snapshot.getPlannerMode()));
-		line(out, "Mouse", value(snapshot.getMouse()) + ", natural mouse " + flag(snapshot.getNaturalMouse()));
+		line(out, "Mouse", value(snapshot.getMouse()) + ", aim clicks from cursor " + flag(snapshot.getNaturalMouse()));
 
 		Map<String, String> settings = snapshot.getWalkerSettings();
 		if (settings.isEmpty())

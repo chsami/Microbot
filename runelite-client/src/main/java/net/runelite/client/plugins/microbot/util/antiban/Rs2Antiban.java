@@ -601,6 +601,9 @@ public class Rs2Antiban {
     public static void resetAntibanSettings(boolean forceReset) {
         if (!forceReset && Rs2AntibanSettings.overwriteScriptSettings) return;
         Rs2AntibanSettings.reset();
+        if (!forceReset) {
+            Rs2AntibanSettings.loadNaturalMouseFromProfile();
+        }
         Rs2Antiban.playStyle = null;
         Rs2Antiban.activity = null;
         Rs2Antiban.activityIntensity = ActivityIntensity.EXTREME;
