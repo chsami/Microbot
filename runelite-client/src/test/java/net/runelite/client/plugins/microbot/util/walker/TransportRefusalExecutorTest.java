@@ -11,8 +11,11 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.TransportType;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.PathfinderConfig;
+import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.leaguetransport.Rs2LeaguesTransport;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+import net.runelite.client.plugins.microbot.util.player.Rs2Pvp;
 import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
 import net.runelite.client.plugins.microbot.util.walker.door.Rs2DoorDetection;
 import net.runelite.client.plugins.microbot.util.walker.transport.TransportDispatchTrace;
@@ -174,6 +177,45 @@ public class TransportRefusalExecutorTest
 		assertEquals(0, Rs2WalkerTransports.transportFallThroughs(ORIGIN, DESTINATION));
 		assertTrue(learnedEdges.isEmpty());
 		assertEquals(TransportDispatchTrace.Verdict.DELIBERATE_SKIP, dispatch().verdict);
+	}
+
+	@Test
+	public void teleportItemHandlerFailureIsStruckOutByNormalDispatch() throws Exception
+	{
+		installFailingTeleportItem();
+
+		for (int pass = 1; pass < TransportRefusalLedger.FALL_THROUGH_STRIKE_LIMIT; pass++)
+		{
+			Rs2WalkerTransports.DispatchResult result = dispatch();
+			assertFalse(result.handled);
+			assertEquals(TransportDispatchTrace.Verdict.REFUSED_WITHOUT_INTERACTION, result.verdict);
+			assertEquals(TransportDispatchTrace.Refusal.HANDLER_FAILED, result.trace.refusal());
+			assertFalse("pass " + pass + " must not strike out yet", result.struckOut);
+			assertEquals(pass, Rs2WalkerTransports.transportFallThroughs(ORIGIN, DESTINATION));
+		}
+		assertTrue(learnedEdges.isEmpty());
+
+		assertTrue("repeated handler failure strikes the teleport out", dispatch().struckOut);
+		assertEquals(List.of(edge(ORIGIN, DESTINATION)), learnedEdges);
+	}
+
+	@Test
+	public void recoveryDoesNotCountATeleportItemHandlerFailureTwice() throws Exception
+	{
+		installFailingTeleportItem();
+
+		assertFalse(Rs2WalkerTransports.dispatchRecoveryTransport(List.of(ORIGIN, DESTINATION), 0));
+		assertEquals(1, Rs2WalkerTransports.transportFallThroughs(ORIGIN, DESTINATION));
+	}
+
+	private void installFailingTeleportItem() throws Exception
+	{
+		Transport cape = new Transport(DESTINATION, "Hunter cape: Feldip Hills",
+			TransportType.TELEPORTATION_ITEM, true, 20, Set.of(Set.of(9949)));
+		install(cape);
+		open(Rs2Pvp.class);
+		open(Rs2Equipment.class);
+		open(Rs2Inventory.class);
 	}
 
 	private Rs2WalkerTransports.DispatchResult dispatch()

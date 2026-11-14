@@ -225,8 +225,18 @@ final class Rs2WalkerTransports {
             transportRefusalLedger.clear(origin, destination);
         } else if (verdict == TransportDispatchTrace.Verdict.REFUSED_AFTER_INTERACTION) {
             struckOut = registerTransportRefusal(origin, destination, "interaction-refused");
+        } else if (isTeleportItemHandlerFailure(transport, verdict, trace)) {
+            struckOut = registerTransportFallThrough(origin, destination, trace.reason());
         }
         return new DispatchResult(handled, verdict, trace, struckOut);
+    }
+
+    static boolean isTeleportItemHandlerFailure(Transport transport, TransportDispatchTrace.Verdict verdict,
+                                                TransportDispatchTrace trace) {
+        return transport != null && trace != null
+                && transport.getType() == TransportType.TELEPORTATION_ITEM
+                && verdict == TransportDispatchTrace.Verdict.REFUSED_WITHOUT_INTERACTION
+                && trace.refusal() == TransportDispatchTrace.Refusal.HANDLER_FAILED;
     }
 
     static boolean dispatchRecoveryTransport(List<WorldPoint> path, int index) {
@@ -243,6 +253,9 @@ final class Rs2WalkerTransports {
             return false;
         }
         Transport transport = selection.get().getLocalExecutionTransport();
+        if (isTeleportItemHandlerFailure(transport, result.verdict, result.trace)) {
+            return false;
+        }
         return registerTransportFallThrough(refusalOrigin(transport, path, selection.get()),
                 transport.getDestination(), result.trace.reason());
     }
@@ -2397,6 +2410,10 @@ final class Rs2WalkerTransports {
                 if (!Rs2Equipment.invokeMenu(rs2Item, "teleport")) return false;
                 Rs2Dialogue.sleepUntilSelectAnOption();
                 Rs2Dialogue.clickOption(destination);
+            } else if (usesGenericWornTeleport(transport.getDisplayInfo(), rs2Item.getEquipmentActions(),
+                    rs2Item.getIndexOfSubAction(destination) != null, destination)) {
+                if (!Rs2Equipment.invokeMenu(rs2Item, WORN_GENERIC_TELEPORT_ACTION)) return false;
+                if (!Rs2Dialogue.sleepUntilSelectAnOption() || !Rs2Dialogue.clickOption(destination)) return false;
             } else {
                 if (!Rs2Equipment.invokeMenu(rs2Item, destination)) return false;
                 if (transport.getDisplayInfo().toLowerCase().contains("burning amulet")) {
@@ -2408,6 +2425,28 @@ final class Rs2WalkerTransports {
             return true;
         }
         return false;
+    }
+
+    private static final String WORN_GENERIC_TELEPORT_ACTION = "teleport";
+
+    static boolean usesGenericWornTeleport(String displayInfo, List<String> equipmentActions,
+                                           boolean hasDestinationSubAction, String destination) {
+        if (hasDestinationSubAction || equipmentActions == null || destination == null
+                || !isDialogueBasedTeleportItem(displayInfo)) {
+            return false;
+        }
+        boolean hasGenericAction = false;
+        for (String equipmentAction : equipmentActions) {
+            if (equipmentAction == null) continue;
+            String lowerAction = equipmentAction.toLowerCase(Locale.ROOT);
+            if (lowerAction.contains(destination)) {
+                return false;
+            }
+            if (lowerAction.contains(WORN_GENERIC_TELEPORT_ACTION)) {
+                hasGenericAction = true;
+            }
+        }
+        return hasGenericAction;
     }
 
     /**
@@ -2446,7 +2485,8 @@ final class Rs2WalkerTransports {
                 || lowerDisplayInfo.contains("combat bracelet")
                 || lowerDisplayInfo.contains("digsite pendant")
                 || lowerDisplayInfo.contains("necklace of passage")
-                || lowerDisplayInfo.contains("giantsoul amulet");
+                || lowerDisplayInfo.contains("giantsoul amulet")
+                || lowerDisplayInfo.contains("hunter cape");
     }
 
     /**
