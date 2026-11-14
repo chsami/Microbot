@@ -3205,6 +3205,10 @@ final class Rs2WalkerTransports {
         return sleepUntilTrue(() -> Rs2Player.getPoseAnimation() != flyingPoseAnimation, 600,60000);
     }
 
+    private static final int CHARTER_CONFIRM_PROMPT_WAIT_MS = 5000;
+    private static final int CHARTER_CONFIRM_ANSWER_WAIT_MS = 6000;
+    private static final int CHARTER_CONFIRM_ANSWER_POLL_MS = 600;
+
     private static boolean handleCharterShip(Transport transport) {
         String npcName = transport.getName();
 
@@ -3218,11 +3222,11 @@ final class Rs2WalkerTransports {
             }
 
             Widget destinationWidget = findCharterDestinationWidget(transport.getDisplayInfo());
+            WorldPoint departure = Rs2Player.getWorldLocation();
             if (!invokeCharterDestinationWidget(destinationWidget, transport.getDisplayInfo())) {
                 return false;
             }
-            confirmCharterTravelIfPrompted();
-            return true;
+            return confirmCharterTravelIfPrompted(transport.getDisplayInfo(), departure);
         }
         return false;
     }
@@ -3354,10 +3358,89 @@ final class Rs2WalkerTransports {
                 .orElse(null);
     }
 
-    private static void confirmCharterTravelIfPrompted() {
-        if (sleepUntil(Rs2Dialogue::hasSelectAnOption, 2000)) {
-            Rs2Dialogue.clickOption("Yes", true);
+    private static boolean confirmCharterTravelIfPrompted(String destinationName, WorldPoint departure) {
+        sleepUntil(() -> Rs2Dialogue.hasSelectAnOption() || Rs2Dialogue.hasContinue()
+                || !Objects.equals(departure, Rs2Player.getWorldLocation()), CHARTER_CONFIRM_PROMPT_WAIT_MS);
+        if (!Rs2Dialogue.hasSelectAnOption()) {
+            return true;
         }
+        AtomicBoolean fallbackLogged = new AtomicBoolean();
+        if (sleepUntilTrue(() -> answerCharterConfirmPrompt(fallbackLogged),
+                CHARTER_CONFIRM_ANSWER_POLL_MS, CHARTER_CONFIRM_ANSWER_WAIT_MS)) {
+            return true;
+        }
+        List<String> optionTexts = charterPromptOptionTexts();
+        if (optionTexts.isEmpty() && !Rs2Dialogue.hasSelectAnOption()) {
+            return true;
+        }
+        WebWalkLog.spWarn("Charter ship to {}: could not confirm the fare prompt (options: {}). "
+                        + "Confirm it manually, or check you have enough coins for the fare.",
+                destinationName, charterOptionSummary(optionTexts));
+        return false;
+    }
+
+    private static List<String> charterPromptOptionTexts() {
+        return Rs2Dialogue.getDialogueOptions().stream()
+                .map(Widget::getText)
+                .collect(Collectors.toList());
+    }
+
+    private static boolean answerCharterConfirmPrompt(AtomicBoolean fallbackLogged) {
+        if (!Rs2Dialogue.hasSelectAnOption()) {
+            return true;
+        }
+        if (Rs2Dialogue.isOptionSelectionPending()) {
+            return false;
+        }
+        List<String> optionTexts = charterPromptOptionTexts();
+        int optionIndex = charterConfirmOptionIndex(optionTexts);
+        if (optionIndex > 0) {
+            String chosen = optionTexts.get(optionIndex - 1);
+            if (!isCharterAffirmativeOption(chosen) && fallbackLogged.compareAndSet(false, true)) {
+                WebWalkLog.spInfo("Charter ship: no Yes/Okay option found, choosing \"{}\"",
+                        charterOptionSummary(Collections.singletonList(chosen)));
+            }
+            Rs2Dialogue.keyPressForDialogueOption(optionIndex);
+        }
+        return false;
+    }
+
+    static boolean isCharterAffirmativeOption(String optionText) {
+        String option = normalizeCharterWidgetText(optionText);
+        return option.startsWith("yes") || option.startsWith("ok");
+    }
+
+    static String charterOptionSummary(List<String> optionTexts) {
+        if (optionTexts == null) {
+            return "none";
+        }
+        String summary = optionTexts.stream()
+                .filter(Objects::nonNull)
+                .map(text -> Rs2UiHelper.stripTagsToSpace(text).trim().replaceAll("\\s+", " "))
+                .filter(text -> !text.isEmpty())
+                .collect(Collectors.joining(" / "));
+        return summary.isEmpty() ? "none" : summary;
+    }
+
+    static int charterConfirmOptionIndex(List<String> optionTexts) {
+        if (optionTexts == null) {
+            return -1;
+        }
+        int fallbackIndex = -1;
+        for (int i = 0; i < optionTexts.size(); i++) {
+            String option = normalizeCharterWidgetText(optionTexts.get(i));
+            if (option.isEmpty()) {
+                continue;
+            }
+            if (isCharterAffirmativeOption(option)) {
+                return i + 1;
+            }
+            if (fallbackIndex < 0 && !option.startsWith("no") && !option.startsWith("cancel")
+                    && !option.startsWith("choose")) {
+                fallbackIndex = i + 1;
+            }
+        }
+        return fallbackIndex;
     }
 
     private static boolean isMinecartMenuVisible() {
