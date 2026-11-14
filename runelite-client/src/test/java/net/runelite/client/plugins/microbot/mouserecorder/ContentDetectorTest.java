@@ -70,4 +70,16 @@ public class ContentDetectorTest
 		assertEquals(500, end.get(0).getStartMs());
 		assertTrue(detector.end().isEmpty());
 	}
+
+	@Test
+	public void contentNamesFitTheApi()
+	{
+		ContentDetector detector = new ContentDetector();
+		String name = detector.update(new ContentDetector.Tick(false, -1, "Tz\u00e9k-Jad <3 #1 " + "x".repeat(80), null), 0).get(0).getContent().getName();
+
+		assertTrue(name.length() <= ContentDetector.MAX_NAME);
+		assertTrue(name.matches("[\\p{L}\\p{N} '()\\-:.&,/]+"));
+		assertTrue(name.startsWith("Combat: Tz\u00e9k-Jad 3 1 x"));
+		assertEquals("", ContentDetector.clean("<>#"));
+	}
 }

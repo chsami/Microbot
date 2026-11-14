@@ -3,6 +3,9 @@ package net.runelite.client.plugins.microbot.mouserecorder;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import javax.inject.Inject;
 import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
@@ -10,6 +13,8 @@ import net.runelite.client.ui.overlay.components.LineComponent;
 
 public class MouseMacroRecorderOverlay extends OverlayPanel
 {
+	private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.systemDefault());
+
 	private final MouseMacroRecorderPlugin plugin;
 
 	@Inject
@@ -37,13 +42,14 @@ public class MouseMacroRecorderOverlay extends OverlayPanel
 		String content = plugin.contentName();
 		if (status == MouseMacroRecorderPlugin.Status.RECORDING && content != null)
 		{
-			panelComponent.getChildren().add(LineComponent.builder().left("Content").right(content).build());
+			panelComponent.getChildren().add(LineComponent.builder().left("Doing").right(content).build());
 		}
-		if (plugin.droppedParts() > 0)
+		int lost = plugin.droppedParts();
+		if (lost > 0)
 		{
 			panelComponent.getChildren().add(LineComponent.builder()
 				.left("Not uploaded")
-				.right(plugin.droppedParts() + " chunks")
+				.right("about " + Math.max(1, (lost + 1) / 2) + " min")
 				.rightColor(Color.ORANGE)
 				.build());
 		}
@@ -56,18 +62,25 @@ public class MouseMacroRecorderOverlay extends OverlayPanel
 		{
 			case RECORDING:
 				return "Recording";
+			case RETRYING:
+				return "Can't reach microbot.cloud, retrying";
 			case PAUSED:
-				return "Paused (" + pauseLabel(plugin.pauseReason()) + ")";
+				return "Paused (" + pauseLabel(plugin.pauseReason(), plugin.botName()) + ")";
 			case NOT_LINKED:
-				return "Link your account to record";
+				return "Not linked: see Microbot Cloud in the sidebar";
+			case LINK_REMOVED:
+				return "Link removed: link again in Microbot Cloud";
+			case TELEMETRY_OFF:
+				return "Off: telemetry is disabled";
 			case DAILY_LIMIT:
-				return "Daily limit reached";
+				long until = plugin.limitUntilMs();
+				return until > 0 ? "Daily limit reached, retrying at " + TIME.format(Instant.ofEpochMilli(until)) : "Daily limit reached";
 			default:
 				return "";
 		}
 	}
 
-	private static String pauseLabel(String reason)
+	private static String pauseLabel(String reason, String bot)
 	{
 		if (reason == null)
 		{
@@ -76,12 +89,14 @@ public class MouseMacroRecorderOverlay extends OverlayPanel
 		switch (reason)
 		{
 			case "script":
-				return "script running";
+				return bot == null ? "a script is controlling the client" : bot + " is running";
 			case "focus":
 				return "window not focused";
 			case "bank-pin":
 				return "bank PIN";
-			case "text-input":
+			case "prompt":
+				return "chatbox prompt";
+			case "typing":
 				return "typing";
 			default:
 				return reason;
@@ -95,6 +110,7 @@ public class MouseMacroRecorderOverlay extends OverlayPanel
 			case RECORDING:
 				return Color.RED;
 			case PAUSED:
+			case RETRYING:
 				return Color.YELLOW;
 			default:
 				return Color.ORANGE;

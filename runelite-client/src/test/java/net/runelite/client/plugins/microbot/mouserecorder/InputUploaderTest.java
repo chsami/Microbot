@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.zip.GZIPInputStream;
 import okhttp3.OkHttpClient;
 import okhttp3.mockwebserver.MockResponse;
@@ -26,13 +27,15 @@ public class InputUploaderTest
 	private static final String SESSION = "11111111-1111-1111-1111-111111111111";
 
 	private final MockWebServer server = new MockWebServer();
+	private final AtomicReference<String> token = new AtomicReference<>(TOKEN);
+	private final AtomicReference<String> rejected = new AtomicReference<>();
 	private InputUploader uploader;
 
 	@Before
 	public void setUp() throws IOException
 	{
 		server.start();
-		uploader = new InputUploader(new OkHttpClient(), new Gson(), () -> Optional.of(TOKEN), server.url("/api").toString());
+		uploader = new InputUploader(new OkHttpClient(), new Gson(), () -> Optional.ofNullable(token.get()), rejected::set, server.url("/api").toString());
 	}
 
 	@After
@@ -130,26 +133,29 @@ public class InputUploaderTest
 		uploader.drain();
 		uploader.drain();
 
-		assertEquals(InputUploader.State.NOT_LINKED, uploader.state());
+		assertEquals(InputUploader.State.LINK_REMOVED, uploader.state());
+		assertEquals(TOKEN, rejected.get());
 		assertEquals(1, server.getRequestCount());
 		assertEquals(1, uploader.queued());
 		assertTrue(!uploader.isLinked());
 	}
 
 	@Test
-	public void theDailyLimitHoldsUploadsUntilTomorrow() throws Exception
+	public void theDailyLimitHoldsUploadsForHalfAnHour() throws Exception
 	{
 		server.enqueue(created());
 		server.enqueue(new MockResponse().setResponseCode(429).setBody("{\"code\":\"daily-limit\"}"));
 
 		uploader.beginSession(info());
 		uploader.submit("{\"t\":1,\"e\":\"mv\"}\n");
+		long before = System.currentTimeMillis();
 		uploader.drain();
-		uploader.retryNow();
 		uploader.drain();
 
 		assertEquals(InputUploader.State.DAILY_LIMIT, uploader.state());
 		assertEquals(2, server.getRequestCount());
+		assertEquals(1, uploader.queued());
+		assertTrue(uploader.limitUntilMs() >= before + InputUploader.LIMIT_RETRY_MS);
 	}
 
 	@Test
@@ -188,12 +194,68 @@ public class InputUploaderTest
 	@Test
 	public void nothingIsSentWithoutALinkedAccount()
 	{
-		InputUploader unlinked = new InputUploader(new OkHttpClient(), new Gson(), Optional::empty, server.url("/api").toString());
+		InputUploader unlinked = new InputUploader(new OkHttpClient(), new Gson(), Optional::empty, rejected::set, server.url("/api").toString());
 		unlinked.beginSession(info());
 		unlinked.submit("{\"t\":1,\"e\":\"mv\"}\n");
 		unlinked.drain();
 
 		assertEquals(InputUploader.State.NOT_LINKED, unlinked.state());
 		assertEquals(0, server.getRequestCount());
+	}
+
+	@Test
+	public void chunksQueuedUnderAnotherAccountAreDropped() throws Exception
+	{
+		server.enqueue(created());
+		server.enqueue(new MockResponse().setResponseCode(201).setBody("{}"));
+		server.enqueue(new MockResponse().setResponseCode(503));
+
+		uploader.beginSession(info());
+		uploader.submit("{\"t\":1,\"e\":\"mv\"}\n");
+		uploader.submit("{\"t\":2,\"e\":\"mv\"}\n");
+		uploader.drain();
+		token.set("mbc_" + "b".repeat(43));
+		uploader.retryNow();
+		uploader.drain();
+
+		assertEquals(3, server.getRequestCount());
+		assertEquals(0, uploader.queued());
+		assertEquals(1, uploader.dropped());
+	}
+
+	@Test
+	public void closingWithoutUploadedPartsSendsNoFinalSeq() throws Exception
+	{
+		server.enqueue(created());
+		server.enqueue(new MockResponse().setResponseCode(400).setBody("{\"code\":\"invalid-part\"}"));
+		server.enqueue(new MockResponse().setResponseCode(204));
+
+		uploader.beginSession(info());
+		uploader.submit("{\"t\":1,\"e\":\"mv\"}\n");
+		uploader.endSession();
+		uploader.drain();
+		uploader.drain();
+
+		server.takeRequest();
+		server.takeRequest();
+		RecordedRequest close = server.takeRequest();
+		assertEquals("/api/input/sessions/" + SESSION + "/close", close.getPath());
+		assertEquals("{}", close.getBody().readUtf8());
+		assertEquals(1, uploader.dropped());
+	}
+
+	@Test
+	public void aCreatedResponseWithoutAnIdBacksOff()
+	{
+		server.enqueue(new MockResponse().setResponseCode(201).setBody("not json"));
+
+		uploader.beginSession(info());
+		uploader.submit("{\"t\":1,\"e\":\"mv\"}\n");
+		uploader.drain();
+		uploader.drain();
+
+		assertEquals(InputUploader.State.RETRYING, uploader.state());
+		assertEquals(1, server.getRequestCount());
+		assertEquals(1, uploader.queued());
 	}
 }

@@ -53,7 +53,7 @@ public class ClientLinkToken
 		return disableTelemetry || Microbot.isTelemetryDisabled();
 	}
 
-	boolean reject(String token)
+	public boolean reject(String token)
 	{
 		if (token.equals(rejected))
 		{

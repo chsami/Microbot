@@ -7,6 +7,7 @@ import com.google.inject.Provides;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
+import java.lang.reflect.Field;
 import java.time.Instant;
 import java.util.EnumMap;
 import java.util.List;
@@ -39,7 +40,9 @@ import net.runelite.client.ClientSessionManager;
 import net.runelite.client.RuneLiteProperties;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.events.ClientShutdown;
 import net.runelite.client.events.ConfigChanged;
+import net.runelite.client.game.chatbox.ChatboxPanelManager;
 import net.runelite.client.input.KeyListener;
 import net.runelite.client.input.KeyManager;
 import net.runelite.client.input.MouseListener;
@@ -48,32 +51,39 @@ import net.runelite.client.input.MouseWheelListener;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.PluginManager;
-import net.runelite.client.plugins.microbot.Script;
-import net.runelite.client.plugins.microbot.alerts.ClientAlertReporter;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.Script;
+import net.runelite.client.plugins.microbot.ScriptStarted;
+import net.runelite.client.plugins.microbot.alerts.ClientAlertReporter;
 import net.runelite.client.plugins.microbot.alerts.ClientLinkToken;
 import net.runelite.client.plugins.microbot.util.mouse.BotEventGuard;
 import net.runelite.client.ui.overlay.OverlayManager;
 import okhttp3.OkHttpClient;
 
 @PluginDescriptor(
-	name = "Mouse Macro Recorder",
+	name = "Input Recorder",
 	description = "Records your own mouse and game-key input, tagged with the content you are doing, and uploads it to your Microbot account",
-	tags = {"mouse", "keyboard", "input", "recorder", "microbot"}
+	tags = {"mouse", "macro", "keyboard", "input", "recorder", "microbot"},
+	version = "2.0.0"
 )
 @Slf4j
 public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, MouseWheelListener, KeyListener
 {
 	public static final String CONFIG_GROUP = MouseMacroRecorderConfig.CONFIG_GROUP;
-	static final long HUMAN_CLICK_WINDOW_NANOS = 1_500_000_000L;
+	static final long HUMAN_INPUT_WINDOW_NANOS = 1_500_000_000L;
+	static final long BOT_QUIET_NANOS = 30_000_000_000L;
+	static final int SCRIPT_SCAN_TICKS = 5;
 
 	enum Status
 	{
 		OFF,
+		TELEMETRY_OFF,
 		NOT_LINKED,
+		LINK_REMOVED,
 		LOGGED_OUT,
 		RECORDING,
 		PAUSED,
+		RETRYING,
 		DAILY_LIMIT
 	}
 
@@ -110,6 +120,9 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 	@Inject
 	private PluginManager pluginManager;
 
+	@Inject
+	private ChatboxPanelManager chatboxPanelManager;
+
 	private final Object lock = new Object();
 	private final InputChunker chunker = new InputChunker();
 	private final ContentDetector detector = new ContentDetector();
@@ -117,12 +130,20 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 	private InputUploader uploader;
 	private volatile boolean active;
 	private volatile String pauseReason;
-	private volatile boolean scriptRunning;
+	private volatile String botName;
 	private volatile boolean focused = true;
 	private volatile boolean dialogueOptionsOpen;
+	private volatile boolean linked;
+	private volatile boolean telemetryOff;
+	private volatile boolean botMenuPending;
+	private volatile long lastRealInputNanos;
+	private volatile long lastScriptStartNanos;
+	private volatile long lastBotActionNanos;
+	private volatile String hubScriptRunning;
 	private long baseNanos;
 	private long lastMoveNanos;
-	private volatile long lastRealPressNanos;
+	private boolean lastFocused = true;
+	private int ticksSinceScan;
 	private String lastHover;
 	private String lastPos;
 	private String lastCam;
@@ -138,7 +159,7 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 	protected void startUp()
 	{
 		String apiUrl = System.getProperty("microbot.apiUrl", "https://microbot.cloud/api");
-		uploader = new InputUploader(okHttpClient, gson, clientLinkToken::get, apiUrl);
+		uploader = new InputUploader(okHttpClient, gson, clientLinkToken::get, clientLinkToken::reject, apiUrl);
 		uploader.startWorker();
 		mouseManager.registerMouseListener(this);
 		mouseManager.registerMouseWheelListener(this);
@@ -156,21 +177,40 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 		endSession();
 		if (uploader != null)
 		{
-			uploader.stopWorker();
+			uploader.flushAndStop();
+		}
+	}
+
+	@Subscribe
+	public void onClientShutdown(ClientShutdown event)
+	{
+		endSession();
+		if (uploader != null)
+		{
+			event.waitFor(uploader.flushAndStop());
 		}
 	}
 
 	Status status()
 	{
-		if (!config.recordingEnabled())
+		if (!config.uploadEnabled())
 		{
 			return Status.OFF;
 		}
-		if (uploader == null || !uploader.isLinked() || uploader.state() == InputUploader.State.NOT_LINKED)
+		if (telemetryOff)
+		{
+			return Status.TELEMETRY_OFF;
+		}
+		InputUploader.State state = uploader == null ? InputUploader.State.NOT_LINKED : uploader.state();
+		if (state == InputUploader.State.LINK_REMOVED)
+		{
+			return Status.LINK_REMOVED;
+		}
+		if (!linked || state == InputUploader.State.NOT_LINKED)
 		{
 			return Status.NOT_LINKED;
 		}
-		if (uploader.state() == InputUploader.State.DAILY_LIMIT)
+		if (state == InputUploader.State.DAILY_LIMIT)
 		{
 			return Status.DAILY_LIMIT;
 		}
@@ -178,7 +218,11 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 		{
 			return Status.LOGGED_OUT;
 		}
-		return pauseReason == null ? Status.RECORDING : Status.PAUSED;
+		if (pauseReason != null)
+		{
+			return Status.PAUSED;
+		}
+		return state == InputUploader.State.RETRYING ? Status.RETRYING : Status.RECORDING;
 	}
 
 	String pauseReason()
@@ -186,15 +230,18 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 		return pauseReason;
 	}
 
-	String contentName()
+	String botName()
 	{
-		ContentDetector.Content content = detector.current();
-		return content == null ? null : content.getName();
+		return botName;
 	}
 
-	long uploadedParts()
+	String contentName()
 	{
-		return uploader == null ? 0 : uploader.uploadedParts();
+		synchronized (lock)
+		{
+			ContentDetector.Content content = detector.current();
+			return content == null ? null : content.getName();
+		}
 	}
 
 	int droppedParts()
@@ -202,10 +249,15 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 		return uploader == null ? 0 : uploader.dropped();
 	}
 
+	long limitUntilMs()
+	{
+		return uploader == null ? 0 : uploader.limitUntilMs();
+	}
+
 	@Subscribe
 	public void onConfigChanged(ConfigChanged event)
 	{
-		if (CONFIG_GROUP.equals(event.getGroup()) && "recordingEnabled".equals(event.getKey()) && !config.recordingEnabled())
+		if (CONFIG_GROUP.equals(event.getGroup()) && "uploadEnabled".equals(event.getKey()) && !config.uploadEnabled())
 		{
 			endSession();
 		}
@@ -227,8 +279,21 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 	}
 
 	@Subscribe
+	public void onScriptStarted(ScriptStarted event)
+	{
+		lastScriptStartNanos = System.nanoTime();
+	}
+
+	@Subscribe
 	public void onGameTick(GameTick event)
 	{
+		telemetryOff = clientLinkToken.isTelemetryDisabled();
+		linked = uploader != null && uploader.isLinked();
+		if (++ticksSinceScan >= SCRIPT_SCAN_TICKS)
+		{
+			ticksSinceScan = 0;
+			hubScriptRunning = runningHubScript();
+		}
 		if (!shouldRecord())
 		{
 			endSession();
@@ -238,9 +303,6 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 		{
 			beginSession();
 		}
-		scriptRunning = isAnyScriptRunning();
-		dialogueOptionsOpen = isVisible(client.getWidget(InterfaceID.CHATMENU, 0));
-		refreshPause();
 		long now = nowMs();
 		if (pauseReason == null)
 		{
@@ -256,7 +318,13 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 	@Subscribe
 	public void onClientTick(ClientTick event)
 	{
-		if (!recordingNow() || client.isMenuOpen())
+		if (!active)
+		{
+			return;
+		}
+		dialogueOptionsOpen = isVisible(client.getWidget(InterfaceID.CHATMENU, 0));
+		refreshPause();
+		if (pauseReason != null || client.isMenuOpen())
 		{
 			return;
 		}
@@ -266,26 +334,25 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 			return;
 		}
 		MenuEntry top = entries[entries.length - 1];
-		String option = InputPrivacy.option(top.getOption());
-		String target = InputPrivacy.target(top.getTarget(), top.getType().getId());
-		String key = option + '|' + target + '|' + top.getType().getId() + '|' + top.getIdentifier();
-		if (key.equals(lastHover))
+		JsonObject hover = entry(top);
+		String key = hover.toString();
+		synchronized (lock)
 		{
-			return;
+			if (key.equals(lastHover))
+			{
+				return;
+			}
+			lastHover = key;
 		}
-		lastHover = key;
-		JsonObject hover = event("hov");
-		hover.addProperty("o", option);
-		hover.addProperty("tg", target);
-		hover.addProperty("ty", top.getType().getId());
-		hover.addProperty("id", top.getIdentifier());
-		add(hover);
+		JsonObject hov = event("hov");
+		hover.entrySet().forEach(e -> hov.add(e.getKey(), e.getValue()));
+		add(hov);
 	}
 
 	@Subscribe
 	public void onMenuOpened(MenuOpened event)
 	{
-		if (!recordingNow() || BotEventGuard.isSynthetic())
+		if (!recordingNow())
 		{
 			return;
 		}
@@ -301,20 +368,36 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 		add(menu);
 	}
 
+	@Subscribe(priority = 1)
+	public void onMenuOptionClickedEarly(MenuOptionClicked event)
+	{
+		botMenuPending = Microbot.targetMenu != null;
+	}
+
 	@Subscribe
 	public void onMenuOptionClicked(MenuOptionClicked event)
 	{
+		boolean human = isHumanAction(System.nanoTime());
+		botMenuPending = false;
+		if (!human)
+		{
+			lastBotActionNanos = System.nanoTime();
+			return;
+		}
 		if (!recordingNow())
 		{
 			return;
 		}
-		boolean human = Microbot.targetMenu == null && !BotEventGuard.isSynthetic()
-			&& System.nanoTime() - lastRealPressNanos < HUMAN_CLICK_WINDOW_NANOS;
-		JsonObject act = entry(event.getMenuEntry());
-		JsonObject wrapped = event("act");
-		act.entrySet().forEach(e -> wrapped.add(e.getKey(), e.getValue()));
-		wrapped.addProperty("h", human);
-		add(wrapped);
+		JsonObject act = event("act");
+		entry(event.getMenuEntry()).entrySet().forEach(e -> act.add(e.getKey(), e.getValue()));
+		add(act);
+	}
+
+	boolean isHumanAction(long nowNanos)
+	{
+		long sinceReal = nowNanos - lastRealInputNanos;
+		boolean realIsNewer = BotEventGuard.nanosSinceLastSynthetic() > sinceReal;
+		return !botMenuPending && lastRealInputNanos != 0 && sinceReal < HUMAN_INPUT_WINDOW_NANOS && realIsNewer;
 	}
 
 	@Subscribe
@@ -364,7 +447,7 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 	{
 		if (!BotEventGuard.isSynthetic())
 		{
-			lastRealPressNanos = System.nanoTime();
+			lastRealInputNanos = System.nanoTime();
 		}
 		recordButton(mouseEvent, "dn");
 		return mouseEvent;
@@ -417,6 +500,10 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 	@Override
 	public void keyPressed(KeyEvent e)
 	{
+		if (!BotEventGuard.isSynthetic())
+		{
+			lastRealInputNanos = System.nanoTime();
+		}
 		recordKey(e, "kd");
 	}
 
@@ -469,16 +556,13 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 		{
 			return;
 		}
+		Integer code = InputPrivacy.gameKey(e.getKeyCode(), dialogueOptionsOpen);
+		if (code == null)
+		{
+			return;
+		}
 		JsonObject key = event(type);
-		Integer code = InputPrivacy.keyCode(e.getKeyCode(), dialogueOptionsOpen);
-		if (code != null)
-		{
-			key.addProperty("k", code);
-		}
-		else
-		{
-			key.addProperty("c", 1);
-		}
+		key.addProperty("k", code);
 		add(key);
 	}
 
@@ -494,8 +578,8 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 
 	private boolean shouldRecord()
 	{
-		return config.recordingEnabled() && uploader != null && uploader.isLinked()
-			&& uploader.state() != InputUploader.State.DAILY_LIMIT
+		return config.uploadEnabled() && !telemetryOff && linked
+			&& uploader.state() != InputUploader.State.DAILY_LIMIT && uploader.state() != InputUploader.State.LINK_REMOVED
 			&& client.getGameState() == GameState.LOGGED_IN && client.getLocalPlayer() != null;
 	}
 
@@ -509,6 +593,7 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 			lastCam = null;
 			lastXp.clear();
 			pauseReason = null;
+			lastFocused = focused;
 			JsonObject meta = new JsonObject();
 			meta.addProperty("canvasWidth", client.getCanvasWidth());
 			meta.addProperty("canvasHeight", client.getCanvasHeight());
@@ -529,11 +614,7 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 			{
 				return;
 			}
-			long now = nowMs();
-			for (ContentDetector.Transition transition : detector.end())
-			{
-				add(content(transition, now));
-			}
+			endContent(nowMs());
 			active = false;
 			pauseReason = null;
 			uploader.submit(chunker.drain());
@@ -543,50 +624,127 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 
 	private void refreshPause()
 	{
-		String reason = null;
-		if (scriptRunning)
+		String reason = pauseReasonNow();
+		synchronized (lock)
 		{
-			reason = "script";
+			if (!active)
+			{
+				return;
+			}
+			if (focused != lastFocused)
+			{
+				lastFocused = focused;
+				JsonObject focus = event("focus");
+				focus.addProperty("on", focused);
+				chunker.add(focus, focus.get("t").getAsLong());
+			}
+			String previous = pauseReason;
+			if (reason == null ? previous == null : reason.equals(previous))
+			{
+				return;
+			}
+			long now = nowMs();
+			if (reason != null)
+			{
+				endContent(now);
+				JsonObject pause = event("pause", now);
+				pause.addProperty("why", reason);
+				chunker.add(pause, now);
+				pauseReason = reason;
+				lastHover = null;
+			}
+			else
+			{
+				pauseReason = null;
+				JsonObject resume = event("resume", now);
+				resume.addProperty("why", previous);
+				chunker.add(resume, now);
+			}
 		}
-		else if (!focused)
+	}
+
+	private String pauseReasonNow()
+	{
+		long now = System.nanoTime();
+		String hub = hubScriptRunning;
+		if (hub != null)
 		{
-			reason = "focus";
+			botName = hub;
+			return "script";
 		}
-		else if (isVisible(client.getWidget(InterfaceID.BANKPIN_KEYPAD, 0)))
+		if (BotEventGuard.nanosSinceLastSynthetic() < BOT_QUIET_NANOS || lastBotActionNanos != 0 && now - lastBotActionNanos < BOT_QUIET_NANOS
+			|| lastScriptStartNanos != 0 && now - lastScriptStartNanos < BOT_QUIET_NANOS)
 		{
-			reason = "bank-pin";
+			botName = null;
+			return "script";
 		}
-		else if (client.getVarcIntValue(VarClientID.MESLAYERMODE) != 0)
+		if (!focused)
 		{
-			reason = "text-input";
+			return "focus";
 		}
-		String previous = pauseReason;
-		if (reason == null ? previous == null : reason.equals(previous))
+		if (isVisible(client.getWidget(InterfaceID.BANKPIN_KEYPAD, 0)))
 		{
-			return;
+			return "bank-pin";
 		}
-		if (reason != null)
+		if (client.getVarcIntValue(VarClientID.MESLAYERMODE) != 0 || chatboxPanelManager.getCurrentInput() != null)
 		{
-			JsonObject pause = event("pause");
-			pause.addProperty("why", reason);
-			add(pause);
-			pauseReason = reason;
-			lastHover = null;
+			return "prompt";
 		}
-		else
+		String chat = client.getVarcStrValue(VarClientID.CHATINPUT);
+		if (chat != null && !chat.isEmpty())
 		{
-			pauseReason = null;
-			JsonObject resume = event("resume");
-			resume.addProperty("why", previous);
-			add(resume);
+			return "typing";
 		}
+		return null;
+	}
+
+	private String runningHubScript()
+	{
+		for (Plugin plugin : pluginManager.getPlugins())
+		{
+			if (!ClientAlertReporter.isScript(plugin) || !pluginManager.isPluginActive(plugin))
+			{
+				continue;
+			}
+			if (hasRunningScript(plugin))
+			{
+				String name = InputPrivacy.plain(plugin.getName());
+				return name.isEmpty() ? plugin.getClass().getSimpleName() : name;
+			}
+		}
+		return null;
+	}
+
+	private static boolean hasRunningScript(Plugin plugin)
+	{
+		for (Class<?> type = plugin.getClass(); type != null && type != Plugin.class; type = type.getSuperclass())
+		{
+			for (Field field : type.getDeclaredFields())
+			{
+				if (!Script.class.isAssignableFrom(field.getType()))
+				{
+					continue;
+				}
+				try
+				{
+					field.setAccessible(true);
+					Script script = (Script) field.get(plugin);
+					if (script != null && script.isRunning())
+					{
+						return true;
+					}
+				}
+				catch (ReflectiveOperationException | RuntimeException e)
+				{
+					log.debug("Could not read script field {} of {}", field.getName(), plugin.getClass().getSimpleName());
+				}
+			}
+		}
+		return false;
 	}
 
 	private void recordTick(long now)
 	{
-		JsonObject tick = event("tick");
-		tick.addProperty("n", client.getTickCount());
-		add(tick);
 		Player player = client.getLocalPlayer();
 		if (player == null)
 		{
@@ -601,44 +759,60 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 			WorldPoint real = WorldPoint.fromLocalInstance(client, local);
 			template = real == null ? -1 : real.getRegionID();
 		}
-		String pos = world.getX() + "," + world.getY() + "," + world.getPlane() + "," + template;
-		if (!pos.equals(lastPos))
+		int yaw = client.getCameraYaw();
+		int pitch = client.getCameraPitch();
+		int zoom = client.getScale();
+		String fighting = fightingNpc(player);
+		synchronized (lock)
 		{
-			lastPos = pos;
-			JsonObject move = event("pos");
-			move.addProperty("x", world.getX());
-			move.addProperty("y", world.getY());
-			move.addProperty("p", world.getPlane());
-			move.addProperty("r", world.getRegionID());
-			if (template >= 0)
+			if (!active)
 			{
-				move.addProperty("tr", template);
+				return;
 			}
-			add(move);
-		}
-		String cam = client.getCameraYaw() + "," + client.getCameraPitch() + "," + client.getScale();
-		if (!cam.equals(lastCam))
-		{
-			lastCam = cam;
-			JsonObject camera = event("cam");
-			camera.addProperty("yaw", client.getCameraYaw());
-			camera.addProperty("pitch", client.getCameraPitch());
-			camera.addProperty("zoom", client.getScale());
-			add(camera);
-		}
-		ContentDetector.Tick input = new ContentDetector.Tick(instanced, template, fightingNpc(player), xpSkillThisTick);
-		List<ContentDetector.Transition> transitions = detector.update(input, now);
-		for (ContentDetector.Transition transition : transitions)
-		{
-			add(content(transition, now));
+			JsonObject tick = event("tick", now);
+			tick.addProperty("n", client.getTickCount());
+			chunker.add(tick, now);
+			String pos = world.getX() + "," + world.getY() + "," + world.getPlane() + "," + template;
+			if (!pos.equals(lastPos))
+			{
+				lastPos = pos;
+				JsonObject move = event("pos", now);
+				move.addProperty("x", world.getX());
+				move.addProperty("y", world.getY());
+				move.addProperty("p", world.getPlane());
+				move.addProperty("r", world.getRegionID());
+				if (template >= 0)
+				{
+					move.addProperty("tr", template);
+				}
+				chunker.add(move, now);
+			}
+			String cam = yaw + "," + pitch + "," + zoom;
+			if (!cam.equals(lastCam))
+			{
+				lastCam = cam;
+				JsonObject camera = event("cam", now);
+				camera.addProperty("yaw", yaw);
+				camera.addProperty("pitch", pitch);
+				camera.addProperty("zoom", zoom);
+				chunker.add(camera, now);
+			}
+			List<ContentDetector.Transition> transitions = detector.update(new ContentDetector.Tick(instanced, template, fighting, xpSkillThisTick), now);
+			for (ContentDetector.Transition transition : transitions)
+			{
+				JsonObject content = content(transition, now);
+				chunker.add(content, content.get("t").getAsLong());
+			}
 		}
 	}
 
-	private boolean isAnyScriptRunning()
+	private void endContent(long now)
 	{
-		boolean hubScript = pluginManager.getPlugins().stream()
-			.anyMatch(plugin -> ClientAlertReporter.isScript(plugin) && pluginManager.isPluginActive(plugin));
-		return hubScript || Microbot.getActiveScripts().stream().anyMatch(Script::isRunning);
+		for (ContentDetector.Transition transition : detector.end())
+		{
+			JsonObject content = content(transition, now);
+			chunker.add(content, now);
+		}
 	}
 
 	private static String fightingNpc(Player player)
@@ -653,7 +827,7 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 		{
 			return null;
 		}
-		String name = InputPrivacy.target(npc.getName(), -1);
+		String name = InputPrivacy.plain(npc.getName());
 		return name.isEmpty() ? null : name;
 	}
 
@@ -670,12 +844,12 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 		return content;
 	}
 
-	private JsonObject entry(MenuEntry entry)
+	private static JsonObject entry(MenuEntry entry)
 	{
 		JsonObject json = new JsonObject();
 		int type = entry.getType().getId();
 		json.addProperty("o", InputPrivacy.option(entry.getOption()));
-		json.addProperty("tg", InputPrivacy.target(entry.getTarget(), type));
+		json.addProperty("tg", InputPrivacy.target(entry.getTarget(), type, entry.getItemId()));
 		json.addProperty("ty", type);
 		json.addProperty("id", entry.getIdentifier());
 		return json;
@@ -696,7 +870,13 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 
 	private void add(JsonObject event)
 	{
-		chunker.add(event, event.get("t").getAsLong());
+		synchronized (lock)
+		{
+			if (active)
+			{
+				chunker.add(event, event.get("t").getAsLong());
+			}
+		}
 	}
 
 	private long nowMs()

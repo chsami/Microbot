@@ -7,8 +7,6 @@ import net.runelite.api.MenuAction;
 
 final class InputPrivacy
 {
-	static final String PLAYER = "<player>";
-
 	private static final Pattern TAGS = Pattern.compile("<[^>]*>");
 	private static final Set<Integer> GAME_KEYS = Set.of(
 		KeyEvent.VK_ESCAPE, KeyEvent.VK_SPACE, KeyEvent.VK_TAB, KeyEvent.VK_ENTER, KeyEvent.VK_BACK_SPACE,
@@ -17,17 +15,24 @@ final class InputPrivacy
 		KeyEvent.VK_PAGE_UP, KeyEvent.VK_PAGE_DOWN, KeyEvent.VK_HOME, KeyEvent.VK_END,
 		KeyEvent.VK_F1, KeyEvent.VK_F2, KeyEvent.VK_F3, KeyEvent.VK_F4, KeyEvent.VK_F5, KeyEvent.VK_F6,
 		KeyEvent.VK_F7, KeyEvent.VK_F8, KeyEvent.VK_F9, KeyEvent.VK_F10, KeyEvent.VK_F11, KeyEvent.VK_F12);
-	private static final Set<Integer> PLAYER_ACTIONS = Set.of(
-		MenuAction.PLAYER_FIRST_OPTION.getId(), MenuAction.PLAYER_SECOND_OPTION.getId(), MenuAction.PLAYER_THIRD_OPTION.getId(),
-		MenuAction.PLAYER_FOURTH_OPTION.getId(), MenuAction.PLAYER_FIFTH_OPTION.getId(), MenuAction.PLAYER_SIXTH_OPTION.getId(),
-		MenuAction.PLAYER_SEVENTH_OPTION.getId(), MenuAction.PLAYER_EIGHTH_OPTION.getId(), MenuAction.RUNELITE_PLAYER.getId(),
-		MenuAction.WIDGET_TARGET_ON_PLAYER.getId(), MenuAction.ITEM_USE_ON_PLAYER.getId());
+	private static final Set<Integer> NAMED_TARGETS = Set.of(
+		MenuAction.NPC_FIRST_OPTION.getId(), MenuAction.NPC_SECOND_OPTION.getId(), MenuAction.NPC_THIRD_OPTION.getId(),
+		MenuAction.NPC_FOURTH_OPTION.getId(), MenuAction.NPC_FIFTH_OPTION.getId(), MenuAction.EXAMINE_NPC.getId(),
+		MenuAction.GAME_OBJECT_FIRST_OPTION.getId(), MenuAction.GAME_OBJECT_SECOND_OPTION.getId(), MenuAction.GAME_OBJECT_THIRD_OPTION.getId(),
+		MenuAction.GAME_OBJECT_FOURTH_OPTION.getId(), MenuAction.GAME_OBJECT_FIFTH_OPTION.getId(), MenuAction.EXAMINE_OBJECT.getId(),
+		MenuAction.GROUND_ITEM_FIRST_OPTION.getId(), MenuAction.GROUND_ITEM_SECOND_OPTION.getId(), MenuAction.GROUND_ITEM_THIRD_OPTION.getId(),
+		MenuAction.GROUND_ITEM_FOURTH_OPTION.getId(), MenuAction.GROUND_ITEM_FIFTH_OPTION.getId(), MenuAction.EXAMINE_ITEM_GROUND.getId(),
+		MenuAction.WIDGET_TARGET_ON_NPC.getId(), MenuAction.WIDGET_TARGET_ON_GAME_OBJECT.getId(), MenuAction.WIDGET_TARGET_ON_GROUND_ITEM.getId(),
+		MenuAction.ITEM_USE_ON_NPC.getId(), MenuAction.ITEM_USE_ON_GAME_OBJECT.getId(), MenuAction.ITEM_USE_ON_GROUND_ITEM.getId());
+	private static final Set<Integer> ITEM_TARGETS = Set.of(
+		MenuAction.CC_OP.getId(), MenuAction.CC_OP_LOW_PRIORITY.getId(), MenuAction.WIDGET_TARGET_ON_WIDGET.getId(),
+		MenuAction.ITEM_USE_ON_ITEM.getId(), MenuAction.EXAMINE_ITEM.getId());
 
 	private InputPrivacy()
 	{
 	}
 
-	static Integer keyCode(int keyCode, boolean dialogueOptionsOpen)
+	static Integer gameKey(int keyCode, boolean dialogueOptionsOpen)
 	{
 		if (GAME_KEYS.contains(keyCode))
 		{
@@ -40,27 +45,28 @@ final class InputPrivacy
 		return null;
 	}
 
-	static String target(String target, int actionType)
+	static String target(String target, int actionType, int itemId)
 	{
-		if (PLAYER_ACTIONS.contains(actionType))
-		{
-			return PLAYER;
-		}
-		if (target == null)
+		boolean named = NAMED_TARGETS.contains(actionType) || ITEM_TARGETS.contains(actionType) && itemId > 0;
+		if (!named || target == null)
 		{
 			return "";
 		}
-		String plain = TAGS.matcher(target).replaceAll("").trim();
-		return plain.length() > 64 ? plain.substring(0, 64) : plain;
+		return cap(TAGS.matcher(target).replaceAll("").trim(), 64);
 	}
 
 	static String option(String option)
 	{
-		if (option == null)
-		{
-			return "";
-		}
-		String plain = TAGS.matcher(option).replaceAll("").trim();
-		return plain.length() > 32 ? plain.substring(0, 32) : plain;
+		return option == null ? "" : cap(TAGS.matcher(option).replaceAll("").trim(), 32);
+	}
+
+	static String plain(String text)
+	{
+		return text == null ? "" : TAGS.matcher(text).replaceAll("").trim();
+	}
+
+	private static String cap(String text, int max)
+	{
+		return text.length() > max ? text.substring(0, max) : text;
 	}
 }

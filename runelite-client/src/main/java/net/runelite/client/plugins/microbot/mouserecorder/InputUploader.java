@@ -2,17 +2,21 @@ package net.runelite.client.plugins.microbot.mouserecorder;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
 import java.io.IOException;
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneOffset;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.MediaType;
@@ -28,6 +32,7 @@ final class InputUploader
 	static final String TOKEN_HEADER = "X-Microbot-Client-Token";
 	static final int MAX_QUEUED = 40;
 	static final int RECORDER_VERSION = 2;
+	static final long LIMIT_RETRY_MS = 30 * 60_000L;
 
 	private static final MediaType GZIP = MediaType.parse("application/gzip");
 	private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
@@ -39,6 +44,7 @@ final class InputUploader
 		UPLOADING,
 		RETRYING,
 		NOT_LINKED,
+		LINK_REMOVED,
 		DAILY_LIMIT
 	}
 
@@ -62,6 +68,7 @@ final class InputUploader
 	{
 		final SessionInfo info;
 		String serverId;
+		String token;
 		int nextSeq;
 		boolean dead;
 
@@ -85,9 +92,9 @@ final class InputUploader
 			this.close = close;
 		}
 
-		byte[] gzip()
+		synchronized byte[] gzip()
 		{
-			if (gzip == null)
+			if (gzip == null && text != null)
 			{
 				gzip = InputChunker.gzip(text);
 				text = null;
@@ -99,23 +106,25 @@ final class InputUploader
 	private final OkHttpClient http;
 	private final Gson gson;
 	private final Supplier<Optional<String>> token;
+	private final Consumer<String> onRejected;
 	private final String apiUrl;
 	private final Deque<Item> queue = new ArrayDeque<>();
+	private final AtomicInteger dropped = new AtomicInteger();
+	private final AtomicLong uploadedParts = new AtomicLong();
 	private ScheduledExecutorService executor;
 	private Generation current;
 	private volatile State state = State.IDLE;
-	private volatile int dropped;
-	private volatile long uploadedParts;
+	private volatile String rejectedToken;
+	private volatile long limitUntilMs;
 	private long backoffMs;
 	private long retryAtMs;
-	private String rejectedToken;
-	private LocalDate limitDay;
 
-	InputUploader(OkHttpClient http, Gson gson, Supplier<Optional<String>> token, String apiUrl)
+	InputUploader(OkHttpClient http, Gson gson, Supplier<Optional<String>> token, Consumer<String> onRejected, String apiUrl)
 	{
 		this.http = http;
 		this.gson = gson;
 		this.token = token;
+		this.onRejected = onRejected;
 		this.apiUrl = apiUrl.endsWith("/") ? apiUrl.substring(0, apiUrl.length() - 1) : apiUrl;
 	}
 
@@ -134,34 +143,27 @@ final class InputUploader
 		executor.scheduleWithFixedDelay(this::drainSafely, 1, 1, TimeUnit.SECONDS);
 	}
 
-	void stopWorker()
+	synchronized Future<?> flushAndStop()
 	{
-		ScheduledExecutorService running;
-		synchronized (this)
-		{
-			running = executor;
-			executor = null;
-		}
+		ScheduledExecutorService running = executor;
+		executor = null;
 		if (running == null)
 		{
-			return;
+			return CompletableFuture.completedFuture(null);
 		}
-		running.submit(this::drainSafely);
+		Future<?> last = running.submit(this::drainSafely);
 		running.shutdown();
-		try
-		{
-			running.awaitTermination(5, TimeUnit.SECONDS);
-		}
-		catch (InterruptedException e)
-		{
-			Thread.currentThread().interrupt();
-		}
-		running.shutdownNow();
+		return last;
 	}
 
 	synchronized void beginSession(SessionInfo info)
 	{
 		current = new Generation(info);
+	}
+
+	synchronized boolean hasSession()
+	{
+		return current != null;
 	}
 
 	synchronized void submit(String text)
@@ -170,7 +172,12 @@ final class InputUploader
 		{
 			return;
 		}
-		enqueue(new Item(current, text, false));
+		Item item = new Item(current, text, false);
+		enqueue(item);
+		if (executor != null)
+		{
+			executor.execute(item::gzip);
+		}
 	}
 
 	synchronized void endSession()
@@ -190,28 +197,34 @@ final class InputUploader
 
 	int dropped()
 	{
-		return dropped;
+		return dropped.get();
 	}
 
 	long uploadedParts()
 	{
-		return uploadedParts;
+		return uploadedParts.get();
 	}
 
-	void retryNow()
+	long limitUntilMs()
 	{
-		retryAtMs = 0;
-	}
-
-	synchronized int queued()
-	{
-		return queue.size();
+		return limitUntilMs;
 	}
 
 	boolean isLinked()
 	{
 		Optional<String> value = token.get();
 		return value.isPresent() && !value.get().equals(rejectedToken);
+	}
+
+	void retryNow()
+	{
+		retryAtMs = 0;
+		limitUntilMs = 0;
+	}
+
+	synchronized int queued()
+	{
+		return queue.size();
 	}
 
 	private void enqueue(Item item)
@@ -221,10 +234,18 @@ final class InputUploader
 			Item oldest = queue.pollFirst();
 			if (oldest != null && !oldest.close)
 			{
-				dropped++;
+				dropped.incrementAndGet();
 			}
 		}
 		queue.addLast(item);
+	}
+
+	private synchronized void remove(Item item, boolean countDropped)
+	{
+		if (queue.remove(item) && countDropped && !item.close)
+		{
+			dropped.incrementAndGet();
+		}
 	}
 
 	void drainSafely()
@@ -236,6 +257,7 @@ final class InputUploader
 		catch (RuntimeException e)
 		{
 			log.warn("Input upload failed unexpectedly", e);
+			backoff();
 		}
 	}
 
@@ -250,74 +272,63 @@ final class InputUploader
 			}
 			if (item == null)
 			{
-				state = State.IDLE;
-				return;
-			}
-			if (!ready())
-			{
-				return;
-			}
-			if (!send(item))
-			{
-				return;
-			}
-			synchronized (this)
-			{
-				if (queue.peekFirst() == item)
+				if (state == State.UPLOADING || state == State.RETRYING)
 				{
-					queue.pollFirst();
+					state = State.IDLE;
 				}
+				return;
 			}
+			String value = ready();
+			if (value == null)
+			{
+				return;
+			}
+			if (!send(item, value))
+			{
+				return;
+			}
+			remove(item, false);
 		}
 	}
 
-	private boolean ready()
+	private String ready()
 	{
 		long now = System.currentTimeMillis();
-		if (limitDay != null)
+		if (now < limitUntilMs)
 		{
-			if (LocalDate.now(ZoneOffset.UTC).isAfter(limitDay))
-			{
-				limitDay = null;
-			}
-			else
-			{
-				state = State.DAILY_LIMIT;
-				return false;
-			}
+			state = State.DAILY_LIMIT;
+			return null;
 		}
-		if (!isLinked())
+		Optional<String> value = token.get();
+		if (value.isEmpty())
 		{
 			state = State.NOT_LINKED;
-			return false;
+			return null;
 		}
-		return now >= retryAtMs;
+		if (value.get().equals(rejectedToken))
+		{
+			state = State.LINK_REMOVED;
+			return null;
+		}
+		return now >= retryAtMs ? value.get() : null;
 	}
 
-	private boolean send(Item item)
+	private boolean send(Item item, String value)
 	{
-		String value = token.get().orElse(null);
-		if (value == null)
+		Generation generation = item.generation;
+		if (generation.dead || generation.token != null && !generation.token.equals(value))
 		{
-			state = State.NOT_LINKED;
+			remove(item, true);
 			return false;
-		}
-		if (item.generation.dead)
-		{
-			if (!item.close)
-			{
-				dropped++;
-			}
-			return true;
 		}
 		state = State.UPLOADING;
 		try
 		{
 			if (item.close)
 			{
-				return close(item.generation, value);
+				return close(item, value);
 			}
-			if (item.generation.serverId == null && !createSession(item.generation, value))
+			if (generation.serverId == null && !createSession(item, value))
 			{
 				return false;
 			}
@@ -330,8 +341,9 @@ final class InputUploader
 		}
 	}
 
-	private boolean createSession(Generation generation, String value) throws IOException
+	private boolean createSession(Item item, String value) throws IOException
 	{
+		Generation generation = item.generation;
 		JsonObject body = new JsonObject();
 		body.addProperty("startedAt", generation.info.startedAt.toString());
 		if (generation.info.clientSessionId != null)
@@ -349,15 +361,34 @@ final class InputUploader
 		try (Response response = http.newCall(request).execute())
 		{
 			int code = response.code();
+			String text = bodyOf(response);
 			if (code == 201)
 			{
-				JsonObject created = gson.fromJson(bodyOf(response), JsonObject.class);
-				generation.serverId = created.get("id").getAsString();
+				String id = sessionId(text);
+				if (id == null)
+				{
+					return backoff();
+				}
+				generation.serverId = id;
+				generation.token = value;
 				generation.nextSeq = 0;
 				backoffMs = 0;
 				return true;
 			}
-			return refused(code, value, response, generation);
+			return refused(code, text, value, item, true);
+		}
+	}
+
+	private String sessionId(String text)
+	{
+		try
+		{
+			JsonObject created = gson.fromJson(text, JsonObject.class);
+			return created != null && created.has("id") && !created.get("id").isJsonNull() ? created.get("id").getAsString() : null;
+		}
+		catch (JsonParseException | IllegalStateException | UnsupportedOperationException e)
+		{
+			return null;
 		}
 	}
 
@@ -372,14 +403,15 @@ final class InputUploader
 		try (Response response = http.newCall(request).execute())
 		{
 			int code = response.code();
+			String text = bodyOf(response);
 			if (code == 200 || code == 201)
 			{
 				generation.nextSeq++;
-				uploadedParts++;
+				uploadedParts.incrementAndGet();
 				backoffMs = 0;
 				return true;
 			}
-			if (code == 404 || code == 409 && bodyOf(response).contains("session-closed"))
+			if (code == 404 || code == 409 && text.contains("session-closed"))
 			{
 				generation.serverId = null;
 				return backoff();
@@ -389,18 +421,22 @@ final class InputUploader
 				generation.nextSeq++;
 				return false;
 			}
-			return refused(code, value, response, null);
+			return refused(code, text, value, item, false);
 		}
 	}
 
-	private boolean close(Generation generation, String value) throws IOException
+	private boolean close(Item item, String value) throws IOException
 	{
+		Generation generation = item.generation;
 		if (generation.serverId == null)
 		{
 			return true;
 		}
 		JsonObject body = new JsonObject();
-		body.addProperty("finalSeq", generation.nextSeq - 1);
+		if (generation.nextSeq > 0)
+		{
+			body.addProperty("finalSeq", generation.nextSeq - 1);
+		}
 		Request request = new Request.Builder()
 			.url(apiUrl + "/input/sessions/" + generation.serverId + "/close")
 			.header(TOKEN_HEADER, value)
@@ -409,50 +445,47 @@ final class InputUploader
 		try (Response response = http.newCall(request).execute())
 		{
 			int code = response.code();
+			String text = bodyOf(response);
 			if (code == 204 || code == 404)
 			{
 				return true;
 			}
-			return refused(code, value, response, null);
+			return refused(code, text, value, item, false);
 		}
 	}
 
-	private boolean refused(int code, String value, Response response, Generation starting) throws IOException
+	private boolean refused(int code, String text, String value, Item item, boolean starting)
 	{
 		if (code == 401)
 		{
 			rejectedToken = value;
-			state = State.NOT_LINKED;
-			log.warn("The Microbot account link was refused, so input recording stopped uploading; link the client again to resume");
+			state = State.LINK_REMOVED;
+			onRejected.accept(value);
+			log.warn("Your Microbot account link was removed, so input recording stopped uploading. Link this client again in Microbot Cloud to resume.");
 			return false;
 		}
-		if (code == 429)
+		if (code == 429 && (text.contains("daily-limit") || text.contains("too-many-sessions")))
 		{
-			String text = bodyOf(response);
-			if (text.contains("daily-limit") || text.contains("too-many-sessions"))
-			{
-				limitDay = LocalDate.now(ZoneOffset.UTC);
-				state = State.DAILY_LIMIT;
-				log.info("Input recording reached today's upload limit; it resumes tomorrow");
-				return false;
-			}
-			return backoff();
+			limitUntilMs = System.currentTimeMillis() + LIMIT_RETRY_MS;
+			state = State.DAILY_LIMIT;
+			log.info("Input recording reached today's upload limit; it tries again in 30 minutes.");
+			return false;
 		}
-		if (code >= 500 || code == 408)
+		if (code == 429 || code == 408 || code >= 500)
 		{
 			return backoff();
 		}
-		log.warn("Input upload refused with {} {}; skipping {}", code, bodyOf(response), starting != null ? "this session" : "this chunk");
-		if (starting != null)
+		if (item.close)
 		{
-			starting.dead = true;
+			remove(item, false);
 			return false;
 		}
-		dropped++;
-		synchronized (this)
+		if (starting)
 		{
-			queue.pollFirst();
+			item.generation.dead = true;
 		}
+		log.warn("microbot.cloud refused part of your input recording ({}), so it was skipped.", code);
+		remove(item, true);
 		return false;
 	}
 

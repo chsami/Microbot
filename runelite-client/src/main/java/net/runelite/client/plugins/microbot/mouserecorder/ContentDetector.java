@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.regex.Pattern;
 import lombok.Value;
 import net.runelite.api.Skill;
 
@@ -13,6 +14,10 @@ final class ContentDetector
 {
 	static final int COMBAT_LINGER_TICKS = 10;
 	static final int SKILLING_LINGER_TICKS = 100;
+	static final int MAX_NAME = 64;
+
+	private static final Pattern NOT_ALLOWED = Pattern.compile("[^\\p{L}\\p{N} '()\\-:.&,/]");
+	private static final Pattern SPACES = Pattern.compile("\\s+");
 
 	private static final Map<Integer, Content> INSTANCE_TEMPLATES = Map.of(
 		7222, new Content("Tithe Farm", "minigame"));
@@ -132,12 +137,30 @@ final class ContentDetector
 		}
 		if (lastNpc != null)
 		{
-			return new Content("Combat: " + lastNpc, "combat");
+			String npc = clean(lastNpc);
+			if (!npc.isEmpty())
+			{
+				return new Content(name("Combat: " + npc), "combat");
+			}
 		}
 		if (lastSkill != null)
 		{
-			return new Content("Skilling: " + lastSkill.getName(), "skilling");
+			return new Content(name("Skilling: " + lastSkill.getName()), "skilling");
 		}
 		return null;
+	}
+
+	static String clean(String raw)
+	{
+		if (raw == null)
+		{
+			return "";
+		}
+		return SPACES.matcher(NOT_ALLOWED.matcher(raw).replaceAll(" ")).replaceAll(" ").trim();
+	}
+
+	private static String name(String text)
+	{
+		return text.length() > MAX_NAME ? text.substring(0, MAX_NAME).trim() : text;
 	}
 }
