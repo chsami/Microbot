@@ -216,6 +216,21 @@ public class WalkerRouteCorpusTest {
     }
 
     @Test
+    public void mortMyreRepairedRopeBridgeEndRoutesToTheNorthBank() {
+        WorldPoint bridgeNorthEnd = new WorldPoint(3502, 3430, 0);
+        WorldPoint northBank = new WorldPoint(3502, 3432, 0);
+        WorldPoint curpileFyod = new WorldPoint(3508, 3440, 0);
+        List<WorldPoint> path = route(configWith(WalkerRouteCorpusTest::unrestricted),
+                bridgeNorthEnd, curpileFyod);
+
+        assertTrue("a player left on the last bridge tile must still reach Curpile Fyod",
+                arrives(path, curpileFyod, 1));
+        assertTrue("the route must leave the bridge by the Cross-bridge tree",
+                path.size() > 1 && northBank.equals(path.get(1)));
+        assertTrue(usesTransportObject(path, 5003));
+    }
+
+    @Test
     public void quetzalNetworkUsesCurrentQuetzacalliLanding() {
         WorldPoint aldarin = new WorldPoint(1389, 2901, 0);
         WorldPoint quetzacalli = new WorldPoint(1510, 3222, 0);
