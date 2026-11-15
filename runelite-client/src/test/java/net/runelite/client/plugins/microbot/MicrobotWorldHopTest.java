@@ -23,7 +23,9 @@ import org.mockito.InOrder;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
+import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -52,6 +54,8 @@ public class MicrobotWorldHopTest {
     private final AtomicInteger openCall = new AtomicInteger(-1);
     private final AtomicInteger hopCall = new AtomicInteger(-1);
     private Runnable beforeClientThreadCallable = () -> { };
+    private final List<Callable<?>> lateClientThreadTasks = new ArrayList<>();
+    private int abandonedCall = -1;
 
     @Before
     public void setUp() throws Exception {
@@ -63,8 +67,20 @@ public class MicrobotWorldHopTest {
             clientThreadCalls.incrementAndGet();
             Callable<?> callable = inv.getArgument(0);
             beforeClientThreadCallable.run();
+            if (clientThreadCalls.get() == abandonedCall) {
+                lateClientThreadTasks.add(callable);
+                return Optional.empty();
+            }
             return Optional.ofNullable(callable.call());
         });
+        doAnswer(inv -> {
+            Runnable runnable = inv.getArgument(0);
+            lateClientThreadTasks.add(() -> {
+                runnable.run();
+                return null;
+            });
+            return null;
+        }).when(clientThread).invokeLater(any(Runnable.class));
         Widget buttons = mock(Widget.class);
         when(client.getWidget(InterfaceID.Worldswitcher.BUTTONS)).thenAnswer(inv -> switcherLoaded.get() ? buttons : null);
         doAnswer(inv -> {
@@ -275,9 +291,44 @@ public class MicrobotWorldHopTest {
         verify(client, never()).hopToWorld(any());
     }
 
+    @Test
+    public void hopAbandonedBeforeTheClientThreadRanItDoesNotRefuseLaterHops() throws Exception {
+        stubWorlds();
+        switcherLoaded.set(true);
+        AtomicInteger world = new AtomicInteger(301);
+        when(client.createWorld()).thenAnswer(inv -> mock(World.class));
+        doAnswer(inv -> {
+            world.set(302);
+            return null;
+        }).when(client).hopToWorld(any());
+        abandonedCall = 2;
+
+        assertFalse(hopWithNoBlockers(302, world));
+
+        verify(client, never()).createWorld();
+        abandonedCall = -1;
+        try (MockedStatic<Rs2Combat> combat = Mockito.mockStatic(Rs2Combat.class);
+             MockedStatic<Rs2Bank> bank = Mockito.mockStatic(Rs2Bank.class);
+             MockedStatic<Rs2Shop> shop = Mockito.mockStatic(Rs2Shop.class);
+             MockedStatic<Rs2Dialogue> dialogue = Mockito.mockStatic(Rs2Dialogue.class)) {
+            for (int i = 0; i < lateClientThreadTasks.size(); i++) {
+                lateClientThreadTasks.get(i).call();
+            }
+        }
+        verify(client).createWorld();
+
+        assertTrue(hopWithNoBlockers(302, world));
+
+        verify(client).hopToWorld(any());
+    }
+
     private boolean hopWithNoBlockers(int worldNumber) {
+        return hopWithNoBlockers(worldNumber, new AtomicInteger(301));
+    }
+
+    private boolean hopWithNoBlockers(int worldNumber, AtomicInteger world) {
         microbot.when(Microbot::isLoggedIn).thenReturn(true);
-        when(client.getWorld()).thenReturn(301);
+        when(client.getWorld()).thenAnswer(inv -> world.get());
         when(client.getGameState()).thenReturn(GameState.LOGGED_IN);
         HopBudget budget = mock(HopBudget.class);
         try (MockedStatic<HopBudget> hopBudget = Mockito.mockStatic(HopBudget.class);
