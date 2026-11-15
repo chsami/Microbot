@@ -9,6 +9,7 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
 import java.lang.reflect.Field;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -23,7 +24,6 @@ import net.runelite.api.Actor;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.MenuEntry;
-import net.runelite.api.NPC;
 import net.runelite.api.Player;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.LocalPoint;
@@ -71,7 +71,7 @@ import okhttp3.OkHttpClient;
 	description = "Records your own mouse and game-key input, tagged with the content you are doing, and uploads it to your Microbot account",
 	tags = {"mouse", "macro", "keyboard", "input", "recorder", "microbot"},
 	alwaysOn = true,
-	version = "2.1.0"
+	version = "2.2.0"
 )
 @Slf4j
 public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, MouseWheelListener, KeyListener, ConditionallyListed
@@ -169,7 +169,7 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 	private String lastHover;
 	private String lastPos;
 	private String lastCam;
-	private Skill xpSkillThisTick;
+	private final List<Skill> xpSkillsThisTick = new ArrayList<>();
 
 	@Provides
 	MouseMacroRecorderConfig provideConfig(ConfigManager configManager)
@@ -376,7 +376,7 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 		{
 			recordTick(now);
 		}
-		xpSkillThisTick = null;
+		xpSkillsThisTick.clear();
 		synchronized (lock)
 		{
 			if (active && chunker.isDue(now))
@@ -495,7 +495,7 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 		{
 			return;
 		}
-		xpSkillThisTick = event.getSkill();
+		xpSkillsThisTick.add(event.getSkill());
 		JsonObject xp = event("xp");
 		xp.addProperty("s", event.getSkill().getName());
 		xp.addProperty("d", event.getXp() - previous);
@@ -869,7 +869,6 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 		int yaw = client.getCameraYaw();
 		int pitch = client.getCameraPitch();
 		int zoom = client.getScale();
-		String fighting = fightingNpc(player);
 		synchronized (lock)
 		{
 			if (!active)
@@ -904,7 +903,7 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 				camera.addProperty("zoom", zoom);
 				chunker.add(camera, now);
 			}
-			List<ContentDetector.Transition> transitions = detector.update(new ContentDetector.Tick(instanced, template, fighting, xpSkillThisTick), now);
+			List<ContentDetector.Transition> transitions = detector.update(new ContentDetector.Tick(instanced, template, world.getRegionID(), world.getPlane(), List.copyOf(xpSkillsThisTick)), now);
 			for (ContentDetector.Transition transition : transitions)
 			{
 				JsonObject content = content(transition, now);
@@ -920,22 +919,6 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 			JsonObject content = content(transition, now);
 			chunker.add(content, now);
 		}
-	}
-
-	private static String fightingNpc(Player player)
-	{
-		Actor target = player.getInteracting();
-		if (!(target instanceof NPC))
-		{
-			return null;
-		}
-		NPC npc = (NPC) target;
-		if (npc.getCombatLevel() <= 0 || npc.getName() == null)
-		{
-			return null;
-		}
-		String name = InputPrivacy.plain(npc.getName());
-		return name.isEmpty() ? null : name;
 	}
 
 	private JsonObject content(ContentDetector.Transition transition, long now)

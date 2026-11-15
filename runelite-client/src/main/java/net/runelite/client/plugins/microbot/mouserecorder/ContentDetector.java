@@ -1,28 +1,25 @@
 package net.runelite.client.plugins.microbot.mouserecorder;
 
 import java.util.ArrayList;
-import java.util.EnumSet;
+import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import lombok.Value;
 import net.runelite.api.Skill;
 
 final class ContentDetector
 {
-	static final int COMBAT_LINGER_TICKS = 10;
-	static final int SKILLING_LINGER_TICKS = 100;
+	static final long ACTION_TIMEOUT_MS = TimeUnit.MINUTES.toMillis(5);
 	static final int MAX_NAME = 64;
 
+	private static final String NIGHTMARE_ZONE = "MG_NIGHTMARE_ZONE";
 	private static final Pattern NOT_ALLOWED = Pattern.compile("[^\\p{L}\\p{N} '()\\-:.&,/]");
 	private static final Pattern SPACES = Pattern.compile("\\s+");
-
-	private static final Map<Integer, Content> INSTANCE_TEMPLATES = Map.of(
-		7222, new Content("Tithe Farm", "minigame"));
-	private static final Set<Skill> COMBAT_SKILLS = EnumSet.of(
-		Skill.ATTACK, Skill.STRENGTH, Skill.DEFENCE, Skill.RANGED, Skill.MAGIC, Skill.HITPOINTS, Skill.PRAYER);
+	private static final Comparator<Event> ORDER = Comparator.<Event>comparingInt(e -> e.activity.getPriority())
+		.thenComparingLong(e -> e.order)
+		.reversed();
 
 	@Value
 	static class Content
@@ -44,22 +41,50 @@ final class ContentDetector
 	{
 		boolean instanced;
 		int templateRegion;
-		String fightingNpc;
-		Skill xpSkill;
+		int region;
+		int plane;
+		List<Skill> xpSkills;
 	}
 
+	private static final class Event
+	{
+		private final DiscordCatalog.Activity activity;
+		private long updatedMs;
+		private long order;
+
+		private Event(DiscordCatalog.Activity activity)
+		{
+			this.activity = activity;
+		}
+	}
+
+	private final DiscordCatalog catalog;
+	private final List<Event> events = new ArrayList<>();
+	private long triggers;
+	private Integer lastRegion;
+	private DiscordCatalog.Activity lastArea;
 	private Content current;
 	private long currentStartMs;
-	private String lastNpc;
-	private int npcTicksLeft;
-	private Skill lastSkill;
-	private int skillTicksLeft;
+
+	ContentDetector()
+	{
+		this(DiscordCatalog.shared());
+	}
+
+	ContentDetector(DiscordCatalog catalog)
+	{
+		this.catalog = catalog;
+	}
 
 	List<Transition> update(Tick tick, long nowMs)
 	{
-		trackCombat(tick);
-		trackSkilling(tick);
-		Content next = pick(tick);
+		checkForTimeout(nowMs);
+		trackArea(tick, nowMs);
+		for (Skill skill : tick.getXpSkills())
+		{
+			trigger(catalog.skill(skill), nowMs);
+		}
+		Content next = events.isEmpty() ? null : content(events.get(0).activity);
 		List<Transition> out = new ArrayList<>(2);
 		if (Objects.equals(next, current))
 		{
@@ -86,10 +111,9 @@ final class ContentDetector
 			out.add(new Transition(false, current, currentStartMs));
 		}
 		current = null;
-		lastNpc = null;
-		npcTicksLeft = 0;
-		lastSkill = null;
-		skillTicksLeft = 0;
+		events.clear();
+		lastRegion = null;
+		lastArea = null;
 		return out;
 	}
 
@@ -98,56 +122,62 @@ final class ContentDetector
 		return current;
 	}
 
-	private void trackCombat(Tick tick)
+	private void trackArea(Tick tick, long nowMs)
 	{
-		if (tick.getFightingNpc() != null)
+		int region = tick.isInstanced() ? tick.getTemplateRegion() : tick.getRegion();
+		if (region == 0)
 		{
-			lastNpc = tick.getFightingNpc();
-			npcTicksLeft = COMBAT_LINGER_TICKS;
+			return;
 		}
-		else if (npcTicksLeft > 0 && --npcTicksLeft == 0)
+		DiscordCatalog.Activity area = catalog.region(region);
+		if (area != null && NIGHTMARE_ZONE.equals(area.getId()) && tick.getPlane() == 0)
 		{
-			lastNpc = null;
+			area = null;
 		}
+		if (lastRegion != null && lastRegion == region && Objects.equals(area, lastArea))
+		{
+			return;
+		}
+		lastRegion = region;
+		lastArea = area;
+		trigger(area != null ? area : catalog.inGame(), nowMs);
 	}
 
-	private void trackSkilling(Tick tick)
+	private void trigger(DiscordCatalog.Activity activity, long nowMs)
 	{
-		Skill skill = tick.getXpSkill();
-		if (skill != null && !COMBAT_SKILLS.contains(skill))
+		if (activity == null)
 		{
-			lastSkill = skill;
-			skillTicksLeft = SKILLING_LINGER_TICKS;
+			return;
 		}
-		else if (skillTicksLeft > 0 && --skillTicksLeft == 0)
+		Event event = events.stream().filter(e -> e.activity.equals(activity)).findFirst().orElse(null);
+		if (event == null)
 		{
-			lastSkill = null;
+			event = new Event(activity);
+			events.add(event);
 		}
+		event.updatedMs = nowMs;
+		event.order = ++triggers;
+		if (activity.isShouldClear())
+		{
+			Event triggered = event;
+			events.removeIf(e -> e != triggered && e.activity.isShouldBeCleared());
+		}
+		events.sort(ORDER);
 	}
 
-	private Content pick(Tick tick)
+	private void checkForTimeout(long nowMs)
 	{
-		if (tick.isInstanced())
+		events.removeIf(e -> e.activity.isShouldBeCleared() && e.activity.isShouldTimeout() && nowMs > e.updatedMs + ACTION_TIMEOUT_MS);
+	}
+
+	private static Content content(DiscordCatalog.Activity activity)
+	{
+		if (activity.getKind() == null)
 		{
-			Content known = INSTANCE_TEMPLATES.get(tick.getTemplateRegion());
-			if (known != null)
-			{
-				return known;
-			}
+			return null;
 		}
-		if (lastNpc != null)
-		{
-			String npc = clean(lastNpc);
-			if (!npc.isEmpty())
-			{
-				return new Content(name("Combat: " + npc), "combat");
-			}
-		}
-		if (lastSkill != null)
-		{
-			return new Content(name("Skilling: " + lastSkill.getName()), "skilling");
-		}
-		return null;
+		String name = name(clean(activity.getName()));
+		return name.isEmpty() ? null : new Content(name, activity.getKind());
 	}
 
 	static String clean(String raw)
