@@ -176,7 +176,7 @@ public class Microbot {
     @Inject
     private static TooltipManager tooltipManager;
     private static ScheduledFuture<?> xpSchedulorFuture;
-    private static net.runelite.api.World quickHopTargetWorld;
+    private static volatile net.runelite.api.World quickHopTargetWorld;
     private static final int WORLD_SWITCHER_LOAD_TIMEOUT_MS = 5000;
     private static final int WORLD_SWITCHER_REOPEN_INTERVAL_MS = 600;
     private static final int HOP_WAIT_MIN_IDLE_MARGIN_TICKS = 3000;
@@ -400,7 +400,7 @@ public class Microbot {
             }
         }
         final net.runelite.api.World[] target = new net.runelite.api.World[1];
-        boolean prepared = Microbot.getClientThread().runOnClientThreadOptional(() -> {
+        Optional<Boolean> preparation = Microbot.getClientThread().runOnClientThreadOptional(() -> {
             if (ScriptPauseController.isPaused() || pauseGeneration != ScriptPauseController.getGeneration()) {
                 return false;
             }
@@ -443,7 +443,15 @@ public class Microbot {
             rsWorld.setTypes(WorldUtil.toWorldTypes(newWorld.getTypes()));
 
             return true;
-        }).orElse(false);
+        });
+        if (!preparation.isPresent()) {
+            Microbot.getClientThread().invokeLater(() -> {
+                if (target[0] != null && quickHopTargetWorld == target[0]) {
+                    quickHopTargetWorld = null;
+                }
+            });
+        }
+        boolean prepared = preparation.orElse(false);
         if (target[0] != null) {
             boolean hopIssued;
             try {

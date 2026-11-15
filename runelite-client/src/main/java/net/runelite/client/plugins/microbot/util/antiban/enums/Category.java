@@ -245,7 +245,7 @@ public enum Category {
          */
         @Override
         public boolean isBusyInternal() {
-            return Rs2Player.isAnimating() || Rs2Inventory.isFull();
+            return Rs2Player.isAnimating();
         }
     },
     SKILLING_PRAYER("Skilling/Prayer") {
@@ -266,7 +266,7 @@ public enum Category {
          */
         @Override
         public boolean isBusyInternal() {
-            return Rs2Player.isAnimating() || Rs2Inventory.isFull();
+            return Rs2Player.isAnimating();
         }
     },
     SKILLING_CONSTRUCTION("Skilling/Construction") {
@@ -287,7 +287,7 @@ public enum Category {
          */
         @Override
         public boolean isBusyInternal() {
-            return Rs2Player.isAnimating() || Rs2Inventory.isFull();
+            return Rs2Player.isAnimating();
         }
     };
 

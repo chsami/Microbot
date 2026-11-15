@@ -811,6 +811,43 @@ public class ShortestPathCoreTest {
 	}
 
 	@Test
+	public void testKeldagrimTrainCartsRequireMinecartTicket() {
+		HashMap<WorldPoint, Set<Transport>> transports = Transport.loadAllFromResources();
+		WorldPoint keldagrim = new WorldPoint(2909, 10174, 0);
+		WorldPoint iceMountain = new WorldPoint(2995, 9835, 0);
+		WorldPoint whiteWolfMountain = new WorldPoint(2876, 9868, 0);
+		WorldPoint grandExchange = new WorldPoint(3141, 3504, 0);
+
+		assertTrainCart(transports, new WorldPoint(2923, 10176, 0), iceMountain, 5020);
+		assertTrainCart(transports, new WorldPoint(2923, 10174, 0), iceMountain, 5020);
+		assertTrainCart(transports, new WorldPoint(2995, 9835, 0), keldagrim, 5021);
+		assertTrainCart(transports, new WorldPoint(2995, 9837, 0), keldagrim, 5021);
+		assertTrainCart(transports, new WorldPoint(2919, 10170, 0), whiteWolfMountain, 5022);
+		assertTrainCart(transports, new WorldPoint(2919, 10168, 0), whiteWolfMountain, 5022);
+		assertTrainCart(transports, new WorldPoint(2876, 9868, 0), keldagrim, 5023);
+		assertTrainCart(transports, new WorldPoint(2874, 9868, 0), keldagrim, 5023);
+		assertTrainCart(transports, new WorldPoint(2923, 10172, 0), grandExchange, -1);
+		assertTrainCart(transports, new WorldPoint(2923, 10170, 0), grandExchange, -1);
+	}
+
+	private static void assertTrainCart(Map<WorldPoint, Set<Transport>> transports, WorldPoint origin,
+		WorldPoint destination, int ticketItemId) {
+		List<Transport> carts = new ArrayList<>();
+		for (Transport transport : transports.getOrDefault(origin, Collections.emptySet())) {
+			if (transport.getType() == TransportType.MINECART && destination.equals(transport.getDestination())) {
+				carts.add(transport);
+			}
+		}
+		assertEquals("Train cart rows from " + origin + " to " + destination, 1, carts.size());
+		Transport cart = carts.get(0);
+		assertEquals("Train cart from " + origin + " must not be planned on a coin fare", 0, cart.getCurrencyAmount());
+		Set<Set<Integer>> expected = ticketItemId < 0
+			? Collections.emptySet()
+			: Collections.singleton(Collections.singleton(ticketItemId));
+		assertEquals("Train cart ticket from " + origin, expected, cart.getItemIdRequirements());
+	}
+
+	@Test
 	public void testLovakengjMinecartsRespectForsakenTowerUnlock() {
 		HashMap<WorldPoint, Set<Transport>> transports = Transport.loadAllFromResources();
 		WorldPoint arceuusOrigin = new WorldPoint(1670, 3832, 0);
