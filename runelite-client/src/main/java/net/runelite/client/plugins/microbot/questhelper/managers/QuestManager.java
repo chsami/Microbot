@@ -303,11 +303,16 @@ public class QuestManager
 		questBankManager.startUpQuest();
 		SwingUtilities.invokeLater(() ->
 		{
-			panel.removeQuest();
-			panel.addQuest(questHelper, true);
+			QuestHelperPanel activePanel = panel;
+			if (activePanel == null)
+			{
+				return;
+			}
+			activePanel.removeQuest();
+			activePanel.addQuest(questHelper, true);
 
 			// Force an extra update immediately after starting a quest
-			clientThread.invokeLater(() -> panel.updateItemRequirements(client));
+			clientThread.invokeLater(() -> activePanel.updateItemRequirements(client));
 		});
 	}
 
