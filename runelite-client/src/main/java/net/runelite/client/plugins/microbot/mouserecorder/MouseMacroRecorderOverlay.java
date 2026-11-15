@@ -42,7 +42,7 @@ public class MouseMacroRecorderOverlay extends OverlayPanel
 		String content = plugin.contentName();
 		if (status == MouseMacroRecorderPlugin.Status.RECORDING && content != null)
 		{
-			panelComponent.getChildren().add(LineComponent.builder().left("Doing").right(content).build());
+			panelComponent.getChildren().add(LineComponent.builder().left("Activity").right(content).build());
 		}
 		int lost = plugin.droppedParts();
 		if (lost > 0)

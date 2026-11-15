@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import lombok.Value;
@@ -14,12 +15,12 @@ final class ContentDetector
 	static final long ACTION_TIMEOUT_MS = TimeUnit.MINUTES.toMillis(5);
 	static final int MAX_NAME = 64;
 
+	private static final Set<String> CONTENT_KINDS = Set.of("boss", "minigame", "raid", "dungeon");
 	private static final String NIGHTMARE_ZONE = "MG_NIGHTMARE_ZONE";
 	private static final Pattern NOT_ALLOWED = Pattern.compile("[^\\p{L}\\p{N} '()\\-:.&,/]");
 	private static final Pattern SPACES = Pattern.compile("\\s+");
-	private static final Comparator<Event> ORDER = Comparator.<Event>comparingInt(e -> e.activity.getPriority())
-		.thenComparingLong(e -> e.order)
-		.reversed();
+	private static final Comparator<Event> ORDER = Comparator.<Event>comparingInt(e -> -e.activity.getPriority())
+		.thenComparingLong(e -> e.order);
 
 	@Value
 	static class Content
@@ -49,22 +50,25 @@ final class ContentDetector
 	private static final class Event
 	{
 		private final DiscordCatalog.Activity activity;
+		private final long order;
 		private long updatedMs;
-		private long order;
 
-		private Event(DiscordCatalog.Activity activity)
+		private Event(DiscordCatalog.Activity activity, long order)
 		{
 			this.activity = activity;
+			this.order = order;
 		}
 	}
 
 	private final DiscordCatalog catalog;
-	private final List<Event> events = new ArrayList<>();
-	private long triggers;
-	private Integer lastRegion;
-	private DiscordCatalog.Activity lastArea;
+	private final List<Event> trainings = new ArrayList<>();
+	private long created;
+	private boolean areaSeen;
+	private DiscordCatalog.Activity area;
 	private Content current;
 	private long currentStartMs;
+	private long pausedMs;
+	private long pausedAt = -1;
 
 	ContentDetector()
 	{
@@ -78,13 +82,15 @@ final class ContentDetector
 
 	List<Transition> update(Tick tick, long nowMs)
 	{
-		checkForTimeout(nowMs);
-		trackArea(tick, nowMs);
+		resume(nowMs);
+		long activeMs = nowMs - pausedMs;
+		trainings.removeIf(e -> e.activity.isShouldBeCleared() && e.activity.isShouldTimeout() && activeMs > e.updatedMs + ACTION_TIMEOUT_MS);
+		trackArea(tick);
 		for (Skill skill : tick.getXpSkills())
 		{
-			trigger(catalog.skill(skill), nowMs);
+			train(catalog.skill(skill), activeMs);
 		}
-		Content next = events.isEmpty() ? null : content(events.get(0).activity);
+		Content next = pick();
 		List<Transition> out = new ArrayList<>(2);
 		if (Objects.equals(next, current))
 		{
@@ -103,6 +109,23 @@ final class ContentDetector
 		return out;
 	}
 
+	void pause(long nowMs)
+	{
+		if (pausedAt < 0)
+		{
+			pausedAt = nowMs;
+		}
+	}
+
+	void resume(long nowMs)
+	{
+		if (pausedAt >= 0)
+		{
+			pausedMs += Math.max(0, nowMs - pausedAt);
+			pausedAt = -1;
+		}
+	}
+
 	List<Transition> end()
 	{
 		List<Transition> out = new ArrayList<>(1);
@@ -111,9 +134,11 @@ final class ContentDetector
 			out.add(new Transition(false, current, currentStartMs));
 		}
 		current = null;
-		events.clear();
-		lastRegion = null;
-		lastArea = null;
+		trainings.clear();
+		areaSeen = false;
+		area = null;
+		pausedMs = 0;
+		pausedAt = -1;
 		return out;
 	}
 
@@ -122,52 +147,62 @@ final class ContentDetector
 		return current;
 	}
 
-	private void trackArea(Tick tick, long nowMs)
+	private void trackArea(Tick tick)
 	{
 		int region = tick.isInstanced() ? tick.getTemplateRegion() : tick.getRegion();
 		if (region == 0)
 		{
 			return;
 		}
-		DiscordCatalog.Activity area = catalog.region(region);
-		if (area != null && NIGHTMARE_ZONE.equals(area.getId()) && tick.getPlane() == 0)
+		DiscordCatalog.Activity next = catalog.region(region);
+		if (next != null && (next.getKind() == null || NIGHTMARE_ZONE.equals(next.getId()) && tick.getPlane() == 0))
 		{
-			area = null;
+			next = null;
 		}
-		if (lastRegion != null && lastRegion == region && Objects.equals(area, lastArea))
+		if (areaSeen && Objects.equals(next, area))
 		{
 			return;
 		}
-		lastRegion = region;
-		lastArea = area;
-		trigger(area != null ? area : catalog.inGame(), nowMs);
+		if (isContent(area) || isContent(next))
+		{
+			trainings.removeIf(e -> e.activity.isShouldBeCleared());
+		}
+		areaSeen = true;
+		area = next;
 	}
 
-	private void trigger(DiscordCatalog.Activity activity, long nowMs)
+	private void train(DiscordCatalog.Activity activity, long activeMs)
 	{
 		if (activity == null)
 		{
 			return;
 		}
-		Event event = events.stream().filter(e -> e.activity.equals(activity)).findFirst().orElse(null);
+		Event event = trainings.stream().filter(e -> e.activity.equals(activity)).findFirst().orElse(null);
 		if (event == null)
 		{
-			event = new Event(activity);
-			events.add(event);
+			event = new Event(activity, ++created);
+			trainings.add(event);
+			trainings.sort(ORDER);
 		}
-		event.updatedMs = nowMs;
-		event.order = ++triggers;
-		if (activity.isShouldClear())
-		{
-			Event triggered = event;
-			events.removeIf(e -> e != triggered && e.activity.isShouldBeCleared());
-		}
-		events.sort(ORDER);
+		event.updatedMs = activeMs;
 	}
 
-	private void checkForTimeout(long nowMs)
+	private Content pick()
 	{
-		events.removeIf(e -> e.activity.isShouldBeCleared() && e.activity.isShouldTimeout() && nowMs > e.updatedMs + ACTION_TIMEOUT_MS);
+		if (isContent(area))
+		{
+			return content(area);
+		}
+		if (!trainings.isEmpty())
+		{
+			return content(trainings.get(0).activity);
+		}
+		return area == null ? null : content(area);
+	}
+
+	private static boolean isContent(DiscordCatalog.Activity activity)
+	{
+		return activity != null && CONTENT_KINDS.contains(activity.getKind());
 	}
 
 	private static Content content(DiscordCatalog.Activity activity)

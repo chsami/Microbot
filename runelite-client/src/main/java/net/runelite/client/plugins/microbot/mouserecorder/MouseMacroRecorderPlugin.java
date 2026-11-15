@@ -754,6 +754,7 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 				{
 					endContent(now);
 				}
+				detector.pause(now);
 				JsonObject pause = event("pause", now);
 				pause.addProperty("why", reason);
 				chunker.add(pause, now);
@@ -763,6 +764,7 @@ public class MouseMacroRecorderPlugin extends Plugin implements MouseListener, M
 			else
 			{
 				pauseReason = null;
+				detector.resume(now);
 				JsonObject resume = event("resume", now);
 				resume.addProperty("why", previous);
 				chunker.add(resume, now);

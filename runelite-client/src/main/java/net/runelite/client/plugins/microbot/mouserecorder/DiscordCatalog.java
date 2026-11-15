@@ -12,7 +12,6 @@ import net.runelite.client.plugins.Plugin;
 final class DiscordCatalog
 {
 	static final String EVENT_TYPE = "net.runelite.client.plugins.discord.DiscordGameEventType";
-	static final String IN_GAME = "IN_GAME";
 
 	private static final Map<String, String> AREA_KINDS = Map.of(
 		"BOSSES", "boss",
@@ -21,7 +20,7 @@ final class DiscordCatalog
 		"MINIGAMES", "minigame",
 		"RAIDS", "raid",
 		"REGIONS", "region");
-	private static final DiscordCatalog UNAVAILABLE = new DiscordCatalog(null, null, Map.of(), null);
+	private static final DiscordCatalog UNAVAILABLE = new DiscordCatalog(null, null, Map.of());
 	private static volatile DiscordCatalog shared;
 
 	@Value
@@ -31,7 +30,6 @@ final class DiscordCatalog
 		String name;
 		String kind;
 		int priority;
-		boolean shouldClear;
 		boolean shouldTimeout;
 		boolean shouldBeCleared;
 	}
@@ -39,14 +37,12 @@ final class DiscordCatalog
 	private final Method fromRegion;
 	private final Method fromSkill;
 	private final Map<Object, Activity> activities;
-	private final Activity inGame;
 
-	private DiscordCatalog(Method fromRegion, Method fromSkill, Map<Object, Activity> activities, Activity inGame)
+	private DiscordCatalog(Method fromRegion, Method fromSkill, Map<Object, Activity> activities)
 	{
 		this.fromRegion = fromRegion;
 		this.fromSkill = fromSkill;
 		this.activities = activities;
-		this.inGame = inGame;
 	}
 
 	static DiscordCatalog shared()
@@ -70,12 +66,10 @@ final class DiscordCatalog
 			Method state = open(type, "getState");
 			Method details = open(type, "getDetails");
 			Method priority = open(type, "getPriority");
-			Method shouldClear = open(type, "isShouldClear");
 			Method shouldTimeout = open(type, "isShouldTimeout");
 			Method shouldBeCleared = open(type, "isShouldBeCleared");
 			Method areaType = open(type, "getDiscordAreaType");
 			Map<Object, Activity> activities = new HashMap<>();
-			Activity inGame = null;
 			for (Object constant : type.getEnumConstants())
 			{
 				String id = ((Enum<?>) constant).name();
@@ -83,15 +77,10 @@ final class DiscordCatalog
 				Object area = areaType.invoke(constant);
 				String kind = area != null ? AREA_KINDS.get(((Enum<?>) area).name()) : detail != null ? "training" : null;
 				Activity activity = new Activity(id, detail != null ? detail : (String) state.invoke(constant), kind,
-					(int) priority.invoke(constant), (boolean) shouldClear.invoke(constant),
-					(boolean) shouldTimeout.invoke(constant), (boolean) shouldBeCleared.invoke(constant));
+					(int) priority.invoke(constant), (boolean) shouldTimeout.invoke(constant), (boolean) shouldBeCleared.invoke(constant));
 				activities.put(constant, activity);
-				if (IN_GAME.equals(id))
-				{
-					inGame = activity;
-				}
 			}
-			return new DiscordCatalog(fromRegion, fromSkill, activities, inGame);
+			return new DiscordCatalog(fromRegion, fromSkill, activities);
 		}
 		catch (ReflectiveOperationException | RuntimeException | LinkageError e)
 		{
@@ -113,11 +102,6 @@ final class DiscordCatalog
 	Activity skill(Skill skill)
 	{
 		return lookup(fromSkill, skill);
-	}
-
-	Activity inGame()
-	{
-		return inGame;
 	}
 
 	private Activity lookup(Method method, Object argument)

@@ -11,6 +11,7 @@ import static org.junit.Assert.assertTrue;
 public class ContentDetectorTest
 {
 	private static final int TITHE_FARM = 7222;
+	private static final int ZULRAH = 9007;
 	private static final int SLAYER_CAVE = 9624;
 	private static final int VARROCK = 12853;
 	private static final int UNKNOWN = 12345;
@@ -41,7 +42,6 @@ public class ContentDetectorTest
 		assertEquals(1, enter.size());
 		assertTrue(enter.get(0).isStart());
 		assertEquals(new ContentDetector.Content("Stronghold Slayer Cave", "dungeon"), enter.get(0).getContent());
-		assertTrue(detector.update(at(SLAYER_CAVE + 1), 600).isEmpty());
 
 		List<ContentDetector.Transition> city = detector.update(at(VARROCK), 1200);
 		assertEquals(0, city.get(0).getStartMs());
@@ -75,53 +75,126 @@ public class ContentDetectorTest
 	}
 
 	@Test
-	public void priorityPicksBetweenAreaAndSkill()
+	public void titheFarmWithFarmingXpStaysOneSegment()
 	{
 		ContentDetector detector = new ContentDetector();
 		detector.update(instance(TITHE_FARM), 0);
-		detector.update(instance(TITHE_FARM, Skill.FARMING), 600);
-		assertEquals("Training: Farming", name(detector));
+		for (int i = 1; i <= 20; i++)
+		{
+			assertTrue(detector.update(instance(TITHE_FARM, Skill.FARMING), i * 600L).isEmpty());
+		}
 
-		detector.update(at(UNKNOWN, Skill.HITPOINTS, Skill.ATTACK), 1200);
-		assertEquals("Training: Attack", name(detector));
-		detector.update(at(UNKNOWN, Skill.SLAYER, Skill.HITPOINTS), 1800);
+		List<ContentDetector.Transition> leave = detector.update(at(UNKNOWN), 30_000);
+		assertEquals(1, leave.size());
+		assertEquals("Tithe Farm", leave.get(0).getContent().getName());
+		assertEquals(0, leave.get(0).getStartMs());
+		assertNull(detector.current());
+	}
+
+	@Test
+	public void trainingKeepsGoingIntoACity()
+	{
+		ContentDetector detector = new ContentDetector();
+		detector.update(at(UNKNOWN, Skill.MINING), 0);
+
+		assertTrue(detector.update(at(VARROCK), 600).isEmpty());
+		assertTrue(detector.update(at(UNKNOWN, Skill.MINING), 1200).isEmpty());
+		assertTrue(detector.update(at(VARROCK), 1800).isEmpty());
+		assertEquals("Training: Mining", name(detector));
+	}
+
+	@Test
+	public void leavingABossAreaClearsItsTraining()
+	{
+		ContentDetector detector = new ContentDetector();
+		detector.update(at(ZULRAH, Skill.RANGED, Skill.SLAYER), 0);
+		assertEquals(new ContentDetector.Content("Zulrah", "boss"), detector.current());
+
+		List<ContentDetector.Transition> leave = detector.update(at(VARROCK), 600);
+		assertEquals("Zulrah", leave.get(0).getContent().getName());
+		assertEquals(new ContentDetector.Content("Varrock", "city"), leave.get(1).getContent());
+	}
+
+	@Test
+	public void regionChangeWithinOneAreaDoesNotSplit()
+	{
+		ContentDetector detector = new ContentDetector();
+		detector.update(at(SLAYER_CAVE, Skill.SLAYER), 0);
+
+		assertTrue(detector.update(at(9625), 600).isEmpty());
+		assertTrue(detector.update(at(9880), 1200).isEmpty());
+		assertEquals(2, detector.update(at(VARROCK), 1800).size());
+		assertEquals(2, detector.update(at(VARROCK - 1, Skill.MINING), 2400).size());
+		assertTrue(detector.update(at(VARROCK + 1), 3000).isEmpty());
+		assertEquals("Training: Mining", name(detector));
+	}
+
+	@Test
+	public void priorityPicksTheHigherSkill()
+	{
+		ContentDetector detector = new ContentDetector();
+		detector.update(at(UNKNOWN, Skill.ATTACK), 0);
+		detector.update(at(UNKNOWN, Skill.SLAYER, Skill.HITPOINTS), 600);
+
 		assertEquals("Training: Slayer", name(detector));
+	}
 
-		detector.update(at(SLAYER_CAVE), 2400);
-		assertEquals("Stronghold Slayer Cave", name(detector));
-		assertTrue(detector.update(at(SLAYER_CAVE, Skill.HITPOINTS), 3000).isEmpty());
-		detector.update(at(SLAYER_CAVE, Skill.RANGED), 3600);
-		assertEquals("Training: Ranged", name(detector));
+	@Test
+	public void equalPrioritySkillsDoNotFlicker()
+	{
+		ContentDetector detector = new ContentDetector();
+		detector.update(at(UNKNOWN, Skill.WOODCUTTING), 0);
+		for (int i = 1; i <= 20; i++)
+		{
+			Skill skill = i % 2 == 0 ? Skill.WOODCUTTING : Skill.FIREMAKING;
+			assertTrue(detector.update(at(UNKNOWN, skill), i * 600L).isEmpty());
+		}
+		assertEquals("Training: Woodcutting", name(detector));
+
+		long lastChop = 20 * 600L;
+		assertTrue(detector.update(at(UNKNOWN, Skill.FIREMAKING), lastChop + ContentDetector.ACTION_TIMEOUT_MS).isEmpty());
+		List<ContentDetector.Transition> burn = detector.update(at(UNKNOWN, Skill.FIREMAKING), lastChop + ContentDetector.ACTION_TIMEOUT_MS + 600);
+		assertEquals("Training: Firemaking", burn.get(1).getContent().getName());
 	}
 
 	@Test
 	public void staleSkillTimesOutBackToTheArea()
 	{
 		ContentDetector detector = new ContentDetector();
-		detector.update(instance(TITHE_FARM, Skill.FARMING), 0);
-		assertEquals("Training: Farming", name(detector));
+		detector.update(at(VARROCK, Skill.MINING), 0);
+		assertEquals("Training: Mining", name(detector));
 
-		assertTrue(detector.update(instance(TITHE_FARM), ContentDetector.ACTION_TIMEOUT_MS).isEmpty());
-		List<ContentDetector.Transition> stale = detector.update(instance(TITHE_FARM), ContentDetector.ACTION_TIMEOUT_MS + 600);
+		assertTrue(detector.update(at(VARROCK), ContentDetector.ACTION_TIMEOUT_MS).isEmpty());
+		List<ContentDetector.Transition> stale = detector.update(at(VARROCK), ContentDetector.ACTION_TIMEOUT_MS + 600);
 
-		assertEquals("Training: Farming", stale.get(0).getContent().getName());
+		assertEquals("Training: Mining", stale.get(0).getContent().getName());
 		assertFalse(stale.get(0).isStart());
-		assertEquals(new ContentDetector.Content("Tithe Farm", "minigame"), stale.get(1).getContent());
-
-		detector.update(at(UNKNOWN, Skill.MINING), 10 * MINUTE);
-		assertEquals(1, detector.update(at(UNKNOWN), 16 * MINUTE).size());
-		assertNull(detector.current());
+		assertEquals(new ContentDetector.Content("Varrock", "city"), stale.get(1).getContent());
 	}
 
 	@Test
-	public void pausedTicksDoNotEndTheSegment()
+	public void aLongFocusPauseDoesNotTimeOutTheSkill()
 	{
 		ContentDetector detector = new ContentDetector();
-		detector.update(at(SLAYER_CAVE, Skill.SLAYER), 500);
+		detector.update(at(VARROCK, Skill.MINING), 500);
+		detector.pause(MINUTE);
+		detector.resume(11 * MINUTE);
 
-		assertTrue(detector.update(at(SLAYER_CAVE), 4 * MINUTE).isEmpty());
-		assertEquals("Training: Slayer", name(detector));
+		assertTrue(detector.update(at(VARROCK), 11 * MINUTE + 600).isEmpty());
+		assertEquals("Training: Mining", name(detector));
 		assertEquals(500, detector.end().get(0).getStartMs());
+	}
+
+	@Test
+	public void unpausedTimeStillTimesOutTheSkill()
+	{
+		ContentDetector detector = new ContentDetector();
+		detector.update(at(VARROCK, Skill.MINING), 0);
+		detector.pause(MINUTE);
+		detector.resume(11 * MINUTE);
+
+		assertTrue(detector.update(at(VARROCK), 15 * MINUTE).isEmpty());
+		assertEquals("Varrock", detector.update(at(VARROCK), 15 * MINUTE + 600).get(1).getContent().getName());
 	}
 
 	@Test
