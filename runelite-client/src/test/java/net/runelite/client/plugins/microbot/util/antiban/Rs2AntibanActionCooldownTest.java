@@ -8,6 +8,8 @@ import net.runelite.client.plugins.microbot.util.antiban.enums.Activity;
 import net.runelite.client.plugins.microbot.util.antiban.enums.ActivityIntensity;
 import net.runelite.client.plugins.microbot.util.antiban.enums.PlayStyle;
 import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
+import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.ui.overlay.components.PanelComponent;
 import org.junit.After;
 import org.junit.Before;
@@ -278,6 +280,46 @@ public class Rs2AntibanActionCooldownTest {
 			}
 			assertEquals(ticks, Rs2Antiban.getTIMEOUT());
 			assertTrue(Rs2AntibanSettings.actionCooldownActive);
+		} finally {
+			Microbot.pauseAllScripts.set(false);
+		}
+	}
+
+	@Test
+	public void universalCooldownCountsDownWithFullInventoryInInventorySkillingCategories() {
+		Rs2AntibanSettings.universalAntiban = true;
+		Activity[] activities = {Activity.GENERAL_FARMING, Activity.GENERAL_PRAYER, Activity.GENERAL_CONSTRUCTION};
+
+		try (MockedStatic<Microbot> microbot = mockStatic(Microbot.class);
+			 MockedStatic<Rs2Player> player = mockStatic(Rs2Player.class);
+			 MockedStatic<Rs2Inventory> inventory = mockStatic(Rs2Inventory.class)) {
+			microbot.when(Microbot::isLoggedIn).thenReturn(true);
+			inventory.when(Rs2Inventory::isFull).thenReturn(true);
+
+			for (Activity activity : activities) {
+				Microbot.pauseAllScripts.set(false);
+				Rs2Antiban.setActivity(activity);
+				player.when(Rs2Player::isAnimating).thenReturn(true);
+
+				Rs2Antiban.actionCooldown();
+				assertTrue(Rs2AntibanSettings.actionCooldownActive);
+				assertTrue(Microbot.pauseAllScripts.get());
+
+				int ticks = Rs2Antiban.getTIMEOUT();
+				assertTrue(ticks >= 1);
+				AntibanPlugin.performActionBreak();
+				assertEquals(ticks, Rs2Antiban.getTIMEOUT());
+
+				player.when(Rs2Player::isAnimating).thenReturn(false);
+				for (int i = 0; i < ticks; i++) {
+					AntibanPlugin.performActionBreak();
+				}
+				assertEquals(0, Rs2Antiban.getTIMEOUT());
+
+				AntibanPlugin.performActionBreak();
+				assertFalse(Rs2AntibanSettings.actionCooldownActive);
+				assertFalse(Microbot.pauseAllScripts.get());
+			}
 		} finally {
 			Microbot.pauseAllScripts.set(false);
 		}
