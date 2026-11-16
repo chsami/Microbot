@@ -153,7 +153,7 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
                 File file = fileChooser.getSelectedFile();
                 lastFileChooserDirectory = file.getParentFile();
                 if (!isReadableFile(file)) {
-                    showImportFileUnreadable();
+                    showImportFileUnreadable(file);
                     return;
                 }
                 importProfile(file);
@@ -1048,14 +1048,18 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
         return file != null && file.isFile() && file.canRead();
     }
 
-    private void showImportFileUnreadable() {
-        JOptionPane.showMessageDialog(this,
-                "The selected file does not exist or can not be read, so no profile was imported.",
+    static String importFileUnreadableMessage(File file) {
+        return "'" + file.getName() + "' does not exist or can not be read, so no profile was imported."
+                + " Click Import again and choose an existing .properties file.";
+    }
+
+    private void showImportFileUnreadable(File file) {
+        JOptionPane.showMessageDialog(this, importFileUnreadableMessage(file),
                 "Profile import", JOptionPane.WARNING_MESSAGE);
     }
 
     private void importProfile(File file) {
-        log.info("Importing profile from {}", file);
+        log.info("Importing profile");
 
         executor.execute(() -> {
             if (importJagexCredentials(file)) {
@@ -1083,7 +1087,7 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
      * Saves the Jagex Account character in a credentials.properties file to the profile named after
      * it, creating that profile if needed. Logging in with the profile then switches to that character.
      *
-     * @return false if the file is not a Jagex credentials file, true if it was imported or could not be read
+     * @return false if the file is not a Jagex credentials file, true if it was imported or is missing or unreadable
      */
     private boolean importJagexCredentials(File file) {
         JagexCredentials credentials;
@@ -1096,10 +1100,13 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
             encryptedSessionId = Encryption.encrypt(credentials.getSessionId());
         } catch (IOException e) {
             log.warn("Unable to read the profile import file ({})", e.getClass().getSimpleName());
-            SwingUtilities.invokeLater(this::showImportFileUnreadable);
+            if (isReadableFile(file)) {
+                return false;
+            }
+            SwingUtilities.invokeLater(() -> showImportFileUnreadable(file));
             return true;
         } catch (Exception e) {
-            log.error("Unable to read Jagex credentials from {}", file, e);
+            log.error("Unable to read Jagex credentials", e);
             return false;
         }
 
