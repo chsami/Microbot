@@ -152,6 +152,10 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
             if (selection == JFileChooser.APPROVE_OPTION) {
                 File file = fileChooser.getSelectedFile();
                 lastFileChooserDirectory = file.getParentFile();
+                if (!isReadableFile(file)) {
+                    showImportFileUnreadable();
+                    return;
+                }
                 importProfile(file);
             }
         });
@@ -1040,6 +1044,16 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
         }
     }
 
+    static boolean isReadableFile(File file) {
+        return file != null && file.isFile() && file.canRead();
+    }
+
+    private void showImportFileUnreadable() {
+        JOptionPane.showMessageDialog(this,
+                "The selected file does not exist or can not be read, so no profile was imported.",
+                "Profile import", JOptionPane.WARNING_MESSAGE);
+    }
+
     private void importProfile(File file) {
         log.info("Importing profile from {}", file);
 
@@ -1069,7 +1083,7 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
      * Saves the Jagex Account character in a credentials.properties file to the profile named after
      * it, creating that profile if needed. Logging in with the profile then switches to that character.
      *
-     * @return false if the file is not a Jagex credentials file
+     * @return false if the file is not a Jagex credentials file, true if it was imported or could not be read
      */
     private boolean importJagexCredentials(File file) {
         JagexCredentials credentials;
@@ -1080,6 +1094,10 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
                 return false;
             }
             encryptedSessionId = Encryption.encrypt(credentials.getSessionId());
+        } catch (IOException e) {
+            log.warn("Unable to read the profile import file ({})", e.getClass().getSimpleName());
+            SwingUtilities.invokeLater(this::showImportFileUnreadable);
+            return true;
         } catch (Exception e) {
             log.error("Unable to read Jagex credentials from {}", file, e);
             return false;
