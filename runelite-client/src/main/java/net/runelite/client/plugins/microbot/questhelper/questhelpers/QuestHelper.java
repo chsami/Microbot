@@ -78,7 +78,7 @@ public abstract class QuestHelper implements Module, QuestDebugRenderer
 	private EventBus eventBus;
 
 	@Getter
-	private QuestStep currentStep;
+	private volatile QuestStep currentStep;
 
 	@Getter
 	@Setter
@@ -129,15 +129,16 @@ public abstract class QuestHelper implements Module, QuestDebugRenderer
 		if (step != null)
 		{
 			currentStep = step;
-			currentStep.startUp();
-			eventBus.register(currentStep);
+			step.startUp();
+			registerIfStillCurrent(step);
 		}
 		else if (!hasQuestStateBecomeFinished() && getState(client) == QuestState.FINISHED)
 		{
-			currentStep = new DetailedQuestStep(this, "Quest completed!");
-			instantiateStep(currentStep);
-			currentStep.startUp();
-			eventBus.register(currentStep);
+			QuestStep completedStep = new DetailedQuestStep(this, "Quest completed!");
+			currentStep = completedStep;
+			instantiateStep(completedStep);
+			completedStep.startUp();
+			registerIfStillCurrent(completedStep);
 		}
 		else
 		{
@@ -145,12 +146,23 @@ public abstract class QuestHelper implements Module, QuestDebugRenderer
 		}
 	}
 
+	private void registerIfStillCurrent(QuestStep step)
+	{
+		eventBus.register(step);
+		if (currentStep != step)
+		{
+			eventBus.unregister(step);
+			step.shutDown();
+		}
+	}
+
 	protected void shutDownStep()
 	{
-		if (currentStep != null)
+		QuestStep step = currentStep;
+		if (step != null)
 		{
-			eventBus.unregister(currentStep);
-			currentStep.shutDown();
+			eventBus.unregister(step);
+			step.shutDown();
 			currentStep = null;
 		}
 	}
