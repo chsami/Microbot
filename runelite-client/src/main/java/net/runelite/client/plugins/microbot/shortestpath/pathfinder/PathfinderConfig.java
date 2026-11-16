@@ -210,15 +210,15 @@ public class PathfinderConfig {
     // Used to include bank items when searching for item requirements
     private volatile boolean useBankItems = false;
 
-    private Map<Integer, Integer> refreshAvailableItemQuantities;
-    private Map<Integer, Integer> refreshAvailableRuneQuantities;
-    private int[] refreshBoostedLevels;
-    private Map<String, int[]> refreshCurrencyCache;
+    private volatile Map<Integer, Integer> refreshAvailableItemQuantities;
+    private volatile Map<Integer, Integer> refreshAvailableRuneQuantities;
+    private volatile int[] refreshBoostedLevels;
+    private volatile Map<String, int[]> refreshCurrencyCache;
     // Varplayer values snapshot for the current refreshTransports pass. Without it, every varp
     // condition on every transport paid a full cross-thread hop (getLiveVarplayerValue), and the
     // global state cache never retains zero-valued varps — ~115 varp-gated rows accounted for
     // ~2.3s of the 2.8s refilter. Captured in the same client-thread block as boosted levels.
-    private Map<Integer, Integer> refreshVarplayerValues;
+    private volatile Map<Integer, Integer> refreshVarplayerValues;
     private static final Skill[] SKILLS = Skill.values();
 
     /**
@@ -588,20 +588,19 @@ public class PathfinderConfig {
         long mergeTime = System.currentTimeMillis() - mergeStart;
 
         long cacheStart = System.currentTimeMillis();
-        refreshAvailableItemQuantities = new HashMap<>();
-        refreshCurrencyCache = new HashMap<>();
-        Rs2Inventory.items().forEach(item -> refreshAvailableItemQuantities.merge(
-                item.getId(), Math.max(0, item.getQuantity()), Integer::sum));
-        Rs2Equipment.all().forEach(item -> refreshAvailableItemQuantities.merge(
-                item.getId(), Math.max(0, item.getQuantity()), Integer::sum));
+        Map<Integer, Integer> availableItemQuantities = new HashMap<>();
+        addItemQuantities(availableItemQuantities, Rs2Inventory.items());
+        addItemQuantities(availableItemQuantities, Rs2Equipment.all());
         if (useBankItems) {
-            Rs2Bank.getAll().forEach(item -> refreshAvailableItemQuantities.merge(
-                    item.getId(), Math.max(0, item.getQuantity()), Integer::sum));
+            addItemQuantities(availableItemQuantities, Rs2Bank.getAll());
         }
-        refreshAvailableRuneQuantities = new HashMap<>();
+        Map<Integer, Integer> availableRuneQuantities = new HashMap<>();
         Rs2Magic.getRunes(RuneFilter.builder().includeBank(useBankItems).build())
-                .forEach((rune, quantity) -> refreshAvailableRuneQuantities.put(
+                .forEach((rune, quantity) -> availableRuneQuantities.put(
                         rune.getItemId(), quantity));
+        refreshAvailableItemQuantities = availableItemQuantities;
+        refreshAvailableRuneQuantities = availableRuneQuantities;
+        refreshCurrencyCache = new ConcurrentHashMap<>();
 
         Set<Integer> varbitIds = new HashSet<>();
         List<int[]> varbitConditions = new ArrayList<>();
@@ -1351,6 +1350,11 @@ public class PathfinderConfig {
                 ? -1 : availableQuantities.getOrDefault(itemId, 0);
     }
 
+    static void addItemQuantities(Map<Integer, Integer> quantities, Stream<Rs2ItemModel> items) {
+        items.forEach(item -> quantities.merge(
+                item.getId(), Math.max(0, item.getQuantity()), Integer::sum));
+    }
+
     private boolean useTransport(Transport transport, boolean inCombat) {
         return transportRejection(transport, inCombat) == null;
     }
@@ -1552,6 +1556,7 @@ public class PathfinderConfig {
 
         // If you don't have the required currency & amount for transport
         if (transport.getCurrencyAmount() > 0) {
+            Map<String, int[]> currencyCache = refreshCurrencyCache;
             int knownCurrencyQuantity = knownCurrencyQuantity(
                     transport.getCurrencyName(), refreshAvailableItemQuantities);
             if (knownCurrencyQuantity >= 0) {
@@ -1560,12 +1565,15 @@ public class PathfinderConfig {
                 if (knownCurrencyQuantity < transport.getCurrencyAmount()) {
                     return TransportRejection.CURRENCY;
                 }
-            } else if (refreshCurrencyCache != null) {
-                int[] cached = refreshCurrencyCache.computeIfAbsent(transport.getCurrencyName(), name -> {
+            } else if (currencyCache != null) {
+                String name = transport.getCurrencyName();
+                int[] cached = currencyCache.get(name);
+                if (cached == null) {
                     int invCount = Rs2Inventory.itemQuantity(name);
                     int bankCount = useBankItems ? Rs2Bank.count(name) : 0;
-                    return new int[]{invCount, bankCount};
-                });
+                    cached = new int[]{invCount, bankCount};
+                    currencyCache.put(name, cached);
+                }
                 if (!hasAvailableCurrencyForFare(cached[0], cached[1],
                         transport.getCurrencyAmount(), useBankItems)) {
                     log.trace("Transport ( O: {} D: {} ) requires {} x {}", transport.getOrigin(), transport.getDestination(), transport.getCurrencyAmount(), transport.getCurrencyName());
@@ -1645,8 +1653,9 @@ public class PathfinderConfig {
      */
     private boolean hasRequiredLevels(Transport transport) {
         int[] requiredLevels = transport.getSkillLevels();
-        if (refreshBoostedLevels != null) {
-            return meetsRequiredLevels(requiredLevels, refreshBoostedLevels);
+        int[] boostedLevels = refreshBoostedLevels;
+        if (boostedLevels != null) {
+            return meetsRequiredLevels(requiredLevels, boostedLevels);
         }
         return IntStream.range(0, requiredLevels.length)
             .filter(i -> requiredLevels[i] > 0)
@@ -1889,8 +1898,9 @@ public class PathfinderConfig {
         if (itemId == ItemID.CHRONICLE && !hasChronicleCharges()) {
             return 0;
         }
-        if (refreshAvailableItemQuantities != null) {
-            return refreshAvailableItemQuantities.getOrDefault(itemId, 0);
+        Map<Integer, Integer> itemSnapshot = refreshAvailableItemQuantities;
+        if (itemSnapshot != null) {
+            return itemSnapshot.getOrDefault(itemId, 0);
         }
         int quantity = Rs2Inventory.itemQuantity(itemId);
         Rs2ItemModel equipped = Rs2Equipment.get(itemId);
