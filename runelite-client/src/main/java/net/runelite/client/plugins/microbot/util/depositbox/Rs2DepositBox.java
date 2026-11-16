@@ -533,7 +533,8 @@ public class Rs2DepositBox {
                 .map(DepositBoxLocation::getWorldPoint)
                 .collect(Collectors.toSet());
 
-        Rs2RouteRequest request = Rs2RouteRequest.toAny(worldPoint, targets);
+        Rs2RouteRequest request = Rs2RouteRequest.toAny(worldPoint, targets)
+                .withRefreshPolicy(Rs2RouteRequest.RefreshPolicy.ALWAYS);
         if (ignoreTeleports) {
             request = request.withoutTeleports();
         }

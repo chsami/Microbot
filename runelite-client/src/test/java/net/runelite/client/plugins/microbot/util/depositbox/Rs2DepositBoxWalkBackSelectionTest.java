@@ -107,4 +107,20 @@ public class Rs2DepositBoxWalkBackSelectionTest {
         microbot.verify(() -> Microbot.log(startsWith("Nearest deposit box point")), never());
         microbot.verify(() -> Microbot.log("Unable to find path to any deposit box"), never());
     }
+
+    @Test
+    public void nearestDepositBoxSearchAlwaysRefreshesTransportsBeforeChoosingADepositBox() {
+        WorldPoint slayerDungeon = new WorldPoint(2795, 10035, 0);
+        player.when(Rs2Player::getWorldLocation).thenReturn(slayerDungeon);
+        routes(routeTo(slayerDungeon, new WorldPoint(2796, 10035, 0)),
+                routeTo(slayerDungeon, DepositBoxLocation.LUMBRIDGE.getWorldPoint()));
+
+        Rs2DepositBox.getNearestDepositBox(slayerDungeon);
+        Rs2DepositBox.bankItemsAndWalkBackToOriginalPosition(List.of("Logs"), slayerDungeon);
+
+        pathApi.verify(() -> Rs2PathApi.plan(argThat(request -> !request.isTeleportsIgnored())), times(2));
+        pathApi.verify(() -> Rs2PathApi.plan(argThat(request -> request.isTeleportsIgnored())), times(1));
+        pathApi.verify(() -> Rs2PathApi.plan(argThat(request ->
+                request.getRefreshPolicy() != Rs2RouteRequest.RefreshPolicy.ALWAYS)), never());
+    }
 }
