@@ -34,6 +34,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.IntFunction;
 import java.util.function.IntUnaryOperator;
 import java.util.stream.Collectors;
@@ -220,6 +221,7 @@ public class PathfinderConfig {
     // ~2.3s of the 2.8s refilter. Captured in the same client-thread block as boosted levels.
     private volatile Map<Integer, Integer> refreshVarplayerValues;
     private static final Skill[] SKILLS = Skill.values();
+    private final ReentrantLock refreshLock = new ReentrantLock();
 
     /**
      * Memo of recent {@link #refreshTransports} results, keyed by {@link #computeTransportRefreshCacheKeyHash}
@@ -350,9 +352,33 @@ public class PathfinderConfig {
     }
 
     public void refresh(WorldPoint target) {
+        tryRefresh(target);
+    }
+
+    public boolean tryRefresh() {
+        return tryRefresh(null);
+    }
+
+    public boolean tryRefresh(WorldPoint target) {
         if (client == null || config == null) {
-            return;
+            return true;
         }
+        if (client.isClientThread()) {
+            if (!refreshLock.tryLock()) {
+                return false;
+            }
+        } else {
+            refreshLock.lock();
+        }
+        try {
+            refreshLocked(target);
+        } finally {
+            refreshLock.unlock();
+        }
+        return true;
+    }
+
+    private void refreshLocked(WorldPoint target) {
         calculationCutoffMillis = (long) config.calculationCutoff() * Constants.GAME_TICK_LENGTH;
         avoidWilderness = ShortestPathPlugin.override("avoidWilderness", config.avoidWilderness());
         avoidDangerousNpcs = ShortestPathPlugin.override("avoidDangerousNpcs", config.avoidDangerousNpcs());
@@ -643,7 +669,6 @@ public class PathfinderConfig {
         }
 
         int[] boostedLevels = new int[Transport.REQUIREMENT_LEVEL_COUNT];
-        refreshBoostedLevels = boostedLevels;
         Map<Integer, Integer> varplayerValues = new HashMap<>();
         Microbot.getClientThread().runOnClientThreadOptional(() -> {
             readRequirementLevels(client, boostedLevels);
@@ -657,6 +682,7 @@ public class PathfinderConfig {
             }
             return true;
         });
+        refreshBoostedLevels = boostedLevels;
         refreshVarplayerValues = varplayerValues;
         long cacheTime = System.currentTimeMillis() - cacheStart;
 

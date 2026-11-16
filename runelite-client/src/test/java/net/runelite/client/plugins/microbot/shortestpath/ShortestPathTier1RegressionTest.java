@@ -251,6 +251,7 @@ public class ShortestPathTier1RegressionTest {
     public void bug5_pendingRefreshConsumedExactlyOncePerLogin() {
         ShortestPathPlugin plugin = new ShortestPathPlugin(mock(WalkingNoticeOverlay.class));
         PathfinderConfig cfg = mock(PathfinderConfig.class);
+        org.mockito.Mockito.when(cfg.tryRefresh()).thenReturn(true);
         ShortestPathPlugin.pathfinderConfig = cfg;
 
         plugin.onGameStateChanged(gameStateEvent(GameState.LOGGED_IN));
@@ -258,8 +259,27 @@ public class ShortestPathTier1RegressionTest {
         plugin.handlePendingLoginRefresh();
         plugin.handlePendingLoginRefresh();
 
-        verify(cfg, times(1)).refresh();
+        verify(cfg, times(1)).tryRefresh();
         assertFalse(plugin.pendingLoginRefresh);
+    }
+
+    @Test
+    public void pendingRefreshRetriesWhileAnotherRefreshIsRunning() {
+        ShortestPathPlugin plugin = new ShortestPathPlugin(mock(WalkingNoticeOverlay.class));
+        PathfinderConfig cfg = mock(PathfinderConfig.class);
+        org.mockito.Mockito.when(cfg.tryRefresh()).thenReturn(false, false, true);
+        ShortestPathPlugin.pathfinderConfig = cfg;
+
+        plugin.onGameStateChanged(gameStateEvent(GameState.LOGGED_IN));
+        plugin.handlePendingLoginRefresh();
+        assertTrue(plugin.pendingLoginRefresh);
+        plugin.handlePendingLoginRefresh();
+        assertTrue(plugin.pendingLoginRefresh);
+        plugin.handlePendingLoginRefresh();
+        assertFalse(plugin.pendingLoginRefresh);
+        plugin.handlePendingLoginRefresh();
+
+        verify(cfg, times(3)).tryRefresh();
     }
 
     @Test
@@ -278,7 +298,7 @@ public class ShortestPathTier1RegressionTest {
     public void bug5_refreshExceptionLeavesFlagSetForNextTickRetry() {
         ShortestPathPlugin plugin = new ShortestPathPlugin(mock(WalkingNoticeOverlay.class));
         PathfinderConfig cfg = mock(PathfinderConfig.class);
-        org.mockito.Mockito.doThrow(new RuntimeException("boom")).when(cfg).refresh();
+        org.mockito.Mockito.when(cfg.tryRefresh()).thenThrow(new RuntimeException("boom"));
         ShortestPathPlugin.pathfinderConfig = cfg;
         plugin.pendingLoginRefresh = true;
 
@@ -286,13 +306,14 @@ public class ShortestPathTier1RegressionTest {
 
         assertTrue("failing refresh keeps flag so handlePendingLoginRefresh retries after login/hydrate stabilizes",
                 plugin.pendingLoginRefresh);
-        verify(cfg, times(1)).refresh();
+        verify(cfg, times(1)).tryRefresh();
     }
 
     @Test
     public void bug5_multipleLoginTransitionsEachRefreshOnce() {
         ShortestPathPlugin plugin = new ShortestPathPlugin(mock(WalkingNoticeOverlay.class));
         PathfinderConfig cfg = mock(PathfinderConfig.class);
+        org.mockito.Mockito.when(cfg.tryRefresh()).thenReturn(true);
         ShortestPathPlugin.pathfinderConfig = cfg;
 
         plugin.onGameStateChanged(gameStateEvent(GameState.LOGGED_IN));
@@ -304,7 +325,7 @@ public class ShortestPathTier1RegressionTest {
         plugin.onGameStateChanged(gameStateEvent(GameState.LOGGED_IN));
         plugin.handlePendingLoginRefresh();
 
-        verify(cfg, times(2)).refresh();
+        verify(cfg, times(2)).tryRefresh();
     }
 
     @Test
@@ -316,7 +337,7 @@ public class ShortestPathTier1RegressionTest {
 
         plugin.handlePendingLoginRefresh();
 
-        verify(cfg, never()).refresh();
+        verify(cfg, never()).tryRefresh();
     }
 
     private static GameStateChanged gameStateEvent(GameState state) {
