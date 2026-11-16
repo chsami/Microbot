@@ -354,7 +354,9 @@ public class QuestScript extends Script {
     void noteOptionPressed(long now) {
         optionPressedAt = now;
         optionSelectionPendingSince = 0;
-        resetUnhandledOptionDismissals();
+        if (unhandledOptionHeld) {
+            resetUnhandledOptionDismissals();
+        }
         String status = Microbot.status;
         if (status != null && status.startsWith(OPTION_RETRY_STATUS_PREFIX)) {
             Microbot.status = OPTION_CONTINUING_STATUS;
