@@ -17,4 +17,20 @@ public class Rs2DialogueTest {
         assertFalse(Rs2Dialogue.isContinuePromptText("Search"));
         assertFalse(Rs2Dialogue.isContinuePromptText("abyssal whip"));
     }
+
+    @Test
+    public void isQuestStartQuestionAcceptsBothPromptWordings() {
+        assertTrue(Rs2Dialogue.isQuestStartQuestion("Start the Family Crest quest?"));
+        assertTrue(Rs2Dialogue.isQuestStartQuestion("Start the Romeo & Juliet quest?"));
+        assertTrue(Rs2Dialogue.isQuestStartQuestion("Would you like to start the Cook's Assistant quest?"));
+    }
+
+    @Test
+    public void isQuestStartQuestionRejectsOtherPrompts() {
+        assertFalse(Rs2Dialogue.isQuestStartQuestion(null));
+        assertFalse(Rs2Dialogue.isQuestStartQuestion("Select an Option"));
+        assertFalse(Rs2Dialogue.isQuestStartQuestion("Would you like to start a fire?"));
+        assertFalse(Rs2Dialogue.isQuestStartQuestion("Start the fire?"));
+        assertFalse(Rs2Dialogue.isQuestStartQuestion("Restart the quest?"));
+    }
 }
