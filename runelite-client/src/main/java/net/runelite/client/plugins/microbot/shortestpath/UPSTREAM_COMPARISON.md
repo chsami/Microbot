@@ -76,7 +76,8 @@ resource blobs are now recorded outside this narrative document so drift is mach
   agility debt is 231 identities, split into 114 course obstacles and 117 ordinary-world or unresolved
   routes. Live interaction evidence for this slice remains pending.
 - Added route-corpus coverage for Draynor's east sewer transition and for planner selection of `SHIP`,
-  `NPC` and `BOAT` travel families while retaining Microbot's explicit ship-deck/gangplank model.
+  `NPC` and `BOAT` travel families while retaining Microbot's explicit ship-deck/gangplank model (the
+  Port Sarim/Musa Point pair later moved to dock landings, see below).
 - Added twelve intentional Microbot-only Barrows edges absent from the reviewed upstream artifact: six
   exact spade-gated mound digs into the individual crypts and six object-backed crypt exits to
   representative anchors on their matching surface mounds. A dedicated registry capability prevents
@@ -184,6 +185,16 @@ resource blobs are now recorded outside this narrative document so drift is mach
   now preserves the configured action first, applies a conservative `SHIP`-only `Travel` fallback, limits an
   exact selected edge to one interaction per top-level walk, and accepts only the immediate planned landing
   continuation. Live walks in both directions produced one click, an observed handoff and no timeout.
+- Reversed the data half of that decision for the two Port Sarim/Musa Point rows only, after an in-client
+  report showed the walker standing on the Port Sarim dock for the full 12 s destination-dialogue wait: the
+  `Travel` fallback forces the dialogue path, and its landing release compared the plane 0 dock landing
+  with the catalogued plane 1 deck tile. Both rows now declare the observed dock tiles (`3029 3217 0`,
+  `2956 3146 0`), matching the Pandemonium rows for the same docks, and the route corpus asserts those two
+  routes no longer visit the deck tiles. Every other ship row keeps the deck/gangplank model; for them the
+  dialogue wait now also releases on the immediate planned landing continuation, the same rule the
+  post-travel wait uses. Recorder evidence covers a walker-driven Musa Point to Port Sarim trip and a
+  manual Seaman Thresnor trip for the reverse landing; no live walk was rerun for this change, and the
+  other deck rows have no landing evidence yet.
 - Tightened the Microbot-owned Al Kharid toll executor after live investigation exposed both a false landing
   and stale object-id collision. The raw door scanner now defers the catalog edge to one selected-transport
   owner; that owner resolves the transformed live Gate by configured action and exact edge geometry, with no
