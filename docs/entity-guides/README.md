@@ -46,6 +46,8 @@ A clicked home teleport needs its cast animation before the landing wait: [movem
 
 A can't-reach recovery walk that ends within 2 tiles of the object still sends the click: [movement gotcha 37](movement.md#37-a-cant-reach-recovery-walk-that-ends-beside-the-object-still-clicks-it).
 
+A path tile read off the client thread can lose its WorldView: [movement gotcha 38](movement.md#38-a-tile-held-off-the-client-thread-can-lose-its-worldview).
+
 ## Format
 
 Each entity guide is a numbered list of gotchas. Each entry follows this structure:
