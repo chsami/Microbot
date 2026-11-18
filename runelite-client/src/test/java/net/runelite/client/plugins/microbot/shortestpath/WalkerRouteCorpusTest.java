@@ -504,7 +504,7 @@ public class WalkerRouteCorpusTest {
     }
 
     @Test
-    public void portSarimToMusaPoint_usesShipAndGangplank() {
+    public void portSarimToMusaPoint_usesShipToTheDockLanding() {
         WorldPoint portSarim = new WorldPoint(3029, 3217, 0);
         WorldPoint musaPoint = new WorldPoint(2956, 3146, 0);
         List<WorldPoint> path = route(configWith(t -> unrestricted(t)
@@ -516,8 +516,25 @@ public class WalkerRouteCorpusTest {
         assertTrue("30-coin ship route must arrive at Musa Point", arrives(path, musaPoint, 1));
         assertTrue("Port Sarim to Musa Point must contain a SHIP transport edge",
                 usesTransportType(path, TransportType.SHIP));
-        assertTrue("Microbot's ship route must retain the Musa Point deck/gangplank transition",
+        assertFalse("the ship lands on the Musa Point dock, so the route must not pass the deck tile",
                 visits(path, new WorldPoint(2956, 3143, 1), 0));
+    }
+
+    @Test
+    public void musaPointToPortSarim_usesShipToTheDockLanding() {
+        WorldPoint musaPoint = new WorldPoint(2956, 3146, 0);
+        WorldPoint portSarim = new WorldPoint(3029, 3217, 0);
+        List<WorldPoint> path = route(configWith(t -> unrestricted(t)
+                        || (t.getType() == TransportType.SHIP
+                        && t.getCurrencyAmount() == 30
+                        && (t.getQuests() == null || t.getQuests().isEmpty()))),
+                musaPoint, portSarim);
+
+        assertTrue("30-coin ship route must arrive at Port Sarim", arrives(path, portSarim, 1));
+        assertTrue("Musa Point to Port Sarim must contain a SHIP transport edge",
+                usesTransportType(path, TransportType.SHIP));
+        assertFalse("the ship lands on the Port Sarim dock, so the route must not pass the deck tile",
+                visits(path, new WorldPoint(3032, 3217, 1), 0));
     }
 
     @Test

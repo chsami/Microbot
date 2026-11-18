@@ -137,6 +137,31 @@ public class Rs2WalkerUnitTest {
     }
 
     @Test
+    public void terminalLanding_recognisesTheRealKaramjaShipLandingTiles() {
+        WorldPoint portSarimDock = new WorldPoint(3029, 3217, 0);
+        WorldPoint musaPointDock = new WorldPoint(2956, 3146, 0);
+        Map<WorldPoint, Set<Transport>> catalog = Transport.loadAllFromResources();
+
+        Transport toPortSarim = karamjaShip(catalog, musaPointDock, 3648);
+        assertTrue("landing on the Port Sarim dock must release the destination dialogue wait",
+                Rs2WalkerTransports.hasLandedAtTerminalDestination(
+                        portSarimDock, new WorldPoint(2954, 3147, 0), toPortSarim.getDestination()));
+
+        Transport toMusaPoint = karamjaShip(catalog, portSarimDock, 3644);
+        assertTrue("landing on the Musa Point dock must release the destination dialogue wait",
+                Rs2WalkerTransports.hasLandedAtTerminalDestination(
+                        musaPointDock, new WorldPoint(3028, 3213, 0), toMusaPoint.getDestination()));
+    }
+
+    private static Transport karamjaShip(Map<WorldPoint, Set<Transport>> catalog, WorldPoint origin, int npcId) {
+        return catalog.getOrDefault(origin, Collections.emptySet()).stream()
+                .filter(transport -> transport.getType() == TransportType.SHIP)
+                .filter(transport -> transport.getObjectId() == npcId)
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("ship edge is missing from " + origin));
+    }
+
+    @Test
     public void terminalNpcInteractionCandidates_onlyFallbackForLegacyShipLabels() {
         assertEquals(Arrays.asList("Musa Point", "Travel"),
                 Rs2WalkerTransports.terminalNpcInteractionCandidates(TransportType.SHIP, "Musa Point"));
