@@ -1772,10 +1772,9 @@ public abstract class Rs2Tile implements Tile {
             return false;
         }
 
-        Rectangle clickbox = Rs2UiHelper.getTileClickbox(tile);
+        Rectangle clickbox = Rs2UiHelper.clearHoverArea(Rs2UiHelper.getTileClickbox(tile));
 
-        // A fallback clickbox means the tile is not on screen and we should return false
-        if (Rs2UiHelper.isFallbackRectangle(clickbox)) return false;
+        if (clickbox == null) return false;
         Point point = Rs2UiHelper.getClickingPoint(clickbox, true);
 
         Microbot.getNaturalMouse().moveTo(point.getX(), point.getY());

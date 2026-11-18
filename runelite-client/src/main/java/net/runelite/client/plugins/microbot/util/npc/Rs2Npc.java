@@ -1326,8 +1326,8 @@ public class Rs2Npc {
                 Microbot.log("Hover skipped: 'Aim Clicks From Cursor' is off in Antiban > Mouse");
             return false;
         }
-        Rectangle clickbox = Rs2UiHelper.getActorClickbox(actor);
-        if (Rs2UiHelper.isFallbackRectangle(clickbox)) {
+        Rectangle clickbox = Rs2UiHelper.clearHoverArea(Rs2UiHelper.getActorClickbox(actor));
+        if (clickbox == null) {
             return false;
         }
         Point point = Rs2UiHelper.getClickingPoint(clickbox, true);

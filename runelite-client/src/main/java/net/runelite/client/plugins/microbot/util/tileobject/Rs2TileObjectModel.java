@@ -275,7 +275,7 @@ public class Rs2TileObjectModel implements TileObject {
             }
 
             Rectangle clickArea = Rs2UiHelper.clearClickArea(() -> Rs2UiHelper.getObjectClickbox(tileObject),
-                    () -> Rs2Camera.turnTo(tileObject, 5), objName);
+                    () -> Rs2Camera.turnTo(tileObject, Rs2UiHelper.COVERED_TURN_MAX_ANGLE), objName);
             if (clickArea == null) {
                 return false;
             }

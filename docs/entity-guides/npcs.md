@@ -22,4 +22,6 @@ Microbot.doInvoke(entry, clickArea);
 
 **Where this applies:** `Rs2NpcModel.click`, `Rs2Npc.interact`, the `Rs2Player` player actions (attack, trade, follow, challenge, cast, use), `Rs2TileItemModel.click` and the deprecated `util.tileobject.Rs2TileObjectModel.click`. A caller that gets `false` should retry on its next loop; the camera turn has usually cleared the target by then.
 
+**Hovers:** `Rs2Npc.hoverOverActor`, `Rs2GameObject.hoverOverObject`, `Rs2Tile.hoverOverTile` and `Rs2TileObjectModel.hover` pass the clickbox through `Rs2UiHelper.clearHoverArea` and return `false` without moving the pointer or turning the camera when the target is covered or has no clickbox.
+
 **Defensive check:** `Rs2UiHelperClearClickAreaTest` covers a clear target, a half-covered one, a covered one that the camera turn clears, one that stays covered and the fallback rectangle.

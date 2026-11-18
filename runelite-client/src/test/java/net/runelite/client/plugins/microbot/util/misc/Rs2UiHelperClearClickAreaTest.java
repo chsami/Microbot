@@ -77,6 +77,33 @@ public class Rs2UiHelperClearClickAreaTest {
     }
 
     @Test
+    public void hoveringAnNpcUnderTheInventoryDoesNotMoveThePointerOntoIt() {
+        assertNull(Rs2UiHelper.clearHoverArea(new Rectangle(1100, 550, 60, 90), VIEWPORT, INTERFACES));
+    }
+
+    @Test
+    public void hoveringAnNpcHalfUnderTheInventoryStaysOnItsClearPart() {
+        Rectangle hoverArea = Rs2UiHelper.clearHoverArea(new Rectangle(1000, 500, 80, 100), VIEWPORT, INTERFACES);
+
+        assertEquals(new Rectangle(1000, 500, 36, 100), hoverArea);
+        assertFalse(hoverArea.intersects(SIDE_PANEL));
+    }
+
+    @Test
+    public void hoveringATargetWithoutAClickboxIsSkipped() {
+        assertNull(Rs2UiHelper.clearHoverArea(new Rectangle(1, 1, 1280, 800), VIEWPORT, INTERFACES));
+        assertNull(Rs2UiHelper.clearHoverArea(null, VIEWPORT, INTERFACES));
+    }
+
+    @Test
+    public void aTargetWithoutANameIsCalledTheTargetInTheCoveredWarning() {
+        assertEquals("the target", Rs2UiHelper.coveredTargetName(null));
+        assertEquals("the target", Rs2UiHelper.coveredTargetName(""));
+        assertEquals("the target", Rs2UiHelper.coveredTargetName("null"));
+        assertEquals("Goblin", Rs2UiHelper.coveredTargetName("Goblin"));
+    }
+
+    @Test
     public void theCoveredWarningIsLoggedAtMostOncePerInterval() {
         long start = 1_000_000_000L;
         Rs2UiHelper.shouldWarnCovered(start);

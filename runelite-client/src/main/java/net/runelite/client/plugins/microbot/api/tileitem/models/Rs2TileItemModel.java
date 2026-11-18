@@ -290,7 +290,7 @@ public class Rs2TileItemModel implements TileItem, IEntity {
                 return canvas == null
                         ? new Rectangle(1, 1, Microbot.getClient().getCanvasWidth(), Microbot.getClient().getCanvasHeight())
                         : canvas.getBounds();
-            }, () -> Rs2Camera.turnTo(localPoint1, COVERED_TURN_MAX_ANGLE), getName());
+            }, () -> Rs2Camera.turnTo(localPoint1, Rs2UiHelper.COVERED_TURN_MAX_ANGLE), getName());
             if (bounds == null) {
                 return false;
             }
@@ -311,8 +311,6 @@ public class Rs2TileItemModel implements TileItem, IEntity {
             return false;
         }
     }
-
-    static final int COVERED_TURN_MAX_ANGLE = 5;
 
     private static MenuAction groundItemMenuAction(int index) {
         switch (index) {

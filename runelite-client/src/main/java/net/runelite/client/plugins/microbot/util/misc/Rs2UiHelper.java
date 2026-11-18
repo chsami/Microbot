@@ -148,6 +148,20 @@ public class Rs2UiHelper {
         return clearOfInterfaces(clickbox, viewport, interfaceBounds);
     }
 
+    public static Rectangle clearHoverArea(Rectangle clickbox) {
+        if (isFallbackRectangle(clickbox)) {
+            return null;
+        }
+        return clearHoverArea(clickbox, sceneViewportBounds(), visibleSceneOverlayBounds());
+    }
+
+    static Rectangle clearHoverArea(Rectangle clickbox, Rectangle viewport, List<Rectangle> interfaceBounds) {
+        if (isFallbackRectangle(clickbox)) {
+            return null;
+        }
+        return clearOfInterfaces(clickbox, viewport, interfaceBounds);
+    }
+
     public static Rectangle clearClickArea(Supplier<Rectangle> clickbox, Runnable turnCamera, String name) {
         return clearClickArea(clickbox, Rs2UiHelper::clearClickArea, turnCamera, name, System.currentTimeMillis());
     }
@@ -166,13 +180,19 @@ public class Rs2UiHelper {
         if (clickArea == null) {
             String message = "Can't click {} - it is behind the chatbox, side panel or minimap even after turning the camera."
                     + " If this keeps happening, zoom out or move the camera so it is in view.";
+            String target = coveredTargetName(name);
             if (shouldWarnCovered(now)) {
-                log.warn(message, name);
+                log.warn(message, target);
             } else {
-                log.debug(message, name);
+                log.debug(message, target);
             }
         }
         return clickArea;
+    }
+
+    static String coveredTargetName(String name) {
+        String trimmed = name == null ? "" : name.trim();
+        return trimmed.isEmpty() || "null".equalsIgnoreCase(trimmed) ? "the target" : trimmed;
     }
 
     static synchronized boolean shouldWarnCovered(long now) {
@@ -183,7 +203,7 @@ public class Rs2UiHelper {
         return true;
     }
 
-    static final int COVERED_TURN_MAX_ANGLE = 5;
+    public static final int COVERED_TURN_MAX_ANGLE = 5;
 
     public static Rectangle clearActorClickArea(Actor actor, String name) {
         return clearClickArea(() -> getActorClickbox(actor),
