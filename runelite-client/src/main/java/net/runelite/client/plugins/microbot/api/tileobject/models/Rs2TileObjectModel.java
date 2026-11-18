@@ -411,8 +411,8 @@ public class Rs2TileObjectModel implements TileObject, IEntity {
             }
             return false;
         }
-        Rectangle clickbox = Rs2UiHelper.getObjectClickbox(tileObject);
-        if (Rs2UiHelper.isFallbackRectangle(clickbox)) {
+        Rectangle clickbox = Rs2UiHelper.clearHoverArea(Rs2UiHelper.getObjectClickbox(tileObject));
+        if (clickbox == null) {
             return false;
         }
         Point point = Rs2UiHelper.getClickingPoint(clickbox, true);
@@ -707,15 +707,10 @@ public class Rs2TileObjectModel implements TileObject, IEntity {
     }
 
     private Rectangle clearClickArea() {
-        Rectangle clickbox = Rs2UiHelper.getObjectClickbox(tileObject);
-        if (Rs2UiHelper.isFallbackRectangle(clickbox)) {
-            return clickbox;
-        }
-        return Rs2UiHelper.clearOfInterfaces(clickbox, Rs2UiHelper.sceneViewportBounds(),
-                Rs2UiHelper.visibleSceneOverlayBounds());
+        return Rs2UiHelper.clearClickArea(Rs2UiHelper.getObjectClickbox(tileObject));
     }
 
-    static final int COVERED_TURN_MAX_ANGLE = 5;
+    static final int COVERED_TURN_MAX_ANGLE = Rs2UiHelper.COVERED_TURN_MAX_ANGLE;
     static final int COVERED_WALK_DISTANCE = 2;
     static final long COVERED_WARN_INTERVAL_MS = 10_000;
     private static int lastCoveredWarnId = -1;
