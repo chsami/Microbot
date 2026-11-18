@@ -134,14 +134,25 @@ public final class RandomDatWriteTransformer implements ClassFileTransformer
 			if (offset != null
 				&& offset.getOpcode() == Opcodes.LCONST_0
 				&& seek instanceof MethodInsnNode
-				&& seek.getOpcode() == Opcodes.INVOKEVIRTUAL
-				&& ((MethodInsnNode) seek).desc.equals("(J)V")
-				&& field.desc.equals("L" + ((MethodInsnNode) seek).owner + ";"))
+				&& isSeek((MethodInsnNode) seek, field.desc))
 			{
 				handles.add(key(field));
 			}
 		}
 		return handles;
+	}
+
+	private static boolean isSeek(MethodInsnNode seek, String handleDesc)
+	{
+		if (!handleDesc.equals("L" + seek.owner + ";"))
+		{
+			return false;
+		}
+		if (seek.getOpcode() == Opcodes.INVOKEVIRTUAL)
+		{
+			return seek.desc.equals("(J)V");
+		}
+		return seek.getOpcode() == Opcodes.INVOKESTATIC && seek.desc.equals("(" + handleDesc + "J)V");
 	}
 
 	private static boolean isNullGuard(AbstractInsnNode insn)

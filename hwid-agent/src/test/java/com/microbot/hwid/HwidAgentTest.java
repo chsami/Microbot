@@ -324,6 +324,31 @@ public class HwidAgentTest
 		assertNull(new RandomDatWriteTransformer().transform(null, "StubWriter", null, null, patched));
 	}
 
+	@Test
+	public void randomDatFileIsHiddenWhenTheSeekIsAStaticCall() throws Exception
+	{
+		byte[] patched = new RandomDatWriteTransformer().transform(null, "StubWriter", null, null, buildFakeRandomDatWriter(true));
+		assertNotNull(patched);
+		assertEquals(java.util.List.of("StubWriter.persist()V"), RandomDatWriteTransformer.patchedMethods());
+
+		Class<?> writer = new StubLoader("StubWriter", patched).defined();
+		writer.getDeclaredField("handle").set(null, new StubFile());
+		StubFile.seeks = 0;
+		writer.getMethod("persist").invoke(null);
+		assertEquals(0, StubFile.seeks);
+
+		System.setProperty(HwidAgent.TOGGLE_PROPERTY, "false");
+		try
+		{
+			writer.getMethod("persist").invoke(null);
+			assertEquals(1, StubFile.seeks);
+		}
+		finally
+		{
+			System.clearProperty(HwidAgent.TOGGLE_PROPERTY);
+		}
+	}
+
 	public static final class StubFile
 	{
 		static int seeks;
@@ -332,9 +357,19 @@ public class HwidAgentTest
 		{
 			seeks++;
 		}
+
+		public static void seekStatic(StubFile file, long position)
+		{
+			seeks++;
+		}
 	}
 
 	private static byte[] buildFakeRandomDatWriter()
+	{
+		return buildFakeRandomDatWriter(false);
+	}
+
+	private static byte[] buildFakeRandomDatWriter(boolean staticSeek)
 	{
 		String handleType = "L" + StubFile.class.getName().replace('.', '/') + ";";
 		ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
@@ -348,7 +383,15 @@ public class HwidAgentTest
 		persist.visitJumpInsn(Opcodes.IF_ACMPEQ, done);
 		persist.visitFieldInsn(Opcodes.GETSTATIC, "StubWriter", "handle", handleType);
 		persist.visitInsn(Opcodes.LCONST_0);
-		persist.visitMethodInsn(Opcodes.INVOKEVIRTUAL, handleType.substring(1, handleType.length() - 1), "seek", "(J)V", false);
+		String handleOwner = handleType.substring(1, handleType.length() - 1);
+		if (staticSeek)
+		{
+			persist.visitMethodInsn(Opcodes.INVOKESTATIC, handleOwner, "seekStatic", "(" + handleType + "J)V", false);
+		}
+		else
+		{
+			persist.visitMethodInsn(Opcodes.INVOKEVIRTUAL, handleOwner, "seek", "(J)V", false);
+		}
 		persist.visitIntInsn(Opcodes.BIPUSH, 24);
 		persist.visitInsn(Opcodes.POP);
 		persist.visitLabel(done);
