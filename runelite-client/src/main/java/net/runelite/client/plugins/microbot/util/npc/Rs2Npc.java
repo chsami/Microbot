@@ -724,6 +724,11 @@ public class Rs2Npc {
                 Rs2Camera.turnTo(npc);
             }
 
+            final Rectangle clickArea = Rs2UiHelper.clearActorClickArea(npc, npc.getName());
+            if (clickArea == null) {
+                return false;
+            }
+
             Microbot.doInvoke(new NewMenuEntry()
                     .param0(0)
                     .param1(0)
@@ -734,7 +739,7 @@ public class Rs2Npc {
                     .actor(npc)
                     .option(action)
                     ,
-                Rs2UiHelper.getActorClickbox(npc));
+                clickArea);
             return true;
 
         } catch (Exception ex) {

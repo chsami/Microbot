@@ -9,6 +9,7 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.api.IEntity;
 import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
 import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
+import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.reflection.Rs2Reflection;
 
@@ -284,10 +285,15 @@ public class Rs2TileItemModel implements TileItem, IEntity {
             if (!Rs2Camera.isTileOnScreen(localPoint1)) {
                 Rs2Camera.turnTo(localPoint1);
             }
-            Polygon canvas = Rs2Camera.getCanvasTilePoly(localPoint1).orElse(null);
-            Rectangle bounds = canvas == null
-                    ? new Rectangle(1, 1, Microbot.getClient().getCanvasWidth(), Microbot.getClient().getCanvasHeight())
-                    : canvas.getBounds();
+            Rectangle bounds = Rs2UiHelper.clearClickArea(() -> {
+                Polygon canvas = Rs2Camera.getCanvasTilePoly(localPoint1).orElse(null);
+                return canvas == null
+                        ? new Rectangle(1, 1, Microbot.getClient().getCanvasWidth(), Microbot.getClient().getCanvasHeight())
+                        : canvas.getBounds();
+            }, () -> Rs2Camera.turnTo(localPoint1, COVERED_TURN_MAX_ANGLE), getName());
+            if (bounds == null) {
+                return false;
+            }
             int worldViewId = localPoint1.getWorldView();
             Microbot.doInvoke(new NewMenuEntry()
                             .option(action)
@@ -305,6 +311,8 @@ public class Rs2TileItemModel implements TileItem, IEntity {
             return false;
         }
     }
+
+    static final int COVERED_TURN_MAX_ANGLE = 5;
 
     private static MenuAction groundItemMenuAction(int index) {
         switch (index) {

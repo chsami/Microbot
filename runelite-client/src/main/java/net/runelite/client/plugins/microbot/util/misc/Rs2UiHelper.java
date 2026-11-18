@@ -9,6 +9,7 @@ import net.runelite.api.widgets.Widget;
 import net.runelite.client.RuneLiteProperties;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
+import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
 import net.runelite.client.plugins.microbot.util.input.PointerState;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
@@ -17,6 +18,8 @@ import net.runelite.client.plugins.microbot.util.text.Rs2TextSanitizer;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -129,6 +132,62 @@ public class Rs2UiHelper {
             }
         }
         return largest;
+    }
+
+    public static Rectangle clearClickArea(Rectangle clickbox) {
+        if (isFallbackRectangle(clickbox)) {
+            return clickbox;
+        }
+        return clearClickArea(clickbox, sceneViewportBounds(), visibleSceneOverlayBounds());
+    }
+
+    static Rectangle clearClickArea(Rectangle clickbox, Rectangle viewport, List<Rectangle> interfaceBounds) {
+        if (isFallbackRectangle(clickbox)) {
+            return clickbox;
+        }
+        return clearOfInterfaces(clickbox, viewport, interfaceBounds);
+    }
+
+    public static Rectangle clearClickArea(Supplier<Rectangle> clickbox, Runnable turnCamera, String name) {
+        return clearClickArea(clickbox, Rs2UiHelper::clearClickArea, turnCamera, name, System.currentTimeMillis());
+    }
+
+    static final long COVERED_WARN_INTERVAL_MS = 10_000;
+    private static long lastCoveredWarnAt;
+
+    static Rectangle clearClickArea(Supplier<Rectangle> clickbox, UnaryOperator<Rectangle> clear, Runnable turnCamera,
+                                    String name, long now) {
+        Rectangle clickArea = clear.apply(clickbox.get());
+        if (clickArea != null) {
+            return clickArea;
+        }
+        turnCamera.run();
+        clickArea = clear.apply(clickbox.get());
+        if (clickArea == null) {
+            String message = "Can't click {} - it is behind the chatbox, side panel or minimap even after turning the camera."
+                    + " If this keeps happening, zoom out or move the camera so it is in view.";
+            if (shouldWarnCovered(now)) {
+                log.warn(message, name);
+            } else {
+                log.debug(message, name);
+            }
+        }
+        return clickArea;
+    }
+
+    static synchronized boolean shouldWarnCovered(long now) {
+        if (lastCoveredWarnAt != 0 && now - lastCoveredWarnAt < COVERED_WARN_INTERVAL_MS) {
+            return false;
+        }
+        lastCoveredWarnAt = now;
+        return true;
+    }
+
+    static final int COVERED_TURN_MAX_ANGLE = 5;
+
+    public static Rectangle clearActorClickArea(Actor actor, String name) {
+        return clearClickArea(() -> getActorClickbox(actor),
+                () -> Rs2Camera.turnTo(actor, COVERED_TURN_MAX_ANGLE), name);
     }
 
     static final int FALLBACK_ORIGIN_INSET_PX = 2;

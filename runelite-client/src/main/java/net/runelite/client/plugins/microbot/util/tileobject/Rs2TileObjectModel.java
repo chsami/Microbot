@@ -274,6 +274,11 @@ public class Rs2TileObjectModel implements TileObject {
                 Rs2Camera.turnTo(tileObject);
             }
 
+            Rectangle clickArea = Rs2UiHelper.clearClickArea(() -> Rs2UiHelper.getObjectClickbox(tileObject),
+                    () -> Rs2Camera.turnTo(tileObject, 5), objName);
+            if (clickArea == null) {
+                return false;
+            }
 
             Microbot.doInvoke(new NewMenuEntry()
                     .param0(param0)
@@ -285,7 +290,7 @@ public class Rs2TileObjectModel implements TileObject {
                     .target(objName)
                     .gameObject(tileObject)
                     ,
-                Rs2UiHelper.getObjectClickbox(tileObject));
+                clickArea);
 
         } catch (Exception ex) {
             Microbot.log("Failed to interact with object " + ex.getMessage());
