@@ -176,7 +176,7 @@ public class Rs2WalkerUnitTest {
 
     @Test
     public void terminalTravelAttempt_isOncePerExactEdgeUntilWalkStateReset() {
-        Transport ship = portSarimToMusaShip();
+        Transport ship = ardougneToBrimhavenShip();
 
         assertTrue(Rs2WalkerTransports.markTerminalTravelAttempt(ship));
         assertFalse(Rs2WalkerTransports.markTerminalTravelAttempt(ship));
@@ -187,8 +187,8 @@ public class Rs2WalkerUnitTest {
 
     @Test
     public void terminalTravelLanding_acceptsExactOrImmediateContinuationOnly() {
-        Transport ship = portSarimToMusaShip();
-        WorldPoint modernGroundLanding = new WorldPoint(2956, 3146, 0);
+        Transport ship = ardougneToBrimhavenShip();
+        WorldPoint modernGroundLanding = new WorldPoint(2772, 3234, 0);
         List<WorldPoint> modernPath = Arrays.asList(
                 ship.getOrigin(),
                 ship.getDestination(),
@@ -204,7 +204,7 @@ public class Rs2WalkerUnitTest {
         List<WorldPoint> loopingPath = Arrays.asList(
                 ship.getOrigin(),
                 ship.getDestination(),
-                new WorldPoint(2957, 3143, 1),
+                new WorldPoint(2775, 3234, 1),
                 modernGroundLanding);
         assertFalse("an arbitrary later path point must not prove terminal arrival",
                 Rs2WalkerTransports.hasReachedTerminalTravelLanding(ship, loopingPath, 1, modernGroundLanding));
@@ -212,17 +212,55 @@ public class Rs2WalkerUnitTest {
                 ship, modernPath, 1, new WorldPoint(3200, 3200, 0)));
     }
 
-    private static Transport portSarimToMusaShip() {
+    @Test
+    public void terminalDialogueWait_releasesOnGroundLandingPastADeckDestination() {
+        Transport ship = ardougneToBrimhavenShip();
+        WorldPoint waitStart = new WorldPoint(2675, 3274, 0);
+        WorldPoint groundLanding = new WorldPoint(2772, 3234, 0);
+        List<WorldPoint> path = Arrays.asList(
+                ship.getOrigin(),
+                ship.getDestination(),
+                groundLanding);
+
+        assertFalse("the deck destination alone never matches a ground landing",
+                Rs2WalkerTransports.hasLandedAtTerminalDestination(
+                        groundLanding, waitStart, ship.getDestination()));
+        assertTrue("landing on the planned continuation must release the destination dialogue wait",
+                Rs2WalkerTransports.hasLandedDuringTerminalDialogueWait(
+                        ship, path, 1, groundLanding, waitStart));
+        assertTrue("landing on the deck itself still releases the wait",
+                Rs2WalkerTransports.hasLandedDuringTerminalDialogueWait(
+                        ship, path, 1, ship.getDestination(), waitStart));
+        assertFalse("still standing where the wait began proves nothing",
+                Rs2WalkerTransports.hasLandedDuringTerminalDialogueWait(
+                        ship, path, 1, waitStart, waitStart));
+        assertFalse("stepping about near the captain is not a landing",
+                Rs2WalkerTransports.hasLandedDuringTerminalDialogueWait(
+                        ship, path, 1, new WorldPoint(2676, 3274, 0), waitStart));
+        assertFalse("a wait that began inside the landing area cannot be released by the continuation",
+                Rs2WalkerTransports.hasLandedDuringTerminalDialogueWait(
+                        ship, path, 1, groundLanding, new WorldPoint(2770, 3234, 0)));
+        assertFalse("without a planned continuation only the catalogued destination counts",
+                Rs2WalkerTransports.hasLandedDuringTerminalDialogueWait(
+                        ship, Arrays.asList(ship.getOrigin(), ship.getDestination()), 1,
+                        groundLanding, waitStart));
+        assertFalse(Rs2WalkerTransports.hasLandedDuringTerminalDialogueWait(
+                ship, path, 1, null, waitStart));
+        assertFalse(Rs2WalkerTransports.hasLandedDuringTerminalDialogueWait(
+                null, path, 1, groundLanding, waitStart));
+    }
+
+    private static Transport ardougneToBrimhavenShip() {
         return new Transport(
-                new WorldPoint(3029, 3217, 0),
-                new WorldPoint(2956, 3143, 1),
-                "Musa Point",
+                new WorldPoint(2673, 3275, 0),
+                new WorldPoint(2775, 3233, 1),
+                "Brimhaven",
                 TransportType.SHIP,
-                false,
-                "Musa Point",
-                "Captain Tobias",
-                3644,
-                10);
+                true,
+                "Brimhaven",
+                "Captain Barnaby",
+                9250,
+                6);
     }
 
     @Test
