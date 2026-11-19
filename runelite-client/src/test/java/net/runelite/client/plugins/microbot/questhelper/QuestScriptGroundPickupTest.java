@@ -76,14 +76,66 @@ public class QuestScriptGroundPickupTest
 	}
 
 	@Test
-	public void unreachableBankStopsOnTheThirdAttemptInARow()
+	public void missingStepItemIsARespawnCandidateEvenWhenNothingIsOnTheGround()
+	{
+		List<Requirement> stepRequirements = Collections.singletonList(fishFood);
+
+		assertSame(fishFood, QuestScript.stepGroundPickup(false, FISH_FOOD_SPAWN, stepRequirements,
+			Arrays.asList(poison, fishFood), (item, point) -> true));
+	}
+
+	@Test
+	public void unreachableBankStopsOnlyAfterThreeAttemptsSpanningTheMinimumTime()
 	{
 		QuestScript script = new QuestScript();
+		long span = QuestScript.BANK_UNREACHABLE_MIN_SPAN_MS;
 
-		assertFalse(script.noteBankUnreachable());
-		assertFalse(script.noteBankUnreachable());
-		assertTrue(script.noteBankUnreachable());
-		assertFalse(script.noteBankUnreachable());
+		assertFalse(script.noteBankUnreachable(1_000, span));
+		assertFalse(script.noteBankUnreachable(1_500, span));
+		assertFalse(script.noteBankUnreachable(2_000, span));
+		assertFalse(script.noteBankUnreachable(1_000 + span - 1, span));
+		assertTrue(script.noteBankUnreachable(1_000 + span, span));
+		assertFalse(script.noteBankUnreachable(2_000 + span, span));
+	}
+
+	@Test
+	public void unreachableBankNeedsThreeAttemptsEvenWhenTheyAreFarApart()
+	{
+		QuestScript script = new QuestScript();
+		long span = QuestScript.BANK_UNREACHABLE_MIN_SPAN_MS;
+
+		assertFalse(script.noteBankUnreachable(1_000, span));
+		assertFalse(script.noteBankUnreachable(1_000 + span * 2, span));
+		assertTrue(script.noteBankUnreachable(1_000 + span * 3, span));
+	}
+
+	@Test
+	public void clearingTheUnreachableBankStreakStartsItOver()
+	{
+		QuestScript script = new QuestScript();
+		long span = QuestScript.BANK_UNREACHABLE_MIN_SPAN_MS;
+
+		assertFalse(script.noteBankUnreachable(1_000, span));
+		assertFalse(script.noteBankUnreachable(2_000, span));
+		script.clearBankUnreachable();
+
+		assertFalse(script.noteBankUnreachable(1_000 + span, span));
+		assertFalse(script.noteBankUnreachable(2_000 + span, span));
+		assertFalse(script.noteBankUnreachable(3_000 + span, span));
+		assertTrue(script.noteBankUnreachable(1_000 + span * 2, span));
+	}
+
+	@Test
+	public void emptySpawnIsWaitedOnLongerThanAPlainUnreachableBank()
+	{
+		QuestScript script = new QuestScript();
+		long wait = QuestScript.PICKUP_RESPAWN_WAIT_MS;
+
+		assertTrue(wait > QuestScript.BANK_UNREACHABLE_MIN_SPAN_MS);
+		assertFalse(script.noteBankUnreachable(1_000, wait));
+		assertFalse(script.noteBankUnreachable(1_000 + QuestScript.BANK_UNREACHABLE_MIN_SPAN_MS, wait));
+		assertFalse(script.noteBankUnreachable(1_000 + wait - 1, wait));
+		assertTrue(script.noteBankUnreachable(1_000 + wait, wait));
 	}
 
 	@Test
@@ -91,7 +143,16 @@ public class QuestScriptGroundPickupTest
 	{
 		String reason = QuestScript.bankUnreachableReason(Arrays.asList(fishFood, poison));
 
-		assertTrue(reason, reason.contains("No bank can be reached from here"));
-		assertTrue(reason, reason.contains("(Fish food, Poison)"));
+		assertTrue(reason, reason.contains("can't find a route to a bank from here to get: Fish food, Poison."));
+		assertTrue(reason, reason.contains("leave this area"));
+	}
+
+	@Test
+	public void emptySpawnReasonSaysTheItemRespawns()
+	{
+		String reason = QuestScript.pickupUnavailableReason(fishFood);
+
+		assertTrue(reason, reason.startsWith("Fish food is not on the ground right now"));
+		assertTrue(reason, reason.contains("Wait for it to respawn or hop worlds"));
 	}
 }

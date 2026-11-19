@@ -96,7 +96,10 @@ public class QuestScript extends Script {
 
     private static final int GROUND_PICKUP_RADIUS = 8;
     private static final int BANK_UNREACHABLE_LIMIT = 3;
+    static final long BANK_UNREACHABLE_MIN_SPAN_MS = 15_000;
+    static final long PICKUP_RESPAWN_WAIT_MS = 180_000;
     private volatile int bankUnreachableAttempts = 0;
+    private volatile long bankUnreachableSince = 0;
 
     QuestStep dialogueStartedStep = null;
 
@@ -492,6 +495,7 @@ public class QuestScript extends Script {
         clearRelocationWaitStatus();
         unhandledOptionStep = null;
         resetUnhandledOptionDismissals();
+        clearBankUnreachable();
         reset();
     }
 
@@ -554,15 +558,19 @@ public class QuestScript extends Script {
 		}
 
 		if (missing.isEmpty()) {
+			clearBankUnreachable();
 			return false;
 		}
 
-		ItemRequirement groundPickup = stepGroundPickup(
-				questStep instanceof NpcStep || questStep instanceof ObjectStep || questStep instanceof DigStep,
-				stepWorldPoint(questStep), questStep.getRequirements(), missing, this::isOnGroundNear);
+		boolean targetsEntity = questStep instanceof NpcStep || questStep instanceof ObjectStep || questStep instanceof DigStep;
+		WorldPoint stepPoint = stepWorldPoint(questStep);
+		ItemRequirement groundPickup = stepGroundPickup(targetsEntity, stepPoint,
+				questStep.getRequirements(), missing, this::isOnGroundNear);
 
 		if (groundPickup != null) {
-			return attemptToAcquireRequirementItem(questStep, groundPickup);
+			clearBankUnreachable();
+			Microbot.status = "Picking up " + requirementLabel(groundPickup);
+			return lootRequirementItem(questStep, groundPickup);
 		}
 
 		ItemRequirement nonTradable = missing.stream()
@@ -574,7 +582,8 @@ public class QuestScript extends Script {
 			return attemptToAcquireRequirementItem(questStep, nonTradable);
 		}
 
-		return acquireMissingTradableItems(missing);
+		return acquireMissingTradableItems(missing, stepGroundPickup(targetsEntity, stepPoint,
+				questStep.getRequirements(), missing, (itemRequirement, point) -> true));
 	}
 
 	static ItemRequirement stepGroundPickup(boolean targetsEntity, WorldPoint stepPoint,
@@ -599,12 +608,29 @@ public class QuestScript extends Script {
 				.first() != null;
 	}
 
-	boolean noteBankUnreachable() {
-		if (++bankUnreachableAttempts < BANK_UNREACHABLE_LIMIT) {
+	boolean noteBankUnreachable(long now, long minSpanMs) {
+		if (bankUnreachableAttempts == 0) {
+			bankUnreachableSince = now;
+		}
+		bankUnreachableAttempts++;
+		if (bankUnreachableAttempts < BANK_UNREACHABLE_LIMIT || now - bankUnreachableSince < minSpanMs) {
 			return false;
 		}
-		bankUnreachableAttempts = 0;
+		clearBankUnreachable();
 		return true;
+	}
+
+	void clearBankUnreachable() {
+		bankUnreachableAttempts = 0;
+		bankUnreachableSince = 0;
+	}
+
+	static String requirementLabel(ItemRequirement itemRequirement) {
+		String name = itemRequirement.getName();
+		if (name != null && !name.isEmpty()) {
+			return name;
+		}
+		return "Item " + itemRequirement.getAllIds().stream().findFirst().orElse(itemRequirement.getId());
 	}
 
 	static String bankUnreachableReason(List<ItemRequirement> missing) {
@@ -613,12 +639,17 @@ public class QuestScript extends Script {
 				.filter(name -> name != null && !name.isEmpty())
 				.distinct()
 				.collect(Collectors.joining(", "));
-		return "No bank can be reached from here to get the missing quest items"
-				+ (names.isEmpty() ? "" : " (" + names + ")")
-				+ ". Get them yourself or walk somewhere with a way out, then turn the quest helper back on.";
+		return "The quest helper can't find a route to a bank from here to get"
+				+ (names.isEmpty() ? " the missing quest items" : ": " + names)
+				+ ". Pick them up yourself or leave this area, then turn the quest helper back on.";
 	}
 
-	private boolean acquireMissingTradableItems(List<ItemRequirement> missing) {
+	static String pickupUnavailableReason(ItemRequirement pickup) {
+		return requirementLabel(pickup) + " is not on the ground right now and no bank can be reached from here. "
+				+ "Wait for it to respawn or hop worlds, then turn the quest helper back on.";
+	}
+
+	private boolean acquireMissingTradableItems(List<ItemRequirement> missing, ItemRequirement stepPickup) {
 		notifyMissingRequirement(missing.get(0));
 
 		List<ItemRequirement> actionable = new ArrayList<>();
@@ -656,12 +687,21 @@ public class QuestScript extends Script {
 		if (!Rs2Bank.isOpen()) {
 			BankLocation bankLocation = Rs2Bank.getNearestBank();
 			if (bankLocation == null) {
-				if (!isIterationCancelled() && noteBankUnreachable()) {
-					stopQuesterWithReason(bankUnreachableReason(missing), Level.WARN);
+				if (isIterationCancelled()) {
+					return true;
+				}
+				if (stepPickup != null) {
+					Microbot.status = "Waiting for " + requirementLabel(stepPickup) + " to respawn";
+				}
+				if (noteBankUnreachable(System.currentTimeMillis(),
+						stepPickup != null ? PICKUP_RESPAWN_WAIT_MS : BANK_UNREACHABLE_MIN_SPAN_MS)) {
+					stopQuesterWithReason(stepPickup != null
+							? pickupUnavailableReason(stepPickup)
+							: bankUnreachableReason(missing), Level.WARN);
 				}
 				return true;
 			}
-			bankUnreachableAttempts = 0;
+			clearBankUnreachable();
 			Microbot.status = "Quest helper: walking to bank for missing items";
 			Rs2Bank.walkToBankAndUseBank(bankLocation);
 			sleepUntil(Rs2Bank::isOpen, 15_000);
@@ -1567,7 +1607,10 @@ public class QuestScript extends Script {
 
 	private boolean attemptToAcquireRequirementItem(DetailedQuestStep questStep, ItemRequirement itemRequirement) {
 		notifyMissingRequirement(itemRequirement);
+		return lootRequirementItem(questStep, itemRequirement);
+	}
 
+	private boolean lootRequirementItem(DetailedQuestStep questStep, ItemRequirement itemRequirement) {
 		WorldPoint worldPoint = questStep.getDefinedPoint() != null ? questStep.getDefinedPoint().getWorldPoint() : null;
 		int targetItemId = itemRequirement.getAllIds().stream().findFirst().orElse(itemRequirement.getId());
 
@@ -1597,9 +1640,7 @@ public class QuestScript extends Script {
 
 		lastMissingRequirementNotice.put(key, now);
 
-		String itemName = itemRequirement.getName() != null && !itemRequirement.getName().isEmpty()
-				? itemRequirement.getName()
-				: "Item " + key;
+		String itemName = requirementLabel(itemRequirement);
 		int quantity = Math.max(itemRequirement.getQuantity(), 1);
 
 		Microbot.status = "Missing: " + itemName;
