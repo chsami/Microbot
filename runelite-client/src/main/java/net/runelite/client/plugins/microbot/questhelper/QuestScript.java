@@ -20,6 +20,7 @@ import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRe
 import net.runelite.client.plugins.microbot.questhelper.steps.*;
 import net.runelite.client.plugins.microbot.questhelper.steps.widget.WidgetHighlight;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
+import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
 import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
 import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
@@ -57,6 +58,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiPredicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.swing.JOptionPane;
@@ -91,6 +93,10 @@ public class QuestScript extends Script {
 
     private int heldTrackingQuestId = -1;
     private final Set<Integer> everHeldItemRequirementIds = new HashSet<>();
+
+    private static final int GROUND_PICKUP_RADIUS = 8;
+    private static final int BANK_UNREACHABLE_LIMIT = 3;
+    private volatile int bankUnreachableAttempts = 0;
 
     QuestStep dialogueStartedStep = null;
 
@@ -551,6 +557,14 @@ public class QuestScript extends Script {
 			return false;
 		}
 
+		ItemRequirement groundPickup = stepGroundPickup(
+				questStep instanceof NpcStep || questStep instanceof ObjectStep || questStep instanceof DigStep,
+				stepWorldPoint(questStep), questStep.getRequirements(), missing, this::isOnGroundNear);
+
+		if (groundPickup != null) {
+			return attemptToAcquireRequirementItem(questStep, groundPickup);
+		}
+
 		ItemRequirement nonTradable = missing.stream()
 				.filter(ir -> !isItemRequirementTradable(ir))
 				.findFirst()
@@ -561,6 +575,47 @@ public class QuestScript extends Script {
 		}
 
 		return acquireMissingTradableItems(missing);
+	}
+
+	static ItemRequirement stepGroundPickup(boolean targetsEntity, WorldPoint stepPoint,
+			Collection<? extends Requirement> stepRequirements, List<ItemRequirement> missing,
+			BiPredicate<ItemRequirement, WorldPoint> onGroundNear) {
+		if (targetsEntity || stepPoint == null || stepRequirements == null) {
+			return null;
+		}
+		for (ItemRequirement itemRequirement : missing) {
+			if (stepRequirements.contains(itemRequirement) && onGroundNear.test(itemRequirement, stepPoint)) {
+				return itemRequirement;
+			}
+		}
+		return null;
+	}
+
+	private boolean isOnGroundNear(ItemRequirement itemRequirement, WorldPoint point) {
+		int itemId = itemRequirement.getAllIds().stream().findFirst().orElse(itemRequirement.getId());
+		return itemId > 0 && Microbot.getRs2TileItemCache().query()
+				.withId(itemId)
+				.within(point, GROUND_PICKUP_RADIUS)
+				.first() != null;
+	}
+
+	boolean noteBankUnreachable() {
+		if (++bankUnreachableAttempts < BANK_UNREACHABLE_LIMIT) {
+			return false;
+		}
+		bankUnreachableAttempts = 0;
+		return true;
+	}
+
+	static String bankUnreachableReason(List<ItemRequirement> missing) {
+		String names = missing.stream()
+				.map(ItemRequirement::getName)
+				.filter(name -> name != null && !name.isEmpty())
+				.distinct()
+				.collect(Collectors.joining(", "));
+		return "No bank can be reached from here to get the missing quest items"
+				+ (names.isEmpty() ? "" : " (" + names + ")")
+				+ ". Get them yourself or walk somewhere with a way out, then turn the quest helper back on.";
 	}
 
 	private boolean acquireMissingTradableItems(List<ItemRequirement> missing) {
@@ -599,8 +654,16 @@ public class QuestScript extends Script {
 		}
 
 		if (!Rs2Bank.isOpen()) {
+			BankLocation bankLocation = Rs2Bank.getNearestBank();
+			if (bankLocation == null) {
+				if (!isIterationCancelled() && noteBankUnreachable()) {
+					stopQuesterWithReason(bankUnreachableReason(missing), Level.WARN);
+				}
+				return true;
+			}
+			bankUnreachableAttempts = 0;
 			Microbot.status = "Quest helper: walking to bank for missing items";
-			Rs2Bank.walkToBankAndUseBank();
+			Rs2Bank.walkToBankAndUseBank(bankLocation);
 			sleepUntil(Rs2Bank::isOpen, 15_000);
 			if (!Rs2Bank.isOpen()) {
 				return true;
