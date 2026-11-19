@@ -129,11 +129,15 @@ public class Rs2Magic {
             sleepUntil(() -> Rs2Tab.getCurrentTab() == InterfaceTab.MAGIC);
         }
         
-        Widget spellbookWidget = Rs2Widget.getWidget(218, 3);
-        if (spellbookWidget == null) return false;
-        Widget widget = Rs2Widget.findWidget(magicSpell.getName(), List.of(spellbookWidget));
+        Widget widget = findSpellbookWidget(magicSpell);
         if (widget == null) return false;
         return widget.getSpriteId() == magicSpell.getSprite();
+    }
+
+    private static Widget findSpellbookWidget(MagicAction magicSpell) {
+        Widget spellbookWidget = Rs2Widget.getWidget(218, 3);
+        if (spellbookWidget == null) return null;
+        return Rs2Widget.findWidget(magicSpell.getName(), List.of(spellbookWidget));
     }
 
     public static boolean quickCanCast(String spellName) {
@@ -218,9 +222,11 @@ public class Rs2Magic {
         Microbot.status = "Casting " + magicSpell.getName();
 
         if(quickCanCast(magicSpell)) {
-            Widget widget = Rs2Widget.findWidget(magicSpell.getName());
-            Microbot.click(widget.getBounds());
-            return true;
+            Widget widget = findSpellbookWidget(magicSpell);
+            if (widget != null) {
+                Microbot.click(widget.getBounds());
+                return true;
+            }
         }
         log("Unable to cast " + magicSpell.getName());
         return false;
@@ -339,10 +345,19 @@ public class Rs2Magic {
     }
 
     public static void superHeat(Rs2ItemModel item, int sleepMin, int sleepMax) {
-        if (!setup()) return;
-        final Widget superheat = Rs2Widget.findWidget(MagicAction.SUPERHEAT_ITEM.getName());
-        if (superheat == null) return;
-        if (superheat.getSpriteId() != SpriteID.SPELL_SUPERHEAT_ITEM) return;
+        if (!setup()) {
+            log("Unable to cast Superheat Item: the magic tab did not open");
+            return;
+        }
+        final Widget superheat = findSpellbookWidget(MagicAction.SUPERHEAT_ITEM);
+        if (superheat == null) {
+            log("Unable to cast Superheat Item: the spell was not found in the spellbook");
+            return;
+        }
+        if (superheat.getSpriteId() != SpriteID.SPELL_SUPERHEAT_ITEM) {
+            log("Unable to cast Superheat Item: the spell is not available, check your Magic level, runes and spellbook");
+            return;
+        }
 
         if (!quickCast(MagicAction.SUPERHEAT_ITEM)) return;
         sleepUntil(() -> Microbot.getClientThread().runOnClientThreadOptional(() -> Rs2Tab.getCurrentTab() == InterfaceTab.INVENTORY).orElse(false), 5000);
