@@ -42,6 +42,7 @@ public class Rs2MagicSuperHeatSpellWidgetTest {
 
     @Before
     public void setUp() {
+        Rs2Magic.lastSuperHeatFailure = null;
         widgets = Mockito.mockStatic(Rs2Widget.class);
         microbot = Mockito.mockStatic(Microbot.class);
         microbot.when(Microbot::getClient).thenReturn(mock(Client.class));
@@ -104,9 +105,26 @@ public class Rs2MagicSuperHeatSpellWidgetTest {
 
         Rs2Magic.superHeat(ore, 0, 0);
 
-        microbot.verify(() -> Microbot.log(contains("not found in the spellbook")));
+        microbot.verify(() -> Microbot.log(contains("not visible in your spellbook")));
         microbot.verify(() -> Microbot.click(any(Rectangle.class)), Mockito.never());
         inventory.verify(() -> Rs2Inventory.interact(any(Rs2ItemModel.class), anyString()), Mockito.never());
+    }
+
+    @Test
+    public void superHeatLogsARepeatedFailureOnceAndANewReasonAgain() {
+        Rs2ItemModel ore = mock(Rs2ItemModel.class);
+
+        Rs2Magic.superHeat(ore, 0, 0);
+        Rs2Magic.superHeat(ore, 0, 0);
+        Rs2Magic.superHeat(ore, 0, 0);
+
+        microbot.verify(() -> Microbot.log(contains("not visible in your spellbook")), Mockito.times(1));
+
+        spellInSpellbook(SpriteID.SPELL_SUPERHEAT_ITEM_DISABLED);
+        Rs2Magic.superHeat(ore, 0, 0);
+        Rs2Magic.superHeat(ore, 0, 0);
+
+        microbot.verify(() -> Microbot.log(contains("greyed out")), Mockito.times(1));
     }
 
     @Test
@@ -116,7 +134,7 @@ public class Rs2MagicSuperHeatSpellWidgetTest {
 
         Rs2Magic.superHeat(ore, 0, 0);
 
-        microbot.verify(() -> Microbot.log(contains("not available")));
+        microbot.verify(() -> Microbot.log(contains("greyed out")));
         microbot.verify(() -> Microbot.click(any(Rectangle.class)), Mockito.never());
     }
 

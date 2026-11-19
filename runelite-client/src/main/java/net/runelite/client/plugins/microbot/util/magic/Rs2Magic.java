@@ -346,25 +346,38 @@ public class Rs2Magic {
 
     public static void superHeat(Rs2ItemModel item, int sleepMin, int sleepMax) {
         if (!setup()) {
-            log("Unable to cast Superheat Item: the magic tab did not open");
+            logSuperHeatFailure("the magic tab did not open. Close any open interface and try again.");
             return;
         }
         final Widget superheat = findSpellbookWidget(MagicAction.SUPERHEAT_ITEM);
         if (superheat == null) {
-            log("Unable to cast Superheat Item: the spell was not found in the spellbook");
+            logSuperHeatFailure("the spell is not visible in your spellbook. Switch to the standard spellbook and turn off spellbook filters that hide spells.");
             return;
         }
         if (superheat.getSpriteId() != SpriteID.SPELL_SUPERHEAT_ITEM) {
-            log("Unable to cast Superheat Item: the spell is not available, check your Magic level, runes and spellbook");
+            logSuperHeatFailure("the spell is greyed out. You need 43 Magic, a nature rune and 4 fire runes (or a fire staff) on the standard spellbook.");
             return;
         }
 
         if (!quickCast(MagicAction.SUPERHEAT_ITEM)) return;
+        lastSuperHeatFailure = null;
         sleepUntil(() -> Microbot.getClientThread().runOnClientThreadOptional(() -> Rs2Tab.getCurrentTab() == InterfaceTab.INVENTORY).orElse(false), 5000);
         sleep(sleepMin, sleepMax);
 
         final Point point = new Point((int) superheat.getBounds().getCenterX(), (int) superheat.getBounds().getCenterY());
         interact(item, point, "Superheating");
+    }
+
+    private static final long SUPERHEAT_FAILURE_LOG_INTERVAL_MS = 30_000;
+    static volatile String lastSuperHeatFailure;
+    private static volatile long lastSuperHeatFailureLoggedAt;
+
+    private static void logSuperHeatFailure(String reason) {
+        final long now = System.currentTimeMillis();
+        if (reason.equals(lastSuperHeatFailure) && now - lastSuperHeatFailureLoggedAt < SUPERHEAT_FAILURE_LOG_INTERVAL_MS) return;
+        lastSuperHeatFailure = reason;
+        lastSuperHeatFailureLoggedAt = now;
+        log("Unable to cast Superheat Item: " + reason);
     }
 
     private final static int CHOOSE_CHARACTER_WIDGET_ID = 4915200;
