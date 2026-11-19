@@ -9,6 +9,7 @@ import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
 import org.junit.Test;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
@@ -148,11 +149,42 @@ public class QuestScriptGroundPickupTest
 	}
 
 	@Test
-	public void emptySpawnReasonSaysTheItemRespawns()
+	public void unseenPickupReasonIsTrueForSpawnsAndForItemsThePlayerMustBring()
 	{
 		String reason = QuestScript.pickupUnavailableReason(fishFood);
 
-		assertTrue(reason, reason.startsWith("Fish food is not on the ground right now"));
-		assertTrue(reason, reason.contains("Wait for it to respawn or hop worlds"));
+		assertEquals("Can't see Fish food on the ground nearby and no bank can be reached from here. "
+				+ "If it spawns here, wait for it to respawn or hop worlds; "
+				+ "otherwise get it yourself or leave this area. Then turn the quest helper back on.", reason);
+	}
+
+	@Test
+	public void unreachableBankStatusSaysWhatTheHelperIsLookingFor()
+	{
+		assertEquals("Looking for Fish food nearby (no bank reachable from here)",
+				QuestScript.bankUnreachableStatus(fishFood));
+		assertEquals("Looking for a route to a bank for missing items",
+				QuestScript.bankUnreachableStatus(null));
+	}
+
+	@Test
+	public void bankLookupIsSpacedOutWhileNoBankIsReachable()
+	{
+		QuestScript script = new QuestScript();
+		long wait = QuestScript.PICKUP_RESPAWN_WAIT_MS;
+
+		assertFalse(script.bankUnreachableStreakRunning());
+		assertTrue(script.bankLookupDue(1_000));
+
+		script.noteBankUnreachable(1_000, wait);
+
+		assertTrue(script.bankUnreachableStreakRunning());
+		assertFalse(script.bankLookupDue(1_000 + QuestScript.BANK_LOOKUP_RETRY_MS - 1));
+		assertTrue(script.bankLookupDue(1_000 + QuestScript.BANK_LOOKUP_RETRY_MS));
+
+		script.clearBankUnreachable();
+
+		assertFalse(script.bankUnreachableStreakRunning());
+		assertTrue(script.bankLookupDue(1_001));
 	}
 }

@@ -100,6 +100,8 @@ public class QuestScript extends Script {
     static final long PICKUP_RESPAWN_WAIT_MS = 180_000;
     private volatile int bankUnreachableAttempts = 0;
     private volatile long bankUnreachableSince = 0;
+    static final long BANK_LOOKUP_RETRY_MS = 5_000;
+    private volatile long bankUnreachableLastAttempt = 0;
 
     QuestStep dialogueStartedStep = null;
 
@@ -613,6 +615,7 @@ public class QuestScript extends Script {
 			bankUnreachableSince = now;
 		}
 		bankUnreachableAttempts++;
+		bankUnreachableLastAttempt = now;
 		if (bankUnreachableAttempts < BANK_UNREACHABLE_LIMIT || now - bankUnreachableSince < minSpanMs) {
 			return false;
 		}
@@ -623,6 +626,15 @@ public class QuestScript extends Script {
 	void clearBankUnreachable() {
 		bankUnreachableAttempts = 0;
 		bankUnreachableSince = 0;
+		bankUnreachableLastAttempt = 0;
+	}
+
+	boolean bankUnreachableStreakRunning() {
+		return bankUnreachableAttempts > 0;
+	}
+
+	boolean bankLookupDue(long now) {
+		return bankUnreachableAttempts == 0 || now - bankUnreachableLastAttempt >= BANK_LOOKUP_RETRY_MS;
 	}
 
 	static String requirementLabel(ItemRequirement itemRequirement) {
@@ -645,12 +657,22 @@ public class QuestScript extends Script {
 	}
 
 	static String pickupUnavailableReason(ItemRequirement pickup) {
-		return requirementLabel(pickup) + " is not on the ground right now and no bank can be reached from here. "
-				+ "Wait for it to respawn or hop worlds, then turn the quest helper back on.";
+		return "Can't see " + requirementLabel(pickup)
+				+ " on the ground nearby and no bank can be reached from here. "
+				+ "If it spawns here, wait for it to respawn or hop worlds; "
+				+ "otherwise get it yourself or leave this area. Then turn the quest helper back on.";
+	}
+
+	static String bankUnreachableStatus(ItemRequirement stepPickup) {
+		return stepPickup != null
+				? "Looking for " + requirementLabel(stepPickup) + " nearby (no bank reachable from here)"
+				: "Looking for a route to a bank for missing items";
 	}
 
 	private boolean acquireMissingTradableItems(List<ItemRequirement> missing, ItemRequirement stepPickup) {
-		notifyMissingRequirement(missing.get(0));
+		if (!bankUnreachableStreakRunning()) {
+			notifyMissingRequirement(missing.get(0));
+		}
 
 		List<ItemRequirement> actionable = new ArrayList<>();
 		for (ItemRequirement ir : missing) {
@@ -685,14 +707,16 @@ public class QuestScript extends Script {
 		}
 
 		if (!Rs2Bank.isOpen()) {
+			if (!bankLookupDue(System.currentTimeMillis())) {
+				Microbot.status = bankUnreachableStatus(stepPickup);
+				return true;
+			}
 			BankLocation bankLocation = Rs2Bank.getNearestBank();
 			if (bankLocation == null) {
 				if (isIterationCancelled()) {
 					return true;
 				}
-				if (stepPickup != null) {
-					Microbot.status = "Waiting for " + requirementLabel(stepPickup) + " to respawn";
-				}
+				Microbot.status = bankUnreachableStatus(stepPickup);
 				if (noteBankUnreachable(System.currentTimeMillis(),
 						stepPickup != null ? PICKUP_RESPAWN_WAIT_MS : BANK_UNREACHABLE_MIN_SPAN_MS)) {
 					stopQuesterWithReason(stepPickup != null
