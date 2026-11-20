@@ -85,6 +85,25 @@ public class Rs2WalkerUnitTest {
     }
 
     @Test
+    public void wornMorytaniaLegsUseTheirWornTeleportActions() {
+        List<String> wornActions = Arrays.asList(null, "Ectofuntus Pit", "Burgh de Rott");
+        assertEquals("ectofuntus", Rs2WalkerTransports.wornTeleportAction(
+                Rs2WalkerTransports.teleportItemLeafAction("Morytania legs: Ecto Teleport"), wornActions));
+        assertEquals("burgh de rott", Rs2WalkerTransports.wornTeleportAction(
+                Rs2WalkerTransports.teleportItemLeafAction("Morytania legs: Burgh Teleport"), wornActions));
+    }
+
+    @Test
+    public void wornTeleportActionKeepsDestinationWhenItIsAWornAction() {
+        assertEquals("ecto teleport", Rs2WalkerTransports.wornTeleportAction("ecto teleport",
+                Arrays.asList("Ecto Teleport")));
+        assertEquals("edgeville", Rs2WalkerTransports.wornTeleportAction("edgeville",
+                Arrays.asList("Edgeville", "Karamja")));
+        assertEquals("burgh teleport", Rs2WalkerTransports.wornTeleportAction("burgh teleport", null));
+        assertNull(Rs2WalkerTransports.wornTeleportAction(null, Arrays.asList("Ectofuntus Pit")));
+    }
+
+    @Test
     public void teleportWildernessLimitIsInclusiveWithoutOffByOne() {
         assertTrue(Rs2WalkerTransports.isTeleportAllowedAtWildernessLevel(20, 20));
         assertFalse(Rs2WalkerTransports.isTeleportAllowedAtWildernessLevel(21, 20));

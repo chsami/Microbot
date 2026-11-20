@@ -336,6 +336,14 @@ A teleport item works from any tile, so a strike-out keyed on the route-step til
 
 **Defensive check:** Run `Rs2WalkerUnitTest` and `TransportRefusalExecutorTest`. A new multi-destination item belongs in `isDialogueBasedTeleportItem`.
 
+## 23. A worn teleport op can be named differently from the inventory op
+
+Walker teleport rows use the inventory op text (`Morytania legs: Burgh Teleport`), but the worn Morytania legs show `Ectofuntus Pit` and `Burgh de Rott` instead of `Ecto Teleport` and `Burgh Teleport`. `Rs2WalkerTransports.wornTeleportAction` maps the inventory text to the worn op when the item has no equipment op containing it.
+
+**Why this matters:** `Rs2Equipment.invokeMenu` logged `does not have a subaction=burgh teleport` and returned false, so worn Morytania legs never teleported and the walker kept picking the same route.
+
+**Defensive check:** Run `Rs2WalkerUnitTest`. Add a new pair to `WORN_TELEPORT_ACTION_ALIASES` when another item's worn op text differs.
+
 ## Terminal supply stops need observed logout
 
 An owning script can set `withMissingSupplyHandler` on its Inventory Setup loader to keep its scheduled loop alive while `TerminalLogoutPrompt` closes the bank and requests logout. Do not show a blocking shortage notification or cancel that loop until `LOGGED_OUT` is observed. The default loader policy stays unchanged when no handler is supplied; ordinary breaks and world hops do not arm terminal Auto Login suppression.
