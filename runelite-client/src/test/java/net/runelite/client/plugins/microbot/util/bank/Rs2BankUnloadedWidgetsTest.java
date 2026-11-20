@@ -1,6 +1,7 @@
 package net.runelite.client.plugins.microbot.util.bank;
 
 import net.runelite.api.Client;
+import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
@@ -18,6 +19,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -83,6 +85,28 @@ public class Rs2BankUnloadedWidgetsTest {
         assertTrue(Rs2Bank.scrollBankToSlot(10));
         verify(container).setScrollY(0);
         verify(container, never()).getHeight();
+        verify(clientThread).invokeLater(any(Runnable.class));
+    }
+
+    @Test
+    public void scrollBankToSlotIsFalseWhenCurrentTabIsNotAnItemTab() {
+        Widget container = mock(Widget.class);
+        when(client.getWidget(Rs2Bank.BANK_ITEM_CONTAINER)).thenReturn(container);
+        for (int tab : new int[]{-1, 10, 11, 15}) {
+            microbot.when(() -> Microbot.getVarbitValue(VarbitID.BANK_CURRENTTAB)).thenReturn(tab);
+            assertFalse(Rs2Bank.scrollBankToSlot(10));
+        }
+        verify(container, never()).setScrollY(anyInt());
+        verify(clientThread, never()).invokeLater(any(Runnable.class));
+    }
+
+    @Test
+    public void scrollBankToSlotScrollsOnTheLastItemTab() {
+        Widget container = mock(Widget.class);
+        when(client.getWidget(Rs2Bank.BANK_ITEM_CONTAINER)).thenReturn(container);
+        microbot.when(() -> Microbot.getVarbitValue(VarbitID.BANK_CURRENTTAB)).thenReturn(9);
+        assertTrue(Rs2Bank.scrollBankToSlot(0));
+        verify(container).setScrollY(0);
         verify(clientThread).invokeLater(any(Runnable.class));
     }
 }

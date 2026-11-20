@@ -1930,6 +1930,13 @@ public class Rs2Player {
             menuAction = MenuAction.WIDGET_TARGET_ON_PLAYER;
         }
 
+        Rectangle clickArea = menuAction == MenuAction.WALK
+                ? Rs2UiHelper.getActorClickbox(rs2Player)
+                : Rs2UiHelper.clearActorClickArea(rs2Player, rs2Player.getName());
+        if (clickArea == null) {
+            return false;
+        }
+
         // Invoke the menu entry using the selected action
         Microbot.doInvoke(
                 new NewMenuEntry()
@@ -1940,7 +1947,7 @@ public class Rs2Player {
                         .itemId(-1)
                         .target(rs2Player.getName())
                         .actor(rs2Player),
-                Rs2UiHelper.getActorClickbox(rs2Player)
+                clickArea
         );
 
         return true;

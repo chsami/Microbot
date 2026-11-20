@@ -16,6 +16,7 @@ import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.walker.recovery.CantReachTargetRecovery;
 
+import java.awt.Rectangle;
 import java.util.Arrays;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
@@ -278,6 +279,11 @@ public class Rs2NpcModel extends Rs2ActorModel implements IEntity
                 Rs2Camera.turnTo(npc);
             }
 
+            final Rectangle clickArea = Rs2UiHelper.clearActorClickArea(npc, npcName);
+            if (clickArea == null) {
+                return false;
+            }
+
             Microbot.doInvoke(new NewMenuEntry()
                             .param0(0)
                             .param1(0)
@@ -288,7 +294,7 @@ public class Rs2NpcModel extends Rs2ActorModel implements IEntity
                             .actor(npc)
                             .option(action)
                     ,
-                    Rs2UiHelper.getActorClickbox(npc));
+                    clickArea);
             return true;
 
         } catch (Exception ex) {

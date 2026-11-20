@@ -78,6 +78,9 @@ public class Rs2Pvp {
      * @return the int representing the wilderness level
      */
     public static int getWildernessLevelFrom(WorldPoint point) {
+        if (point == null) {
+            return 0;
+        }
         int regionID = point.getRegionID();
         if (regionID != 12700 && regionID != 12187 && !FEROX_ENCLAVE.contains(point.getX(), point.getY())) {
             if (WILDERNESS_BH_CRATER.contains(point) && !WILDERNESS_BH_CRATER_TWO.contains(point)) {

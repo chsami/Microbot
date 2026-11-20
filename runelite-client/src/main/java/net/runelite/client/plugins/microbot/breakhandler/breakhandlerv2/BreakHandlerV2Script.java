@@ -104,7 +104,7 @@ public class BreakHandlerV2Script extends Script {
     private static final int MAX_SAFETY_CHECK_ATTEMPTS = 60;
     private static final int SAFETY_CHECK_DELAY_MS = 5000; // 5 seconds between checks
 
-    public static String version = "2.0.13";
+    public static String version = "2.0.14";
     private boolean restoredPauseNeedsPreparation;
     private final BreakHandlerTickGuard tickGuard = new BreakHandlerTickGuard();
 
@@ -354,9 +354,7 @@ public class BreakHandlerV2Script extends Script {
 
         if (!Microbot.isLoggedIn()) {
             log.info("[BreakHandlerV2] Already logged out, transitioning to LOGGED_OUT");
-            setBreakTimer(true);
-            recordBreakActivated();
-            sendBreakStartedNotification(true);
+            startLogoutBreakTimerIfNeeded();
             safetyCheckAttempts = 0; // Reset counter
             transitionToState(BreakHandlerV2State.LOGGED_OUT);
             return;
@@ -1412,6 +1410,7 @@ public class BreakHandlerV2Script extends Script {
             log.warn("[BreakHandlerV2] Main loop still running after {}ms; resetting break state anyway", TICK_STOP_TIMEOUT_MS);
         }
         BreakPreparation.finishBreak();
+        clearPersistedBreakState();
 
         // Reset state
         BreakHandlerV2State.setState(BreakHandlerV2State.WAITING_FOR_BREAK);
@@ -1564,10 +1563,18 @@ public class BreakHandlerV2Script extends Script {
     }
 
     private void beginLogoutBreak() {
+        startLogoutBreakTimerIfNeeded();
+        transitionToState(BreakHandlerV2State.LOGOUT_REQUESTED);
+    }
+
+    private void startLogoutBreakTimerIfNeeded() {
+        if (breakEndTime != null) {
+            log.info("[BreakHandlerV2] Resuming active break until {}", breakEndTime);
+            return;
+        }
         setBreakTimer(true);
         recordBreakActivated();
         sendBreakStartedNotification(true);
-        transitionToState(BreakHandlerV2State.LOGOUT_REQUESTED);
     }
 
     private void setBreakTimer(boolean logoutBreak) {
