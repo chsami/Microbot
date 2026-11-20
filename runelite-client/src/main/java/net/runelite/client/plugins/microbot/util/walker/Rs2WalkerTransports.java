@@ -2451,7 +2451,7 @@ final class Rs2WalkerTransports {
                 if (!Rs2Equipment.invokeMenu(rs2Item, WORN_GENERIC_TELEPORT_ACTION)) return false;
                 if (!Rs2Dialogue.sleepUntilSelectAnOption() || !Rs2Dialogue.clickOption(destination)) return false;
             } else {
-                if (!Rs2Equipment.invokeMenu(rs2Item, destination)) return false;
+                if (!Rs2Equipment.invokeMenu(rs2Item, wornTeleportAction(destination, rs2Item.getEquipmentActions()))) return false;
                 if (transport.getDisplayInfo().toLowerCase().contains("burning amulet")) {
                     Rs2Dialogue.sleepUntilInDialogue();
                     Rs2Dialogue.clickOption("Okay, teleport to level");
@@ -2464,6 +2464,23 @@ final class Rs2WalkerTransports {
     }
 
     private static final String WORN_GENERIC_TELEPORT_ACTION = "teleport";
+
+    private static final Map<String, String> WORN_TELEPORT_ACTION_ALIASES = Map.of(
+            "ecto teleport", "ectofuntus",
+            "burgh teleport", "burgh de rott");
+
+    static String wornTeleportAction(String destination, List<String> equipmentActions) {
+        String alias = destination == null ? null : WORN_TELEPORT_ACTION_ALIASES.get(destination);
+        if (alias == null || equipmentActions == null) {
+            return destination;
+        }
+        for (String equipmentAction : equipmentActions) {
+            if (equipmentAction != null && equipmentAction.toLowerCase(Locale.ROOT).contains(destination)) {
+                return destination;
+            }
+        }
+        return alias;
+    }
 
     static boolean usesGenericWornTeleport(String displayInfo, List<String> equipmentActions,
                                            boolean hasDestinationSubAction, String destination) {
