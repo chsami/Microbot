@@ -56,6 +56,7 @@ public class BreakHandlerV2LoginRecoveryTest {
     private BreakHandlerV2Script script;
     private BreakHandlerV2Config config;
     private Client client;
+    private ConfigManager configManager;
     private boolean loggedIn;
 
     @Before
@@ -82,7 +83,8 @@ public class BreakHandlerV2LoginRecoveryTest {
         when(config.maxPlaytime()).thenReturn(60);
         when(config.autoLogin()).thenReturn(true);
         when(config.useActiveProfile()).thenReturn(true);
-        microbot.when(Microbot::getConfigManager).thenReturn(mock(ConfigManager.class));
+        configManager = mock(ConfigManager.class);
+        microbot.when(Microbot::getConfigManager).thenReturn(configManager);
         script = new BreakHandlerV2Script();
         setField("config", config);
         Microbot.pauseAllScripts.set(true);
@@ -409,6 +411,72 @@ public class BreakHandlerV2LoginRecoveryTest {
         when(config.notifyOnBreakStart()).thenReturn(true);
         invokeNotification(false);
         discord.verify(() -> Rs2Discord.sendCustomNotification(eq("Break Started"), anyString(), anyInt(), anyString(), anyString()));
+    }
+
+    @Test
+    public void restoredLogoutBreakKeepsItsEndTimeWhenLoggedIn() throws Exception {
+        Instant savedEnd = restoreLogoutBreak(true);
+
+        assertEquals(BreakHandlerV2State.INITIATING_BREAK, BreakHandlerV2State.getCurrentState());
+
+        invoke("handleInitiatingBreak");
+
+        assertEquals(BreakHandlerV2State.LOGOUT_REQUESTED, BreakHandlerV2State.getCurrentState());
+        assertEquals(savedEnd, getField("breakEndTime"));
+        assertEquals(0, getField("breaksActivatedCount"));
+    }
+
+    @Test
+    public void restoredLogoutBreakKeepsItsEndTimeWhenAlreadyLoggedOut() throws Exception {
+        Instant savedEnd = restoreLogoutBreak(true);
+        loggedIn = false;
+
+        invoke("handleInitiatingBreak");
+
+        assertEquals(BreakHandlerV2State.LOGGED_OUT, BreakHandlerV2State.getCurrentState());
+        assertEquals(savedEnd, getField("breakEndTime"));
+        assertEquals(0, getField("breaksActivatedCount"));
+    }
+
+    @Test
+    public void newLogoutBreakStillRollsADuration() throws Exception {
+        when(config.minBreakDuration()).thenReturn(10);
+        when(config.maxBreakDuration()).thenReturn(10);
+        loggedIn = true;
+        BreakHandlerV2State.setState(BreakHandlerV2State.INITIATING_BREAK);
+
+        invoke("handleInitiatingBreak");
+
+        assertEquals(BreakHandlerV2State.LOGOUT_REQUESTED, BreakHandlerV2State.getCurrentState());
+        Instant breakEnd = (Instant) getField("breakEndTime");
+        assertTrue(breakEnd.isAfter(Instant.now().plus(Duration.ofMinutes(9))));
+        assertEquals(1, getField("breaksActivatedCount"));
+    }
+
+    @Test
+    public void stoppingThePluginEndsThePersistedBreak() throws Exception {
+        restoreLogoutBreak(false);
+
+        script.shutdown();
+
+        Mockito.verify(configManager).unsetConfiguration(BreakHandlerV2Config.configGroup, "persistedBreakEnd");
+        Mockito.verify(configManager).unsetConfiguration(BreakHandlerV2Config.configGroup, "persistedBreakLogout");
+        assertNull(getField("breakEndTime"));
+        assertFalse((Boolean) getField("logoutBreakActive"));
+    }
+
+    private Instant restoreLogoutBreak(boolean playerLoggedIn) throws Exception {
+        Instant savedEnd = Instant.ofEpochMilli(Instant.now().plus(Duration.ofMinutes(30)).toEpochMilli());
+        when(configManager.getConfiguration(BreakHandlerV2Config.configGroup, "persistedBreakEnd", Long.class))
+                .thenReturn(savedEnd.toEpochMilli());
+        when(configManager.getConfiguration(BreakHandlerV2Config.configGroup, "persistedBreakLogout", Boolean.class))
+                .thenReturn(true);
+        loggedIn = playerLoggedIn;
+
+        invoke("restorePersistedBreakState");
+
+        assertEquals(savedEnd, getField("breakEndTime"));
+        return savedEnd;
     }
 
     private ConfigProfile profile() {

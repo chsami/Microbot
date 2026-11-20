@@ -789,23 +789,27 @@ public class Rs2Dialogue {
     }
 
     /**
-     * Detects a quest-start prompt (e.g. "Would you like to start the Cook's Assistant quest?")
-     * and clicks the "Yes" option. Matches case-insensitively on prefix + suffix + keyword
-     * so it catches the OSRS convention across quests without picking up unrelated prompts
-     * like "Would you like to start a fire?".
+     * Detects a quest-start prompt (e.g. "Start the Family Crest quest?" or
+     * "Would you like to start the Cook's Assistant quest?") and clicks the "Yes" option.
+     * Matches case-insensitively on prefix + suffix + keyword so it catches the OSRS
+     * convention across quests without picking up unrelated prompts like
+     * "Would you like to start a fire?".
      *
      * @return true if a quest-start prompt was detected and Yes was clicked
      */
     public static boolean acceptQuestStartDialogue() {
-        String question = getQuestion();
+        if (!isQuestStartQuestion(getQuestion())) return false;
+
+        return clickOption("Yes", false);
+    }
+
+    static boolean isQuestStartQuestion(String question) {
         if (question == null) return false;
 
         String q = question.toLowerCase().trim();
-        if (!q.startsWith("would you like to start")) return false;
+        if (!q.startsWith("would you like to start") && !q.startsWith("start the ")) return false;
         if (!q.contains("quest")) return false;
-        if (!q.endsWith("?")) return false;
-
-        return clickOption("Yes", false);
+        return q.endsWith("?");
     }
 
 	/**

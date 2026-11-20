@@ -1,4 +1,4 @@
-# Origin	Destination	menuOption menuTarget objectID	Skills	Currency	Quests	Varbits	Duration	Display info
+# Origin	Destination	menuOption menuTarget objectID	Skills	Currency	Quests	Varbits	Duration	Display info	Item IDs
 # Keldagrim, Grand Exchange
 3141 3504 0	2909 10174 0	Travel;Trapdoor;16168			The Giant Dwarf		21
 3140 3503 0	2909 10174 0	Travel;Trapdoor;16168			The Giant Dwarf		21
@@ -8,16 +8,16 @@
 2923 10170 0	3141 3504 0	Ride;Train cart;7028			The Giant Dwarf
 
 # Keldagrim, Ice Mountain
-2923 10176 0	2995 9835 0	Ride;Train cart;7028		150 Coins	The Giant Dwarf
-2923 10174 0	2995 9835 0	Ride;Train cart;7028		150 Coins	The Giant Dwarf
-2995 9835 0	2909 10174 0	Ride;Train cart;7029		150 Coins	The Giant Dwarf
-2995 9837 0	2909 10174 0	Ride;Train cart;7029		150 Coins	The Giant Dwarf
+2923 10176 0	2995 9835 0	Ride;Train cart;7028			The Giant Dwarf				5020
+2923 10174 0	2995 9835 0	Ride;Train cart;7028			The Giant Dwarf				5020
+2995 9835 0	2909 10174 0	Ride;Train cart;7029			The Giant Dwarf				5021
+2995 9837 0	2909 10174 0	Ride;Train cart;7029			The Giant Dwarf				5021
 
 # Keldagrim, White Wolf Mountain
-2919 10170 0	2876 9868 0	Ride;Train cart;7028		100 Coins	The Giant Dwarf;Fishing Contest
-2919 10168 0	2876 9868 0	Ride;Train cart;7028		100 Coins	The Giant Dwarf;Fishing Contest
-2876 9868 0	2909 10174 0	Ride;Train cart;7030		100 Coins	The Giant Dwarf;Fishing Contest
-2874 9868 0	2909 10174 0	Ride;Train cart;7030		100 Coins	The Giant Dwarf;Fishing Contest
+2919 10170 0	2876 9868 0	Ride;Train cart;7028			The Giant Dwarf;Fishing Contest				5022
+2919 10168 0	2876 9868 0	Ride;Train cart;7028			The Giant Dwarf;Fishing Contest				5022
+2876 9868 0	2909 10174 0	Ride;Train cart;7030			The Giant Dwarf;Fishing Contest				5023
+2874 9868 0	2909 10174 0	Ride;Train cart;7030			The Giant Dwarf;Fishing Contest				5023
 
 # Lovakengj Minecart Network (20 Coins before The Forsaken Tower varbit 7796=11)
 # Arceuus

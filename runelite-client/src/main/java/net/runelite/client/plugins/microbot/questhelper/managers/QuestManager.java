@@ -116,8 +116,16 @@ public class QuestManager
 
 	public void shutDown()
 	{
-		shutDownQuest(false);
+		QuestHelperPanel activePanel = panel;
 		this.panel = null;
+		if (client.isClientThread())
+		{
+			doShutDownQuest(false, activePanel);
+		}
+		else
+		{
+			clientThread.invokeLater(() -> doShutDownQuest(false, activePanel));
+		}
 	}
 
 	public void setupOnLogin()
@@ -303,11 +311,16 @@ public class QuestManager
 		questBankManager.startUpQuest();
 		SwingUtilities.invokeLater(() ->
 		{
-			panel.removeQuest();
-			panel.addQuest(questHelper, true);
+			QuestHelperPanel activePanel = panel;
+			if (activePanel == null)
+			{
+				return;
+			}
+			activePanel.removeQuest();
+			activePanel.addQuest(questHelper, true);
 
 			// Force an extra update immediately after starting a quest
-			clientThread.invokeLater(() -> panel.updateItemRequirements(client));
+			clientThread.invokeLater(() -> activePanel.updateItemRequirements(client));
 		});
 	}
 
@@ -324,6 +337,18 @@ public class QuestManager
 	 */
 	public void shutDownQuest(boolean shouldUpdateList)
 	{
+		if (client.isClientThread())
+		{
+			doShutDownQuest(shouldUpdateList, panel);
+		}
+		else
+		{
+			clientThread.invokeLater(() -> doShutDownQuest(shouldUpdateList, panel));
+		}
+	}
+
+	private void doShutDownQuest(boolean shouldUpdateList, @Nullable QuestHelperPanel activePanel)
+	{
 		if (selectedQuest != null)
 		{
 			selectedQuest.shutDown();
@@ -333,7 +358,10 @@ public class QuestManager
 				getAllItemRequirements();
 			}
 			questBankManager.shutDownQuest();
-			SwingUtilities.invokeLater(panel::removeQuest);
+			if (activePanel != null)
+			{
+				SwingUtilities.invokeLater(activePanel::removeQuest);
+			}
 			unregisterQuestFromEventBus(selectedQuest);
 
 			// If closing the item checking helper and should still check in background, start it back up in background

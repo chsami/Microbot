@@ -1845,9 +1845,8 @@ public class Rs2GameObject {
                 Microbot.log("Hover skipped: 'Aim Clicks From Cursor' is off in Antiban > Mouse");
             return false;
         }
-        Rectangle clickbox = Rs2UiHelper.getObjectClickbox(object);
-        // a fallback clickbox means the object is not on screen and we should return false
-        if (Rs2UiHelper.isFallbackRectangle(clickbox)) {
+        Rectangle clickbox = Rs2UiHelper.clearHoverArea(Rs2UiHelper.getObjectClickbox(object));
+        if (clickbox == null) {
             return false;
         }
         Point point = Rs2UiHelper.getClickingPoint(clickbox, true);

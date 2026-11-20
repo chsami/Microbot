@@ -139,6 +139,27 @@ public class QuestScriptOptionSelectionPendingTest
 	}
 
 	@Test
+	public void matchedOptionsOfARepeatedConversationKeepTheCount()
+	{
+		QuestScript script = new QuestScript();
+		Object step = new Object();
+
+		long now = 100_000L;
+		for (int i = 0; i < 3; i++)
+		{
+			script.noteOptionPressed(now);
+			script.noteOptionPressed(now + 3_000L);
+			assertTrue(script.allowUnhandledOptionDismiss(step, now + 12_000L));
+			assertEquals("Quest helper: no matching dialogue option, retrying (" + (i + 1) + "/3)", script.unhandledOptionRetryStatus());
+			now += 20_000L;
+		}
+		script.noteOptionPressed(now);
+		script.noteOptionPressed(now + 3_000L);
+
+		assertFalse(script.allowUnhandledOptionDismiss(step, now + 12_000L));
+	}
+
+	@Test
 	public void menuClosedByThePlayerAfterTheLimitRestoresTheDismissAttempts()
 	{
 		QuestScript script = new QuestScript();

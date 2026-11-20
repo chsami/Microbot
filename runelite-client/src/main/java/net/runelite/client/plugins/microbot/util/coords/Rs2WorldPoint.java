@@ -95,7 +95,20 @@ public class Rs2WorldPoint {
             {
                 break;
             }
-            checkpointWPs.add(checkpointTile.getWorldLocation());
+            WorldPoint checkpointWP;
+            try
+            {
+                checkpointWP = checkpointTile.getWorldLocation();
+            }
+            catch (NullPointerException e)
+            {
+                return null;
+            }
+            if (checkpointWP == null)
+            {
+                return null;
+            }
+            checkpointWPs.add(checkpointWP);
         }
         return checkpointWPs;
     }

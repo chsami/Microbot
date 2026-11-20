@@ -729,3 +729,13 @@ The recovery walk asks the walker for a tile within 2 of the object's own tile. 
 **Where this applies:** `Rs2TileObjectModel.click` (`recoverFromCantReach`).
 
 **Defensive check:** `Rs2TileObjectModelClickRecoveryTest.clicksWhenTheRecoveryWalkEndsWithinRangeOfTheObject`, `doesNotClickWhenTheRecoveryWalkFailsAwayFromTheObject`, `pausesOnlyAfterTheGameKeepsRefusingClicksBesideTheObject` and `CantReachTargetRecoveryTest.onlyAKnownDistanceInsideTheRangeCountsAsBesideTheTarget`.
+
+## 38. A `Tile` held off the client thread can lose its WorldView
+
+`Tile.getWorldLocation()` resolves through the tile's own WorldView. A script thread that holds tiles while the scene is replaced (region load, logout, world hop) gets a `NullPointerException` from `WorldPoint.fromScene` instead of a location. Treat a tile whose world location cannot be resolved as "no path".
+
+**Why this matters:** Telemetry for 2.6.58 recorded `Cannot invoke "net.runelite.api.WorldView.getBaseX()" because "wv" is null` from `Rs2WorldPoint.pathTo`, reached through `distanceToPath` in an AIO Fighter NPC filter. The path tiles came back from `Rs2Tile.pathTo` on the client thread, and the loop that read their world locations ran afterwards on the script thread.
+
+**Where this applies:** `Rs2WorldPoint.pathTo` (returns `null`, so `distanceToPath` returns `Integer.MAX_VALUE`) and any helper that reads `Tile.getWorldLocation()` off the client thread after the tiles were collected.
+
+**Defensive check:** `Rs2WorldPointStaleCheckpointTileTest.pathToReturnsNullWhenACheckpointTileHasLostItsWorldView`.

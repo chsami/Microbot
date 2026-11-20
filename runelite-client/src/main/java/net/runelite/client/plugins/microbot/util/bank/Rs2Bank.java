@@ -3423,6 +3423,8 @@ public class Rs2Bank {
     public static boolean scrollBankToSlot(int slotId) {
         Widget w = Microbot.getClient().getWidget(BANK_ITEM_CONTAINER);
         if (w == null) return false;
+        int currentTab = getCurrentTab();
+        if (currentTab < 0 || currentTab > bankTabCounts.length) return false;
         int scrollY = calculateScrollYFromSlotId(slotId);
 
         Microbot.getClientThread().invokeLater(() -> {

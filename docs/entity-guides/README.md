@@ -11,6 +11,7 @@ Each guide lists known pitfalls when working with one specific game entity type.
 | Items (inventory, bank, ground, equipment, shops) | [items.md](items.md) | Any code calling `Rs2Inventory`, `Rs2Bank`, `Rs2Equipment`, `Rs2GroundItem`, `Rs2Shop`, or `Rs2DepositBox` interaction helpers, or any helper that takes a list of item names and applies a single action to all of them |
 | Movement (walker, minimap, pathing) | [movement.md](movement.md) | Any code calling or modifying `Rs2Walker`, `Rs2MiniMap`, shortest-path marker handling, or minimap/canvas walk-click logic |
 | Objects (game, wall, ground and decorative objects) | [objects.md](objects.md) | Any code calling `Rs2TileObjectModel.click`, `Microbot.getRs2TileObjectCache().query().interact(...)`, or migrating calls off `Rs2GameObject` |
+| NPCs, players and ground items on screen | [npcs.md](npcs.md) | Any code sending a click to an NPC, player or ground item through `Microbot.doInvoke`, or modifying `Rs2NpcModel.click`, `Rs2Npc.interact`, `Rs2Player` player actions or `Rs2TileItemModel.click` |
 | Death (graves, Death's Office, recovery) | [death.md](death.md) | Any code calling or modifying `Rs2Death`, `DeathRecoveryEvent`, `DeathEvent`, or handling graves, retrieval fees, and post-death item recovery |
 | Worlds (selection, ping, hopping) | [worlds.md](worlds.md) | Any code measuring world latency, testing world reachability, selecting worlds based on network availability, or reading the local player while logging in or hopping |
 
@@ -45,6 +46,8 @@ A door beside a refused edge owns it for one claim window, then the edge is lear
 A clicked home teleport needs its cast animation before the landing wait: [movement gotcha 36](movement.md#36-a-clicked-home-teleport-is-not-a-cast-that-started).
 
 A can't-reach recovery walk that ends within 2 tiles of the object still sends the click: [movement gotcha 37](movement.md#37-a-cant-reach-recovery-walk-that-ends-beside-the-object-still-clicks-it).
+
+A path tile read off the client thread can lose its WorldView: [movement gotcha 38](movement.md#38-a-tile-held-off-the-client-thread-can-lose-its-worldview).
 
 ## Format
 

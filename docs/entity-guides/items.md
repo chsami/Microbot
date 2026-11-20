@@ -282,7 +282,7 @@ An ordinary logout can be a break or world hop, so it must keep normal AutoLogin
 
 ## 16. Bank widgets can be missing or blank right after the bank opens
 
-`BANK_ITEM_CONTAINER` can be null and the `BANK_ITEM_COUNT_TOP` text can be `""` while the bank interface is opening, closing or rebuilding. Never `assert` a widget non-null (asserts are disabled at runtime) and never `Integer.parseInt` widget text without handling blank or non-numeric input. `Rs2Bank.getBankItemCount()` returns 0 for unpopulated text, and `scrollBankToSlot` returns false before computing a scroll when the container is missing. The looting bag view (`15:11`) can be unloaded or have null/empty children once the bag closes, so `depositLootingBag` waits on `Rs2Bank.isLootingBagViewEmpty()`, which reads the widget on the client thread and treats a missing widget or children as emptied.
+`BANK_ITEM_CONTAINER` can be null and the `BANK_ITEM_COUNT_TOP` text can be `""` while the bank interface is opening, closing or rebuilding. Never `assert` a widget non-null (asserts are disabled at runtime) and never `Integer.parseInt` widget text without handling blank or non-numeric input. `Rs2Bank.getBankItemCount()` returns 0 for unpopulated text, and `scrollBankToSlot` returns false before computing a scroll when the container is missing. `VarbitID.BANK_CURRENTTAB` is only an item tab for 0-9; other views use higher values (the potion store is 15), so `scrollBankToSlot` also returns false then instead of indexing the nine tab counts. The looting bag view (`15:11`) can be unloaded or have null/empty children once the bag closes, so `depositLootingBag` waits on `Rs2Bank.isLootingBagViewEmpty()`, which reads the widget on the client thread and treats a missing widget or children as emptied.
 
 **Defensive check:** Run `Rs2BankUnloadedWidgetsTest` and `Rs2BankLootingBagViewTest`.
 
@@ -335,6 +335,14 @@ Walker teleport rows name the destination after the colon (`Hunter cape: Feldip 
 A teleport item works from any tile, so a strike-out keyed on the route-step tile alone lets the same teleport be picked again after the replan moves the player. A struck-out teleport without a catalog origin is also blocked by name for the rest of the walk (`Rs2PathApi.blockTeleportForWalk`), and the player is told once through `Microbot.status`.
 
 **Defensive check:** Run `Rs2WalkerUnitTest` and `TransportRefusalExecutorTest`. A new multi-destination item belongs in `isDialogueBasedTeleportItem`.
+
+## 23. A worn teleport op can be named differently from the inventory op
+
+Walker teleport rows use the inventory op text (`Morytania legs: Burgh Teleport`), but the worn Morytania legs show `Ectofuntus Pit` and `Burgh de Rott` instead of `Ecto Teleport` and `Burgh Teleport`. `Rs2WalkerTransports.wornTeleportAction` maps the inventory text to the worn op when the item has no equipment op containing it.
+
+**Why this matters:** `Rs2Equipment.invokeMenu` logged `does not have a subaction=burgh teleport` and returned false, so worn Morytania legs never teleported and the walker kept picking the same route.
+
+**Defensive check:** Run `Rs2WalkerUnitTest`. Add a new pair to `WORN_TELEPORT_ACTION_ALIASES` when another item's worn op text differs.
 
 ## Terminal supply stops need observed logout
 

@@ -580,11 +580,11 @@ final class Rs2WalkerTransports {
                                             && !transport.getDisplayInfo().isBlank()) {
                                         effectiveTravelMode = Rs2TerminalTravelMode.DIALOGUE_DESTINATION;
                                     }
+                                    final int terminalDestinationIndex = precomputedIndexOfDest;
                                     if (!selectTerminalTravelDialogueDestination(
-                                            transport, effectiveTravelMode)) {
+                                            transport, effectiveTravelMode, path, terminalDestinationIndex)) {
                                         break originLoop;
                                     }
-                                    final int terminalDestinationIndex = precomputedIndexOfDest;
                                     if (awaitTerminalTravelLanding(
                                             transport, path, terminalDestinationIndex)) {
                                         return finishHandledTransport(transport);
@@ -618,11 +618,11 @@ final class Rs2WalkerTransports {
                                     final TileObject selectedTerminalObject = terminalObject;
                                     if (attemptObserved(transport, () -> Rs2WalkerSceneObjects.interact(
                                         selectedTerminalObject, objectAction))) {
+                                        final int terminalDestinationIndex = precomputedIndexOfDest;
                                         if (!selectTerminalTravelDialogueDestination(
-                                                transport, terminalTravelMode)) {
+                                                transport, terminalTravelMode, path, terminalDestinationIndex)) {
                                             break originLoop;
                                         }
-                                        final int terminalDestinationIndex = precomputedIndexOfDest;
                                         if (awaitTerminalTravelLanding(
                                             transport, path, terminalDestinationIndex)) {
                                             return finishHandledTransport(transport);
@@ -1601,7 +1601,8 @@ final class Rs2WalkerTransports {
     }
 
     private static boolean selectTerminalTravelDialogueDestination(
-            Transport transport, Rs2TerminalTravelMode mode) {
+            Transport transport, Rs2TerminalTravelMode mode,
+            List<WorldPoint> path, int destinationIndex) {
         if (mode == Rs2TerminalTravelMode.DIRECT) {
             return true;
         }
@@ -1621,9 +1622,9 @@ final class Rs2WalkerTransports {
         // 18:28 runs). Both releases fire early, so a long budget costs nothing when things work —
         // the timeout is reached only when neither dialogue nor landing ever happened.
         final WorldPoint dialogueWaitStart = Rs2Player.getWorldLocation();
-        final WorldPoint terminalDest = transport.getDestination();
         if (!sleepUntil(() -> Rs2Dialogue.hasSelectAnOption()
-                || hasLandedAtTerminalDestination(Rs2Player.getWorldLocation(), dialogueWaitStart, terminalDest),
+                || hasLandedDuringTerminalDialogueWait(
+                        transport, path, destinationIndex, Rs2Player.getWorldLocation(), dialogueWaitStart),
                 12_000)) {
             WebWalkLog.spWarn(
                     "terminal travel destination dialogue did not appear name={} dest={}",
@@ -1631,7 +1632,8 @@ final class Rs2WalkerTransports {
             return false;
         }
         if (!Rs2Dialogue.hasSelectAnOption()
-                && hasLandedAtTerminalDestination(Rs2Player.getWorldLocation(), dialogueWaitStart, terminalDest)) {
+                && hasLandedDuringTerminalDialogueWait(
+                        transport, path, destinationIndex, Rs2Player.getWorldLocation(), dialogueWaitStart)) {
             WebWalkLog.spInfo("terminal travel landed without destination dialogue name={} dest={}",
                     transport.getName(), transport.getDisplayInfo());
             return true;
@@ -1676,6 +1678,22 @@ final class Rs2WalkerTransports {
                 && !player.equals(waitStart)
                 && (waitStart == null
                 || player.distanceTo2D(dest) < waitStart.distanceTo2D(dest));
+    }
+
+    static boolean hasLandedDuringTerminalDialogueWait(Transport transport,
+                                                       List<WorldPoint> path,
+                                                       int destinationIndex,
+                                                       WorldPoint player,
+                                                       WorldPoint waitStart) {
+        if (transport == null || player == null) {
+            return false;
+        }
+        if (hasLandedAtTerminalDestination(player, waitStart, transport.getDestination())) {
+            return true;
+        }
+        return !player.equals(waitStart)
+                && !hasReachedTerminalTravelLanding(transport, path, destinationIndex, waitStart)
+                && hasReachedTerminalTravelLanding(transport, path, destinationIndex, player);
     }
 
     private static TileObject findTerminalTravelObject(Transport transport) {
@@ -2433,7 +2451,7 @@ final class Rs2WalkerTransports {
                 if (!Rs2Equipment.invokeMenu(rs2Item, WORN_GENERIC_TELEPORT_ACTION)) return false;
                 if (!Rs2Dialogue.sleepUntilSelectAnOption() || !Rs2Dialogue.clickOption(destination)) return false;
             } else {
-                if (!Rs2Equipment.invokeMenu(rs2Item, destination)) return false;
+                if (!Rs2Equipment.invokeMenu(rs2Item, wornTeleportAction(destination, rs2Item.getEquipmentActions()))) return false;
                 if (transport.getDisplayInfo().toLowerCase().contains("burning amulet")) {
                     Rs2Dialogue.sleepUntilInDialogue();
                     Rs2Dialogue.clickOption("Okay, teleport to level");
@@ -2446,6 +2464,23 @@ final class Rs2WalkerTransports {
     }
 
     private static final String WORN_GENERIC_TELEPORT_ACTION = "teleport";
+
+    private static final Map<String, String> WORN_TELEPORT_ACTION_ALIASES = Map.of(
+            "ecto teleport", "ectofuntus",
+            "burgh teleport", "burgh de rott");
+
+    static String wornTeleportAction(String destination, List<String> equipmentActions) {
+        String alias = destination == null ? null : WORN_TELEPORT_ACTION_ALIASES.get(destination);
+        if (alias == null || equipmentActions == null) {
+            return destination;
+        }
+        for (String equipmentAction : equipmentActions) {
+            if (equipmentAction != null && equipmentAction.toLowerCase(Locale.ROOT).contains(destination)) {
+                return destination;
+            }
+        }
+        return alias;
+    }
 
     static boolean usesGenericWornTeleport(String displayInfo, List<String> equipmentActions,
                                            boolean hasDestinationSubAction, String destination) {
