@@ -507,15 +507,23 @@ class MicrobotConfigPanel extends MicrobotPluginPanel {
         // Create the main panel (similar to a Bootstrap panel)
         JPanel panel = new JPanel();
         panel.setLayout(new BorderLayout());
-        panel.setBorder(new CompoundBorder(new EmptyBorder(10, 10, 10, 10), new MatteBorder(0, 3, 0, 0, ColorScheme.BRAND_ORANGE)));
+        panel.setBorder(new CompoundBorder(
+                new EmptyBorder(10, 10, 10, 10), // Outer padding
+                ClientTheme.redesign() ? new MatteBorder(0, 3, 0, 0, ColorScheme.BRAND_ORANGE) : new LineBorder(Color.GRAY, 1)
+        ));
 
         // Create the body/content panel
         JPanel bodyPanel = new JPanel();
         bodyPanel.setLayout(new BoxLayout(bodyPanel, BoxLayout.Y_AXIS)); // Vertical alignment
         bodyPanel.setBorder(new EmptyBorder(10, 10, 10, 10)); // Padding inside the body
-        bodyPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
         JLabel bodyLabel = new JLabel("<html>" + ci.value() + "</html>");
-        bodyLabel.setForeground(ColorScheme.TEXT_COLOR);
+        if (ClientTheme.redesign()) {
+            bodyPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+            bodyLabel.setForeground(ColorScheme.TEXT_COLOR);
+        } else {
+            bodyPanel.setBackground(new Color(0, 142, 255, 50));
+            bodyLabel.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
+        }
         bodyPanel.add(bodyLabel);
         bodyPanel.add(Box.createRigidArea(new Dimension(0, 5))); // Spacer between components
 

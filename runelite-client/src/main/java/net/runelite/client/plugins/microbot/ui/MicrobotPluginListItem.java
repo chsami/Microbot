@@ -48,6 +48,7 @@ import java.awt.event.KeyEvent;
 import java.awt.event.FocusEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -61,7 +62,7 @@ class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 {
 	private static final ImageIcon ON_STAR;
 	private static final ImageIcon OFF_STAR;
-	private static final int MIN_ITEM_HEIGHT = 30;
+	private static final int MIN_ITEM_HEIGHT = ClientTheme.redesign() ? 30 : 20;
 	private static final int SWITCH_WIDTH = 34;
 	private static final float DIMMED_ALPHA = 0.6f;
 
@@ -136,31 +137,13 @@ class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 		}
 
 		setLayout(new BorderLayout(3, 0));
-		// Painted as a rounded card in paintComponent.
-		setOpaque(false);
-		setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		setBorder(new EmptyBorder(0, 4, 0, 4));
-		addMouseListener(new MouseAdapter()
+		if (ClientTheme.redesign())
 		{
-			@Override
-			public void mouseEntered(MouseEvent e)
-			{
-				if (!hasFocus())
-				{
-					setBackground(ColorScheme.DARKER_GRAY_HOVER_COLOR);
-				}
-			}
-
-			@Override
-			public void mouseExited(MouseEvent e)
-			{
-				// Moving onto the cog or switch is still inside the row.
-				if (!hasFocus() && getMousePosition(true) == null)
-				{
-					setBackground(ColorScheme.DARKER_GRAY_COLOR);
-				}
-			}
-		});
+			// Painted as a rounded card in paintComponent.
+			setOpaque(false);
+			setBackground(ColorScheme.DARKER_GRAY_COLOR);
+			setBorder(new EmptyBorder(0, 4, 0, 4));
+		}
 
 		PluginDescriptor pluginDescriptor = pluginConfig.getPlugin() == null ? null
 			: pluginConfig.getPlugin().getClass().getAnnotation(PluginDescriptor.class);
@@ -256,8 +239,12 @@ class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 		addLabelPopupMenu(nameLabel, configMenuItem, pluginConfig.createSupportMenuItem(pluginConfig.getPlugin()),
 			pluginListPanel.getBugReporter().menuItem(this, pluginConfig.getPlugin()), uninstallItem);
 		String tag = MicrobotPluginNames.authorTag(pluginConfig.getName());
+		if (!ClientTheme.redesign())
+		{
+			add(nameLabel, BorderLayout.CENTER);
+		}
 		// An icon-only tag (no letters) has nothing to put in a badge, so it stays in the name as text.
-		if (!tag.matches(".*[\\p{L}\\p{N}].*"))
+		else if (!tag.matches(".*[\\p{L}\\p{N}].*"))
 		{
 			if (!tag.isEmpty())
 			{
@@ -326,6 +313,53 @@ class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 				setBackground(background);
 			}
 		});
+
+		if (ClientTheme.redesign())
+		{
+			MouseAdapter hover = new MouseAdapter()
+			{
+				@Override
+				public void mouseEntered(MouseEvent e)
+				{
+					if (!hasFocus())
+					{
+						setBackground(ColorScheme.DARKER_GRAY_HOVER_COLOR);
+					}
+				}
+
+				@Override
+				public void mouseExited(MouseEvent e)
+				{
+					// Moving onto the cog or switch is still inside the row.
+					if (!hasFocus() && getMousePosition(true) == null)
+					{
+						setBackground(ColorScheme.DARKER_GRAY_COLOR);
+					}
+				}
+			};
+			addMouseListener(hover);
+			addHoverToListeningChildren(this, hover);
+		}
+	}
+
+	/**
+	 * Swing sends enter/exit to the deepest component that has its own mouse listeners (the name label's menu and
+	 * tooltip, the cog, the switch), not to the row; those children report hover for the row too. Children without
+	 * listeners are left alone so their events still reach the row.
+	 */
+	private static void addHoverToListeningChildren(Container parent, MouseListener hover)
+	{
+		for (Component c : parent.getComponents())
+		{
+			if (c.getMouseListeners().length > 0)
+			{
+				c.addMouseListener(hover);
+			}
+			if (c instanceof Container)
+			{
+				addHoverToListeningChildren((Container) c, hover);
+			}
+		}
 	}
 
 	private static JLabel createSideLabel(String text, String tooltip)
@@ -339,16 +373,30 @@ class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 
 	@NotNull
 	private static JLabel createNameLabel(MicrobotPluginConfigurationDescriptor pluginConfig, int switchWidth, String version) {
-		// Plain text, so a long name ends in "..." on one line instead of wrapping.
-		JLabel nameLabel = new JLabel(MicrobotPluginNames.plainName(pluginConfig.getName()));
-		nameLabel.setForeground(ColorScheme.TEXT_COLOR);
+		JLabel nameLabel;
+		if (ClientTheme.redesign())
+		{
+			// Plain text, so a long name ends in "..." on one line instead of wrapping.
+			nameLabel = new JLabel(MicrobotPluginNames.plainName(pluginConfig.getName()));
+			nameLabel.setForeground(ColorScheme.TEXT_COLOR);
+		}
+		else
+		{
+			int buttons = 21 /*pin*/ + 25 /*config, if present*/ + switchWidth + 12 /*margins*/;
+			int textWidth = MicrobotPluginListPanel.LIST_ITEM_WIDTH - buttons;
+			nameLabel = new JLabel("<html><div style='width:" + textWidth + "px'>" + htmlBody(pluginConfig.getName()) + "</div></html>");
+			nameLabel.setForeground(Color.WHITE);
+		}
 		nameLabel.setHorizontalAlignment(JLabel.LEFT);
 		nameLabel.setVerticalAlignment(JLabel.CENTER);
 
 		String details = (pluginConfig.getDescription().isEmpty() ? "" : "<br>" + htmlBody(pluginConfig.getDescription()))
 			+ (version.isEmpty() ? "" : "<br>Version " + HtmlEscapers.htmlEscaper().escape(version));
-		// always: a long name is cut short with "..."
-		nameLabel.setToolTipText("<html>" + htmlBody(pluginConfig.getName()) + (details.isEmpty() ? "" : ":" + details) + "</html>");
+		// redesign: always, since a long name is cut short with "..."
+		if (ClientTheme.redesign() || !details.isEmpty())
+		{
+			nameLabel.setToolTipText("<html>" + htmlBody(pluginConfig.getName()) + (details.isEmpty() ? "" : ":" + details) + "</html>");
+		}
 		return nameLabel;
 	}
 
@@ -450,6 +498,11 @@ class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 	@Override
 	protected void paintComponent(Graphics g)
 	{
+		if (!ClientTheme.redesign())
+		{
+			super.paintComponent(g);
+			return;
+		}
 		Graphics2D g2 = (Graphics2D) g.create();
 		g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 		g2.setColor(getBackground());

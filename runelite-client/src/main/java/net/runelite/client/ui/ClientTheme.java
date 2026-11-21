@@ -166,6 +166,19 @@ public final class ClientTheme
 		return isStock(t) ? classic : themed;
 	}
 
+	/**
+	 * The side-panel redesign is for picked themes only; Classic, the default and fallback, keeps the stock layout.
+	 */
+	public static boolean redesign()
+	{
+		return redesign(CURRENT.palette);
+	}
+
+	static boolean redesign(Palette palette)
+	{
+		return palette != Palette.CLASSIC;
+	}
+
 	static Color classicOr(Palette palette, Color classic, Color themed)
 	{
 		return classicOr(new ClientTheme(palette), classic, themed);

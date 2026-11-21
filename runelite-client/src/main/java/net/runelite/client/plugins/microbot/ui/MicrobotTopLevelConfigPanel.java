@@ -20,6 +20,7 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import lombok.extern.slf4j.Slf4j;
 import java.awt.*;
+import java.awt.image.BufferedImage;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -42,6 +43,47 @@ public class MicrobotTopLevelConfigPanel extends PluginPanel {
     private MicrobotPluginPanel current;
     private boolean removeOnTabChange;
 
+    /**
+     * Creates a simple text-based icon for tabs.
+     * @param text {@link String} Text to display
+     * @param textColor {@link Color} Color of the text
+     * @param backgroundColor {@link Color} Background color (can be null for transparent)
+     * @param width Width of the icon
+     * @param height  Height of the icon
+     * @return ImageIcon {@link ImageIcon} with rendered text
+     */
+    private ImageIcon createTextIcon(String text, Color textColor, Color backgroundColor, int width, int height) {
+        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2d = image.createGraphics();
+
+        // Enable antialiasing for smoother text
+        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+
+        // Set background (optional, can be transparent)
+        if (backgroundColor != null) {
+            g2d.setColor(backgroundColor);
+            g2d.fillRect(0, 0, width, height);
+        }
+
+        // Set font and text color
+        g2d.setFont(PanelFonts.bold());
+        g2d.setColor(textColor);
+
+        // Calculate text position to center it
+        FontMetrics fm = g2d.getFontMetrics();
+        int textWidth = fm.stringWidth(text);
+        int textHeight = fm.getAscent();
+
+        int x = (width - textWidth) / 2;
+        int y = (height - textHeight) / 2 + textHeight;
+
+        g2d.drawString(text, x, y);
+        g2d.dispose();
+
+        return new ImageIcon(image);
+    }
+
     @Inject
     MicrobotTopLevelConfigPanel(
             EventBus eventBus,
@@ -58,6 +100,9 @@ public class MicrobotTopLevelConfigPanel extends PluginPanel {
         this.helpMenu = helpMenu;
 
         tabGroup = new MaterialTabGroup();
+        if (!ClientTheme.redesign()) {
+            tabGroup.setLayout(new GridLayout(1, 0, 7, 7));
+        }
         tabGroup.setBorder(new EmptyBorder(10, 10, 0, 10));
 
         content = new JPanel();
@@ -73,7 +118,7 @@ public class MicrobotTopLevelConfigPanel extends PluginPanel {
 
         pluginListPanelTab = addTextTab(pluginListPanel.getMuxer(), "Installed", "Installed Microbot Plugins");
         profilePanelTab = addTab(profilePanel, "profile_icon.png", "Profiles");
-        pluginHubTab = addTextTab(microbotPluginHubPanelProvider, "Plugin Hub", "Microbot Plugin Hub");
+        pluginHubTab = addTextTab(microbotPluginHubPanelProvider, "Plugin Hub", "Microbot Hub");
         pluginListPanel.setOpenHub(query -> {
             microbotPluginHubPanelProvider.get().search(query);
             tabGroup.select(pluginHubTab);
@@ -140,7 +185,8 @@ public class MicrobotTopLevelConfigPanel extends PluginPanel {
     }
 
     private MaterialTab addTextTab(MicrobotPluginPanel panel, String label, String tooltip) {
-        MaterialTab mt = new MaterialTab(label, tabGroup, null);
+        MaterialTab mt = ClientTheme.redesign() ? new MaterialTab(label, tabGroup, null)
+                : new MaterialTab(createTextIcon(label, Color.YELLOW, null, 80, 32), tabGroup, null);
         mt.setToolTipText(tooltip);
         mt.getAccessibleContext().setAccessibleName(tooltip);
         tabGroup.addTab(mt);
@@ -177,7 +223,8 @@ public class MicrobotTopLevelConfigPanel extends PluginPanel {
     }
 
     private MaterialTab addTextTab(Provider<? extends MicrobotPluginPanel> panelProvider, String label, String tooltip) {
-        MaterialTab mt = new MaterialTab(label, tabGroup, null);
+        MaterialTab mt = ClientTheme.redesign() ? new MaterialTab(label, tabGroup, null)
+                : new MaterialTab(createTextIcon(label, Color.YELLOW, null, 80, 32), tabGroup, null);
         mt.setToolTipText(tooltip);
         mt.getAccessibleContext().setAccessibleName(tooltip);
         tabGroup.addTab(mt);

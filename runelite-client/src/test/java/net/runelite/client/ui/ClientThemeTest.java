@@ -153,6 +153,21 @@ public class ClientThemeTest
 	}
 
 	@Test
+	public void redesignIsOffOnlyForClassic()
+	{
+		for (ClientTheme.Palette p : ClientTheme.Palette.values())
+		{
+			assertEquals(p != ClientTheme.Palette.CLASSIC, ClientTheme.redesign(p));
+		}
+	}
+
+	@Test
+	public void redesignLafOverridesShip()
+	{
+		org.junit.Assert.assertNotNull(net.runelite.client.ui.laf.RuneLiteLAF.class.getResource("RuneLiteLAF-redesign.properties"));
+	}
+
+	@Test
 	public void badJsonOrNoFileUsesDefaults()
 	{
 		assertEquals(ClientTheme.Palette.CLASSIC, ClientTheme.parse("not json {").palette);
