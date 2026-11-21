@@ -121,6 +121,22 @@ public class Rs2BankWalkBackSelectionTest {
     }
 
     @Test
+    public void nearestBankSearchAlwaysRefreshesTransportsBeforeChoosingABank() {
+        WorldPoint slayerDungeon = new WorldPoint(2795, 10035, 0);
+        player.when(Rs2Player::getWorldLocation).thenReturn(slayerDungeon);
+        routes(routeTo(slayerDungeon, new WorldPoint(2796, 10035, 0)),
+                routeTo(slayerDungeon, BankLocation.CAMELOT.getWorldPoint()));
+
+        Rs2Bank.getNearestBank(slayerDungeon);
+        Rs2Bank.bankItemsAndWalkBackToOriginalPosition(List.of("Logs"), slayerDungeon);
+
+        pathApi.verify(() -> Rs2PathApi.plan(argThat(request -> !request.isTeleportsIgnored())), times(2));
+        pathApi.verify(() -> Rs2PathApi.plan(argThat(request -> request.isTeleportsIgnored())), times(1));
+        pathApi.verify(() -> Rs2PathApi.plan(argThat(request ->
+                request.getRefreshPolicy() != Rs2RouteRequest.RefreshPolicy.ALWAYS)), never());
+    }
+
+    @Test
     public void walkBackDoesNotSearchForABankWhileInventoryHasRoom() {
         WorldPoint origin = new WorldPoint(3081, 3420, 0);
         player.when(Rs2Player::getWorldLocation).thenReturn(origin);
