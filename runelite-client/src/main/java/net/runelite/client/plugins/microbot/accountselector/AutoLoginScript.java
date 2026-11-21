@@ -110,6 +110,11 @@ public class AutoLoginScript extends Script {
 
 
 
+    @Override
+    protected boolean runsWhileLoggedOut() {
+        return true;
+    }
+
     public boolean run(AutoLoginConfig autoLoginConfig) {
         log.info("Starting AutoLogin script with world selection");
 

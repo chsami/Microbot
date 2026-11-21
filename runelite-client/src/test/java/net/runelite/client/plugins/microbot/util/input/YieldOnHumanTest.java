@@ -192,6 +192,11 @@ public class YieldOnHumanTest
 			net.runelite.client.plugins.microbot.Script script =
 				new net.runelite.client.plugins.microbot.Script()
 				{
+					@Override
+					protected boolean runsWhileLoggedOut()
+					{
+						return true;
+					}
 				};
 
 			PointerState.setFromBot(100, 100);
