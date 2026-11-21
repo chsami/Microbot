@@ -7,6 +7,8 @@ import java.awt.Font;
 import java.io.InputStream;
 import javax.swing.JEditorPane;
 import javax.swing.text.AttributeSet;
+import javax.swing.text.Document;
+import javax.swing.text.html.HTMLDocument;
 import javax.swing.text.html.HTMLEditorKit;
 import javax.swing.text.html.StyleSheet;
 import lombok.extern.slf4j.Slf4j;
@@ -93,6 +95,16 @@ public final class PanelFonts
 			public StyleSheet getStyleSheet()
 			{
 				return sheet;
+			}
+
+			@Override
+			public Document createDefaultDocument()
+			{
+				// the default wraps the kit's sheet in a plain StyleSheet, whose getFont() would not be ours
+				HTMLDocument doc = new HTMLDocument(sheet);
+				doc.setParser(getParser());
+				doc.setAsynchronousLoadPriority(-1);
+				return doc;
 			}
 		});
 		pane.setEditable(false);

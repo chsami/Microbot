@@ -58,10 +58,8 @@ import javax.swing.plaf.basic.BasicToggleButtonUI;
 import com.google.common.collect.Lists;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.ColorScheme;
-import net.runelite.client.ui.PanelFonts;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.components.PluginErrorPanel;
-import net.runelite.client.util.ColorUtil;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.QuantityFormatter;
 import net.runelite.client.util.SwingUtil;
@@ -83,6 +81,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static com.google.common.collect.Iterables.concat;
+import net.runelite.client.ui.components.KeyValueLabel;
 
 public class LootTrackerPanel extends PluginPanel
 {
@@ -104,8 +103,6 @@ public class LootTrackerPanel extends PluginPanel
 	private static final ImageIcon COLLAPSE_ICON;
 	private static final ImageIcon EXPAND_ICON;
 
-	private static final String HTML_LABEL_TEMPLATE =
-		"<html><body style='color:%s'>%s<span style='color:white'>%s</span></body></html>";
 	private static final String RESET_ALL_WARNING_TEXT =
 		"<html>This will permanently delete <b>all</b> loot.</html>";
 	private static final String RESET_CURRENT_WARNING_TEXT =
@@ -121,8 +118,8 @@ public class LootTrackerPanel extends PluginPanel
 
 	// Handle overall session data
 	private final JPanel overallPanel;
-	private final JLabel overallKillsLabel = new JLabel();
-	private final JLabel overallGpLabel = new JLabel();
+	private final KeyValueLabel overallKillsLabel = new KeyValueLabel();
+	private final KeyValueLabel overallGpLabel = new KeyValueLabel();
 	private final JLabel overallIcon = new JLabel();
 
 	// Details and navigation
@@ -315,8 +312,6 @@ public class LootTrackerPanel extends PluginPanel
 		overallInfo.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		overallInfo.setLayout(new GridLayout(2, 1));
 		overallInfo.setBorder(new EmptyBorder(2, 10, 2, 0));
-		overallKillsLabel.setFont(PanelFonts.small());
-		overallGpLabel.setFont(PanelFonts.small());
 		overallInfo.add(overallKillsLabel);
 		overallInfo.add(overallGpLabel);
 		overallPanel.add(overallIcon, BorderLayout.WEST);
@@ -740,16 +735,9 @@ public class LootTrackerPanel extends PluginPanel
 			priceType = config.priceType() == LootTrackerPriceType.HIGH_ALCHEMY ? "HA " : "GE ";
 		}
 
-		overallKillsLabel.setText(htmlLabel("Total count: ", overallKills));
-		overallGpLabel.setText(htmlLabel("Total " + priceType + "value: ", config.priceType() == LootTrackerPriceType.HIGH_ALCHEMY ? overallHa : overallGe));
+		overallKillsLabel.set("Total count: ", QuantityFormatter.quantityToStackSize(overallKills));
+		overallGpLabel.set("Total " + priceType + "value: ", QuantityFormatter.quantityToStackSize(config.priceType() == LootTrackerPriceType.HIGH_ALCHEMY ? overallHa : overallGe));
 		overallGpLabel.setToolTipText("<html>Total GE price: " + QuantityFormatter.formatNumber(overallGe)
 			+ "<br>Total HA price: " + QuantityFormatter.formatNumber(overallHa) + "</html>");
 		updateCollapseText();
-	}
-
-	private static String htmlLabel(String key, long value)
-	{
-		final String valueStr = QuantityFormatter.quantityToStackSize(value);
-		return String.format(HTML_LABEL_TEMPLATE, ColorUtil.toHexColor(ColorScheme.LIGHT_GRAY_COLOR), key, valueStr);
-	}
-}
+	}}
