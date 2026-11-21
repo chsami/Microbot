@@ -434,19 +434,16 @@ class ConfigPanel extends PluginPanel
 		// Create the main panel (similar to a Bootstrap panel)
 		JPanel panel = new JPanel();
 		panel.setLayout(new BorderLayout());
-		panel.setBorder(new CompoundBorder(
-				new EmptyBorder(10, 10, 10, 10), // Outer padding
-				new LineBorder(Color.GRAY, 1)    // Border around the panel
-		));
+		panel.setBorder(new CompoundBorder(new EmptyBorder(10, 10, 10, 10), new MatteBorder(0, 3, 0, 0, ColorScheme.BRAND_ORANGE)));
 
 		// Create the body/content panel
 		JPanel bodyPanel = new JPanel();
 		bodyPanel.setLayout(new BoxLayout(bodyPanel, BoxLayout.Y_AXIS)); // Vertical alignment
 		bodyPanel.setBorder(new EmptyBorder(10, 10, 10, 10)); // Padding inside the body
-		bodyPanel.setBackground(new Color(0, 142, 255, 50));
-		JLabel bodyLabel1 = new JLabel("<html>" + ci.value() + "</html>");
-		bodyLabel1.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
-		bodyPanel.add(bodyLabel1);
+		bodyPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		JLabel bodyLabel = new JLabel("<html>" + ci.value() + "</html>");
+		bodyLabel.setForeground(ColorScheme.TEXT_COLOR);
+		bodyPanel.add(bodyLabel);
 		bodyPanel.add(Box.createRigidArea(new Dimension(0, 5))); // Spacer between components
 
 		panel.add(bodyPanel, BorderLayout.CENTER);

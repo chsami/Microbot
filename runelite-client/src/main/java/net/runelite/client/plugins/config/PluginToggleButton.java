@@ -26,11 +26,10 @@
 package net.runelite.client.plugins.config;
 
 import java.awt.Dimension;
-import java.awt.image.BufferedImage;
 import java.util.List;
 import javax.swing.ImageIcon;
 import javax.swing.JToggleButton;
-import net.runelite.client.util.ImageUtil;
+import net.runelite.client.ui.components.SwitchIcons;
 import net.runelite.client.util.SwingUtil;
 
 class PluginToggleButton extends JToggleButton
@@ -40,16 +39,8 @@ class PluginToggleButton extends JToggleButton
 
 	static
 	{
-		BufferedImage onSwitcher = ImageUtil.loadImageResource(ConfigPanel.class, "switcher_on.png");
-		ON_SWITCHER = new ImageIcon(onSwitcher);
-		OFF_SWITCHER = new ImageIcon(ImageUtil.flipImage(
-			ImageUtil.luminanceScale(
-				ImageUtil.grayscaleImage(onSwitcher),
-				0.61f
-			),
-			true,
-			false
-		));
+		ON_SWITCHER = SwitchIcons.ON;
+		OFF_SWITCHER = SwitchIcons.OFF;
 	}
 
 	private String conflictString = "";
@@ -59,7 +50,7 @@ class PluginToggleButton extends JToggleButton
 		super(OFF_SWITCHER);
 		setSelectedIcon(ON_SWITCHER);
 		SwingUtil.removeButtonDecorations(this);
-		setPreferredSize(new Dimension(25, 0));
+		setPreferredSize(new Dimension(30, 0));
 		addItemListener(l -> updateTooltip());
 		updateTooltip();
 	}
