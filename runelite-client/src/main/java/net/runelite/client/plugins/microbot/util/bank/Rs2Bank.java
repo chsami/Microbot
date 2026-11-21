@@ -2475,7 +2475,8 @@ public class Rs2Bank {
                 .map(BankLocation::getWorldPoint)
                 .collect(Collectors.toSet());
 
-        Rs2RouteRequest request = Rs2RouteRequest.toAny(worldPoint, targets);
+        Rs2RouteRequest request = Rs2RouteRequest.toAny(worldPoint, targets)
+                .withRefreshPolicy(Rs2RouteRequest.RefreshPolicy.ALWAYS);
         if (useBankItems != null) {
             request = request.withBankItems(useBankItems);
         }

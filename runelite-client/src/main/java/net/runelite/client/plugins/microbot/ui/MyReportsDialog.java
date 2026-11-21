@@ -183,10 +183,11 @@ class MyReportsDialog extends JDialog
 			row.add(Box.createVerticalStrut(4));
 			row.add(hint(html("You answered: " + report.getAnswer())));
 		}
-		if (BugReportStatus.WONT_FIX.equals(report.getStatus()) && report.getNote() == null)
+		String askWhy = askWhyHint(report);
+		if (askWhy != null)
 		{
 			row.add(Box.createVerticalStrut(4));
-			row.add(hint("Want to know why? Ask on Discord and mention " + report.getCode() + "."));
+			row.add(hint(askWhy));
 		}
 		if (report.getSummary() != null && !report.getSummary().isEmpty())
 		{
@@ -272,13 +273,21 @@ class MyReportsDialog extends JDialog
 		return copied;
 	}
 
-	private static Color statusColor(String status)
+	static String askWhyHint(TrackedBugReport report)
+	{
+		boolean finishedWithoutReason = (BugReportStatus.WONT_FIX.equals(report.getStatus()) || BugReportStatus.CLOSED.equals(report.getStatus()))
+			&& report.getNote() == null;
+		return finishedWithoutReason ? "Want to know why? Ask on Discord and mention " + report.getCode() + "." : null;
+	}
+
+	static Color statusColor(String status)
 	{
 		switch (status)
 		{
 			case BugReportStatus.FIXED:
 				return ColorScheme.PROGRESS_COMPLETE_COLOR;
 			case BugReportStatus.WONT_FIX:
+			case BugReportStatus.CLOSED:
 				return ColorScheme.LIGHT_GRAY_COLOR;
 			case BugReportStatus.INVESTIGATING:
 				return ColorScheme.PROGRESS_INPROGRESS_COLOR;
