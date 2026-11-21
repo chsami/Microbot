@@ -1701,10 +1701,14 @@ public class Rs2Player {
      * @return The distance between the player's current location and the endpoint.
      */
     public static int distanceTo(WorldPoint endpoint) {
-        if (Microbot.getClient().getTopLevelWorldView().getScene().isInstance()) {
-            return getWorldLocation().distanceTo(endpoint);
+        WorldPoint location = getWorldLocation();
+        if (location == null || endpoint == null) {
+            return Integer.MAX_VALUE;
         }
-        return Rs2Walker.getDistanceBetween(getWorldLocation(), endpoint);
+        if (Microbot.getClient().getTopLevelWorldView().getScene().isInstance()) {
+            return location.distanceTo(endpoint);
+        }
+        return Rs2Walker.getDistanceBetween(location, endpoint);
     }
 
     /**
