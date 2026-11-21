@@ -36,7 +36,7 @@ import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 import javax.swing.border.EmptyBorder;
 import net.runelite.client.ui.ColorScheme;
-import net.runelite.client.ui.FontManager;
+import net.runelite.client.ui.PanelFonts;
 import net.runelite.client.util.SwingUtil;
 
 class StopwatchPanel extends ClockPanel
@@ -134,7 +134,7 @@ class StopwatchPanel extends ClockPanel
 	private JLabel createSmallLabel(String text)
 	{
 		JLabel label = new JLabel(text, SwingConstants.CENTER);
-		label.setFont(FontManager.getRunescapeSmallFont());
+		label.setFont(PanelFonts.small());
 		label.setForeground(LAP_DATA_COLOR);
 
 		return label;

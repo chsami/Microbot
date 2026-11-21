@@ -2,7 +2,7 @@ package net.runelite.client.plugins.microbot.inventorysetups.ui;
 
 import net.runelite.client.plugins.microbot.inventorysetups.MInventorySetupsPlugin;
 import net.runelite.client.ui.ColorScheme;
-import net.runelite.client.ui.FontManager;
+import net.runelite.client.ui.PanelFonts;
 
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -37,7 +37,7 @@ public class InventorySetupsLayoutWarningPanel extends JPanel
 		textArea.setEditable(false);
 		textArea.setFocusable(false);
 		textArea.setBackground(ColorScheme.DARK_GRAY_COLOR);
-		Font textAreaFont = FontManager.getRunescapeFont();
+		Font textAreaFont = PanelFonts.regular();
 		textAreaFont = textAreaFont.deriveFont(textAreaFont.getStyle(), (float)textAreaFont.getSize() - (float)0.1);
 		textArea.setFont(textAreaFont);
 
@@ -53,8 +53,8 @@ public class InventorySetupsLayoutWarningPanel extends JPanel
 			panel.setHasDisplayedLayoutWarning(true);
 			panel.showCorrectPanel();
 		});
-		configureSettings.setFont(FontManager.getRunescapeSmallFont());
-		configureSettings2.setFont(FontManager.getRunescapeSmallFont());
+		configureSettings.setFont(PanelFonts.small());
+		configureSettings2.setFont(PanelFonts.small());
 		configureSettings.setHorizontalAlignment(JLabel.CENTER);
 		configureSettings2.setHorizontalAlignment(JLabel.CENTER);
 
@@ -73,7 +73,7 @@ public class InventorySetupsLayoutWarningPanel extends JPanel
 			panel.setHasDisplayedLayoutWarning(true);
 			panel.showCorrectPanel();
 		});
-		noConfigureSettings.setFont(FontManager.getRunescapeSmallFont());
+		noConfigureSettings.setFont(PanelFonts.small());
 		noConfigureSettings.setHorizontalAlignment(JLabel.CENTER);
 		noConfigureSettingsPanel.add(noConfigureSettings, BorderLayout.NORTH);
 		noConfigureSettingsPanel.add(noConfigureSettingsButton, BorderLayout.SOUTH);

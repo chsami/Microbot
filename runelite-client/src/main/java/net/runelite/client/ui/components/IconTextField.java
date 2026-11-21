@@ -58,6 +58,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
+import net.runelite.client.ui.PanelFonts;
 import net.runelite.client.util.SwingUtil;
 import org.apache.commons.lang3.StringUtils;
 
@@ -123,7 +124,7 @@ public class IconTextField extends JPanel
 		textField.addMouseListener(hoverEffect);
 		innerTxt.addMouseListener(hoverEffect);
 
-		clearButton = createRHSButton(ColorScheme.PROGRESS_ERROR_COLOR, Color.PINK, FontManager.getRunescapeBoldFont());
+		clearButton = createRHSButton(ColorScheme.PROGRESS_ERROR_COLOR, Color.PINK, PanelFonts.bold());
 		clearButton.setText("×");
 		clearButton.addActionListener(evt ->
 		{
@@ -338,6 +339,11 @@ public class IconTextField extends JPanel
 	public void removeKeyListener(KeyListener keyListener)
 	{
 		textField.removeKeyListener(keyListener);
+	}
+
+	public void setPlaceholderText(String text)
+	{
+		textField.getTextField().putClientProperty("JTextField.placeholderText", text);
 	}
 
 	public void setEditable(boolean editable)

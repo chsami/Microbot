@@ -24,6 +24,9 @@
  */
 package net.runelite.client.plugins.microbot.ui;
 
+import net.runelite.client.util.ColorUtil;
+import java.awt.Graphics2D;
+
 import com.google.common.html.HtmlEscapers;
 import lombok.Getter;
 import lombok.Setter;
@@ -32,7 +35,7 @@ import net.runelite.client.plugins.microbot.AlwaysOnPlugins;
 import net.runelite.client.plugins.config.SearchablePlugin;
 import net.runelite.client.plugins.microbot.ui.search.MicrobotPluginNames;
 import net.runelite.client.ui.ColorScheme;
-import net.runelite.client.ui.FontManager;
+import net.runelite.client.ui.PanelFonts;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.SwingUtil;
 import org.jetbrains.annotations.NotNull;
@@ -56,7 +59,7 @@ class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 {
 	private static final ImageIcon ON_STAR;
 	private static final ImageIcon OFF_STAR;
-	private static final int MIN_ITEM_HEIGHT = 20;
+	private static final int MIN_ITEM_HEIGHT = 30;
 	private static final int SWITCH_WIDTH = 34;
 	private static final float DIMMED_ALPHA = 0.6f;
 
@@ -131,6 +134,31 @@ class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 		}
 
 		setLayout(new BorderLayout(3, 0));
+		// Painted as a rounded card in paintComponent.
+		setOpaque(false);
+		setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		setBorder(new EmptyBorder(0, 4, 0, 4));
+		addMouseListener(new java.awt.event.MouseAdapter()
+		{
+			@Override
+			public void mouseEntered(java.awt.event.MouseEvent e)
+			{
+				if (!hasFocus())
+				{
+					setBackground(ColorScheme.DARKER_GRAY_HOVER_COLOR);
+				}
+			}
+
+			@Override
+			public void mouseExited(java.awt.event.MouseEvent e)
+			{
+				// Moving onto the cog or switch is still inside the row.
+				if (!hasFocus() && getMousePosition(true) == null)
+				{
+					setBackground(ColorScheme.DARKER_GRAY_COLOR);
+				}
+			}
+		});
 
 		PluginDescriptor pluginDescriptor = pluginConfig.getPlugin() == null ? null
 			: pluginConfig.getPlugin().getClass().getAnnotation(PluginDescriptor.class);
@@ -144,7 +172,7 @@ class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 		setPreferredSize(new Dimension(MicrobotPluginListPanel.LIST_ITEM_WIDTH, baseHeight));
 
 		SwingUtil.removeButtonDecorations(statusButton);
-		statusButton.setFont(FontManager.getRunescapeSmallFont());
+		statusButton.setFont(PanelFonts.small());
 		statusButton.setHorizontalAlignment(SwingConstants.LEFT);
 		statusButton.setBorder(new EmptyBorder(0, 24, 2, 0));
 		// A Tab stop, not focused by a click: Space, or Enter below, runs it, so keyboard users can update or see why.
@@ -225,10 +253,24 @@ class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 
 		addLabelPopupMenu(nameLabel, configMenuItem, pluginConfig.createSupportMenuItem(pluginConfig.getPlugin()),
 			pluginListPanel.getBugReporter().menuItem(this, pluginConfig.getPlugin()), uninstallItem);
-		add(nameLabel, BorderLayout.CENTER);
+		String tag = MicrobotPluginNames.authorTag(pluginConfig.getName());
+		// An icon-only tag (no letters) has nothing to put in a badge.
+		if (!tag.matches(".*[\\p{L}\\p{N}].*"))
+		{
+			add(nameLabel, BorderLayout.CENTER);
+		}
+		else
+		{
+			JPanel name = new JPanel(new BorderLayout(6, 0));
+			name.setOpaque(false);
+			name.add(tagBadge(tag, tagColor(tagColorSpec(pluginConfig.getName()))), BorderLayout.WEST);
+			name.add(nameLabel, BorderLayout.CENTER);
+			add(name, BorderLayout.CENTER);
+		}
 
 		onOffToggle = new MicrobotPluginToggleButton();
 		onOffToggle.setConflicts(pluginConfig.getConflicts());
+		onOffToggle.getAccessibleContext().setAccessibleName(MicrobotPluginNames.plainName(pluginConfig.getName()));
 		if (sideLabel != null)
 		{
 			buttonPanel.add(sideLabel, BorderLayout.LINE_END);
@@ -283,7 +325,7 @@ class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 	private static JLabel createSideLabel(String text, String tooltip)
 	{
 		JLabel label = new JLabel(text);
-		label.setFont(FontManager.getRunescapeSmallFont());
+		label.setFont(PanelFonts.small());
 		label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 		label.setToolTipText(tooltip);
 		return label;
@@ -291,10 +333,9 @@ class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 
 	@NotNull
 	private static JLabel createNameLabel(MicrobotPluginConfigurationDescriptor pluginConfig, int switchWidth, String version) {
-		int buttons = 21 /*pin*/ + 25 /*config, if present*/ + switchWidth + 12 /*margins*/;
-		int textWidth = MicrobotPluginListPanel.LIST_ITEM_WIDTH - buttons;
-		JLabel nameLabel = new JLabel("<html><div style='width:" + textWidth + "px'>" + htmlBody(pluginConfig.getName()) + "</div></html>");
-		nameLabel.setForeground(Color.WHITE);
+		// Plain text, so a long name ends in "..." on one line instead of wrapping.
+		JLabel nameLabel = new JLabel(MicrobotPluginNames.plainName(pluginConfig.getName()));
+		nameLabel.setForeground(ColorScheme.TEXT_COLOR);
 		nameLabel.setHorizontalAlignment(JLabel.LEFT);
 		nameLabel.setVerticalAlignment(JLabel.CENTER);
 
@@ -335,6 +376,79 @@ class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 		}
 		return status.isSevere() ? ColorScheme.PROGRESS_ERROR_COLOR
 			: status.getKind() == MicrobotPluginRowStatus.Kind.UPDATE ? MicrobotPluginHubPanel.PASTEL_ORANGE : ColorScheme.PROGRESS_INPROGRESS_COLOR;
+	}
+
+	private static final java.util.regex.Pattern AUTHOR_TAG = java.util.regex.Pattern.compile(
+		"^\\s*\\[(?:<font color=['\"]?([^'\">]+)['\"]?>)?(.*?)(?:</font>)?\\]\\s*", java.util.regex.Pattern.CASE_INSENSITIVE);
+
+	private static String tagColorSpec(String raw)
+	{
+		java.util.regex.Matcher m = AUTHOR_TAG.matcher(htmlBody(raw));
+		return m.find() ? m.group(1) : null;
+	}
+
+	/** The [tag] as a small rounded badge tinted with the tag's own colour. */
+	private static JLabel tagBadge(String tag, Color color)
+	{
+		Color fill = ColorUtil.colorLerp(ColorScheme.DARKER_GRAY_COLOR, color, 0.18);
+		Color edge = ColorUtil.colorLerp(ColorScheme.DARKER_GRAY_COLOR, color, 0.45);
+		JLabel badge = new JLabel(tag)
+		{
+			@Override
+			protected void paintComponent(Graphics g)
+			{
+				Graphics2D g2 = (Graphics2D) g.create();
+				g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+				int h = 16;
+				int y = (getHeight() - h) / 2;
+				g2.setColor(fill);
+				g2.fillRoundRect(0, y, getWidth() - 1, h, 6, 6);
+				g2.setColor(edge);
+				g2.drawRoundRect(0, y, getWidth() - 1, h, 6, 6);
+				g2.dispose();
+				super.paintComponent(g);
+			}
+		};
+		badge.setFont(net.runelite.client.ui.PanelFonts.of(java.awt.Font.BOLD, 10f));
+		badge.setForeground(color);
+		badge.setBorder(new EmptyBorder(0, 5, 0, 5));
+		badge.setHorizontalAlignment(SwingConstants.CENTER);
+		return badge;
+	}
+
+	static Color tagColor(String spec)
+	{
+		if (spec == null)
+		{
+			return ColorScheme.LIGHT_GRAY_COLOR;
+		}
+		java.util.regex.Matcher hex = java.util.regex.Pattern.compile("#?([0-9a-fA-F]{6})").matcher(spec);
+		if (hex.find())
+		{
+			return new Color(Integer.parseInt(hex.group(1), 16));
+		}
+		switch (spec.trim().toLowerCase(java.util.Locale.ROOT))
+		{
+			case "green": return new Color(70, 167, 88);
+			case "red": return new Color(229, 72, 77);
+			case "orange": return new Color(247, 107, 21);
+			case "yellow": return new Color(255, 197, 61);
+			case "blue": return new Color(62, 155, 255);
+			case "cyan": return new Color(0, 194, 215);
+			case "magenta": case "pink": case "purple": return new Color(190, 120, 255);
+			case "white": return ColorScheme.TEXT_COLOR;
+			default: return ColorScheme.LIGHT_GRAY_COLOR;
+		}
+	}
+
+	@Override
+	protected void paintComponent(Graphics g)
+	{
+		Graphics2D g2 = (Graphics2D) g.create();
+		g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+		g2.setColor(getBackground());
+		g2.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
+		g2.dispose();
 	}
 
 	static String htmlBody(String html)

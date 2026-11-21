@@ -55,7 +55,7 @@ import net.runelite.client.plugins.PluginManager;
 import net.runelite.client.plugins.microbot.AlwaysOnPlugins;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.DynamicGridLayout;
-import net.runelite.client.ui.FontManager;
+import net.runelite.client.ui.PanelFonts;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.UnitFormatterFactory;
 import net.runelite.client.ui.components.ColorJButton;
@@ -286,7 +286,7 @@ class ConfigPanel extends PluginPanel
 			String name = cs.name();
 			final JLabel sectionName = new JLabel(name);
 			sectionName.setForeground(ColorScheme.BRAND_ORANGE);
-			sectionName.setFont(FontManager.getRunescapeBoldFont());
+			sectionName.setFont(PanelFonts.bold());
 			sectionName.setToolTipText("<html>" + name + ":<br>" + cs.description() + "</html>");
 			sectionHeader.add(sectionName, BorderLayout.CENTER);
 
@@ -434,19 +434,14 @@ class ConfigPanel extends PluginPanel
 		// Create the main panel (similar to a Bootstrap panel)
 		JPanel panel = new JPanel();
 		panel.setLayout(new BorderLayout());
-		panel.setBorder(new CompoundBorder(
-				new EmptyBorder(10, 10, 10, 10), // Outer padding
-				new LineBorder(Color.GRAY, 1)    // Border around the panel
-		));
+		panel.setBorder(new CompoundBorder(new EmptyBorder(10, 10, 10, 10), new MatteBorder(0, 3, 0, 0, ColorScheme.BRAND_ORANGE)));
 
 		// Create the body/content panel
 		JPanel bodyPanel = new JPanel();
 		bodyPanel.setLayout(new BoxLayout(bodyPanel, BoxLayout.Y_AXIS)); // Vertical alignment
 		bodyPanel.setBorder(new EmptyBorder(10, 10, 10, 10)); // Padding inside the body
-		bodyPanel.setBackground(new Color(0, 142, 255, 50));
-		JLabel bodyLabel1 = new JLabel("<html>" + ci.value() + "</html>");
-		bodyLabel1.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
-		bodyPanel.add(bodyLabel1);
+		bodyPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		bodyPanel.add(PanelFonts.html("<html>" + ci.value() + "</html>", ColorScheme.TEXT_COLOR));
 		bodyPanel.add(Box.createRigidArea(new Dimension(0, 5))); // Spacer between components
 
 		panel.add(bodyPanel, BorderLayout.CENTER);

@@ -40,16 +40,8 @@ class PluginToggleButton extends JToggleButton
 
 	static
 	{
-		BufferedImage onSwitcher = ImageUtil.loadImageResource(ConfigPanel.class, "switcher_on.png");
-		ON_SWITCHER = new ImageIcon(onSwitcher);
-		OFF_SWITCHER = new ImageIcon(ImageUtil.flipImage(
-			ImageUtil.luminanceScale(
-				ImageUtil.grayscaleImage(onSwitcher),
-				0.61f
-			),
-			true,
-			false
-		));
+		ON_SWITCHER = net.runelite.client.ui.components.SwitchIcons.ON;
+		OFF_SWITCHER = net.runelite.client.ui.components.SwitchIcons.OFF;
 	}
 
 	private String conflictString = "";
@@ -59,7 +51,7 @@ class PluginToggleButton extends JToggleButton
 		super(OFF_SWITCHER);
 		setSelectedIcon(ON_SWITCHER);
 		SwingUtil.removeButtonDecorations(this);
-		setPreferredSize(new Dimension(25, 0));
+		setPreferredSize(new Dimension(30, 0));
 		addItemListener(l -> updateTooltip());
 		updateTooltip();
 	}

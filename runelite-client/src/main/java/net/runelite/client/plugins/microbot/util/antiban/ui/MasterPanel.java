@@ -5,7 +5,8 @@ import net.runelite.client.plugins.microbot.util.antiban.AntibanPlugin;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.antiban.enums.Category;
-import net.runelite.client.ui.FontManager;
+import net.runelite.client.ui.ColorScheme;
+import net.runelite.client.ui.PanelFonts;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.util.ImageUtil;
 
@@ -141,10 +142,10 @@ public class MasterPanel extends PluginPanel {
         Image bgImage = icon;
         JPanel titlePanel = new JPanel(new BorderLayout());
         // “rubber-duck” yellow; feel free to tweak the RGB if you want
-        titlePanel.setBackground(new Color(255, 223, 0));
+        titlePanel.setBackground(ColorScheme.BRAND_ORANGE);
         // label-only, centered
         JLabel titleLabel = new JLabel("ANTIBAN", SwingConstants.CENTER);
-        titleLabel.setFont(FontManager.getRunescapeBoldFont().deriveFont(32.0f));
+        titleLabel.setFont(PanelFonts.of(Font.BOLD, 20f));
         titleLabel.setForeground(Color.BLACK);
         // add some vertical padding
         titleLabel.setBorder(BorderFactory.createEmptyBorder(1, 0, 1, 0));
@@ -152,13 +153,13 @@ public class MasterPanel extends PluginPanel {
 
         // use our custom panel
         BackgroundPanel headerPanel = new BackgroundPanel(bgImage);
-        headerPanel.setBackground(new Color(27, 27, 27));  // fallback color
+        headerPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);  // fallback color
 
         // your title label
         JLabel headerLabel = new JLabel("", SwingConstants.CENTER);
         headerLabel.setVerticalTextPosition(SwingConstants.BOTTOM);
         headerLabel.setHorizontalTextPosition(SwingConstants.CENTER);
-        headerLabel.setFont(FontManager.getRunescapeBoldFont().deriveFont(36.0f));
+        headerLabel.setFont(PanelFonts.of(Font.BOLD, 22f));
         headerLabel.setBorder(BorderFactory.createEmptyBorder(30, 0, 30, 0));
         // (optionally) make the text opaque or give it a contrasting color
         headerLabel.setForeground(Color.BLACK);
@@ -171,7 +172,7 @@ public class MasterPanel extends PluginPanel {
 
         // Create a wrapper panel for the title and header
         JPanel wrapperPanel = new JPanel(new BorderLayout());
-        wrapperPanel.setBackground(new Color(27, 27, 27)); // Set the background color
+        wrapperPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR); // Set the background color
         wrapperPanel.add(titlePanel, BorderLayout.NORTH);
         wrapperPanel.add(headerPanel, BorderLayout.CENTER);
 

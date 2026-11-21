@@ -25,14 +25,15 @@ import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 import net.runelite.client.ui.ColorScheme;
+import net.runelite.client.ui.PanelFonts;
 import net.runelite.client.ui.FontManager;
 
 class MicrobotTourCallout extends JWindow
 {
 	private static final int BODY_WIDTH = 460;
-	private static final Font TITLE_FONT = FontManager.getRunescapeBoldFont().deriveFont(32f);
+	private static final Font TITLE_FONT = PanelFonts.bold().deriveFont(32f);
 	private static final Font BODY_FONT = FontManager.getDefaultFont().deriveFont(17f);
-	private static final Font SMALL_FONT = FontManager.getRunescapeBoldFont();
+	private static final Font SMALL_FONT = PanelFonts.bold();
 	private static final int ARC = 10;
 
 	private final JLabel title = new JLabel();

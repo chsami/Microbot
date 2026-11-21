@@ -31,7 +31,7 @@ import net.runelite.client.plugins.microbot.questhelper.managers.QuestManager;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
 import net.runelite.client.ui.ColorScheme;
-import net.runelite.client.ui.FontManager;
+import net.runelite.client.ui.PanelFonts;
 import net.runelite.client.util.SwingUtil;
 
 import javax.annotation.Nullable;
@@ -82,7 +82,7 @@ public class QuestStepPanel extends JPanel implements MouseListener
 		addMouseListener(this);
 
 		headerLabel.setText(panelDetails.getHeader());
-		headerLabel.setFont(FontManager.getRunescapeBoldFont());
+		headerLabel.setFont(PanelFonts.bold());
 
 		headerLabel.setMinimumSize(new Dimension(1, headerLabel.getPreferredSize().height));
 
