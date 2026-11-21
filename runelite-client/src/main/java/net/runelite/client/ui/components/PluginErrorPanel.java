@@ -31,7 +31,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 import javax.swing.border.EmptyBorder;
-import net.runelite.client.ui.FontManager;
+import net.runelite.client.ui.PanelFonts;
 import net.runelite.client.ui.components.shadowlabel.JShadowedLabel;
 
 /**
@@ -52,7 +52,7 @@ public class PluginErrorPanel extends JPanel
 		noResultsTitle.setForeground(Color.WHITE);
 		noResultsTitle.setHorizontalAlignment(SwingConstants.CENTER);
 
-		noResultsDescription.setFont(FontManager.getRunescapeSmallFont());
+		noResultsDescription.setFont(PanelFonts.small());
 		noResultsDescription.setForeground(Color.GRAY);
 		noResultsDescription.setHorizontalAlignment(SwingConstants.CENTER);
 

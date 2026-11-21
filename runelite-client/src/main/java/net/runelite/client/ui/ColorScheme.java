@@ -31,23 +31,26 @@ import java.awt.Color;
  */
 public class ColorScheme
 {
+	/* The palette the launcher's Themes tab picked; see ClientTheme */
+	private static final ClientTheme.Palette P = ClientTheme.current().palette;
+
 	/* The orange color used for the branding's accents */
-	public static final Color BRAND_ORANGE = new Color(220, 138, 0);
+	public static final Color BRAND_ORANGE = P.accent;
 
 	/* The orange color used for the branding's accents, with lowered opacity */
-	public static final Color BRAND_ORANGE_TRANSPARENT = new Color(220, 138, 0, 120);
+	public static final Color BRAND_ORANGE_TRANSPARENT = new Color(P.accent.getRed(), P.accent.getGreen(), P.accent.getBlue(), 120);
 
-	public static final Color DARKER_GRAY_COLOR = new Color(30, 30, 30);
-	public static final Color DARK_GRAY_COLOR = new Color(40, 40, 40);
-	public static final Color MEDIUM_GRAY_COLOR = new Color(77, 77, 77);
-	public static final Color LIGHT_GRAY_COLOR = new Color(165, 165, 165);
+	public static final Color DARKER_GRAY_COLOR = P.darker;
+	public static final Color DARK_GRAY_COLOR = P.dark;
+	public static final Color MEDIUM_GRAY_COLOR = P.medium;
+	public static final Color LIGHT_GRAY_COLOR = P.light;
 
-	public static final Color TEXT_COLOR = new Color(198, 198, 198);
-	public static final Color CONTROL_COLOR = new Color(30, 30, 30);
-	public static final Color BORDER_COLOR = new Color(23, 23, 23);
+	public static final Color TEXT_COLOR = P.text;
+	public static final Color CONTROL_COLOR = P.control;
+	public static final Color BORDER_COLOR = P.border;
 
-	public static final Color DARKER_GRAY_HOVER_COLOR = new Color(60, 60, 60);
-	public static final Color DARK_GRAY_HOVER_COLOR = new Color(35, 35, 35);
+	public static final Color DARKER_GRAY_HOVER_COLOR = P.darkerHover;
+	public static final Color DARK_GRAY_HOVER_COLOR = P.darkHover;
 
 	/* The color for the green progress bar (used in ge offers, farming tracker, etc)*/
 	public static final Color PROGRESS_COMPLETE_COLOR = new Color(55, 240, 70);
@@ -68,6 +71,6 @@ public class ColorScheme
 	public static final Color GRAND_EXCHANGE_LIMIT = new Color(50, 160, 250);
 
 	/* The background color of the scrollbar's track */
-	public static final Color SCROLL_TRACK_COLOR = new Color(25, 25, 25);
+	public static final Color SCROLL_TRACK_COLOR = P.scrollTrack;
 
 }

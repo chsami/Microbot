@@ -44,7 +44,7 @@ import net.runelite.api.Constants;
 import net.runelite.api.Item;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.ColorScheme;
-import net.runelite.client.ui.FontManager;
+import net.runelite.client.ui.PanelFonts;
 
 class InventoryDeltaPanel extends JPanel implements Scrollable
 {
@@ -172,7 +172,7 @@ class InventoryDeltaPanel extends JPanel implements Scrollable
 		gridItem.setPreferredSize(ITEM_SIZE);
 		gridItem.setVerticalAlignment(SwingConstants.CENTER);
 		gridItem.setHorizontalAlignment(SwingConstants.CENTER);
-		gridItem.setFont(FontManager.getRunescapeSmallFont());
+		gridItem.setFont(PanelFonts.small());
 
 		final Item item = inventoryItem.getItem();
 		if (item.getId() == -1)

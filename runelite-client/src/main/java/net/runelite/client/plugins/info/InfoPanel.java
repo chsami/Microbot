@@ -50,7 +50,8 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.SessionClose;
 import net.runelite.client.events.SessionOpen;
 import net.runelite.client.ui.ColorScheme;
-import net.runelite.client.ui.FontManager;
+import net.runelite.client.ui.components.KeyValueLabel;
+import net.runelite.client.ui.PanelFonts;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.LinkBrowser;
@@ -121,21 +122,20 @@ public class InfoPanel extends PluginPanel
 		versionPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
 		versionPanel.setLayout(new GridLayout(0, 1));
 
-		final Font smallFont = FontManager.getRunescapeSmallFont();
+		final Font smallFont = PanelFonts.small();
 
-		JLabel version = new JLabel(htmlLabel("RuneLite version: ", runeliteVersion));
-		version.setFont(smallFont);
+		KeyValueLabel version = new KeyValueLabel();
+		version.set("RuneLite version: ", runeliteVersion);
 
-		JLabel revision = new JLabel();
-		revision.setFont(smallFont);
+		KeyValueLabel revision = new KeyValueLabel();
 
 		String engineVer = engineVer = String.format("Rev %d", client.getRevision());
 
-		revision.setText(htmlLabel("Oldschool revision: ", engineVer));
+		revision.set("Oldschool revision: ", engineVer);
 
-		JLabel launcher = new JLabel(htmlLabel("Launcher version: ", MoreObjects
-			.firstNonNull(RuneLiteProperties.getLauncherVersion(), "Unknown")));
-		launcher.setFont(smallFont);
+		KeyValueLabel launcher = new KeyValueLabel();
+		launcher.set("Launcher version: ", MoreObjects
+			.firstNonNull(RuneLiteProperties.getLauncherVersion(), "Unknown"));
 
 		loggedLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 		loggedLabel.setFont(smallFont);
@@ -247,11 +247,11 @@ public class InfoPanel extends PluginPanel
 
 		JLabel topLine = new JLabel(topText);
 		topLine.setForeground(Color.WHITE);
-		topLine.setFont(FontManager.getRunescapeSmallFont());
+		topLine.setFont(PanelFonts.small());
 
 		JLabel bottomLine = new JLabel(bottomText);
 		bottomLine.setForeground(Color.WHITE);
-		bottomLine.setFont(FontManager.getRunescapeSmallFont());
+		bottomLine.setFont(PanelFonts.small());
 
 		textContainer.add(topLine);
 		textContainer.add(bottomLine);
@@ -282,11 +282,6 @@ public class InfoPanel extends PluginPanel
 			emailLabel.setText("<a href=\"" + RUNELITE_LOGIN + "\">Sign in</a> to sync settings to the cloud.");
 			loggedLabel.setText("Not signed in");
 		}
-	}
-
-	private static String htmlLabel(String key, String value)
-	{
-		return "<html><body style = 'color:#a5a5a5'>" + key + "<span style = 'color:white'>" + value + "</span></body></html>";
 	}
 
 	@Subscribe

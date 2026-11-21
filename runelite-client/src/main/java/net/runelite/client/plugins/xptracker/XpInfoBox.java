@@ -54,12 +54,11 @@ import net.runelite.api.Experience;
 import net.runelite.api.Skill;
 import net.runelite.client.game.SkillIconManager;
 import net.runelite.client.ui.ColorScheme;
+import net.runelite.client.ui.components.KeyValueLabel;
 import net.runelite.client.ui.DynamicGridLayout;
-import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.SkillColor;
 import net.runelite.client.ui.components.MouseDragEventForwarder;
 import net.runelite.client.ui.components.ProgressBar;
-import net.runelite.client.util.ColorUtil;
 import net.runelite.client.util.LinkBrowser;
 import net.runelite.client.util.QuantityFormatter;
 
@@ -79,8 +78,6 @@ class XpInfoBox extends JPanel
 			+ "%s %s</html>";
 	private static final String PROGRESS_BAR_TOOLTIP_NO_ACTIONS =
 		"<html>%s %s</html>";
-	private static final String HTML_LABEL_TEMPLATE =
-		"<html><body style='color:%s'>%s<span style='color:white'>%s</span></body></html>";
 
 	private static final String REMOVE_STATE = "Remove from canvas";
 	private static final String ADD_STATE = "Add to canvas";
@@ -111,10 +108,10 @@ class XpInfoBox extends JPanel
 
 	private final ProgressBar progressBar = new ProgressBar();
 
-	private final JLabel topLeftStat = new JLabel();
-	private final JLabel bottomLeftStat = new JLabel();
-	private final JLabel topRightStat = new JLabel();
-	private final JLabel bottomRightStat = new JLabel();
+	private final KeyValueLabel topLeftStat = new KeyValueLabel();
+	private final KeyValueLabel bottomLeftStat = new KeyValueLabel();
+	private final KeyValueLabel topRightStat = new KeyValueLabel();
+	private final KeyValueLabel bottomRightStat = new KeyValueLabel();
 	private final JMenuItem pauseSkill = new JMenuItem("Pause");
 	private final JMenuItem canvasItem = new JMenuItem(ADD_STATE);
 
@@ -201,11 +198,6 @@ class XpInfoBox extends JPanel
 		statsPanel.setLayout(new DynamicGridLayout(2, 2));
 		statsPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		statsPanel.setBorder(new EmptyBorder(9, 2, 9, 2));
-
-		topLeftStat.setFont(FontManager.getRunescapeSmallFont());
-		bottomLeftStat.setFont(FontManager.getRunescapeSmallFont());
-		topRightStat.setFont(FontManager.getRunescapeSmallFont());
-		bottomRightStat.setFont(FontManager.getRunescapeSmallFont());
 
 		statsPanel.add(topLeftStat);     // top left
 		statsPanel.add(topRightStat);    // top right
@@ -385,23 +377,22 @@ class XpInfoBox extends JPanel
 
 		// Update information labels
 		// Update exp per hour separately, every time (not only when there's an update)
-		topLeftStat.setText(htmlLabel(xpTrackerConfig.xpPanelLabel1(), xpSnapshotSingle));
-		topRightStat.setText(htmlLabel(xpTrackerConfig.xpPanelLabel2(), xpSnapshotSingle));
-		bottomLeftStat.setText(htmlLabel(xpTrackerConfig.xpPanelLabel3(), xpSnapshotSingle));
-		bottomRightStat.setText(htmlLabel(xpTrackerConfig.xpPanelLabel4(), xpSnapshotSingle));
+		setStat(topLeftStat, xpTrackerConfig.xpPanelLabel1(), xpSnapshotSingle);
+		setStat(topRightStat, xpTrackerConfig.xpPanelLabel2(), xpSnapshotSingle);
+		setStat(bottomLeftStat, xpTrackerConfig.xpPanelLabel3(), xpSnapshotSingle);
+		setStat(bottomRightStat, xpTrackerConfig.xpPanelLabel4(), xpSnapshotSingle);
 	}
 
-	private String htmlLabel(XpPanelLabel panelLabel, XpSnapshotSingle xpSnapshotSingle)
+	private void setStat(KeyValueLabel stat, XpPanelLabel panelLabel, XpSnapshotSingle xpSnapshotSingle)
 	{
 		// hide actions for combat skills
 		if (isActions(panelLabel) && isCombatSkill(skill))
 		{
-			return "";
+			stat.set("", "");
+			return;
 		}
 
-		String key = panelLabel.getKey() + ": ";
-		String value = panelLabel.getValueFunc().apply(xpSnapshotSingle);
-		return htmlLabel(key, value);
+		stat.set(panelLabel.getKey() + ": ", panelLabel.getValueFunc().apply(xpSnapshotSingle));
 	}
 
 	private static boolean isActions(XpPanelLabel panelLabel)
@@ -414,14 +405,8 @@ class XpInfoBox extends JPanel
 		return skill == Skill.ATTACK || skill == Skill.STRENGTH || skill == Skill.DEFENCE || skill == Skill.HITPOINTS || skill == Skill.RANGED;
 	}
 
-	static String htmlLabel(String key, int value)
+	static String formatXp(int value)
 	{
-		String valueStr = QuantityFormatter.quantityToRSDecimalStack(value, true);
-		return htmlLabel(key, valueStr);
-	}
-
-	static String htmlLabel(String key, String valueStr)
-	{
-		return String.format(HTML_LABEL_TEMPLATE, ColorUtil.toHexColor(ColorScheme.LIGHT_GRAY_COLOR), key, valueStr);
+		return QuantityFormatter.quantityToRSDecimalStack(value, true);
 	}
 }

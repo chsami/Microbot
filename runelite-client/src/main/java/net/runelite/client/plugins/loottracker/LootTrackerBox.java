@@ -52,7 +52,7 @@ import javax.swing.border.EmptyBorder;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.ColorScheme;
-import net.runelite.client.ui.FontManager;
+import net.runelite.client.ui.PanelFonts;
 import net.runelite.client.util.AsyncBufferedImage;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.QuantityFormatter;
@@ -104,13 +104,13 @@ class LootTrackerBox extends JPanel
 
 		JLabel titleLabel = new JLabel();
 		titleLabel.setText(Text.removeTags(record.getTitle()));
-		titleLabel.setFont(FontManager.getRunescapeSmallFont());
+		titleLabel.setFont(PanelFonts.small());
 		titleLabel.setForeground(Color.WHITE);
 		// Set a size to make BoxLayout truncate the name
 		titleLabel.setMinimumSize(new Dimension(1, titleLabel.getPreferredSize().height));
 		logTitle.add(titleLabel);
 
-		subTitleLabel.setFont(FontManager.getRunescapeSmallFont());
+		subTitleLabel.setFont(PanelFonts.small());
 		subTitleLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 
 		String subtitle = record.getSubTitle();
@@ -124,7 +124,7 @@ class LootTrackerBox extends JPanel
 		logTitle.add(Box.createHorizontalGlue());
 		logTitle.add(Box.createRigidArea(new Dimension(TITLE_PADDING, 0)));
 
-		priceLabel.setFont(FontManager.getRunescapeSmallFont());
+		priceLabel.setFont(PanelFonts.small());
 		priceLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 		logTitle.add(priceLabel);
 

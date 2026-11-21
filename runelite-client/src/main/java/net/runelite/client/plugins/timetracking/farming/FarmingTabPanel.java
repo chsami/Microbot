@@ -42,7 +42,7 @@ import net.runelite.client.plugins.timetracking.TabContentPanel;
 import net.runelite.client.plugins.timetracking.TimeTrackingConfig;
 import net.runelite.client.plugins.timetracking.TimeablePanel;
 import net.runelite.client.ui.ColorScheme;
-import net.runelite.client.ui.FontManager;
+import net.runelite.client.ui.PanelFonts;
 import net.runelite.client.util.AsyncBufferedImage;
 
 public class FarmingTabPanel extends TabContentPanel
@@ -108,7 +108,7 @@ public class FarmingTabPanel extends TabContentPanel
 					groupLabel.setBorder(new EmptyBorder(15, 0, 0, 0));
 				}
 
-				groupLabel.setFont(FontManager.getRunescapeSmallFont());
+				groupLabel.setFont(PanelFonts.small());
 
 				add(groupLabel, c);
 				c.gridy++;

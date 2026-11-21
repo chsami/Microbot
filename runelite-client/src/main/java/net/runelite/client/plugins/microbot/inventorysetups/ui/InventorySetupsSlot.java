@@ -35,7 +35,7 @@ import lombok.Getter;
 import lombok.Setter;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.ColorScheme;
-import net.runelite.client.ui.FontManager;
+import net.runelite.client.ui.PanelFonts;
 import net.runelite.client.util.AsyncBufferedImage;
 
 import javax.swing.*;
@@ -88,8 +88,8 @@ public class InventorySetupsSlot extends JPanel
 		this.parentSetup = null;
 		this.fuzzyIndicator = new JLabel();
 		this.stackIndicator = new JLabel();
-		fuzzyIndicator.setFont(FontManager.getRunescapeSmallFont());
-		stackIndicator.setFont(FontManager.getRunescapeSmallFont());
+		fuzzyIndicator.setFont(PanelFonts.small());
+		stackIndicator.setFont(PanelFonts.small());
 		this.indexInSlot = indexInSlot;
 		this.rightClickMenu = new JPopupMenu();
 		this.shiftRightClickMenu = new JPopupMenu();

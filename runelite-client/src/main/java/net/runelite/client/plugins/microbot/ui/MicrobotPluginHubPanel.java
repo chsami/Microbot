@@ -24,6 +24,8 @@
  */
 package net.runelite.client.plugins.microbot.ui;
 
+import net.runelite.client.ui.PanelFonts;
+
 import com.google.common.base.Strings;
 import com.google.common.html.HtmlEscapers;
 import lombok.Getter;
@@ -253,10 +255,10 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
             setLayout(layout);
 
             JLabel pluginName = new JLabel(manifest.getDisplayName());
-            pluginName.setFont(FontManager.getRunescapeBoldFont());
+            pluginName.setFont(PanelFonts.bold());
             pluginName.setToolTipText(manifest.getDisplayName());
             pluginName.setHorizontalAlignment(JLabel.LEFT);
-            stateLabel.setFont(FontManager.getRunescapeSmallFont());
+            stateLabel.setFont(PanelFonts.small());
 
             String[] authorsArr = manifest.getAuthors();
             String authorRaw = manifest.getAuthor();
@@ -273,7 +275,7 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
                 authorTooltip = isUnknown ? "Unknown" : a;
             }
             JLabel author = new JLabel(authorText);
-            author.setFont(FontManager.getRunescapeSmallFont());
+            author.setFont(PanelFonts.small());
             author.setToolTipText(authorTooltip);
             author.setHorizontalAlignment(JLabel.LEFT);
             author.setBorder(new EmptyBorder(0, 0, 0, 5));
@@ -300,8 +302,7 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
                 descriptionText = "<html>" + HtmlEscapers.htmlEscaper().escape(descriptionText) + "</html>";
             }
 
-            JLabel description = new JLabel(descriptionText);
-            description.setVerticalAlignment(JLabel.TOP);
+            JEditorPane description = PanelFonts.html(descriptionText, ColorScheme.TEXT_COLOR);
             description.setToolTipText(descriptionText);
 
             JLabel icon = new PluginIcon(Strings.nullToEmpty(manifest.getIconUrl()));
@@ -356,7 +357,7 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
                             .addComponent(description, 0, 0, Short.MAX_VALUE)
                             .addGroup(bottomRow)));
 
-            int lineHeight = description.getFontMetrics(description.getFont()).getHeight();
+            int lineHeight = description.getFontMetrics(PanelFonts.regular()).getHeight();
             GroupLayout.ParallelGroup bottomRowVertical = layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
                     .addComponent(versionSelector, BOTTOM_LINE_HEIGHT, BOTTOM_LINE_HEIGHT, BOTTOM_LINE_HEIGHT)
                     .addComponent(help, BOTTOM_LINE_HEIGHT, BOTTOM_LINE_HEIGHT, BOTTOM_LINE_HEIGHT)
@@ -455,9 +456,10 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
 				installed && microbotPluginManager.getPluginHealth(manifest, selectedVersion).isBlocking(), outdated);
 			Color color = state == MicrobotPluginHubOrder.State.BLOCKED ? HEALTH_RED
 				: state == MicrobotPluginHubOrder.State.UPDATE ? PASTEL_ORANGE : PASTEL_GREEN;
+			// installed is shown by the label; only states that need action get a coloured frame
 			setBorder(state == MicrobotPluginHubOrder.State.NONE
 				? BorderFactory.createEmptyBorder(2, 2, 2, 2)
-				: BorderFactory.createLineBorder(color, 2));
+				: BorderFactory.createLineBorder(color == PASTEL_GREEN ? ColorScheme.BORDER_COLOR : color, 2));
 			stateLabel.setText(state.text(microbotPluginManager.getPluginHealth(manifest, selectedVersion), outdated));
 			stateLabel.setForeground(color);
 			stateLabel.setVisible(state != MicrobotPluginHubOrder.State.NONE);
@@ -489,7 +491,7 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
 
 				List<String> versions = buildVersionList(availableVersions, suggestedVersion, initialSelectedVersion);
 				comboBox = new JComboBox<>(versions.toArray(new String[0]));
-				comboBox.setFont(FontManager.getRunescapeSmallFont());
+				comboBox.setFont(PanelFonts.small());
 				comboBox.setFocusable(false);
 
 				if (!Strings.isNullOrEmpty(initialSelectedVersion) && versions.contains(initialSelectedVersion))
@@ -778,6 +780,7 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
 
         searchBar = new IconTextField();
         searchBar.setIcon(IconTextField.Icon.SEARCH);
+        searchBar.setPlaceholderText("Search the Hub");
         searchBar.setBackground(ColorScheme.DARKER_GRAY_COLOR);
         searchBar.setHoverBackgroundColor(ColorScheme.DARK_GRAY_HOVER_COLOR);
         searchBar.getSuggestionListModel().addElement(MicrobotPluginHubOrder.NEWLY_ADDED_FILTER_QUERY);

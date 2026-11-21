@@ -9,7 +9,7 @@ import javax.swing.JPanel;
 import javax.swing.JSeparator;
 import javax.swing.JTextArea;
 import net.runelite.client.ui.ColorScheme;
-import net.runelite.client.ui.FontManager;
+import net.runelite.client.ui.PanelFonts;
 import net.runelite.client.util.LinkBrowser;
 
 import javax.swing.border.EmptyBorder;
@@ -29,7 +29,7 @@ public class InventorySetupsUpdateNewsPanel extends JPanel
 	InventorySetupsUpdateNewsPanel(MInventorySetupsPlugin plugin, InventorySetupsPluginPanel panel)
 	{
 		final JLabel welcomeText = new JLabel("Inventory Setups " + plugin.getCurrentVersionString());
-		welcomeText.setFont(FontManager.getRunescapeBoldFont());
+		welcomeText.setFont(PanelFonts.bold());
 		welcomeText.setHorizontalAlignment(JLabel.CENTER);
 
 		final JPanel welcomePanel = new JPanel(new BorderLayout());
@@ -44,8 +44,8 @@ public class InventorySetupsUpdateNewsPanel extends JPanel
 		{
 			LinkBrowser.browse(TUTORIAL_LINK);
 		});
-		newUser.setFont(FontManager.getRunescapeSmallFont());
-		newUser2.setFont(FontManager.getRunescapeSmallFont());
+		newUser.setFont(PanelFonts.small());
+		newUser2.setFont(PanelFonts.small());
 		newUser.setHorizontalAlignment(JLabel.CENTER);
 		newUser2.setHorizontalAlignment(JLabel.CENTER);
 
@@ -62,8 +62,8 @@ public class InventorySetupsUpdateNewsPanel extends JPanel
 		{
 			LinkBrowser.browse(SUGGESTION_LINK);
 		});
-		suggestions.setFont(FontManager.getRunescapeSmallFont());
-		suggestions2.setFont(FontManager.getRunescapeSmallFont());
+		suggestions.setFont(PanelFonts.small());
+		suggestions2.setFont(PanelFonts.small());
 		suggestions.setHorizontalAlignment(JLabel.CENTER);
 		suggestions2.setHorizontalAlignment(JLabel.CENTER);
 
@@ -82,8 +82,8 @@ public class InventorySetupsUpdateNewsPanel extends JPanel
 		});
 		final JLabel clickButtonToLeave = new JLabel("Click here to hide this window");
 		final JLabel clickButtonToLeave2 = new JLabel("until the next update");
-		clickButtonToLeave.setFont(FontManager.getRunescapeSmallFont());
-		clickButtonToLeave2.setFont(FontManager.getRunescapeSmallFont());
+		clickButtonToLeave.setFont(PanelFonts.small());
+		clickButtonToLeave2.setFont(PanelFonts.small());
 		clickButtonToLeave.setHorizontalAlignment(JLabel.CENTER);
 		clickButtonToLeave2.setHorizontalAlignment(JLabel.CENTER);
 		closePanel.add(clickButtonToLeave, BorderLayout.NORTH);
@@ -97,8 +97,8 @@ public class InventorySetupsUpdateNewsPanel extends JPanel
 		{
 			LinkBrowser.browse(DONATION_LINK);
 		});
-		donations.setFont(FontManager.getRunescapeSmallFont());
-		donations2.setFont(FontManager.getRunescapeSmallFont());
+		donations.setFont(PanelFonts.small());
+		donations2.setFont(PanelFonts.small());
 		donations.setHorizontalAlignment(JLabel.CENTER);
 		donations2.setHorizontalAlignment(JLabel.CENTER);
 
@@ -131,7 +131,7 @@ public class InventorySetupsUpdateNewsPanel extends JPanel
 	private JPanel getLatestUpdateInfoPanel()
 	{
 		final JLabel patchNotesLabel = new JLabel("Patch Notes");
-		patchNotesLabel.setFont(FontManager.getRunescapeSmallFont());
+		patchNotesLabel.setFont(PanelFonts.small());
 		patchNotesLabel.setHorizontalAlignment(JLabel.CENTER);
 
 		final JPanel patchTitlePanel = new JPanel(new BorderLayout());
@@ -150,7 +150,7 @@ public class InventorySetupsUpdateNewsPanel extends JPanel
 		textArea.setEditable(false);
 		textArea.setFocusable(false);
 		textArea.setBackground(ColorScheme.DARK_GRAY_COLOR);
-		Font textAreaFont = FontManager.getRunescapeSmallFont();
+		Font textAreaFont = PanelFonts.small();
 		textAreaFont = textAreaFont.deriveFont(textAreaFont.getStyle(), (float)textAreaFont.getSize() - (float)0.1);
 		textArea.setFont(textAreaFont);
 
