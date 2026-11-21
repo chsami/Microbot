@@ -178,7 +178,8 @@ public class Rs2WorldUtil {
             world.getTypes().contains(WorldType.NOSAVE_MODE) ||
             world.getTypes().contains(WorldType.LEGACY_ONLY) ||
             world.getTypes().contains(WorldType.EOC_ONLY) ||
-            world.getTypes().contains(WorldType.FRESH_START_WORLD)) {
+            world.getTypes().contains(WorldType.FRESH_START_WORLD) ||
+            world.getTypes().contains(WorldType.HARDCORE_MAIN)) {
             log.debug("World {} has restricted type(s): {}", world.getId(), world.getTypes());
             return false;
         }

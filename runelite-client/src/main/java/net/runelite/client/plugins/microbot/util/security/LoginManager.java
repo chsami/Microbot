@@ -503,6 +503,7 @@ public final class LoginManager {
                 !x.getTypes().contains(WorldType.LEGACY_ONLY) &&
                 !x.getTypes().contains(WorldType.EOC_ONLY) &&
                 !x.getTypes().contains(WorldType.FRESH_START_WORLD) &&
+                !x.getTypes().contains(WorldType.HARDCORE_MAIN) &&
                 x.getPlayers() < MAX_PLAYER_COUNT &&
                 x.getPlayers() >= 0)
             .filter(x -> isInSeasonalWorld == x.getTypes().contains(WorldType.SEASONAL))
@@ -565,6 +566,7 @@ public final class LoginManager {
                 !x.getTypes().contains(WorldType.LEGACY_ONLY) &&
                 !x.getTypes().contains(WorldType.EOC_ONLY) &&
                 !x.getTypes().contains(WorldType.FRESH_START_WORLD) &&
+                !x.getTypes().contains(WorldType.HARDCORE_MAIN) &&
                 x.getPlayers() < MAX_PLAYER_COUNT &&
                 x.getPlayers() >= 0)
             .filter(x -> isInSeasonalWorld == x.getTypes().contains(WorldType.SEASONAL))
