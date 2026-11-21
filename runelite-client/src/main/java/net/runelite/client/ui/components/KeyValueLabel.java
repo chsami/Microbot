@@ -1,7 +1,7 @@
 package net.runelite.client.ui.components;
 
 import java.awt.Color;
-import java.awt.FlowLayout;
+import java.awt.BorderLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import javax.swing.JLabel;
@@ -16,7 +16,8 @@ import net.runelite.client.ui.PanelFonts;
  */
 public class KeyValueLabel extends JPanel
 {
-	private final JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+	// one line: the key keeps its width, the value gets the rest and is cut with "..." when the cell is too narrow
+	private final JPanel row = new JPanel(new BorderLayout());
 	private final JLabel key = new JLabel();
 	private final JLabel value = new JLabel();
 
@@ -34,8 +35,8 @@ public class KeyValueLabel extends JPanel
 		value.setFont(PanelFonts.small());
 		key.setForeground(keyColor);
 		value.setForeground(valueColor);
-		row.add(key);
-		row.add(value);
+		row.add(key, BorderLayout.WEST);
+		row.add(value, BorderLayout.CENTER);
 		setVerticalAlignment(SwingConstants.CENTER);
 	}
 
