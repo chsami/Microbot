@@ -41,7 +41,9 @@ import java.util.Map;
 import java.util.Properties;
 import javax.swing.UIDefaults;
 import lombok.SneakyThrows;
+import net.runelite.client.ui.ClientTheme;
 import net.runelite.client.ui.ColorScheme;
+import net.runelite.client.ui.PanelFonts;
 
 public class RuneLiteLAF extends FlatDarkLaf
 {
@@ -128,9 +130,12 @@ public class RuneLiteLAF extends FlatDarkLaf
 	{
 		UIDefaults d = super.getDefaults();
 
-		d.put("defaultFont", new javax.swing.plaf.FontUIResource(net.runelite.client.ui.PanelFonts.regular()));
-		// "bold" in the properties would fake-bold Inter Regular; use the real SemiBold face.
-		d.put("TitlePane.font", new javax.swing.plaf.FontUIResource(net.runelite.client.ui.PanelFonts.bold()));
+		d.put("defaultFont", PanelFonts.regular());
+		if (ClientTheme.current().font != ClientTheme.PanelFont.RUNESCAPE)
+		{
+			// "bold" in the properties would fake-bold Inter or Montserrat Regular; use the real SemiBold face
+			d.put("TitlePane.font", new javax.swing.plaf.FontUIResource(PanelFonts.bold()));
+		}
 		d.put(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_GASP);
 
 		return d;

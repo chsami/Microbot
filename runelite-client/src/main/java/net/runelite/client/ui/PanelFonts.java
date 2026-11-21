@@ -24,8 +24,14 @@ public final class PanelFonts
 
 	public static Font of(int style, float size)
 	{
-		// the RuneScape bold face is a composite, and deriving it as PLAIN would rebuild it plain
-		return ((style & Font.BOLD) != 0 ? SEMIBOLD : REGULAR).deriveFont(RUNESCAPE ? style : style & Font.ITALIC, size(size, RUNESCAPE));
+		return derive((style & Font.BOLD) != 0 ? SEMIBOLD : REGULAR, style, size, RUNESCAPE);
+	}
+
+	static Font derive(Font base, int style, float size, boolean runescape)
+	{
+		// FontManager builds the RuneScape bold font with Font.BOLD, so keep the style there; the SemiBold faces are
+		// their own family and would be faked bolder
+		return base.deriveFont(runescape ? style : style & Font.ITALIC, size(size, runescape));
 	}
 
 	/** For screens that picked their own font before themes: the RuneScape choice keeps it, the others get the themed one. */

@@ -43,6 +43,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
 import net.runelite.api.EnumComposition;
+import net.runelite.client.ui.ClientTheme;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.DynamicGridLayout;
 import net.runelite.client.ui.PluginPanel;
@@ -51,7 +52,7 @@ import net.runelite.http.api.worlds.WorldType;
 
 class WorldSwitcherPanel extends PluginPanel
 {
-	private static final Color ODD_ROW = ColorScheme.DARKER_GRAY_COLOR;
+	private static final Color ODD_ROW = ClientTheme.classicOr(new Color(44, 44, 44), ColorScheme.DARKER_GRAY_COLOR);
 
 	private static final int WORLD_COLUMN_WIDTH = 60;
 	private static final int PLAYERS_COLUMN_WIDTH = 40;

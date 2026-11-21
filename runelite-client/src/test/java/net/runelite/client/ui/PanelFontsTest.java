@@ -41,4 +41,18 @@ public class PanelFontsTest
 		assertEquals(13f, PanelFonts.size(10.5f, true), 0f);
 		assertEquals(11.5f, PanelFonts.size(11.5f, false), 0f);
 	}
+
+	@Test
+	public void resizedRuneScapeBoldStaysTheStockBoldFont()
+	{
+		Font stock = FontManager.getRunescapeBoldFont();
+		assertEquals(stock, PanelFonts.derive(PanelFonts.load(ClientTheme.PanelFont.RUNESCAPE, true), Font.BOLD, 12.5f, true));
+	}
+
+	@Test
+	public void semiBoldIsNotFakeBolded()
+	{
+		Font semi = PanelFonts.load(ClientTheme.PanelFont.MONTSERRAT, true);
+		assertEquals(Font.PLAIN, PanelFonts.derive(semi, Font.BOLD, 12.5f, false).getStyle());
+	}
 }
