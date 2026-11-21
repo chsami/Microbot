@@ -377,6 +377,52 @@ public class BugReportTrackerTest
 		assertTrue(tracker.answer("MB-UNKNWN", "GE").isCompletedExceptionally());
 	}
 
+	@Test
+	public void aClosedReportIsLabelledClosedWithoutANotice()
+	{
+		TrackedBugReport report = new TrackedBugReport();
+		report.setPlugin("Web Walker");
+		report.setCode("MB-AAAAAA");
+		report.setStatus(BugReportStatus.CLOSED);
+
+		assertEquals("Closed", BugReportTracker.statusLabel(report, "2.6.43"));
+		assertNull(BugReportTracker.noticeFor(report, "2.6.43"));
+		report.setNote("We didn't hear back. Send a new report if it still happens.");
+		assertEquals("Closed", BugReportTracker.statusLabel(report, "2.6.43"));
+		assertNull(BugReportTracker.noticeFor(report, "2.6.43"));
+	}
+
+	@Test
+	public void aClosedQuestionNoLongerAsksForAnAnswer()
+	{
+		tracker.track(receipt("MB-AAAAAA"), null, "Web Walker", "stuck");
+		tracker.apply(List.of(question("MB-AAAAAA", "Which bank?")));
+		BugReportStatus closed = status("MB-AAAAAA", BugReportStatus.CLOSED, null, "We didn't hear back. Send a new report if it still happens.");
+		closed.setQuestion(true);
+
+		assertEquals(1, tracker.apply(List.of(closed)).size());
+
+		TrackedBugReport report = tracker.reports().get(0);
+		assertEquals(BugReportStatus.CLOSED, report.getStatus());
+		assertFalse(BugReportTracker.asksQuestion(report));
+		assertEquals("Closed", tracker.statusLabel(report));
+	}
+
+	@Test
+	public void closingAReportShowsUpInMyReportsWithoutAPopup()
+	{
+		tracker.track(receipt("MB-AAAAAA"), null, "Web Walker", "stuck");
+		tracker.markSeen();
+		when(api.getBugReportStatuses(Map.of("MB-AAAAAA", "token-MB-AAAAAA"))).thenReturn(CompletableFuture.completedFuture(
+			List.of(status("MB-AAAAAA", BugReportStatus.CLOSED, null, "This is a feature request."))));
+
+		assertEquals(1, (int) tracker.refresh().join());
+
+		verify(notifier, never()).notify(any(Notification.class), anyString());
+		assertEquals(1, tracker.unseenCount());
+		assertEquals("This is a feature request.", tracker.reports().get(0).getNote());
+	}
+
 	private static BugReportStatus question(String code, String note)
 	{
 		BugReportStatus status = status(code, BugReportStatus.INVESTIGATING, null, note);
