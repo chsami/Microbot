@@ -207,6 +207,7 @@ public final class Rs2LootEngine {
 
     private static Predicate<GroundItem> baseRangeAndOwnershipFilter(LootingParameters params) {
         final WorldPoint me = Rs2Player.getWorldLocation();
+        if (me == null) return gi -> false;
         final boolean anti = params.isAntiLureProtection();
         return gi ->
                 gi.getLocation().distanceTo(me) < params.getRange()
