@@ -24,7 +24,14 @@ public final class PanelFonts
 
 	public static Font of(int style, float size)
 	{
-		return ((style & Font.BOLD) != 0 ? SEMIBOLD : REGULAR).deriveFont(style & Font.ITALIC, size(size, RUNESCAPE));
+		// the RuneScape bold face is a composite, and deriving it as PLAIN would rebuild it plain
+		return ((style & Font.BOLD) != 0 ? SEMIBOLD : REGULAR).deriveFont(RUNESCAPE ? style : style & Font.ITALIC, size(size, RUNESCAPE));
+	}
+
+	/** For screens that picked their own font before themes: the RuneScape choice keeps it, the others get the themed one. */
+	public static Font stockOr(Font stock, Font themed)
+	{
+		return RUNESCAPE ? stock : themed;
 	}
 
 	public static Font regular()

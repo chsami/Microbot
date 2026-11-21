@@ -22,6 +22,14 @@ public class ClientThemeTest
 	}
 
 	@Test
+	public void classicKeepsTheStockColour()
+	{
+		java.awt.Color stock = new java.awt.Color(40, 40, 40);
+		assertEquals(stock, ClientTheme.classicOr(ClientTheme.Palette.CLASSIC, stock, java.awt.Color.RED));
+		assertEquals(java.awt.Color.RED, ClientTheme.classicOr(ClientTheme.Palette.GOLD, stock, java.awt.Color.RED));
+	}
+
+	@Test
 	public void badJsonOrNoFileUsesDefaults()
 	{
 		assertEquals(ClientTheme.Palette.CLASSIC, ClientTheme.parse("not json {").palette);

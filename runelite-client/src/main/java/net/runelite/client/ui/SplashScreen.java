@@ -134,8 +134,8 @@ public class SplashScreen extends JFrame implements ActionListener {
         closePanel.setPreferredSize(new Dimension(WIDTH, CLOSE_BUTTON_SIZE + 5));
 
         JLabel closeButton = new JLabel("×");
-        closeButton.setFont(PanelFonts.of(Font.BOLD, 16f));
-        closeButton.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+        closeButton.setFont(PanelFonts.stockOr(new Font(Font.SANS_SERIF, Font.BOLD, 16), PanelFonts.of(Font.BOLD, 16f)));
+        closeButton.setForeground(ClientTheme.classicOr(new Color(180, 180, 180), ColorScheme.LIGHT_GRAY_COLOR));
         closeButton.setHorizontalAlignment(SwingConstants.CENTER);
         closeButton.setVerticalAlignment(SwingConstants.CENTER);
         closeButton.setPreferredSize(new Dimension(CLOSE_BUTTON_SIZE, CLOSE_BUTTON_SIZE));
@@ -145,12 +145,12 @@ public class SplashScreen extends JFrame implements ActionListener {
         closeButton.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
-                closeButton.setForeground(ColorScheme.PROGRESS_ERROR_COLOR);
+                closeButton.setForeground(ClientTheme.classicOr(new Color(255, 100, 100), ColorScheme.PROGRESS_ERROR_COLOR));
             }
 
             @Override
             public void mouseExited(MouseEvent e) {
-                closeButton.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+                closeButton.setForeground(ClientTheme.classicOr(new Color(180, 180, 180), ColorScheme.LIGHT_GRAY_COLOR));
             }
 
             @Override
@@ -174,7 +174,7 @@ public class SplashScreen extends JFrame implements ActionListener {
         setIconImages(Arrays.asList(ClientUI.ICON_128, ClientUI.ICON_16));
 
         // Rounded window
-        getRootPane().setBorder(BorderFactory.createLineBorder(ColorScheme.BORDER_COLOR));
+        getRootPane().setBorder(BorderFactory.createLineBorder(ClientTheme.classicOr(new Color(35, 35, 35), ColorScheme.BORDER_COLOR)));
         setBackground(new Color(0, 0, 0, 0)); // allow shaping
         addComponentListener(new java.awt.event.ComponentAdapter() {
             @Override
@@ -193,10 +193,10 @@ public class SplashScreen extends JFrame implements ActionListener {
         // the window while text remains selectable in place.
         installDragHandler(root);
 
-        final Font titleFont = PanelFonts.of(Font.BOLD, 16f);
-        final Font bodyFont = PanelFonts.of(Font.PLAIN, 13f);
-        final Color fg = ColorScheme.TEXT_COLOR;
-        final Color fgMuted = ColorScheme.LIGHT_GRAY_COLOR;
+        final Font titleFont = PanelFonts.stockOr(new Font(Font.SANS_SERIF, Font.BOLD, 16), PanelFonts.of(Font.BOLD, 16f));
+        final Font bodyFont = PanelFonts.stockOr(new Font(Font.SANS_SERIF, Font.PLAIN, 13), PanelFonts.of(Font.PLAIN, 13f));
+        final Color fg = ClientTheme.classicOr(new Color(230, 230, 230), ColorScheme.TEXT_COLOR);
+        final Color fgMuted = ClientTheme.classicOr(new Color(180, 180, 180), ColorScheme.LIGHT_GRAY_COLOR);
 
         GridBagConstraints gc = new GridBagConstraints();
         gc.gridx = 0;
@@ -237,7 +237,7 @@ public class SplashScreen extends JFrame implements ActionListener {
         progress.setStringPainted(false);
         progress.setBorderPainted(false);
         progress.setFont(bodyFont);
-        progress.setBackground(ColorScheme.DARK_GRAY_COLOR);
+        progress.setBackground(ClientTheme.classicOr(new Color(40, 40, 40), ColorScheme.DARK_GRAY_COLOR));
         progress.setForeground(ColorScheme.BRAND_ORANGE);
         progress.setUI(new BasicProgressBarUI() {
             @Override
@@ -247,7 +247,7 @@ public class SplashScreen extends JFrame implements ActionListener {
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
                 // Track
-                g2.setColor(ColorScheme.MEDIUM_GRAY_COLOR);
+                g2.setColor(ClientTheme.classicOr(new Color(55, 55, 55), ColorScheme.MEDIUM_GRAY_COLOR));
                 g2.fillRoundRect(0, 0, w, h, 10, 10);
 
                 // Bar
@@ -275,8 +275,8 @@ public class SplashScreen extends JFrame implements ActionListener {
 
         // Divider
         JSeparator sep = new JSeparator();
-        sep.setForeground(ColorScheme.BORDER_COLOR);
-        sep.setBackground(ColorScheme.BORDER_COLOR);
+        sep.setForeground(ClientTheme.classicOr(new Color(70, 70, 70), ColorScheme.MEDIUM_GRAY_COLOR));
+        sep.setBackground(ClientTheme.classicOr(new Color(70, 70, 70), ColorScheme.MEDIUM_GRAY_COLOR));
         gc.gridy++;
         gc.insets = new Insets(0, 0, PAD, 0);
         root.add(sep, gc);
@@ -285,12 +285,12 @@ public class SplashScreen extends JFrame implements ActionListener {
         JPanel factCard = new JPanel(new BorderLayout());
         factCard.setOpaque(false);
         factCard.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(ColorScheme.BORDER_COLOR),
+                BorderFactory.createLineBorder(ClientTheme.classicOr(new Color(55, 55, 55), ColorScheme.MEDIUM_GRAY_COLOR)),
                 new EmptyBorder(PAD, PAD, PAD, PAD)
         ));
 
         JLabel factTitle = new JLabel("💡 Did you know?");
-        factTitle.setFont(PanelFonts.of(Font.BOLD, 13f));
+        factTitle.setFont(PanelFonts.stockOr(new Font(Font.SANS_SERIF, Font.BOLD, 13), PanelFonts.of(Font.BOLD, 13f)));
         factTitle.setForeground(fg);
         factTitle.setBorder(new EmptyBorder(0, 0, 8, 0));
         factCard.add(factTitle, BorderLayout.NORTH);
@@ -322,7 +322,7 @@ public class SplashScreen extends JFrame implements ActionListener {
         JPanel errorCard = new JPanel(new BorderLayout());
         errorCard.setOpaque(false);
         errorCard.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(ColorScheme.BORDER_COLOR),
+                BorderFactory.createLineBorder(ClientTheme.classicOr(new Color(55, 55, 55), ColorScheme.MEDIUM_GRAY_COLOR)),
                 new EmptyBorder(PAD, PAD, PAD, PAD)
         ));
 
@@ -345,7 +345,7 @@ public class SplashScreen extends JFrame implements ActionListener {
         // Replace local variable with field assignment
         errorScroll = new JScrollPane(errorDetails);
         errorScroll.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(ColorScheme.BORDER_COLOR),
+                BorderFactory.createLineBorder(ClientTheme.classicOr(new Color(55, 55, 55), ColorScheme.MEDIUM_GRAY_COLOR)),
                 new EmptyBorder(PAD, PAD, PAD, PAD)
         ));
         errorScroll.setOpaque(false);
@@ -359,7 +359,7 @@ public class SplashScreen extends JFrame implements ActionListener {
         errorButtonPanel.setOpaque(false);
         copyErrorButton.setFont(bodyFont);
         copyErrorButton.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        copyErrorButton.setForeground(ColorScheme.TEXT_COLOR);
+        copyErrorButton.setForeground(ClientTheme.classicOr(Color.LIGHT_GRAY, ColorScheme.TEXT_COLOR));
         copyErrorButton.setFocusPainted(false);
         copyErrorButton.setBorder(new EmptyBorder(6, 12, 6, 12));
         copyErrorButton.addActionListener(e -> copyErrorDetails());

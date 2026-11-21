@@ -20,6 +20,7 @@ import net.runelite.client.plugins.microbot.util.security.JagexCredentials;
 import net.runelite.client.plugins.microbot.util.security.LoginManager;
 import net.runelite.client.plugins.microbot.util.security.MembershipRecorder;
 import net.runelite.client.plugins.screenmarkers.ScreenMarkerPlugin;
+import net.runelite.client.ui.ClientTheme;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.PanelFonts;
 import net.runelite.client.ui.components.DragAndDropReorderPane;
@@ -53,17 +54,17 @@ import java.util.concurrent.ScheduledExecutorService;
 @Slf4j
 public class MicrobotProfilePanel extends MicrobotPluginPanel {
     final int MAX_PROFILES = 100;
-    private static final Color CARD_BACKGROUND = ColorScheme.DARKER_GRAY_COLOR;
-    private static final Color CARD_HOVER = ColorScheme.DARKER_GRAY_HOVER_COLOR;
-    private static final Color ACCENT_COLOR = ColorScheme.BRAND_ORANGE;
-    private static final Color TEXT_COLOR = ColorScheme.TEXT_COLOR;
-    private static final Color MUTED_TEXT_COLOR = ColorScheme.LIGHT_GRAY_COLOR;
-    private static final Color CARD_BORDER_COLOR = ColorScheme.BORDER_COLOR;
-    private static final Color FIELD_BACKGROUND = ColorScheme.MEDIUM_GRAY_COLOR;
-    private static final Color FIELD_HOVER_BACKGROUND = ColorScheme.MEDIUM_GRAY_COLOR.brighter();
-    private static final Color LOAD_TEXT_COLOR = ColorScheme.DARK_GRAY_COLOR;
+    private static final Color CARD_BACKGROUND = ClientTheme.classicOr(new Color(40, 40, 40), ColorScheme.DARKER_GRAY_COLOR);
+    private static final Color CARD_HOVER = ClientTheme.classicOr(new Color(50, 50, 50), ColorScheme.DARKER_GRAY_HOVER_COLOR);
+    private static final Color ACCENT_COLOR = ClientTheme.classicOr(new Color(255, 140, 0), ColorScheme.BRAND_ORANGE);
+    private static final Color TEXT_COLOR = ClientTheme.classicOr(new Color(220, 220, 220), ColorScheme.TEXT_COLOR);
+    private static final Color MUTED_TEXT_COLOR = ClientTheme.classicOr(new Color(160, 160, 160), ColorScheme.LIGHT_GRAY_COLOR);
+    private static final Color CARD_BORDER_COLOR = ClientTheme.classicOr(new Color(60, 60, 60), ColorScheme.MEDIUM_GRAY_COLOR);
+    private static final Color FIELD_BACKGROUND = ClientTheme.classicOr(new Color(55, 55, 55), ColorScheme.MEDIUM_GRAY_COLOR);
+    private static final Color FIELD_HOVER_BACKGROUND = ClientTheme.classicOr(new Color(70, 70, 70), ColorScheme.MEDIUM_GRAY_COLOR.brighter());
+    private static final Color LOAD_TEXT_COLOR = ClientTheme.classicOr(new Color(30, 30, 30), ColorScheme.DARK_GRAY_COLOR);
     private static final Border VIEW_FIELD_BORDER = new EmptyBorder(3, 0, 3, 0);
-    private static final Border EDIT_FIELD_BORDER = new CompoundBorder(new LineBorder(ColorScheme.MEDIUM_GRAY_COLOR, 1), new EmptyBorder(2, 6, 2, 6));
+    private static final Border EDIT_FIELD_BORDER = new CompoundBorder(new LineBorder(ClientTheme.classicOr(new Color(90, 90, 90), ColorScheme.MEDIUM_GRAY_COLOR), 1), new EmptyBorder(2, 6, 2, 6));
 
     private static final ImageIcon ADD_ICON = new ImageIcon(ImageUtil.loadImageResource(ScreenMarkerPlugin.class, "add_icon.png"));
     private static final ImageIcon DELETE_ICON = new ImageIcon(ImageUtil.loadImageResource(MicrobotProfilePanel.class, "mdi_delete.png"));
@@ -185,12 +186,12 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
         headerPanel.setOpaque(false);
 
         JLabel titleLabel = new JLabel("Profile Manager");
-        titleLabel.setFont(PanelFonts.of(Font.BOLD, 18f));
+        titleLabel.setFont(PanelFonts.stockOr(new Font("Roboto", Font.BOLD, 18), PanelFonts.of(Font.BOLD, 18f)));
         titleLabel.setForeground(TEXT_COLOR);
         titleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         JLabel subtitleLabel = new JLabel("Manage your microbot profiles");
-        subtitleLabel.setFont(PanelFonts.of(Font.PLAIN, 11f));
+        subtitleLabel.setFont(PanelFonts.stockOr(new Font("Roboto", Font.PLAIN, 11), PanelFonts.of(Font.PLAIN, 11f)));
         subtitleLabel.setForeground(MUTED_TEXT_COLOR);
         subtitleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
@@ -212,9 +213,9 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
         button.setBackground(CARD_BACKGROUND);
         button.setForeground(TEXT_COLOR);
         button.setFocusPainted(false);
-        button.setFont(PanelFonts.of(Font.PLAIN, 12f));
+        button.setFont(PanelFonts.stockOr(new Font("Roboto", Font.PLAIN, 12), PanelFonts.of(Font.PLAIN, 12f)));
         button.setBorder(new CompoundBorder(
-                new LineBorder(ColorScheme.MEDIUM_GRAY_COLOR, 1),
+                new LineBorder(ClientTheme.classicOr(new Color(80, 80, 80), ColorScheme.MEDIUM_GRAY_COLOR), 1),
                 new EmptyBorder(8, 16, 8, 16)
         ));
         button.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
@@ -556,7 +557,7 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
             name.setEnabled(false);
             name.setOpaque(false);
             name.setBorder(new EmptyBorder(0, 0, 0, 0));
-            name.setFont(PanelFonts.of(Font.BOLD, 12f));
+            name.setFont(PanelFonts.stockOr(new Font("Roboto", Font.BOLD, 12), PanelFonts.of(Font.BOLD, 12f)));
             name.setForeground(TEXT_COLOR);
             name.setDisabledTextColor(TEXT_COLOR);
             name.addActionListener(ev -> stopEditing(true));
@@ -578,7 +579,7 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
             });
 
             summary = new JLabel(summaryText());
-            summary.setFont(PanelFonts.of(Font.PLAIN, 11f));
+            summary.setFont(PanelFonts.stockOr(new Font("Roboto", Font.PLAIN, 11), PanelFonts.of(Font.PLAIN, 11f)));
             summary.setForeground(MUTED_TEXT_COLOR);
 
             JPanel titles = new JPanel(new BorderLayout(0, 3));
@@ -587,7 +588,7 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
             titles.add(summary, BorderLayout.SOUTH);
 
             activeTag = new JLabel("ACTIVE");
-            activeTag.setFont(PanelFonts.of(Font.BOLD, 10f));
+            activeTag.setFont(PanelFonts.stockOr(new Font("Roboto", Font.BOLD, 10), PanelFonts.of(Font.BOLD, 10f)));
             activeTag.setForeground(ColorScheme.PROGRESS_COMPLETE_COLOR);
             activeTag.setVerticalAlignment(SwingConstants.TOP);
 
@@ -653,7 +654,7 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
             load.setBackground(ACCENT_COLOR);
             load.setForeground(LOAD_TEXT_COLOR);
             load.setFocusPainted(false);
-            load.setFont(PanelFonts.of(Font.BOLD, 12f));
+            load.setFont(PanelFonts.stockOr(new Font("Roboto", Font.BOLD, 12), PanelFonts.of(Font.BOLD, 12f)));
             load.setBorder(new EmptyBorder(6, 8, 6, 8));
             load.setCursor(new Cursor(Cursor.HAND_CURSOR));
             load.addActionListener(ev -> {
@@ -851,7 +852,7 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
         private JLabel createLabel(String text) {
             JLabel label = new JLabel(text);
             label.setForeground(MUTED_TEXT_COLOR);
-            label.setFont(PanelFonts.of(Font.PLAIN, 11f));
+            label.setFont(PanelFonts.stockOr(new Font("Roboto", Font.PLAIN, 11), PanelFonts.of(Font.PLAIN, 11f)));
             label.setPreferredSize(new Dimension(64, 20));
             return label;
         }
@@ -882,7 +883,7 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
             field.setEnabled(false);
             field.setOpaque(false);
             field.setBorder(VIEW_FIELD_BORDER);
-            field.setFont(PanelFonts.of(Font.PLAIN, 11f));
+            field.setFont(PanelFonts.stockOr(new Font("Roboto", Font.PLAIN, 11), PanelFonts.of(Font.PLAIN, 11f)));
             field.setForeground(TEXT_COLOR);
             field.setDisabledTextColor(TEXT_COLOR);
         }
@@ -911,7 +912,7 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
             button.setForeground(TEXT_COLOR);
             button.setFocusPainted(false);
             button.setBorder(new EmptyBorder(4, 8, 4, 8));
-            button.setFont(PanelFonts.of(Font.PLAIN, 11f));
+            button.setFont(PanelFonts.stockOr(new Font("Roboto", Font.PLAIN, 11), PanelFonts.of(Font.PLAIN, 11f)));
             button.setCursor(new Cursor(Cursor.HAND_CURSOR));
             button.setHorizontalAlignment(SwingConstants.LEFT);
 

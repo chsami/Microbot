@@ -2,6 +2,7 @@ package net.runelite.client.plugins.microbot.ui;
 
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.ui.ClientTheme;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.PanelFonts;
 import net.runelite.http.api.worlds.World;
@@ -21,11 +22,11 @@ import java.util.List;
 
 @Slf4j
 public class WorldSelectorDialog extends JDialog {
-	private static final Color BACKGROUND_COLOR = ColorScheme.DARK_GRAY_COLOR;
-	private static final Color TEXT_COLOR = ColorScheme.TEXT_COLOR;
-	private static final Color ACCENT_COLOR = ColorScheme.BRAND_ORANGE;
+	private static final Color BACKGROUND_COLOR = ClientTheme.classicOr(new Color(40, 40, 40), ColorScheme.DARK_GRAY_COLOR);
+	private static final Color TEXT_COLOR = ClientTheme.classicOr(new Color(220, 220, 220), ColorScheme.TEXT_COLOR);
+	private static final Color ACCENT_COLOR = ClientTheme.classicOr(new Color(255, 140, 0), ColorScheme.BRAND_ORANGE);
 	private static final Color MEMBERS_COLOR = new Color(255, 200, 50);
-	private static final Color F2P_COLOR = ColorScheme.LIGHT_GRAY_COLOR;
+	private static final Color F2P_COLOR = ClientTheme.classicOr(new Color(150, 150, 150), ColorScheme.LIGHT_GRAY_COLOR);
 
 	private Integer selectedWorld = null;
 	private JTable worldTable;
@@ -49,7 +50,7 @@ public class WorldSelectorDialog extends JDialog {
 
 		// Title
 		JLabel titleLabel = new JLabel("Select World for Profile");
-		titleLabel.setFont(PanelFonts.of(Font.BOLD, 16f));
+		titleLabel.setFont(PanelFonts.stockOr(new Font("Roboto", Font.BOLD, 16), PanelFonts.of(Font.BOLD, 16f)));
 		titleLabel.setForeground(TEXT_COLOR);
 		topPanel.add(titleLabel, BorderLayout.NORTH);
 
@@ -62,7 +63,7 @@ public class WorldSelectorDialog extends JDialog {
 		searchPanel.add(searchLabel, BorderLayout.WEST);
 
 		searchField = new JTextField();
-		searchField.setBackground(ColorScheme.CONTROL_COLOR);
+		searchField.setBackground(ClientTheme.classicOr(new Color(60, 60, 60), ColorScheme.CONTROL_COLOR));
 		searchField.setForeground(TEXT_COLOR);
 		searchField.setCaretColor(TEXT_COLOR);
 		searchField.setBorder(new EmptyBorder(5, 10, 5, 10));
@@ -111,12 +112,12 @@ public class WorldSelectorDialog extends JDialog {
 		};
 
 		worldTable = new JTable(tableModel);
-		worldTable.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		worldTable.setBackground(ClientTheme.classicOr(new Color(50, 50, 50), ColorScheme.DARKER_GRAY_COLOR));
 		worldTable.setForeground(TEXT_COLOR);
 		worldTable.setSelectionBackground(ACCENT_COLOR);
 		worldTable.setSelectionForeground(Color.BLACK);
 		worldTable.setRowHeight(25);
-		worldTable.setGridColor(ColorScheme.BORDER_COLOR);
+		worldTable.setGridColor(ClientTheme.classicOr(new Color(70, 70, 70), ColorScheme.MEDIUM_GRAY_COLOR));
 		worldTable.setShowGrid(true);
 		worldTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
@@ -153,8 +154,8 @@ public class WorldSelectorDialog extends JDialog {
 
 		JScrollPane scrollPane = new JScrollPane(worldTable);
 		scrollPane.setBackground(BACKGROUND_COLOR);
-		scrollPane.getViewport().setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		scrollPane.setBorder(BorderFactory.createLineBorder(ColorScheme.BORDER_COLOR));
+		scrollPane.getViewport().setBackground(ClientTheme.classicOr(new Color(50, 50, 50), ColorScheme.DARKER_GRAY_COLOR));
+		scrollPane.setBorder(BorderFactory.createLineBorder(ClientTheme.classicOr(new Color(80, 80, 80), ColorScheme.MEDIUM_GRAY_COLOR)));
 
 		centerPanel.add(scrollPane, BorderLayout.CENTER);
 		add(centerPanel, BorderLayout.CENTER);
@@ -183,7 +184,7 @@ public class WorldSelectorDialog extends JDialog {
 
 	private JButton createButton(String text) {
 		JButton button = new JButton(text);
-		button.setBackground(ColorScheme.MEDIUM_GRAY_COLOR);
+		button.setBackground(ClientTheme.classicOr(new Color(60, 60, 60), ColorScheme.MEDIUM_GRAY_COLOR));
 		button.setForeground(TEXT_COLOR);
 		button.setFocusPainted(false);
 		button.setBorder(new EmptyBorder(8, 16, 8, 16));
@@ -191,11 +192,11 @@ public class WorldSelectorDialog extends JDialog {
 
 		button.addMouseListener(new java.awt.event.MouseAdapter() {
 			public void mouseEntered(java.awt.event.MouseEvent evt) {
-				button.setBackground(ColorScheme.MEDIUM_GRAY_COLOR.brighter());
+				button.setBackground(ClientTheme.classicOr(new Color(80, 80, 80), ColorScheme.MEDIUM_GRAY_COLOR.brighter()));
 			}
 
 			public void mouseExited(java.awt.event.MouseEvent evt) {
-				button.setBackground(ColorScheme.MEDIUM_GRAY_COLOR);
+				button.setBackground(ClientTheme.classicOr(new Color(60, 60, 60), ColorScheme.MEDIUM_GRAY_COLOR));
 			}
 		});
 
@@ -333,7 +334,7 @@ public class WorldSelectorDialog extends JDialog {
 			setHorizontalAlignment(JLabel.CENTER);
 
 			if (!isSelected) {
-				c.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+				c.setBackground(ClientTheme.classicOr(new Color(50, 50, 50), ColorScheme.DARKER_GRAY_COLOR));
 				c.setForeground(TEXT_COLOR);
 
 				// Color code based on world type (column 2)

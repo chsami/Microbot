@@ -67,6 +67,20 @@ public final class ClientTheme
 		return CURRENT;
 	}
 
+	/**
+	 * For screens that drew their own colours before themes: Classic keeps that exact colour, the other palettes get
+	 * the themed one.
+	 */
+	public static Color classicOr(Color classic, Color themed)
+	{
+		return classicOr(CURRENT.palette, classic, themed);
+	}
+
+	static Color classicOr(Palette palette, Color classic, Color themed)
+	{
+		return palette == Palette.CLASSIC ? classic : themed;
+	}
+
 	static ClientTheme read(Path file)
 	{
 		if (!Files.isRegularFile(file))
