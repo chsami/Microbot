@@ -17,6 +17,7 @@ import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.devtools.MovementFlag;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.ScriptPauseController;
 import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
 import net.runelite.client.plugins.microbot.shortestpath.*;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.UnreachableRouteExplainer;
@@ -3575,6 +3576,11 @@ public class Rs2Walker {
         // The single choke point for stopping a walk: processWalk already consults it at every
         // checkpoint and inside the movement-wait predicates.
         if (InputArbiter.isHuman()) {
+            return true;
+        }
+        // A break (pauseAllScripts) or manual pause must stop an in-progress walk, not just human
+        // takeover; otherwise the walker keeps issuing route/minimap clicks for the whole break.
+        if (Microbot.pauseAllScripts.get() || ScriptPauseController.isPaused()) {
             return true;
         }
         WalkCompletionContext completion = walkCompletionContext.get();

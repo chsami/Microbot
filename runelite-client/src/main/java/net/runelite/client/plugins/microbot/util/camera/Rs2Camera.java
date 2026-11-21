@@ -153,7 +153,10 @@ public class Rs2Camera {
     private static void holdUntil(int keyCode, java.util.function.BooleanSupplier reached) {
         Rs2Keyboard.keyHold(keyCode);
         try {
-            Global.sleepUntilTrue(reached, 50, 5000);
+            // A break (pauseAllScripts) or manual pause must release the held arrow key instead of
+            // spinning the camera for the whole break; the wait otherwise only ends on arrival.
+            Global.sleepUntilTrue(() -> reached.getAsBoolean()
+                    || Microbot.pauseAllScripts.get() || ScriptPauseController.isPaused(), 50, 5000);
         } finally {
             Rs2Keyboard.keyRelease(keyCode);
         }
