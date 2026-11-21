@@ -50,7 +50,6 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.SessionClose;
 import net.runelite.client.events.SessionOpen;
 import net.runelite.client.ui.ColorScheme;
-import net.runelite.client.ui.components.KeyValueLabel;
 import net.runelite.client.ui.PanelFonts;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.util.ImageUtil;
@@ -124,18 +123,19 @@ public class InfoPanel extends PluginPanel
 
 		final Font smallFont = PanelFonts.small();
 
-		KeyValueLabel version = new KeyValueLabel();
-		version.set("RuneLite version: ", runeliteVersion);
+		JLabel version = new JLabel(htmlLabel("RuneLite version: ", runeliteVersion));
+		version.setFont(smallFont);
 
-		KeyValueLabel revision = new KeyValueLabel();
+		JLabel revision = new JLabel();
+		revision.setFont(smallFont);
 
 		String engineVer = engineVer = String.format("Rev %d", client.getRevision());
 
-		revision.set("Oldschool revision: ", engineVer);
+		revision.setText(htmlLabel("Oldschool revision: ", engineVer));
 
-		KeyValueLabel launcher = new KeyValueLabel();
-		launcher.set("Launcher version: ", MoreObjects
-			.firstNonNull(RuneLiteProperties.getLauncherVersion(), "Unknown"));
+		JLabel launcher = new JLabel(htmlLabel("Launcher version: ", MoreObjects
+			.firstNonNull(RuneLiteProperties.getLauncherVersion(), "Unknown")));
+		launcher.setFont(smallFont);
 
 		loggedLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 		loggedLabel.setFont(smallFont);
@@ -282,6 +282,11 @@ public class InfoPanel extends PluginPanel
 			emailLabel.setText("<a href=\"" + RUNELITE_LOGIN + "\">Sign in</a> to sync settings to the cloud.");
 			loggedLabel.setText("Not signed in");
 		}
+	}
+
+	private static String htmlLabel(String key, String value)
+	{
+		return "<html><body style = 'color:#a5a5a5'>" + key + "<span style = 'color:white'>" + value + "</span></body></html>";
 	}
 
 	@Subscribe

@@ -6,8 +6,8 @@ import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.config.TopLevelConfigPanel;
 import net.runelite.client.plugins.microbot.recovery.StartupRecovery;
 import net.runelite.client.ui.ClientUI;
-import net.runelite.client.ui.PanelFonts;
 import net.runelite.client.ui.ColorScheme;
+import net.runelite.client.ui.PanelFonts;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.components.materialtabs.MaterialTab;
 import net.runelite.client.ui.components.materialtabs.MaterialTabGroup;
@@ -66,7 +66,7 @@ public class MicrobotTopLevelConfigPanel extends PluginPanel {
         }
 
         // Set font and text color
-        g2d.setFont(PanelFonts.of(Font.BOLD, 13f));
+        g2d.setFont(PanelFonts.bold());
         g2d.setColor(textColor);
 
         // Calculate text position to center it
@@ -99,6 +99,7 @@ public class MicrobotTopLevelConfigPanel extends PluginPanel {
         this.helpMenu = helpMenu;
 
         tabGroup = new MaterialTabGroup();
+        tabGroup.setLayout(new GridLayout(1, 0, 7, 7));
         tabGroup.setBorder(new EmptyBorder(10, 10, 0, 10));
 
         content = new JPanel();
@@ -113,10 +114,12 @@ public class MicrobotTopLevelConfigPanel extends PluginPanel {
         this.pluginListPanel = pluginListPanel;
 
         // Create text-based icons instead of using image files for better clarity
+        ImageIcon installedIcon = createTextIcon("Installed", Color.YELLOW, null, 80, 32);
+        ImageIcon hubIcon = createTextIcon("Plugin Hub", Color.YELLOW, null, 80, 32);
 
-        pluginListPanelTab = addTextTab(pluginListPanel.getMuxer(), "Installed", "Installed Microbot Plugins");
+        pluginListPanelTab = addTab(pluginListPanel.getMuxer(), installedIcon, "Installed Microbot Plugins");
         profilePanelTab = addTab(profilePanel, "profile_icon.png", "Profiles");
-        pluginHubTab = addTextTab(microbotPluginHubPanelProvider, "Hub", "Microbot Plugin Hub");
+        pluginHubTab = addTab(microbotPluginHubPanelProvider, hubIcon, "Microbot Hub");
         pluginListPanel.setOpenHub(query -> {
             microbotPluginHubPanelProvider.get().search(query);
             tabGroup.select(pluginHubTab);
@@ -182,10 +185,9 @@ public class MicrobotTopLevelConfigPanel extends PluginPanel {
         return label;
     }
 
-    private MaterialTab addTextTab(MicrobotPluginPanel panel, String label, String tooltip) {
-        MaterialTab mt = new MaterialTab(label, tabGroup, null);
+    private MaterialTab addTab(MicrobotPluginPanel panel, ImageIcon icon, String tooltip) {
+        MaterialTab mt = new MaterialTab(icon, tabGroup, null);
         mt.setToolTipText(tooltip);
-        mt.getAccessibleContext().setAccessibleName(tooltip);
         tabGroup.addTab(mt);
 
         content.add(tooltip, panel.getWrappedPanel()); // Use tooltip as unique key instead of image name
@@ -205,7 +207,6 @@ public class MicrobotTopLevelConfigPanel extends PluginPanel {
                 new ImageIcon(ImageUtil.loadImageResource(TopLevelConfigPanel.class, image)),
                 tabGroup, null);
         mt.setToolTipText(tooltip);
-        mt.getAccessibleContext().setAccessibleName(tooltip);
         tabGroup.addTab(mt);
 
         content.add(image, panel.getWrappedPanel());
@@ -219,10 +220,9 @@ public class MicrobotTopLevelConfigPanel extends PluginPanel {
         return mt;
     }
 
-    private MaterialTab addTextTab(Provider<? extends MicrobotPluginPanel> panelProvider, String label, String tooltip) {
-        MaterialTab mt = new MaterialTab(label, tabGroup, null);
+    private MaterialTab addTab(Provider<? extends MicrobotPluginPanel> panelProvider, ImageIcon icon, String tooltip) {
+        MaterialTab mt = new MaterialTab(icon, tabGroup, null);
         mt.setToolTipText(tooltip);
-        mt.getAccessibleContext().setAccessibleName(tooltip);
         tabGroup.addTab(mt);
 
         mt.setOnSelectEvent(() ->

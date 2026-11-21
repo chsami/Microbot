@@ -61,9 +61,9 @@ import net.runelite.client.plugins.microbot.ui.MicrobotPluginListOrder.Result;
 import net.runelite.client.plugins.microbot.ui.MicrobotPluginListOrder.Sort;
 import net.runelite.client.plugins.microbot.ui.search.MicrobotPluginNames;
 import net.runelite.client.ui.ColorScheme;
-import net.runelite.client.ui.PanelFonts;
 import net.runelite.client.ui.ContainableFrame;
 import net.runelite.client.ui.DynamicGridLayout;
+import net.runelite.client.ui.PanelFonts;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.components.IconTextField;
 import net.runelite.client.ui.components.PluginErrorPanel;
@@ -191,8 +191,6 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
     private final JButton clearButton = new JButton("<html><u>Clear</u></html>");
     private final JButton builtInHeader = new JButton();
     private final JPanel pinnedDivider = new JPanel();
-    private final JLabel pinnedHeader = sectionHeader("");
-    private final JLabel allHeader = sectionHeader("");
     private final JPanel emptyPanel = new JPanel(new BorderLayout(0, 10));
     private final PluginErrorPanel emptyMessage = new PluginErrorPanel();
     private final JButton emptyButton = new JButton();
@@ -266,7 +264,6 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
 
         searchBar = new IconTextField();
         searchBar.setIcon(IconTextField.Icon.SEARCH);
-        searchBar.setPlaceholderText("Search plugins");
         searchBar.setPreferredSize(new Dimension(PluginPanel.PANEL_WIDTH - 20 - TOP_BUTTON_SIZE, TOP_BUTTON_SIZE));
         searchBar.setBackground(ColorScheme.DARKER_GRAY_COLOR);
         searchBar.setHoverBackgroundColor(ColorScheme.DARK_GRAY_HOVER_COLOR);
@@ -300,7 +297,7 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
 
         mainPanel = new MicrobotFixedWidthPanel(LIST_VIEW_WIDTH);
         mainPanel.setBorder(new EmptyBorder(4, 10, 10, 10));
-        mainPanel.setLayout(new DynamicGridLayout(0, 1, 0, 3));
+        mainPanel.setLayout(new DynamicGridLayout(0, 1, 0, 5));
         mainPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         JPanel northPanel = new MicrobotFixedWidthPanel(LIST_VIEW_WIDTH);
@@ -770,17 +767,8 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
         if (healthBanner.hasLinks() && !filtering) {
             children.add(healthBanner);
         }
-        // Section headings only for the plain list; search, filters and author groups have their own structure.
-        boolean sections = !filtering && sort != Sort.AUTHOR;
-        if (sections && !result.getPinned().isEmpty()) {
-            pinnedHeader.setText("PINNED · " + result.getPinned().size());
-            children.add(pinnedHeader);
-        }
         children.addAll(result.getPinned());
-        if (sections && !result.getNormal().isEmpty()) {
-            allHeader.setText("ALL PLUGINS · " + result.getNormal().size());
-            children.add(allHeader);
-        } else if (!result.getPinned().isEmpty() && !result.getNormal().isEmpty()) {
+        if (!result.getPinned().isEmpty() && !result.getNormal().isEmpty()) {
             children.add(pinnedDivider);
         }
         if (sort == Sort.AUTHOR && query.trim().isEmpty()) {
@@ -830,14 +818,10 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
     // Cached per author by the caller, so a refresh reuses the same label.
     private static JLabel createAuthorHeader(MicrobotPluginListItem row) {
         String tag = MicrobotPluginNames.authorTag(row.getSearchableName());
-        return sectionHeader(tag.isEmpty() ? "No author tag" : tag);
-    }
-
-    private static JLabel sectionHeader(String text) {
-        JLabel header = new JLabel(text);
-        header.setFont(PanelFonts.of(Font.BOLD, 10.5f));
+        JLabel header = new JLabel(tag.isEmpty() ? "No author tag" : tag);
+        header.setFont(PanelFonts.small());
         header.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-        header.setBorder(new EmptyBorder(8, 4, 2, 0));
+        header.setBorder(new EmptyBorder(6, 0, 0, 0));
         return header;
     }
 

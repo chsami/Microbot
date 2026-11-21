@@ -51,7 +51,7 @@ import net.runelite.http.api.worlds.WorldType;
 
 class WorldSwitcherPanel extends PluginPanel
 {
-	private static final Color ODD_ROW = new Color(44, 44, 44);
+	private static final Color ODD_ROW = ColorScheme.DARKER_GRAY_COLOR;
 
 	private static final int WORLD_COLUMN_WIDTH = 60;
 	private static final int PLAYERS_COLUMN_WIDTH = 40;

@@ -65,10 +65,11 @@ public class MicrobotCloudPanel extends JPanel
 				onUsed.run();
 			}
 		});
-		JPanel header = new JPanel(new BorderLayout(6, 0));
-		header.add(title, BorderLayout.CENTER);
+		JPanel header = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+		header.add(title);
+		header.add(Box.createHorizontalStrut(6));
 		newBadge.setVisible(false);
-		header.add(newBadge, BorderLayout.EAST);
+		header.add(newBadge);
 		add(header, BorderLayout.NORTH);
 
 		body.setBorder(new EmptyBorder(4, 0, 0, 0));

@@ -13,7 +13,8 @@ import lombok.extern.slf4j.Slf4j;
 
 /**
  * The look picked in the launcher's Themes tab, read once at startup from ~/.microbot/theme.json
- * ({"theme": "gold|slate|classic", "font": "montserrat|inter|runescape"}). Missing or bad values fall back to the defaults.
+ * ({"theme": "gold|slate|classic", "font": "montserrat|inter|runescape"}). Missing or bad values fall back to Classic + RuneScape,
+ * the stock look, so players who never open the Themes tab see no change.
  */
 @Slf4j
 public final class ClientTheme
@@ -98,7 +99,7 @@ public final class ClientTheme
 		{
 			log.warn("theme.json is not valid JSON; using the default theme");
 		}
-		return new ClientTheme(pick(Palette.class, o, "theme", Palette.GOLD), pick(PanelFont.class, o, "font", PanelFont.MONTSERRAT));
+		return new ClientTheme(pick(Palette.class, o, "theme", Palette.CLASSIC), pick(PanelFont.class, o, "font", PanelFont.RUNESCAPE));
 	}
 
 	private static <E extends Enum<E>> E pick(Class<E> type, JsonObject o, String key, E fallback)

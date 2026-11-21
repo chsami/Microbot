@@ -114,15 +114,6 @@ public class SplashScreen extends JFrame implements ActionListener {
         // Inherit cursor so the drag handler on the root panel can still move the window
         // when the user clicks the empty area around the (usually short) text.
         field.setCursor(Cursor.getDefaultCursor());
-        // read-only status text: selectable, but no blinking caret
-        field.setCaret(new javax.swing.text.DefaultCaret()
-        {
-            @Override
-            public boolean isVisible()
-            {
-                return false;
-            }
-        });
         return field;
     }
 
@@ -298,18 +289,11 @@ public class SplashScreen extends JFrame implements ActionListener {
                 new EmptyBorder(PAD, PAD, PAD, PAD)
         ));
 
-        // the emoji gets its own Dialog label: the panel fonts are loaded from files and have no emoji fallback
-        JLabel bulb = new JLabel("\uD83D\uDCA1");
-        bulb.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 13));
-        JLabel factTitle = new JLabel("Did you know?");
+        JLabel factTitle = new JLabel("💡 Did you know?");
         factTitle.setFont(PanelFonts.of(Font.BOLD, 13f));
         factTitle.setForeground(fg);
-        JPanel factHeader = new JPanel(new BorderLayout(6, 0));
-        factHeader.setOpaque(false);
-        factHeader.setBorder(new EmptyBorder(0, 0, 8, 0));
-        factHeader.add(bulb, BorderLayout.WEST);
-        factHeader.add(factTitle, BorderLayout.CENTER);
-        factCard.add(factHeader, BorderLayout.NORTH);
+        factTitle.setBorder(new EmptyBorder(0, 0, 8, 0));
+        factCard.add(factTitle, BorderLayout.NORTH);
 
         JTextArea factArea = new JTextArea();
         factArea.setEditable(false);

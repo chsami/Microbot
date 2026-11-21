@@ -45,8 +45,8 @@ import net.runelite.client.plugins.microbot.breakhandler.breakhandlerv2.PluginSt
 import net.runelite.client.plugins.microbot.inventorysetups.InventorySetup;
 import net.runelite.client.plugins.microbot.inventorysetups.MInventorySetupsPlugin;
 import net.runelite.client.ui.ColorScheme;
-import net.runelite.client.ui.PanelFonts;
 import net.runelite.client.ui.DynamicGridLayout;
+import net.runelite.client.ui.PanelFonts;
 import net.runelite.client.ui.components.ColorJButton;
 import net.runelite.client.ui.components.TitleCaseListCellRenderer;
 import net.runelite.client.ui.components.colorpicker.ColorPickerManager;
@@ -506,14 +506,19 @@ class MicrobotConfigPanel extends MicrobotPluginPanel {
         // Create the main panel (similar to a Bootstrap panel)
         JPanel panel = new JPanel();
         panel.setLayout(new BorderLayout());
-        panel.setBorder(new CompoundBorder(new EmptyBorder(10, 10, 10, 10), new MatteBorder(0, 3, 0, 0, ColorScheme.BRAND_ORANGE)));
+        panel.setBorder(new CompoundBorder(
+                new EmptyBorder(10, 10, 10, 10), // Outer padding
+                new LineBorder(Color.GRAY, 1)    // Border around the panel
+        ));
 
         // Create the body/content panel
         JPanel bodyPanel = new JPanel();
         bodyPanel.setLayout(new BoxLayout(bodyPanel, BoxLayout.Y_AXIS)); // Vertical alignment
         bodyPanel.setBorder(new EmptyBorder(10, 10, 10, 10)); // Padding inside the body
-        bodyPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        bodyPanel.add(PanelFonts.html("<html>" + ci.value() + "</html>", ColorScheme.TEXT_COLOR));
+        bodyPanel.setBackground(new Color(0, 142, 255, 50));
+        JLabel bodyLabel1 = new JLabel("<html>" + ci.value() + "</html>");
+        bodyLabel1.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
+        bodyPanel.add(bodyLabel1);
         bodyPanel.add(Box.createRigidArea(new Dimension(0, 5))); // Spacer between components
 
         panel.add(bodyPanel, BorderLayout.CENTER);

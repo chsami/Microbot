@@ -1,25 +1,44 @@
 package net.runelite.client.ui;
 
-import java.awt.Color;
 import java.awt.Font;
-import javax.swing.JEditorPane;
-import javax.swing.text.html.HTMLDocument;
+import javax.swing.text.StyleContext;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 public class PanelFontsTest
 {
 	@Test
-	public void htmlTextUsesThePanelFont()
+	public void htmlFindsTheBundledFontsByName()
 	{
-		JEditorPane pane = PanelFonts.html("<html>plain <b>bold</b></html>", Color.WHITE);
-		HTMLDocument doc = (HTMLDocument) pane.getDocument();
-		String text = pane.getText();
+		for (ClientTheme.PanelFont choice : new ClientTheme.PanelFont[]{ClientTheme.PanelFont.MONTSERRAT, ClientTheme.PanelFont.INTER})
+		{
+			for (boolean bold : new boolean[]{false, true})
+			{
+				Font font = PanelFonts.load(choice, bold);
+				// Swing HTML resolves font-family through the default StyleContext
+				Font byName = StyleContext.getDefaultStyleContext().getFont(font.getFamily(), Font.PLAIN, 12);
+				assertEquals(font.getFontName(), byName.getFontName());
+				assertTrue(font.getFontName(), font.getFontName().startsWith(choice == ClientTheme.PanelFont.INTER ? "Inter" : "Montserrat"));
+			}
+		}
+	}
 
-		Font plain = doc.getFont(doc.getCharacterElement(1).getAttributes());
-		Font bold = doc.getFont(doc.getCharacterElement(8).getAttributes());
+	@Test
+	public void missingGlyphsFallBack()
+	{
+		Font font = PanelFonts.load(ClientTheme.PanelFont.MONTSERRAT, false);
+		assertTrue(font.canDisplay((char) 0x0142)); // Polish l-stroke, in Montserrat itself
+		assertTrue(font.canDisplay((char) 0x0416)); // Cyrillic Zhe
+		assertTrue(font.canDisplay((char) 0x2605)); // a star, from the fallback fonts
+	}
 
-		assertEquals(PanelFonts.regular().getFontName(), plain.getFontName());
-		assertEquals(PanelFonts.bold().getFontName(), bold.getFontName());
+	@Test
+	public void runescapeSizesAreWholePixels()
+	{
+		assertEquals(16f, PanelFonts.size(12.5f, true), 0f);
+		assertEquals(15f, PanelFonts.size(11.5f, true), 0f);
+		assertEquals(13f, PanelFonts.size(10.5f, true), 0f);
+		assertEquals(11.5f, PanelFonts.size(11.5f, false), 0f);
 	}
 }

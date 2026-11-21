@@ -341,11 +341,6 @@ public class IconTextField extends JPanel
 		textField.removeKeyListener(keyListener);
 	}
 
-	public void setPlaceholderText(String text)
-	{
-		textField.getTextField().putClientProperty("JTextField.placeholderText", text);
-	}
-
 	public void setEditable(boolean editable)
 	{
 		textField.setEditable(editable);

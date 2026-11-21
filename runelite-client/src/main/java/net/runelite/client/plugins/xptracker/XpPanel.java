@@ -46,7 +46,7 @@ import net.runelite.api.Skill;
 import net.runelite.api.WorldType;
 import net.runelite.client.game.SkillIconManager;
 import net.runelite.client.ui.ColorScheme;
-import net.runelite.client.ui.components.KeyValueLabel;
+import net.runelite.client.ui.PanelFonts;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.components.DragAndDropReorderPane;
 import net.runelite.client.ui.components.PluginErrorPanel;
@@ -58,8 +58,8 @@ class XpPanel extends PluginPanel
 {
 	private final Map<Skill, XpInfoBox> infoBoxes = new HashMap<>();
 
-	private final KeyValueLabel overallExpGained = new KeyValueLabel();
-	private final KeyValueLabel overallExpHour = new KeyValueLabel();
+	private final JLabel overallExpGained = new JLabel(XpInfoBox.htmlLabel("Gained: ", 0));
+	private final JLabel overallExpHour = new JLabel(XpInfoBox.htmlLabel("Per hour: ", 0));
 
 	private final JPanel overallPanel = new JPanel();
 
@@ -141,8 +141,8 @@ class XpPanel extends PluginPanel
 		overallInfo.setLayout(new GridLayout(2, 1));
 		overallInfo.setBorder(new EmptyBorder(0, 10, 0, 0));
 
-		overallExpGained.set("Gained: ", XpInfoBox.formatXp(0));
-		overallExpHour.set("Per hour: ", XpInfoBox.formatXp(0));
+		overallExpGained.setFont(PanelFonts.small());
+		overallExpHour.setFont(PanelFonts.small());
 
 		overallInfo.add(overallExpGained);
 		overallInfo.add(overallExpHour);
@@ -224,7 +224,7 @@ class XpPanel extends PluginPanel
 
 	private void rebuildAsync(XpSnapshotSingle xpSnapshotTotal)
 	{
-		overallExpGained.set("Gained: ", XpInfoBox.formatXp(xpSnapshotTotal.getXpGainedInSession()));
-		overallExpHour.set("Per hour: ", XpInfoBox.formatXp(xpSnapshotTotal.getXpPerHour()));
+		overallExpGained.setText(XpInfoBox.htmlLabel("Gained: ", xpSnapshotTotal.getXpGainedInSession()));
+		overallExpHour.setText(XpInfoBox.htmlLabel("Per hour: ", xpSnapshotTotal.getXpPerHour()));
 	}
 }

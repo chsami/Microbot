@@ -53,7 +53,6 @@ import static net.runelite.api.GrandExchangeOfferState.CANCELLED_SELL;
 import static net.runelite.api.GrandExchangeOfferState.EMPTY;
 import net.runelite.api.ItemComposition;
 import net.runelite.client.ui.ColorScheme;
-import net.runelite.client.ui.components.KeyValueLabel;
 import net.runelite.client.ui.PanelFonts;
 import net.runelite.client.ui.components.ThinProgressBar;
 import net.runelite.client.util.ColorUtil;
@@ -78,8 +77,8 @@ public class GrandExchangeOfferSlot extends JPanel
 	private final JLabel itemName = new JLabel();
 	private final JLabel offerInfo = new JLabel();
 
-	private final KeyValueLabel itemPrice = new KeyValueLabel(Color.WHITE, ColorScheme.LIGHT_GRAY_COLOR);
-	private final KeyValueLabel offerSpent = new KeyValueLabel(Color.WHITE, ColorScheme.LIGHT_GRAY_COLOR);
+	private final JLabel itemPrice = new JLabel();
+	private final JLabel offerSpent = new JLabel();
 
 	private final ThinProgressBar progressBar = new ThinProgressBar();
 
@@ -171,9 +170,13 @@ public class GrandExchangeOfferSlot extends JPanel
 		detailsCard.setBorder(new EmptyBorder(0, 15, 0, 0));
 		detailsCard.addMouseListener(ml);
 
+		itemPrice.setForeground(Color.WHITE);
 		itemPrice.setVerticalAlignment(JLabel.BOTTOM);
+		itemPrice.setFont(PanelFonts.small());
 
+		offerSpent.setForeground(Color.WHITE);
 		offerSpent.setVerticalAlignment(JLabel.TOP);
+		offerSpent.setFont(PanelFonts.small());
 
 		JLabel switchDetailsViewIcon = new JLabel();
 		switchDetailsViewIcon.setIcon(LEFT_ARROW_ICON);
@@ -232,12 +235,12 @@ public class GrandExchangeOfferSlot extends JPanel
 
 			offerInfo.setText(offerState);
 
-			itemPrice.set("Price each: ", QuantityFormatter.formatNumber(newOffer.getPrice()));
+			itemPrice.setText(htmlLabel("Price each: ", QuantityFormatter.formatNumber(newOffer.getPrice())));
 
 			String action = buying ? "Spent: " : "Received: ";
 
-			offerSpent.set(action, QuantityFormatter.formatNumber(newOffer.getSpent()) + " / "
-				+ QuantityFormatter.formatNumber(newOffer.getPrice() * newOffer.getTotalQuantity()));
+			offerSpent.setText(htmlLabel(action, QuantityFormatter.formatNumber(newOffer.getSpent()) + " / "
+				+ QuantityFormatter.formatNumber(newOffer.getPrice() * newOffer.getTotalQuantity())));
 
 			progressBar.setForeground(getProgressColor(newOffer));
 			progressBar.setMaximumValue(newOffer.getTotalQuantity());
@@ -269,6 +272,11 @@ public class GrandExchangeOfferSlot extends JPanel
 	private String htmlTooltip(String value)
 	{
 		return "<html><body style = 'color:" + ColorUtil.toHexColor(ColorScheme.LIGHT_GRAY_COLOR) + "'>Progress: <span style = 'color:white'>" + value + "</span></body></html>";
+	}
+
+	private String htmlLabel(String key, String value)
+	{
+		return "<html><body style = 'color:white'>" + key + "<span style = 'color:" + ColorUtil.toHexColor(ColorScheme.LIGHT_GRAY_COLOR) + "'>" + value + "</span></body></html>";
 	}
 
 	private void switchPanel()
