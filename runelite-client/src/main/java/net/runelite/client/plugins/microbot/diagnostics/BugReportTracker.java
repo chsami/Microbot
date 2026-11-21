@@ -321,6 +321,8 @@ public class BugReportTracker
 				return "Fixed in " + fixedIn(report) + (hasFix(report, installedVersion) ? ", which you have" : ". " + howToUpdate(report));
 			case BugReportStatus.WONT_FIX:
 				return "Won't be fixed";
+			case BugReportStatus.CLOSED:
+				return "Closed";
 			default:
 				return "Received";
 		}
@@ -347,6 +349,7 @@ public class BugReportTracker
 				return asksQuestion(report)
 					? "We have a question about the " + report.getPlugin() + " problem you reported. Open My reports from the red bug button in the sidebar to answer it."
 					: null;
+			case BugReportStatus.CLOSED:
 			default:
 				return null;
 		}

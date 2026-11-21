@@ -9,6 +9,7 @@ public class BugReportStatus
 	public static final String INVESTIGATING = "investigating";
 	public static final String FIXED = "fixed";
 	public static final String WONT_FIX = "wont-fix";
+	public static final String CLOSED = "closed";
 
 	private String code;
 	private String plugin;
