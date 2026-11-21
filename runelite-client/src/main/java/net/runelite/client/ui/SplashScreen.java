@@ -134,7 +134,7 @@ public class SplashScreen extends JFrame implements ActionListener {
         closePanel.setPreferredSize(new Dimension(WIDTH, CLOSE_BUTTON_SIZE + 5));
 
         JLabel closeButton = new JLabel("×");
-        closeButton.setFont(PanelFonts.stockOr(new Font(Font.SANS_SERIF, Font.BOLD, 16), PanelFonts.of(Font.BOLD, 16f)));
+        closeButton.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 16));
         closeButton.setForeground(ClientTheme.classicOr(new Color(180, 180, 180), ColorScheme.LIGHT_GRAY_COLOR));
         closeButton.setHorizontalAlignment(SwingConstants.CENTER);
         closeButton.setVerticalAlignment(SwingConstants.CENTER);
@@ -193,8 +193,8 @@ public class SplashScreen extends JFrame implements ActionListener {
         // the window while text remains selectable in place.
         installDragHandler(root);
 
-        final Font titleFont = PanelFonts.stockOr(new Font(Font.SANS_SERIF, Font.BOLD, 16), PanelFonts.of(Font.BOLD, 16f));
-        final Font bodyFont = PanelFonts.stockOr(new Font(Font.SANS_SERIF, Font.PLAIN, 13), PanelFonts.of(Font.PLAIN, 13f));
+        final Font titleFont = new Font(Font.SANS_SERIF, Font.BOLD, 16);
+        final Font bodyFont = new Font(Font.SANS_SERIF, Font.PLAIN, 13);
         final Color fg = ClientTheme.classicOr(new Color(230, 230, 230), ColorScheme.TEXT_COLOR);
         final Color fgMuted = ClientTheme.classicOr(new Color(180, 180, 180), ColorScheme.LIGHT_GRAY_COLOR);
 
@@ -290,7 +290,7 @@ public class SplashScreen extends JFrame implements ActionListener {
         ));
 
         JLabel factTitle = new JLabel("💡 Did you know?");
-        factTitle.setFont(PanelFonts.stockOr(new Font(Font.SANS_SERIF, Font.BOLD, 13), PanelFonts.of(Font.BOLD, 13f)));
+        factTitle.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 13));
         factTitle.setForeground(fg);
         factTitle.setBorder(new EmptyBorder(0, 0, 8, 0));
         factCard.add(factTitle, BorderLayout.NORTH);

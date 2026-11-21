@@ -253,10 +253,10 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
             setLayout(layout);
 
             JLabel pluginName = new JLabel(manifest.getDisplayName());
-            pluginName.setFont(PanelFonts.bold());
+            pluginName.setFont(FontManager.getRunescapeBoldFont());
             pluginName.setToolTipText(manifest.getDisplayName());
             pluginName.setHorizontalAlignment(JLabel.LEFT);
-            stateLabel.setFont(PanelFonts.small());
+            stateLabel.setFont(FontManager.getRunescapeSmallFont());
 
             String[] authorsArr = manifest.getAuthors();
             String authorRaw = manifest.getAuthor();
@@ -273,7 +273,7 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
                 authorTooltip = isUnknown ? "Unknown" : a;
             }
             JLabel author = new JLabel(authorText);
-            author.setFont(PanelFonts.small());
+            author.setFont(FontManager.getRunescapeSmallFont());
             author.setToolTipText(authorTooltip);
             author.setHorizontalAlignment(JLabel.LEFT);
             author.setBorder(new EmptyBorder(0, 0, 0, 5));
@@ -489,7 +489,7 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
 
 				List<String> versions = buildVersionList(availableVersions, suggestedVersion, initialSelectedVersion);
 				comboBox = new JComboBox<>(versions.toArray(new String[0]));
-				comboBox.setFont(PanelFonts.small());
+				comboBox.setFont(FontManager.getRunescapeSmallFont());
 				comboBox.setFocusable(false);
 
 				if (!Strings.isNullOrEmpty(initialSelectedVersion) && versions.contains(initialSelectedVersion))

@@ -30,7 +30,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
 import net.runelite.client.ui.ColorScheme;
-import net.runelite.client.ui.PanelFonts;
+import net.runelite.client.ui.FontManager;
 
 class BookPanel extends JPanel
 {
@@ -47,7 +47,7 @@ class BookPanel extends JPanel
 		JLabel image = new JLabel();
 		b.getIcon().addTo(image);
 		JLabel name = new JLabel(b.getShortName());
-		location.setFont(PanelFonts.small());
+		location.setFont(FontManager.getRunescapeSmallFont());
 
 		layout.setVerticalGroup(layout.createParallelGroup()
 			.addComponent(image)

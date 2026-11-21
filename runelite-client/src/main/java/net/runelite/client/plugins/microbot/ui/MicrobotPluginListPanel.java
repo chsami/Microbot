@@ -63,7 +63,7 @@ import net.runelite.client.plugins.microbot.ui.search.MicrobotPluginNames;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.ContainableFrame;
 import net.runelite.client.ui.DynamicGridLayout;
-import net.runelite.client.ui.PanelFonts;
+import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.components.IconTextField;
 import net.runelite.client.ui.components.PluginErrorPanel;
@@ -378,7 +378,7 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
     private JToggleButton createChip(Filter target) {
         JToggleButton chip = new JToggleButton();
         SwingUtil.removeButtonDecorations(chip);
-        chip.setFont(PanelFonts.small());
+        chip.setFont(FontManager.getRunescapeSmallFont());
         chip.setRequestFocusEnabled(false);
         chip.addActionListener(e -> setFilter(filter == target ? Filter.ALL : target));
         chip.addFocusListener(new FocusAdapter() {
@@ -408,11 +408,11 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
         chipRow.setOpaque(false);
         chipRow.add(fixChip, BorderLayout.WEST);
 
-        countLabel.setFont(PanelFonts.small());
+        countLabel.setFont(FontManager.getRunescapeSmallFont());
         countLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
         SwingUtil.removeButtonDecorations(clearButton);
         clearButton.setBorder(new EmptyBorder(0, 0, 0, 0));
-        clearButton.setFont(PanelFonts.small());
+        clearButton.setFont(FontManager.getRunescapeSmallFont());
         clearButton.setForeground(ColorScheme.BRAND_ORANGE);
         clearButton.setRequestFocusEnabled(false);
         clearButton.addActionListener(e -> clearFilters());
@@ -432,7 +432,7 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
     private void setUpListParts() {
         SwingUtil.removeButtonDecorations(builtInHeader);
         builtInHeader.setHorizontalAlignment(SwingConstants.LEFT);
-        builtInHeader.setFont(PanelFonts.small());
+        builtInHeader.setFont(FontManager.getRunescapeSmallFont());
         builtInHeader.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
         builtInHeader.setRequestFocusEnabled(false);
         builtInHeader.addFocusListener(scrollToFocused);
@@ -467,7 +467,7 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
         emptyPanel.add(emptyMessage, BorderLayout.CENTER);
         emptyPanel.add(emptyButton, BorderLayout.SOUTH);
 
-        hubHeader.setFont(PanelFonts.small());
+        hubHeader.setFont(FontManager.getRunescapeSmallFont());
         hubHeader.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
         hubHeader.setBorder(new EmptyBorder(6, 0, 0, 0));
         healthBanner.getDismissButton().addActionListener(e -> {
@@ -819,7 +819,7 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
     private static JLabel createAuthorHeader(MicrobotPluginListItem row) {
         String tag = MicrobotPluginNames.authorTag(row.getSearchableName());
         JLabel header = new JLabel(tag.isEmpty() ? "No author tag" : tag);
-        header.setFont(PanelFonts.small());
+        header.setFont(FontManager.getRunescapeSmallFont());
         header.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
         header.setBorder(new EmptyBorder(6, 0, 0, 0));
         return header;
@@ -1303,7 +1303,7 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
             add(name, BorderLayout.CENTER);
 
             SwingUtil.removeButtonDecorations(installButton);
-            installButton.setFont(PanelFonts.small());
+            installButton.setFont(FontManager.getRunescapeSmallFont());
             installButton.setForeground(ColorScheme.BRAND_ORANGE);
             installButton.setBorder(new CompoundBorder(new LineBorder(ColorScheme.BRAND_ORANGE), new EmptyBorder(1, 6, 1, 6)));
             installButton.addActionListener(e -> install(manifest));
@@ -1348,7 +1348,7 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
             setBackground(ColorScheme.DARKER_GRAY_COLOR);
             setBorder(new CompoundBorder(new LineBorder(ColorScheme.PROGRESS_INPROGRESS_COLOR), new EmptyBorder(4, 6, 4, 4)));
             JLabel title = new JLabel("Hub status changed for your plugins");
-            title.setFont(PanelFonts.small());
+            title.setFont(FontManager.getRunescapeSmallFont());
             title.setForeground(ColorScheme.PROGRESS_INPROGRESS_COLOR);
             add(title, BorderLayout.NORTH);
             linkPanel.setOpaque(false);
@@ -1402,7 +1402,7 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
                 SwingUtil.removeButtonDecorations(link);
                 link.setHorizontalAlignment(SwingConstants.LEFT);
                 link.setBorder(new EmptyBorder(0, 0, 0, 0));
-                link.setFont(PanelFonts.small());
+                link.setFont(FontManager.getRunescapeSmallFont());
                 link.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
                 link.setToolTipText("Show this plugin in the list");
                 link.addActionListener(e -> open(change));

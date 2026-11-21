@@ -46,7 +46,7 @@ import net.runelite.client.plugins.microbot.inventorysetups.InventorySetup;
 import net.runelite.client.plugins.microbot.inventorysetups.MInventorySetupsPlugin;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.DynamicGridLayout;
-import net.runelite.client.ui.PanelFonts;
+import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.components.ColorJButton;
 import net.runelite.client.ui.components.TitleCaseListCellRenderer;
 import net.runelite.client.ui.components.colorpicker.ColorPickerManager;
@@ -334,7 +334,7 @@ class MicrobotConfigPanel extends MicrobotPluginPanel {
             String name = cs.name();
             JLabel sectionName = new JLabel(name);
             sectionName.setForeground(ColorScheme.BRAND_ORANGE);
-            sectionName.setFont(PanelFonts.bold());
+            sectionName.setFont(FontManager.getRunescapeBoldFont());
             sectionName.setToolTipText("<html>" + name + ":<br>" + cs.description() + "</html>");
             sectionHeader.add(sectionName, BorderLayout.CENTER);
 

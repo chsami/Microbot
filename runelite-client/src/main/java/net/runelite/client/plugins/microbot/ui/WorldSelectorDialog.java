@@ -4,7 +4,6 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.ui.ClientTheme;
 import net.runelite.client.ui.ColorScheme;
-import net.runelite.client.ui.PanelFonts;
 import net.runelite.http.api.worlds.World;
 import net.runelite.http.api.worlds.WorldRegion;
 import net.runelite.http.api.worlds.WorldResult;
@@ -50,7 +49,7 @@ public class WorldSelectorDialog extends JDialog {
 
 		// Title
 		JLabel titleLabel = new JLabel("Select World for Profile");
-		titleLabel.setFont(PanelFonts.stockOr(new Font("Roboto", Font.BOLD, 16), PanelFonts.of(Font.BOLD, 16f)));
+		titleLabel.setFont(new Font("Roboto", Font.BOLD, 16));
 		titleLabel.setForeground(TEXT_COLOR);
 		topPanel.add(titleLabel, BorderLayout.NORTH);
 

@@ -22,7 +22,6 @@ import net.runelite.client.plugins.microbot.util.security.MembershipRecorder;
 import net.runelite.client.plugins.screenmarkers.ScreenMarkerPlugin;
 import net.runelite.client.ui.ClientTheme;
 import net.runelite.client.ui.ColorScheme;
-import net.runelite.client.ui.PanelFonts;
 import net.runelite.client.ui.components.DragAndDropReorderPane;
 import net.runelite.client.ui.components.MouseDragEventForwarder;
 import net.runelite.client.util.ImageUtil;
@@ -186,12 +185,12 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
         headerPanel.setOpaque(false);
 
         JLabel titleLabel = new JLabel("Profile Manager");
-        titleLabel.setFont(PanelFonts.stockOr(new Font("Roboto", Font.BOLD, 18), PanelFonts.of(Font.BOLD, 18f)));
+        titleLabel.setFont(new Font("Roboto", Font.BOLD, 18));
         titleLabel.setForeground(TEXT_COLOR);
         titleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         JLabel subtitleLabel = new JLabel("Manage your microbot profiles");
-        subtitleLabel.setFont(PanelFonts.stockOr(new Font("Roboto", Font.PLAIN, 11), PanelFonts.of(Font.PLAIN, 11f)));
+        subtitleLabel.setFont(new Font("Roboto", Font.PLAIN, 11));
         subtitleLabel.setForeground(MUTED_TEXT_COLOR);
         subtitleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
@@ -213,7 +212,7 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
         button.setBackground(CARD_BACKGROUND);
         button.setForeground(TEXT_COLOR);
         button.setFocusPainted(false);
-        button.setFont(PanelFonts.stockOr(new Font("Roboto", Font.PLAIN, 12), PanelFonts.of(Font.PLAIN, 12f)));
+        button.setFont(new Font("Roboto", Font.PLAIN, 12));
         button.setBorder(new CompoundBorder(
                 new LineBorder(ClientTheme.classicOr(new Color(80, 80, 80), ColorScheme.MEDIUM_GRAY_COLOR), 1),
                 new EmptyBorder(8, 16, 8, 16)
@@ -557,7 +556,7 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
             name.setEnabled(false);
             name.setOpaque(false);
             name.setBorder(new EmptyBorder(0, 0, 0, 0));
-            name.setFont(PanelFonts.stockOr(new Font("Roboto", Font.BOLD, 12), PanelFonts.of(Font.BOLD, 12f)));
+            name.setFont(new Font("Roboto", Font.BOLD, 12));
             name.setForeground(TEXT_COLOR);
             name.setDisabledTextColor(TEXT_COLOR);
             name.addActionListener(ev -> stopEditing(true));
@@ -579,7 +578,7 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
             });
 
             summary = new JLabel(summaryText());
-            summary.setFont(PanelFonts.stockOr(new Font("Roboto", Font.PLAIN, 11), PanelFonts.of(Font.PLAIN, 11f)));
+            summary.setFont(new Font("Roboto", Font.PLAIN, 11));
             summary.setForeground(MUTED_TEXT_COLOR);
 
             JPanel titles = new JPanel(new BorderLayout(0, 3));
@@ -588,7 +587,7 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
             titles.add(summary, BorderLayout.SOUTH);
 
             activeTag = new JLabel("ACTIVE");
-            activeTag.setFont(PanelFonts.stockOr(new Font("Roboto", Font.BOLD, 10), PanelFonts.of(Font.BOLD, 10f)));
+            activeTag.setFont(new Font("Roboto", Font.BOLD, 10));
             activeTag.setForeground(ColorScheme.PROGRESS_COMPLETE_COLOR);
             activeTag.setVerticalAlignment(SwingConstants.TOP);
 
@@ -654,7 +653,7 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
             load.setBackground(ACCENT_COLOR);
             load.setForeground(LOAD_TEXT_COLOR);
             load.setFocusPainted(false);
-            load.setFont(PanelFonts.stockOr(new Font("Roboto", Font.BOLD, 12), PanelFonts.of(Font.BOLD, 12f)));
+            load.setFont(new Font("Roboto", Font.BOLD, 12));
             load.setBorder(new EmptyBorder(6, 8, 6, 8));
             load.setCursor(new Cursor(Cursor.HAND_CURSOR));
             load.addActionListener(ev -> {
@@ -852,7 +851,7 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
         private JLabel createLabel(String text) {
             JLabel label = new JLabel(text);
             label.setForeground(MUTED_TEXT_COLOR);
-            label.setFont(PanelFonts.stockOr(new Font("Roboto", Font.PLAIN, 11), PanelFonts.of(Font.PLAIN, 11f)));
+            label.setFont(new Font("Roboto", Font.PLAIN, 11));
             label.setPreferredSize(new Dimension(64, 20));
             return label;
         }
@@ -883,7 +882,7 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
             field.setEnabled(false);
             field.setOpaque(false);
             field.setBorder(VIEW_FIELD_BORDER);
-            field.setFont(PanelFonts.stockOr(new Font("Roboto", Font.PLAIN, 11), PanelFonts.of(Font.PLAIN, 11f)));
+            field.setFont(new Font("Roboto", Font.PLAIN, 11));
             field.setForeground(TEXT_COLOR);
             field.setDisabledTextColor(TEXT_COLOR);
         }
@@ -912,7 +911,7 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
             button.setForeground(TEXT_COLOR);
             button.setFocusPainted(false);
             button.setBorder(new EmptyBorder(4, 8, 4, 8));
-            button.setFont(PanelFonts.stockOr(new Font("Roboto", Font.PLAIN, 11), PanelFonts.of(Font.PLAIN, 11f)));
+            button.setFont(new Font("Roboto", Font.PLAIN, 11));
             button.setCursor(new Cursor(Cursor.HAND_CURSOR));
             button.setHorizontalAlignment(SwingConstants.LEFT);
 

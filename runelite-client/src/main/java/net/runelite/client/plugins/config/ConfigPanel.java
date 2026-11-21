@@ -55,7 +55,7 @@ import net.runelite.client.plugins.PluginManager;
 import net.runelite.client.plugins.microbot.AlwaysOnPlugins;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.DynamicGridLayout;
-import net.runelite.client.ui.PanelFonts;
+import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.UnitFormatterFactory;
 import net.runelite.client.ui.components.ColorJButton;
@@ -286,7 +286,7 @@ class ConfigPanel extends PluginPanel
 			String name = cs.name();
 			final JLabel sectionName = new JLabel(name);
 			sectionName.setForeground(ColorScheme.BRAND_ORANGE);
-			sectionName.setFont(PanelFonts.bold());
+			sectionName.setFont(FontManager.getRunescapeBoldFont());
 			sectionName.setToolTipText("<html>" + name + ":<br>" + cs.description() + "</html>");
 			sectionHeader.add(sectionName, BorderLayout.CENTER);
 

@@ -6,11 +6,11 @@ import org.junit.Test;
 public class ClientThemeTest
 {
 	@Test
-	public void readsThemeAndFont()
+	public void readsThemeAndIgnoresLegacyFontKey()
 	{
-		ClientTheme t = ClientTheme.parse("{\"theme\":\"gold\",\"font\":\"Inter\"}");
+		// a "font" key from an older launcher is ignored
+		ClientTheme t = ClientTheme.parse("{\"theme\":\" Gold \",\"font\":\"inter\"}");
 		assertEquals(ClientTheme.Palette.GOLD, t.palette);
-		assertEquals(ClientTheme.PanelFont.INTER, t.font);
 	}
 
 	@Test
@@ -18,7 +18,6 @@ public class ClientThemeTest
 	{
 		ClientTheme t = ClientTheme.parse("{\"theme\":\"pink\"}");
 		assertEquals(ClientTheme.Palette.CLASSIC, t.palette);
-		assertEquals(ClientTheme.PanelFont.RUNESCAPE, t.font);
 	}
 
 	@Test
@@ -34,7 +33,7 @@ public class ClientThemeTest
 	{
 		assertEquals(ClientTheme.Palette.CLASSIC, ClientTheme.parse("not json {").palette);
 		assertEquals(ClientTheme.Palette.CLASSIC, ClientTheme.parse("[1]").palette);
-		assertEquals(ClientTheme.PanelFont.RUNESCAPE, ClientTheme.parse(null).font);
+		assertEquals(ClientTheme.Palette.CLASSIC, ClientTheme.parse(null).palette);
 	}
 
 	@Test

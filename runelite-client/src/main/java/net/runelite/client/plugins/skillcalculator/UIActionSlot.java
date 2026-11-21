@@ -46,7 +46,7 @@ import net.runelite.client.callback.ClientThread;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.plugins.skillcalculator.skills.SkillAction;
 import net.runelite.client.ui.ColorScheme;
-import net.runelite.client.ui.PanelFonts;
+import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.components.shadowlabel.JShadowedLabel;
 
 class UIActionSlot extends JPanel
@@ -135,7 +135,7 @@ class UIActionSlot extends JPanel
 		uiLabelName.setForeground(Color.WHITE);
 
 		uiLabelActions = new JShadowedLabel("Unknown");
-		uiLabelActions.setFont(PanelFonts.small());
+		uiLabelActions.setFont(FontManager.getRunescapeSmallFont());
 		uiLabelActions.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 
 		uiInfo.add(uiLabelName);
