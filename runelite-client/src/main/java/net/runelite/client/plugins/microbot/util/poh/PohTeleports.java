@@ -242,7 +242,7 @@ public class PohTeleports {
 
     /**
      * Scans the entire loaded scene for any GameObject matching the given ids, bypassing the
-     * {@link Rs2Player#getWorldLocation()} anchor that breaks every Rs2GameObject search when
+     * {@link Rs2Player#getWorldLocation()} anchor that breaks searches around the player when
      * the player is in a POH instance.
      *
      * <p>Inside a POH, {@code Rs2Player.getWorldLocation()} returns the overworld-template tile

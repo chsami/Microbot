@@ -65,10 +65,6 @@ public class Rs2TileObjectModelClickboxTest {
         assertSame(clickbox, new Rs2TileObjectModel(tileObject).getClickbox());
     }
 
-    @Test
-    public void legacyModelReadsClickboxOnClientThread() {
-        assertSame(clickbox, new net.runelite.client.plugins.microbot.util.tileobject.Rs2TileObjectModel(tileObject).getClickbox());
-    }
 
     @Test
     @SuppressWarnings("unchecked")

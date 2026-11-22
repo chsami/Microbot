@@ -9,7 +9,6 @@
       * [Rs2Dialogues](api/apidocs/net/runelite/client/plugins/microbot/util/dialogues/Rs2Dialogues.html)
       * [Rs2Equipment](api/apidocs/net/runelite/client/plugins/microbot/util/equipment/Rs2Equipment.html)
       * [Rs2Cannon](api/apidocs/net/runelite/client/plugins/microbot/util/gameobject/Rs2Cannon.html)
-      * [Rs2GameObject](api/apidocs/net/runelite/client/plugins/microbot/util/gameobject/Rs2GameObject.html)
       * [Rs2GroundItem](api/apidocs/net/runelite/client/plugins/microbot/util/grounditem/Rs2GroundItem.html)
       * [Rs2Inventory](api/apidocs/net/runelite/client/plugins/microbot/util/inventory/Rs2Inventory.html)
       * [Rs2KeyBoard](api/apidocs/net/runelite/client/plugins/microbot/util/keyboard/Rs2Keyboard.html)
