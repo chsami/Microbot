@@ -242,24 +242,25 @@ public class PluginResourcesTest {
     }
 
     @Test(timeout = 10000)
-    public void scriptsAliveFollowsTheLoopsOfThePluginsScripts() throws Exception {
+    public void hasRunningScriptFollowsTheLoopsOfThePluginsScripts() throws Exception {
         String name = "net.runelite.client.plugins.microbot.externalplugins.fixture.LoopScriptFixture";
         ClassLoader owner = childLoader(name);
-        assertTrue("a jar without scripts (event-driven plugin) counts as alive", PluginResources.scriptsAlive(owner));
+        assertFalse("a jar without scripts (a helper for manual play) never counts", PluginResources.hasRunningScript(owner));
+        assertFalse("nor does the core client", PluginResources.hasRunningScript(PluginResources.class.getClassLoader()));
         Class<?> type = owner.loadClass(name);
         Script crashing = (Script) type.getDeclaredConstructor().newInstance();
         Script looping = (Script) type.getDeclaredConstructor().newInstance();
         try {
-            assertFalse("created but never started", PluginResources.scriptsAlive(owner));
+            assertFalse("created but never started", PluginResources.hasRunningScript(owner));
             type.getMethod("startLoop", boolean.class).invoke(crashing, true);
             long deadline = System.currentTimeMillis() + 2000;
             while (crashing.isRunning() && System.currentTimeMillis() < deadline) {
                 Thread.sleep(10);
             }
             assertFalse("the loop died from an exception", crashing.isRunning());
-            assertFalse("its only started script died", PluginResources.scriptsAlive(owner));
+            assertFalse("its only started script died", PluginResources.hasRunningScript(owner));
             type.getMethod("startLoop", boolean.class).invoke(looping, false);
-            assertTrue("one of its scripts is looping", PluginResources.scriptsAlive(owner));
+            assertTrue("one of its scripts is looping", PluginResources.hasRunningScript(owner));
         } finally {
             PluginResources.dispose(owner, 2000);
         }

@@ -328,10 +328,7 @@ public class MicrobotPlugin extends Plugin
 	@Subscribe
 	public void onPluginChanged(PluginChanged event)
 	{
-		if (ClientAlertReporter.isScript(event.getPlugin()))
-		{
-			syncInputToScripts();
-		}
+		syncInputToScripts();
 	}
 
 	// a plugin that was already on starting (or restarting) a script: no PluginChanged for that
@@ -353,10 +350,17 @@ public class MicrobotPlugin extends Plugin
 			}
 			PluginManager pluginManager = Microbot.getPluginManager();
 			boolean running = microbotConfig.disableInputWhileRunning() && pluginManager.getPlugins().stream()
-				.anyMatch(plugin -> ClientAlertReporter.isScript(plugin) && pluginManager.isActive(plugin)
-					&& PluginResources.scriptsAlive(plugin.getClass().getClassLoader()));
+				.anyMatch(plugin -> pluginManager.isActive(plugin) && isVisible(plugin)
+					&& PluginResources.hasRunningScript(plugin.getClass().getClassLoader()));
 			inputSelector.scriptsRunning(running);
 		});
+	}
+
+	// Only Hub and side-loaded jars register Scripts, so this needs no isExternal flag; hidden plugins never count.
+	private static boolean isVisible(Plugin plugin)
+	{
+		PluginDescriptor descriptor = plugin.getClass().getAnnotation(PluginDescriptor.class);
+		return descriptor != null && !descriptor.hidden();
 	}
 
 	@Subscribe

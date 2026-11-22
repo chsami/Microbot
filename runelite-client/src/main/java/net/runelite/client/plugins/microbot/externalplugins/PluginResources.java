@@ -39,23 +39,22 @@ public final class PluginResources {
                 throw new IllegalStateException("The plugin is being unloaded");
             }
             addWeak(scope.scripts, script);
-            scope.registeredScript = true;
         }
     }
 
     /**
-     * Whether a plugin jar's scripts are still looping. True when the jar never registered a Script (event-driven
-     * plugins) or it is part of the core client; false once every Script it created has stopped, died or been collected.
+     * Whether a Hub or side-loaded plugin jar has a Script whose loop is running ({@link Script#isRunning()}).
+     * A jar that never created a Script (a helper for manual play) and the core client never count.
      */
-    public static boolean scriptsAlive(ClassLoader owner) {
+    public static boolean hasRunningScript(ClassLoader owner) {
         if (isCoreLoader(owner)) {
-            return true;
+            return false;
         }
         List<Script> scripts;
         synchronized (SCOPES) {
             Scope scope = SCOPES.get(owner);
-            if (scope == null || !scope.registeredScript) {
-                return true;
+            if (scope == null) {
+                return false;
             }
             scripts = live(scope.scripts);
         }
@@ -264,8 +263,6 @@ public final class PluginResources {
 
     private static final class Scope {
         private final List<WeakReference<Script>> scripts = new ArrayList<>();
-        // stays true after its scripts are collected, so a jar whose scripts stopped never reads as event-driven
-        private boolean registeredScript;
         private final List<WeakReference<ExecutorService>> executors = new ArrayList<>();
         private final List<WeakReference<Thread>> threads = new ArrayList<>();
         private final List<CloseableEntry> closeables = new ArrayList<>();
