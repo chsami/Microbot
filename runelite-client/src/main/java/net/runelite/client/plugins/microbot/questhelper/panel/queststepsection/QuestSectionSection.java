@@ -32,6 +32,7 @@ import net.runelite.client.plugins.microbot.questhelper.panel.TopLevelPanelDetai
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
 import net.runelite.api.Client;
+import net.runelite.client.ui.ClientTheme;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.PanelFonts;
 import net.runelite.client.util.ImageUtil;
@@ -106,14 +107,14 @@ public class QuestSectionSection extends AbstractQuestSection implements MouseLi
 
 		if (panelDetails.contains(currentStep))
 		{
-			headerLabel.setForeground(Color.BLACK);
+			headerLabel.setForeground(ClientTheme.onAccent());
 			headerPanel.setBackground(ColorScheme.BRAND_ORANGE);
 			viewControls.setBackground(ColorScheme.BRAND_ORANGE);
 			leftTitleContainer.setBackground(ColorScheme.BRAND_ORANGE);
 		}
 		else
 		{
-			headerLabel.setForeground(Color.WHITE);
+			headerLabel.setForeground(ClientTheme.classicOr(Color.WHITE, ColorScheme.TEXT_COLOR));
 			headerPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR.darker());
 			viewControls.setBackground(ColorScheme.DARKER_GRAY_COLOR.darker());
 			leftTitleContainer.setBackground(ColorScheme.DARKER_GRAY_COLOR.darker());
@@ -312,7 +313,7 @@ public class QuestSectionSection extends AbstractQuestSection implements MouseLi
 	{
 		expand();
 
-		headerLabel.setForeground(Color.BLACK);
+		headerLabel.setForeground(ClientTheme.onAccent());
 		headerPanel.setBackground(ColorScheme.BRAND_ORANGE);
 		viewControls.setBackground(ColorScheme.BRAND_ORANGE);
 		leftTitleContainer.setBackground(ColorScheme.BRAND_ORANGE);
@@ -320,7 +321,7 @@ public class QuestSectionSection extends AbstractQuestSection implements MouseLi
 
 	public void removeHighlight()
 	{
-		headerLabel.setForeground(Color.WHITE);
+		headerLabel.setForeground(ClientTheme.classicOr(Color.WHITE, ColorScheme.TEXT_COLOR));
 		if (isCollapsed())
 		{
 			applyDimmer(false, headerPanel);

@@ -114,7 +114,7 @@ public class WorldSelectorDialog extends JDialog {
 		worldTable.setBackground(ClientTheme.classicOr(new Color(50, 50, 50), ColorScheme.DARKER_GRAY_COLOR));
 		worldTable.setForeground(TEXT_COLOR);
 		worldTable.setSelectionBackground(ACCENT_COLOR);
-		worldTable.setSelectionForeground(Color.BLACK);
+		worldTable.setSelectionForeground(ClientTheme.onAccent());
 		worldTable.setRowHeight(25);
 		worldTable.setGridColor(ClientTheme.classicOr(new Color(70, 70, 70), ColorScheme.MEDIUM_GRAY_COLOR));
 		worldTable.setShowGrid(true);
@@ -348,7 +348,7 @@ public class WorldSelectorDialog extends JDialog {
 				}
 			} else {
 				c.setBackground(ACCENT_COLOR);
-				c.setForeground(Color.BLACK);
+				c.setForeground(ClientTheme.onAccent());
 			}
 
 			return c;

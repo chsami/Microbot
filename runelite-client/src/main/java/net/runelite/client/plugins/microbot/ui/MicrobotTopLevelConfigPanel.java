@@ -5,6 +5,7 @@ import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.config.TopLevelConfigPanel;
 import net.runelite.client.plugins.microbot.recovery.StartupRecovery;
+import net.runelite.client.ui.ClientTheme;
 import net.runelite.client.ui.ClientUI;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.PanelFonts;
@@ -114,8 +115,8 @@ public class MicrobotTopLevelConfigPanel extends PluginPanel {
         this.pluginListPanel = pluginListPanel;
 
         // Create text-based icons instead of using image files for better clarity
-        ImageIcon installedIcon = createTextIcon("Installed", Color.YELLOW, null, 80, 32);
-        ImageIcon hubIcon = createTextIcon("Plugin Hub", Color.YELLOW, null, 80, 32);
+        ImageIcon installedIcon = createTextIcon("Installed", ClientTheme.classicOr(Color.YELLOW, ColorScheme.BRAND_ORANGE), null, 80, 32);
+        ImageIcon hubIcon = createTextIcon("Plugin Hub", ClientTheme.classicOr(Color.YELLOW, ColorScheme.BRAND_ORANGE), null, 80, 32);
 
         pluginListPanelTab = addTab(pluginListPanel.getMuxer(), installedIcon, "Installed Microbot Plugins");
         profilePanelTab = addTab(profilePanel, "profile_icon.png", "Profiles");

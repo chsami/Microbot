@@ -1,5 +1,6 @@
 package net.runelite.client.ui;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -8,7 +9,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collections;
 import java.util.Locale;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -46,6 +49,15 @@ public final class ClientTheme
 
 	static final Path FILE = Paths.get(System.getProperty("user.home"), ".microbot", "theme.json");
 
+	private static final Map<String, String> THEMED_LAF_EXTRAS = ImmutableMap.<String, String>builder()
+		.put("TitlePane.background", "@background")
+		.put("MenuBar.background", "@background")
+		.put("ToolBar.background", "@background")
+		.put("ScrollBar.hoverThumbColor", "lighten(@MEDIUM_GRAY,10%)")
+		.put("ScrollBar.pressedThumbColor", "@accentColor")
+		.put("Button.foreground", "@foreground")
+		.build();
+
 	private static final ClientTheme CURRENT = read(FILE);
 
 	public final Palette palette;
@@ -72,6 +84,61 @@ public final class ClientTheme
 	static Color classicOr(Palette palette, Color classic, Color themed)
 	{
 		return palette == Palette.CLASSIC ? classic : themed;
+	}
+
+	/** The nav strip and sidebar take the page colour on themed palettes; Classic keeps DARKER_GRAY. */
+	public static Color sidebarColor()
+	{
+		return classicOr(ColorScheme.DARKER_GRAY_COLOR, ColorScheme.DARK_GRAY_COLOR);
+	}
+
+	/** Text on an accent-coloured fill: Classic keeps its stock black, the others pick black or white by contrast. */
+	public static Color onAccent()
+	{
+		return onAccent(CURRENT.palette);
+	}
+
+	static Color onAccent(Palette palette)
+	{
+		return palette == Palette.CLASSIC ? Color.BLACK : onAccent(palette.accent);
+	}
+
+	static Color onAccent(Color accent)
+	{
+		return contrast(Color.BLACK, accent) >= contrast(Color.WHITE, accent) ? Color.BLACK : Color.WHITE;
+	}
+
+	// WCAG relative-luminance contrast ratio
+	static double contrast(Color a, Color b)
+	{
+		double x = luminance(a);
+		double y = luminance(b);
+		return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+	}
+
+	private static double luminance(Color c)
+	{
+		return 0.2126 * channel(c.getRed()) + 0.7152 * channel(c.getGreen()) + 0.0722 * channel(c.getBlue());
+	}
+
+	private static double channel(int v)
+	{
+		double s = v / 255.0;
+		return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+	}
+
+	/**
+	 * FlatLaf defaults added on top of RuneLiteLAF.properties for every palette but Classic, so the frame chrome,
+	 * scrollbars and inputs follow the launcher. Fixed in code; no user strings reach FlatLaf.
+	 */
+	public static Map<String, String> themedLafExtras()
+	{
+		return themedLafExtras(CURRENT.palette);
+	}
+
+	static Map<String, String> themedLafExtras(Palette palette)
+	{
+		return palette == Palette.CLASSIC ? Collections.emptyMap() : THEMED_LAF_EXTRAS;
 	}
 
 	static ClientTheme read(Path file)

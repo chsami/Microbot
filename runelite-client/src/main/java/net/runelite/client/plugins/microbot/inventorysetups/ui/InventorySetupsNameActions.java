@@ -38,6 +38,7 @@ import javax.swing.JPopupMenu;
 import javax.swing.SwingUtilities;
 
 import lombok.Getter;
+import net.runelite.client.ui.ClientTheme;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.PanelFonts;
 import net.runelite.client.ui.JagexColors;
@@ -295,7 +296,7 @@ public class InventorySetupsNameActions<T extends InventorySetupsDisplayAttribut
 		nameInput.setEditable(false);
 		nameInput.setBackground(panelColor);
 		nameInput.setPreferredSize(new Dimension(0, 24));
-		nameInput.getTextField().setForeground(Color.WHITE);
+		nameInput.getTextField().setForeground(ClientTheme.classicOr(Color.WHITE, ColorScheme.TEXT_COLOR));
 		nameInput.getTextField().setBackground(panelColor);
 		nameInput.getTextField().setBorder(new EmptyBorder(0, 6, 0, 0));
 		if (allowEditable)

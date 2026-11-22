@@ -46,7 +46,7 @@ class ClientToolbarPanel extends JPanel
 
 	ClientToolbarPanel(boolean isInSidebar)
 	{
-		setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		setBackground(ClientTheme.sidebarColor());
 
 		if (isInSidebar)
 		{
@@ -125,7 +125,7 @@ class ClientToolbarPanel extends JPanel
 	public JPanel createSidebarPanel()
 	{
 		JPanel wrap = new JPanel();
-		wrap.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		wrap.setBackground(ClientTheme.sidebarColor());
 		wrap.setLayout(new BorderLayout());
 		wrap.add(this, BorderLayout.SOUTH);
 		return wrap;
