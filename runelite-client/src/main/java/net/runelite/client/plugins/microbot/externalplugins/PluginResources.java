@@ -42,6 +42,25 @@ public final class PluginResources {
         }
     }
 
+    /**
+     * Whether a Hub or side-loaded plugin jar has a Script whose loop is running ({@link Script#isRunning()}).
+     * A jar that never created a Script (a helper for manual play) and the core client never count.
+     */
+    public static boolean hasRunningScript(ClassLoader owner) {
+        if (isCoreLoader(owner)) {
+            return false;
+        }
+        List<Script> scripts;
+        synchronized (SCOPES) {
+            Scope scope = SCOPES.get(owner);
+            if (scope == null) {
+                return false;
+            }
+            scripts = live(scope.scripts);
+        }
+        return scripts.stream().anyMatch(Script::isRunning);
+    }
+
     /** Register an additional plugin-owned executor before submitting work to it. */
     public static <T extends ExecutorService> T registerExecutor(ClassLoader owner, T executor) {
         Objects.requireNonNull(executor, "executor");
