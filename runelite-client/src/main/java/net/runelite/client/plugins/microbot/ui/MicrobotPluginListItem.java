@@ -151,8 +151,12 @@ class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 		disabledByAuthor = pluginDescriptor != null && pluginDescriptor.disable();
 		sideLabel = alwaysOn ? createSideLabel("Always on", AlwaysOnPlugins.TOOLTIP)
 			: disabledByAuthor ? createSideLabel("Turned off", "Turned off by its author") : null;
+		String tag = MicrobotPluginNames.authorTag(pluginConfig.getName());
+		// An icon-only tag (no letters) has nothing to put in a badge, so it stays in the name as text.
+		JLabel badge = ClientTheme.redesign() && tag.matches(".*[\\p{L}\\p{N}].*")
+			? tagBadge(tag, readableTagColor(tagColor(tagColorSpec(pluginConfig.getName())))) : null;
 		nameLabel = createNameLabel(pluginConfig, sideLabel != null ? sideLabel.getPreferredSize().width : SWITCH_WIDTH,
-			pluginDescriptor == null ? "" : pluginDescriptor.version());
+			pluginDescriptor == null ? "" : pluginDescriptor.version(), badge == null ? 0 : badge.getPreferredSize().width + 6);
 		baseHeight = Math.max(MIN_ITEM_HEIGHT, nameLabel.getPreferredSize().height);
 		setPreferredSize(new Dimension(MicrobotPluginListPanel.LIST_ITEM_WIDTH, baseHeight));
 
@@ -238,25 +242,15 @@ class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 
 		addLabelPopupMenu(nameLabel, configMenuItem, pluginConfig.createSupportMenuItem(pluginConfig.getPlugin()),
 			pluginListPanel.getBugReporter().menuItem(this, pluginConfig.getPlugin()), uninstallItem);
-		String tag = MicrobotPluginNames.authorTag(pluginConfig.getName());
-		if (!ClientTheme.redesign())
+		if (badge == null)
 		{
-			add(nameLabel, BorderLayout.CENTER);
-		}
-		// An icon-only tag (no letters) has nothing to put in a badge, so it stays in the name as text.
-		else if (!tag.matches(".*[\\p{L}\\p{N}].*"))
-		{
-			if (!tag.isEmpty())
-			{
-				nameLabel.setText(tag + " " + nameLabel.getText());
-			}
 			add(nameLabel, BorderLayout.CENTER);
 		}
 		else
 		{
 			JPanel name = new JPanel(new BorderLayout(6, 0));
 			name.setOpaque(false);
-			name.add(tagBadge(tag, tagColor(tagColorSpec(pluginConfig.getName()))), BorderLayout.WEST);
+			name.add(badge, BorderLayout.WEST);
 			name.add(nameLabel, BorderLayout.CENTER);
 			add(name, BorderLayout.CENTER);
 		}
@@ -310,7 +304,7 @@ class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 			@Override
 			public void focusLost(FocusEvent e)
 			{
-				setBackground(background);
+				setBackground(ClientTheme.redesign() && getMousePosition(true) != null ? ColorScheme.DARKER_GRAY_HOVER_COLOR : background);
 			}
 		});
 
@@ -372,18 +366,26 @@ class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 	}
 
 	@NotNull
-	private static JLabel createNameLabel(MicrobotPluginConfigurationDescriptor pluginConfig, int switchWidth, String version) {
+	private static JLabel createNameLabel(MicrobotPluginConfigurationDescriptor pluginConfig, int switchWidth, String version, int badgeWidth) {
+		int buttons = 21 /*pin*/ + 25 /*config, if present*/ + switchWidth + 12 /*margins*/;
+		int textWidth = MicrobotPluginListPanel.LIST_ITEM_WIDTH - buttons;
 		JLabel nameLabel;
 		if (ClientTheme.redesign())
 		{
-			// Plain text, so a long name ends in "..." on one line instead of wrapping.
-			nameLabel = new JLabel(MicrobotPluginNames.plainName(pluginConfig.getName()));
+			// Wraps like Classic, in the width the row padding and the author badge leave.
+			String raw = pluginConfig.getName();
+			String tag = MicrobotPluginNames.authorTag(raw);
+			String name = MicrobotPluginNames.plainName(raw);
+			if (badgeWidth == 0 && !tag.isEmpty())
+			{
+				name = tag + " " + name;
+			}
+			nameLabel = new JLabel("<html><div style='width:" + (textWidth - 8 - badgeWidth) + "px'>"
+				+ HtmlEscapers.htmlEscaper().escape(name) + "</div></html>");
 			nameLabel.setForeground(ColorScheme.TEXT_COLOR);
 		}
 		else
 		{
-			int buttons = 21 /*pin*/ + 25 /*config, if present*/ + switchWidth + 12 /*margins*/;
-			int textWidth = MicrobotPluginListPanel.LIST_ITEM_WIDTH - buttons;
 			nameLabel = new JLabel("<html><div style='width:" + textWidth + "px'>" + htmlBody(pluginConfig.getName()) + "</div></html>");
 			nameLabel.setForeground(Color.WHITE);
 		}
@@ -392,7 +394,7 @@ class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 
 		String details = (pluginConfig.getDescription().isEmpty() ? "" : "<br>" + htmlBody(pluginConfig.getDescription()))
 			+ (version.isEmpty() ? "" : "<br>Version " + HtmlEscapers.htmlEscaper().escape(version));
-		// redesign: always, since a long name is cut short with "..."
+		// redesign: always, so the full name with its tag is one hover away
 		if (ClientTheme.redesign() || !details.isEmpty())
 		{
 			nameLabel.setToolTipText("<html>" + htmlBody(pluginConfig.getName()) + (details.isEmpty() ? "" : ":" + details) + "</html>");
@@ -446,6 +448,15 @@ class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 		Color edge = ColorUtil.colorLerp(ColorScheme.DARKER_GRAY_COLOR, color, 0.45);
 		JLabel badge = new JLabel(tag)
 		{
+			// A long tag ends in "..."; the tooltip has it in full.
+			@Override
+			public Dimension getPreferredSize()
+			{
+				Dimension d = super.getPreferredSize();
+				d.width = Math.min(d.width, 48);
+				return d;
+			}
+
 			@Override
 			protected void paintComponent(Graphics g)
 			{
@@ -465,7 +476,15 @@ class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 		badge.setForeground(color);
 		badge.setBorder(new EmptyBorder(0, 5, 0, 5));
 		badge.setHorizontalAlignment(SwingConstants.CENTER);
+		badge.setToolTipText(tag);
 		return badge;
+	}
+
+	/** Very dark tag colours (black, navy, dark red) are lifted toward the text colour so the badge stays readable. */
+	static Color readableTagColor(Color c)
+	{
+		double luma = 0.299 * c.getRed() + 0.587 * c.getGreen() + 0.114 * c.getBlue();
+		return luma < 90 ? ColorUtil.colorLerp(c, ColorScheme.TEXT_COLOR, 0.5) : c;
 	}
 
 	private static final Pattern HEX_COLOUR = Pattern.compile("#?([0-9a-fA-F]{6})");

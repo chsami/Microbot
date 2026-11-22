@@ -439,7 +439,7 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
     private void setUpListParts() {
         SwingUtil.removeButtonDecorations(builtInHeader);
         builtInHeader.setHorizontalAlignment(SwingConstants.LEFT);
-        builtInHeader.setFont(FontManager.getRunescapeSmallFont());
+        builtInHeader.setFont(ClientTheme.redesign() ? PanelFonts.of(Font.BOLD, 10.5f) : FontManager.getRunescapeSmallFont());
         builtInHeader.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
         builtInHeader.setRequestFocusEnabled(false);
         builtInHeader.addFocusListener(scrollToFocused);
@@ -782,7 +782,7 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
         }
         children.addAll(result.getPinned());
         if (sections && !result.getNormal().isEmpty()) {
-            allHeader.setText("Other plugins (" + result.getNormal().size() + ")");
+            allHeader.setText(allHeading(result.getPinned().size(), result.getNormal().size()));
             children.add(allHeader);
         } else if (!result.getPinned().isEmpty() && !result.getNormal().isEmpty()) {
             children.add(pinnedDivider);
@@ -829,6 +829,10 @@ public class MicrobotPluginListPanel extends MicrobotPluginPanel {
                 .map(child -> child instanceof HubRow ? ((HubRow) child).getInstallButton() : (JComponent) child)
                 .collect(Collectors.toList());
         showChildren(children);
+    }
+
+    static String allHeading(int pinned, int normal) {
+        return (pinned == 0 ? "Plugins (" : "Other plugins (") + normal + ")";
     }
 
     // Cached per author by the caller, so a refresh reuses the same label.
