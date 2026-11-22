@@ -240,7 +240,7 @@ public abstract class Script extends Global implements IScript {
         }
 
         if (Microbot.isLoggedIn() && !Rs2Player.hasCompletedTutorialIsland())
-            return true;
+            return isGameReady();
 
         if (Rs2Player.hasCompletedTutorialIsland() && Microbot.getBlockingEventManager().shouldBlockAndProcess()) {
             // A blocking event was found & is executing
@@ -269,7 +269,15 @@ public abstract class Script extends Global implements IScript {
             Microbot.getConfigManager().setConfiguration(MicrobotConfig.configGroup, MicrobotConfig.keyEnableAutoRunOn, Microbot.enableAutoRunOn);
             Microbot.getConfigManager().setConfiguration(MicrobotConfig.configGroup, MicrobotConfig.keyUseStaminaPotsIfNeeded, Microbot.useStaminaPotsIfNeeded);
         }
-        return true;
+        return isGameReady();
+    }
+
+    protected boolean runsWhileLoggedOut() {
+        return false;
+    }
+
+    private boolean isGameReady() {
+        return runsWhileLoggedOut() || (Microbot.isLoggedIn() && Rs2Player.getWorldLocation() != null);
     }
 
     protected void trace(String key, Object value) {

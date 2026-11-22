@@ -108,6 +108,11 @@ public class BreakHandlerV2Script extends Script {
     private boolean restoredPauseNeedsPreparation;
     private final BreakHandlerTickGuard tickGuard = new BreakHandlerTickGuard();
 
+    @Override
+    protected boolean runsWhileLoggedOut() {
+        return true;
+    }
+
     /**
      * Run the break handler script
      */
