@@ -99,6 +99,19 @@ public class InputSelectorScriptsTest
 	}
 
 	@Test
+	public void aChangeThatHadToWaitIsRetriedByTheNextSyncAfterAResumeFromElsewhere() throws Exception
+	{
+		// paused and resumed without this selector's button: no transition of its own replays the waiting change
+		ScriptPauseController.setPaused(true).get(5, TimeUnit.SECONDS);
+		selector.scriptsRunning(true);
+		assertTrue("waits while paused", game.isEnabled());
+
+		ScriptPauseController.setPaused(false).get(5, TimeUnit.SECONDS);
+		selector.scriptsRunning(true); // the periodic re-sync, same reading as before
+		assertFalse(game.isEnabled());
+	}
+
+	@Test
 	public void aScriptStartedWhilePausedTurnsInputOffOnlyAfterTheResume() throws Exception
 	{
 		togglePause();

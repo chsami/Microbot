@@ -95,7 +95,8 @@ public class InputSelector {
      * Enable/Disable Input buttons in between: their choice stands.
      */
     public void scriptsRunning(boolean running) {
-        if (running == anyScriptRunning) return;
+        // an unchanged reading still retries a change that had to wait (the periodic re-sync makes that self-healing)
+        if (running == anyScriptRunning && !scriptsChangePending) return;
         anyScriptRunning = running;
         applyScriptsRunning();
     }
