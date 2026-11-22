@@ -120,7 +120,6 @@ The performance test (`ExamplePluginPerformanceTest`) validates that:
 
 ### Performance test fails threshold
 - Cache may not be working correctly
-- Check that `Rs2TileObjectModel.compositionOf` is using the cache
 - Verify `ConcurrentHashMap` is being populated
 - Run test in isolation (not in parallel with other tests)
 
