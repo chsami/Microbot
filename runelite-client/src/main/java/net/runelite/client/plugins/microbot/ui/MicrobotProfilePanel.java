@@ -770,8 +770,14 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
             delete.setToolTipText("Delete profile");
             SwingUtil.removeButtonDecorations(delete);
             delete.addActionListener(ev -> {
+                String message = profile.isSync() && sessionManager.getAccountSession() == null
+                        ? "'" + profile.getName() + "' is cloud-synced, and you are not logged in to your RuneLite account.\n"
+                        + "This only deletes it from this computer. It will come back the next time you log in.\n"
+                        + "To delete it everywhere, log in first and then delete it.\n\n"
+                        + "Delete it from this computer anyway?"
+                        : "Are you sure you want to delete this profile?";
                 int confirm = JOptionPane.showConfirmDialog(MicrobotProfilePanel.ProfileCard.this,
-                        "Are you sure you want to delete this profile?",
+                        message,
                         "Warning", JOptionPane.OK_CANCEL_OPTION);
                 if (confirm == 0) {
                     deleteProfile(profile);
