@@ -5,17 +5,22 @@ import java.util.concurrent.Callable;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.events.GameStateChanged;
+import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.VarbitChanged;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.eventbus.EventBus;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.MockedStatic;
+import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -360,5 +365,24 @@ public class Rs2PlayerStateCacheTest
 		when(client.getVarbitValue(VARBIT_ID)).thenReturn(0);
 
 		assertEquals(0, cache.getVarbitValue(VARBIT_ID));
+	}
+
+	@Test
+	public void localPlayerPositionIsReReadAfterGameStateChangeEvenIfTickCountDrops()
+	{
+		WorldPoint lumbridge = new WorldPoint(3222, 3218, 0);
+		try (MockedStatic<Rs2Player> player = mockStatic(Rs2Player.class))
+		{
+			when(client.getTickCount()).thenReturn(5000);
+			player.when(Rs2Player::getWorldLocation_Internal).thenReturn(null);
+			assertNull(cache.getLocalPlayerPosition());
+
+			setGameState(GameState.HOPPING);
+			setGameState(GameState.LOGGED_IN);
+			when(client.getTickCount()).thenReturn(3);
+			player.when(Rs2Player::getWorldLocation_Internal).thenReturn(lumbridge);
+
+			assertEquals(lumbridge, cache.getLocalPlayerPosition());
+		}
 	}
 }

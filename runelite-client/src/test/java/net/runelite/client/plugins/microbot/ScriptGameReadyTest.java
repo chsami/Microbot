@@ -14,10 +14,14 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 public class ScriptGameReadyTest {
     private static final WorldPoint LUMBRIDGE = new WorldPoint(3222, 3218, 0);
+    private final ConfigManager config = mock(ConfigManager.class);
 
     @Test public void loggedOutSkipsTick() {
         assertFalse(run(new Script() { }, false, null));
@@ -29,6 +33,12 @@ public class ScriptGameReadyTest {
 
     @Test public void loggedInWithPositionRuns() {
         assertTrue(run(new Script() { }, true, LUMBRIDGE));
+        verify(config, atLeastOnce()).setConfiguration(any(), any(), any(Object.class));
+    }
+
+    @Test public void skippedTickLeavesRunAndConfigAlone() {
+        run(new Script() { }, true, null);
+        verifyNoInteractions(config);
     }
 
     @Test public void optOutRunsWhileLoggedOut() {
@@ -40,7 +50,7 @@ public class ScriptGameReadyTest {
         assertTrue(run(script, false, null));
     }
 
-    private static boolean run(Script script, boolean loggedIn, WorldPoint position) {
+    private boolean run(Script script, boolean loggedIn, WorldPoint position) {
         ClientThread clientThread = mock(ClientThread.class);
         when(clientThread.runOnClientThreadOptional(any())).thenReturn(Optional.empty());
         BlockingEventManager blocking = mock(BlockingEventManager.class);
@@ -51,7 +61,7 @@ public class ScriptGameReadyTest {
             microbot.when(Microbot::getEventBus).thenReturn(null);
             microbot.when(Microbot::getBlockingEventManager).thenReturn(blocking);
             microbot.when(Microbot::getClientThread).thenReturn(clientThread);
-            microbot.when(Microbot::getConfigManager).thenReturn(mock(ConfigManager.class));
+            microbot.when(Microbot::getConfigManager).thenReturn(config);
             player.when(Rs2Player::hasCompletedTutorialIsland).thenReturn(true);
             player.when(Rs2Player::getWorldLocation).thenReturn(position);
             fatigue.when(SessionFatigue::isActive).thenReturn(true);

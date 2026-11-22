@@ -62,6 +62,7 @@ public final class Rs2PlayerStateCache {
 
 	@Subscribe
 	private void onGameStateChanged(GameStateChanged e) {
+		invalidateLocalPlayer();
 		if (e.getGameState() == GameState.LOGGED_IN) {
 			populateQuests();
 		}
@@ -70,9 +71,6 @@ public final class Rs2PlayerStateCache {
 			quests.clear();
 			varbits.clear();
 			varps.clear();
-			lastLocalPlayerTick = -1;
-			localPlayerPosition = null;
-			localPlayerWorldView = null;
 		}
 		// The server only re-sends non-zero varps after a hop/reconnect, so a value that
 		// dropped to 0 while out of sync would never be corrected by onVarbitChanged.
