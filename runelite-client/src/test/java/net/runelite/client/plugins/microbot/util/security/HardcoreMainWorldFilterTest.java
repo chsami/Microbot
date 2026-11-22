@@ -29,12 +29,12 @@ public class HardcoreMainWorldFilterTest {
     private static final int NORMAL_WORLD = 422;
 
     private MockedStatic<Microbot> microbot;
+    private Client client;
 
     @Before
     public void setUp() {
-        Client client = mock(Client.class);
-        when(client.getWorldType()).thenReturn(EnumSet.of(net.runelite.api.WorldType.MEMBERS));
-        when(client.getWorld()).thenReturn(NORMAL_WORLD);
+        client = mock(Client.class);
+        onNormalWorld();
 
         WorldResult result = mock(WorldResult.class);
         when(result.getWorlds()).thenReturn(Arrays.asList(
@@ -78,11 +78,46 @@ public class HardcoreMainWorldFilterTest {
     }
 
     @Test
-    public void hardcoreMainWorldIsNotAccessible() {
+    public void hardcoreMainWorldIsNotAccessibleFromANormalWorld() {
         assertFalse(Rs2WorldUtil.isWorldAccessible(
                 world(HARDCORE_WORLD, EnumSet.of(WorldType.MEMBERS, WorldType.HARDCORE_MAIN)), true, false));
         assertTrue(Rs2WorldUtil.isWorldAccessible(
                 world(NORMAL_WORLD, EnumSet.of(WorldType.MEMBERS)), true, false));
+    }
+
+    @Test
+    public void randomWorldStaysOnHardcoreMainWorldsWhenClientIsOnOne() {
+        onHardcoreMainWorld();
+        for (int i = 0; i < 50; i++) {
+            assertEquals(HARDCORE_WORLD, Login.getRandomWorld(true));
+            assertEquals(HARDCORE_WORLD, LoginManager.getRandomWorld(true));
+        }
+    }
+
+    @Test
+    public void nextWorldStaysOnHardcoreMainWorldsWhenClientIsOnOne() {
+        onHardcoreMainWorld();
+        assertEquals(HARDCORE_WORLD, Login.getNextWorld(true));
+        assertEquals(HARDCORE_WORLD, LoginManager.getNextWorld(true));
+    }
+
+    @Test
+    public void onlyHardcoreMainWorldsAreAccessibleWhenClientIsOnOne() {
+        onHardcoreMainWorld();
+        assertTrue(Rs2WorldUtil.isWorldAccessible(
+                world(HARDCORE_WORLD, EnumSet.of(WorldType.MEMBERS, WorldType.HARDCORE_MAIN)), true, false));
+        assertFalse(Rs2WorldUtil.isWorldAccessible(
+                world(NORMAL_WORLD, EnumSet.of(WorldType.MEMBERS)), true, false));
+    }
+
+    private void onNormalWorld() {
+        when(client.getWorldType()).thenReturn(EnumSet.of(net.runelite.api.WorldType.MEMBERS));
+        when(client.getWorld()).thenReturn(NORMAL_WORLD);
+    }
+
+    private void onHardcoreMainWorld() {
+        when(client.getWorldType()).thenReturn(EnumSet.of(net.runelite.api.WorldType.MEMBERS, net.runelite.api.WorldType.HARDCORE_MAIN));
+        when(client.getWorld()).thenReturn(HARDCORE_WORLD);
     }
 
     private static World world(int id, EnumSet<WorldType> types) {

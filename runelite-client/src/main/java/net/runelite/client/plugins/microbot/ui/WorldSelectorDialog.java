@@ -230,12 +230,12 @@ public class WorldSelectorDialog extends JDialog {
 					world.getTypes().contains(WorldType.NOSAVE_MODE) ||
 					world.getTypes().contains(WorldType.LEGACY_ONLY) ||
 					world.getTypes().contains(WorldType.EOC_ONLY) ||
-					world.getTypes().contains(WorldType.FRESH_START_WORLD) ||
-					world.getTypes().contains(WorldType.HARDCORE_MAIN)) {
+					world.getTypes().contains(WorldType.FRESH_START_WORLD)) {
 					continue;
 				}
 
-				String worldType = world.getTypes().contains(WorldType.MEMBERS) ? "Members" : "F2P";
+				String worldType = world.getTypes().contains(WorldType.HARDCORE_MAIN) ? "Hardcore Main"
+					: world.getTypes().contains(WorldType.MEMBERS) ? "Members" : "F2P";
 				String region = getRegionDisplay(world.getRegion());
 				String activity = world.getActivity() != null ? world.getActivity() : "-";
 

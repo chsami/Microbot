@@ -114,6 +114,14 @@ public class Rs2WorldUtil {
         });
     }
 
+    public static boolean isClientOnHardcoreMainWorld() {
+        if (Microbot.getClient() == null) {
+            return false;
+        }
+        java.util.EnumSet<net.runelite.api.WorldType> worldTypes = Microbot.getClient().getWorldType();
+        return worldTypes != null && worldTypes.contains(net.runelite.api.WorldType.HARDCORE_MAIN);
+    }
+
     public static boolean isMemberAccount(){
         ConfigProfile activeProfile = LoginManager.getActiveProfile();
          // try to get membership status from cached varplayer data
@@ -178,12 +186,18 @@ public class Rs2WorldUtil {
             world.getTypes().contains(WorldType.NOSAVE_MODE) ||
             world.getTypes().contains(WorldType.LEGACY_ONLY) ||
             world.getTypes().contains(WorldType.EOC_ONLY) ||
-            world.getTypes().contains(WorldType.FRESH_START_WORLD) ||
-            world.getTypes().contains(WorldType.HARDCORE_MAIN)) {
+            world.getTypes().contains(WorldType.FRESH_START_WORLD)) {
             log.debug("World {} has restricted type(s): {}", world.getId(), world.getTypes());
             return false;
         }
-        
+
+        boolean isInHardcoreMainWorld = isClientOnHardcoreMainWorld();
+        if (isInHardcoreMainWorld != world.getTypes().contains(WorldType.HARDCORE_MAIN)) {
+            log.debug("World {} hardcore main type mismatch (player in hardcore main: {}, world hardcore main: {})",
+                     world.getId(), isInHardcoreMainWorld, world.getTypes().contains(WorldType.HARDCORE_MAIN));
+            return false;
+        }
+
         // Check player count limits
         if (world.getPlayers() >= 2000 || world.getPlayers() < 0) {
             log.debug("World {} is full or has invalid player count: {}", world.getId(), world.getPlayers());
