@@ -45,7 +45,7 @@ import net.runelite.client.rs.auth.JagexAuthService;
 import net.runelite.client.rs.auth.Session;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.DynamicGridLayout;
-import net.runelite.client.ui.FontManager;
+import net.runelite.client.ui.PanelFonts;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.SwingUtil;
@@ -148,7 +148,7 @@ class JagexAuthPanel extends PluginPanel
 	{
 		JLabel title = new JLabel(session.getNickname(), JAGEX_ACCOUNT_ICON, SwingConstants.LEADING);
 		title.setIconTextGap(6);
-		title.setFont(FontManager.getRunescapeBoldFont());
+		title.setFont(PanelFonts.bold());
 		title.setForeground(ColorScheme.BRAND_ORANGE);
 
 		JButton removeButton = new JButton(DELETE_ICON);

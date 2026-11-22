@@ -39,7 +39,7 @@ import javax.swing.border.EmptyBorder;
 import net.runelite.api.Constants;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.ColorScheme;
-import net.runelite.client.ui.FontManager;
+import net.runelite.client.ui.PanelFonts;
 import net.runelite.client.util.ImageUtil;
 
 class OverviewItemPanel extends JPanel
@@ -114,11 +114,11 @@ class OverviewItemPanel extends JPanel
 
 		JLabel titleLabel = new JLabel(title);
 		titleLabel.setForeground(Color.WHITE);
-		titleLabel.setFont(FontManager.getRunescapeSmallFont());
+		titleLabel.setFont(PanelFonts.small());
 
 		statusLabel = new JLabel();
 		statusLabel.setForeground(Color.GRAY);
-		statusLabel.setFont(FontManager.getRunescapeSmallFont());
+		statusLabel.setFont(PanelFonts.small());
 
 		textContainer.add(titleLabel);
 		textContainer.add(statusLabel);

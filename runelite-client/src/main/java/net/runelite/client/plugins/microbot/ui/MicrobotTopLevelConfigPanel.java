@@ -7,7 +7,7 @@ import net.runelite.client.plugins.config.TopLevelConfigPanel;
 import net.runelite.client.plugins.microbot.recovery.StartupRecovery;
 import net.runelite.client.ui.ClientUI;
 import net.runelite.client.ui.ColorScheme;
-import net.runelite.client.ui.FontManager;
+import net.runelite.client.ui.PanelFonts;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.components.materialtabs.MaterialTab;
 import net.runelite.client.ui.components.materialtabs.MaterialTabGroup;
@@ -66,7 +66,7 @@ public class MicrobotTopLevelConfigPanel extends PluginPanel {
         }
 
         // Set font and text color
-        g2d.setFont(FontManager.getRunescapeBoldFont());
+        g2d.setFont(PanelFonts.bold());
         g2d.setColor(textColor);
 
         // Calculate text position to center it
@@ -137,7 +137,7 @@ public class MicrobotTopLevelConfigPanel extends PluginPanel {
         String version = RuneLiteProperties.getMicrobotVersion();
         JLabel versionLabel = new JLabel(version == null || version.isBlank() ? "microbot" : "microbot v" + version, SwingConstants.CENTER);
         versionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        versionLabel.setFont(FontManager.getRunescapeSmallFont());
+        versionLabel.setFont(PanelFonts.small());
         versionLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
         versionLabel.setBorder(new EmptyBorder(4, 0, 0, 0));
         footer.add(versionLabel);
@@ -148,7 +148,7 @@ public class MicrobotTopLevelConfigPanel extends PluginPanel {
 
         JLabel nextStart = new JLabel("Safe mode is on for the next start", SwingConstants.CENTER);
         nextStart.setAlignmentX(Component.CENTER_ALIGNMENT);
-        nextStart.setFont(FontManager.getRunescapeSmallFont());
+        nextStart.setFont(PanelFonts.small());
         nextStart.setForeground(ColorScheme.PROGRESS_INPROGRESS_COLOR);
         nextStart.setBorder(new EmptyBorder(2, 6, 0, 6));
         nextStart.setVisible(StartupRecovery.nextStartSafeMode());
@@ -159,7 +159,7 @@ public class MicrobotTopLevelConfigPanel extends PluginPanel {
         if (proxy != null && !proxy.isBlank()) {
             JLabel proxyLabel = new JLabel(proxy, SwingConstants.CENTER);
             proxyLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-            proxyLabel.setFont(FontManager.getRunescapeSmallFont());
+            proxyLabel.setFont(PanelFonts.small());
             proxyLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
             footer.add(proxyLabel);
         }
@@ -173,7 +173,7 @@ public class MicrobotTopLevelConfigPanel extends PluginPanel {
                 : "<html><center>Safe mode (--safe-mode): external plugins are off. Remove the launch option to return to normal.</center></html>";
         JLabel label = new JLabel(text, SwingConstants.CENTER);
         label.setAlignmentX(Component.CENTER_ALIGNMENT);
-        label.setFont(FontManager.getRunescapeSmallFont());
+        label.setFont(PanelFonts.small());
         label.setForeground(ColorScheme.PROGRESS_INPROGRESS_COLOR);
         label.setBorder(new EmptyBorder(2, 6, 2, 6));
         List<String> previous = StartupRecovery.previousSessionSummary();

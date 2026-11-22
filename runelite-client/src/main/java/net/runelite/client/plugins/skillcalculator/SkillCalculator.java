@@ -66,7 +66,7 @@ import net.runelite.client.plugins.skillcalculator.skills.SkillAction;
 import net.runelite.client.plugins.skillcalculator.skills.SkillBonus;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.DynamicGridLayout;
-import net.runelite.client.ui.FontManager;
+import net.runelite.client.ui.PanelFonts;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.components.IconTextField;
 
@@ -280,7 +280,7 @@ class SkillCalculator extends JPanel
 		JCheckBox uiCheckbox = new JCheckBox();
 
 		uiLabel.setForeground(Color.WHITE);
-		uiLabel.setFont(FontManager.getRunescapeSmallFont());
+		uiLabel.setFont(PanelFonts.small());
 
 		uiOption.setBorder(BorderFactory.createEmptyBorder(1, 7, 1, 0));
 

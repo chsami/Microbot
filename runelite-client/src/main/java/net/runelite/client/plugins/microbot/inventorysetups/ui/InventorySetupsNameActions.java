@@ -39,7 +39,7 @@ import javax.swing.SwingUtilities;
 
 import lombok.Getter;
 import net.runelite.client.ui.ColorScheme;
-import net.runelite.client.ui.FontManager;
+import net.runelite.client.ui.PanelFonts;
 import net.runelite.client.ui.JagexColors;
 import net.runelite.client.ui.components.FlatTextField;
 
@@ -162,7 +162,7 @@ public class InventorySetupsNameActions<T extends InventorySetupsDisplayAttribut
 		nameInput.getTextField().addMouseListener(flatTextFieldMouseAdapter);
 
 		save.setVisible(false);
-		save.setFont(FontManager.getRunescapeSmallFont());
+		save.setFont(PanelFonts.small());
 		save.setForeground(ColorScheme.PROGRESS_COMPLETE_COLOR);
 		save.setBackground(panelColor);
 		save.addMouseListener(new MouseAdapter()
@@ -223,7 +223,7 @@ public class InventorySetupsNameActions<T extends InventorySetupsDisplayAttribut
 		});
 
 		cancel.setVisible(false);
-		cancel.setFont(FontManager.getRunescapeSmallFont());
+		cancel.setFont(PanelFonts.small());
 		cancel.setForeground(ColorScheme.PROGRESS_ERROR_COLOR);
 		cancel.setBackground(panelColor);
 		cancel.addMouseListener(new MouseAdapter()
@@ -256,7 +256,7 @@ public class InventorySetupsNameActions<T extends InventorySetupsDisplayAttribut
 			}
 		});
 
-		edit.setFont(FontManager.getRunescapeSmallFont());
+		edit.setFont(PanelFonts.small());
 		edit.setForeground(ColorScheme.LIGHT_GRAY_COLOR.darker());
 		edit.setBackground(panelColor);
 		edit.addMouseListener(new MouseAdapter()

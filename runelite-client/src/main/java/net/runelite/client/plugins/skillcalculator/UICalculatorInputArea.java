@@ -42,7 +42,7 @@ import javax.swing.border.EmptyBorder;
 import lombok.Getter;
 import static net.runelite.client.plugins.skillcalculator.SkillCalculator.MAX_XP_MULTIPLIER;
 import net.runelite.client.ui.ColorScheme;
-import net.runelite.client.ui.FontManager;
+import net.runelite.client.ui.PanelFonts;
 import net.runelite.client.ui.UnitFormatterFactory;
 import net.runelite.client.ui.components.FlatTextField;
 
@@ -169,7 +169,7 @@ class UICalculatorInputArea extends JPanel
 		uiInput.setHoverBackgroundColor(ColorScheme.DARK_GRAY_HOVER_COLOR);
 		uiInput.setBorder(new EmptyBorder(5, 7, 5, 7));
 
-		uiLabel.setFont(FontManager.getRunescapeSmallFont());
+		uiLabel.setFont(PanelFonts.small());
 		uiLabel.setBorder(new EmptyBorder(0, 0, 4, 0));
 		uiLabel.setForeground(Color.WHITE);
 
@@ -198,7 +198,7 @@ class UICalculatorInputArea extends JPanel
 		uiInput.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		uiInput.setBorder(new EmptyBorder(5, 7, 5, 7));
 
-		uiLabel.setFont(FontManager.getRunescapeSmallFont());
+		uiLabel.setFont(PanelFonts.small());
 		uiLabel.setBorder(new EmptyBorder(0, 0, 4, 0));
 		uiLabel.setForeground(Color.WHITE);
 

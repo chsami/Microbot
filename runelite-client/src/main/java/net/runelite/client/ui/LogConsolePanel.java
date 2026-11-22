@@ -67,7 +67,7 @@ final class LogConsolePanel extends JPanel
 		textArea.setWrapStyleWord(false);
 		textArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
 		textArea.setBackground(ColorScheme.DARK_GRAY_COLOR);
-		textArea.setForeground(new Color(0, 255, 70));
+		textArea.setForeground(ClientTheme.classicOr(new Color(0, 255, 70), ColorScheme.TEXT_COLOR));
 		textArea.setBorder(null);
 
 		DefaultCaret caret = new DefaultCaret()

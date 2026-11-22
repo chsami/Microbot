@@ -32,7 +32,7 @@ import net.runelite.client.plugins.microbot.AlwaysOnPlugins;
 import net.runelite.client.plugins.config.SearchablePlugin;
 import net.runelite.client.plugins.microbot.ui.search.MicrobotPluginNames;
 import net.runelite.client.ui.ColorScheme;
-import net.runelite.client.ui.FontManager;
+import net.runelite.client.ui.PanelFonts;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.SwingUtil;
 import org.jetbrains.annotations.NotNull;
@@ -144,7 +144,7 @@ class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 		setPreferredSize(new Dimension(MicrobotPluginListPanel.LIST_ITEM_WIDTH, baseHeight));
 
 		SwingUtil.removeButtonDecorations(statusButton);
-		statusButton.setFont(FontManager.getRunescapeSmallFont());
+		statusButton.setFont(PanelFonts.small());
 		statusButton.setHorizontalAlignment(SwingConstants.LEFT);
 		statusButton.setBorder(new EmptyBorder(0, 24, 2, 0));
 		// A Tab stop, not focused by a click: Space, or Enter below, runs it, so keyboard users can update or see why.
@@ -283,7 +283,7 @@ class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 	private static JLabel createSideLabel(String text, String tooltip)
 	{
 		JLabel label = new JLabel(text);
-		label.setFont(FontManager.getRunescapeSmallFont());
+		label.setFont(PanelFonts.small());
 		label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 		label.setToolTipText(tooltip);
 		return label;

@@ -57,7 +57,7 @@ import net.runelite.client.plugins.microbot.diagnostics.BugReportSection;
 import net.runelite.client.plugins.microbot.diagnostics.BugReportSnapshot;
 import net.runelite.client.plugins.microbot.diagnostics.BugReportTracker;
 import net.runelite.client.ui.ColorScheme;
-import net.runelite.client.ui.FontManager;
+import net.runelite.client.ui.PanelFonts;
 import net.runelite.client.util.LinkBrowser;
 
 class BugReportDialog extends JDialog
@@ -243,7 +243,7 @@ class BugReportDialog extends JDialog
 		panel.add(left(linkedHint));
 		panel.add(Box.createVerticalStrut(8));
 
-		status.setFont(FontManager.getRunescapeSmallFont());
+		status.setFont(PanelFonts.small());
 		panel.add(left(status));
 		panel.add(Box.createVerticalStrut(8));
 
@@ -623,7 +623,7 @@ class BugReportDialog extends JDialog
 	private static JLabel hint(String text)
 	{
 		JLabel label = new JLabel(text);
-		label.setFont(FontManager.getRunescapeSmallFont());
+		label.setFont(PanelFonts.small());
 		label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 		return label;
 	}

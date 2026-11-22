@@ -40,7 +40,7 @@ import net.runelite.client.plugins.timetracking.TabContentPanel;
 import net.runelite.client.plugins.timetracking.TimeTrackingPlugin;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.DynamicGridLayout;
-import net.runelite.client.ui.FontManager;
+import net.runelite.client.ui.PanelFonts;
 import net.runelite.client.ui.components.shadowlabel.JShadowedLabel;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.SwingUtil;
@@ -158,7 +158,7 @@ public class ClockTabPanel extends TabContentPanel
 
 		JLabel headerLabel = new JLabel(title);
 		headerLabel.setForeground(Color.WHITE);
-		headerLabel.setFont(FontManager.getRunescapeSmallFont());
+		headerLabel.setFont(PanelFonts.small());
 		panel.add(headerLabel, BorderLayout.CENTER);
 
 		JButton addButton = new JButton(ADD_ICON);
@@ -180,7 +180,7 @@ public class ClockTabPanel extends TabContentPanel
 
 		JLabel infoLabel = new JShadowedLabel(text);
 		infoLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR.darker());
-		infoLabel.setFont(FontManager.getRunescapeSmallFont());
+		infoLabel.setFont(PanelFonts.small());
 		panel.add(infoLabel);
 
 		return panel;
