@@ -28,7 +28,6 @@ import net.runelite.client.plugins.microbot.util.poh.PohTeleports;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 
 // TODO: Uncomment when implementing actual spellbook switching functionality
-// import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 // import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 
 /**
@@ -423,15 +422,6 @@ public enum Rs2Spellbook {
         //         System.out.println("No way to access POH for spellbook switching");
         //         return false;
         //     }
-        // }
-        // //NOTE should be support by the new utility class for the PoH Rooms, Rs2AchvienmtGallary
-        // GameObject portal = Rs2GameObject.getGameObjects(o -> 
-        //     o.getId() == getGameID() && o.getName().contains("portal")).stream()
-        //     .findFirst()
-        //     .orElse(null);
-        // 
-        // if (portal != null && Rs2GameObject.interact(portal, "Enter")) {
-        //     return sleepUntil(() -> getCurrentSpellbook() == this, 5000);
         // }
         
         System.out.println("TODO: Implement POH spellbook switching for " + this.name() + " spellbook");

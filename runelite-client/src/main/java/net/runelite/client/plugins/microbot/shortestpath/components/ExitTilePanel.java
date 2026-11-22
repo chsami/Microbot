@@ -53,9 +53,6 @@ public class ExitTilePanel extends JPanel {
     }
 
     public void detectTile() {
-        // Use the tile-object cache rather than Rs2GameObject.getGameObject, which routes
-        // through Rs2Player.getWorldLocation() as a scene anchor and fails inside POH
-        // instances (the template-mapped player location is not in the loaded scene).
         Rs2TileObjectModel exitPortal = Microbot.getRs2TileObjectCache()
                 .query()
                 .withId(POH_EXIT_PORTAL)

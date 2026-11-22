@@ -17,7 +17,7 @@ Config UI uses the custom `MicrobotConfigPanel` (`plugins/microbot/ui`), not Run
 - Full reference: `runelite-client/.../microbot/api/QUERYABLE_API.md`.
 
 ## Interaction utilities
-`Rs2Npc`, `Rs2GameObject`, `Rs2GroundItem`, `Rs2Inventory`, `Rs2Bank`, `Rs2Walker`, `Rs2Widget`, `Rs2Dialogue`, `Rs2Player`, `Rs2Combat`, etc. Prefer these over raw RuneLite APIs — they handle client-thread hopping, retries, and menu-entry correctness.
+`Rs2Npc`, `Microbot.getRs2TileObjectCache().query()` (objects; see `api/QUERYABLE_API.md`), `Rs2GroundItem`, `Rs2Inventory`, `Rs2Bank`, `Rs2Walker`, `Rs2Widget`, `Rs2Dialogue`, `Rs2Player`, `Rs2Combat`, etc. Prefer these over raw RuneLite APIs — they handle client-thread hopping, retries, and menu-entry correctness.
 
 Check `docs/entity-guides/README.md` before modifying anything under `util/` — each entity type has documented footguns.
 

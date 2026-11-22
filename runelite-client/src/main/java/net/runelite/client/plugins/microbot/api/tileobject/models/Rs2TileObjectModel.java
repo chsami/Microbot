@@ -530,25 +530,11 @@ public class Rs2TileObjectModel implements TileObject, IEntity {
      * Clicks this object with the given action, or with its first option when the action is null or empty.
      * An action the object does not have is refused rather than replaced by the first option,
      * unless a widget is selected, in which case the selected item or spell is used on the object.
-     * Rs2GameObject.clickObject delegates here.
      *
      * @param action the action to perform (e.g., "Open", "Climb")
      * @return true if the interaction was sent, false otherwise
      */
     public boolean click(String action) {
-        return click(action, false);
-    }
-
-    /**
-     * Rs2GameObject's old behaviour: sends the first option when the object does not have the action.
-     * Only Rs2GameObject.clickObject should call this; it goes when Rs2GameObject is removed.
-     */
-    @Deprecated(since = "2.6.44", forRemoval = true)
-    public boolean clickOrFirstOption(String action) {
-        return click(action, true);
-    }
-
-    private boolean click(String action, boolean firstOptionIfMissing) {
         try {
             WorldView worldView = getWorldView();
             if (worldView == null) {
@@ -579,14 +565,9 @@ public class Rs2TileObjectModel implements TileObject, IEntity {
                         }
                     }
                     if (index == -1 && !widgetSelected) {
-                        if (!firstOptionIfMissing) {
-                            log.warn("Failed to interact with object {} ({}) - action '{}' not found, actions are {}",
-                                    getId(), objComp.getName(), action, Arrays.toString(actions));
-                            return false;
-                        }
-                        log.warn("Object {} ({}) has no '{}' action, sending its first option; the query API refuses this",
-                                getId(), objComp.getName(), action);
-                        index = 0;
+                        log.warn("Failed to interact with object {} ({}) - action '{}' not found, actions are {}",
+                                getId(), objComp.getName(), action, Arrays.toString(actions));
+                        return false;
                     }
                 }
 
