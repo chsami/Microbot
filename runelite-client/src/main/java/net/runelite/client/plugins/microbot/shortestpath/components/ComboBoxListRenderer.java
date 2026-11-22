@@ -7,6 +7,7 @@ import javax.swing.JList;
 import javax.swing.ListCellRenderer;
 import javax.swing.border.EmptyBorder;
 import lombok.Setter;
+import net.runelite.client.ui.ClientTheme;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.util.Text;
 
@@ -21,7 +22,7 @@ public final class ComboBoxListRenderer extends JLabel implements ListCellRender
         if (isSelected)
         {
             setBackground(ColorScheme.DARK_GRAY_COLOR);
-            setForeground(Color.WHITE);
+            setForeground(ClientTheme.classicOr(Color.WHITE, ColorScheme.TEXT_COLOR));
         }
         else
         {

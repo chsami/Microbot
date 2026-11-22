@@ -24,6 +24,7 @@ import javax.swing.JWindow;
 import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
+import net.runelite.client.ui.ClientTheme;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.PanelFonts;
 import net.runelite.client.ui.FontManager;
@@ -65,7 +66,7 @@ class MicrobotTourCallout extends JWindow
 		JPanel header = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
 		header.setOpaque(false);
 		title.setFont(TITLE_FONT);
-		title.setForeground(Color.WHITE);
+		title.setForeground(ClientTheme.classicOr(Color.WHITE, ColorScheme.TEXT_COLOR));
 		header.add(title);
 		header.add(Box.createHorizontalStrut(10));
 		newChip.setFont(SMALL_FONT);

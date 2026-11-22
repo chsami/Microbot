@@ -50,6 +50,8 @@ import net.runelite.client.plugins.microbot.util.walker.enums.Salamanders;
 import net.runelite.client.plugins.microbot.util.walker.enums.SlayerMasters;
 import net.runelite.client.plugins.microbot.util.walker.enums.SpecialHuntingAreas;
 import net.runelite.client.plugins.microbot.util.walker.enums.Trees;
+import net.runelite.client.ui.ClientTheme;
+import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.plugins.microbot.questhelper.QuestHelperPlugin;
@@ -145,7 +147,7 @@ public class ShortestPathPanel extends PluginPanel
 		titleLabel.setVerticalTextPosition(JLabel.CENTER);
 
 		Border emptyBorder = BorderFactory.createEmptyBorder(5, 5, 5, 5);
-		Border lineBorder = BorderFactory.createLineBorder(Color.GRAY);
+		Border lineBorder = BorderFactory.createLineBorder(ClientTheme.classicOr(Color.GRAY, ColorScheme.MEDIUM_GRAY_COLOR));
 
 		return BorderFactory.createCompoundBorder(
 			BorderFactory.createCompoundBorder(

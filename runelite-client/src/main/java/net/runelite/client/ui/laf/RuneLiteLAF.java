@@ -41,6 +41,7 @@ import java.util.Map;
 import java.util.Properties;
 import javax.swing.UIDefaults;
 import lombok.SneakyThrows;
+import net.runelite.client.ui.ClientTheme;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
 
@@ -102,6 +103,8 @@ public class RuneLiteLAF extends FlatDarkLaf
 				extras.put("@" + name, String.format("#%06x%02x", color.getRGB() & 0xFFFFFF, color.getRGB() >>> 24));
 			}
 		}
+
+		extras.putAll(ClientTheme.themedLafExtras());
 
 		setExtraDefaults(extras);
 	}

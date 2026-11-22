@@ -4,6 +4,7 @@ import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.shortestpath.ShortestPathPlugin;
 import net.runelite.client.plugins.microbot.api.tileobject.models.Rs2TileObjectModel;
+import net.runelite.client.ui.ClientTheme;
 import net.runelite.client.ui.ColorScheme;
 
 import javax.swing.*;
@@ -30,7 +31,7 @@ public class ExitTilePanel extends JPanel {
         tileField = new JTextField();
         tileField.setBorder(null);
         tileField.setOpaque(false);
-        tileField.setSelectedTextColor(Color.WHITE);
+        tileField.setSelectedTextColor(ClientTheme.classicOr(Color.WHITE, ColorScheme.TEXT_COLOR));
         tileField.setSelectionColor(ColorScheme.BRAND_ORANGE_TRANSPARENT);
         tileField.setPreferredSize(new Dimension(150, 20));
         tileField.setEnabled(false);

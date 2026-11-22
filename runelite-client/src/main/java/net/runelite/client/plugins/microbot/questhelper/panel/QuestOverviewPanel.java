@@ -44,6 +44,7 @@ import net.runelite.client.plugins.microbot.questhelper.util.Fonts;
 import lombok.Getter;
 import net.runelite.api.Client;
 import net.runelite.api.Skill;
+import net.runelite.client.ui.ClientTheme;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.util.LinkBrowser;
 import net.runelite.client.util.SwingUtil;
@@ -123,7 +124,7 @@ public class QuestOverviewPanel extends JPanel
 
 		actionsContainer.add(viewControls, BorderLayout.EAST);
 
-		questNameLabel.setForeground(Color.WHITE);
+		questNameLabel.setForeground(ClientTheme.classicOr(Color.WHITE, ColorScheme.TEXT_COLOR));
 		final JPanel leftTitleContainer = new JPanel(new BorderLayout(5, 0));
 		leftTitleContainer.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		leftTitleContainer.add(questNameLabel, BorderLayout.CENTER);
@@ -146,7 +147,7 @@ public class QuestOverviewPanel extends JPanel
 		configHeaderPanel.setLayout(new BorderLayout());
 		configHeaderPanel.setBorder(new EmptyBorder(5, 5, 5, 10));
 		JTextArea configHeaderText = JGenerator.makeJTextArea();
-		configHeaderText.setForeground(Color.WHITE);
+		configHeaderText.setForeground(ClientTheme.classicOr(Color.WHITE, ColorScheme.TEXT_COLOR));
 		configHeaderText.setText("Configuration:");
 		configHeaderText.setMinimumSize(new Dimension(1, configHeaderPanel.getPreferredSize().height));
 		configHeaderPanel.add(configHeaderText);
@@ -208,7 +209,7 @@ public class QuestOverviewPanel extends JPanel
 	{
 		JComboBox<Enum> dropdown = new JComboBox<>(values);
 		dropdown.setFocusable(false);
-		dropdown.setForeground(Color.WHITE);
+		dropdown.setForeground(ClientTheme.classicOr(Color.WHITE, ColorScheme.TEXT_COLOR));
 		dropdown.setRenderer(new DropdownRenderer());
 		dropdown.addItemListener(e ->
 		{
@@ -235,7 +236,7 @@ public class QuestOverviewPanel extends JPanel
 	{
 		// Filters
 		JTextArea filterName = JGenerator.makeJTextArea(name);
-		filterName.setForeground(Color.WHITE);
+		filterName.setForeground(ClientTheme.classicOr(Color.WHITE, ColorScheme.TEXT_COLOR));
 
 		JPanel filtersPanel = new JPanel();
 		filtersPanel.setLayout(new BorderLayout());
@@ -361,7 +362,7 @@ public class QuestOverviewPanel extends JPanel
 			configHeaderPanel.setLayout(new BorderLayout());
 			configHeaderPanel.setBorder(new EmptyBorder(5, 5, 5, 10));
 			JTextArea configHeaderText = JGenerator.makeJTextArea();
-			configHeaderText.setForeground(Color.WHITE);
+			configHeaderText.setForeground(ClientTheme.classicOr(Color.WHITE, ColorScheme.TEXT_COLOR));
 			configHeaderText.setText("Configuration:");
 			configHeaderText.setMinimumSize(new Dimension(1, configHeaderPanel.getPreferredSize().height));
 			configHeaderPanel.add(configHeaderText);
@@ -498,7 +499,7 @@ public class QuestOverviewPanel extends JPanel
 	private void updateCombatRequirementsPanels(List<String> combatRequirementList)
 	{
 		JTextArea combatLabel = JGenerator.makeJTextArea();
-		combatLabel.setForeground(Color.GRAY);
+		combatLabel.setForeground(ClientTheme.classicOr(Color.GRAY, ColorScheme.LIGHT_GRAY_COLOR));
 		StringBuilder textCombat = new StringBuilder();
 		if (combatRequirementList == null)
 		{
@@ -586,7 +587,7 @@ public class QuestOverviewPanel extends JPanel
 				first = false;
 			}
 			var overviewLabel = JGenerator.makeJTextArea();
-			overviewLabel.setForeground(Color.GRAY);
+			overviewLabel.setForeground(ClientTheme.classicOr(Color.GRAY, ColorScheme.LIGHT_GRAY_COLOR));
 			overviewLabel.setText(textNote.toString());
 
 			questNotesList.add(overviewLabel);

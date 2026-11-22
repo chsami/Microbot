@@ -1,6 +1,7 @@
 package net.runelite.client.ui;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 public class ClientThemeTest
@@ -26,6 +27,25 @@ public class ClientThemeTest
 		java.awt.Color stock = new java.awt.Color(40, 40, 40);
 		assertEquals(stock, ClientTheme.classicOr(ClientTheme.Palette.CLASSIC, stock, java.awt.Color.RED));
 		assertEquals(java.awt.Color.RED, ClientTheme.classicOr(ClientTheme.Palette.GOLD, stock, java.awt.Color.RED));
+	}
+
+	@Test
+	public void onAccentPicksTheHigherContrastColour()
+	{
+		for (ClientTheme.Palette p : ClientTheme.Palette.values())
+		{
+			if (p == ClientTheme.Palette.CLASSIC)
+			{
+				continue;
+			}
+			java.awt.Color picked = ClientTheme.onAccent(p);
+			java.awt.Color other = java.awt.Color.BLACK.equals(picked) ? java.awt.Color.WHITE : java.awt.Color.BLACK;
+			assertTrue(p + " on-accent", ClientTheme.contrast(picked, p.accent) >= ClientTheme.contrast(other, p.accent));
+		}
+		// a dark accent gets white text, a light one black; Classic keeps the stock black
+		assertEquals(java.awt.Color.WHITE, ClientTheme.onAccent(new java.awt.Color(0x202020)));
+		assertEquals(java.awt.Color.BLACK, ClientTheme.onAccent(new java.awt.Color(0xffd700)));
+		assertEquals(java.awt.Color.BLACK, ClientTheme.onAccent(ClientTheme.Palette.CLASSIC));
 	}
 
 	@Test
@@ -55,40 +75,50 @@ public class ClientThemeTest
 	}
 
 	@Test
+	public void classicGetsNoExtraLafDefaults()
+	{
+		assertTrue(ClientTheme.themedLafExtras(ClientTheme.Palette.CLASSIC).isEmpty());
+	}
+
+	@Test
+	public void themedPalettesGetOnlyTheFixedLafDefaults()
+	{
+		java.util.Set<String> allowedKeys = new java.util.HashSet<>(java.util.Arrays.asList(
+			"TitlePane.background", "MenuBar.background", "ToolBar.background",
+			"ScrollBar.hoverThumbColor", "ScrollBar.pressedThumbColor",
+			"Button.foreground"));
+		for (ClientTheme.Palette p : ClientTheme.Palette.values())
+		{
+			if (p == ClientTheme.Palette.CLASSIC)
+			{
+				continue;
+			}
+			java.util.Map<String, String> extras = ClientTheme.themedLafExtras(p);
+			assertEquals(allowedKeys, extras.keySet());
+			for (java.util.Map.Entry<String, String> entry : extras.entrySet())
+			{
+				String v = entry.getValue();
+				assertTrue(entry.getKey() + " = " + v, v.startsWith("@") || v.matches("lighten\\(@\\w+,\\s*\\d+%\\)"));
+			}
+		}
+	}
+
+	@Test
 	public void everyPaletteKeepsTextLinesAndHoverVisible()
 	{
 		for (ClientTheme.Palette p : ClientTheme.Palette.values())
 		{
-			assertAtLeast(p + " text", 4.5, contrast(p.text, p.dark));
-			assertAtLeast(p + " muted text", 4.5, contrast(p.light, p.darker));
-			assertAtLeast(p + " accent", 4.5, contrast(p.accent, p.dark));
+			assertAtLeast(p + " text", 4.5, ClientTheme.contrast(p.text, p.dark));
+			assertAtLeast(p + " muted text", 4.5, ClientTheme.contrast(p.light, p.darker));
+			assertAtLeast(p + " accent", 4.5, ClientTheme.contrast(p.accent, p.dark));
 			// lines and frames drawn in MEDIUM_GRAY_COLOR, and row hover, against the card colour
-			assertAtLeast(p + " lines", 1.7, contrast(p.medium, p.darker));
-			assertAtLeast(p + " hover", 1.4, contrast(p.darkerHover, p.darker));
+			assertAtLeast(p + " lines", 1.7, ClientTheme.contrast(p.medium, p.darker));
+			assertAtLeast(p + " hover", 1.4, ClientTheme.contrast(p.darkerHover, p.darker));
 		}
 	}
 
 	private static void assertAtLeast(String what, double min, double actual)
 	{
 		org.junit.Assert.assertTrue(what + " contrast " + actual + " < " + min, actual >= min);
-	}
-
-	// WCAG relative-luminance contrast ratio
-	private static double contrast(java.awt.Color a, java.awt.Color b)
-	{
-		double x = luminance(a);
-		double y = luminance(b);
-		return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
-	}
-
-	private static double luminance(java.awt.Color c)
-	{
-		return 0.2126 * channel(c.getRed()) + 0.7152 * channel(c.getGreen()) + 0.0722 * channel(c.getBlue());
-	}
-
-	private static double channel(int v)
-	{
-		double s = v / 255.0;
-		return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
 	}
 }

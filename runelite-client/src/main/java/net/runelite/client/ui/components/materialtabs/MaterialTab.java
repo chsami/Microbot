@@ -101,7 +101,7 @@ public class MaterialTab extends JLabel
 				public void mouseEntered(MouseEvent e)
 				{
 					MaterialTab tab = (MaterialTab) e.getSource();
-					tab.setForeground(Color.WHITE);
+					tab.setForeground(ClientTheme.classicOr(Color.WHITE, ColorScheme.TEXT_COLOR));
 				}
 
 				@Override
@@ -156,7 +156,7 @@ public class MaterialTab extends JLabel
 		}
 
 		setBorder(SELECTED_BORDER);
-		setForeground(Color.WHITE);
+		setForeground(ClientTheme.classicOr(Color.WHITE, ColorScheme.TEXT_COLOR));
 		return selected = true;
 	}
 
