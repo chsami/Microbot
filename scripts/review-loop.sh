@@ -255,7 +255,7 @@ appear in "Reviewed Areas"):
   - runelite-client/.../microbot/util/cache
   - runelite-client/.../microbot/util/coords
   - runelite-client/.../microbot/util/npc
-  - runelite-client/.../microbot/util/gameobject
+  - runelite-client/.../microbot/api/tileobject
   - runelite-client/.../microbot/util/grounditem
   - runelite-client/.../microbot/util/combat
   - runelite-client/.../microbot/util/magic

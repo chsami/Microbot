@@ -44,6 +44,7 @@ import net.runelite.client.plugins.microbot.breakhandler.breakhandlerv2.PluginSt
 import net.runelite.client.plugins.microbot.breakhandler.breakhandlerv2.PluginStopOption;
 import net.runelite.client.plugins.microbot.inventorysetups.InventorySetup;
 import net.runelite.client.plugins.microbot.inventorysetups.MInventorySetupsPlugin;
+import net.runelite.client.ui.ClientTheme;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.DynamicGridLayout;
 import net.runelite.client.ui.FontManager;
@@ -169,7 +170,7 @@ class MicrobotConfigPanel extends MicrobotPluginPanel {
 
         pluginToggle = new MicrobotPluginToggleButton();
         title = new JLabel();
-        title.setForeground(Color.WHITE);
+        title.setForeground(ClientTheme.classicOr(Color.WHITE, ColorScheme.TEXT_COLOR));
 
         header.add(backBtn, BorderLayout.WEST);
         header.add(title, BorderLayout.CENTER);
@@ -248,7 +249,7 @@ class MicrobotConfigPanel extends MicrobotPluginPanel {
 
         String name = pluginConfig.getName();
         title.setText(name);
-        title.setForeground(Color.WHITE);
+        title.setForeground(ClientTheme.classicOr(Color.WHITE, ColorScheme.TEXT_COLOR));
         title.setToolTipText("<html>" + name + ":<br>" + pluginConfig.getDescription() + "</html>");
 
         String iname = pluginConfig.getInternalPluginHubName();
@@ -373,7 +374,7 @@ class MicrobotConfigPanel extends MicrobotPluginPanel {
             item.setMinimumSize(new Dimension(PANEL_WIDTH, 0));
             String name = cid.getItem().name();
             JLabel configEntryName = new JLabel(name);
-            configEntryName.setForeground(Color.WHITE);
+            configEntryName.setForeground(ClientTheme.classicOr(Color.WHITE, ColorScheme.TEXT_COLOR));
             String description = cid.getItem().description();
             if (!"".equals(description)) {
                 configEntryName.setToolTipText("<html>" + name + ":<br>" + description + "</html>");
@@ -508,7 +509,7 @@ class MicrobotConfigPanel extends MicrobotPluginPanel {
         panel.setLayout(new BorderLayout());
         panel.setBorder(new CompoundBorder(
                 new EmptyBorder(10, 10, 10, 10), // Outer padding
-                new LineBorder(Color.GRAY, 1)    // Border around the panel
+                new LineBorder(ClientTheme.classicOr(Color.GRAY, ColorScheme.MEDIUM_GRAY_COLOR), 1)    // Border around the panel
         ));
 
         // Create the body/content panel

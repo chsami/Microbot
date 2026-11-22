@@ -28,6 +28,7 @@ import net.runelite.client.plugins.microbot.questhelper.QuestHelperConfig;
 import net.runelite.client.plugins.microbot.questhelper.config.AssistanceLevel;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
 import net.runelite.client.config.ConfigManager;
+import net.runelite.client.ui.ClientTheme;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.DynamicGridLayout;
 
@@ -60,7 +61,7 @@ public class AssistLevelPanel extends JPanel
 		titlePanel.setLayout(new BorderLayout());
 
 		JTextArea title = JGenerator.makeJTextArea("Choose Assist Level");
-		title.setForeground(Color.WHITE);
+		title.setForeground(ClientTheme.classicOr(Color.WHITE, ColorScheme.TEXT_COLOR));
 		title.setBorder(BorderFactory.createEmptyBorder(10, 10, 0, 0));
 
 		titlePanel.add(title, BorderLayout.CENTER);
@@ -102,7 +103,7 @@ public class AssistLevelPanel extends JPanel
 
 		JTextArea title = JGenerator.makeJTextArea();
 		title.setText("Minimum Assistance");
-		title.setForeground(Color.WHITE);
+		title.setForeground(ClientTheme.classicOr(Color.WHITE, ColorScheme.TEXT_COLOR));
 		title.setBorder(BorderFactory.createEmptyBorder(10, 10, 0, 0));
 
 		JTextArea description = JGenerator.makeJTextArea();
@@ -141,7 +142,7 @@ public class AssistLevelPanel extends JPanel
 		medAssistPanel.setLayout(new BorderLayout());
 
 		JTextArea title = JGenerator.makeJTextArea("Medium Assistance");
-		title.setForeground(Color.WHITE);
+		title.setForeground(ClientTheme.classicOr(Color.WHITE, ColorScheme.TEXT_COLOR));
 		title.setBorder(BorderFactory.createEmptyBorder(10, 10, 0, 0));
 
 		JTextArea description = JGenerator.makeJTextArea("This enables most overlay-based help, but hides puzzle solutions. " +
@@ -179,7 +180,7 @@ public class AssistLevelPanel extends JPanel
 		fullAssistPanel.setLayout(new BorderLayout());
 
 		JTextArea title = JGenerator.makeJTextArea("Full Assistance");
-		title.setForeground(Color.WHITE);
+		title.setForeground(ClientTheme.classicOr(Color.WHITE, ColorScheme.TEXT_COLOR));
 		title.setBorder(BorderFactory.createEmptyBorder(10, 10, 0, 0));
 
 		JTextArea description = JGenerator.makeJTextArea("Gives you the full helper experience, highlighting objects & dialogue options, puzzler solvers, and " +

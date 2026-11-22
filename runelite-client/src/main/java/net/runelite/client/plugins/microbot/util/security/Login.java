@@ -3,6 +3,7 @@ package net.runelite.client.plugins.microbot.util.security;
 import net.runelite.client.config.ConfigProfile;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
+import net.runelite.client.plugins.microbot.util.world.Rs2WorldUtil;
 import net.runelite.http.api.worlds.World;
 import net.runelite.http.api.worlds.WorldRegion;
 import net.runelite.http.api.worlds.WorldResult;
@@ -78,6 +79,7 @@ public class Login {
 
         List<World> worlds = worldResult.getWorlds();
         boolean isInSeasonalWorld = Microbot.getClient().getWorldType().contains(WorldType.SEASONAL);
+        boolean isInHardcoreMainWorld = Rs2WorldUtil.isClientOnHardcoreMainWorld();
 
         List<World> filteredWorlds = worlds.stream()
                 .filter(x -> !x.getTypes().contains(WorldType.PVP) &&
@@ -97,6 +99,7 @@ public class Login {
                         x.getPlayers() < MAX_PLAYER_COUNT &&
                         x.getPlayers() >= 0)
                 .filter(x -> isInSeasonalWorld == x.getTypes().contains(WorldType.SEASONAL)) // seasonal filter
+                .filter(x -> isInHardcoreMainWorld == x.getTypes().contains(WorldType.HARDCORE_MAIN))
                 .collect(Collectors.toList());
 
         filteredWorlds = isMembers
@@ -139,6 +142,7 @@ public class Login {
 
         List<World> worlds = worldResult.getWorlds();
         boolean isInSeasonalWorld = Microbot.getClient().getWorldType().contains(WorldType.SEASONAL);
+        boolean isInHardcoreMainWorld = Rs2WorldUtil.isClientOnHardcoreMainWorld();
 
         List<World> filteredWorlds = worlds.stream()
                 .filter(x -> !x.getTypes().contains(WorldType.PVP) &&
@@ -158,6 +162,7 @@ public class Login {
                         x.getPlayers() < MAX_PLAYER_COUNT &&
                         x.getPlayers() >= 0)
                 .filter(x -> isInSeasonalWorld == x.getTypes().contains(WorldType.SEASONAL)) // Strict seasonal filter
+                .filter(x -> isInHardcoreMainWorld == x.getTypes().contains(WorldType.HARDCORE_MAIN))
                 .collect(Collectors.toList());
 
         filteredWorlds = isMembers

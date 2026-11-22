@@ -28,6 +28,7 @@ package net.runelite.client.plugins.microbot.inventorysetups.ui;
 import net.runelite.client.plugins.microbot.inventorysetups.InventorySetup;
 import net.runelite.client.plugins.microbot.inventorysetups.MInventorySetupsPlugin;
 import net.runelite.client.plugins.microbot.inventorysetups.InventorySetupsSection;
+import net.runelite.client.ui.ClientTheme;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.components.FlatTextField;
 
@@ -68,7 +69,7 @@ public class InventorySetupsCompactPanel extends InventorySetupsPanel
 		nameInput.setEditable(false);
 		nameInput.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		nameInput.setPreferredSize(new Dimension(0, 24));
-		nameInput.getTextField().setForeground(Color.WHITE);
+		nameInput.getTextField().setForeground(ClientTheme.classicOr(Color.WHITE, ColorScheme.TEXT_COLOR));
 		nameInput.getTextField().setBorder(new EmptyBorder(0, 6, 0, 0));
 		nameInput.getTextField().setCaretPosition(0);
 

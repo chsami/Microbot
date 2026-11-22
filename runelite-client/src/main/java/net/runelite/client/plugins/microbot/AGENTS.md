@@ -17,7 +17,7 @@ Config UI uses the custom `MicrobotConfigPanel` (`plugins/microbot/ui`), not Run
 - Full reference: `runelite-client/.../microbot/api/QUERYABLE_API.md`.
 
 ## Interaction utilities
-`Rs2Npc`, `Rs2GameObject`, `Rs2GroundItem`, `Rs2Inventory`, `Rs2Bank`, `Rs2Walker`, `Rs2Widget`, `Rs2Dialogue`, `Rs2Player`, `Rs2Combat`, etc. Prefer these over raw RuneLite APIs — they handle client-thread hopping, retries, and menu-entry correctness.
+`Rs2Npc`, `Microbot.getRs2TileObjectCache().query()` (objects; see `api/QUERYABLE_API.md`), `Rs2GroundItem`, `Rs2Inventory`, `Rs2Bank`, `Rs2Walker`, `Rs2Widget`, `Rs2Dialogue`, `Rs2Player`, `Rs2Combat`, etc. Prefer these over raw RuneLite APIs — they handle client-thread hopping, retries, and menu-entry correctness.
 
 Check `docs/entity-guides/README.md` before modifying anything under `util/` — each entity type has documented footguns.
 
@@ -30,6 +30,7 @@ Check `docs/entity-guides/README.md` before modifying anything under `util/` —
 ## Scripts
 - Extend `Script` (or `StateMachineScript<S>` for 3+ phase scripts — see `statemachine/AGENTS.md`).
 - Implement `run(TConfig)`; return `true` to signal successful start.
+- Start each loop tick with `if (!super.run()) return;`. It returns `false` while logged out, loading, hopping, or before the local player has a world location, so the tick body may assume the player exists. A script that must act while logged out (login, breaks) overrides `runsWhileLoggedOut()` to return `true`. That skips the whole readiness check, so the script must then guard both the logged-out window and a logged-in tick where `Rs2Player.getWorldLocation()` is still `null`.
 - Always `shutdown()` cleanly: cancel schedulers, clear state, unregister listeners.
 - Use `Microbot.status` for user-visible status; keep logging sparse and at appropriate levels.
 

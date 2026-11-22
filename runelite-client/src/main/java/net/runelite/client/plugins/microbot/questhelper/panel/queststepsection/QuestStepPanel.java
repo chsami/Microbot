@@ -33,8 +33,9 @@ import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper
 import net.runelite.client.plugins.microbot.questhelper.steps.PortTaskStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
 import net.runelite.api.Client;
+import net.runelite.client.ui.ClientTheme;
 import net.runelite.client.ui.ColorScheme;
-import net.runelite.client.ui.FontManager;
+import net.runelite.client.ui.PanelFonts;
 import net.runelite.client.util.SwingUtil;
 
 import javax.annotation.Nullable;
@@ -75,7 +76,7 @@ public class QuestStepPanel extends AbstractQuestSection implements MouseListene
 		addMouseListener(this);
 
 		headerLabel.setText(panelDetails.getHeader());
-		headerLabel.setFont(FontManager.getRunescapeBoldFont());
+		headerLabel.setFont(PanelFonts.bold());
 
 		headerLabel.setMinimumSize(new Dimension(1, headerLabel.getPreferredSize().height));
 
@@ -100,14 +101,14 @@ public class QuestStepPanel extends AbstractQuestSection implements MouseListene
 
 		if (panelDetails.contains(currentStep))
 		{
-			headerLabel.setForeground(Color.BLACK);
+			headerLabel.setForeground(ClientTheme.onAccent());
 			headerPanel.setBackground(ColorScheme.BRAND_ORANGE);
 			viewControls.setBackground(ColorScheme.BRAND_ORANGE);
 			leftTitleContainer.setBackground(ColorScheme.BRAND_ORANGE);
 		}
 		else
 		{
-			headerLabel.setForeground(Color.WHITE);
+			headerLabel.setForeground(ClientTheme.classicOr(Color.WHITE, ColorScheme.TEXT_COLOR));
 			headerPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR.darker());
 			viewControls.setBackground(ColorScheme.DARKER_GRAY_COLOR.darker());
 			leftTitleContainer.setBackground(ColorScheme.DARKER_GRAY_COLOR.darker());
@@ -293,7 +294,7 @@ public class QuestStepPanel extends AbstractQuestSection implements MouseListene
 	{
 		if (steps.get(questStep) != null)
 		{
-			steps.get(questStep).setForeground(Color.LIGHT_GRAY);
+			steps.get(questStep).setForeground(ClientTheme.classicOr(Color.LIGHT_GRAY, ColorScheme.TEXT_COLOR));
 			steps.get(questStep).setToolTipText(null);
 		}
 	}
@@ -304,13 +305,13 @@ public class QuestStepPanel extends AbstractQuestSection implements MouseListene
 
 		if (steps.get(lastHighlightedStep) != null)
 		{
-			steps.get(lastHighlightedStep).setForeground(Color.LIGHT_GRAY);
+			steps.get(lastHighlightedStep).setForeground(ClientTheme.classicOr(Color.LIGHT_GRAY, ColorScheme.TEXT_COLOR));
 		}
 
 		if (steps.get(currentStep) != null)
 		{
 			steps.get(currentStep).setForeground(ColorScheme.BRAND_ORANGE);
-			headerLabel.setForeground(Color.BLACK);
+			headerLabel.setForeground(ClientTheme.onAccent());
 			headerPanel.setBackground(ColorScheme.BRAND_ORANGE);
 			viewControls.setBackground(ColorScheme.BRAND_ORANGE);
 			leftTitleContainer.setBackground(ColorScheme.BRAND_ORANGE);
@@ -321,7 +322,7 @@ public class QuestStepPanel extends AbstractQuestSection implements MouseListene
 
 	public void removeHighlight()
 	{
-		headerLabel.setForeground(Color.WHITE);
+		headerLabel.setForeground(ClientTheme.classicOr(Color.WHITE, ColorScheme.TEXT_COLOR));
 		if (isCollapsed())
 		{
 			applyDimmer(false, headerPanel);
@@ -331,7 +332,7 @@ public class QuestStepPanel extends AbstractQuestSection implements MouseListene
 		leftTitleContainer.setBackground(ColorScheme.DARKER_GRAY_COLOR.darker());
 		if (steps.get(currentlyActiveQuestSidebarStep()) != null)
 		{
-			steps.get(currentlyActiveQuestSidebarStep()).setForeground(Color.LIGHT_GRAY);
+			steps.get(currentlyActiveQuestSidebarStep()).setForeground(ClientTheme.classicOr(Color.LIGHT_GRAY, ColorScheme.TEXT_COLOR));
 		}
 
 		collapse();

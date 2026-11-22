@@ -177,30 +177,7 @@ public class PluginResourcesTest {
     @Test(timeout = 10000)
     public void normalScriptStopCanRestartButUnloadPermanentlyStopsItsExecutor() throws Exception {
         String name = "net.runelite.client.plugins.microbot.externalplugins.fixture.ReloadableScriptFixture";
-        ClassLoader owner = new ClassLoader(getClass().getClassLoader()) {
-            @Override
-            protected Class<?> loadClass(String className, boolean resolve) throws ClassNotFoundException {
-                if (!name.equals(className)) {
-                    return super.loadClass(className, resolve);
-                }
-                Class<?> loaded = findLoadedClass(className);
-                if (loaded == null) {
-                    try (InputStream stream = getParent().getResourceAsStream(className.replace('.', '/') + ".class")) {
-                        if (stream == null) {
-                            throw new ClassNotFoundException(className);
-                        }
-                        byte[] bytes = stream.readAllBytes();
-                        loaded = defineClass(className, bytes, 0, bytes.length);
-                    } catch (java.io.IOException e) {
-                        throw new ClassNotFoundException(className, e);
-                    }
-                }
-                if (resolve) {
-                    resolveClass(loaded);
-                }
-                return loaded;
-            }
-        };
+        ClassLoader owner = childLoader(name);
         Script script = (Script) owner.loadClass(name).getDeclaredConstructor().newInstance();
         ExecutorService executor = (ExecutorService) script.getClass().getMethod("executor").invoke(script);
         try {
@@ -262,6 +239,58 @@ public class PluginResourcesTest {
         } finally {
             field.set(null, original);
         }
+    }
+
+    @Test(timeout = 10000)
+    public void hasRunningScriptFollowsTheLoopsOfThePluginsScripts() throws Exception {
+        String name = "net.runelite.client.plugins.microbot.externalplugins.fixture.LoopScriptFixture";
+        ClassLoader owner = childLoader(name);
+        assertFalse("a jar without scripts (a helper for manual play) never counts", PluginResources.hasRunningScript(owner));
+        assertFalse("nor does the core client", PluginResources.hasRunningScript(PluginResources.class.getClassLoader()));
+        Class<?> type = owner.loadClass(name);
+        Script crashing = (Script) type.getDeclaredConstructor().newInstance();
+        Script looping = (Script) type.getDeclaredConstructor().newInstance();
+        try {
+            assertFalse("created but never started", PluginResources.hasRunningScript(owner));
+            type.getMethod("startLoop", boolean.class).invoke(crashing, true);
+            long deadline = System.currentTimeMillis() + 2000;
+            while (crashing.isRunning() && System.currentTimeMillis() < deadline) {
+                Thread.sleep(10);
+            }
+            assertFalse("the loop died from an exception", crashing.isRunning());
+            assertFalse("its only started script died", PluginResources.hasRunningScript(owner));
+            type.getMethod("startLoop", boolean.class).invoke(looping, false);
+            assertTrue("one of its scripts is looping", PluginResources.hasRunningScript(owner));
+        } finally {
+            PluginResources.dispose(owner, 2000);
+        }
+    }
+
+    private static ClassLoader childLoader(String name) {
+        return new ClassLoader(PluginResourcesTest.class.getClassLoader()) {
+            @Override
+            protected Class<?> loadClass(String className, boolean resolve) throws ClassNotFoundException {
+                if (!name.equals(className)) {
+                    return super.loadClass(className, resolve);
+                }
+                Class<?> loaded = findLoadedClass(className);
+                if (loaded == null) {
+                    try (InputStream stream = getParent().getResourceAsStream(className.replace('.', '/') + ".class")) {
+                        if (stream == null) {
+                            throw new ClassNotFoundException(className);
+                        }
+                        byte[] bytes = stream.readAllBytes();
+                        loaded = defineClass(className, bytes, 0, bytes.length);
+                    } catch (java.io.IOException e) {
+                        throw new ClassNotFoundException(className, e);
+                    }
+                }
+                if (resolve) {
+                    resolveClass(loaded);
+                }
+                return loaded;
+            }
+        };
     }
 
     private ClassLoader newOwner() {

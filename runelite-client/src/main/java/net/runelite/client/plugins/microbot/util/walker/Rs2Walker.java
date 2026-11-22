@@ -356,6 +356,7 @@ public class Rs2Walker {
     static final int POST_HANDLE_OBJECT_FAILED_SETTLE_MS = 800;
     static final int AL_KHARID_TOLL_INTERACTION_START_WAIT_MS = 2_500;
     static final int GUIDOR_GATE_SEARCH_WAIT_MS = 12_000;
+    static final int FEROX_CASTLE_WARS_PORTAL_WAIT_MS = 12_000;
 
     /** Teleport “already near destination” skip in path loop — same semantics as prior {@code distanceTo2D &lt; 3}. */
     static final int TELEPORT_NEAR_SKIP_CHEBYSHEV = 3;

@@ -29,6 +29,7 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.RuneLite;
 import net.runelite.client.config.*;
+import net.runelite.client.ui.ClientTheme;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.DynamicGridLayout;
 import net.runelite.client.ui.PluginPanel;
@@ -109,7 +110,7 @@ class MicrobotNotificationPanel extends MicrobotPluginPanel
 		topPanel.add(topPanelBackButton, BorderLayout.WEST);
 
 		title = new JLabel();
-		title.setForeground(Color.WHITE);
+		title.setForeground(ClientTheme.classicOr(Color.WHITE, ColorScheme.TEXT_COLOR));
 		topPanel.add(title, BorderLayout.CENTER);
 
 		enabled = new JCheckBox();
@@ -141,7 +142,7 @@ class MicrobotNotificationPanel extends MicrobotPluginPanel
 		item.setLayout(new BorderLayout());
 		item.setMinimumSize(new Dimension(PANEL_WIDTH, 0));
 		JLabel configEntryName = new JLabel(name);
-		configEntryName.setForeground(Color.WHITE);
+		configEntryName.setForeground(ClientTheme.classicOr(Color.WHITE, ColorScheme.TEXT_COLOR));
 		if (!"".equals(description))
 		{
 			configEntryName.setToolTipText("<html>" + name + ":<br>" + description + "</html>");

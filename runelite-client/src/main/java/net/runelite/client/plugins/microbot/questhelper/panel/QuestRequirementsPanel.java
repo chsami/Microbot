@@ -39,6 +39,7 @@ import lombok.RequiredArgsConstructor;
 import net.runelite.api.Client;
 import net.runelite.client.config.RuneLiteConfig;
 import net.runelite.client.events.PluginMessage;
+import net.runelite.client.ui.ClientTheme;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.util.LinkBrowser;
 import org.apache.commons.lang3.tuple.Pair;
@@ -95,7 +96,7 @@ public class QuestRequirementsPanel extends JPanel
 		headerPanel.setBorder(new EmptyBorder(5, 5, 5, 10));
 
 		var headerLabel = JGenerator.makeJTextArea(header);
-		headerLabel.setForeground(Color.WHITE);
+		headerLabel.setForeground(ClientTheme.classicOr(Color.WHITE, ColorScheme.TEXT_COLOR));
 		headerLabel.setMinimumSize(new Dimension(1, headerPanel.getPreferredSize().height));
 		headerPanel.add(headerLabel, BorderLayout.NORTH);
 
@@ -245,7 +246,7 @@ public class QuestRequirementsPanel extends JPanel
 		else if (showEvenIfEmpty)
 		{
 			var noneLabel = JGenerator.makeJTextArea("None");
-			noneLabel.setForeground(Color.GRAY);
+			noneLabel.setForeground(ClientTheme.classicOr(Color.GRAY, ColorScheme.LIGHT_GRAY_COLOR));
 			requirementsPanel.add(noneLabel);
 		}
 

@@ -13,6 +13,7 @@ import net.runelite.client.config.ProfileManager;
 import net.runelite.client.config.RuneScapeProfileType;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
+import net.runelite.client.plugins.microbot.util.world.Rs2WorldUtil;
 import net.runelite.client.rs.auth.Account;
 import net.runelite.client.rs.auth.JagexAuthService;
 import net.runelite.client.rs.auth.Session;
@@ -487,6 +488,7 @@ public final class LoginManager {
         } else {
             isInSeasonalWorld = false;
         }
+        boolean isInHardcoreMainWorld = Rs2WorldUtil.isClientOnHardcoreMainWorld();
 
         List<World> filteredWorlds = worlds.stream()
             .filter(x -> !x.getTypes().contains(WorldType.PVP) &&
@@ -506,6 +508,7 @@ public final class LoginManager {
                 x.getPlayers() < MAX_PLAYER_COUNT &&
                 x.getPlayers() >= 0)
             .filter(x -> isInSeasonalWorld == x.getTypes().contains(WorldType.SEASONAL))
+            .filter(x -> isInHardcoreMainWorld == x.getTypes().contains(WorldType.HARDCORE_MAIN))
             .collect(Collectors.toList());
 
         filteredWorlds = isMembers
@@ -549,6 +552,7 @@ public final class LoginManager {
         } else {
             isInSeasonalWorld = false;
         }
+        boolean isInHardcoreMainWorld = Rs2WorldUtil.isClientOnHardcoreMainWorld();
 
         List<World> filteredWorlds = worlds.stream()
             .filter(x -> !x.getTypes().contains(WorldType.PVP) &&
@@ -568,6 +572,7 @@ public final class LoginManager {
                 x.getPlayers() < MAX_PLAYER_COUNT &&
                 x.getPlayers() >= 0)
             .filter(x -> isInSeasonalWorld == x.getTypes().contains(WorldType.SEASONAL))
+            .filter(x -> isInHardcoreMainWorld == x.getTypes().contains(WorldType.HARDCORE_MAIN))
             .collect(Collectors.toList());
 
         filteredWorlds = isMembers

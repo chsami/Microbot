@@ -40,6 +40,7 @@ import net.runelite.api.GameState;
 import net.runelite.api.QuestState;
 import net.runelite.api.Skill;
 import net.runelite.client.config.ConfigManager;
+import net.runelite.client.ui.ClientTheme;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.components.IconTextField;
@@ -129,7 +130,7 @@ public class QuestHelperPanel extends PluginPanel
 
 		JTextArea title = JGenerator.makeJTextArea();
 		title.setText("Quest Helper");
-		title.setForeground(Color.WHITE);
+		title.setForeground(ClientTheme.classicOr(Color.WHITE, ColorScheme.TEXT_COLOR));
 		titlePanel.add(title, BorderLayout.WEST);
 
 		// Options
@@ -251,11 +252,11 @@ public class QuestHelperPanel extends PluginPanel
 		titlePanel.add(viewControls, BorderLayout.EAST);
 
 		JTextArea questsCompletedLabel = JGenerator.makeJTextArea();
-		questsCompletedLabel.setForeground(Color.GRAY);
+		questsCompletedLabel.setForeground(ClientTheme.classicOr(Color.GRAY, ColorScheme.LIGHT_GRAY_COLOR));
 		questsCompletedLabel.setText("Please log in to see available quests");
 
 		questListMessage = JGenerator.makeJTextArea("Please log in to see available quests");
-		questListMessage.setForeground(Color.GRAY);
+		questListMessage.setForeground(ClientTheme.classicOr(Color.GRAY, ColorScheme.LIGHT_GRAY_COLOR));
 
 		/* Search bar */
 		searchBar.setIcon(IconTextField.Icon.SEARCH);
@@ -312,8 +313,8 @@ public class QuestHelperPanel extends PluginPanel
 		skillFilterPanel.setVisible(false);
 
 		JLabel filterName = JGenerator.makeJLabel("Skill filtering");
-		filterName.setForeground(Color.WHITE);
-		skillExpandButton.setForeground(Color.GRAY);
+		filterName.setForeground(ClientTheme.classicOr(Color.WHITE, ColorScheme.TEXT_COLOR));
+		skillExpandButton.setForeground(ClientTheme.classicOr(Color.GRAY, ColorScheme.LIGHT_GRAY_COLOR));
 		skillExpandButton.setIcon(COLLAPSED_ICON);
 		skillExpandButton.setHorizontalTextPosition(SwingConstants.LEFT);
 		skillExpandButton.setIconTextGap(10);
@@ -482,7 +483,7 @@ public class QuestHelperPanel extends PluginPanel
 	{
 		JComboBox<Enum> dropdown = new JComboBox<>(values);
 		dropdown.setFocusable(false);
-		dropdown.setForeground(Color.WHITE);
+		dropdown.setForeground(ClientTheme.classicOr(Color.WHITE, ColorScheme.TEXT_COLOR));
 		dropdown.setRenderer(new DropdownRenderer());
 		dropdown.addItemListener(e ->
 		{
@@ -501,7 +502,7 @@ public class QuestHelperPanel extends PluginPanel
 	{
 		// Filters
 		JTextArea filterName = JGenerator.makeJTextArea(name);
-		filterName.setForeground(Color.WHITE);
+		filterName.setForeground(ClientTheme.classicOr(Color.WHITE, ColorScheme.TEXT_COLOR));
 
 		JPanel filtersPanel = new JPanel();
 		filtersPanel.setLayout(new BorderLayout());

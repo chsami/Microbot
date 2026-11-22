@@ -20,6 +20,7 @@ import net.runelite.client.plugins.microbot.util.security.JagexCredentials;
 import net.runelite.client.plugins.microbot.util.security.LoginManager;
 import net.runelite.client.plugins.microbot.util.security.MembershipRecorder;
 import net.runelite.client.plugins.screenmarkers.ScreenMarkerPlugin;
+import net.runelite.client.ui.ClientTheme;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.components.DragAndDropReorderPane;
 import net.runelite.client.ui.components.MouseDragEventForwarder;
@@ -52,17 +53,17 @@ import java.util.concurrent.ScheduledExecutorService;
 @Slf4j
 public class MicrobotProfilePanel extends MicrobotPluginPanel {
     final int MAX_PROFILES = 100;
-    private static final Color CARD_BACKGROUND = new Color(40, 40, 40);
-    private static final Color CARD_HOVER = new Color(50, 50, 50);
-    private static final Color ACCENT_COLOR = new Color(255, 140, 0);
-    private static final Color TEXT_COLOR = new Color(220, 220, 220);
-    private static final Color MUTED_TEXT_COLOR = new Color(160, 160, 160);
-    private static final Color CARD_BORDER_COLOR = new Color(60, 60, 60);
-    private static final Color FIELD_BACKGROUND = new Color(55, 55, 55);
-    private static final Color FIELD_HOVER_BACKGROUND = new Color(70, 70, 70);
-    private static final Color LOAD_TEXT_COLOR = new Color(30, 30, 30);
+    private static final Color CARD_BACKGROUND = ClientTheme.classicOr(new Color(40, 40, 40), ColorScheme.DARKER_GRAY_COLOR);
+    private static final Color CARD_HOVER = ClientTheme.classicOr(new Color(50, 50, 50), ColorScheme.DARKER_GRAY_HOVER_COLOR);
+    private static final Color ACCENT_COLOR = ClientTheme.classicOr(new Color(255, 140, 0), ColorScheme.BRAND_ORANGE);
+    private static final Color TEXT_COLOR = ClientTheme.classicOr(new Color(220, 220, 220), ColorScheme.TEXT_COLOR);
+    private static final Color MUTED_TEXT_COLOR = ClientTheme.classicOr(new Color(160, 160, 160), ColorScheme.LIGHT_GRAY_COLOR);
+    private static final Color CARD_BORDER_COLOR = ClientTheme.classicOr(new Color(60, 60, 60), ColorScheme.MEDIUM_GRAY_COLOR);
+    private static final Color FIELD_BACKGROUND = ClientTheme.classicOr(new Color(55, 55, 55), ColorScheme.MEDIUM_GRAY_COLOR);
+    private static final Color FIELD_HOVER_BACKGROUND = ClientTheme.classicOr(new Color(70, 70, 70), ColorScheme.MEDIUM_GRAY_COLOR.brighter());
+    private static final Color LOAD_TEXT_COLOR = ClientTheme.classicOr(new Color(30, 30, 30), ColorScheme.DARK_GRAY_COLOR);
     private static final Border VIEW_FIELD_BORDER = new EmptyBorder(3, 0, 3, 0);
-    private static final Border EDIT_FIELD_BORDER = new CompoundBorder(new LineBorder(new Color(90, 90, 90), 1), new EmptyBorder(2, 6, 2, 6));
+    private static final Border EDIT_FIELD_BORDER = new CompoundBorder(new LineBorder(ClientTheme.classicOr(new Color(90, 90, 90), ColorScheme.MEDIUM_GRAY_COLOR), 1), new EmptyBorder(2, 6, 2, 6));
 
     private static final ImageIcon ADD_ICON = new ImageIcon(ImageUtil.loadImageResource(ScreenMarkerPlugin.class, "add_icon.png"));
     private static final ImageIcon DELETE_ICON = new ImageIcon(ImageUtil.loadImageResource(MicrobotProfilePanel.class, "mdi_delete.png"));
@@ -190,7 +191,7 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
 
         JLabel subtitleLabel = new JLabel("Manage your microbot profiles");
         subtitleLabel.setFont(new Font("Roboto", Font.PLAIN, 11));
-        subtitleLabel.setForeground(new Color(160, 160, 160));
+        subtitleLabel.setForeground(MUTED_TEXT_COLOR);
         subtitleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         headerPanel.add(titleLabel);
@@ -199,7 +200,7 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
         headerPanel.add(Box.createVerticalStrut(10));
 
         JSeparator separator = new JSeparator();
-        separator.setForeground(new Color(60, 60, 60));
+        separator.setForeground(CARD_BORDER_COLOR);
         separator.setAlignmentX(Component.LEFT_ALIGNMENT);
         headerPanel.add(separator);
 
@@ -213,7 +214,7 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
         button.setFocusPainted(false);
         button.setFont(new Font("Roboto", Font.PLAIN, 12));
         button.setBorder(new CompoundBorder(
-                new LineBorder(new Color(80, 80, 80), 1),
+                new LineBorder(ClientTheme.classicOr(new Color(80, 80, 80), ColorScheme.MEDIUM_GRAY_COLOR), 1),
                 new EmptyBorder(8, 16, 8, 16)
         ));
         button.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
@@ -769,8 +770,14 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
             delete.setToolTipText("Delete profile");
             SwingUtil.removeButtonDecorations(delete);
             delete.addActionListener(ev -> {
+                String message = profile.isSync() && sessionManager.getAccountSession() == null
+                        ? "'" + profile.getName() + "' is cloud-synced, and you are not logged in to your RuneLite account.\n"
+                        + "This only deletes it from this computer. It will come back the next time you log in.\n"
+                        + "To delete it everywhere, log in first and then delete it.\n\n"
+                        + "Delete it from this computer anyway?"
+                        : "Are you sure you want to delete this profile?";
                 int confirm = JOptionPane.showConfirmDialog(MicrobotProfilePanel.ProfileCard.this,
-                        "Are you sure you want to delete this profile?",
+                        message,
                         "Warning", JOptionPane.OK_CANCEL_OPTION);
                 if (confirm == 0) {
                     deleteProfile(profile);

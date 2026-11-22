@@ -104,6 +104,10 @@ public class StateMachineScriptRestartTest {
             return State.WORKING;
         }
 
+        @Override protected boolean runsWhileLoggedOut() {
+            return true;
+        }
+
         @Override protected State initialState() {
             return State.IDLE;
         }

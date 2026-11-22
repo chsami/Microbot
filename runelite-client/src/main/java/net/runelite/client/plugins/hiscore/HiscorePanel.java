@@ -57,7 +57,7 @@ import net.runelite.api.Player;
 import net.runelite.api.gameval.SpriteID;
 import net.runelite.client.game.SpriteManager;
 import net.runelite.client.ui.ColorScheme;
-import net.runelite.client.ui.FontManager;
+import net.runelite.client.ui.PanelFonts;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.components.IconTextField;
 import net.runelite.client.ui.components.materialtabs.MaterialTab;
@@ -307,7 +307,7 @@ public class HiscorePanel extends PluginPanel
 
 		JLabel label = new JLabel();
 		label.setToolTipText(skill == null ? "Combat" : skill.getName());
-		label.setFont(FontManager.getRunescapeSmallFont());
+		label.setFont(PanelFonts.small());
 		label.setText(pad("--", skillType));
 
 		spriteManager.getSpriteAsync(skill == null ? SpriteID.SideIcons.COMBAT : skill.getSpriteId(), 0, (sprite) ->

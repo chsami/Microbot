@@ -18,11 +18,14 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ClientShutdown;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.events.OverlayMenuClicked;
+import net.runelite.client.events.PluginChanged;
 import net.runelite.client.events.RuneScapeProfileChanged;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.plugins.PluginManager;
 import net.runelite.client.plugins.microbot.accountselector.TerminalLogoutHold;
 import net.runelite.client.plugins.microbot.alerts.ClientAlertReporter;
+import net.runelite.client.plugins.microbot.externalplugins.PluginResources;
 import net.runelite.client.plugins.microbot.bans.BanTelemetry;
 import net.runelite.client.plugins.microbot.alerts.DashboardSync;
 import net.runelite.client.plugins.microbot.alerts.DeviceLinkFlow;
@@ -133,6 +136,8 @@ public class MicrobotPlugin extends Plugin
 
 	private NavigationButton navButton;
 	private InputSelector inputSelector;
+	private static final int INPUT_SYNC_MS = 2000;
+	private Timer inputSyncTimer;
 
 	@Provides
 	@Singleton
@@ -267,6 +272,10 @@ public class MicrobotPlugin extends Plugin
 		clientToolbar.addNavigation(navButton);
 
 		inputSelector = new InputSelector(clientToolbar);
+		syncInputToScripts(); // scripts that were started before this plugin was listening
+		// Events miss a script whose loop died with its plugin still on, and a stop whose shutDown() threw.
+		inputSyncTimer = new Timer(INPUT_SYNC_MS, e -> syncInputToScripts());
+		inputSyncTimer.start();
 		helpMenu.install();
 		bugReportTracker.start();
 		eventBus.register(tour);
@@ -310,8 +319,49 @@ public class MicrobotPlugin extends Plugin
 		eventBus.unregister(terminalLogoutHold);
 		deviceLinkFlow.stop();
 		microbotVersionChecker.shutdown();
+		if (inputSyncTimer != null)
+		{
+			inputSyncTimer.stop();
+		}
 	}
 
+	@Subscribe
+	public void onPluginChanged(PluginChanged event)
+	{
+		syncInputToScripts();
+	}
+
+	// a plugin that was already on starting (or restarting) a script: no PluginChanged for that
+	@Subscribe
+	public void onScriptStarted(ScriptStarted event)
+	{
+		syncInputToScripts();
+	}
+
+	// With the setting off this reports "none running", so input it turned off earlier comes back.
+	// Read on the EDT, where plugins start and stop, so a queued older reading can never land after a newer one.
+	private void syncInputToScripts()
+	{
+		SwingUtilities.invokeLater(() ->
+		{
+			if (inputSelector == null)
+			{
+				return;
+			}
+			PluginManager pluginManager = Microbot.getPluginManager();
+			boolean running = microbotConfig.disableInputWhileRunning() && pluginManager.getPlugins().stream()
+				.anyMatch(plugin -> pluginManager.isActive(plugin) && isVisible(plugin)
+					&& PluginResources.hasRunningScript(plugin.getClass().getClassLoader()));
+			inputSelector.scriptsRunning(running);
+		});
+	}
+
+	// Only Hub and side-loaded jars register Scripts, so this needs no isExternal flag; hidden plugins never count.
+	private static boolean isVisible(Plugin plugin)
+	{
+		PluginDescriptor descriptor = plugin.getClass().getAnnotation(PluginDescriptor.class);
+		return descriptor != null && !descriptor.hidden();
+	}
 
 	@Subscribe
 	public void onStatChanged(StatChanged statChanged)
@@ -638,6 +688,9 @@ public class MicrobotPlugin extends Plugin
 					break;
 				case MicrobotConfig.keySpoofDeviceId:
 					System.setProperty(HWID_SPOOF_PROPERTY, Boolean.toString(microbotConfig.spoofDeviceId()));
+					break;
+				case MicrobotConfig.keyDisableInputWhileRunning:
+					syncInputToScripts();
 					break;
 				case MicrobotConfig.keyDisableInputYielding:
 					InputArbiter.setDisabled(microbotConfig.disableInputYielding());

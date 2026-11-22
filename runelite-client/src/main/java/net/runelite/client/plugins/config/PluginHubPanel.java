@@ -87,7 +87,7 @@ import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginManager;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.DynamicGridLayout;
-import net.runelite.client.ui.FontManager;
+import net.runelite.client.ui.PanelFonts;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.components.IconTextField;
 import net.runelite.client.ui.components.VirtualList;
@@ -311,9 +311,9 @@ class PluginHubPanel extends PluginPanel
 			GroupLayout layout = new GroupLayout(this);
 			setLayout(layout);
 
-			pluginName.setFont(FontManager.getRunescapeBoldFont());
-			author.setFont(FontManager.getRunescapeSmallFont());
-			version.setFont(FontManager.getRunescapeSmallFont());
+			pluginName.setFont(PanelFonts.bold());
+			author.setFont(PanelFonts.small());
+			version.setFont(PanelFonts.small());
 
 			description.setVerticalAlignment(JLabel.TOP);
 

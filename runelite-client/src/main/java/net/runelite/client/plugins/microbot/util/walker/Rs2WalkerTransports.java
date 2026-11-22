@@ -1304,6 +1304,9 @@ final class Rs2WalkerTransports {
         if (isGuidorGateTransport(transport)) {
             return handleGuidorGateSearch(transport);
         }
+        if (isFeroxCastleWarsPortalTransport(transport)) {
+            return handleFeroxCastleWarsPortal(transport);
+        }
         if (handleObjectExceptions(transport, tileObject)) return true;
         WorldPoint tdObj = transport.getDestination();
         WorldPoint plObj = Rs2Player.getWorldLocation();
@@ -1978,6 +1981,45 @@ final class Rs2WalkerTransports {
                     compactWorldPoint(Rs2Player.getWorldLocation()));
         }
         return reachedDestination;
+    }
+
+    static boolean isFeroxCastleWarsPortalTransport(Transport transport) {
+        return transport != null
+                && transport.getType() == TransportType.TELEPORTATION_PORTAL
+                && transport.getObjectId() == ObjectID.CASTLEWARS_F2P_PORTAL;
+    }
+
+    static boolean hasLandedFromFeroxCastleWarsPortal(Transport transport, WorldPoint playerLocation) {
+        WorldPoint destination = transport == null ? null : transport.getDestination();
+        return isFeroxCastleWarsPortalTransport(transport)
+                && playerLocation != null
+                && destination != null
+                && playerLocation.getPlane() == destination.getPlane()
+                && playerLocation.distanceTo2D(destination) < OFFSET;
+    }
+
+    private static boolean handleFeroxCastleWarsPortal(Transport transport) {
+        AtomicBoolean confirmed = new AtomicBoolean(false);
+        boolean landed = sleepUntil(() -> hasLandedFromFeroxCastleWarsPortal(transport, Rs2Player.getWorldLocation()),
+                () -> {
+                    if (Rs2Dialogue.hasSelectAnOption()) {
+                        if (!Rs2Dialogue.isOptionSelectionPending() && Rs2Dialogue.clickOption("Yes")) {
+                            confirmed.set(true);
+                        }
+                    } else if (Rs2Dialogue.hasContinue()) {
+                        Rs2Dialogue.clickContinue();
+                    }
+                },
+                FEROX_CASTLE_WARS_PORTAL_WAIT_MS,
+                Rs2Random.between(600, 800));
+        if (!landed) {
+            WebWalkLog.spWarn(
+                    "Ferox Castle Wars portal teleport unresolved confirmed={} dest={} at={}",
+                    confirmed.get(),
+                    compactWorldPoint(transport.getDestination()),
+                    compactWorldPoint(Rs2Player.getWorldLocation()));
+        }
+        return landed;
     }
 
     private static boolean handleObjectExceptions(Transport transport, TileObject tileObject) {

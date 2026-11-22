@@ -443,7 +443,7 @@ public class ClientUI
 			content.add(clientPanel);
 
 			sidebar = new JTabbedPane(JTabbedPane.RIGHT);
-			sidebar.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+			sidebar.setBackground(ClientTheme.sidebarColor());
 			sidebar.setOpaque(true);
 			sidebar.putClientProperty(FlatClientProperties.STYLE, "tabInsets: 2,5,2,5; variableSize: true; deselectable: true; tabHeight: 26");
 			sidebar.setSelectedIndex(-1);
@@ -703,7 +703,7 @@ public class ClientUI
 	{
 		content.setBorder((frame.getExtendedState() & Frame.MAXIMIZED_BOTH) == Frame.MAXIMIZED_BOTH
 			? null
-			: new MatteBorder(4, 4, 4, 4, ColorScheme.DARKER_GRAY_COLOR));
+			: new MatteBorder(4, 4, 4, 4, ClientTheme.sidebarColor()));
 	}
 
 	public void show()

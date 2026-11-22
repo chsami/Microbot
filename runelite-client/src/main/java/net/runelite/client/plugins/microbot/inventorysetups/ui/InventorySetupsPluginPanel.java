@@ -29,6 +29,7 @@ import lombok.Setter;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.plugins.microbot.inventorysetups.*;
 import net.runelite.client.plugins.microbot.inventorysetups.serialization.InventorySetupPortable;
+import net.runelite.client.ui.ClientTheme;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.components.IconTextField;
@@ -217,7 +218,7 @@ public class InventorySetupsPluginPanel extends PluginPanel
 		// setup the title
 		this.mainTitle = new JLabel();
 		mainTitle.setText(MAIN_TITLE);
-		mainTitle.setForeground(Color.WHITE);
+		mainTitle.setForeground(ClientTheme.classicOr(Color.WHITE, ColorScheme.TEXT_COLOR));
 
 		this.helpButton = new JLabel(HELP_ICON);
 		helpButton.setToolTipText("Click for help. This button can be hidden in the config.");
@@ -497,7 +498,7 @@ public class InventorySetupsPluginPanel extends PluginPanel
 		backMarker.setBorder(new EmptyBorder(0, 8, 0, 0));
 
 		this.setupTitle = new JLabel();
-		setupTitle.setForeground(Color.WHITE);
+		setupTitle.setForeground(ClientTheme.classicOr(Color.WHITE, ColorScheme.TEXT_COLOR));
 		final JPanel setupTitleAndButtons = new JPanel();
 		setupTitleAndButtons.setLayout(new BorderLayout());
 		setupTitleAndButtons.add(setupTitle, BorderLayout.WEST);

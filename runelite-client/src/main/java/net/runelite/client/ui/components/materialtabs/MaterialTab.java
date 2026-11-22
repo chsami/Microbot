@@ -38,6 +38,7 @@ import javax.swing.border.Border;
 import javax.swing.border.CompoundBorder;
 import lombok.Getter;
 import lombok.Setter;
+import net.runelite.client.ui.ClientTheme;
 import net.runelite.client.ui.ColorScheme;
 
 /**
@@ -100,7 +101,7 @@ public class MaterialTab extends JLabel
 				public void mouseEntered(MouseEvent e)
 				{
 					MaterialTab tab = (MaterialTab) e.getSource();
-					tab.setForeground(Color.WHITE);
+					tab.setForeground(ClientTheme.classicOr(Color.WHITE, ColorScheme.TEXT_COLOR));
 				}
 
 				@Override
@@ -109,7 +110,7 @@ public class MaterialTab extends JLabel
 					MaterialTab tab = (MaterialTab) e.getSource();
 					if (!tab.isSelected())
 					{
-						tab.setForeground(Color.GRAY);
+						tab.setForeground(ClientTheme.classicOr(Color.GRAY, ColorScheme.LIGHT_GRAY_COLOR));
 					}
 				}
 			});
@@ -155,14 +156,14 @@ public class MaterialTab extends JLabel
 		}
 
 		setBorder(SELECTED_BORDER);
-		setForeground(Color.WHITE);
+		setForeground(ClientTheme.classicOr(Color.WHITE, ColorScheme.TEXT_COLOR));
 		return selected = true;
 	}
 
 	public void unselect()
 	{
 		setBorder(UNSELECTED_BORDER);
-		setForeground(Color.GRAY);
+		setForeground(ClientTheme.classicOr(Color.GRAY, ColorScheme.LIGHT_GRAY_COLOR));
 		selected = false;
 	}
 }

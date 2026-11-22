@@ -30,8 +30,9 @@ import net.runelite.client.plugins.microbot.questhelper.QuestHelperPlugin;
 import net.runelite.client.plugins.microbot.questhelper.managers.QuestManager;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
+import net.runelite.client.ui.ClientTheme;
 import net.runelite.client.ui.ColorScheme;
-import net.runelite.client.ui.FontManager;
+import net.runelite.client.ui.PanelFonts;
 import net.runelite.client.util.SwingUtil;
 
 import javax.annotation.Nullable;
@@ -82,7 +83,7 @@ public class QuestStepPanel extends JPanel implements MouseListener
 		addMouseListener(this);
 
 		headerLabel.setText(panelDetails.getHeader());
-		headerLabel.setFont(FontManager.getRunescapeBoldFont());
+		headerLabel.setFont(PanelFonts.bold());
 
 		headerLabel.setMinimumSize(new Dimension(1, headerLabel.getPreferredSize().height));
 
@@ -107,14 +108,14 @@ public class QuestStepPanel extends JPanel implements MouseListener
 
 		if (panelDetails.contains(currentStep))
 		{
-			headerLabel.setForeground(Color.BLACK);
+			headerLabel.setForeground(ClientTheme.onAccent());
 			headerPanel.setBackground(ColorScheme.BRAND_ORANGE);
 			viewControls.setBackground(ColorScheme.BRAND_ORANGE);
 			leftTitleContainer.setBackground(ColorScheme.BRAND_ORANGE);
 		}
 		else
 		{
-			headerLabel.setForeground(Color.WHITE);
+			headerLabel.setForeground(ClientTheme.classicOr(Color.WHITE, ColorScheme.TEXT_COLOR));
 			headerPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR.darker());
 			viewControls.setBackground(ColorScheme.DARKER_GRAY_COLOR.darker());
 			leftTitleContainer.setBackground(ColorScheme.DARKER_GRAY_COLOR.darker());
@@ -255,11 +256,11 @@ public class QuestStepPanel extends JPanel implements MouseListener
 
 		if (steps.get(lastHighlightedStep) != null)
 		{
-			steps.get(lastHighlightedStep).setForeground(Color.LIGHT_GRAY);
+			steps.get(lastHighlightedStep).setForeground(ClientTheme.classicOr(Color.LIGHT_GRAY, ColorScheme.TEXT_COLOR));
 		}
 		else
 		{
-			headerLabel.setForeground(Color.BLACK);
+			headerLabel.setForeground(ClientTheme.onAccent());
 			headerPanel.setBackground(ColorScheme.BRAND_ORANGE);
 			viewControls.setBackground(ColorScheme.BRAND_ORANGE);
 			leftTitleContainer.setBackground(ColorScheme.BRAND_ORANGE);
@@ -275,7 +276,7 @@ public class QuestStepPanel extends JPanel implements MouseListener
 
 	public void removeHighlight()
 	{
-		headerLabel.setForeground(Color.WHITE);
+		headerLabel.setForeground(ClientTheme.classicOr(Color.WHITE, ColorScheme.TEXT_COLOR));
 		if (isCollapsed())
 		{
 			applyDimmer(false, headerPanel);
@@ -285,7 +286,7 @@ public class QuestStepPanel extends JPanel implements MouseListener
 		leftTitleContainer.setBackground(ColorScheme.DARKER_GRAY_COLOR.darker());
 		if (steps.get(currentlyActiveQuestSidebarStep()) != null)
 		{
-			steps.get(currentlyActiveQuestSidebarStep()).setForeground(Color.LIGHT_GRAY);
+			steps.get(currentlyActiveQuestSidebarStep()).setForeground(ClientTheme.classicOr(Color.LIGHT_GRAY, ColorScheme.TEXT_COLOR));
 		}
 
 		collapse();

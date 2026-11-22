@@ -50,7 +50,7 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.SessionClose;
 import net.runelite.client.events.SessionOpen;
 import net.runelite.client.ui.ColorScheme;
-import net.runelite.client.ui.FontManager;
+import net.runelite.client.ui.PanelFonts;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.LinkBrowser;
@@ -121,7 +121,7 @@ public class InfoPanel extends PluginPanel
 		versionPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
 		versionPanel.setLayout(new GridLayout(0, 1));
 
-		final Font smallFont = FontManager.getRunescapeSmallFont();
+		final Font smallFont = PanelFonts.small();
 
 		JLabel version = new JLabel(htmlLabel("RuneLite version: ", runeliteVersion));
 		version.setFont(smallFont);
@@ -247,11 +247,11 @@ public class InfoPanel extends PluginPanel
 
 		JLabel topLine = new JLabel(topText);
 		topLine.setForeground(Color.WHITE);
-		topLine.setFont(FontManager.getRunescapeSmallFont());
+		topLine.setFont(PanelFonts.small());
 
 		JLabel bottomLine = new JLabel(bottomText);
 		bottomLine.setForeground(Color.WHITE);
-		bottomLine.setFont(FontManager.getRunescapeSmallFont());
+		bottomLine.setFont(PanelFonts.small());
 
 		textContainer.add(topLine);
 		textContainer.add(bottomLine);

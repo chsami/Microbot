@@ -135,7 +135,7 @@ public class SplashScreen extends JFrame implements ActionListener {
 
         JLabel closeButton = new JLabel("×");
         closeButton.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 16));
-        closeButton.setForeground(new Color(180, 180, 180));
+        closeButton.setForeground(ClientTheme.classicOr(new Color(180, 180, 180), ColorScheme.LIGHT_GRAY_COLOR));
         closeButton.setHorizontalAlignment(SwingConstants.CENTER);
         closeButton.setVerticalAlignment(SwingConstants.CENTER);
         closeButton.setPreferredSize(new Dimension(CLOSE_BUTTON_SIZE, CLOSE_BUTTON_SIZE));
@@ -145,12 +145,12 @@ public class SplashScreen extends JFrame implements ActionListener {
         closeButton.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
-                closeButton.setForeground(new Color(255, 100, 100));
+                closeButton.setForeground(ClientTheme.classicOr(new Color(255, 100, 100), ColorScheme.PROGRESS_ERROR_COLOR));
             }
 
             @Override
             public void mouseExited(MouseEvent e) {
-                closeButton.setForeground(new Color(180, 180, 180));
+                closeButton.setForeground(ClientTheme.classicOr(new Color(180, 180, 180), ColorScheme.LIGHT_GRAY_COLOR));
             }
 
             @Override
@@ -174,7 +174,7 @@ public class SplashScreen extends JFrame implements ActionListener {
         setIconImages(Arrays.asList(ClientUI.ICON_128, ClientUI.ICON_16));
 
         // Rounded window
-        getRootPane().setBorder(BorderFactory.createLineBorder(new Color(35, 35, 35)));
+        getRootPane().setBorder(BorderFactory.createLineBorder(ClientTheme.classicOr(new Color(35, 35, 35), ColorScheme.BORDER_COLOR)));
         setBackground(new Color(0, 0, 0, 0)); // allow shaping
         addComponentListener(new java.awt.event.ComponentAdapter() {
             @Override
@@ -195,8 +195,8 @@ public class SplashScreen extends JFrame implements ActionListener {
 
         final Font titleFont = new Font(Font.SANS_SERIF, Font.BOLD, 16);
         final Font bodyFont = new Font(Font.SANS_SERIF, Font.PLAIN, 13);
-        final Color fg = new Color(230, 230, 230);
-        final Color fgMuted = new Color(180, 180, 180);
+        final Color fg = ClientTheme.classicOr(new Color(230, 230, 230), ColorScheme.TEXT_COLOR);
+        final Color fgMuted = ClientTheme.classicOr(new Color(180, 180, 180), ColorScheme.LIGHT_GRAY_COLOR);
 
         GridBagConstraints gc = new GridBagConstraints();
         gc.gridx = 0;
@@ -237,7 +237,7 @@ public class SplashScreen extends JFrame implements ActionListener {
         progress.setStringPainted(false);
         progress.setBorderPainted(false);
         progress.setFont(bodyFont);
-        progress.setBackground(new Color(40, 40, 40));
+        progress.setBackground(ClientTheme.classicOr(new Color(40, 40, 40), ColorScheme.DARK_GRAY_COLOR));
         progress.setForeground(ColorScheme.BRAND_ORANGE);
         progress.setUI(new BasicProgressBarUI() {
             @Override
@@ -247,7 +247,7 @@ public class SplashScreen extends JFrame implements ActionListener {
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
                 // Track
-                g2.setColor(new Color(55, 55, 55));
+                g2.setColor(ClientTheme.classicOr(new Color(55, 55, 55), ColorScheme.MEDIUM_GRAY_COLOR));
                 g2.fillRoundRect(0, 0, w, h, 10, 10);
 
                 // Bar
@@ -275,8 +275,8 @@ public class SplashScreen extends JFrame implements ActionListener {
 
         // Divider
         JSeparator sep = new JSeparator();
-        sep.setForeground(new Color(70, 70, 70));
-        sep.setBackground(new Color(70, 70, 70));
+        sep.setForeground(ClientTheme.classicOr(new Color(70, 70, 70), ColorScheme.MEDIUM_GRAY_COLOR));
+        sep.setBackground(ClientTheme.classicOr(new Color(70, 70, 70), ColorScheme.MEDIUM_GRAY_COLOR));
         gc.gridy++;
         gc.insets = new Insets(0, 0, PAD, 0);
         root.add(sep, gc);
@@ -285,7 +285,7 @@ public class SplashScreen extends JFrame implements ActionListener {
         JPanel factCard = new JPanel(new BorderLayout());
         factCard.setOpaque(false);
         factCard.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(55, 55, 55)),
+                BorderFactory.createLineBorder(ClientTheme.classicOr(new Color(55, 55, 55), ColorScheme.MEDIUM_GRAY_COLOR)),
                 new EmptyBorder(PAD, PAD, PAD, PAD)
         ));
 
@@ -322,7 +322,7 @@ public class SplashScreen extends JFrame implements ActionListener {
         JPanel errorCard = new JPanel(new BorderLayout());
         errorCard.setOpaque(false);
         errorCard.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(55, 55, 55)),
+                BorderFactory.createLineBorder(ClientTheme.classicOr(new Color(55, 55, 55), ColorScheme.MEDIUM_GRAY_COLOR)),
                 new EmptyBorder(PAD, PAD, PAD, PAD)
         ));
 
@@ -345,7 +345,7 @@ public class SplashScreen extends JFrame implements ActionListener {
         // Replace local variable with field assignment
         errorScroll = new JScrollPane(errorDetails);
         errorScroll.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(55, 55, 55)),
+                BorderFactory.createLineBorder(ClientTheme.classicOr(new Color(55, 55, 55), ColorScheme.MEDIUM_GRAY_COLOR)),
                 new EmptyBorder(PAD, PAD, PAD, PAD)
         ));
         errorScroll.setOpaque(false);
@@ -359,7 +359,7 @@ public class SplashScreen extends JFrame implements ActionListener {
         errorButtonPanel.setOpaque(false);
         copyErrorButton.setFont(bodyFont);
         copyErrorButton.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        copyErrorButton.setForeground(Color.LIGHT_GRAY);
+        copyErrorButton.setForeground(ClientTheme.classicOr(Color.LIGHT_GRAY, ColorScheme.TEXT_COLOR));
         copyErrorButton.setFocusPainted(false);
         copyErrorButton.setBorder(new EmptyBorder(6, 12, 6, 12));
         copyErrorButton.addActionListener(e -> copyErrorDetails());

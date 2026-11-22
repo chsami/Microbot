@@ -24,7 +24,9 @@ import net.runelite.client.RuneLiteProperties;
 import net.runelite.client.plugins.microbot.diagnostics.BugReportTracker;
 import net.runelite.client.plugins.microbot.diagnostics.DiagnosticReportCollector;
 import net.runelite.client.plugins.microbot.recovery.StartupRecovery;
+import net.runelite.client.ui.ClientTheme;
 import net.runelite.client.ui.ClientToolbar;
+import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.util.LinkBrowser;
 
@@ -266,7 +268,7 @@ public class MicrobotHelpMenu
 		g.drawLine(14, 15, 12, 12);
 		g.fillOval(5, 2, 6, 5);
 		g.fillOval(4, 5, 8, 10);
-		g.setColor(new Color(40, 40, 40));
+		g.setColor(ClientTheme.classicOr(new Color(40, 40, 40), ColorScheme.DARKER_GRAY_COLOR));
 		g.drawLine(8, 8, 8, 14);
 		g.dispose();
 		return image;
