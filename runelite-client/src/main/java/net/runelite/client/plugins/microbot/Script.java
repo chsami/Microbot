@@ -216,9 +216,10 @@ public abstract class Script extends Global implements IScript {
     /**
      * Default pre-loop guard invoked by script schedulers.
      * Returns {@code false} to pause a loop when a blocking event is executing, scripts are paused,
-     * tutorial island is incomplete, the current thread is interrupted, or the game is not ready:
+     * the current thread is interrupted, or the game is not ready:
      * logged out, loading, hopping, or logged in before the local player has a world location.
      * Scripts that must act while logged out override {@link #runsWhileLoggedOut()}.
+     * On tutorial island it skips the blocking-event, pause and takeover checks and returns whether the game is ready.
      * When logged in, it also turns run on if auto-run is enabled, energy is above
      * {@link Microbot#runEnergyThreshold} and no blocking interface is open (see {@link #isBlockingInterfaceOpen()}).
      */
@@ -273,7 +274,7 @@ public abstract class Script extends Global implements IScript {
             Microbot.getConfigManager().setConfiguration(MicrobotConfig.configGroup, MicrobotConfig.keyEnableAutoRunOn, Microbot.enableAutoRunOn);
             Microbot.getConfigManager().setConfiguration(MicrobotConfig.configGroup, MicrobotConfig.keyUseStaminaPotsIfNeeded, Microbot.useStaminaPotsIfNeeded);
         }
-        return true;
+        return isGameReady();
     }
 
     protected boolean runsWhileLoggedOut() {
