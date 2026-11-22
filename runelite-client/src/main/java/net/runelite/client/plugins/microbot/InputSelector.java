@@ -31,6 +31,12 @@ public class InputSelector {
     private boolean inputEnabledBeforePause;
     private boolean inputChangedDuringPause;
     private volatile boolean closed;
+    private boolean anyScriptRunning;
+    // input is off because a script started, and the user has not touched the buttons since
+    private boolean disabledForScripts;
+    private boolean scriptsChangePending;
+    // a pause or resume could not release what a script was holding: input stays as it is until the user decides
+    private boolean cleanupFailed;
 
     public InputSelector(ClientToolbar clientToolbar) {
         this.clientToolbar = clientToolbar;
@@ -61,6 +67,10 @@ public class InputSelector {
 
     public void enableClick() {
         if (transitionPending) return;
+        // the user's own choice: it stands, and it releases the fence left by a failed pause cleanup
+        disabledForScripts = false;
+        scriptsChangePending = false;
+        cleanupFailed = false;
         if (ScriptPauseController.isPaused()) inputChangedDuringPause = true;
         ClientUI.getClient().setEnabled(true);
         AwtEmitter.setCanvasFocusable(true);
@@ -69,10 +79,43 @@ public class InputSelector {
 
     public void disableClick() {
         if (transitionPending) return;
+        // the user's own choice: it stands, and it releases the fence left by a failed pause cleanup
+        disabledForScripts = false;
+        scriptsChangePending = false;
+        cleanupFailed = false;
         if (ScriptPauseController.isPaused()) inputChangedDuringPause = true;
         ClientUI.getClient().setEnabled(false);
         AwtEmitter.setCanvasFocusable(false);
         addAndRemoveButtons();
+    }
+
+    /**
+     * Whether any script is running (with the setting on). The first one starting turns manual input off so a
+     * stray click or key cannot disturb it; the last one stopping gives it back, unless the user has used the
+     * Enable/Disable Input buttons in between: their choice stands.
+     */
+    public void scriptsRunning(boolean running) {
+        if (running == anyScriptRunning) return;
+        anyScriptRunning = running;
+        applyScriptsRunning();
+    }
+
+    private void applyScriptsRunning() {
+        // A pause hands input to the user on purpose, and its transition owns the input state until it is
+        // done, so the change waits and is applied when a transition next completes cleanly.
+        if (transitionPending || cleanupFailed || (anyScriptRunning && ScriptPauseController.isPaused())) {
+            scriptsChangePending = true;
+            return;
+        }
+        scriptsChangePending = false;
+        if (anyScriptRunning) {
+            if (ClientUI.getClient().isEnabled()) {
+                disableClick();
+                disabledForScripts = true;
+            }
+        } else if (disabledForScripts) {
+            enableClick();
+        }
     }
 
     private void togglePause() {
@@ -94,6 +137,7 @@ public class InputSelector {
         transition.whenComplete((ignored, error) -> SwingUtilities.invokeLater(() -> {
             transitionPending = false;
             if (closed) return;
+            cleanupFailed = error != null;
             if (error != null) {
                 String message = pause
                         ? "Pause could not release a key or mouse button held by a script. Scripts are still paused, but manual input is off. Click the Enable Input button to play yourself, or the amber play button to resume scripts."
@@ -116,6 +160,7 @@ public class InputSelector {
                 Microbot.log("All scripts resumed. If Break Handler had a break due while paused, it starts now.", Level.WARN);
             }
             updatePauseButton();
+            if (scriptsChangePending) applyScriptsRunning();
         }));
     }
 

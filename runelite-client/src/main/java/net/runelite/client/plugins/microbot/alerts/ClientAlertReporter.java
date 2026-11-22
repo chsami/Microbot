@@ -41,6 +41,7 @@ import net.runelite.client.plugins.microbot.MicrobotConfig;
 import net.runelite.client.plugins.microbot.breakhandler.BreakHandlerScript;
 import net.runelite.client.plugins.microbot.breakhandler.breakhandlerv2.BreakHandlerV2State;
 import net.runelite.client.plugins.microbot.externalplugins.MicrobotPluginManager;
+import net.runelite.client.plugins.microbot.externalplugins.PluginJarClassLoader;
 import net.runelite.client.plugins.microbot.util.player.LogoutRequested;
 import net.runelite.client.util.RunnableExceptionLogger;
 import net.runelite.client.util.Text;
@@ -449,7 +450,9 @@ public class ClientAlertReporter
 	public static boolean isScript(Plugin plugin)
 	{
 		PluginDescriptor descriptor = plugin == null ? null : plugin.getClass().getAnnotation(PluginDescriptor.class);
-		return descriptor != null && descriptor.isExternal() && !descriptor.hidden();
+		// same "external" rule as PluginManager: a side-loaded jar counts even without isExternal = true
+		return descriptor != null && !descriptor.hidden()
+			&& (descriptor.isExternal() || plugin.getClass().getClassLoader() instanceof PluginJarClassLoader);
 	}
 
 	static String scriptName(Plugin plugin)

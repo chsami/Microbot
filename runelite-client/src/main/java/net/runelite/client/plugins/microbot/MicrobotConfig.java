@@ -264,6 +264,21 @@ public interface MicrobotConfig extends Config
 		return BanReportMode.ASK;
 	}
 
+	String keyDisableInputWhileRunning = "disableInputWhileRunning";
+	@ConfigItem(
+		keyName = keyDisableInputWhileRunning,
+		name = "Disable input while a script runs",
+		description = "Turns manual input off when a script from the Plugin Hub (or one you side-loaded) starts, so your " +
+				"mouse and keyboard cannot disturb it, and back on when the last one stops. Built-in helpers such as " +
+				"Break Handler do not count. You can still switch input yourself with the toolbar button.",
+		position = 10,
+		section = generalSection
+	)
+	default boolean disableInputWhileRunning()
+	{
+		return false;
+	}
+
 	String keyDisableInputYielding = "disableInputYielding";
 	@ConfigItem(
 		keyName = keyDisableInputYielding,
@@ -324,7 +339,7 @@ public interface MicrobotConfig extends Config
 		keyName = keyAllowDashboardScreenshots,
 		name = "Allow dashboard screenshots",
 		description = "Let the Microbot dashboard take a screenshot of the game when this client is linked to your account",
-		position = 10,
+		position = 11,
 		section = generalSection
 	)
 	default boolean allowDashboardScreenshots()
@@ -337,7 +352,7 @@ public interface MicrobotConfig extends Config
 		keyName = keyAllowDashboardControl,
 		name = "Allow dashboard control",
 		description = "Let the Microbot dashboard stop your scripts or log this client out when it is linked to your account",
-		position = 11,
+		position = 12,
 		section = generalSection
 	)
 	default boolean allowDashboardControl()
