@@ -449,6 +449,11 @@ public class ConfigManager
 			profile.setSync(sync);
 			lock.dirty();
 
+			if (sessionManager.getAccountSession() == null)
+			{
+				return;
+			}
+
 			if (sync)
 			{
 				// sync the entire profile from disk
