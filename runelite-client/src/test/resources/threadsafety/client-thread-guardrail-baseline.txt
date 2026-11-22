@@ -927,5 +927,6 @@ net.runelite.client.plugins.microbot.util.world.Rs2WorldUtil#getMostPopulatedWor
 net.runelite.client.plugins.microbot.util.world.Rs2WorldUtil#getRandomAccessibleWorld(boolean, boolean, boolean): int  ->  net.runelite.api.Client#getWorldType(): EnumSet
 net.runelite.client.plugins.microbot.util.world.Rs2WorldUtil#getRandomAccessibleWorldFromRegion(WorldRegion, boolean, boolean, boolean): int  ->  net.runelite.api.Client#getWorldType(): EnumSet
 net.runelite.client.plugins.microbot.util.world.Rs2WorldUtil#getWorldStatistics(): Map  ->  net.runelite.api.Client#getWorldType(): EnumSet
+net.runelite.client.plugins.microbot.util.world.Rs2WorldUtil#isClientOnHardcoreMainWorld(): boolean  ->  net.runelite.api.Client#getWorldType(): EnumSet
 net.runelite.client.plugins.microbot.util.world.Rs2WorldUtil#isMemberAccount(): boolean  ->  net.runelite.api.Client#getLocalPlayer(): Player
 net.runelite.client.plugins.microbot.util.world.Rs2WorldUtil#lambda$hopWorld$8(): boolean  ->  net.runelite.api.Client#getGameState(): GameState

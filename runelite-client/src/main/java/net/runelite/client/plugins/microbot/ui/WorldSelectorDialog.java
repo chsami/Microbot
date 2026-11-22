@@ -234,7 +234,8 @@ public class WorldSelectorDialog extends JDialog {
 					continue;
 				}
 
-				String worldType = world.getTypes().contains(WorldType.MEMBERS) ? "Members" : "F2P";
+				String worldType = world.getTypes().contains(WorldType.HARDCORE_MAIN) ? "Hardcore Main"
+					: world.getTypes().contains(WorldType.MEMBERS) ? "Members" : "F2P";
 				String region = getRegionDisplay(world.getRegion());
 				String activity = world.getActivity() != null ? world.getActivity() : "-";
 
