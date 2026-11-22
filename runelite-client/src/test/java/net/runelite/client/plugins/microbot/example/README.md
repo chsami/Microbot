@@ -120,7 +120,7 @@ The performance test (`ExamplePluginPerformanceTest`) validates that:
 
 ### Performance test fails threshold
 - Cache may not be working correctly
-- Check that `Rs2GameObject.convertToObjectCompositionInternal` is using the cache
+- Check that `Rs2TileObjectModel.compositionOf` is using the cache
 - Verify `ConcurrentHashMap` is being populated
 - Run test in isolation (not in parallel with other tests)
 
@@ -155,4 +155,3 @@ When adding new performance tests:
 
 - `/runelite-client/src/main/java/net/runelite/client/plugins/microbot/example/ExamplePlugin.java` - Plugin implementation
 - `/runelite-client/src/main/java/net/runelite/client/plugins/microbot/example/ExampleScript.java` - Performance measurement script
-- `/runelite-client/src/main/java/net/runelite/client/plugins/microbot/util/gameobject/Rs2GameObject.java` - GameObject utilities with caching
