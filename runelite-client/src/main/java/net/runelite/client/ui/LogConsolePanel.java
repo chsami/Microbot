@@ -13,10 +13,13 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
 import java.awt.geom.Rectangle2D;
+import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import javax.swing.ImageIcon;
+import javax.swing.JButton;
 import javax.swing.JMenuItem;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
@@ -33,6 +36,8 @@ import javax.swing.text.Document;
 import javax.swing.text.DefaultCaret;
 import javax.swing.text.Element;
 import net.runelite.api.Constants;
+import net.runelite.client.util.ImageUtil;
+import net.runelite.client.util.SwingUtil;
 
 final class LogConsolePanel extends JPanel
 {
@@ -86,6 +91,7 @@ final class LogConsolePanel extends JPanel
 
 		scrollPane.setBorder(null);
 		add(scrollPane, BorderLayout.CENTER);
+		add(buildClearColumn(), BorderLayout.EAST);
 
 		// Following is decided by what the user does, never by measuring the view: under a flood the
 		// scroll position trails the document, which reads as "the user scrolled up".
@@ -298,6 +304,22 @@ final class LogConsolePanel extends JPanel
 		}
 
 		appendOnEdt(text.replace("\r", ""));
+	}
+
+	private JPanel buildClearColumn()
+	{
+		BufferedImage icon = ImageUtil.loadImageResource(LogConsolePanel.class, "console_clear.png");
+		JButton clearButton = new JButton(new ImageIcon(icon));
+		clearButton.setRolloverIcon(new ImageIcon(ImageUtil.alphaOffset(icon, -100)));
+		clearButton.setToolTipText("Clear the log");
+		clearButton.getAccessibleContext().setAccessibleName("Clear the log");
+		SwingUtil.removeButtonDecorations(clearButton);
+		clearButton.addActionListener(ev -> clear());
+
+		JPanel column = new JPanel(new BorderLayout());
+		column.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		column.add(clearButton, BorderLayout.SOUTH);
+		return column;
 	}
 
 	private JPopupMenu buildContextMenu()

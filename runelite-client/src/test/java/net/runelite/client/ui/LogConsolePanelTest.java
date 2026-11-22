@@ -18,7 +18,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import javax.swing.JButton;
 import javax.swing.JMenuItem;
+import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollBar;
 import javax.swing.JScrollPane;
@@ -72,6 +74,18 @@ public class LogConsolePanelTest
 		assertEquals(4, LogConsolePanel.lineStartAtOrAfter("one\ntwo\n", 2));
 		assertEquals(4, LogConsolePanel.lineStartAtOrAfter("one\ntwo\n", 4));
 		assertEquals(2, LogConsolePanel.lineStartAtOrAfter("one two", 2));
+	}
+
+	@Test
+	public void clearButtonEmptiesTheLog() throws Exception
+	{
+		JButton clearButton = onEdtGet(() -> (JButton) ((JPanel) panel.getComponent(1)).getComponent(0));
+		assertTrue(onEdtGet(() -> textArea.getDocument().getLength()) > 0);
+
+		onEdt(clearButton::doClick);
+		settle();
+
+		assertEquals(0, (int) onEdtGet(() -> textArea.getDocument().getLength()));
 	}
 
 	@Test
