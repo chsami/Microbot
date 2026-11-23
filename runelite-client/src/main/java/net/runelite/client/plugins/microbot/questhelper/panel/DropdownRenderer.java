@@ -24,6 +24,7 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.panel;
 
+import net.runelite.client.ui.ClientTheme;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.util.Text;
 
@@ -36,13 +37,13 @@ public final class DropdownRenderer extends DefaultListCellRenderer
 	@Override
 	public Component getListCellRendererComponent(JList<?> list, Object o, int i, boolean isSelected, boolean b1) {
 		setBackground(ColorScheme.DARK_GRAY_COLOR);
-		setForeground(Color.WHITE);
+		setForeground(ClientTheme.classicOr(Color.WHITE, ColorScheme.TEXT_COLOR));
 		setBorder(new EmptyBorder(0, 0, 0, 0));
 
 		if (!isSelected)
 		{
 			setBackground(ColorScheme.DARK_GRAY_COLOR);
-			setForeground(Color.WHITE);
+			setForeground(ClientTheme.classicOr(Color.WHITE, ColorScheme.TEXT_COLOR));
 		}
 		else
 		{

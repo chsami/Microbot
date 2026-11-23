@@ -216,7 +216,10 @@ public abstract class Script extends Global implements IScript {
     /**
      * Default pre-loop guard invoked by script schedulers.
      * Returns {@code false} to pause a loop when a blocking event is executing, scripts are paused,
-     * tutorial island is incomplete, or the current thread is interrupted.
+     * the current thread is interrupted, or the game is not ready:
+     * logged out, loading, hopping, or logged in before the local player has a world location.
+     * Scripts that must act while logged out override {@link #runsWhileLoggedOut()}.
+     * On tutorial island it skips the blocking-event, pause and takeover checks and returns whether the game is ready.
      * When logged in, it also turns run on if auto-run is enabled, energy is above
      * {@link Microbot#runEnergyThreshold} and no blocking interface is open (see {@link #isBlockingInterfaceOpen()}).
      */
@@ -240,7 +243,7 @@ public abstract class Script extends Global implements IScript {
         }
 
         if (Microbot.isLoggedIn() && !Rs2Player.hasCompletedTutorialIsland())
-            return true;
+            return isGameReady();
 
         if (Rs2Player.hasCompletedTutorialIsland() && Microbot.getBlockingEventManager().shouldBlockAndProcess()) {
             // A blocking event was found & is executing
@@ -257,6 +260,8 @@ public abstract class Script extends Global implements IScript {
             return false;
         if (Thread.currentThread().isInterrupted())
             return false;
+        if (!isGameReady())
+            return false;
 
         if (Microbot.isLoggedIn()) {
             boolean hasRunEnergy = Microbot.getClientThread().runOnClientThreadOptional(() -> Microbot.getClient().getEnergy()).orElse(0) > Microbot.runEnergyThreshold;
@@ -269,7 +274,15 @@ public abstract class Script extends Global implements IScript {
             Microbot.getConfigManager().setConfiguration(MicrobotConfig.configGroup, MicrobotConfig.keyEnableAutoRunOn, Microbot.enableAutoRunOn);
             Microbot.getConfigManager().setConfiguration(MicrobotConfig.configGroup, MicrobotConfig.keyUseStaminaPotsIfNeeded, Microbot.useStaminaPotsIfNeeded);
         }
-        return true;
+        return isGameReady();
+    }
+
+    protected boolean runsWhileLoggedOut() {
+        return false;
+    }
+
+    private boolean isGameReady() {
+        return runsWhileLoggedOut() || (Microbot.isLoggedIn() && Rs2Player.getWorldLocation() != null);
     }
 
     protected void trace(String key, Object value) {

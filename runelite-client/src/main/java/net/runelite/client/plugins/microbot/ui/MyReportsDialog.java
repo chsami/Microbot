@@ -35,7 +35,7 @@ import net.runelite.client.plugins.microbot.diagnostics.BugReportStatus;
 import net.runelite.client.plugins.microbot.diagnostics.BugReportTracker;
 import net.runelite.client.plugins.microbot.diagnostics.TrackedBugReport;
 import net.runelite.client.ui.ColorScheme;
-import net.runelite.client.ui.FontManager;
+import net.runelite.client.ui.PanelFonts;
 import net.runelite.client.util.LinkBrowser;
 
 @Slf4j
@@ -246,7 +246,7 @@ class MyReportsDialog extends JDialog
 		JButton discord = new JButton("or answer on Discord");
 		discord.setBorderPainted(false);
 		discord.setContentAreaFilled(false);
-		discord.setFont(FontManager.getRunescapeSmallFont());
+		discord.setFont(PanelFonts.small());
 		discord.addActionListener(e -> answerHint.setText(answerOnDiscord(report.getCode())
 			? "Code copied. Paste it with your answer in the Microbot Discord."
 			: "Mention " + report.getCode() + " with your answer."));
@@ -304,7 +304,7 @@ class MyReportsDialog extends JDialog
 	private static JLabel hint(String text)
 	{
 		JLabel label = new JLabel(text);
-		label.setFont(FontManager.getRunescapeSmallFont());
+		label.setFont(PanelFonts.small());
 		label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 		return label;
 	}

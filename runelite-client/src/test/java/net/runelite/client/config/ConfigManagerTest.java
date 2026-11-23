@@ -30,12 +30,15 @@ import com.google.inject.testing.fieldbinder.Bind;
 import com.google.inject.testing.fieldbinder.BoundFieldModule;
 import java.io.File;
 import java.io.IOException;
+import java.time.Instant;
+import java.util.UUID;
 import java.util.concurrent.ScheduledExecutorService;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Named;
 import net.runelite.api.Client;
 import net.runelite.client.RuneLite;
+import net.runelite.client.account.AccountSession;
 import net.runelite.client.account.SessionManager;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.http.api.RuneLiteAPI;
@@ -48,6 +51,8 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import org.mockito.Mock;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.MockitoJUnitRunner;
 
@@ -214,6 +219,40 @@ public class ConfigManagerTest
 
 		Assert.assertFalse(conf.useInventorySetup());
 		Assert.assertEquals("false", manager.getConfiguration("inventorySetupKeyTest", "useInventorySetup"));
+	}
+
+	private ConfigProfile stubSyncedProfile()
+	{
+		ConfigProfile synced = new ConfigProfile(manager.getProfile().getId() + 1);
+		synced.setName("synced");
+		synced.setSync(true);
+
+		ProfileManager.Lock lock = profileManager.lock();
+		when(lock.findProfile(anyLong())).thenAnswer(a -> (long) a.getArgument(0) == synced.getId() ? synced : null);
+		return synced;
+	}
+
+	@Test
+	public void testToggleSyncOffWhileLoggedOutClearsSyncWithoutRemoteDelete()
+	{
+		ConfigProfile synced = stubSyncedProfile();
+
+		manager.toggleSync(synced, false);
+
+		Assert.assertFalse(synced.isSync());
+		verify(configClient, never()).delete(anyLong());
+	}
+
+	@Test
+	public void testToggleSyncOffWhileLoggedInDeletesRemote()
+	{
+		ConfigProfile synced = stubSyncedProfile();
+		when(sessionManager.getAccountSession()).thenReturn(new AccountSession(UUID.randomUUID(), Instant.now(), "user"));
+
+		manager.toggleSync(synced, false);
+
+		Assert.assertFalse(synced.isSync());
+		verify(configClient).delete(synced.getId());
 	}
 
 	@Test

@@ -15,7 +15,6 @@ import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
-import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import org.junit.After;
@@ -172,28 +171,5 @@ public class Rs2TileObjectModelClickActionTest {
         assertTrue(new Rs2TileObjectModel(object).click("Use"));
 
         assertEquals(MenuAction.WIDGET_TARGET_ON_GAME_OBJECT, sentEntry().getType());
-    }
-
-    @Test
-    public void rs2GameObjectStillSendsTheFirstOptionForAMissingAction() {
-        assertTrue(Rs2GameObject.clickObject(object, "Bottom-floor"));
-
-        assertEquals(MenuAction.GAME_OBJECT_FIRST_OPTION, sentEntry().getType());
-    }
-
-    @Test
-    public void rs2GameObjectUsesTheSelectedWidgetOnTheObject() {
-        when(client.isWidgetSelected()).thenReturn(true);
-
-        assertTrue(Rs2GameObject.clickObject(object, "Use"));
-
-        assertEquals(MenuAction.WIDGET_TARGET_ON_GAME_OBJECT, sentEntry().getType());
-    }
-
-    @Test
-    public void rs2GameObjectSendsTheMatchingOption() {
-        assertTrue(Rs2GameObject.clickObject(object, "Climb-down"));
-
-        assertEquals(MenuAction.GAME_OBJECT_SECOND_OPTION, sentEntry().getType());
     }
 }

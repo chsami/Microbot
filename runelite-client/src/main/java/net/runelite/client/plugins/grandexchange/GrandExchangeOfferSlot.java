@@ -53,7 +53,7 @@ import static net.runelite.api.GrandExchangeOfferState.CANCELLED_SELL;
 import static net.runelite.api.GrandExchangeOfferState.EMPTY;
 import net.runelite.api.ItemComposition;
 import net.runelite.client.ui.ColorScheme;
-import net.runelite.client.ui.FontManager;
+import net.runelite.client.ui.PanelFonts;
 import net.runelite.client.ui.components.ThinProgressBar;
 import net.runelite.client.util.ColorUtil;
 import net.runelite.client.util.ImageUtil;
@@ -141,11 +141,11 @@ public class GrandExchangeOfferSlot extends JPanel
 
 		itemName.setForeground(Color.WHITE);
 		itemName.setVerticalAlignment(JLabel.BOTTOM);
-		itemName.setFont(FontManager.getRunescapeSmallFont());
+		itemName.setFont(PanelFonts.small());
 
 		offerInfo.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 		offerInfo.setVerticalAlignment(JLabel.TOP);
-		offerInfo.setFont(FontManager.getRunescapeSmallFont());
+		offerInfo.setFont(PanelFonts.small());
 
 		JLabel switchFaceViewIcon = new JLabel();
 		switchFaceViewIcon.setIcon(RIGHT_ARROW_ICON);
@@ -172,11 +172,11 @@ public class GrandExchangeOfferSlot extends JPanel
 
 		itemPrice.setForeground(Color.WHITE);
 		itemPrice.setVerticalAlignment(JLabel.BOTTOM);
-		itemPrice.setFont(FontManager.getRunescapeSmallFont());
+		itemPrice.setFont(PanelFonts.small());
 
 		offerSpent.setForeground(Color.WHITE);
 		offerSpent.setVerticalAlignment(JLabel.TOP);
-		offerSpent.setFont(FontManager.getRunescapeSmallFont());
+		offerSpent.setFont(PanelFonts.small());
 
 		JLabel switchDetailsViewIcon = new JLabel();
 		switchDetailsViewIcon.setIcon(LEFT_ARROW_ICON);

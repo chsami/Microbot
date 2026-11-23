@@ -29,6 +29,7 @@ import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper
 import net.runelite.client.plugins.microbot.questhelper.tools.Icon;
 import lombok.Getter;
 import net.runelite.api.QuestState;
+import net.runelite.client.ui.ClientTheme;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.PluginPanel;
 
@@ -58,7 +59,7 @@ public class QuestSelectPanel extends JPanel
 
 		JLabel nameLabel = JGenerator.makeJLabel(questHelper.getQuest().getName());
 		Color color = questState == QuestState.FINISHED ? questHelperPlugin.getConfig().passColour() : (questState == QuestState.IN_PROGRESS ?
-			new Color(240, 207, 123) : Color.WHITE);
+			new Color(240, 207, 123) : ClientTheme.classicOr(Color.WHITE, ColorScheme.TEXT_COLOR));
 		nameLabel.setForeground(color);
 		add(nameLabel, BorderLayout.CENTER);
 
@@ -81,7 +82,7 @@ public class QuestSelectPanel extends JPanel
 		setBackground(ColorScheme.DARKER_GRAY_COLOR);
 
 		JLabel nameLabel = JGenerator.makeJLabel(text);
-		Color color = Color.WHITE;
+		Color color = ClientTheme.classicOr(Color.WHITE, ColorScheme.TEXT_COLOR);
 		nameLabel.setForeground(color);
 		add(nameLabel, BorderLayout.CENTER);
 	}

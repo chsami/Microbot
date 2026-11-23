@@ -455,9 +455,11 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
 				installed && microbotPluginManager.getPluginHealth(manifest, selectedVersion).isBlocking(), outdated);
 			Color color = state == MicrobotPluginHubOrder.State.BLOCKED ? HEALTH_RED
 				: state == MicrobotPluginHubOrder.State.UPDATE ? PASTEL_ORANGE : PASTEL_GREEN;
+			Color borderColor = state == MicrobotPluginHubOrder.State.INSTALLED
+				? ClientTheme.classicOr(color, ColorScheme.MEDIUM_GRAY_COLOR) : color;
 			setBorder(state == MicrobotPluginHubOrder.State.NONE
 				? BorderFactory.createEmptyBorder(2, 2, 2, 2)
-				: BorderFactory.createLineBorder(color, 2));
+				: BorderFactory.createLineBorder(borderColor, 2));
 			stateLabel.setText(state.text(microbotPluginManager.getPluginHealth(manifest, selectedVersion), outdated));
 			stateLabel.setForeground(color);
 			stateLabel.setVisible(state != MicrobotPluginHubOrder.State.NONE);

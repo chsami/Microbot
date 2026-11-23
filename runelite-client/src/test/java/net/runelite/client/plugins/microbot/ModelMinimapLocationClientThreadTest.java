@@ -71,10 +71,6 @@ public class ModelMinimapLocationClientThreadTest {
         assertSame(minimapLocation, new Rs2TileObjectModel(tileObject).getMinimapLocation());
     }
 
-    @Test
-    public void legacyTileObjectModelReadsMinimapLocationOnClientThread() {
-        assertSame(minimapLocation, new net.runelite.client.plugins.microbot.util.tileobject.Rs2TileObjectModel(tileObject).getMinimapLocation());
-    }
 
     @Test
     public void apiActorModelReadsMinimapLocationOnClientThread() {

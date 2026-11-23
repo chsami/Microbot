@@ -40,7 +40,7 @@ import javax.swing.border.EmptyBorder;
 import lombok.Getter;
 import net.runelite.api.Constants;
 import net.runelite.client.ui.ColorScheme;
-import net.runelite.client.ui.FontManager;
+import net.runelite.client.ui.PanelFonts;
 import net.runelite.client.ui.components.ThinProgressBar;
 import net.runelite.client.ui.components.shadowlabel.JShadowedLabel;
 import net.runelite.client.util.ImageUtil;
@@ -93,10 +93,10 @@ public class TimeablePanel<T> extends JPanel
 		infoPanel.setBorder(new EmptyBorder(4, 4, 4, 0));
 
 		text = new JShadowedLabel(title);
-		text.setFont(FontManager.getRunescapeSmallFont());
+		text.setFont(PanelFonts.small());
 		text.setForeground(Color.WHITE);
 
-		estimate.setFont(FontManager.getRunescapeSmallFont());
+		estimate.setFont(PanelFonts.small());
 		estimate.setForeground(Color.GRAY);
 
 		infoPanel.add(text);

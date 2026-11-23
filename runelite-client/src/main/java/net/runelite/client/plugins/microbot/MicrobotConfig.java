@@ -264,13 +264,30 @@ public interface MicrobotConfig extends Config
 		return BanReportMode.ASK;
 	}
 
+	String keyDisableInputWhileRunning = "disableInputWhileRunning";
+	@ConfigItem(
+		keyName = keyDisableInputWhileRunning,
+		name = "Disable input while a script runs",
+		description = "Turns your mouse and keyboard input to the game off while a script from the Plugin Hub (or one you " +
+				"side-loaded) is running, and back on when the last one stops. That includes the login screen and breaks, " +
+				"as long as the script is still on. Click Enable Input in the toolbar to play yourself, or the pause button " +
+				"to pause scripts. Plugins without a script loop (helpers for manual play) and built-in helpers such as " +
+				"Break Handler never turn input off.",
+		position = 7,
+		section = generalSection
+	)
+	default boolean disableInputWhileRunning()
+	{
+		return false;
+	}
+
 	String keyDisableInputYielding = "disableInputYielding";
 	@ConfigItem(
 		keyName = keyDisableInputYielding,
 		name = "Disable input yielding",
 		description = "Stop scripts pausing when you use the real mouse or keyboard on the game canvas. " +
 				"Enabled by default; turn this off to opt into human-input yielding.",
-		position = 7,
+		position = 8,
 		section = generalSection
 	)
 	default boolean disableInputYielding()
@@ -284,7 +301,7 @@ public interface MicrobotConfig extends Config
 		name = "Input yield: motion threshold",
 		description = "How far the real mouse must move, in pixels from where the bot last put it, before scripts yield. " +
 				"Lower reacts sooner and risks yielding on an accidental nudge.",
-		position = 8,
+		position = 9,
 		section = generalSection
 	)
 	default int inputMotionThresholdPx()
@@ -298,7 +315,7 @@ public interface MicrobotConfig extends Config
 		name = "Input yield: resume delay (ms)",
 		description = "How long the real mouse and keyboard must stay quiet before scripts resume. " +
 				"Never resumes while you are holding a button or key, whatever this is set to.",
-		position = 9,
+		position = 10,
 		section = generalSection
 	)
 	default int inputIdleResumeMs()
@@ -324,7 +341,7 @@ public interface MicrobotConfig extends Config
 		keyName = keyAllowDashboardScreenshots,
 		name = "Allow dashboard screenshots",
 		description = "Let the Microbot dashboard take a screenshot of the game when this client is linked to your account",
-		position = 10,
+		position = 11,
 		section = generalSection
 	)
 	default boolean allowDashboardScreenshots()
@@ -337,7 +354,7 @@ public interface MicrobotConfig extends Config
 		keyName = keyAllowDashboardControl,
 		name = "Allow dashboard control",
 		description = "Let the Microbot dashboard stop your scripts or log this client out when it is linked to your account",
-		position = 11,
+		position = 12,
 		section = generalSection
 	)
 	default boolean allowDashboardControl()

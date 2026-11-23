@@ -46,7 +46,7 @@ import net.runelite.api.Skill;
 import net.runelite.api.WorldType;
 import net.runelite.client.game.SkillIconManager;
 import net.runelite.client.ui.ColorScheme;
-import net.runelite.client.ui.FontManager;
+import net.runelite.client.ui.PanelFonts;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.components.DragAndDropReorderPane;
 import net.runelite.client.ui.components.PluginErrorPanel;
@@ -141,8 +141,8 @@ class XpPanel extends PluginPanel
 		overallInfo.setLayout(new GridLayout(2, 1));
 		overallInfo.setBorder(new EmptyBorder(0, 10, 0, 0));
 
-		overallExpGained.setFont(FontManager.getRunescapeSmallFont());
-		overallExpHour.setFont(FontManager.getRunescapeSmallFont());
+		overallExpGained.setFont(PanelFonts.small());
+		overallExpHour.setFont(PanelFonts.small());
 
 		overallInfo.add(overallExpGained);
 		overallInfo.add(overallExpHour);

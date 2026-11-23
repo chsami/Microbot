@@ -27,6 +27,7 @@ package net.runelite.client.plugins.microbot.questhelper.panel;
 
 import net.runelite.client.plugins.microbot.questhelper.rewards.Reward;
 import net.runelite.client.plugins.microbot.questhelper.util.Fonts;
+import net.runelite.client.ui.ClientTheme;
 import net.runelite.client.ui.ColorScheme;
 
 import javax.annotation.Nullable;
@@ -72,7 +73,7 @@ public class QuestRewardsPanel extends JPanel
 		Reward lastReward = null;
 		if (rewards != null && !rewards.isEmpty())
 		{
-			rewardsText.setForeground(Color.WHITE);
+			rewardsText.setForeground(ClientTheme.classicOr(Color.WHITE, ColorScheme.TEXT_COLOR));
 
 			var text = new StringBuilder();
 
@@ -96,7 +97,7 @@ public class QuestRewardsPanel extends JPanel
 		else
 		{
 			rewardsText.setText("None");
-			rewardsText.setForeground(Color.GRAY);
+			rewardsText.setForeground(ClientTheme.classicOr(Color.GRAY, ColorScheme.LIGHT_GRAY_COLOR));
 		}
 
 		revalidate();
@@ -105,7 +106,7 @@ public class QuestRewardsPanel extends JPanel
 	public void hideRewards()
 	{
 		rewardsText.setText("Hidden by the \"Hide quest rewards\" config");
-		rewardsText.setForeground(Color.GRAY);
+		rewardsText.setForeground(ClientTheme.classicOr(Color.GRAY, ColorScheme.LIGHT_GRAY_COLOR));
 
 		revalidate();
 	}

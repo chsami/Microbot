@@ -33,7 +33,7 @@ import java.util.List;
 import javax.swing.JLabel;
 import javax.swing.SwingConstants;
 import javax.swing.border.EmptyBorder;
-import net.runelite.client.ui.FontManager;
+import net.runelite.client.ui.PanelFonts;
 import net.runelite.client.ui.components.shadowlabel.JShadowedLabel;
 
 /**
@@ -60,16 +60,16 @@ public class ProgressBar extends DimmableJPanel
 
 		setPreferredSize(new Dimension(100, 16));
 
-		leftLabel.setFont(FontManager.getRunescapeSmallFont());
+		leftLabel.setFont(PanelFonts.small());
 		leftLabel.setForeground(Color.WHITE);
 		leftLabel.setBorder(new EmptyBorder(2, 5, 0, 0));
 
-		rightLabel.setFont(FontManager.getRunescapeSmallFont());
+		rightLabel.setFont(PanelFonts.small());
 		rightLabel.setForeground(Color.WHITE);
 		rightLabel.setHorizontalAlignment(SwingConstants.RIGHT);
 		rightLabel.setBorder(new EmptyBorder(2, 0, 0, 5));
 
-		centerLabel.setFont(FontManager.getRunescapeSmallFont());
+		centerLabel.setFont(PanelFonts.small());
 		centerLabel.setForeground(Color.WHITE);
 		centerLabel.setHorizontalAlignment(SwingConstants.CENTER);
 		centerLabel.setBorder(new EmptyBorder(2, 0, 0, 0));
