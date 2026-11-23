@@ -39,8 +39,7 @@ public final class TransportExecutionRegistry
 		SEASONAL,
 		SPELL_TELEPORT,
 		SPIRIT_TREE,
-		TERMINAL_TRAVEL,
-		WILDERNESS_OBELISK
+		TERMINAL_TRAVEL
 	}
 
 	/** Planner-visible interaction sequence supported by the terminal-travel executor. */
@@ -213,8 +212,6 @@ public final class TransportExecutionRegistry
 				return Executor.ITEM_TELEPORT;
 			case TELEPORTATION_MINIGAME:
 				return Executor.MINIGAME_TELEPORT;
-			case WILDERNESS_OBELISK:
-				return Executor.WILDERNESS_OBELISK;
 			case SEASONAL_TRANSPORT:
 				return Executor.SEASONAL;
 			default:

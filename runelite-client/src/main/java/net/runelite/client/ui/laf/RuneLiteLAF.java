@@ -105,7 +105,8 @@ public class RuneLiteLAF extends FlatDarkLaf
 		}
 
 		extras.putAll(ClientTheme.themedLafExtras());
-
+		// typed values from ClientTheme only, never user strings; after the themed extras so a custom style wins
+		extras.putAll(ClientTheme.current().lafExtras());
 		setExtraDefaults(extras);
 	}
 
