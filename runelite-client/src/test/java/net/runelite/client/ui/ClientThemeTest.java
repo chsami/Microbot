@@ -153,12 +153,13 @@ public class ClientThemeTest
 	}
 
 	@Test
-	public void redesignIsOffOnlyForClassic()
+	public void redesignIsOffOnlyForStock()
 	{
 		for (ClientTheme.Palette p : ClientTheme.Palette.values())
 		{
-			assertEquals(p != ClientTheme.Palette.CLASSIC, ClientTheme.redesign(p));
+			assertEquals(p != ClientTheme.Palette.CLASSIC, ClientTheme.redesign(new ClientTheme(p)));
 		}
+		assertTrue(ClientTheme.redesign(ClientTheme.parse("{\"theme\":\"custom\",\"custom\":{\"base\":\"classic\"}}")));
 	}
 
 	@Test
