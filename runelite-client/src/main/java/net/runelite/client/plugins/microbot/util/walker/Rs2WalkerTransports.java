@@ -1307,6 +1307,9 @@ final class Rs2WalkerTransports {
         if (isFeroxCastleWarsPortalTransport(transport)) {
             return handleFeroxCastleWarsPortal(transport);
         }
+        if (isFeroxEnclaveBarrierTransport(transport)) {
+            return handleFeroxEnclaveBarrier(transport);
+        }
         if (handleObjectExceptions(transport, tileObject)) return true;
         WorldPoint tdObj = transport.getDestination();
         WorldPoint plObj = Rs2Player.getWorldLocation();
@@ -2022,6 +2025,47 @@ final class Rs2WalkerTransports {
         return landed;
     }
 
+    private static final String FEROX_ENCLAVE_BARRIER_WARNING_TEXT = "when returning to the enclave";
+    private static final String FEROX_ENCLAVE_BARRIER_DONT_ASK_OPTION = "Yes, and don't ask again.";
+    private static final int FEROX_ENCLAVE_BARRIER_WAIT_MS = 12_000;
+
+    static boolean isFeroxEnclaveBarrierTransport(Transport transport) {
+        return transport != null
+                && (transport.getObjectId() == ObjectID.WILDY_HUB_ENTRY_BARRIER
+                || transport.getObjectId() == ObjectID.WILDY_HUB_ENTRY_BARRIER_M);
+    }
+
+    static boolean isFeroxEnclaveBarrierWarning(String dialogueText) {
+        return dialogueText != null
+                && dialogueText.toLowerCase(Locale.ROOT).contains(FEROX_ENCLAVE_BARRIER_WARNING_TEXT);
+    }
+
+    private static boolean handleFeroxEnclaveBarrier(Transport transport) {
+        WorldPoint destination = transport.getDestination();
+        AtomicBoolean answered = new AtomicBoolean(false);
+        boolean crossed = sleepUntil(() -> isPlayerWithinChebyshevInclusive(destination, 0),
+                () -> {
+                    if (Rs2Dialogue.hasSelectAnOption()) {
+                        if (!Rs2Dialogue.isOptionSelectionPending()
+                                && Rs2Dialogue.keyPressForDialogueOption(FEROX_ENCLAVE_BARRIER_DONT_ASK_OPTION)) {
+                            answered.set(true);
+                        }
+                    } else if (isFeroxEnclaveBarrierWarning(Rs2Dialogue.getDialogueText())) {
+                        Rs2Dialogue.clickContinue();
+                    }
+                },
+                FEROX_ENCLAVE_BARRIER_WAIT_MS,
+                Rs2Random.between(600, 800));
+        if (!crossed) {
+            WebWalkLog.spWarn(
+                    "Ferox Enclave barrier crossing unresolved answered={} dest={} at={}",
+                    answered.get(),
+                    compactWorldPoint(destination),
+                    compactWorldPoint(Rs2Player.getWorldLocation()));
+        }
+        return crossed;
+    }
+
     private static boolean handleObjectExceptions(Transport transport, TileObject tileObject) {
         for (Map.Entry<Integer, Integer> entry : OPEN_TO_CLOSED_MAPPINGS.entrySet()) {
             final int closedTrapdoorId = entry.getKey();
@@ -2069,18 +2113,6 @@ final class Rs2WalkerTransports {
                 sleepUntil(() -> !Rs2Player.isMoving() && !Rs2Player.isAnimating());
             }
             return true;
-        }
-        // Handle Ferox Encalve Barrier
-        if (tileObject.getId() == ObjectID.WILDY_HUB_ENTRY_BARRIER || tileObject.getId() == ObjectID.WILDY_HUB_ENTRY_BARRIER_M) {
-            if (Rs2Dialogue.isInDialogue()) {
-                if (Rs2Dialogue.getDialogueText().toLowerCase().contains("when returning to the enclave")) {
-                    Rs2Dialogue.clickContinue();
-                    Rs2Dialogue.sleepUntilSelectAnOption();
-                    Rs2Dialogue.keyPressForDialogueOption("Yes, and don't ask again.");
-                    Rs2Dialogue.sleepUntilNotInDialogue();
-                    return true;
-                }
-            }
         }
         // Handle Cobwebs blocking path
         if (tileObject.getId() == ObjectID.BIGWEB_SLASHABLE && !Rs2Equipment.isWearing(ItemID.ARANEA_BOOTS)) {
