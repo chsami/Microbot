@@ -142,11 +142,35 @@ public class TransportExecutionRegistryTest
 	}
 
 	@Test
+	public void wildernessObeliskFailsClosedBecauseItsLandingIsRandom()
+	{
+		Transport levelThirteenToLevelFortyFour = new Transport(
+			new WorldPoint(3156, 3619, 0), new WorldPoint(2980, 3866, 0),
+			"5: Level 44 Wilderness", TransportType.WILDERNESS_OBELISK, true,
+			"Activate", "Obelisk", 14829, 8);
+
+		assertFalse(TransportExecutionRegistry.canExecute(levelThirteenToLevelFortyFour));
+	}
+
+	@Test
+	public void resourceCatalogNeverOffersAWildernessObeliskEdge()
+	{
+		List<Transport> obelisks = Transport.loadAllFromResources().values().stream()
+			.flatMap(Set::stream)
+			.filter(transport -> transport.getType() == TransportType.WILDERNESS_OBELISK)
+			.collect(Collectors.toList());
+
+		assertFalse(obelisks.isEmpty());
+		assertTrue(obelisks.stream().noneMatch(TransportExecutionRegistry::canExecute));
+	}
+
+	@Test
 	public void resourceCatalogHasOnlyExplicitTerminalExecutionDebt()
 	{
 		Map<WorldPoint, Set<Transport>> catalog = Transport.loadAllFromResources();
 		List<Transport> unsupported = catalog.values().stream()
 			.flatMap(Set::stream)
+			.filter(transport -> transport.getType() != TransportType.WILDERNESS_OBELISK)
 			.filter(transport -> !TransportExecutionRegistry.canExecute(transport))
 			.collect(Collectors.toList());
 
