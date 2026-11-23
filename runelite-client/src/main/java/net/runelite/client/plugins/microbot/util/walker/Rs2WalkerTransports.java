@@ -776,13 +776,6 @@ final class Rs2WalkerTransports {
                         }
                     }
 
-                    if (transport.getType() == TransportType.WILDERNESS_OBELISK) {
-                        if (attemptObserved(transport, () -> handleWildernessObelisk(transport))) {
-                            sleepTickJitter(2);
-                            return finishHandledTransport(transport);
-                        }
-                    }
-
                     if (transport.getType() == TransportType.GNOME_GLIDER) {
                         if (attemptObserved(transport, () -> handleGlider(transport))) {
                             sleepUntil(() -> !Rs2Player.isAnimating());
@@ -2026,7 +2019,8 @@ final class Rs2WalkerTransports {
     }
 
     private static final String FEROX_ENCLAVE_BARRIER_WARNING_TEXT = "when returning to the enclave";
-    private static final String FEROX_ENCLAVE_BARRIER_DONT_ASK_OPTION = "Yes, and don't ask again.";
+    static final String FEROX_ENCLAVE_BARRIER_DONT_ASK_OPTION = "don't ask";
+    private static final String FEROX_ENCLAVE_BARRIER_YES_OPTION = "Yes";
     private static final int FEROX_ENCLAVE_BARRIER_WAIT_MS = 12_000;
 
     static boolean isFeroxEnclaveBarrierTransport(Transport transport) {
@@ -2046,8 +2040,13 @@ final class Rs2WalkerTransports {
         boolean crossed = sleepUntil(() -> isPlayerWithinChebyshevInclusive(destination, 0),
                 () -> {
                     if (Rs2Dialogue.hasSelectAnOption()) {
-                        if (!Rs2Dialogue.isOptionSelectionPending()
-                                && Rs2Dialogue.keyPressForDialogueOption(FEROX_ENCLAVE_BARRIER_DONT_ASK_OPTION)) {
+                        if (Rs2Dialogue.isOptionSelectionPending()) {
+                            return;
+                        }
+                        if (Rs2Dialogue.keyPressForDialogueOption(FEROX_ENCLAVE_BARRIER_DONT_ASK_OPTION)) {
+                            answered.set(true);
+                            Microbot.log("Turned off the Ferox Enclave leave warning for this account (chose 'don't ask again' in the game dialogue).");
+                        } else if (Rs2Dialogue.clickOption(FEROX_ENCLAVE_BARRIER_YES_OPTION)) {
                             answered.set(true);
                         }
                     } else if (isFeroxEnclaveBarrierWarning(Rs2Dialogue.getDialogueText())) {
@@ -2228,23 +2227,6 @@ final class Rs2WalkerTransports {
         // Handle Magic Mushtree (Fossil Island Mycelium Transportation System)
         if (MagicMushtree.isMagicMushtree(tileObject)) {
             return MagicMushtree.handleTransport(transport);
-        }
-        return false;
-    }
-
-    private static boolean handleWildernessObelisk(Transport transport) {
-        GameObject obelisk = Rs2WalkerSceneObjects.first(GameObject.class, obj -> obj.getId() == transport.getObjectId(), transport.getOrigin(), Constants.SCENE_SIZE / 2);
-
-        if (obelisk != null) {
-            Rs2WalkerSceneObjects.interact(obelisk, transport.getAction());
-            sleepUntil(() -> Rs2WalkerSceneObjects.first(GameObject.class, obj -> obj.getId() == transport.getObjectId(), transport.getOrigin(), Constants.SCENE_SIZE / 2) != null);
-            walkFastCanvasWithAutoRun(transport.getOrigin());
-            return sleepUntilTrue(() -> {
-                WorldPoint pl = Rs2Player.getWorldLocation();
-                WorldPoint td = transport.getDestination();
-                return pl != null && td != null && pl.getPlane() == td.getPlane()
-                        && pl.distanceTo2D(td) < OFFSET;
-            }, 100, 10000);
         }
         return false;
     }

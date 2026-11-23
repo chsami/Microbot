@@ -336,8 +336,8 @@ public interface ShortestPathConfig extends Config {
 
     @ConfigItem(
             keyName = "useWildernessObelisks",
-            name = "Use wilderness obelisks",
-            description = "Whether to include wilderness obelisks in the path",
+            name = "Use wilderness obelisks (not supported yet)",
+            description = "Not supported yet. Obelisks send you to a random obelisk, which the walker cannot plan for, so it always walks through the Wilderness instead, even when this is on.",
             position = 17,
             section = sectionSettings
     )

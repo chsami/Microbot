@@ -40,4 +40,15 @@ public class Rs2WalkerTransportsFeroxEnclaveBarrierTest
 		assertFalse(Rs2WalkerTransports.isFeroxEnclaveBarrierWarning(""));
 		assertFalse(Rs2WalkerTransports.isFeroxEnclaveBarrierWarning(null));
 	}
+
+	@Test
+	public void dontAskOptionMatchesEveryKnownWording()
+	{
+		String partial = Rs2WalkerTransports.FEROX_ENCLAVE_BARRIER_DONT_ASK_OPTION.toLowerCase();
+		for (String wording : new String[]{"Yes, and don't ask again.", "Yes, and don't ask again", "Yes, don't ask again"})
+		{
+			assertTrue(wording, wording.toLowerCase().contains(partial));
+		}
+		assertFalse("Yes".toLowerCase().contains(partial));
+	}
 }
