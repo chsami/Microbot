@@ -165,6 +165,7 @@ public class EnlightenedJourney extends BasicQuestHelper
 	{
 		travelToEntrana = new NpcStep(this, NpcID.SHIPMONK1_C, new WorldPoint(3047, 3236, 0),
 			"Bank all weapons and armour you have, and go to Port Sarim to get a boat to Entrana.");
+		travelToEntrana.addDialogStep("Yes, okay, I'm ready to go.");
 
 		talkToAuguste = new NpcStep(this, NpcID.ZEP_PICCARD, new WorldPoint(2809, 3354, 0), "Talk to Auguste on Entrana 3" +
 			" times.", papyrus3, ballOfWool);
