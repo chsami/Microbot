@@ -1147,6 +1147,10 @@ final class Rs2WalkerMovement {
         }
 
         Set<WorldPoint> finishZone = randomizedFinishZone(target, end, distance);
+        if (finishZone.contains(playerLoc)) {
+            setTarget(null, "rs2walker:tryDirectShortWalk:already-in-finish-zone");
+            return WalkerState.ARRIVED;
+        }
         WorldPoint clickTile = pickFinishTile(finishZone, end);
         boolean routeBacked = rawPath != null && !rawPath.isEmpty();
         int rawAnchorIndex = routeBacked ? rawAnchorIndexForPathPosition(rawPath, path, playerLoc) : -1;

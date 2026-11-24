@@ -1851,7 +1851,8 @@ public class Rs2Walker {
         if (walkCancelledDiag(target, "processWalk:at-path-endpoint", processWalkTail)) {
             return WalkerState.EXIT;
         }
-        boolean arrived = playerLoc.distanceTo(target) <= tightFinishThreshold(target, endpoint, distance);
+        boolean arrived = playerLoc.distanceTo(target) <= tightFinishThreshold(target, endpoint, distance)
+                || randomizedFinishZone(target, endpoint, distance).contains(playerLoc);
         if (!arrived) {
             traceProcessWalkExit("path-endpoint-short-of-target", target, processWalkTail);
         }
@@ -3265,6 +3266,8 @@ public class Rs2Walker {
                     int finishTh = tightFinishThreshold(target, pathLast, distance);
                     WorldPoint finalTile = pathLast;
                     finishZone = randomizedFinishZone(target, pathLast, distance);
+                    WorldPoint finalPlayerLoc = Rs2Player.getWorldLocation();
+                    boolean alreadyInFinishZone = finishZone.contains(finalPlayerLoc);
                     boolean pinGoal = target != null && pathLast.getPlane() == target.getPlane()
                             && pathLast.distanceTo2D(target) <= TIGHT_PATH_GOAL_GAP
                             && Rs2Tile.isTileReachable(target);
@@ -3279,8 +3282,7 @@ public class Rs2Walker {
                         }
                     }
 
-                    WorldPoint finalPlayerLoc = Rs2Player.getWorldLocation();
-                    if (finalPlayerLoc != null && Rs2Tile.isTileReachable(finalTile) && finalPlayerLoc.distanceTo(finalTile) >= finishTh) {
+                    if (!alreadyInFinishZone && finalPlayerLoc != null && Rs2Tile.isTileReachable(finalTile) && finalPlayerLoc.distanceTo(finalTile) >= finishTh) {
                         final WorldPoint canvasClickWp = finalTile;
                         boolean finalClick;
                         if (rawPath != null && !rawPath.isEmpty()) {
