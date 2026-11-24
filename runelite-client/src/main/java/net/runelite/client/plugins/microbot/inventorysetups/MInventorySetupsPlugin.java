@@ -2019,6 +2019,14 @@ public class MInventorySetupsPlugin extends Plugin
 		// config will have changed to local file
 		clientThread.invokeLater(() ->
 		{
+			switch (client.getGameState())
+			{
+				case STARTING:
+				case UNKNOWN:
+				case LOADING:
+					return false;
+			}
+
 			dataManager.loadConfig();
 			// We may need to display the warning for this profile so reset it.
 			panel.setHasDisplayedLayoutWarning(false);

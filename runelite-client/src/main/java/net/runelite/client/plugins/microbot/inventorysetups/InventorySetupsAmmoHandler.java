@@ -153,9 +153,12 @@ public class InventorySetupsAmmoHandler
 
 	public List<InventorySetupsItem> getRunePouchDataIfInContainer(final List<InventorySetupsItem> container)
 	{
+		if (!varbitsReadable())
+		{
+			return null;
+		}
 		InventorySetupsRunePouchType runePouchType = getRunePouchTypeFromContainer(container);
-		return runePouchType != InventorySetupsRunePouchType.NONE && varbitsReadable()
-			? getRunePouchData(runePouchType) : null;
+		return runePouchType != InventorySetupsRunePouchType.NONE ? getRunePouchData(runePouchType) : null;
 	}
 
 	// Must be run on client thread!
@@ -190,7 +193,7 @@ public class InventorySetupsAmmoHandler
 
 	public List<InventorySetupsItem> getBoltPouchDataIfInContainer(final List<InventorySetupsItem> container)
 	{
-		return containerContainsBoltPouch(container) && varbitsReadable() ? getBoltPouchData() : null;
+		return varbitsReadable() && containerContainsBoltPouch(container) ? getBoltPouchData() : null;
 	}
 
 	// Must be run on client thread!
