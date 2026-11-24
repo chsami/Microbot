@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.Callable;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import net.runelite.api.Client;
 import net.runelite.api.ItemComposition;
@@ -668,6 +669,51 @@ public class InventorySetupMatchingTest
 		rs2Bank.verify(() -> Rs2Bank.withdrawAndEquip(ItemID.BARROWS_DHAROK_HEAD_50));
 		rs2Bank.verify(() -> Rs2Bank.withdrawAndEquip(anyString()), never());
 		rs2Bank.verify(() -> Rs2Bank.withdrawAndEquip(ItemID.BARROWS_DHAROK_HEAD_BROKEN), never());
+	}
+
+	private void extraPrayerPotionInAnInventoryOfSetupItems()
+	{
+		bankReadyForLoading();
+		inventory.add(held(ItemID.MANTARAY, "Manta ray", 1, 0));
+		inventory.add(held(ItemID._4DOSEPRAYERRESTORE, "Prayer potion(4)", 1, 1));
+		inventory.add(held(ItemID._4DOSEPRAYERRESTORE, "Prayer potion(4)", 1, 2));
+		rs2Bank.when(() -> Rs2Bank.depositAll(any(Predicate.class))).thenAnswer(call -> inventory.removeIf(call.<Predicate<Rs2ItemModel>>getArgument(0)));
+		rs2Bank.when(() -> Rs2Bank.syncBankInventoryAfterChange(org.mockito.ArgumentMatchers.anyInt())).thenReturn(true);	}
+
+	private static List<InventorySetupsItem> slayerSupplies()
+	{
+		List<InventorySetupsItem> inv = emptyContainer(28);
+		inv.set(26, item(ItemID.MANTARAY, "Manta ray", 1, -1));
+		inv.set(27, item(ItemID._4DOSEPRAYERRESTORE, "Prayer potion(4)", 1, -1));
+		return inv;
+	}
+
+	@Test
+	public void inventoryLoadBanksTheExtraCopyWhenEveryItemBelongsToTheSetup()
+	{
+		extraPrayerPotionInAnInventoryOfSetupItems();
+		rs2Bank.when(() -> Rs2Bank.hasBankItem(ItemID._4DOSEPRAYERRESTORE, 1)).thenReturn(true);
+		rs2Bank.when(() -> Rs2Bank.withdrawItem(ItemID._4DOSEPRAYERRESTORE)).thenAnswer(call -> inventory.add(held(ItemID._4DOSEPRAYERRESTORE, "Prayer potion(4)", 1, 1)));
+
+		assertTrue(loader(setup("ven", slayerSupplies(), emptyContainer(14))).loadInventory(false));
+
+		rs2Bank.verify(() -> Rs2Bank.withdrawItem(ItemID._4DOSEPRAYERRESTORE));
+		assertEquals(Arrays.asList("Manta ray", "Prayer potion(4)"), inventory.stream().map(Rs2ItemModel::getName).collect(Collectors.toList()));
+	}
+
+	@Test
+	public void equipmentLoadIsNotBlockedByAnExtraCopyOfASetupItem()
+	{
+		extraPrayerPotionInAnInventoryOfSetupItems();
+		rs2Bank.when(() -> Rs2Bank.hasItem(ItemID.SLAYER_HELM_I)).thenReturn(true);
+		rs2Bank.when(() -> Rs2Bank.withdrawAndEquip(ItemID.SLAYER_HELM_I)).thenAnswer(call -> worn.add(held(ItemID.SLAYER_HELM_I, "Slayer helmet (i)", 1, 0)));
+		List<InventorySetupsItem> equipment = emptyContainer(14);
+		equipment.set(0, item(ItemID.SLAYER_HELM_I, "Slayer helmet (i)", 1, 0));
+
+		assertTrue(loader(setup("ven", slayerSupplies(), equipment)).loadEquipment(false));
+
+		rs2Bank.verify(() -> Rs2Bank.withdrawAndEquip(ItemID.SLAYER_HELM_I));
+		assertEquals(Collections.singletonList("Manta ray"), inventory.stream().map(Rs2ItemModel::getName).collect(Collectors.toList()));
 	}
 
 	@Test
