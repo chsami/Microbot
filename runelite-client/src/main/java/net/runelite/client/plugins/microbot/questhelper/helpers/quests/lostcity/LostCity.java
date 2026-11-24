@@ -146,6 +146,7 @@ public class LostCity extends BasicQuestHelper
 		talkToShamus = new NpcStep(this, NpcID.ZANARISLEPRECHAUN, new WorldPoint(3138, 3212, 0), "Talk to Shamus.");
 		talkToShamus.addDialogStep("I've been in that shed, I didn't see a city.");
 		goToEntrana = new NpcStep(this, NpcID.SHIPMONK1_C, new WorldPoint(3047, 3236, 0), "Bank all weapons and armour you have (including the axe), and go to Port Sarim to get a boat to Entrana.", combatGear);
+		goToEntrana.addDialogStep("Yes, okay, I'm ready to go.");
 		goDownHole = new ObjectStep(this, ObjectID.ENTRANALADDERTOP, new WorldPoint(2820, 3374, 0), "Climb down the ladder on the north side of the island. Once you go down, you can only escape via teleport.");
 		goDownHole.addDialogStep("Well that is a risk I will have to take.");
 		getAxe = new DetailedQuestStep(this, new WorldPoint(2843, 9760, 0), "Kill zombies until one drops a bronze axe.");

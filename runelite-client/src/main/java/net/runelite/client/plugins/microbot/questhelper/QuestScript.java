@@ -4,8 +4,10 @@ import net.runelite.api.*;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.ChatMessage;
+import net.runelite.api.gameval.NpcID;
 import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
+import net.runelite.client.game.ItemStats;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.agentserver.handler.ScriptHeartbeatRegistry;
@@ -28,6 +30,7 @@ import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange;
 import net.runelite.client.plugins.microbot.util.grandexchange.models.WikiPrice;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
@@ -48,6 +51,7 @@ import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -102,6 +106,12 @@ public class QuestScript extends Script {
     private volatile long bankUnreachableSince = 0;
     static final long BANK_LOOKUP_RETRY_MS = 5_000;
     private volatile long bankUnreachableLastAttempt = 0;
+
+    static final Set<Integer> ENTRANA_BOAT_MONKS = Set.of(NpcID.SHIPMONK, NpcID.SHIPMONK1_B, NpcID.SHIPMONK1_C);
+    static final String ENTRANA_GEAR_BANK_STATUS = "Quest helper: banking weapons and armour for the Entrana boat";
+    private static final int ENTRANA_GEAR_DEPOSIT_WAIT_MS = 1_800;
+    static final String ENTRANA_GEAR_STUCK_REASON = "Could not bank your weapons and armour for the Entrana boat. "
+            + "Bank them yourself (rings and amulets can stay on), then turn the quest helper back on.";
 
     QuestStep dialogueStartedStep = null;
 
@@ -320,6 +330,10 @@ public class QuestScript extends Script {
 					}
 
 					if (questStep instanceof DetailedQuestStep && shouldObtainMissingItems() && handleMissingItemRequirements((DetailedQuestStep) questStep)) {
+						return;
+					}
+
+					if (questStep instanceof DetailedQuestStep && bankEntranaGear((DetailedQuestStep) questStep)) {
 						return;
 					}
 
@@ -1574,6 +1588,96 @@ public class QuestScript extends Script {
 		Rs2Bank.closeBank();
 		sleepUntil(() -> !Rs2Bank.isOpen(), 3_000);
 		return true;
+	}
+
+	private boolean bankEntranaGear(DetailedQuestStep questStep) {
+		if (!isEntranaBoatStep(questStep)) {
+			return false;
+		}
+
+		Set<Integer> keep = stepItemIds(questStep);
+		List<Integer> worn = wornEntranaGear(keep);
+		List<Integer> carried = carriedEntranaGear(keep);
+		if (worn.isEmpty() && carried.isEmpty()) {
+			return false;
+		}
+
+		Microbot.status = ENTRANA_GEAR_BANK_STATUS;
+		if (!Rs2Bank.isOpen()) {
+			Rs2Bank.walkToBankAndUseBank();
+			sleepUntil(Rs2Bank::isOpen, 15_000);
+			if (!Rs2Bank.isOpen()) {
+				return true;
+			}
+		}
+
+		boolean deposited = false;
+		for (int id : worn) {
+			Rs2Bank.depositEquippedItem(id);
+			deposited |= sleepUntil(() -> !Rs2Equipment.isWearing(id), ENTRANA_GEAR_DEPOSIT_WAIT_MS);
+		}
+		for (int id : carried) {
+			Rs2Bank.depositAll(id);
+			deposited |= sleepUntil(() -> !Rs2Inventory.contains(id), ENTRANA_GEAR_DEPOSIT_WAIT_MS);
+		}
+
+		Rs2Bank.closeBank();
+		sleepUntil(() -> !Rs2Bank.isOpen(), 3_000);
+
+		if (!deposited) {
+			stopQuesterWithReason(ENTRANA_GEAR_STUCK_REASON, Level.WARN);
+		}
+		return true;
+	}
+
+	static boolean isEntranaBoatStep(QuestStep step) {
+		return step instanceof NpcStep && ((NpcStep) step).allIds().stream().anyMatch(ENTRANA_BOAT_MONKS::contains);
+	}
+
+	static boolean isEntranaGearSlot(int slot) {
+		return slot >= 0
+				&& slot != EquipmentInventorySlot.AMULET.getSlotIdx()
+				&& slot != EquipmentInventorySlot.RING.getSlotIdx();
+	}
+
+	static int equipmentSlot(ItemStats stats) {
+		if (stats == null || !stats.isEquipable() || stats.getEquipment() == null) {
+			return -1;
+		}
+		return stats.getEquipment().getSlot();
+	}
+
+	static Set<Integer> stepItemIds(DetailedQuestStep questStep) {
+		Set<Integer> ids = new HashSet<>();
+		for (Requirement requirement : questStep.getRequirements()) {
+			if (requirement instanceof ItemRequirement) {
+				ids.addAll(((ItemRequirement) requirement).getAllIds());
+			}
+		}
+		return ids;
+	}
+
+	private static List<Integer> wornEntranaGear(Set<Integer> keep) {
+		return Rs2Equipment.all()
+				.filter(item -> isEntranaGearSlot(item.getSlot()) && !keep.contains(item.getId()))
+				.map(Rs2ItemModel::getId)
+				.distinct()
+				.collect(Collectors.toList());
+	}
+
+	private static List<Integer> carriedEntranaGear(Set<Integer> keep) {
+		List<Integer> ids = Rs2Inventory.items()
+				.map(Rs2ItemModel::getId)
+				.filter(id -> !keep.contains(id))
+				.distinct()
+				.collect(Collectors.toList());
+		if (ids.isEmpty()) {
+			return ids;
+		}
+		return Microbot.getClientThread().runOnClientThreadOptional(() -> ids.stream()
+						.filter(id -> isEntranaGearSlot(equipmentSlot(Microbot.getItemManager().getItemStats(id))))
+						.collect(Collectors.toList()))
+				.orElse(Collections.emptyList());
 	}
 
 	private boolean hasMatchingGrandExchangeOffer(ItemRequirement itemRequirement) {
