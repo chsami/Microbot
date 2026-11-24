@@ -776,13 +776,6 @@ final class Rs2WalkerTransports {
                         }
                     }
 
-                    if (transport.getType() == TransportType.WILDERNESS_OBELISK) {
-                        if (attemptObserved(transport, () -> handleWildernessObelisk(transport))) {
-                            sleepTickJitter(2);
-                            return finishHandledTransport(transport);
-                        }
-                    }
-
                     if (transport.getType() == TransportType.GNOME_GLIDER) {
                         if (attemptObserved(transport, () -> handleGlider(transport))) {
                             sleepUntil(() -> !Rs2Player.isAnimating());
@@ -1306,6 +1299,9 @@ final class Rs2WalkerTransports {
         }
         if (isFeroxCastleWarsPortalTransport(transport)) {
             return handleFeroxCastleWarsPortal(transport);
+        }
+        if (isFeroxEnclaveBarrierTransport(transport)) {
+            return handleFeroxEnclaveBarrier(transport);
         }
         if (handleObjectExceptions(transport, tileObject)) return true;
         WorldPoint tdObj = transport.getDestination();
@@ -2022,6 +2018,53 @@ final class Rs2WalkerTransports {
         return landed;
     }
 
+    private static final String FEROX_ENCLAVE_BARRIER_WARNING_TEXT = "when returning to the enclave";
+    static final String FEROX_ENCLAVE_BARRIER_DONT_ASK_OPTION = "don't ask";
+    private static final String FEROX_ENCLAVE_BARRIER_YES_OPTION = "Yes";
+    private static final int FEROX_ENCLAVE_BARRIER_WAIT_MS = 12_000;
+
+    static boolean isFeroxEnclaveBarrierTransport(Transport transport) {
+        return transport != null
+                && (transport.getObjectId() == ObjectID.WILDY_HUB_ENTRY_BARRIER
+                || transport.getObjectId() == ObjectID.WILDY_HUB_ENTRY_BARRIER_M);
+    }
+
+    static boolean isFeroxEnclaveBarrierWarning(String dialogueText) {
+        return dialogueText != null
+                && dialogueText.toLowerCase(Locale.ROOT).contains(FEROX_ENCLAVE_BARRIER_WARNING_TEXT);
+    }
+
+    private static boolean handleFeroxEnclaveBarrier(Transport transport) {
+        WorldPoint destination = transport.getDestination();
+        AtomicBoolean answered = new AtomicBoolean(false);
+        boolean crossed = sleepUntil(() -> isPlayerWithinChebyshevInclusive(destination, 0),
+                () -> {
+                    if (Rs2Dialogue.hasSelectAnOption()) {
+                        if (Rs2Dialogue.isOptionSelectionPending()) {
+                            return;
+                        }
+                        if (Rs2Dialogue.keyPressForDialogueOption(FEROX_ENCLAVE_BARRIER_DONT_ASK_OPTION)) {
+                            answered.set(true);
+                            Microbot.log("Turned off the Ferox Enclave leave warning for this account (chose 'don't ask again' in the game dialogue).");
+                        } else if (Rs2Dialogue.clickOption(FEROX_ENCLAVE_BARRIER_YES_OPTION)) {
+                            answered.set(true);
+                        }
+                    } else if (isFeroxEnclaveBarrierWarning(Rs2Dialogue.getDialogueText())) {
+                        Rs2Dialogue.clickContinue();
+                    }
+                },
+                FEROX_ENCLAVE_BARRIER_WAIT_MS,
+                Rs2Random.between(600, 800));
+        if (!crossed) {
+            WebWalkLog.spWarn(
+                    "Ferox Enclave barrier crossing unresolved answered={} dest={} at={}",
+                    answered.get(),
+                    compactWorldPoint(destination),
+                    compactWorldPoint(Rs2Player.getWorldLocation()));
+        }
+        return crossed;
+    }
+
     private static boolean handleObjectExceptions(Transport transport, TileObject tileObject) {
         for (Map.Entry<Integer, Integer> entry : OPEN_TO_CLOSED_MAPPINGS.entrySet()) {
             final int closedTrapdoorId = entry.getKey();
@@ -2069,18 +2112,6 @@ final class Rs2WalkerTransports {
                 sleepUntil(() -> !Rs2Player.isMoving() && !Rs2Player.isAnimating());
             }
             return true;
-        }
-        // Handle Ferox Encalve Barrier
-        if (tileObject.getId() == ObjectID.WILDY_HUB_ENTRY_BARRIER || tileObject.getId() == ObjectID.WILDY_HUB_ENTRY_BARRIER_M) {
-            if (Rs2Dialogue.isInDialogue()) {
-                if (Rs2Dialogue.getDialogueText().toLowerCase().contains("when returning to the enclave")) {
-                    Rs2Dialogue.clickContinue();
-                    Rs2Dialogue.sleepUntilSelectAnOption();
-                    Rs2Dialogue.keyPressForDialogueOption("Yes, and don't ask again.");
-                    Rs2Dialogue.sleepUntilNotInDialogue();
-                    return true;
-                }
-            }
         }
         // Handle Cobwebs blocking path
         if (tileObject.getId() == ObjectID.BIGWEB_SLASHABLE && !Rs2Equipment.isWearing(ItemID.ARANEA_BOOTS)) {
@@ -2196,23 +2227,6 @@ final class Rs2WalkerTransports {
         // Handle Magic Mushtree (Fossil Island Mycelium Transportation System)
         if (MagicMushtree.isMagicMushtree(tileObject)) {
             return MagicMushtree.handleTransport(transport);
-        }
-        return false;
-    }
-
-    private static boolean handleWildernessObelisk(Transport transport) {
-        GameObject obelisk = Rs2WalkerSceneObjects.first(GameObject.class, obj -> obj.getId() == transport.getObjectId(), transport.getOrigin(), Constants.SCENE_SIZE / 2);
-
-        if (obelisk != null) {
-            Rs2WalkerSceneObjects.interact(obelisk, transport.getAction());
-            sleepUntil(() -> Rs2WalkerSceneObjects.first(GameObject.class, obj -> obj.getId() == transport.getObjectId(), transport.getOrigin(), Constants.SCENE_SIZE / 2) != null);
-            walkFastCanvasWithAutoRun(transport.getOrigin());
-            return sleepUntilTrue(() -> {
-                WorldPoint pl = Rs2Player.getWorldLocation();
-                WorldPoint td = transport.getDestination();
-                return pl != null && td != null && pl.getPlane() == td.getPlane()
-                        && pl.distanceTo2D(td) < OFFSET;
-            }, 100, 10000);
         }
         return false;
     }

@@ -32,7 +32,7 @@ import java.awt.Color;
 public class ColorScheme
 {
 	/* The palette the launcher's Themes tab picked; see ClientTheme */
-	private static final ClientTheme.Palette P = ClientTheme.current().palette;
+	private static final ClientTheme.Colors P = ClientTheme.current().colors;
 
 	/* The orange color used for the branding's accents */
 	public static final Color BRAND_ORANGE = P.accent;
