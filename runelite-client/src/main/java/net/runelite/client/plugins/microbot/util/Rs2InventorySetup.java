@@ -392,12 +392,12 @@ public class Rs2InventorySetup {
 			}
 		} else if (needsDepositCleanupBeforeBanking(retainIds, fuzzy)) {
 			int epochBeforeDeposit = Rs2Bank.getBankLiveEpoch();
-			if (!Rs2Bank.depositAllExcept(retainIds, fuzzy)) {
-				logSetup(Level.WARN, "depositAllExcept failed while preparing inventory load");
+			if (!Rs2Bank.depositAll(setupLoadDepositFilter(retainIds, fuzzy))) {
+				logSetup(Level.WARN, "deposit of foreign or excess items failed while preparing inventory load");
 				return false;
 			}
 			if (!Rs2Bank.syncBankInventoryAfterChange(epochBeforeDeposit)) {
-				logSetup(Level.WARN, "bank sync timeout after depositAllExcept while preparing inventory load");
+				logSetup(Level.WARN, "bank sync timeout after depositing foreign or excess items while preparing inventory load");
 				return false;
 			}
 		}
@@ -715,14 +715,18 @@ public class Rs2InventorySetup {
 			return true;
 		}
 
-		boolean foreign = Rs2Inventory.items()
-				.anyMatch(inv -> !Rs2Bank.isInventoryItemRetainedForSetupDeposit(inv, retainIds, fuzzy));
-		return foreign || inventoryExceedsSetupQuantities();
+		return Rs2Inventory.items().anyMatch(setupLoadDepositFilter(retainIds, fuzzy));
 	}
 
-	private boolean inventoryExceedsSetupQuantities() {
+	private Predicate<Rs2ItemModel> setupLoadDepositFilter(Set<Integer> retainIds, Map<String, Boolean> fuzzy) {
+		Predicate<Rs2ItemModel> overSetupQuantity = overSetupQuantityFilter();
+		return inv -> !Rs2Bank.isInventoryItemRetainedForSetupDeposit(inv, retainIds, fuzzy) || overSetupQuantity.test(inv);
+	}
+
+	private Predicate<Rs2ItemModel> overSetupQuantityFilter() {
+		Predicate<Rs2ItemModel> overSetupQuantity = inv -> false;
 		if (inventorySetup == null || inventorySetup.getInventory() == null) {
-			return false;
+			return overSetupQuantity;
 		}
 		List<InventorySetupsItem> setupItems = inventorySetup.getInventory();
 		Set<String> seenGroup = new HashSet<>();
@@ -743,21 +747,22 @@ public class Rs2InventorySetup {
 			String itemName = item.getName().toLowerCase(Locale.ROOT);
 			boolean singleStackRow = matching.size() == 1 && desiredQuantity > 1;
 			if (singleStackRow) {
-				int currentQuantity = isFuzzy ? Rs2Inventory.itemQuantity(itemName) : Rs2Inventory.itemQuantity(itemId);
+				Predicate<Rs2ItemModel> group = isFuzzy ? i -> i.getName().equalsIgnoreCase(itemName) : i -> i.getId() == itemId;
+				int currentQuantity = Rs2Inventory.itemQuantity(group);
 				boolean allowExcess = matching.stream().anyMatch(Rs2InventorySetup::setupWithdrawIgnoresExactBankTotal);
 				if (currentQuantity > desiredQuantity && !allowExcess) {
-					return true;
+					overSetupQuantity = overSetupQuantity.or(group);
 				}
 			} else {
-				long alreadyPresent = isFuzzy
-						? Rs2Inventory.items(i -> i.getName().toLowerCase(Locale.ROOT).contains(itemName)).count()
-						: Rs2Inventory.items(i -> i.getId() == itemId).count();
-				if (alreadyPresent > matching.size()) {
-					return true;
+				Predicate<Rs2ItemModel> group = isFuzzy
+						? i -> i.getName().toLowerCase(Locale.ROOT).contains(itemName)
+						: i -> i.getId() == itemId;
+				if (Rs2Inventory.items(group).count() > matching.size()) {
+					overSetupQuantity = overSetupQuantity.or(group);
 				}
 			}
 		}
-		return false;
+		return overSetupQuantity;
 	}
 
     /**
@@ -880,12 +885,12 @@ public class Rs2InventorySetup {
             }
         } else if (needsDepositCleanupBeforeBanking(retainIds, fuzzy)) {
             int epochBeforeDeposit = Rs2Bank.getBankLiveEpoch();
-            if (!Rs2Bank.depositAllExcept(retainIds, fuzzy)) {
-				logSetup(Level.WARN, "depositAllExcept failed while preparing equipment load");
+            if (!Rs2Bank.depositAll(setupLoadDepositFilter(retainIds, fuzzy))) {
+				logSetup(Level.WARN, "deposit of foreign or excess items failed while preparing equipment load");
 				return false;
             }
             if (!Rs2Bank.syncBankInventoryAfterChange(epochBeforeDeposit)) {
-				logSetup(Level.WARN, "bank sync timeout after depositAllExcept while preparing equipment load");
+				logSetup(Level.WARN, "bank sync timeout after depositing foreign or excess items while preparing equipment load");
 				return false;
             }
         }
