@@ -36,6 +36,21 @@ public class InventorySetupsAmmoHandlerTest
 	}
 
 	@Test
+	public void pouchChecksSkipItemLookupsBeforeLoggedIn() throws Exception
+	{
+		final MInventorySetupsPlugin plugin = mock(MInventorySetupsPlugin.class);
+		final Client client = mock(Client.class);
+		when(client.getGameState()).thenReturn(GameState.STARTING);
+		final InventorySetupsAmmoHandler handler = new InventorySetupsAmmoHandler(plugin, client, mock(ItemManager.class),
+			mock(InventorySetupsPluginPanel.class), mock(MInventorySetupsConfig.class));
+
+		assertNull(handler.getRunePouchDataIfInContainer(Collections.emptyList()));
+		assertNull(handler.getBoltPouchDataIfInContainer(Collections.emptyList()));
+		verify(plugin, never()).containerContainsItemFromSet(anySet(), anyList(), anyBoolean(), anyBoolean());
+		verify(plugin, never()).containerContainsItem(anyInt(), anyList(), anyBoolean(), anyBoolean());
+	}
+
+	@Test
 	public void runePouchDataIfInContainerReadsVarbitsWhenLoggedIn() throws Exception
 	{
 		final MInventorySetupsPlugin plugin = mock(MInventorySetupsPlugin.class);

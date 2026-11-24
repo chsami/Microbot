@@ -100,7 +100,9 @@ public class MicrobotTopLevelConfigPanel extends PluginPanel {
         this.helpMenu = helpMenu;
 
         tabGroup = new MaterialTabGroup();
-        tabGroup.setLayout(new GridLayout(1, 0, 7, 7));
+        if (!ClientTheme.redesign()) {
+            tabGroup.setLayout(new GridLayout(1, 0, 7, 7));
+        }
         tabGroup.setBorder(new EmptyBorder(10, 10, 0, 10));
 
         content = new JPanel();
@@ -114,13 +116,9 @@ public class MicrobotTopLevelConfigPanel extends PluginPanel {
 
         this.pluginListPanel = pluginListPanel;
 
-        // Create text-based icons instead of using image files for better clarity
-        ImageIcon installedIcon = createTextIcon("Installed", ClientTheme.classicOr(Color.YELLOW, ColorScheme.BRAND_ORANGE), null, 80, 32);
-        ImageIcon hubIcon = createTextIcon("Plugin Hub", ClientTheme.classicOr(Color.YELLOW, ColorScheme.BRAND_ORANGE), null, 80, 32);
-
-        pluginListPanelTab = addTab(pluginListPanel.getMuxer(), installedIcon, "Installed Microbot Plugins");
+        pluginListPanelTab = addTextTab(pluginListPanel.getMuxer(), "Installed", "Installed Microbot Plugins");
         profilePanelTab = addTab(profilePanel, "profile_icon.png", "Profiles");
-        pluginHubTab = addTab(microbotPluginHubPanelProvider, hubIcon, "Microbot Hub");
+        pluginHubTab = addTextTab(microbotPluginHubPanelProvider, "Plugin Hub", "Microbot Hub");
         pluginListPanel.setOpenHub(query -> {
             microbotPluginHubPanelProvider.get().search(query);
             tabGroup.select(pluginHubTab);
@@ -186,9 +184,11 @@ public class MicrobotTopLevelConfigPanel extends PluginPanel {
         return label;
     }
 
-    private MaterialTab addTab(MicrobotPluginPanel panel, ImageIcon icon, String tooltip) {
-        MaterialTab mt = new MaterialTab(icon, tabGroup, null);
+    private MaterialTab addTextTab(MicrobotPluginPanel panel, String label, String tooltip) {
+        MaterialTab mt = ClientTheme.redesign() ? new MaterialTab(label, tabGroup, null)
+                : new MaterialTab(createTextIcon(label, Color.YELLOW, null, 80, 32), tabGroup, null);
         mt.setToolTipText(tooltip);
+        mt.getAccessibleContext().setAccessibleName(tooltip);
         tabGroup.addTab(mt);
 
         content.add(tooltip, panel.getWrappedPanel()); // Use tooltip as unique key instead of image name
@@ -208,6 +208,7 @@ public class MicrobotTopLevelConfigPanel extends PluginPanel {
                 new ImageIcon(ImageUtil.loadImageResource(TopLevelConfigPanel.class, image)),
                 tabGroup, null);
         mt.setToolTipText(tooltip);
+        mt.getAccessibleContext().setAccessibleName(tooltip);
         tabGroup.addTab(mt);
 
         content.add(image, panel.getWrappedPanel());
@@ -221,9 +222,11 @@ public class MicrobotTopLevelConfigPanel extends PluginPanel {
         return mt;
     }
 
-    private MaterialTab addTab(Provider<? extends MicrobotPluginPanel> panelProvider, ImageIcon icon, String tooltip) {
-        MaterialTab mt = new MaterialTab(icon, tabGroup, null);
+    private MaterialTab addTextTab(Provider<? extends MicrobotPluginPanel> panelProvider, String label, String tooltip) {
+        MaterialTab mt = ClientTheme.redesign() ? new MaterialTab(label, tabGroup, null)
+                : new MaterialTab(createTextIcon(label, Color.YELLOW, null, 80, 32), tabGroup, null);
         mt.setToolTipText(tooltip);
+        mt.getAccessibleContext().setAccessibleName(tooltip);
         tabGroup.addTab(mt);
 
         mt.setOnSelectEvent(() ->

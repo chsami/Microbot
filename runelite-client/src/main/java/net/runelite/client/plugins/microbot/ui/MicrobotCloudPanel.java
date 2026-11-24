@@ -23,6 +23,7 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.border.MatteBorder;
 import net.runelite.client.plugins.microbot.alerts.BotAlertStatus;
 import net.runelite.client.plugins.microbot.alerts.DeviceLinkFlow;
+import net.runelite.client.ui.ClientTheme;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.PanelFonts;
 import net.runelite.client.util.LinkBrowser;
@@ -65,11 +66,21 @@ public class MicrobotCloudPanel extends JPanel
 				onUsed.run();
 			}
 		});
-		JPanel header = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-		header.add(title);
-		header.add(Box.createHorizontalStrut(6));
+		JPanel header;
 		newBadge.setVisible(false);
-		header.add(newBadge);
+		if (ClientTheme.redesign())
+		{
+			header = new JPanel(new BorderLayout(6, 0));
+			header.add(title, BorderLayout.CENTER);
+			header.add(newBadge, BorderLayout.EAST);
+		}
+		else
+		{
+			header = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+			header.add(title);
+			header.add(Box.createHorizontalStrut(6));
+			header.add(newBadge);
+		}
 		add(header, BorderLayout.NORTH);
 
 		body.setBorder(new EmptyBorder(4, 0, 0, 0));

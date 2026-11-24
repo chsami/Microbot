@@ -302,6 +302,9 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
 
             JLabel description = new JLabel(descriptionText);
             description.setVerticalAlignment(JLabel.TOP);
+            if (ClientTheme.redesign()) {
+                description.setForeground(ColorScheme.TEXT_COLOR);
+            }
             description.setToolTipText(descriptionText);
 
             JLabel icon = new PluginIcon(Strings.nullToEmpty(manifest.getIconUrl()));
@@ -780,6 +783,9 @@ public class MicrobotPluginHubPanel extends MicrobotPluginPanel {
 
         searchBar = new IconTextField();
         searchBar.setIcon(IconTextField.Icon.SEARCH);
+        if (ClientTheme.redesign()) {
+            searchBar.setPlaceholderText("Search the Hub");
+        }
         searchBar.setBackground(ColorScheme.DARKER_GRAY_COLOR);
         searchBar.setHoverBackgroundColor(ColorScheme.DARK_GRAY_HOVER_COLOR);
         searchBar.getSuggestionListModel().addElement(MicrobotPluginHubOrder.NEWLY_ADDED_FILTER_QUERY);

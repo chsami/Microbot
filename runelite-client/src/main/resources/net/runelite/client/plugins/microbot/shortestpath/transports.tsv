@@ -1632,11 +1632,11 @@
 2684 9436 0	2697 9436 0	Enter;Crevice;30198
 2697 9436 0	2684 9436 0	Enter;Crevice;30198
 # Brimhaven Dungeon - CKR Fairy Ring Alternate Entrance
-2761 3062 0	2734 9478 0	Climb;Rope;66
-2761 3063 0	2734 9478 0	Climb;Rope;66
-2760 3064 0	2734 9478 0	Climb;Rope;66
-2760 3061 0	2734 9478 0	Climb;Rope;66
-2734 9478 0	2760 3061 0	Use;Crevice;30201
+2761 3062 0	2734 9478 0	Climb;Rope;66					5629>0
+2761 3063 0	2734 9478 0	Climb;Rope;66					5629>0
+2760 3064 0	2734 9478 0	Climb;Rope;66					5629>0
+2760 3061 0	2734 9478 0	Climb;Rope;66					5629>0
+2734 9478 0	2760 3061 0	Use;Crevice;30201					5629>0
 
 # Karamja Volcano											
 2855 3169 0	2855 9569 0	Climb-down;Rocks;11441									
