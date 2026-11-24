@@ -344,6 +344,14 @@ Walker teleport rows use the inventory op text (`Morytania legs: Burgh Teleport`
 
 **Defensive check:** Run `Rs2WalkerUnitTest`. Add a new pair to `WORN_TELEPORT_ACTION_ALIASES` when another item's worn op text differs.
 
+## 24. A worn teleport row with a category needs the category op first
+
+Some walker rows have a middle category (`Max cape: Other Teleports: Hunter Guild`). The worn Max cape has `Other Teleports`, `Fishing Teleports` and `POH Portals` as ops, but has no op or sub-op for the destination. `Rs2WalkerTransports.wornTeleportCategoryAction` returns the category op when the destination is not an op or sub-op, and the walker then picks the destination in the select-an-option dialogue.
+
+**Why this matters:** the walker asked the worn Max cape for `hunter guild`, `Rs2Equipment.invokeMenu` logged `does not have a subaction=hunter guild` and returned false, and the walker used up its strikes on a teleport the player owns.
+
+**Defensive check:** Run `Rs2WalkerUnitTest`.
+
 ## Terminal supply stops need observed logout
 
 An owning script can set `withMissingSupplyHandler` on its Inventory Setup loader to keep its scheduled loop alive while `TerminalLogoutPrompt` closes the bank and requests logout. Do not show a blocking shortage notification or cancel that loop until `LOGGED_OUT` is observed. The default loader policy stays unchanged when no handler is supplied; ordinary breaks and world hops do not arm terminal Auto Login suppression.
