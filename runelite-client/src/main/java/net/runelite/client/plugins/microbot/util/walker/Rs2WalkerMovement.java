@@ -1146,19 +1146,21 @@ final class Rs2WalkerMovement {
             return WalkerState.MOVING;
         }
 
+        Set<WorldPoint> finishZone = randomizedFinishZone(target, end, distance);
+        WorldPoint clickTile = pickFinishTile(finishZone, end);
         boolean routeBacked = rawPath != null && !rawPath.isEmpty();
         int rawAnchorIndex = routeBacked ? rawAnchorIndexForPathPosition(rawPath, path, playerLoc) : -1;
         boolean clicked;
         if (routeBacked) {
-            clicked = clickRouteBackedShortWalk(rawPath, end, playerLoc,
+            clicked = clickRouteBackedShortWalk(rawPath, clickTile, playerLoc,
                     directClickMaxDistance - 1, rawAnchorIndex);
         } else {
-            clicked = walkFastCanvasOnScreenOnly(end, true);
+            clicked = walkFastCanvasOnScreenOnly(clickTile, true);
             if (!clicked) {
-                clicked = walkMiniMap(end);
+                clicked = walkMiniMap(clickTile);
             }
             if (!clicked) {
-                clicked = walkMiniMapToward(end, playerLoc, directClickMaxDistance - 1);
+                clicked = walkMiniMapToward(clickTile, playerLoc, directClickMaxDistance - 1);
             }
         }
         if (!clicked) {
@@ -1175,7 +1177,7 @@ final class Rs2WalkerMovement {
         long movementWaitStartedAtMs = System.currentTimeMillis();
         boolean moved = sleepUntil(() -> {
             WorldPoint now = Rs2Player.getWorldLocation();
-            return now != null && (now.distanceTo(target) <= finishTh || !now.equals(before) || Rs2Player.isMoving());
+            return now != null && (now.distanceTo(target) <= finishTh || finishZone.contains(now) || !now.equals(before) || Rs2Player.isMoving());
         }, 800);
         if (firstClick) {
             WebWalkLog.tmark("direct_short_movement_wait",
@@ -1189,10 +1191,10 @@ final class Rs2WalkerMovement {
             WorldPoint retryPlayerLoc = Rs2Player.getWorldLocation();
             if (routeBacked && retryPlayerLoc != null) {
                 int retryRawAnchorIndex = rawPathForwardAnchorIndex(rawPath, retryPlayerLoc, rawAnchorIndex);
-                clicked = clickRouteBackedShortWalk(rawPath, end, retryPlayerLoc,
+                clicked = clickRouteBackedShortWalk(rawPath, clickTile, retryPlayerLoc,
                         directClickMaxDistance - 1, retryRawAnchorIndex);
             } else {
-                clicked = walkFastCanvasWithAutoRun(end);
+                clicked = walkFastCanvasWithAutoRun(clickTile);
             }
             if (!clicked) {
                 return WalkerState.MOVING;
@@ -1200,7 +1202,7 @@ final class Rs2WalkerMovement {
             long retryWaitStartedAtMs = System.currentTimeMillis();
             boolean retryMoved = sleepUntil(() -> {
                 WorldPoint now = Rs2Player.getWorldLocation();
-                return now != null && (now.distanceTo(target) <= finishTh || !now.equals(before) || Rs2Player.isMoving());
+                return now != null && (now.distanceTo(target) <= finishTh || finishZone.contains(now) || !now.equals(before) || Rs2Player.isMoving());
             }, 800);
             if (firstClick) {
                 WebWalkLog.tmark("direct_short_retry_wait",
@@ -1212,7 +1214,7 @@ final class Rs2WalkerMovement {
         }
 
         WorldPoint afterClick = Rs2Player.getWorldLocation();
-        if (afterClick != null && afterClick.distanceTo(target) <= finishTh) {
+        if (afterClick != null && (afterClick.distanceTo(target) <= finishTh || finishZone.contains(afterClick))) {
             setTarget(null, "rs2walker:tryDirectShortWalk:arrived-after-click");
             return WalkerState.ARRIVED;
         }
@@ -1220,7 +1222,7 @@ final class Rs2WalkerMovement {
         long arrivalWaitStartedAtMs = System.currentTimeMillis();
         boolean arrivedOrStopped = sleepUntil(() -> {
             WorldPoint now = Rs2Player.getWorldLocation();
-            return now != null && (now.distanceTo(target) <= finishTh || !Rs2Player.isMoving());
+            return now != null && (now.distanceTo(target) <= finishTh || finishZone.contains(now) || !Rs2Player.isMoving());
         }, 4000);
         if (firstClick) {
             WebWalkLog.tmark("direct_short_arrival_wait",
@@ -1231,7 +1233,7 @@ final class Rs2WalkerMovement {
         }
 
         WorldPoint afterWalk = Rs2Player.getWorldLocation();
-        if (afterWalk != null && afterWalk.distanceTo(target) <= finishTh) {
+        if (afterWalk != null && (afterWalk.distanceTo(target) <= finishTh || finishZone.contains(afterWalk))) {
             setTarget(null, "rs2walker:tryDirectShortWalk:arrived-after-walk");
             return WalkerState.ARRIVED;
         }
