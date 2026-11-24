@@ -35,6 +35,7 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.io.File;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -188,7 +189,10 @@ public class LocalPluginsPanel extends JPanel {
             chooser.setSelectedFile(entry.getSourcePath().toFile());
         }
         if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
-            Path source = chooser.getSelectedFile().toPath();
+            Path source = selectedPath(chooser);
+            if (source == null) {
+                return;
+            }
             runOperation("Loading " + source.getFileName() + "...", () -> entry == null
                     ? livePluginManager.install(source) : livePluginManager.install(source, entry.getId()));
         }
@@ -203,8 +207,8 @@ public class LocalPluginsPanel extends JPanel {
             return;
         }
 
-        Path selected = chooser.getSelectedFile().toPath();
-        if (selected.toAbsolutePath().normalize().equals(livePluginManager.getPluginDirectory())) {
+        Path selected = selectedPath(chooser);
+        if (selected == null || selected.toAbsolutePath().normalize().equals(livePluginManager.getPluginDirectory())) {
             return;
         }
         if (!tableModel.entries.isEmpty()) {
@@ -219,6 +223,11 @@ public class LocalPluginsPanel extends JPanel {
         }
         runOperation("Changing the managed plugin folder...",
                 () -> livePluginManager.changePluginDirectory(selected));
+    }
+
+    static Path selectedPath(JFileChooser chooser) {
+        File file = chooser.getSelectedFile();
+        return file == null ? null : file.toPath();
     }
 
     static String folderChangeWarning(int plugins, int hubPlugins, Path current) {
