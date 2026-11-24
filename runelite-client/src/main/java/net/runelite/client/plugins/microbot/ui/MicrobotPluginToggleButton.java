@@ -25,6 +25,8 @@
 
 package net.runelite.client.plugins.microbot.ui;
 
+import net.runelite.client.ui.ClientTheme;
+import net.runelite.client.ui.components.SwitchIcons;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.SwingUtil;
 
@@ -40,16 +42,24 @@ class MicrobotPluginToggleButton extends JToggleButton
 
 	static
 	{
-		BufferedImage onSwitcher = ImageUtil.loadImageResource(MicrobotConfigPanel.class, "switcher_on.png");
-		ON_SWITCHER = new ImageIcon(onSwitcher);
-		OFF_SWITCHER = new ImageIcon(ImageUtil.flipImage(
-			ImageUtil.luminanceScale(
-				ImageUtil.grayscaleImage(onSwitcher),
-				0.61f
-			),
-			true,
-			false
-		));
+		if (ClientTheme.redesign())
+		{
+			ON_SWITCHER = SwitchIcons.ON;
+			OFF_SWITCHER = SwitchIcons.OFF;
+		}
+		else
+		{
+			BufferedImage onSwitcher = ImageUtil.loadImageResource(MicrobotConfigPanel.class, "switcher_on.png");
+			ON_SWITCHER = new ImageIcon(onSwitcher);
+			OFF_SWITCHER = new ImageIcon(ImageUtil.flipImage(
+				ImageUtil.luminanceScale(
+					ImageUtil.grayscaleImage(onSwitcher),
+					0.61f
+				),
+				true,
+				false
+			));
+		}
 	}
 
 	private String conflictString = "";
@@ -59,7 +69,7 @@ class MicrobotPluginToggleButton extends JToggleButton
 		super(OFF_SWITCHER);
 		setSelectedIcon(ON_SWITCHER);
 		SwingUtil.removeButtonDecorations(this);
-		setPreferredSize(new Dimension(25, 0));
+		setPreferredSize(new Dimension(ClientTheme.redesign() ? 30 : 25, 0));
 		addItemListener(l -> updateTooltip());
 		updateTooltip();
 	}

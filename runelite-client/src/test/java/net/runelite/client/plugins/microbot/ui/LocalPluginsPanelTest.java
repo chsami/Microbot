@@ -6,11 +6,13 @@ import net.runelite.client.plugins.microbot.externalplugins.LivePluginManager.Op
 import org.junit.Test;
 
 import javax.swing.JButton;
+import javax.swing.JFileChooser;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
 import java.awt.Component;
 import java.awt.Container;
+import java.io.File;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.concurrent.Callable;
@@ -21,6 +23,7 @@ import java.util.function.Predicate;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -66,6 +69,21 @@ public class LocalPluginsPanelTest {
             assertFalse(status.isEditable());
             return null;
         });
+    }
+
+    @Test
+    public void selectedPathIsNullWhenChooserApprovesWithoutFile() {
+        JFileChooser chooser = mock(JFileChooser.class);
+        when(chooser.getSelectedFile()).thenReturn(null);
+        assertNull(LocalPluginsPanel.selectedPath(chooser));
+    }
+
+    @Test
+    public void selectedPathReturnsChosenFile() {
+        JFileChooser chooser = mock(JFileChooser.class);
+        File jar = new File("plugins", "example.jar");
+        when(chooser.getSelectedFile()).thenReturn(jar);
+        assertEquals(jar.toPath(), LocalPluginsPanel.selectedPath(chooser));
     }
 
     private static Component find(Component component, Predicate<Component> match) {

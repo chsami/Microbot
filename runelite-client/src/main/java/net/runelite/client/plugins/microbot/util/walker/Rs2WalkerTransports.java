@@ -2497,14 +2497,20 @@ final class Rs2WalkerTransports {
         if (rs2Item == null) return false;
         if (transport.getDisplayInfo().contains(":")) {
             String destination = teleportItemLeafAction(transport.getDisplayInfo());
+            boolean hasDestinationSubAction = rs2Item.getIndexOfSubAction(destination) != null;
+            String categoryAction = wornTeleportCategoryAction(transport.getDisplayInfo(),
+                    rs2Item.getEquipmentActions(), hasDestinationSubAction, destination);
 
             if (transport.getDisplayInfo().toLowerCase().contains("slayer ring")) {
                 if (!Rs2Equipment.invokeMenu(rs2Item, "teleport")) return false;
                 Rs2Dialogue.sleepUntilSelectAnOption();
                 Rs2Dialogue.clickOption(destination);
             } else if (usesGenericWornTeleport(transport.getDisplayInfo(), rs2Item.getEquipmentActions(),
-                    rs2Item.getIndexOfSubAction(destination) != null, destination)) {
+                    hasDestinationSubAction, destination)) {
                 if (!Rs2Equipment.invokeMenu(rs2Item, WORN_GENERIC_TELEPORT_ACTION)) return false;
+                if (!Rs2Dialogue.sleepUntilSelectAnOption() || !Rs2Dialogue.clickOption(destination)) return false;
+            } else if (categoryAction != null) {
+                if (!Rs2Equipment.invokeMenu(rs2Item, categoryAction)) return false;
                 if (!Rs2Dialogue.sleepUntilSelectAnOption() || !Rs2Dialogue.clickOption(destination)) return false;
             } else {
                 if (!Rs2Equipment.invokeMenu(rs2Item, wornTeleportAction(destination, rs2Item.getEquipmentActions()))) return false;
@@ -2556,6 +2562,34 @@ final class Rs2WalkerTransports {
             }
         }
         return hasGenericAction;
+    }
+
+    static String wornTeleportCategoryAction(String displayInfo, List<String> equipmentActions,
+                                             boolean hasDestinationSubAction, String destination) {
+        if (displayInfo == null || hasDestinationSubAction || equipmentActions == null
+                || destination == null || destination.isEmpty()) {
+            return null;
+        }
+        String[] segments = displayInfo.split(":");
+        if (segments.length < 3) {
+            return null;
+        }
+        String category = segments[segments.length - 2].trim().toLowerCase(Locale.ROOT);
+        if (category.isEmpty()) {
+            return null;
+        }
+        boolean hasCategoryAction = false;
+        for (String equipmentAction : equipmentActions) {
+            if (equipmentAction == null) continue;
+            String lowerAction = equipmentAction.toLowerCase(Locale.ROOT);
+            if (lowerAction.contains(destination)) {
+                return null;
+            }
+            if (lowerAction.contains(category)) {
+                hasCategoryAction = true;
+            }
+        }
+        return hasCategoryAction ? category : null;
     }
 
     /**

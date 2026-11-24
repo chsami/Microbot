@@ -85,6 +85,35 @@ public class Rs2WalkerUnitTest {
     }
 
     @Test
+    public void wornMaxCapeCategoryRowsUseTheCategoryAction() {
+        List<String> wornActions = Arrays.asList("Warriors' Guild", "Fishing Teleports", "Crafting Guild",
+                null, "POH Portals", "Other Teleports");
+        assertEquals("other teleports", Rs2WalkerTransports.wornTeleportCategoryAction(
+                "Max cape: Other Teleports: Hunter Guild", wornActions, false, "hunter guild"));
+        assertEquals("fishing teleports", Rs2WalkerTransports.wornTeleportCategoryAction(
+                "Max cape: Fishing Teleports: Otto's Grotto", wornActions, false, "otto's grotto"));
+        assertEquals("poh portals", Rs2WalkerTransports.wornTeleportCategoryAction(
+                "Max cape: POH Portals: Rimmington", wornActions, false, "rimmington"));
+    }
+
+    @Test
+    public void wornTeleportCategoryActionKeepsDirectAndSubActions() {
+        List<String> wornActions = Arrays.asList("Warriors' Guild", "Other Teleports");
+        assertNull(Rs2WalkerTransports.wornTeleportCategoryAction(
+                "Max cape: Warriors' Guild", wornActions, false, "warriors' guild"));
+        assertNull(Rs2WalkerTransports.wornTeleportCategoryAction(
+                "Max cape: Other Teleports: Hunter Guild", wornActions, true, "hunter guild"));
+        assertNull(Rs2WalkerTransports.wornTeleportCategoryAction(
+                "Max cape: Other Teleports: Hunter Guild", Arrays.asList("Other Teleports", "Hunter Guild"),
+                false, "hunter guild"));
+        assertNull(Rs2WalkerTransports.wornTeleportCategoryAction(
+                "Max cape: Other Teleports: Hunter Guild", Arrays.asList("Warriors' Guild"), false, "hunter guild"));
+        assertNull(Rs2WalkerTransports.wornTeleportCategoryAction(
+                "Max cape: Other Teleports: Hunter Guild", null, false, "hunter guild"));
+        assertNull(Rs2WalkerTransports.wornTeleportCategoryAction(null, wornActions, false, "hunter guild"));
+    }
+
+    @Test
     public void wornMorytaniaLegsUseTheirWornTeleportActions() {
         List<String> wornActions = Arrays.asList(null, "Ectofuntus Pit", "Burgh de Rott");
         assertEquals("ectofuntus", Rs2WalkerTransports.wornTeleportAction(

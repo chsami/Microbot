@@ -29,7 +29,7 @@ import lombok.extern.slf4j.Slf4j;
  * places use theme colours.
  * <p>
  * Stock is one rule everywhere ({@link #isStock}): not custom and the Classic palette. classicOr, onAccent and
- * themedLafExtras all use it. When the side-panel redesign (#2303) lands, its redesign() must use the same rule.
+ * themedLafExtras and redesign all use it.
  */
 @Slf4j
 public final class ClientTheme
@@ -164,6 +164,19 @@ public final class ClientTheme
 	static Color classicOr(ClientTheme t, Color classic, Color themed)
 	{
 		return isStock(t) ? classic : themed;
+	}
+
+	/**
+	 * The side-panel redesign is for every theme but stock; Classic, the default and fallback, keeps the stock layout.
+	 */
+	public static boolean redesign()
+	{
+		return redesign(CURRENT);
+	}
+
+	static boolean redesign(ClientTheme t)
+	{
+		return !isStock(t);
 	}
 
 	static Color classicOr(Palette palette, Color classic, Color themed)

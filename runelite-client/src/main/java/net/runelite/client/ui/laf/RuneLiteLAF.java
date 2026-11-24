@@ -76,6 +76,13 @@ public class RuneLiteLAF extends FlatDarkLaf
 				}
 			}
 		}
+		if (ClientTheme.redesign())
+		{
+			try (InputStream is = RuneLiteLAF.class.getResourceAsStream("RuneLiteLAF-redesign.properties"))
+			{
+				p.load(new InputStreamReader(is, StandardCharsets.UTF_8));
+			}
+		}
 		for (Map.Entry<Object, Object> ent : p.entrySet())
 		{
 			String k = (String) ent.getKey();

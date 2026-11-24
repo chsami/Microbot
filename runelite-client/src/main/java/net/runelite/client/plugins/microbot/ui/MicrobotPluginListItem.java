@@ -34,6 +34,7 @@ import net.runelite.client.plugins.microbot.ui.search.MicrobotPluginNames;
 import net.runelite.client.ui.ClientTheme;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.PanelFonts;
+import net.runelite.client.util.ColorUtil;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.SwingUtil;
 import org.jetbrains.annotations.NotNull;
@@ -47,17 +48,21 @@ import java.awt.event.KeyEvent;
 import java.awt.event.FocusEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 {
 	private static final ImageIcon ON_STAR;
 	private static final ImageIcon OFF_STAR;
-	private static final int MIN_ITEM_HEIGHT = 20;
+	private static final int MIN_ITEM_HEIGHT = ClientTheme.redesign() ? 30 : 20;
 	private static final int SWITCH_WIDTH = 34;
 	private static final float DIMMED_ALPHA = 0.6f;
 
@@ -132,6 +137,13 @@ class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 		}
 
 		setLayout(new BorderLayout(3, 0));
+		if (ClientTheme.redesign())
+		{
+			// Painted as a rounded card in paintComponent.
+			setOpaque(false);
+			setBackground(ColorScheme.DARKER_GRAY_COLOR);
+			setBorder(new EmptyBorder(0, 4, 0, 4));
+		}
 
 		PluginDescriptor pluginDescriptor = pluginConfig.getPlugin() == null ? null
 			: pluginConfig.getPlugin().getClass().getAnnotation(PluginDescriptor.class);
@@ -139,8 +151,12 @@ class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 		disabledByAuthor = pluginDescriptor != null && pluginDescriptor.disable();
 		sideLabel = alwaysOn ? createSideLabel("Always on", AlwaysOnPlugins.TOOLTIP)
 			: disabledByAuthor ? createSideLabel("Turned off", "Turned off by its author") : null;
+		String tag = MicrobotPluginNames.authorTag(pluginConfig.getName());
+		// An icon-only tag (no letters) has nothing to put in a badge, so it stays in the name as text.
+		JLabel badge = ClientTheme.redesign() && tag.matches(".*[\\p{L}\\p{N}].*")
+			? tagBadge(tag, readableTagColor(tagColor(tagColorSpec(pluginConfig.getName())))) : null;
 		nameLabel = createNameLabel(pluginConfig, sideLabel != null ? sideLabel.getPreferredSize().width : SWITCH_WIDTH,
-			pluginDescriptor == null ? "" : pluginDescriptor.version());
+			pluginDescriptor == null ? "" : pluginDescriptor.version(), badge == null ? 0 : badge.getPreferredSize().width + 6);
 		baseHeight = Math.max(MIN_ITEM_HEIGHT, nameLabel.getPreferredSize().height);
 		setPreferredSize(new Dimension(MicrobotPluginListPanel.LIST_ITEM_WIDTH, baseHeight));
 
@@ -226,10 +242,22 @@ class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 
 		addLabelPopupMenu(nameLabel, configMenuItem, pluginConfig.createSupportMenuItem(pluginConfig.getPlugin()),
 			pluginListPanel.getBugReporter().menuItem(this, pluginConfig.getPlugin()), uninstallItem);
-		add(nameLabel, BorderLayout.CENTER);
+		if (badge == null)
+		{
+			add(nameLabel, BorderLayout.CENTER);
+		}
+		else
+		{
+			JPanel name = new JPanel(new BorderLayout(6, 0));
+			name.setOpaque(false);
+			name.add(badge, BorderLayout.WEST);
+			name.add(nameLabel, BorderLayout.CENTER);
+			add(name, BorderLayout.CENTER);
+		}
 
 		onOffToggle = new MicrobotPluginToggleButton();
 		onOffToggle.setConflicts(pluginConfig.getConflicts());
+		onOffToggle.getAccessibleContext().setAccessibleName(MicrobotPluginNames.plainName(pluginConfig.getName()));
 		if (sideLabel != null)
 		{
 			buttonPanel.add(sideLabel, BorderLayout.LINE_END);
@@ -276,9 +304,56 @@ class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 			@Override
 			public void focusLost(FocusEvent e)
 			{
-				setBackground(background);
+				setBackground(ClientTheme.redesign() && getMousePosition(true) != null ? ColorScheme.DARKER_GRAY_HOVER_COLOR : background);
 			}
 		});
+
+		if (ClientTheme.redesign())
+		{
+			MouseAdapter hover = new MouseAdapter()
+			{
+				@Override
+				public void mouseEntered(MouseEvent e)
+				{
+					if (!hasFocus())
+					{
+						setBackground(ColorScheme.DARKER_GRAY_HOVER_COLOR);
+					}
+				}
+
+				@Override
+				public void mouseExited(MouseEvent e)
+				{
+					// Moving onto the cog or switch is still inside the row.
+					if (!hasFocus() && getMousePosition(true) == null)
+					{
+						setBackground(ColorScheme.DARKER_GRAY_COLOR);
+					}
+				}
+			};
+			addMouseListener(hover);
+			addHoverToListeningChildren(this, hover);
+		}
+	}
+
+	/**
+	 * Swing sends enter/exit to the deepest component that has its own mouse listeners (the name label's menu and
+	 * tooltip, the cog, the switch), not to the row; those children report hover for the row too. Children without
+	 * listeners are left alone so their events still reach the row.
+	 */
+	private static void addHoverToListeningChildren(Container parent, MouseListener hover)
+	{
+		for (Component c : parent.getComponents())
+		{
+			if (c.getMouseListeners().length > 0)
+			{
+				c.addMouseListener(hover);
+			}
+			if (c instanceof Container)
+			{
+				addHoverToListeningChildren((Container) c, hover);
+			}
+		}
 	}
 
 	private static JLabel createSideLabel(String text, String tooltip)
@@ -291,19 +366,38 @@ class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 	}
 
 	@NotNull
-	private static JLabel createNameLabel(MicrobotPluginConfigurationDescriptor pluginConfig, int switchWidth, String version) {
+	private static JLabel createNameLabel(MicrobotPluginConfigurationDescriptor pluginConfig, int switchWidth, String version, int badgeWidth) {
 		int buttons = 21 /*pin*/ + 25 /*config, if present*/ + switchWidth + 12 /*margins*/;
 		int textWidth = MicrobotPluginListPanel.LIST_ITEM_WIDTH - buttons;
-		JLabel nameLabel = new JLabel("<html><div style='width:" + textWidth + "px'>" + htmlBody(pluginConfig.getName()) + "</div></html>");
-		nameLabel.setForeground(ClientTheme.classicOr(Color.WHITE, ColorScheme.TEXT_COLOR));
+		JLabel nameLabel;
+		if (ClientTheme.redesign())
+		{
+			// Wraps like Classic, in the width the row padding and the author badge leave.
+			String raw = pluginConfig.getName();
+			String tag = MicrobotPluginNames.authorTag(raw);
+			String name = MicrobotPluginNames.plainName(raw);
+			if (badgeWidth == 0 && !tag.isEmpty())
+			{
+				name = tag + " " + name;
+			}
+			nameLabel = new JLabel("<html><div style='width:" + (textWidth - 8 - badgeWidth) + "px'>"
+				+ HtmlEscapers.htmlEscaper().escape(name) + "</div></html>");
+			nameLabel.setForeground(ColorScheme.TEXT_COLOR);
+		}
+		else
+		{
+			nameLabel = new JLabel("<html><div style='width:" + textWidth + "px'>" + htmlBody(pluginConfig.getName()) + "</div></html>");
+			nameLabel.setForeground(Color.WHITE);
+		}
 		nameLabel.setHorizontalAlignment(JLabel.LEFT);
 		nameLabel.setVerticalAlignment(JLabel.CENTER);
 
 		String details = (pluginConfig.getDescription().isEmpty() ? "" : "<br>" + htmlBody(pluginConfig.getDescription()))
 			+ (version.isEmpty() ? "" : "<br>Version " + HtmlEscapers.htmlEscaper().escape(version));
-		if (!details.isEmpty())
+		// redesign: always, so the full name with its tag is one hover away
+		if (ClientTheme.redesign() || !details.isEmpty())
 		{
-			nameLabel.setToolTipText("<html>" + htmlBody(pluginConfig.getName()) + ":" + details + "</html>");
+			nameLabel.setToolTipText("<html>" + htmlBody(pluginConfig.getName()) + (details.isEmpty() ? "" : ":" + details) + "</html>");
 		}
 		return nameLabel;
 	}
@@ -336,6 +430,103 @@ class MicrobotPluginListItem extends JPanel implements SearchablePlugin
 		}
 		return status.isSevere() ? ColorScheme.PROGRESS_ERROR_COLOR
 			: status.getKind() == MicrobotPluginRowStatus.Kind.UPDATE ? MicrobotPluginHubPanel.PASTEL_ORANGE : ColorScheme.PROGRESS_INPROGRESS_COLOR;
+	}
+
+	private static final Pattern AUTHOR_TAG = Pattern.compile(
+		"^\\s*\\[(?:<font color=['\"]?([^'\">]+)['\"]?>)?(.*?)(?:</font>)?\\]\\s*", Pattern.CASE_INSENSITIVE);
+
+	private static String tagColorSpec(String raw)
+	{
+		Matcher m = AUTHOR_TAG.matcher(htmlBody(raw));
+		return m.find() ? m.group(1) : null;
+	}
+
+	/** The [tag] as a small rounded badge tinted with the tag's own colour. */
+	private static JLabel tagBadge(String tag, Color color)
+	{
+		Color fill = ColorUtil.colorLerp(ColorScheme.DARKER_GRAY_COLOR, color, 0.18);
+		Color edge = ColorUtil.colorLerp(ColorScheme.DARKER_GRAY_COLOR, color, 0.45);
+		JLabel badge = new JLabel(tag)
+		{
+			// A long tag ends in "..."; the tooltip has it in full.
+			@Override
+			public Dimension getPreferredSize()
+			{
+				Dimension d = super.getPreferredSize();
+				d.width = Math.min(d.width, 48);
+				return d;
+			}
+
+			@Override
+			protected void paintComponent(Graphics g)
+			{
+				Graphics2D g2 = (Graphics2D) g.create();
+				g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+				int h = 16;
+				int y = (getHeight() - h) / 2;
+				g2.setColor(fill);
+				g2.fillRoundRect(0, y, getWidth() - 1, h, 6, 6);
+				g2.setColor(edge);
+				g2.drawRoundRect(0, y, getWidth() - 1, h, 6, 6);
+				g2.dispose();
+				super.paintComponent(g);
+			}
+		};
+		badge.setFont(PanelFonts.of(Font.BOLD, 10f));
+		badge.setForeground(color);
+		badge.setBorder(new EmptyBorder(0, 5, 0, 5));
+		badge.setHorizontalAlignment(SwingConstants.CENTER);
+		badge.setToolTipText(tag);
+		return badge;
+	}
+
+	/** Very dark tag colours (black, navy, dark red) are lifted toward the text colour so the badge stays readable. */
+	static Color readableTagColor(Color c)
+	{
+		double luma = 0.299 * c.getRed() + 0.587 * c.getGreen() + 0.114 * c.getBlue();
+		return luma < 90 ? ColorUtil.colorLerp(c, ColorScheme.TEXT_COLOR, 0.5) : c;
+	}
+
+	private static final Pattern HEX_COLOUR = Pattern.compile("#?([0-9a-fA-F]{6})");
+
+	static Color tagColor(String spec)
+	{
+		if (spec == null)
+		{
+			return ColorScheme.LIGHT_GRAY_COLOR;
+		}
+		Matcher hex = HEX_COLOUR.matcher(spec);
+		if (hex.find())
+		{
+			return new Color(Integer.parseInt(hex.group(1), 16));
+		}
+		switch (spec.trim().toLowerCase(Locale.ROOT))
+		{
+			case "green": return new Color(70, 167, 88);
+			case "red": return new Color(229, 72, 77);
+			case "orange": return new Color(247, 107, 21);
+			case "yellow": return new Color(255, 197, 61);
+			case "blue": return new Color(62, 155, 255);
+			case "cyan": return new Color(0, 194, 215);
+			case "magenta": case "pink": case "purple": return new Color(190, 120, 255);
+			case "white": return ColorScheme.TEXT_COLOR;
+			default: return ColorScheme.LIGHT_GRAY_COLOR;
+		}
+	}
+
+	@Override
+	protected void paintComponent(Graphics g)
+	{
+		if (!ClientTheme.redesign())
+		{
+			super.paintComponent(g);
+			return;
+		}
+		Graphics2D g2 = (Graphics2D) g.create();
+		g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+		g2.setColor(getBackground());
+		g2.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
+		g2.dispose();
 	}
 
 	static String htmlBody(String html)
