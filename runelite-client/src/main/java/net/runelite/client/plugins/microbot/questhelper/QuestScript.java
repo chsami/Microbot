@@ -55,6 +55,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -109,9 +110,12 @@ public class QuestScript extends Script {
 
     static final Set<Integer> ENTRANA_BOAT_MONKS = Set.of(NpcID.SHIPMONK, NpcID.SHIPMONK1_B, NpcID.SHIPMONK1_C);
     static final String ENTRANA_GEAR_BANK_STATUS = "Quest helper: banking weapons and armour for the Entrana boat";
+    static final String ENTRANA_BOAT_OPTION = "Yes, okay, I'm ready to go.";
     private static final int ENTRANA_GEAR_DEPOSIT_WAIT_MS = 1_800;
-    static final String ENTRANA_GEAR_STUCK_REASON = "Could not bank your weapons and armour for the Entrana boat. "
+    static final int ENTRANA_BANK_OPEN_LIMIT = 3;
+    static final String ENTRANA_BANK_UNREACHABLE_REASON = "The quest helper could not open a bank to store your weapons and armour for the Entrana boat. "
             + "Bank them yourself (rings and amulets can stay on), then turn the quest helper back on.";
+    private volatile int entranaBankOpenFailures = 0;
 
     QuestStep dialogueStartedStep = null;
 
@@ -195,6 +199,14 @@ public class QuestScript extends Script {
                                 noteOptionPressed(System.currentTimeMillis());
                                 return;
                             }
+                        }
+                    }
+
+                    for (var dialogChoice : dialogChoices) {
+                        if (isEntranaBoatOption(questStep, dialogChoice.getText())) {
+                            Rs2Keyboard.keyPress(dialogChoice.getOnKeyListener()[7].toString().charAt(0));
+                            noteOptionPressed(System.currentTimeMillis());
+                            return;
                         }
                     }
                 }
@@ -512,6 +524,7 @@ public class QuestScript extends Script {
         unhandledOptionStep = null;
         resetUnhandledOptionDismissals();
         clearBankUnreachable();
+        entranaBankOpenFailures = 0;
         reset();
     }
 
@@ -1596,9 +1609,10 @@ public class QuestScript extends Script {
 		}
 
 		Set<Integer> keep = stepItemIds(questStep);
-		List<Integer> worn = wornEntranaGear(keep);
-		List<Integer> carried = carriedEntranaGear(keep);
+		Map<Integer, String> worn = wornEntranaGear(keep);
+		Map<Integer, String> carried = carriedEntranaGear(keep);
 		if (worn.isEmpty() && carried.isEmpty()) {
+			entranaBankOpenFailures = 0;
 			return false;
 		}
 
@@ -1607,31 +1621,73 @@ public class QuestScript extends Script {
 			Rs2Bank.walkToBankAndUseBank();
 			sleepUntil(Rs2Bank::isOpen, 15_000);
 			if (!Rs2Bank.isOpen()) {
+				if (++entranaBankOpenFailures >= ENTRANA_BANK_OPEN_LIMIT) {
+					entranaBankOpenFailures = 0;
+					stopQuesterWithReason(ENTRANA_BANK_UNREACHABLE_REASON, Level.WARN);
+				}
 				return true;
 			}
 		}
+		entranaBankOpenFailures = 0;
 
-		boolean deposited = false;
-		for (int id : worn) {
+		List<String> banked = new ArrayList<>();
+		List<String> stuck = new ArrayList<>();
+		for (Map.Entry<Integer, String> item : worn.entrySet()) {
+			int id = item.getKey();
 			Rs2Bank.depositEquippedItem(id);
-			deposited |= sleepUntil(() -> !Rs2Equipment.isWearing(id), ENTRANA_GEAR_DEPOSIT_WAIT_MS);
+			if (sleepUntil(() -> !Rs2Equipment.isWearing(id), ENTRANA_GEAR_DEPOSIT_WAIT_MS)) {
+				banked.add(item.getValue());
+			} else {
+				stuck.add(item.getValue());
+			}
 		}
-		for (int id : carried) {
+		for (Map.Entry<Integer, String> item : carried.entrySet()) {
+			int id = item.getKey();
 			Rs2Bank.depositAll(id);
-			deposited |= sleepUntil(() -> !Rs2Inventory.contains(id), ENTRANA_GEAR_DEPOSIT_WAIT_MS);
+			if (sleepUntil(() -> !Rs2Inventory.contains(id), ENTRANA_GEAR_DEPOSIT_WAIT_MS)) {
+				banked.add(item.getValue());
+			} else {
+				stuck.add(item.getValue());
+			}
 		}
 
 		Rs2Bank.closeBank();
 		sleepUntil(() -> !Rs2Bank.isOpen(), 3_000);
 
-		if (!deposited) {
-			stopQuesterWithReason(ENTRANA_GEAR_STUCK_REASON, Level.WARN);
+		if (banked.isEmpty()) {
+			stopQuesterWithReason(entranaGearStuckReason(stuck), Level.WARN);
+		} else {
+			Microbot.log(entranaGearBankedMessage(banked), Level.INFO);
 		}
 		return true;
 	}
 
+	static String entranaGearStuckReason(Collection<String> names) {
+		return "Could not bank " + joinNames(names, "your weapons and armour")
+				+ " for the Entrana boat (your bank may be full). "
+				+ "Bank them yourself (rings and amulets can stay on), then turn the quest helper back on.";
+	}
+
+	static String entranaGearBankedMessage(Collection<String> names) {
+		return "Quest helper: banked " + joinNames(names, "your weapons and armour")
+				+ " before the Entrana boat. Rings and amulets were kept. "
+				+ "Bring a teleport tab or a ring or amulet teleport if you need to teleport away.";
+	}
+
+	private static String joinNames(Collection<String> names, String fallback) {
+		String joined = names.stream()
+				.filter(name -> name != null && !name.isEmpty())
+				.distinct()
+				.collect(Collectors.joining(", "));
+		return joined.isEmpty() ? fallback : joined;
+	}
+
 	static boolean isEntranaBoatStep(QuestStep step) {
 		return step instanceof NpcStep && ((NpcStep) step).allIds().stream().anyMatch(ENTRANA_BOAT_MONKS::contains);
+	}
+
+	static boolean isEntranaBoatOption(QuestStep step, String optionText) {
+		return optionText != null && optionText.endsWith(ENTRANA_BOAT_OPTION) && isEntranaBoatStep(step);
 	}
 
 	static boolean isEntranaGearSlot(int slot) {
@@ -1657,27 +1713,26 @@ public class QuestScript extends Script {
 		return ids;
 	}
 
-	private static List<Integer> wornEntranaGear(Set<Integer> keep) {
+	private static Map<Integer, String> wornEntranaGear(Set<Integer> keep) {
 		return Rs2Equipment.all()
 				.filter(item -> isEntranaGearSlot(item.getSlot()) && !keep.contains(item.getId()))
-				.map(Rs2ItemModel::getId)
-				.distinct()
-				.collect(Collectors.toList());
+				.collect(Collectors.toMap(Rs2ItemModel::getId, Rs2ItemModel::getName, (a, b) -> a, LinkedHashMap::new));
 	}
 
-	private static List<Integer> carriedEntranaGear(Set<Integer> keep) {
-		List<Integer> ids = Rs2Inventory.items()
-				.map(Rs2ItemModel::getId)
-				.filter(id -> !keep.contains(id))
-				.distinct()
-				.collect(Collectors.toList());
-		if (ids.isEmpty()) {
-			return ids;
+	private static Map<Integer, String> carriedEntranaGear(Set<Integer> keep) {
+		Map<Integer, String> items = Rs2Inventory.items()
+				.filter(item -> !keep.contains(item.getId()))
+				.collect(Collectors.toMap(Rs2ItemModel::getId, Rs2ItemModel::getName, (a, b) -> a, LinkedHashMap::new));
+		if (items.isEmpty()) {
+			return items;
 		}
-		return Microbot.getClientThread().runOnClientThreadOptional(() -> ids.stream()
-						.filter(id -> isEntranaGearSlot(equipmentSlot(Microbot.getItemManager().getItemStats(id))))
-						.collect(Collectors.toList()))
-				.orElse(Collections.emptyList());
+		Set<Integer> gear = Microbot.getClientThread().runOnClientThreadOptional(() -> items.keySet().stream()
+						.filter(id -> isEntranaGearSlot(equipmentSlot(Microbot.getItemManager()
+								.getItemStats(Microbot.getItemManager().canonicalize(id)))))
+						.collect(Collectors.toSet()))
+				.orElse(Collections.emptySet());
+		items.keySet().retainAll(gear);
+		return items;
 	}
 
 	private boolean hasMatchingGrandExchangeOffer(ItemRequirement itemRequirement) {

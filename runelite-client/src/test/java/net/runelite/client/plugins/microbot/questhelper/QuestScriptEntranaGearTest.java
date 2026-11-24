@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.questhelper;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import net.runelite.api.EquipmentInventorySlot;
@@ -49,6 +50,49 @@ public class QuestScriptEntranaGearTest
 		assertFalse(QuestScript.isEntranaBoatStep(new NpcStep(helper, NpcID.WARRIORADVENTURERPG, new WorldPoint(3151, 3207, 0), "Talk")));
 		assertFalse(QuestScript.isEntranaBoatStep(new NpcStep(helper, NpcID.SHIPMONK2, new WorldPoint(2834, 3335, 0), "Leave")));
 		assertFalse(QuestScript.isEntranaBoatStep(null));
+	}
+
+	@Test
+	public void boatOptionIsPickedOnEveryPortSarimMonkStep()
+	{
+		LostCity helper = loaded(new LostCity());
+		NpcStep heroesStyle = new NpcStep(helper, NpcID.SHIPMONK1_C, new WorldPoint(3047, 3236, 0), "Travel");
+		NpcStep deviousMindsStyle = new NpcStep(helper, NpcID.SHIPMONK, new WorldPoint(3045, 3236, 0), "Travel");
+		NpcStep diaryStyle = new NpcStep(helper, NpcID.SHIPMONK1_C, new WorldPoint(3048, 3236, 0), "Travel");
+		diaryStyle.addAlternateNpcs(NpcID.SHIPMONK1_B, NpcID.SHIPMONK);
+		for (NpcStep step : new NpcStep[]{heroesStyle, deviousMindsStyle, diaryStyle})
+		{
+			assertTrue(QuestScript.isEntranaBoatOption(step, BOAT_OPTION));
+			assertTrue(QuestScript.isEntranaBoatOption(step, "2. " + BOAT_OPTION));
+			assertFalse(QuestScript.isEntranaBoatOption(step, "No, not right now."));
+			assertFalse(QuestScript.isEntranaBoatOption(step, null));
+		}
+	}
+
+	@Test
+	public void boatOptionIsNotPickedForOtherNpcs()
+	{
+		LostCity helper = loaded(new LostCity());
+		NpcStep other = new NpcStep(helper, NpcID.WARRIORADVENTURERPG, new WorldPoint(3151, 3207, 0), "Talk");
+		assertFalse(QuestScript.isEntranaBoatOption(other, BOAT_OPTION));
+		assertFalse(QuestScript.isEntranaBoatOption(null, BOAT_OPTION));
+	}
+
+	@Test
+	public void stopReasonNamesTheItemsThatCouldNotBeBanked()
+	{
+		String reason = QuestScript.entranaGearStuckReason(List.of("Bronze axe", "Iron chainbody"));
+		assertTrue(reason.startsWith("Could not bank Bronze axe, Iron chainbody for the Entrana boat (your bank may be full)."));
+		assertTrue(reason.contains("rings and amulets can stay on"));
+		assertTrue(QuestScript.entranaGearStuckReason(List.of()).startsWith("Could not bank your weapons and armour"));
+	}
+
+	@Test
+	public void bankedMessageNamesWhatWasMoved()
+	{
+		String message = QuestScript.entranaGearBankedMessage(List.of("Bronze axe", "Iron full helm", "Bronze axe"));
+		assertTrue(message.startsWith("Quest helper: banked Bronze axe, Iron full helm before the Entrana boat."));
+		assertTrue(message.contains("Rings and amulets were kept."));
 	}
 
 	@Test
