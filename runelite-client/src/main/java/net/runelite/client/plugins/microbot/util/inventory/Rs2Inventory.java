@@ -1680,7 +1680,7 @@ public class Rs2Inventory {
     private static final List<String> EQUIP_ACTIONS = List.of("Wear", "Wield", "Equip");
 
     /**
-     * The equip verb this item actually exposes (see entity-guides/items.md gotcha 1), falling back to
+     * The equip verb this item actually exposes (see entity-guides/items.md gotchas 1 and 25), falling back to
      * "wield" when the item composition or its actions are not available yet.
      */
     static String equipAction(Rs2ItemModel item) {
