@@ -110,10 +110,17 @@ public class NpcHandler extends AgentHandler {
 		Rs2NpcModel npc = null;
 		if (indexNum != null) {
 			// The index identifies one NPC instance; name/id pick the nearest of possibly many identical NPCs.
+			// Indices are per world view, and the cache spans all loaded views, so refuse an ambiguous match
+			// rather than clicking whichever view happens to be enumerated first.
 			final int index = indexNum;
-			npc = Microbot.getRs2NpcCache().query()
+			List<Rs2NpcModel> matches = Microbot.getRs2NpcCache().query()
 					.where(n -> n.getIndex() == index)
-					.firstOnClientThread();
+					.toListOnClientThread();
+			if (matches.size() > 1) {
+				sendJson(exchange, 409, errorResponse("NPC index " + index + " matches NPCs in several world views; use name or id"));
+				return;
+			}
+			npc = matches.isEmpty() ? null : matches.get(0);
 		} else if (name != null && !name.isEmpty()) {
 			npc = Microbot.getRs2NpcCache().query()
 					.withName(name)
