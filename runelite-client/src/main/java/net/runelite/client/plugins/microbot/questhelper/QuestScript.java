@@ -19,6 +19,8 @@ import net.runelite.client.plugins.microbot.questhelper.managers.QuestContainerM
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
+import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirements;
+import net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicType;
 import net.runelite.client.plugins.microbot.questhelper.steps.*;
 import net.runelite.client.plugins.microbot.questhelper.steps.widget.WidgetHighlight;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
@@ -541,6 +543,27 @@ public class QuestScript extends Script {
 					continue;
 				}
 
+				if (itemRequirement.mustBeEquipped() && itemRequirement instanceof ItemRequirements
+						&& ((ItemRequirements) itemRequirement).getLogicType() == LogicType.AND) {
+					// An outfit: getAllIds() flattens its pieces, so equip one missing piece at a time, and only when
+					// every piece is at hand, or a valid alternative outfit gets broken up for nothing.
+					List<ItemRequirement> pieces = ((ItemRequirements) itemRequirement).getItemRequirements();
+					boolean allAtHand = pieces.stream().allMatch(piece -> piece.getAllIds().stream()
+							.anyMatch(id -> Rs2Equipment.isWearing(id) || Rs2Inventory.contains(id)));
+					if (!allAtHand) {
+						notifyMissingRequirement(itemRequirement);
+						continue;
+					}
+					ItemRequirement nextPiece = pieces.stream()
+							.filter(piece -> piece.getAllIds().stream().noneMatch(Rs2Equipment::isWearing))
+							.findFirst().orElse(null);
+					if (nextPiece != null) {
+						Rs2Inventory.wear(nextPiece.getAllIds().stream().filter(Rs2Inventory::contains).findFirst().orElse(-1));
+						return true;
+					}
+					continue;
+				}
+
 				if (itemRequirement.mustBeEquipped()) {
 					// hasItemRequirementOnPlayer only checks equipment for must-be-equipped items,
 					// so an unworn copy in the inventory must be checked separately or it is never worn.
@@ -658,16 +681,22 @@ public class QuestScript extends Script {
 	 * filter on the client thread.
 	 */
 	private int lootableGroundId(ItemRequirement itemRequirement, int radius) {
+		boolean ownDropsOnly = ownDropsOnly();
 		for (Integer id : itemRequirement.getAllIds()) {
 			if (id != null && id > 0 && Microbot.getRs2TileItemCache().query()
 					.withId(id)
 					.within(radius)
-					.where(Rs2TileItemModel::isLootAble)
+					.where(item -> !ownDropsOnly || item.isLootAble())
 					.firstOnClientThread() != null) {
 				return id;
 			}
 		}
 		return -1;
+	}
+
+	/** Ironmen (incl. group) cannot take other players' drops; normal accounts can take public ones. */
+	private static boolean ownDropsOnly() {
+		return Rs2Player.isIronman() || Rs2Player.isGroupIronman();
 	}
 
 	private boolean isRequirementShown(ItemRequirement itemRequirement) {
@@ -1881,10 +1910,11 @@ public class QuestScript extends Script {
 	}
 
 	private boolean lootGroundItem(int itemId, int radius) {
+		boolean ownDropsOnly = ownDropsOnly();
 		Rs2TileItemModel item = Microbot.getRs2TileItemCache().query()
 				.withId(itemId)
 				.within(radius)
-				.where(Rs2TileItemModel::isLootAble)
+				.where(groundItem -> !ownDropsOnly || groundItem.isLootAble())
 				.nearestOnClientThread();
 
 		if (item == null) {
