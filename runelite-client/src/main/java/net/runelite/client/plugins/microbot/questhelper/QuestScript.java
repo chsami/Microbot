@@ -100,6 +100,7 @@ public class QuestScript extends Script {
     private final Set<Integer> everHeldItemRequirementIds = new HashSet<>();
 
     private static final int GROUND_PICKUP_RADIUS = 8;
+    private static final Pattern USE_ON = Pattern.compile("\\buse\\b.*\\bon\\b", Pattern.CASE_INSENSITIVE);
     private static final int BANK_UNREACHABLE_LIMIT = 3;
     static final long BANK_UNREACHABLE_MIN_SPAN_MS = 15_000;
     static final long PICKUP_RESPAWN_WAIT_MS = 180_000;
@@ -1979,10 +1980,11 @@ public class QuestScript extends Script {
                 .map(Rs2TileObjectModel::new)
                 .findFirst().orElse(null);
         var itemId = step.getIconItemID();
-        if (itemId == -1) {
+        if (itemId == -1 && step.getText().stream().anyMatch(x -> USE_ON.matcher(x).find())) {
             // Many helpers mark the item to use with a highlighted requirement instead of addIcon
             // (e.g. Ernest the Chicken: poisoned fish food on the fountain); a plain click would
-            // pick the object's default option instead.
+            // pick the object's default option instead. Only for "use ... on" steps: elsewhere a
+            // highlight can be a mere reminder (e.g. Mountain Daughter's rope when climbing the rocks).
             itemId = highlightedCarriedItemId(step);
         }
 
