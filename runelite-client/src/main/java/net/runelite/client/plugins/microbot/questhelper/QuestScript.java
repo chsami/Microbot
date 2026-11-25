@@ -75,6 +75,7 @@ public class QuestScript extends Script {
     public static double version = 0.6;
 
     private static final long MISSING_REQUIREMENT_NOTIFY_INTERVAL_MS = 10_000L;
+    private static final Pattern KILL_WORD = Pattern.compile("\\bkill\\b", Pattern.CASE_INSENSITIVE);
     private static final Map<Integer, Long> lastMissingRequirementNotice = new HashMap<>();
 
     public static List<ItemRequirement> itemRequirements = new ArrayList<>();
@@ -1904,9 +1905,10 @@ public class QuestScript extends Script {
             }
             Rs2Walker.clearWalkingRoute("quest-helper:npc-step-visible-interact");
 
-            if (step.getText().stream().anyMatch(x -> x.toLowerCase().contains("kill"))) {
-                if (!Rs2Combat.inCombat()) {
-                    npc.click("Attack");
+            // Whole word only: "killer's knife" (Misthalin Mystery) is not a kill step.
+            if (step.getText().stream().anyMatch(x -> KILL_WORD.matcher(x).find())) {
+                if (!Rs2Combat.inCombat() && !npc.click("Attack")) {
+                    npc.click("Fight");
                 }
                 return true;
             }
