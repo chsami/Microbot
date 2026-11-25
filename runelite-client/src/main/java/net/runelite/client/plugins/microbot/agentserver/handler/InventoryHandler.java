@@ -154,7 +154,7 @@ public class InventoryHandler extends AgentHandler {
 
 		boolean success;
 		Map<String, Object> response = new LinkedHashMap<>();
-		// Serialize selection-dependent requests: the server has several workers, and another request could
+		// Serialize selection-dependent requests (use, interact, drop): the server has several workers, and another request could
 		// otherwise select or clear an item between this request's select and its target click.
 		synchronized (SELECTION_LOCK) {
 			// A selection left over from an earlier use, or a selected spell, would turn the first click into
@@ -237,10 +237,12 @@ public class InventoryHandler extends AgentHandler {
 
 		Boolean all = getBooleanField(body, "all");
 		boolean success;
-		if (Boolean.TRUE.equals(all)) {
-			success = Rs2Inventory.dropAll(name);
-		} else {
-			success = Rs2Inventory.drop(name);
+		synchronized (SELECTION_LOCK) {
+			if (Boolean.TRUE.equals(all)) {
+				success = Rs2Inventory.dropAll(name);
+			} else {
+				success = Rs2Inventory.drop(name);
+			}
 		}
 
 		Map<String, Object> response = new LinkedHashMap<>();
