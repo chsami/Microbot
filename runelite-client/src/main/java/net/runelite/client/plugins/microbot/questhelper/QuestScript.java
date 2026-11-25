@@ -1841,7 +1841,9 @@ public class QuestScript extends Script {
 
 	private boolean lootRequirementItem(DetailedQuestStep questStep, ItemRequirement itemRequirement) {
 		WorldPoint worldPoint = questStep.getDefinedPoint() != null ? questStep.getDefinedPoint().getWorldPoint() : null;
-		int groundId = lootableGroundId(itemRequirement, 20);
+		// Pick the id with the same radius the pickup uses, so an alternate id further out is not chosen.
+		int radius = worldPoint != null ? 10 : 20;
+		int groundId = lootableGroundId(itemRequirement, radius);
 		int targetItemId = groundId != -1 ? groundId
 				: itemRequirement.getAllIds().stream().findFirst().orElse(itemRequirement.getId());
 
@@ -1849,12 +1851,12 @@ public class QuestScript extends Script {
 			if ((Rs2Walker.canReach(worldPoint) && worldPoint.distanceTo(Rs2Player.getWorldLocation()) < 2)
 					|| worldPoint.toWorldArea().hasLineOfSightTo(Microbot.getClient().getTopLevelWorldView(), Rs2Player.getWorldLocation().toWorldArea())
 					&& Rs2Camera.isTileOnScreen(LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), worldPoint))) {
-				lootGroundItem(targetItemId, 10);
+				lootGroundItem(targetItemId, radius);
 			} else {
 				Rs2Walker.walkTo(worldPoint, 2);
 			}
 		} else {
-			lootGroundItem(targetItemId, 20);
+			lootGroundItem(targetItemId, radius);
 		}
 
 		return true;
