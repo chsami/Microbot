@@ -75,7 +75,7 @@ public class QuestScript extends Script {
     public static double version = 0.6;
 
     private static final long MISSING_REQUIREMENT_NOTIFY_INTERVAL_MS = 10_000L;
-    private static final Pattern KILL_WORD = Pattern.compile("\\bkill\\b", Pattern.CASE_INSENSITIVE);
+    private static final Pattern KILL_WORD = Pattern.compile("\\bkill(?:s|ing|ed)?\\b", Pattern.CASE_INSENSITIVE);
     private static final Map<Integer, Long> lastMissingRequirementNotice = new HashMap<>();
 
     public static List<ItemRequirement> itemRequirements = new ArrayList<>();
@@ -633,20 +633,27 @@ public class QuestScript extends Script {
 		return null;
 	}
 
-	private ItemRequirement requiredItemOnGroundNearby(DetailedQuestStep step) {
+	/** Id of a lootable (not another player's) required drop near the player, checking every accepted id; -1 if none. */
+	private int requiredDropIdNearby(DetailedQuestStep step) {
 		WorldPoint player = Rs2Player.getWorldLocation();
 		if (player == null) {
-			return null;
+			return -1;
 		}
 		for (Requirement requirement : step.getRequirements()) {
-			if (requirement instanceof ItemRequirement) {
-				ItemRequirement itemRequirement = (ItemRequirement) requirement;
-				if (!hasItemRequirementOnPlayer(itemRequirement) && isOnGroundNear(itemRequirement, player)) {
-					return itemRequirement;
+			if (!(requirement instanceof ItemRequirement) || hasItemRequirementOnPlayer((ItemRequirement) requirement)) {
+				continue;
+			}
+			for (Integer id : ((ItemRequirement) requirement).getAllIds()) {
+				if (id != null && id > 0 && Microbot.getRs2TileItemCache().query()
+						.withId(id)
+						.within(player, GROUND_PICKUP_RADIUS)
+						.where(Rs2TileItemModel::isLootAble)
+						.first() != null) {
+					return id;
 				}
 			}
 		}
-		return null;
+		return -1;
 	}
 
 	private boolean isOnGroundNear(ItemRequirement itemRequirement, WorldPoint point) {
@@ -1854,6 +1861,7 @@ public class QuestScript extends Script {
 		Rs2TileItemModel item = new Rs2TileItemQueryable()
 				.withId(itemId)
 				.within(radius)
+				.where(Rs2TileItemModel::isLootAble)
 				.nearest();
 
 		if (item == null) {
@@ -1906,6 +1914,17 @@ public class QuestScript extends Script {
                 .collect(Collectors.toList());
         Rs2NpcModel npc = npcs.stream().findFirst().orElse(null);
 
+        // Loot a required drop (e.g. Witch's Potion rat's tail) before attacking again, even when no target NPC
+        // is visible any more. The general missing-item handler is disabled for ironmen, but picking up your
+        // own drop is always fine.
+        if (step.getText().stream().anyMatch(x -> KILL_WORD.matcher(x).find())) {
+            int dropId = requiredDropIdNearby(step);
+            if (dropId != -1) {
+                lootGroundItem(dropId, GROUND_PICKUP_RADIUS);
+                return true;
+            }
+        }
+
         if (step.isAllowMultipleHighlights()) {
             npc = multiNpcTarget.select(step, npcs, Rs2NpcModel::getIndex, npcsHandled,
                     Comparator.comparing(x -> Rs2Player.getWorldLocation().distanceTo(x.getWorldLocation())),
@@ -1921,15 +1940,8 @@ public class QuestScript extends Script {
             }
             Rs2Walker.clearWalkingRoute("quest-helper:npc-step-visible-interact");
 
-            // Whole word only: "killer's knife" (Misthalin Mystery) is not a kill step.
+            // Whole word only: "killer's knife" (Misthalin Mystery) is not a kill step, "killing" is.
             if (step.getText().stream().anyMatch(x -> KILL_WORD.matcher(x).find())) {
-                // Loot a required drop (e.g. Witch's Potion rat's tail) before attacking again. The general
-                // missing-item handler is disabled for ironmen, but picking up your own drop is always fine.
-                ItemRequirement drop = requiredItemOnGroundNearby(step);
-                if (drop != null) {
-                    lootRequirementItem(step, drop);
-                    return true;
-                }
                 if (!Rs2Combat.inCombat() && !npc.click("Attack")) {
                     npc.click("Fight");
                 }

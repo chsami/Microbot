@@ -81,7 +81,8 @@ import java.util.stream.Collectors;
 @PluginDescriptor(
 	name = "Quest Helper",
 	description = "Helps you with questing",
-	tags = { "quest", "helper", "overlay" }
+	tags = { "quest", "helper", "overlay" },
+	version = "1.0.1"
 )
 @Slf4j
 public class QuestHelperPlugin extends Plugin
