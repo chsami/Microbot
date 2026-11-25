@@ -1669,8 +1669,32 @@ public class Rs2Inventory {
     public static boolean wield(String... names) {
         final Optional<String> name = Arrays.stream(names).filter(Rs2Inventory::hasItem).findFirst();
         if (name.isEmpty()) return false;
-        if (!Rs2Equipment.isWearing(name.get(), true)) invokeMenu(get(name.get()), "wield");
+        if (!Rs2Equipment.isWearing(name.get(), true)) {
+            Rs2ItemModel item = get(name.get());
+            invokeMenu(item, equipAction(item));
+        }
         return true;
+    }
+
+    /** Equip verbs in preference order; items expose exactly one of them (amulets "Wear", weapons "Wield"). */
+    private static final List<String> EQUIP_ACTIONS = List.of("Wear", "Wield", "Equip");
+
+    /**
+     * The equip verb this item actually exposes (see entity-guides/items.md gotcha 1), falling back to
+     * "wield" when the item composition or its actions are not available yet.
+     */
+    static String equipAction(Rs2ItemModel item) {
+        String[] actions = item == null ? null : item.getInventoryActions();
+        if (actions != null) {
+            for (String verb : EQUIP_ACTIONS) {
+                for (String action : actions) {
+                    if (action != null && action.equalsIgnoreCase(verb)) {
+                        return action;
+                    }
+                }
+            }
+        }
+        return "wield";
     }
 
     /**
@@ -1679,7 +1703,10 @@ public class Rs2Inventory {
     public static boolean wield(int... ids) {
         final OptionalInt id = Arrays.stream(ids).filter(Rs2Inventory::hasItem).findFirst();
         if (id.isEmpty()) return false;
-        if (!Rs2Equipment.isWearing(id.getAsInt())) invokeMenu(get(id.getAsInt()), "wield");
+        if (!Rs2Equipment.isWearing(id.getAsInt())) {
+            Rs2ItemModel item = get(id.getAsInt());
+            invokeMenu(item, equipAction(item));
+        }
         return true;
     }
 
@@ -1703,7 +1730,8 @@ public class Rs2Inventory {
     public static boolean wear(int id) {
         if (!Rs2Inventory.hasItem(id)) return false;
         if (Rs2Equipment.isWearing(id)) return false;
-        invokeMenu(get(id), "wear");
+        Rs2ItemModel item = get(id);
+        invokeMenu(item, equipAction(item));
         return true;
     }
 
