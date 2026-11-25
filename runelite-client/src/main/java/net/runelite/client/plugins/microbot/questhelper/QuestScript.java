@@ -631,31 +631,6 @@ public class QuestScript extends Script {
 		return null;
 	}
 
-	/** True when the step text says to use something on this object, by the object's name. */
-	private static boolean usesItemOnObject(DetailedQuestStep step, Rs2TileObjectModel object) {
-		String name = object == null ? null : object.getName();
-		if (name == null || name.isBlank() || "null".equalsIgnoreCase(name)) {
-			return false;
-		}
-		String objectName = name.toLowerCase();
-		return step.getText().stream().filter(Objects::nonNull).anyMatch(text -> {
-			Matcher matcher = USE_ON.matcher(text);
-			return matcher.find() && text.substring(matcher.end()).toLowerCase().contains(objectName);
-		});
-	}
-
-	private static int highlightedCarriedItemId(DetailedQuestStep step) {
-		for (Requirement requirement : step.getRequirements()) {
-			if (requirement instanceof ItemRequirement && ((ItemRequirement) requirement).isHighlightInInventory()) {
-				int id = ((ItemRequirement) requirement).getAllIds().stream().filter(Rs2Inventory::contains).findFirst().orElse(-1);
-				if (id != -1) {
-					return id;
-				}
-			}
-		}
-		return -1;
-	}
-
 	private boolean isOnGroundNear(ItemRequirement itemRequirement, WorldPoint point) {
 		int itemId = itemRequirement.getAllIds().stream().findFirst().orElse(itemRequirement.getId());
 		return itemId > 0 && Microbot.getRs2TileItemCache().query()
@@ -2111,6 +2086,31 @@ public class QuestScript extends Script {
         WorldPoint location = object.getWorldLocation();
         return step.getObjects().contains(object.getTileObject()) ? location : null;
     }
+
+	/** True when the step text says to use something on this object, by the object's name. */
+	private static boolean usesItemOnObject(DetailedQuestStep step, Rs2TileObjectModel object) {
+		String name = object == null ? null : object.getName();
+		if (name == null || name.isBlank() || "null".equalsIgnoreCase(name)) {
+			return false;
+		}
+		String objectName = name.toLowerCase();
+		return step.getText().stream().filter(Objects::nonNull).anyMatch(text -> {
+			Matcher matcher = USE_ON.matcher(text);
+			return matcher.find() && text.substring(matcher.end()).toLowerCase().contains(objectName);
+		});
+	}
+
+	private static int highlightedCarriedItemId(DetailedQuestStep step) {
+		for (Requirement requirement : step.getRequirements()) {
+			if (requirement instanceof ItemRequirement && ((ItemRequirement) requirement).isHighlightInInventory()) {
+				int id = ((ItemRequirement) requirement).getAllIds().stream().filter(Rs2Inventory::contains).findFirst().orElse(-1);
+				if (id != -1) {
+					return id;
+				}
+			}
+		}
+		return -1;
+	}
 
     private static boolean isInteractableFromReachableTile(ObjectStep step, Rs2TileObjectModel object) {
         if (object.getTileObjectType() != TileObjectType.GAME) {
