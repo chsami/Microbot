@@ -536,7 +536,10 @@ public class QuestScript extends Script {
 				var itemRequirement = (ItemRequirement) requirement;
 
 				if (itemRequirement.mustBeEquipped()) {
-					if (!hasItemRequirementOnPlayer(itemRequirement)) {
+					// hasItemRequirementOnPlayer only checks equipment for must-be-equipped items,
+					// so an unworn copy in the inventory must be checked separately or it is never worn.
+					boolean inInventory = itemRequirement.getAllIds().stream().anyMatch(Rs2Inventory::contains);
+					if (!inInventory && !hasItemRequirementOnPlayer(itemRequirement)) {
 						notifyMissingRequirement(itemRequirement);
 						continue;
 					}
