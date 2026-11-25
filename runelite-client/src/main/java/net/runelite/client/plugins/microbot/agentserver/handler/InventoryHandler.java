@@ -174,8 +174,9 @@ public class InventoryHandler extends AgentHandler {
 						sendJson(exchange, 404, errorResponse("Object not found: " + target));
 						return;
 					}
+					int objectId = Microbot.getClientThread().runOnClientThreadOptional(object::getId).orElse(-1);
 					success = Rs2Inventory.useUnNotedItemOnObject(item, object);
-					response.put("objectId", object.getId());
+					response.put("objectId", objectId);
 					break;
 				}
 				case "npc": {
@@ -192,6 +193,12 @@ public class InventoryHandler extends AgentHandler {
 				default:
 					sendJson(exchange, 400, errorResponse("targetType must be item, object or npc"));
 					return;
+			}
+
+			// A helper that selected the source item and then failed leaves it selected, which would turn the
+			// next interact/drop into "use <item> on ...". Clear it before releasing the lock.
+			if (!success) {
+				clearWidgetSelection();
 			}
 		}
 
