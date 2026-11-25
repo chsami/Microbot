@@ -2,6 +2,9 @@ package net.runelite.client.plugins.microbot.agentserver.handler;
 
 import com.google.gson.Gson;
 import com.sun.net.httpserver.HttpExchange;
+import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.api.npc.models.Rs2NpcModel;
+import net.runelite.client.plugins.microbot.api.tileobject.models.Rs2TileObjectModel;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 
@@ -34,6 +37,9 @@ public class InventoryHandler extends AgentHandler {
 				break;
 			case "/drop":
 				handleDrop(exchange);
+				break;
+			case "/use":
+				handleUse(exchange);
 				break;
 			default:
 				sendJson(exchange, 404, errorResponse("Unknown path: /inventory" + sub));
@@ -105,6 +111,75 @@ public class InventoryHandler extends AgentHandler {
 		response.put("action", action);
 		if (name != null) response.put("name", name);
 		if (idNum != null) response.put("id", idNum.intValue());
+		sendJson(exchange, 200, response);
+	}
+
+	/**
+	 * Use an inventory item on another inventory item, the nearest object, or the nearest NPC (by name).
+	 * Body: {"item": "...", "target": "...", "targetType": "item" | "object" | "npc"} (targetType defaults to item).
+	 */
+	private void handleUse(HttpExchange exchange) throws IOException {
+		try {
+			requirePost(exchange);
+		} catch (HttpMethodException e) {
+			sendJson(exchange, 405, errorResponse(e.getMessage()));
+			return;
+		}
+
+		Map<String, Object> body;
+		try {
+			body = readJsonBody(exchange);
+		} catch (Exception e) {
+			sendJson(exchange, 400, errorResponse("Invalid JSON body"));
+			return;
+		}
+
+		String item = getStringField(body, "item");
+		String target = getStringField(body, "target");
+		String targetType = getStringField(body, "targetType");
+		if (item == null || item.isEmpty() || target == null || target.isEmpty()) {
+			sendJson(exchange, 400, errorResponse("Missing required fields: item, target"));
+			return;
+		}
+		if (targetType == null || targetType.isEmpty()) {
+			targetType = "item";
+		}
+
+		boolean success;
+		Map<String, Object> response = new LinkedHashMap<>();
+		switch (targetType) {
+			case "item":
+				success = Rs2Inventory.combine(item, target);
+				break;
+			case "object": {
+				Rs2TileObjectModel object = Microbot.getRs2TileObjectCache().query().withName(target).nearestOnClientThread();
+				if (object == null) {
+					sendJson(exchange, 404, errorResponse("Object not found: " + target));
+					return;
+				}
+				success = Rs2Inventory.useUnNotedItemOnObject(item, object);
+				response.put("objectId", object.getId());
+				break;
+			}
+			case "npc": {
+				Rs2NpcModel npc = Microbot.getRs2NpcCache().query().withName(target).nearestOnClientThread();
+				Rs2ItemModel inventoryItem = Rs2Inventory.get(item);
+				if (npc == null || inventoryItem == null) {
+					sendJson(exchange, 404, errorResponse(npc == null ? "NPC not found: " + target : "Item not in inventory: " + item));
+					return;
+				}
+				success = Rs2Inventory.useItemOnNpc(inventoryItem.getId(), npc.getId());
+				break;
+			}
+			default:
+				sendJson(exchange, 400, errorResponse("targetType must be item, object or npc"));
+				return;
+		}
+
+		response.put("success", success);
+		response.put("item", item);
+		response.put("target", target);
+		response.put("targetType", targetType);
 		sendJson(exchange, 200, response);
 	}
 

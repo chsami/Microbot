@@ -121,6 +121,11 @@ Widgets are the game's UI elements (interfaces, buttons, toggles, text). Use the
 ./microbot-cli inventory interact "Lobster" "Eat"
 ./microbot-cli inventory interact "Bronze sword" "Wield"
 
+# Use an item on another item, the nearest object, or the nearest NPC
+./microbot-cli inventory use "Tinderbox" "Logs"
+./microbot-cli inventory use "Raw beef" "Fire" --object
+./microbot-cli inventory use "Bones" "Dog" --npc
+
 # Drop a single item
 ./microbot-cli inventory drop "Logs"
 
