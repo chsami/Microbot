@@ -87,6 +87,7 @@ NPCs:
 Objects:
   objects [--name "Oak tree"] [--name-contains Oak] [--id 1278] [--distance 20] [--limit N]
   objects interact <name> <action>       Interact with nearest object
+  objects interact --id <id> <action>    Interact with nearest object with that id
 
 Ground Items:
   ground-items [--name Bones] [--name-contains Bone] [--id 526] [--distance 20] [--limit N]
@@ -508,10 +509,16 @@ case "$1" in
         }
         case "$2" in
             interact)
-                [[ $# -lt 4 ]] && { echo '{"error":"Usage: microbot-cli objects interact <name> <action>"}'; exit 1; }
-                escaped_name=$(json_escape "$3")
-                escaped_action=$(json_escape "$4")
-                do_post "${BASE}/objects/interact" "{\"name\":\"${escaped_name}\",\"action\":\"${escaped_action}\"}"
+                [[ $# -lt 4 ]] && { echo '{"error":"Usage: microbot-cli objects interact <name> <action> | --id <id> <action>"}'; exit 1; }
+                if [[ "$3" == "--id" ]]; then
+                    [[ $# -lt 5 ]] && { echo '{"error":"Usage: microbot-cli objects interact --id <id> <action>"}'; exit 1; }
+                    escaped_action=$(json_escape "$5")
+                    do_post "${BASE}/objects/interact" "{\"id\":$4,\"action\":\"${escaped_action}\"}"
+                else
+                    escaped_name=$(json_escape "$3")
+                    escaped_action=$(json_escape "$4")
+                    do_post "${BASE}/objects/interact" "{\"name\":\"${escaped_name}\",\"action\":\"${escaped_action}\"}"
+                fi
                 ;;
             *) usage ;;
         esac
