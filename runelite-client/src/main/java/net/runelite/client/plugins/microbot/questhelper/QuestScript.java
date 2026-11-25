@@ -44,7 +44,6 @@ import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import net.runelite.client.plugins.microbot.api.npc.models.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.api.tileobject.Rs2TileObjectQueryable;
 import net.runelite.client.plugins.microbot.api.tileobject.models.Rs2TileObjectModel;
-import net.runelite.client.plugins.microbot.api.tileitem.Rs2TileItemQueryable;
 import net.runelite.client.plugins.microbot.api.tileitem.models.Rs2TileItemModel;
 
 import java.awt.*;
@@ -536,6 +535,12 @@ public class QuestScript extends Script {
 			if (requirement instanceof ItemRequirement) {
 				var itemRequirement = (ItemRequirement) requirement;
 
+				// Hidden requirements (e.g. a disguise superseded by an alternative outfit) must not be auto-equipped,
+				// or two mutually exclusive outfits keep swapping and the step never runs.
+				if (!isRequirementShown(itemRequirement)) {
+					continue;
+				}
+
 				if (itemRequirement.mustBeEquipped()) {
 					// hasItemRequirementOnPlayer only checks equipment for must-be-equipped items,
 					// so an unworn copy in the inventory must be checked separately or it is never worn.
@@ -635,33 +640,47 @@ public class QuestScript extends Script {
 
 	/** Id of a lootable (not another player's) required drop near the player, checking every accepted id; -1 if none. */
 	private int requiredDropIdNearby(DetailedQuestStep step) {
-		WorldPoint player = Rs2Player.getWorldLocation();
-		if (player == null) {
-			return -1;
-		}
 		for (Requirement requirement : step.getRequirements()) {
 			if (!(requirement instanceof ItemRequirement) || hasItemRequirementOnPlayer((ItemRequirement) requirement)) {
 				continue;
 			}
-			for (Integer id : ((ItemRequirement) requirement).getAllIds()) {
-				if (id != null && id > 0 && Microbot.getRs2TileItemCache().query()
-						.withId(id)
-						.within(player, GROUND_PICKUP_RADIUS)
-						.where(Rs2TileItemModel::isLootAble)
-						.first() != null) {
-					return id;
-				}
+			int id = lootableGroundId((ItemRequirement) requirement, GROUND_PICKUP_RADIUS);
+			if (id != -1) {
+				return id;
 			}
 		}
 		return -1;
 	}
 
+	/**
+	 * First accepted id of the requirement lying lootable within radius of the player; -1 if none.
+	 * Uses the player-relative within() so instance coordinates match, and evaluates the ownership
+	 * filter on the client thread.
+	 */
+	private int lootableGroundId(ItemRequirement itemRequirement, int radius) {
+		for (Integer id : itemRequirement.getAllIds()) {
+			if (id != null && id > 0 && Microbot.getRs2TileItemCache().query()
+					.withId(id)
+					.within(radius)
+					.where(Rs2TileItemModel::isLootAble)
+					.firstOnClientThread() != null) {
+				return id;
+			}
+		}
+		return -1;
+	}
+
+	private boolean isRequirementShown(ItemRequirement itemRequirement) {
+		return Microbot.getClientThread().runOnClientThreadOptional(
+				() -> itemRequirement.shouldDisplayText(Microbot.getClient())).orElse(true);
+	}
+
 	private boolean isOnGroundNear(ItemRequirement itemRequirement, WorldPoint point) {
-		int itemId = itemRequirement.getAllIds().stream().findFirst().orElse(itemRequirement.getId());
-		return itemId > 0 && Microbot.getRs2TileItemCache().query()
+		return itemRequirement.getAllIds().stream().anyMatch(itemId -> itemId != null && itemId > 0
+				&& Microbot.getRs2TileItemCache().query()
 				.withId(itemId)
 				.within(point, GROUND_PICKUP_RADIUS)
-				.first() != null;
+				.firstOnClientThread() != null);
 	}
 
 	boolean noteBankUnreachable(long now, long minSpanMs) {
@@ -1822,7 +1841,9 @@ public class QuestScript extends Script {
 
 	private boolean lootRequirementItem(DetailedQuestStep questStep, ItemRequirement itemRequirement) {
 		WorldPoint worldPoint = questStep.getDefinedPoint() != null ? questStep.getDefinedPoint().getWorldPoint() : null;
-		int targetItemId = itemRequirement.getAllIds().stream().findFirst().orElse(itemRequirement.getId());
+		int groundId = lootableGroundId(itemRequirement, 20);
+		int targetItemId = groundId != -1 ? groundId
+				: itemRequirement.getAllIds().stream().findFirst().orElse(itemRequirement.getId());
 
 		if (worldPoint != null) {
 			if ((Rs2Walker.canReach(worldPoint) && worldPoint.distanceTo(Rs2Player.getWorldLocation()) < 2)
@@ -1858,11 +1879,11 @@ public class QuestScript extends Script {
 	}
 
 	private boolean lootGroundItem(int itemId, int radius) {
-		Rs2TileItemModel item = new Rs2TileItemQueryable()
+		Rs2TileItemModel item = Microbot.getRs2TileItemCache().query()
 				.withId(itemId)
 				.within(radius)
 				.where(Rs2TileItemModel::isLootAble)
-				.nearest();
+				.nearestOnClientThread();
 
 		if (item == null) {
 			return false;
