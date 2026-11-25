@@ -111,9 +111,19 @@ public class PiratesTreasure extends BaseQuest {
                 return true;
             }
 
-            if (questStep.getText().contains("Search the crate in the back room of the Port Sarim food shop. Make sure you're wearing your white apron.")) {
+            if (questStep.getText().stream().anyMatch(t -> t.contains("Search the crate in the back room of the Port Sarim food shop"))) {
+                // The back-room door is gated by Wydin: "Only employees of the grocery store can go in."
+                // Take the job (white apron worn) and keep the walker out while the dialogue is open,
+                // otherwise its door retries close the dialogue and loop on the door.
                 if (Rs2Dialogue.isInDialogue()) {
-                    Rs2Dialogue.clickContinue();
+                    if (Rs2Dialogue.hasSelectAnOption()) {
+                        if (!Rs2Dialogue.clickOption("Well, can I get a job here?") && !Rs2Dialogue.clickOption("Can I get a job here?")) {
+                            Rs2Dialogue.clickOption("Yes, I have one right here.");
+                        }
+                    } else {
+                        Rs2Dialogue.clickContinue();
+                    }
+                    return false;
                 }
                 return true;
             }
