@@ -105,9 +105,16 @@ public class NpcHandler extends AgentHandler {
 
 		String name = getStringField(body, "name");
 		Integer idNum = getIntField(body, "id");
+		Integer indexNum = getIntField(body, "index");
 
 		Rs2NpcModel npc = null;
-		if (name != null && !name.isEmpty()) {
+		if (indexNum != null) {
+			// The index identifies one NPC instance; name/id pick the nearest of possibly many identical NPCs.
+			final int index = indexNum;
+			npc = Microbot.getRs2NpcCache().query()
+					.where(n -> n.getIndex() == index)
+					.firstOnClientThread();
+		} else if (name != null && !name.isEmpty()) {
 			npc = Microbot.getRs2NpcCache().query()
 					.withName(name)
 					.nearestOnClientThread();
@@ -116,7 +123,7 @@ public class NpcHandler extends AgentHandler {
 					.withId(idNum.intValue())
 					.nearestOnClientThread();
 		} else {
-			sendJson(exchange, 400, errorResponse("Provide either name or id"));
+			sendJson(exchange, 400, errorResponse("Provide name, id or index"));
 			return;
 		}
 
