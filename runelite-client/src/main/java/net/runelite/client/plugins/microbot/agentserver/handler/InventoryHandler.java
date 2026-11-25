@@ -145,6 +145,11 @@ public class InventoryHandler extends AgentHandler {
 			targetType = "item";
 		}
 
+		// A selection left over from an earlier failed use would turn the first click into "use <old> on <item>".
+		if (Rs2Inventory.isItemSelected()) {
+			Rs2Inventory.deselect();
+		}
+
 		boolean success;
 		Map<String, Object> response = new LinkedHashMap<>();
 		switch (targetType) {
@@ -168,7 +173,8 @@ public class InventoryHandler extends AgentHandler {
 					sendJson(exchange, 404, errorResponse(npc == null ? "NPC not found: " + target : "Item not in inventory: " + item));
 					return;
 				}
-				success = Rs2Inventory.useItemOnNpc(inventoryItem.getId(), npc.getId());
+				// Pass the resolved NPC instance so a target in a child world view is not re-resolved by id.
+				success = Rs2Inventory.useItemOnNpc(inventoryItem.getId(), npc.getNpc());
 				break;
 			}
 			default:
