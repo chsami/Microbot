@@ -629,6 +629,18 @@ public class QuestScript extends Script {
 		return null;
 	}
 
+	private static int highlightedCarriedItemId(DetailedQuestStep step) {
+		for (Requirement requirement : step.getRequirements()) {
+			if (requirement instanceof ItemRequirement && ((ItemRequirement) requirement).isHighlightInInventory()) {
+				int id = ((ItemRequirement) requirement).getAllIds().stream().filter(Rs2Inventory::contains).findFirst().orElse(-1);
+				if (id != -1) {
+					return id;
+				}
+			}
+		}
+		return -1;
+	}
+
 	private boolean isOnGroundNear(ItemRequirement itemRequirement, WorldPoint point) {
 		int itemId = itemRequirement.getAllIds().stream().findFirst().orElse(itemRequirement.getId());
 		return itemId > 0 && Microbot.getRs2TileItemCache().query()
@@ -1967,6 +1979,12 @@ public class QuestScript extends Script {
                 .map(Rs2TileObjectModel::new)
                 .findFirst().orElse(null);
         var itemId = step.getIconItemID();
+        if (itemId == -1) {
+            // Many helpers mark the item to use with a highlighted requirement instead of addIcon
+            // (e.g. Ernest the Chicken: poisoned fish food on the fountain); a plain click would
+            // pick the object's default option instead.
+            itemId = highlightedCarriedItemId(step);
+        }
 
         List<Rs2TileObjectModel> stepObjects = step.getObjects().stream()
                 .filter(Objects::nonNull)
