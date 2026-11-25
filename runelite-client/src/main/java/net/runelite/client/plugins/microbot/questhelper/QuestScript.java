@@ -633,6 +633,22 @@ public class QuestScript extends Script {
 		return null;
 	}
 
+	private ItemRequirement requiredItemOnGroundNearby(DetailedQuestStep step) {
+		WorldPoint player = Rs2Player.getWorldLocation();
+		if (player == null) {
+			return null;
+		}
+		for (Requirement requirement : step.getRequirements()) {
+			if (requirement instanceof ItemRequirement) {
+				ItemRequirement itemRequirement = (ItemRequirement) requirement;
+				if (!hasItemRequirementOnPlayer(itemRequirement) && isOnGroundNear(itemRequirement, player)) {
+					return itemRequirement;
+				}
+			}
+		}
+		return null;
+	}
+
 	private boolean isOnGroundNear(ItemRequirement itemRequirement, WorldPoint point) {
 		int itemId = itemRequirement.getAllIds().stream().findFirst().orElse(itemRequirement.getId());
 		return itemId > 0 && Microbot.getRs2TileItemCache().query()
@@ -1907,6 +1923,13 @@ public class QuestScript extends Script {
 
             // Whole word only: "killer's knife" (Misthalin Mystery) is not a kill step.
             if (step.getText().stream().anyMatch(x -> KILL_WORD.matcher(x).find())) {
+                // Loot a required drop (e.g. Witch's Potion rat's tail) before attacking again. The general
+                // missing-item handler is disabled for ironmen, but picking up your own drop is always fine.
+                ItemRequirement drop = requiredItemOnGroundNearby(step);
+                if (drop != null) {
+                    lootRequirementItem(step, drop);
+                    return true;
+                }
                 if (!Rs2Combat.inCombat() && !npc.click("Attack")) {
                     npc.click("Fight");
                 }
