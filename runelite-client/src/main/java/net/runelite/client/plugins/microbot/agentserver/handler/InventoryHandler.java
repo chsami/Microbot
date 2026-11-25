@@ -15,8 +15,6 @@ import java.util.stream.Collectors;
 
 public class InventoryHandler extends AgentHandler {
 
-	private static final Object SELECTION_LOCK = new Object();
-
 	public InventoryHandler(Gson gson) {
 		super(gson);
 	}
