@@ -32,6 +32,8 @@ public class ProxyConfigurationTest
 	public void resetDefaultAuthenticator()
 	{
 		Authenticator.setDefault(null);
+		System.clearProperty("socksProxyHost");
+		System.clearProperty("socksProxyPort");
 	}
 
 	@Test
@@ -90,6 +92,33 @@ public class ProxyConfigurationTest
 
 			assertEquals("user:secret", seenLogin.get(5, TimeUnit.SECONDS));
 		}
+	}
+
+	@Test(timeout = 10_000)
+	public void jvmWideSocksProxyStillAuthenticates() throws Exception
+	{
+		try (ServerSocket proxy = new ServerSocket(0, 1, InetAddress.getLoopbackAddress()))
+		{
+			CompletableFuture<String> seenLogin = CompletableFuture.supplyAsync(() -> acceptSocks5Login(proxy));
+			System.setProperty("socksProxyHost", "127.0.0.1");
+			System.setProperty("socksProxyPort", String.valueOf(proxy.getLocalPort()));
+			ProxyConfiguration.setupAuthenticator("127.0.0.1", proxy.getLocalPort(), "user", "secret");
+
+			try (Socket socket = new Socket())
+			{
+				socket.connect(InetSocketAddress.createUnresolved("oldschool1.runescape.com", 43594), 5_000);
+			}
+
+			assertEquals("user:secret", seenLogin.get(5, TimeUnit.SECONDS));
+		}
+	}
+
+	@Test
+	public void ipv6LiteralProxyHostGetsCredentials()
+	{
+		Authenticator ipv6 = ProxyConfiguration.proxyAuthenticator("[::1]", PROXY_PORT, "user", "secret");
+
+		assertNotNull(Authenticator.requestPasswordAuthentication(ipv6, "[::1]", null, PROXY_PORT, "SOCKS5", "prompt", null, null, Authenticator.RequestorType.SERVER));
 	}
 
 	private PasswordAuthentication request(String host, int port, String protocol, String scheme, URL url, Authenticator.RequestorType type)

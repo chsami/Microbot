@@ -116,8 +116,6 @@ public class ProxyConfiguration {
 
     /**
      * Sets up the default authenticator for proxy authentication.
-     * @param host
-     * @param port
      * @param user
      * @param pass
      */
