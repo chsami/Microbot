@@ -154,6 +154,7 @@ public class QuestScript extends Script {
     private static final String OPTION_CHOICE_NEEDED_STATUS = "Quest helper: paused, I don't know which dialogue option to pick here. Choose it yourself (see the step text in the Quest Helper panel) and I will continue.";
     private static final String OPTION_RETRY_STATUS_PREFIX = "Quest helper: no matching dialogue option, retrying (";
     private static final String OPTION_CONTINUING_STATUS = "Quest helper: continuing";
+    private static final String MANUAL_STEP_STATUS = "Quest helper: this step is not automated. Do it yourself (see the step text in the Quest Helper panel) and I will continue.";
     private static final int UNHANDLED_OPTION_CLOSE_WAIT_MS = 1_800;
     private volatile Object unhandledOptionStep;
     private volatile int unhandledOptionDismissals = 0;
@@ -1996,7 +1997,8 @@ public class QuestScript extends Script {
             Rs2Walker.clearWalkingRoute("quest-helper:npc-step-visible-interact");
 
             // Whole word only: "killer's knife" (Misthalin Mystery) is not a kill step, "killing" is.
-            if (step.getText().stream().anyMatch(x -> KILL_WORD.matcher(x).find())) {
+            boolean usesIconItemOnNpc = step.getIconItemID() != -1 && usesItemOn(step.getText(), npc.getName());
+            if (!usesIconItemOnNpc && step.getText().stream().anyMatch(x -> KILL_WORD.matcher(x).find())) {
                 if (!Rs2Combat.inCombat() && !npc.click("Attack")) {
                     npc.click("Fight");
                 }
@@ -2182,14 +2184,17 @@ public class QuestScript extends Script {
 
 	/** True when the step text says to use something on this object, by the object's name. */
 	private static boolean usesItemOnObject(DetailedQuestStep step, Rs2TileObjectModel object) {
-		String name = object == null ? null : object.getName();
-		if (name == null || name.isBlank() || "null".equalsIgnoreCase(name)) {
+		return usesItemOn(step.getText(), object == null ? null : object.getName());
+	}
+
+	static boolean usesItemOn(List<String> stepText, String targetName) {
+		if (stepText == null || targetName == null || targetName.isBlank() || "null".equalsIgnoreCase(targetName)) {
 			return false;
 		}
-		String objectName = name.toLowerCase();
-		return step.getText().stream().filter(Objects::nonNull).anyMatch(text -> {
+		String name = targetName.toLowerCase();
+		return stepText.stream().filter(Objects::nonNull).anyMatch(text -> {
 			Matcher matcher = USE_ON.matcher(text);
-			return matcher.find() && text.substring(matcher.end()).toLowerCase().contains(objectName);
+			return matcher.find() && text.substring(matcher.end()).toLowerCase().contains(name);
 		});
 	}
 
@@ -2391,7 +2396,15 @@ public class QuestScript extends Script {
 			}
 		}
 
+		if (isUnautomatedStep(conditionalStep, definedPoint, usingItems)) {
+			Microbot.status = MANUAL_STEP_STATUS;
+		}
+
 		return usingItems;
+	}
+
+	static boolean isUnautomatedStep(DetailedQuestStep step, WorldPoint definedPoint, boolean usingItems) {
+		return !usingItems && definedPoint == null && step.getClass() == DetailedQuestStep.class;
 	}
 
     private boolean applyWidgetStep(WidgetStep step) {
