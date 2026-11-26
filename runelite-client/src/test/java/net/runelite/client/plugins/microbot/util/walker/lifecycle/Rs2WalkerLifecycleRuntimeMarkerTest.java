@@ -21,6 +21,7 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 public class Rs2WalkerLifecycleRuntimeMarkerTest
@@ -72,5 +73,16 @@ public class Rs2WalkerLifecycleRuntimeMarkerTest
 		assertEquals(TARGET, marker.getTarget());
 		assertEquals("Target", marker.getName());
 		assertTrue(marker.isJumpOnClick());
+	}
+
+	@Test
+	public void applyWalkerDestinationDoesNotQueueOnSharedClientThreadSlot()
+	{
+		ClientThread clientThread = mock(ClientThread.class);
+		microbot.when(Microbot::getClientThread).thenReturn(clientThread);
+
+		Rs2WalkerLifecycleRuntime.applyWalkerDestination(TARGET);
+
+		verify(clientThread, never()).runOnSeperateThread(any());
 	}
 }
