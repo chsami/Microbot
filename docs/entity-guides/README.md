@@ -15,6 +15,8 @@ Each guide lists known pitfalls when working with one specific game entity type.
 | Death (graves, Death's Office, recovery) | [death.md](death.md) | Any code calling or modifying `Rs2Death`, `DeathRecoveryEvent`, `DeathEvent`, or handling graves, retrieval fees, and post-death item recovery |
 | Worlds (selection, ping, hopping) | [worlds.md](worlds.md) | Any code measuring world latency, testing world reachability, selecting worlds based on network availability, or reading the local player while logging in or hopping |
 
+Equip with the verb the item exposes (`Equip` on the cattleprod): [items gotcha 25](items.md#25-equip-an-item-with-the-verb-it-actually-exposes).
+
 Ground-item pickup: [propagate dispatch failures](items.md#11-propagate-ground-item-dispatch-failures) and [preserve explicit Take](items.md#12-preserve-an-explicit-ground-item-take-when-a-widget-is-selected).
 
 Membership reads as 0 until the server sends it: [world gotcha 3](worlds.md#3-membership-reads-as-0-until-the-server-sends-it).

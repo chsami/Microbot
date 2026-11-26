@@ -352,6 +352,14 @@ Some walker rows have a middle category (`Max cape: Other Teleports: Hunter Guil
 
 **Defensive check:** Run `Rs2WalkerUnitTest`.
 
+## 25. Equip an item with the verb it actually exposes
+
+`Rs2Inventory.wear` and `wield` used to send a fixed `"wear"` / `"wield"` op. Some equippable items expose neither: the cattleprod (Sheep Herder) only has `Equip`. `Rs2Inventory.equipAction` picks the first of `Wear`, `Wield`, `Equip` that the item's inventory actions contain, and falls back to `"wield"` only when the composition has not loaded yet.
+
+**Why this matters:** `wear(cattleprod)` returned true while the menu op did not exist, so the cattleprod was never equipped and the quest script kept retrying the step.
+
+**Where this applies:** `Rs2Inventory.wear` / `wield` and any new helper that equips by a fixed verb.
+
 ## Terminal supply stops need observed logout
 
 An owning script can set `withMissingSupplyHandler` on its Inventory Setup loader to keep its scheduled loop alive while `TerminalLogoutPrompt` closes the bank and requests logout. Do not show a blocking shortage notification or cancel that loop until `LOGGED_OUT` is observed. The default loader policy stays unchanged when no handler is supplied; ordinary breaks and world hops do not arm terminal Auto Login suppression.
