@@ -6427,6 +6427,7 @@ public class Rs2Walker {
             clearRecentTransportContext();
             resetRouteProgress();
             logRouteClear(clearReasonWhenNull);
+            Rs2WalkerLifecycleRuntime.cancelPendingRouteRequest();
             Rs2PathApi.cancelAndClearActiveRoute();
 
             WorldMapPointManager wmm = Microbot.getWorldMapPointManager();
@@ -7306,7 +7307,7 @@ public class Rs2Walker {
         }
         Rs2PathApi.setStartPointSet(true);
         if (isClientThread()) {
-            Microbot.getClientThread().runOnSeperateThread(() -> restartPathfinding(start, targets));
+            Rs2WalkerLifecycleRuntime.submitRouteRequest(() -> restartPathfinding(start, targets));
         } else {
             restartPathfinding(start, targets);
         }

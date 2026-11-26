@@ -19,6 +19,8 @@ import net.runelite.client.plugins.microbot.questhelper.managers.QuestContainerM
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
+import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirements;
+import net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicType;
 import net.runelite.client.plugins.microbot.questhelper.steps.*;
 import net.runelite.client.plugins.microbot.questhelper.steps.widget.WidgetHighlight;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
@@ -44,7 +46,6 @@ import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import net.runelite.client.plugins.microbot.api.npc.models.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.api.tileobject.Rs2TileObjectQueryable;
 import net.runelite.client.plugins.microbot.api.tileobject.models.Rs2TileObjectModel;
-import net.runelite.client.plugins.microbot.api.tileitem.Rs2TileItemQueryable;
 import net.runelite.client.plugins.microbot.api.tileitem.models.Rs2TileItemModel;
 
 import java.awt.*;
@@ -64,6 +65,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiPredicate;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.swing.JOptionPane;
@@ -75,6 +77,7 @@ public class QuestScript extends Script {
     public static double version = 0.6;
 
     private static final long MISSING_REQUIREMENT_NOTIFY_INTERVAL_MS = 10_000L;
+    private static final Pattern KILL_WORD = Pattern.compile("\\bkill(?:s|ing|ed)?\\b", Pattern.CASE_INSENSITIVE);
     private static final Map<Integer, Long> lastMissingRequirementNotice = new HashMap<>();
 
     public static List<ItemRequirement> itemRequirements = new ArrayList<>();
@@ -100,6 +103,7 @@ public class QuestScript extends Script {
     private final Set<Integer> everHeldItemRequirementIds = new HashSet<>();
 
     private static final int GROUND_PICKUP_RADIUS = 8;
+    private static final Pattern USE_ON = Pattern.compile("\\buse\\b.*?\\bon\\b", Pattern.CASE_INSENSITIVE);
     private static final int BANK_UNREACHABLE_LIMIT = 3;
     static final long BANK_UNREACHABLE_MIN_SPAN_MS = 15_000;
     static final long PICKUP_RESPAWN_WAIT_MS = 180_000;
@@ -150,6 +154,9 @@ public class QuestScript extends Script {
     private static final String OPTION_CHOICE_NEEDED_STATUS = "Quest helper: paused, I don't know which dialogue option to pick here. Choose it yourself (see the step text in the Quest Helper panel) and I will continue.";
     private static final String OPTION_RETRY_STATUS_PREFIX = "Quest helper: no matching dialogue option, retrying (";
     private static final String OPTION_CONTINUING_STATUS = "Quest helper: continuing";
+    static final String MANUAL_STEP_STATUS = "Quest helper: paused, this step is not automated. Do it yourself (see the step text in the Quest Helper panel) and I will continue.";
+    static final String NPC_WAIT_STATUS = "Quest helper: waiting for the NPC for this step to appear. Move to where it spawns (see the step text in the Quest Helper panel) and I will continue.";
+    private volatile Object manualStep;
     private static final int UNHANDLED_OPTION_CLOSE_WAIT_MS = 1_800;
     private volatile Object unhandledOptionStep;
     private volatile int unhandledOptionDismissals = 0;
@@ -175,6 +182,7 @@ public class QuestScript extends Script {
                     Rs2Player.waitForAnimation();
 
                 QuestStep questStep = getQuestHelperPlugin().getSelectedQuest().getCurrentStep().getActiveStep();
+                clearManualStepStatus(questStep);
 
                 if (Rs2Dialogue.isInDialogue() && dialogueStartedStep == null)
                     dialogueStartedStep = questStep;
@@ -481,6 +489,32 @@ public class QuestScript extends Script {
         }
     }
 
+    boolean holdForPlayer(QuestStep step, String status) {
+        Microbot.status = status;
+        if (step == manualStep) {
+            return false;
+        }
+        manualStep = step;
+        return true;
+    }
+
+    void clearManualStepStatus(QuestStep activeStep) {
+        if (activeStep != null && activeStep == manualStep) {
+            return;
+        }
+        manualStep = null;
+        String status = Microbot.status;
+        if (MANUAL_STEP_STATUS.equals(status) || NPC_WAIT_STATUS.equals(status)) {
+            Microbot.status = OPTION_CONTINUING_STATUS;
+        }
+    }
+
+    static String manualStepNotice(QuestStep step) {
+        List<String> text = step == null ? null : step.getText();
+        String name = text == null || text.isEmpty() ? "the current step" : text.get(0);
+        return "Quest helper: paused, this step is not automated. Do it yourself and it will continue: " + name;
+    }
+
     static WorldPoint stepWorldPoint(QuestStep step) {
         if (!(step instanceof DetailedQuestStep)) {
             return null;
@@ -521,6 +555,7 @@ public class QuestScript extends Script {
         multiNpcTarget.release();
         dialogueRelocation.reset();
         clearRelocationWaitStatus();
+        clearManualStepStatus(null);
         unhandledOptionStep = null;
         resetUnhandledOptionDismissals();
         clearBankUnreachable();
@@ -535,8 +570,38 @@ public class QuestScript extends Script {
 			if (requirement instanceof ItemRequirement) {
 				var itemRequirement = (ItemRequirement) requirement;
 
+				// Hidden requirements (e.g. a disguise superseded by an alternative outfit) must not be auto-equipped,
+				// or two mutually exclusive outfits keep swapping and the step never runs.
+				if (!isRequirementShown(itemRequirement)) {
+					continue;
+				}
+
+				if (itemRequirement.mustBeEquipped() && itemRequirement instanceof ItemRequirements
+						&& ((ItemRequirements) itemRequirement).getLogicType() == LogicType.AND) {
+					// An outfit: getAllIds() flattens its pieces, so equip one missing piece at a time, and only when
+					// every piece is at hand, or a valid alternative outfit gets broken up for nothing.
+					List<ItemRequirement> pieces = ((ItemRequirements) itemRequirement).getItemRequirements();
+					boolean allAtHand = pieces.stream().allMatch(piece -> piece.getAllIds().stream()
+							.anyMatch(id -> Rs2Equipment.isWearing(id) || Rs2Inventory.contains(id)));
+					if (!allAtHand) {
+						notifyMissingRequirement(itemRequirement);
+						continue;
+					}
+					ItemRequirement nextPiece = pieces.stream()
+							.filter(piece -> piece.getAllIds().stream().noneMatch(Rs2Equipment::isWearing))
+							.findFirst().orElse(null);
+					if (nextPiece != null) {
+						Rs2Inventory.wear(nextPiece.getAllIds().stream().filter(Rs2Inventory::contains).findFirst().orElse(-1));
+						return true;
+					}
+					continue;
+				}
+
 				if (itemRequirement.mustBeEquipped()) {
-					if (!hasItemRequirementOnPlayer(itemRequirement)) {
+					// hasItemRequirementOnPlayer only checks equipment for must-be-equipped items,
+					// so an unworn copy in the inventory must be checked separately or it is never worn.
+					boolean inInventory = itemRequirement.getAllIds().stream().anyMatch(Rs2Inventory::contains);
+					if (!inInventory && !hasItemRequirementOnPlayer(itemRequirement)) {
 						notifyMissingRequirement(itemRequirement);
 						continue;
 					}
@@ -629,12 +694,55 @@ public class QuestScript extends Script {
 		return null;
 	}
 
+	/** Id of a lootable (not another player's) required drop near the player, checking every accepted id; -1 if none. */
+	private int requiredDropIdNearby(DetailedQuestStep step) {
+		for (Requirement requirement : step.getRequirements()) {
+			if (!(requirement instanceof ItemRequirement) || hasItemRequirementOnPlayer((ItemRequirement) requirement)) {
+				continue;
+			}
+			int id = lootableGroundId((ItemRequirement) requirement, GROUND_PICKUP_RADIUS);
+			if (id != -1) {
+				return id;
+			}
+		}
+		return -1;
+	}
+
+	/**
+	 * First accepted id of the requirement lying lootable within radius of the player; -1 if none.
+	 * Uses the player-relative within() so instance coordinates match, and evaluates the ownership
+	 * filter on the client thread.
+	 */
+	private int lootableGroundId(ItemRequirement itemRequirement, int radius) {
+		boolean ownDropsOnly = ownDropsOnly();
+		for (Integer id : itemRequirement.getAllIds()) {
+			if (id != null && id > 0 && Microbot.getRs2TileItemCache().query()
+					.withId(id)
+					.within(radius)
+					.where(item -> !ownDropsOnly || item.isLootAble())
+					.firstOnClientThread() != null) {
+				return id;
+			}
+		}
+		return -1;
+	}
+
+	/** Ironmen (incl. group) cannot take other players' drops; normal accounts can take public ones. */
+	private static boolean ownDropsOnly() {
+		return Rs2Player.isIronman() || Rs2Player.isGroupIronman();
+	}
+
+	private boolean isRequirementShown(ItemRequirement itemRequirement) {
+		return Microbot.getClientThread().runOnClientThreadOptional(
+				() -> itemRequirement.shouldDisplayText(Microbot.getClient())).orElse(true);
+	}
+
 	private boolean isOnGroundNear(ItemRequirement itemRequirement, WorldPoint point) {
-		int itemId = itemRequirement.getAllIds().stream().findFirst().orElse(itemRequirement.getId());
-		return itemId > 0 && Microbot.getRs2TileItemCache().query()
+		return itemRequirement.getAllIds().stream().anyMatch(itemId -> itemId != null && itemId > 0
+				&& Microbot.getRs2TileItemCache().query()
 				.withId(itemId)
 				.within(point, GROUND_PICKUP_RADIUS)
-				.first() != null;
+				.firstOnClientThread() != null);
 	}
 
 	boolean noteBankUnreachable(long now, long minSpanMs) {
@@ -1795,18 +1903,22 @@ public class QuestScript extends Script {
 
 	private boolean lootRequirementItem(DetailedQuestStep questStep, ItemRequirement itemRequirement) {
 		WorldPoint worldPoint = questStep.getDefinedPoint() != null ? questStep.getDefinedPoint().getWorldPoint() : null;
-		int targetItemId = itemRequirement.getAllIds().stream().findFirst().orElse(itemRequirement.getId());
+		// Pick the id with the same radius the pickup uses, so an alternate id further out is not chosen.
+		int radius = worldPoint != null ? 10 : 20;
+		int groundId = lootableGroundId(itemRequirement, radius);
+		int targetItemId = groundId != -1 ? groundId
+				: itemRequirement.getAllIds().stream().findFirst().orElse(itemRequirement.getId());
 
 		if (worldPoint != null) {
 			if ((Rs2Walker.canReach(worldPoint) && worldPoint.distanceTo(Rs2Player.getWorldLocation()) < 2)
 					|| worldPoint.toWorldArea().hasLineOfSightTo(Microbot.getClient().getTopLevelWorldView(), Rs2Player.getWorldLocation().toWorldArea())
 					&& Rs2Camera.isTileOnScreen(LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), worldPoint))) {
-				lootGroundItem(targetItemId, 10);
+				lootGroundItem(targetItemId, radius);
 			} else {
 				Rs2Walker.walkTo(worldPoint, 2);
 			}
 		} else {
-			lootGroundItem(targetItemId, 20);
+			lootGroundItem(targetItemId, radius);
 		}
 
 		return true;
@@ -1831,10 +1943,12 @@ public class QuestScript extends Script {
 	}
 
 	private boolean lootGroundItem(int itemId, int radius) {
-		Rs2TileItemModel item = new Rs2TileItemQueryable()
+		boolean ownDropsOnly = ownDropsOnly();
+		Rs2TileItemModel item = Microbot.getRs2TileItemCache().query()
 				.withId(itemId)
 				.within(radius)
-				.nearest();
+				.where(groundItem -> !ownDropsOnly || groundItem.isLootAble())
+				.nearestOnClientThread();
 
 		if (item == null) {
 			return false;
@@ -1886,10 +2000,25 @@ public class QuestScript extends Script {
                 .collect(Collectors.toList());
         Rs2NpcModel npc = npcs.stream().findFirst().orElse(null);
 
+        // Loot a required drop (e.g. Witch's Potion rat's tail) before attacking again, even when no target NPC
+        // is visible any more. The general missing-item handler is disabled for ironmen, but picking up your
+        // own drop is always fine.
+        if (step.getText().stream().anyMatch(x -> KILL_WORD.matcher(x).find())) {
+            int dropId = requiredDropIdNearby(step);
+            if (dropId != -1) {
+                lootGroundItem(dropId, GROUND_PICKUP_RADIUS);
+                return true;
+            }
+        }
+
         if (step.isAllowMultipleHighlights()) {
             npc = multiNpcTarget.select(step, npcs, Rs2NpcModel::getIndex, npcsHandled,
                     Comparator.comparing(x -> Rs2Player.getWorldLocation().distanceTo(x.getWorldLocation())),
                     System.currentTimeMillis());
+        }
+
+        if (npc != null) {
+            clearManualStepStatus(null);
         }
 
         // canReach() pathfinds through closed doors (the walker opens them en route), so canReach==true
@@ -1901,9 +2030,10 @@ public class QuestScript extends Script {
             }
             Rs2Walker.clearWalkingRoute("quest-helper:npc-step-visible-interact");
 
-            if (step.getText().stream().anyMatch(x -> x.toLowerCase().contains("kill"))) {
-                if (!Rs2Combat.inCombat()) {
-                    npc.click("Attack");
+            // Whole word only: "killer's knife" (Misthalin Mystery) is not a kill step, "killing" is.
+            if (attacksNpc(step.getText(), step.getIconItemID(), npc.getName())) {
+                if (!Rs2Combat.inCombat() && !npc.click("Attack")) {
+                    npc.click("Fight");
                 }
                 return true;
             }
@@ -1952,12 +2082,24 @@ public class QuestScript extends Script {
         } else if (npc != null && (!npc.hasLineOfSight() || !Rs2Walker.canReach(npc.getWorldLocation()))) {
             Rs2Walker.walkTo(npc.getWorldLocation(), 2);
         } else {
-            if (step.getDefinedPoint().getWorldPoint().distanceTo(Rs2Player.getWorldLocation()) > 3) {
-                Rs2Walker.walkTo(step.getDefinedPoint().getWorldPoint(), 2);
+            WorldPoint stepPoint = stepWorldPoint(step);
+            if (stepPoint == null) {
+                holdForPlayer(step, NPC_WAIT_STATUS);
+                return false;
+            }
+            if (stepPoint.distanceTo(Rs2Player.getWorldLocation()) > 3) {
+                Rs2Walker.walkTo(stepPoint, 2);
                 return false;
             }
         }
         return true;
+    }
+
+    static boolean attacksNpc(List<String> stepText, int iconItemId, String npcName) {
+        if (stepText == null || stepText.stream().noneMatch(x -> x != null && KILL_WORD.matcher(x).find())) {
+            return false;
+        }
+        return iconItemId == -1 || !usesItemOn(stepText, npcName);
     }
 
 
@@ -1967,6 +2109,14 @@ public class QuestScript extends Script {
                 .map(Rs2TileObjectModel::new)
                 .findFirst().orElse(null);
         var itemId = step.getIconItemID();
+        if (itemId == -1 && usesItemOnObject(step, object)) {
+            // Many helpers mark the item to use with a highlighted requirement instead of addIcon
+            // (e.g. Ernest the Chicken: poisoned fish food on the fountain); a plain click would
+            // pick the object's default option instead. Only for "use ... on <this object>" steps:
+            // elsewhere a highlight can be a mere reminder (e.g. Mountain Daughter's rope when climbing
+            // the rocks), and some steps reuse another step's "use ... on" text (The Dig Site ladder).
+            itemId = highlightedCarriedItemId(step);
+        }
 
         List<Rs2TileObjectModel> stepObjects = step.getObjects().stream()
                 .filter(Objects::nonNull)
@@ -2076,6 +2226,34 @@ public class QuestScript extends Script {
         WorldPoint location = object.getWorldLocation();
         return step.getObjects().contains(object.getTileObject()) ? location : null;
     }
+
+	/** True when the step text says to use something on this object, by the object's name. */
+	private static boolean usesItemOnObject(DetailedQuestStep step, Rs2TileObjectModel object) {
+		return usesItemOn(step.getText(), object == null ? null : object.getName());
+	}
+
+	static boolean usesItemOn(List<String> stepText, String targetName) {
+		if (stepText == null || targetName == null || targetName.isBlank() || "null".equalsIgnoreCase(targetName)) {
+			return false;
+		}
+		String name = targetName.toLowerCase();
+		return stepText.stream().filter(Objects::nonNull).anyMatch(text -> {
+			Matcher matcher = USE_ON.matcher(text);
+			return matcher.find() && text.substring(matcher.end()).toLowerCase().contains(name);
+		});
+	}
+
+	private static int highlightedCarriedItemId(DetailedQuestStep step) {
+		for (Requirement requirement : step.getRequirements()) {
+			if (requirement instanceof ItemRequirement && ((ItemRequirement) requirement).isHighlightInInventory()) {
+				int id = ((ItemRequirement) requirement).getAllIds().stream().filter(Rs2Inventory::contains).findFirst().orElse(-1);
+				if (id != -1) {
+					return id;
+				}
+			}
+		}
+		return -1;
+	}
 
     private static boolean isInteractableFromReachableTile(ObjectStep step, Rs2TileObjectModel object) {
         if (object.getTileObjectType() != TileObjectType.GAME) {
@@ -2263,7 +2441,17 @@ public class QuestScript extends Script {
 			}
 		}
 
+		if (!isUnautomatedStep(conditionalStep, definedPoint, usingItems)) {
+			clearManualStepStatus(null);
+		} else if (holdForPlayer(conditionalStep, MANUAL_STEP_STATUS)) {
+			Microbot.log(manualStepNotice(conditionalStep), Level.WARN);
+		}
+
 		return usingItems;
+	}
+
+	static boolean isUnautomatedStep(DetailedQuestStep step, WorldPoint definedPoint, boolean usingItems) {
+		return !usingItems && definedPoint == null && step.getClass() == DetailedQuestStep.class;
 	}
 
     private boolean applyWidgetStep(WidgetStep step) {

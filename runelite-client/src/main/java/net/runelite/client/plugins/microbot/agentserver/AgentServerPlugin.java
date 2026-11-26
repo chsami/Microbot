@@ -51,7 +51,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 		name = PluginDescriptor.Mocrosoft + "Agent Server",
 		description = "HTTP server for AI agent communication - exposes widget inspection, game interaction, and state endpoints",
 		tags = {"agent", "ai", "server", "automation"},
-		enabledByDefault = false
+		enabledByDefault = false,
+		version = "1.0.1"
 )
 @Slf4j
 public class AgentServerPlugin extends Plugin {

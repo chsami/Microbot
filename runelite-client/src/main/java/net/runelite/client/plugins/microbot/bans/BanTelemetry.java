@@ -19,6 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import javax.inject.Inject;
@@ -86,10 +87,11 @@ public class BanTelemetry
 	private String cachedKey;
 	private String cachedIdentity;
 	private final Supplier<String> selection;
+	private final BooleanSupplier proxied;
 	private volatile String launchSelection;
 	private volatile boolean launchSelectionKnown;
 	private String cachedIdentityKey;
-	private String lastLoggedInKey;
+	private volatile String lastLoggedInKey;
 	private String identityKeyAtLastLogin;
 	private String playerNameAtLastLogin;
 	private boolean onBanScreen;
@@ -100,12 +102,13 @@ public class BanTelemetry
 		ConfigManager configManager, Notifier notifier, Gson gson, @Named("disableTelemetry") boolean disableTelemetry)
 	{
 		this(client, clientThread, pluginManager, microbotPluginManager, microbotApi, clientSessionManager, executor, config,
-			configManager, notifier, gson, disableTelemetry, new File(new File(RuneLite.RUNELITE_DIR, "microbot"), "ban-ledger").toPath(), null);
+			configManager, notifier, gson, disableTelemetry, new File(new File(RuneLite.RUNELITE_DIR, "microbot"), "ban-ledger").toPath(), null, null);
 	}
 
 	BanTelemetry(Client client, ClientThread clientThread, PluginManager pluginManager, MicrobotPluginManager microbotPluginManager,
 		MicrobotApi microbotApi, ClientSessionManager clientSessionManager, ScheduledExecutorService executor, MicrobotConfig config,
-		ConfigManager configManager, Notifier notifier, Gson gson, boolean disableTelemetry, Path ledgerDir, Supplier<String> selection)
+		ConfigManager configManager, Notifier notifier, Gson gson, boolean disableTelemetry, Path ledgerDir, Supplier<String> selection,
+		BooleanSupplier proxied)
 	{
 		this.client = client;
 		this.clientThread = clientThread;
@@ -120,6 +123,7 @@ public class BanTelemetry
 		this.disableTelemetry = disableTelemetry;
 		this.ledger = new BanLedger(ledgerDir, gson, Clock.systemUTC());
 		this.selection = selection != null ? selection : () -> JagexAuthService.selectedAccount().orElseGet(this::launchSelection);
+		this.proxied = proxied != null ? proxied : BanTelemetry::socksProxyConfigured;
 	}
 
 	public void start()
@@ -324,6 +328,10 @@ public class BanTelemetry
 		}
 		JsonObject payload = report.get();
 		payload.addProperty("sessionId", sessionId.toString());
+		if (proxied.getAsBoolean())
+		{
+			payload.addProperty("proxied", true);
+		}
 		microbotApi.submitBanReport(payload).thenAccept(sent ->
 		{
 			if (sent)
@@ -373,6 +381,12 @@ public class BanTelemetry
 		}
 		JsonObject payload = new JsonObject();
 		payload.addProperty("sessionId", sessionId.toString());
+		String accountKey = lastLoggedInKey;
+		if (accountKey != null && proxied.getAsBoolean())
+		{
+			payload.addProperty("proxied", true);
+			payload.addProperty("accountKey", accountKey);
+		}
 		JsonArray plugins = new JsonArray();
 		batch.forEach((plugin, seconds) ->
 		{
@@ -397,6 +411,12 @@ public class BanTelemetry
 		{
 			seconds.forEach((plugin, value) -> pendingRuntime.merge(plugin, value, (a, b) -> Math.min(a + b, MAX_PENDING_SECONDS)));
 		}
+	}
+
+	static boolean socksProxyConfigured()
+	{
+		String host = System.getProperty("socksProxyHost");
+		return host != null && !host.isBlank();
 	}
 
 	private String currentAccountKey()

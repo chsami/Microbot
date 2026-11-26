@@ -77,16 +77,21 @@ Game State:
 Inventory:
   inventory                              List inventory items
   inventory interact <name> <action>     Use/eat/equip an item
+  inventory use <item> <target> [--object|--npc]
+                                         Use an item on another item (default),
+                                         the nearest object, or the nearest NPC
   inventory drop <name> [--all]          Drop item(s)
 
 NPCs:
   npcs [--name Guard] [--name-contains Guar] [--id 3265] [--distance 20] [--limit N]
   npcs interact <name> <action>          Interact with nearest NPC
   npcs interact --id <id> <action>       Interact with nearest NPC with that id
+  npcs interact --index <index> <action>  Interact with one specific NPC instance (index from `npcs`)
 
 Objects:
   objects [--name "Oak tree"] [--name-contains Oak] [--id 1278] [--distance 20] [--limit N]
   objects interact <name> <action>       Interact with nearest object
+  objects interact --id <id> <action>    Interact with nearest object with that id
 
 Ground Items:
   ground-items [--name Bones] [--name-contains Bone] [--id 526] [--distance 20] [--limit N]
@@ -463,6 +468,15 @@ case "$1" in
                 escaped_action=$(json_escape "$4")
                 do_post "${BASE}/inventory/interact" "{\"name\":\"${escaped_name}\",\"action\":\"${escaped_action}\"}"
                 ;;
+            use)
+                [[ $# -lt 4 ]] && { echo '{"error":"Usage: microbot-cli inventory use <item> <target> [--object|--npc]"}'; exit 1; }
+                escaped_item=$(json_escape "$3")
+                escaped_target=$(json_escape "$4")
+                target_type="item"
+                [[ "${5:-}" == "--object" ]] && target_type="object"
+                [[ "${5:-}" == "--npc" ]] && target_type="npc"
+                do_post "${BASE}/inventory/use" "{\"item\":\"${escaped_item}\",\"target\":\"${escaped_target}\",\"targetType\":\"${target_type}\"}"
+                ;;
             drop)
                 [[ $# -lt 3 ]] && { echo '{"error":"Usage: microbot-cli inventory drop <name> [--all]"}'; exit 1; }
                 escaped_name=$(json_escape "$3")
@@ -484,7 +498,12 @@ case "$1" in
         }
         case "$2" in
             interact)
-                [[ $# -lt 4 ]] && { echo '{"error":"Usage: microbot-cli npcs interact <name> <action> | --id <id> <action>"}'; exit 1; }
+                [[ $# -lt 4 ]] && { echo '{"error":"Usage: microbot-cli npcs interact <name> <action> | --id <id> <action> | --index <index> <action>"}'; exit 1; }
+                if [[ "$3" == "--index" ]]; then
+                    [[ $# -lt 5 || ! "$4" =~ ^[0-9]+$ ]] && { echo '{"error":"Usage: microbot-cli npcs interact --index <index> <action>"}'; exit 1; }
+                    do_post "${BASE}/npcs/interact" "{\"index\":$4,\"action\":\"$(json_escape "$5")\"}"
+                    exit 0
+                fi
                 if [[ "$3" == "--id" ]]; then
                     [[ $# -lt 5 || ! "$4" =~ ^[0-9]+$ ]] && { echo '{"error":"Usage: microbot-cli npcs interact --id <id> <action>"}'; exit 1; }
                     do_post "${BASE}/npcs/interact" "{\"id\":$4,\"action\":\"$(json_escape "$5")\"}"
@@ -508,10 +527,16 @@ case "$1" in
         }
         case "$2" in
             interact)
-                [[ $# -lt 4 ]] && { echo '{"error":"Usage: microbot-cli objects interact <name> <action>"}'; exit 1; }
-                escaped_name=$(json_escape "$3")
-                escaped_action=$(json_escape "$4")
-                do_post "${BASE}/objects/interact" "{\"name\":\"${escaped_name}\",\"action\":\"${escaped_action}\"}"
+                [[ $# -lt 4 ]] && { echo '{"error":"Usage: microbot-cli objects interact <name> <action> | --id <id> <action>"}'; exit 1; }
+                if [[ "$3" == "--id" ]]; then
+                    [[ $# -lt 5 ]] && { echo '{"error":"Usage: microbot-cli objects interact --id <id> <action>"}'; exit 1; }
+                    escaped_action=$(json_escape "$5")
+                    do_post "${BASE}/objects/interact" "{\"id\":$4,\"action\":\"${escaped_action}\"}"
+                else
+                    escaped_name=$(json_escape "$3")
+                    escaped_action=$(json_escape "$4")
+                    do_post "${BASE}/objects/interact" "{\"name\":\"${escaped_name}\",\"action\":\"${escaped_action}\"}"
+                fi
                 ;;
             *) usage ;;
         esac
