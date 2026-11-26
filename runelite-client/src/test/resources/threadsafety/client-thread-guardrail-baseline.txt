@@ -48,7 +48,6 @@ net.runelite.client.plugins.microbot.api.tileobject.models.Rs2TileObjectModel#cl
 net.runelite.client.plugins.microbot.api.tileobject.models.Rs2TileObjectModel#click(String): boolean  ->  net.runelite.api.ObjectComposition#getActions(): String[]
 net.runelite.client.plugins.microbot.api.tileobject.models.Rs2TileObjectModel#click(String): boolean  ->  net.runelite.api.ObjectComposition#getName(): String
 net.runelite.client.plugins.microbot.api.tileobject.models.Rs2TileObjectModel#click(String): boolean  ->  net.runelite.api.WorldView#getId(): int
-net.runelite.client.plugins.microbot.api.tileobject.models.Rs2TileObjectModel#getId(): int  ->  net.runelite.api.TileObject#getId(): int
 net.runelite.client.plugins.microbot.api.tileobject.models.Rs2TileObjectModel#getWorldLocation(): WorldPoint  ->  net.runelite.api.GameObject#getSceneMinLocation(): Point
 net.runelite.client.plugins.microbot.api.tileobject.models.Rs2TileObjectModel#getWorldLocation(): WorldPoint  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
 net.runelite.client.plugins.microbot.api.tileobject.models.Rs2TileObjectModel#getWorldLocation(): WorldPoint  ->  net.runelite.api.WorldView#getPlane(): int
