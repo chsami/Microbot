@@ -144,6 +144,9 @@ Widgets are the game's UI elements (interfaces, buttons, toggles, text). Use the
 
 # Interact with the nearest NPC with that id
 ./microbot-cli npcs interact --id 3010 "Attack"
+
+# Interact with one specific NPC instance (index from `npcs`), e.g. when several share an id
+./microbot-cli npcs interact --index 23258 "Attack"
 ```
 
 ### Objects

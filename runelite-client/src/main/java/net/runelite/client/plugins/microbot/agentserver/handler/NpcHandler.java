@@ -105,9 +105,23 @@ public class NpcHandler extends AgentHandler {
 
 		String name = getStringField(body, "name");
 		Integer idNum = getIntField(body, "id");
+		Integer indexNum = getIntField(body, "index");
 
 		Rs2NpcModel npc = null;
-		if (name != null && !name.isEmpty()) {
+		if (indexNum != null) {
+			// The index identifies one NPC instance; name/id pick the nearest of possibly many identical NPCs.
+			// Indices are per world view, and the cache spans all loaded views, so refuse an ambiguous match
+			// rather than clicking whichever view happens to be enumerated first.
+			final int index = indexNum;
+			List<Rs2NpcModel> matches = Microbot.getRs2NpcCache().query()
+					.where(n -> n.getIndex() == index)
+					.toListOnClientThread();
+			if (matches.size() > 1) {
+				sendJson(exchange, 409, errorResponse("NPC index " + index + " matches NPCs in several world views; use name or id"));
+				return;
+			}
+			npc = matches.isEmpty() ? null : matches.get(0);
+		} else if (name != null && !name.isEmpty()) {
 			npc = Microbot.getRs2NpcCache().query()
 					.withName(name)
 					.nearestOnClientThread();
@@ -116,7 +130,7 @@ public class NpcHandler extends AgentHandler {
 					.withId(idNum.intValue())
 					.nearestOnClientThread();
 		} else {
-			sendJson(exchange, 400, errorResponse("Provide either name or id"));
+			sendJson(exchange, 400, errorResponse("Provide name, id or index"));
 			return;
 		}
 

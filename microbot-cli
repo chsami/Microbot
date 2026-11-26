@@ -83,6 +83,7 @@ NPCs:
   npcs [--name Guard] [--name-contains Guar] [--id 3265] [--distance 20] [--limit N]
   npcs interact <name> <action>          Interact with nearest NPC
   npcs interact --id <id> <action>       Interact with nearest NPC with that id
+  npcs interact --index <index> <action>  Interact with one specific NPC instance (index from `npcs`)
 
 Objects:
   objects [--name "Oak tree"] [--name-contains Oak] [--id 1278] [--distance 20] [--limit N]
@@ -484,7 +485,12 @@ case "$1" in
         }
         case "$2" in
             interact)
-                [[ $# -lt 4 ]] && { echo '{"error":"Usage: microbot-cli npcs interact <name> <action> | --id <id> <action>"}'; exit 1; }
+                [[ $# -lt 4 ]] && { echo '{"error":"Usage: microbot-cli npcs interact <name> <action> | --id <id> <action> | --index <index> <action>"}'; exit 1; }
+                if [[ "$3" == "--index" ]]; then
+                    [[ $# -lt 5 || ! "$4" =~ ^[0-9]+$ ]] && { echo '{"error":"Usage: microbot-cli npcs interact --index <index> <action>"}'; exit 1; }
+                    do_post "${BASE}/npcs/interact" "{\"index\":$4,\"action\":\"$(json_escape "$5")\"}"
+                    exit 0
+                fi
                 if [[ "$3" == "--id" ]]; then
                     [[ $# -lt 5 || ! "$4" =~ ^[0-9]+$ ]] && { echo '{"error":"Usage: microbot-cli npcs interact --id <id> <action>"}'; exit 1; }
                     do_post "${BASE}/npcs/interact" "{\"id\":$4,\"action\":\"$(json_escape "$5")\"}"
