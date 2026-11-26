@@ -2674,6 +2674,8 @@ public class Rs2Bank {
         return Rs2Bank.openBank();
     }
 
+    private static final String[] BANK_PIN_DIGIT_INSTRUCTIONS = {"FIRST digit", "SECOND digit", "THIRD digit", "FOURTH digit"};
+
     /**
      * Handle bank pin boolean.
      *
@@ -2684,32 +2686,46 @@ public class Rs2Bank {
     public static boolean handleBankPin(String pin) {
         if (!isBankPinWidgetVisible()) return true;
 
-        final String[] DIGIT_INSTRUCTIONS = {"FIRST digit", "SECOND digit", "THIRD digit", "FOURTH digit"};
-        if (pin == null || pin.length() != DIGIT_INSTRUCTIONS.length || !pin.matches("\\d+")) {
+        if (pin == null || pin.length() != BANK_PIN_DIGIT_INSTRUCTIONS.length || !pin.matches("\\d+")) {
             Microbot.log("Unable to enter bankpin: configured pin is not a 4-digit number");
             return false;
         }
 
         synchronized(Rs2Bank.class) {
-            if (!isBankPinWidgetVisible()) return true;
-            for (int i = 0; i < pin.length(); i++) {
-                final char c = pin.charAt(i);
-                final String expectedInstruction = DIGIT_INSTRUCTIONS[i];
+            for (int attempt = 0; attempt < BANK_PIN_DIGIT_INSTRUCTIONS.length * 3; attempt++) {
+                if (!isBankPinWidgetVisible()) return true;
 
-                boolean instructionVisible = sleepUntil(() -> Rs2Widget.hasWidgetText(expectedInstruction, 213, 10, false), 2000);
-                if (!instructionVisible) {
-                    Microbot.log("Failed to detect instruction within timeout period: " + expectedInstruction);
+                boolean instructionVisible = sleepUntil(() -> !isBankPinWidgetVisible() || currentBankPinDigitIndex() >= 0, 2000);
+                if (!isBankPinWidgetVisible()) return true;
+                final int index = currentBankPinDigitIndex();
+                if (!instructionVisible || index < 0) {
+                    Microbot.log("Bank PIN keypad did not respond in time. If it stays stuck, enter your PIN by hand.");
                     return false;
                 }
 
+                final String digit = String.valueOf(pin.charAt(index));
+                boolean pressed;
                 if (isBankPluginEnabled() && hasKeyboardBankPinEnabled()) {
-                    Rs2Keyboard.typeString(String.valueOf(c));
+                    Rs2Keyboard.typeString(digit);
+                    pressed = true;
                 } else {
-                    Rs2Widget.clickWidget(String.valueOf(c), Optional.of(213), 0, true);
+                    pressed = Rs2Widget.clickWidget(digit, Optional.of(213), 0, true);
                 }
+
+                boolean advanced = sleepUntil(() -> !isBankPinWidgetVisible() || currentBankPinDigitIndex() != index, pressed ? 2000 : 600);
+                if (advanced && index == BANK_PIN_DIGIT_INSTRUCTIONS.length - 1) return true;
             }
-            return true;
+            if (!isBankPinWidgetVisible()) return true;
+            Microbot.log("Microbot could not finish entering your bank PIN and will try again. If this keeps happening, stop the script, enter the PIN by hand, and check the Bank PIN field in the Profiles tab.");
+            return false;
         }
+    }
+
+    private static int currentBankPinDigitIndex() {
+        for (int i = 0; i < BANK_PIN_DIGIT_INSTRUCTIONS.length; i++) {
+            if (Rs2Widget.hasWidgetText(BANK_PIN_DIGIT_INSTRUCTIONS[i], 213, 10, false)) return i;
+        }
+        return -1;
     }
 
     public static boolean handleBankPin() {
