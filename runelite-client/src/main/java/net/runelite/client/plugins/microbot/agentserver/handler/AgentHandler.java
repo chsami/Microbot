@@ -20,6 +20,13 @@ import java.util.function.Supplier;
 public abstract class AgentHandler implements HttpHandler {
 
 	private static final int MAX_BODY_SIZE = 16 * 1024;
+
+	/**
+	 * Serializes agent requests that depend on, or would be changed by, the client's item/spell selection
+	 * (inventory use/interact/drop, NPC and object interactions). Workers run concurrently, and a click sent
+	 * while another request holds an item selected becomes "use item on target".
+	 */
+	protected static final Object SELECTION_LOCK = new Object();
 	private static final String AUTH_HEADER = "X-Agent-Token";
 
 	private static volatile Supplier<String> tokenSupplier = () -> null;

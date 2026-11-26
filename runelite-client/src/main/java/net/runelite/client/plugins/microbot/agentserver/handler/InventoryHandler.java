@@ -2,6 +2,10 @@ package net.runelite.client.plugins.microbot.agentserver.handler;
 
 import com.google.gson.Gson;
 import com.sun.net.httpserver.HttpExchange;
+import net.runelite.api.Client;
+import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.api.npc.models.Rs2NpcModel;
+import net.runelite.client.plugins.microbot.api.tileobject.models.Rs2TileObjectModel;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 
@@ -34,6 +38,9 @@ public class InventoryHandler extends AgentHandler {
 				break;
 			case "/drop":
 				handleDrop(exchange);
+				break;
+			case "/use":
+				handleUse(exchange);
 				break;
 			default:
 				sendJson(exchange, 404, errorResponse("Unknown path: /inventory" + sub));
@@ -90,14 +97,18 @@ public class InventoryHandler extends AgentHandler {
 		String name = getStringField(body, "name");
 		Integer idNum = getIntField(body, "id");
 
-		boolean success;
-		if (name != null && !name.isEmpty()) {
-			success = Rs2Inventory.interact(name, action);
-		} else if (idNum != null) {
-			success = Rs2Inventory.interact(idNum.intValue(), action);
-		} else {
+		if ((name == null || name.isEmpty()) && idNum == null) {
 			sendJson(exchange, 400, errorResponse("Provide either name or id"));
 			return;
+		}
+
+		boolean success;
+		synchronized (SELECTION_LOCK) {
+			if (name != null && !name.isEmpty()) {
+				success = Rs2Inventory.interact(name, action);
+			} else {
+				success = Rs2Inventory.interact(idNum.intValue(), action);
+			}
 		}
 
 		Map<String, Object> response = new LinkedHashMap<>();
@@ -106,6 +117,105 @@ public class InventoryHandler extends AgentHandler {
 		if (name != null) response.put("name", name);
 		if (idNum != null) response.put("id", idNum.intValue());
 		sendJson(exchange, 200, response);
+	}
+
+	/**
+	 * Use an inventory item on another inventory item, the nearest object, or the nearest NPC (by name).
+	 * Body: {"item": "...", "target": "...", "targetType": "item" | "object" | "npc"} (targetType defaults to item).
+	 */
+	private void handleUse(HttpExchange exchange) throws IOException {
+		try {
+			requirePost(exchange);
+		} catch (HttpMethodException e) {
+			sendJson(exchange, 405, errorResponse(e.getMessage()));
+			return;
+		}
+
+		Map<String, Object> body;
+		try {
+			body = readJsonBody(exchange);
+		} catch (Exception e) {
+			sendJson(exchange, 400, errorResponse("Invalid JSON body"));
+			return;
+		}
+
+		String item = getStringField(body, "item");
+		String target = getStringField(body, "target");
+		String targetType = getStringField(body, "targetType");
+		if (item == null || item.isEmpty() || target == null || target.isEmpty()) {
+			sendJson(exchange, 400, errorResponse("Missing required fields: item, target"));
+			return;
+		}
+		if (targetType == null || targetType.isEmpty()) {
+			targetType = "item";
+		}
+
+		boolean success;
+		Map<String, Object> response = new LinkedHashMap<>();
+		// Serialize selection-dependent requests (use, interact, drop): the server has several workers, and another request could
+		// otherwise select or clear an item between this request's select and its target click.
+		synchronized (SELECTION_LOCK) {
+			// A selection left over from an earlier use, or a selected spell, would turn the first click into
+			// "use/cast <old> on <item>". Cancel any widget targeting on the client thread before starting.
+			if (!clearWidgetSelection()) {
+				sendJson(exchange, 409, errorResponse("Could not clear the current item/spell selection"));
+				return;
+			}
+
+			switch (targetType) {
+				case "item":
+					success = Rs2Inventory.combine(item, target);
+					break;
+				case "object": {
+					Rs2TileObjectModel object = Microbot.getRs2TileObjectCache().query().withName(target).nearestOnClientThread();
+					if (object == null) {
+						sendJson(exchange, 404, errorResponse("Object not found: " + target));
+						return;
+					}
+					int objectId = Microbot.getClientThread().runOnClientThreadOptional(object::getId).orElse(-1);
+					success = Rs2Inventory.useUnNotedItemOnObject(item, object);
+					response.put("objectId", objectId);
+					break;
+				}
+				case "npc": {
+					Rs2NpcModel npc = Microbot.getRs2NpcCache().query().withName(target).nearestOnClientThread();
+					Rs2ItemModel inventoryItem = Rs2Inventory.get(item);
+					if (npc == null || inventoryItem == null) {
+						sendJson(exchange, 404, errorResponse(npc == null ? "NPC not found: " + target : "Item not in inventory: " + item));
+						return;
+					}
+					// Pass the resolved NPC instance so a target in a child world view is not re-resolved by id.
+					success = Rs2Inventory.useItemOnNpc(inventoryItem.getId(), npc.getNpc());
+					break;
+				}
+				default:
+					sendJson(exchange, 400, errorResponse("targetType must be item, object or npc"));
+					return;
+			}
+
+			// A helper that selected the source item and then failed leaves it selected, which would turn the
+			// next interact/drop into "use <item> on ...". Clear it before releasing the lock.
+			if (!success) {
+				clearWidgetSelection();
+			}
+		}
+
+		response.put("success", success);
+		response.put("item", item);
+		response.put("target", target);
+		response.put("targetType", targetType);
+		sendJson(exchange, 200, response);
+	}
+
+	/** Cancels any item or spell targeting on the client thread; true when nothing is selected afterwards. */
+	private static boolean clearWidgetSelection() {
+		return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+			Client client = Microbot.getClient();
+			if (client.isWidgetSelected()) {
+				client.setWidgetSelected(false);
+			}
+			return !client.isWidgetSelected();
+		}).orElse(false);
 	}
 
 	private void handleDrop(HttpExchange exchange) throws IOException {
@@ -132,10 +242,12 @@ public class InventoryHandler extends AgentHandler {
 
 		Boolean all = getBooleanField(body, "all");
 		boolean success;
-		if (Boolean.TRUE.equals(all)) {
-			success = Rs2Inventory.dropAll(name);
-		} else {
-			success = Rs2Inventory.drop(name);
+		synchronized (SELECTION_LOCK) {
+			if (Boolean.TRUE.equals(all)) {
+				success = Rs2Inventory.dropAll(name);
+			} else {
+				success = Rs2Inventory.drop(name);
+			}
 		}
 
 		Map<String, Object> response = new LinkedHashMap<>();

@@ -139,7 +139,10 @@ public class NpcHandler extends AgentHandler {
 			response.put("success", false);
 			response.put("reason", "NPC not found");
 		} else {
-			boolean clicked = npc.click(action);
+			boolean clicked;
+			synchronized (SELECTION_LOCK) {
+				clicked = npc.click(action);
+			}
 			response.put("success", clicked);
 			response.put("npc", serializeNpc(npc));
 			response.put("action", action);
