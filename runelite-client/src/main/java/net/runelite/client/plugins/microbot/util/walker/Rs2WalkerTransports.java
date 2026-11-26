@@ -2529,7 +2529,8 @@ final class Rs2WalkerTransports {
 
     private static final Map<String, String> WORN_TELEPORT_ACTION_ALIASES = Map.of(
             "ecto teleport", "ectofuntus",
-            "burgh teleport", "burgh de rott");
+            "burgh teleport", "burgh de rott",
+            "feldip hills", "carnivorous chinchompas");
 
     static String wornTeleportAction(String destination, List<String> equipmentActions) {
         String alias = destination == null ? null : WORN_TELEPORT_ACTION_ALIASES.get(destination);

@@ -61,27 +61,43 @@ public class Rs2WalkerUnitTest {
     }
 
     @Test
-    public void wornHunterCapeWithoutADestinationActionUsesTheGenericTeleportAction() {
-        assertTrue(Rs2WalkerTransports.usesGenericWornTeleport("Hunter cape: Feldip Hills",
-                Arrays.asList("Teleport", null), false, "feldip hills"));
-        assertTrue(Rs2WalkerTransports.usesGenericWornTeleport("Hunter cape: Black chinchompa",
-                Arrays.asList("Teleport"), false, "black chinchompa"));
+    public void wornTeleportItemsWithoutADestinationActionUseTheGenericTeleportAction() {
+        assertTrue(Rs2WalkerTransports.usesGenericWornTeleport("Games necklace: Burthorpe",
+                Arrays.asList("Teleport", null), false, "burthorpe"));
+        assertTrue(Rs2WalkerTransports.usesGenericWornTeleport("Skills necklace: Fishing Guild",
+                Arrays.asList("Teleport"), false, "fishing guild"));
+    }
+
+    @Test
+    public void wornHunterCapeUsesItsRealWornTeleportActions() {
+        List<String> wornActions = Arrays.asList(null, "Boost", "Hunter Guild",
+                "Carnivorous Chinchompas", "Black Chinchompas");
+        String feldip = Rs2WalkerTransports.teleportItemLeafAction("Hunter cape: Feldip Hills");
+        String blackChinchompa = Rs2WalkerTransports.teleportItemLeafAction("Hunter cape: Black chinchompa");
+        assertFalse(Rs2WalkerTransports.usesGenericWornTeleport("Hunter cape: Feldip Hills",
+                wornActions, false, feldip));
+        assertFalse(Rs2WalkerTransports.usesGenericWornTeleport("Hunter cape: Black chinchompa",
+                wornActions, false, blackChinchompa));
+        assertNull(Rs2WalkerTransports.wornTeleportCategoryAction("Hunter cape: Feldip Hills",
+                wornActions, false, feldip));
+        assertEquals("carnivorous chinchompas", Rs2WalkerTransports.wornTeleportAction(feldip, wornActions));
+        assertEquals("black chinchompa", Rs2WalkerTransports.wornTeleportAction(blackChinchompa, wornActions));
     }
 
     @Test
     public void wornTeleportItemsWithADestinationActionKeepTheDirectAction() {
-        assertFalse(Rs2WalkerTransports.usesGenericWornTeleport("Hunter cape: Feldip Hills",
-                Arrays.asList("Teleport", "Feldip Hills"), false, "feldip hills"));
-        assertFalse(Rs2WalkerTransports.usesGenericWornTeleport("Hunter cape: Feldip Hills",
-                Arrays.asList("Teleport"), true, "feldip hills"));
+        assertFalse(Rs2WalkerTransports.usesGenericWornTeleport("Games necklace: Burthorpe",
+                Arrays.asList("Teleport", "Burthorpe"), false, "burthorpe"));
+        assertFalse(Rs2WalkerTransports.usesGenericWornTeleport("Games necklace: Burthorpe",
+                Arrays.asList("Teleport"), true, "burthorpe"));
         assertFalse(Rs2WalkerTransports.usesGenericWornTeleport("Amulet of glory: Edgeville",
                 Arrays.asList("Edgeville", "Karamja"), false, "edgeville"));
-        assertFalse(Rs2WalkerTransports.usesGenericWornTeleport("Hunter cape: Feldip Hills",
-                Arrays.asList("Check"), false, "feldip hills"));
+        assertFalse(Rs2WalkerTransports.usesGenericWornTeleport("Games necklace: Burthorpe",
+                Arrays.asList("Check"), false, "burthorpe"));
         assertFalse(Rs2WalkerTransports.usesGenericWornTeleport("Fishing cape: Fishing Guild",
                 Arrays.asList("Teleport"), false, "fishing guild"));
-        assertFalse(Rs2WalkerTransports.usesGenericWornTeleport("Hunter cape: Feldip Hills",
-                null, false, "feldip hills"));
+        assertFalse(Rs2WalkerTransports.usesGenericWornTeleport("Games necklace: Burthorpe",
+                null, false, "burthorpe"));
     }
 
     @Test
