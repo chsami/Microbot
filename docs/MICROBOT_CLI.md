@@ -160,6 +160,9 @@ Game objects include trees, rocks, doors, bank booths, furnaces, and all other w
 
 # Interact with the nearest matching object
 ./microbot-cli objects interact "Oak tree" "Chop down"
+
+# Interact with the nearest object with a specific id (when several share a name)
+./microbot-cli objects interact --id 141 "Open"
 ./microbot-cli objects interact "Bank booth" "Bank"
 ```
 
