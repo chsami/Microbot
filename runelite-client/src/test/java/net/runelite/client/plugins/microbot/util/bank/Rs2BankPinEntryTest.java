@@ -18,8 +18,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 
 public class Rs2BankPinEntryTest {
 
@@ -92,6 +94,16 @@ public class Rs2BankPinEntryTest {
         assertTrue(Rs2Bank.handleBankPin("5678"));
         assertEquals("5678", entered.toString());
         assertEquals(5, clicks.size());
+    }
+
+    @Test
+    public void logsOnceWhenGivingUpAfterRepeatedMisses() {
+        missesLeft = Integer.MAX_VALUE;
+
+        assertFalse(Rs2Bank.handleBankPin("1234"));
+        assertEquals(INSTRUCTIONS.length * 3, clicks.size());
+        assertEquals("", entered.toString());
+        microbot.verify(() -> Microbot.log(contains("Could not finish entering your bank PIN")), times(1));
     }
 
     @Test

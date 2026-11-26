@@ -2699,7 +2699,7 @@ public class Rs2Bank {
                 if (!isBankPinWidgetVisible()) return true;
                 final int index = currentBankPinDigitIndex();
                 if (!instructionVisible || index < 0) {
-                    Microbot.log("Failed to detect bank pin digit instruction within timeout period");
+                    Microbot.log("Bank PIN keypad did not respond in time. If it stays stuck, enter your PIN by hand.");
                     return false;
                 }
 
@@ -2715,7 +2715,9 @@ public class Rs2Bank {
                 boolean advanced = sleepUntil(() -> !isBankPinWidgetVisible() || currentBankPinDigitIndex() != index, pressed ? 2000 : 600);
                 if (advanced && index == BANK_PIN_DIGIT_INSTRUCTIONS.length - 1) return true;
             }
-            return !isBankPinWidgetVisible();
+            if (!isBankPinWidgetVisible()) return true;
+            Microbot.log("Could not finish entering your bank PIN after several tries. Enter the PIN by hand, then check the PIN saved in your Microbot settings.");
+            return false;
         }
     }
 
