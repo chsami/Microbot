@@ -125,7 +125,10 @@ public class ObjectHandler extends AgentHandler {
 			response.put("success", false);
 			response.put("reason", "Object not found");
 		} else {
-			boolean clicked = obj.click(action);
+			boolean clicked;
+			synchronized (SELECTION_LOCK) {
+				clicked = obj.click(action);
+			}
 			response.put("success", clicked);
 			response.put("object", serializeObject(obj));
 			response.put("action", action);

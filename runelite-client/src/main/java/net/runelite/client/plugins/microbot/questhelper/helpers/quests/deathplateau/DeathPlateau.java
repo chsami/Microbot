@@ -33,6 +33,7 @@ import net.runelite.client.plugins.microbot.questhelper.requirements.conditional
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemOnTileRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.npc.DialogRequirement;
+import net.runelite.client.plugins.microbot.questhelper.requirements.runelite.RuneliteRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicType;
 import net.runelite.client.plugins.microbot.questhelper.requirements.zone.Zone;
 import net.runelite.client.plugins.microbot.questhelper.requirements.zone.ZoneRequirement;
@@ -188,14 +189,19 @@ public class DeathPlateau extends BasicQuestHelper
 		inBarDownstairs = new ZoneRequirement(barDownstairs);
 		inBarUpstairs = new ZoneRequirement(barUpstairs);
 		inHaroldsRoom = new ZoneRequirement(haroldsRoom1, haroldsRoom2);
-		givenHaroldBlurberry = new ChatMessageRequirement("You give Harold a Blurberry Special.");
+		givenHaroldBlurberry = new RuneliteRequirement(getConfigManager(), "deathplateaugivenharoldblurberry",
+			new Conditions(true, LogicType.OR,
+				new ChatMessageRequirement("You give Harold a Blurberry Special."),
+				new DialogRequirement("Harold", "I fink I've had enough!", false)
+			));
 		isRedStoneDone = new ItemOnTileRequirement(redStone, new WorldPoint(2894, 3563, 0));
 		isBlueStoneDone = new ItemOnTileRequirement(blueStone, new WorldPoint(2894, 3562, 0));
 		isYellowStoneDone = new ItemOnTileRequirement(yellowStone, new WorldPoint(2895, 3562, 0));
 		isPinkStoneDone = new ItemOnTileRequirement(pinkStone, new WorldPoint(2895, 3563, 0));
 		isGreenStoneDone = new ItemOnTileRequirement(greenStone, new WorldPoint(2895, 3564, 0));
 		inSabaCave = new ZoneRequirement(sabaCave);
-		isFarEnough = new ChatMessageRequirement("You should go and speak to Denulth.");
+		isFarEnough = new RuneliteRequirement(getConfigManager(), "deathplateaufarenough",
+			new ChatMessageRequirement("You should go and speak to Denulth."));
 		talkedToSaba = new Conditions(true, LogicType.OR,
 			new DialogRequirement("Before the trolls came there used to be a nettlesome"),
 			new DialogRequirement("Have you got rid of those pesky trolls yet?")

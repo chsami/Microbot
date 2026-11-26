@@ -27,7 +27,7 @@ public class RomeoAndJuliet extends BaseQuest {
                 Rs2Dialogue.keyPressForDialogueOption("Yes.");
                 return false;
             }
-            if (questStep.getText().contains("Bring the cadava berries to the Apothecary in south east Varrock.")) {
+            if (questStep.getText().stream().anyMatch(t -> t.contains("Bring the cadava berries to the Apothecary"))) {
                 boolean hasCadavaBerries = fetchCadavaBerries();
                 if (!hasCadavaBerries) {
                     return false;

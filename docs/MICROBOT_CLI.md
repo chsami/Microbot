@@ -121,6 +121,11 @@ Widgets are the game's UI elements (interfaces, buttons, toggles, text). Use the
 ./microbot-cli inventory interact "Lobster" "Eat"
 ./microbot-cli inventory interact "Bronze sword" "Wield"
 
+# Use an item on another item, the nearest object, or the nearest NPC
+./microbot-cli inventory use "Tinderbox" "Logs"
+./microbot-cli inventory use "Raw beef" "Fire" --object
+./microbot-cli inventory use "Bones" "Dog" --npc
+
 # Drop a single item
 ./microbot-cli inventory drop "Logs"
 
@@ -144,6 +149,9 @@ Widgets are the game's UI elements (interfaces, buttons, toggles, text). Use the
 
 # Interact with the nearest NPC with that id
 ./microbot-cli npcs interact --id 3010 "Attack"
+
+# Interact with one specific NPC instance (index from `npcs`), e.g. when several share an id
+./microbot-cli npcs interact --index 23258 "Attack"
 ```
 
 ### Objects
@@ -157,6 +165,9 @@ Game objects include trees, rocks, doors, bank booths, furnaces, and all other w
 
 # Interact with the nearest matching object
 ./microbot-cli objects interact "Oak tree" "Chop down"
+
+# Interact with the nearest object with a specific id (when several share a name)
+./microbot-cli objects interact --id 141 "Open"
 ./microbot-cli objects interact "Bank booth" "Bank"
 ```
 

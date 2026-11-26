@@ -661,6 +661,10 @@ public class Microbot {
             };
             if (SwingUtilities.isEventDispatchThread()) {
                 messageRunnable.run();
+            } else if (client != null && client.isClientThread()) {
+                // Never block the client thread on a modal dialog: the game freezes until someone clicks OK
+                // (e.g. AntibanPlugin.onGameTick warning about BreakHandler while the user is away).
+                SwingUtilities.invokeLater(messageRunnable);
             } else {
                 SwingUtilities.invokeAndWait(messageRunnable);
             }

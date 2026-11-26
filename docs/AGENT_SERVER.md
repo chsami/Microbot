@@ -299,6 +299,17 @@ Body: `{"name": "Lobster", "action": "Eat"}` or `{"id": 379, "action": "Eat"}`
 ./microbot-cli inventory interact "Lobster" "Eat"
 ```
 
+#### POST /inventory/use
+
+Uses an inventory item on another inventory item (default), the nearest object, or the nearest NPC, matched by name. Covers steps such as lighting logs or cooking on a fire.
+
+Body: `{"item": "Tinderbox", "target": "Logs"}`, `{"item": "Raw beef", "target": "Fire", "targetType": "object"}` or `{"item": "Bones", "target": "Dog", "targetType": "npc"}`. `targetType` is `item` (default), `object` or `npc`; a missing object or NPC returns 404.
+
+```bash
+./microbot-cli inventory use "Tinderbox" "Logs"
+./microbot-cli inventory use "Raw beef" "Fire" --object
+```
+
 #### POST /inventory/drop
 
 Body: `{"name": "Logs"}` or `{"name": "Logs", "all": true}`
