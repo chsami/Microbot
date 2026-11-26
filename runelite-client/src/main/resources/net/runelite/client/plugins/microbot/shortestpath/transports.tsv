@@ -4371,10 +4371,10 @@
 2818 3562 0	2817 3564 0	Climb-over;Stile;3730								6	
 2817 3564 0	2817 3561 0	Climb-over;Stile;3730								6	
 2816 3562 0	2817 3564 0	Climb-over;Stile;3730								6	
-2880 3596 0	2880 3593 0	Climb;Rocks;3722									
-2880 3593 0	2880 3596 0	Climb;Rocks;3723									
-2881 3596 0	2881 3593 0	Climb;Rocks;3722									
-2881 3593 0	2881 3596 0	Climb;Rocks;3723									
+2880 3596 0	2880 3593 0	Climb;Rocks;3722		CLIMBING_BOOTS=1							
+2880 3593 0	2880 3596 0	Climb;Rocks;3723		CLIMBING_BOOTS=1							
+2881 3596 0	2881 3593 0	Climb;Rocks;3722		CLIMBING_BOOTS=1							
+2881 3593 0	2881 3596 0	Climb;Rocks;3723		CLIMBING_BOOTS=1							
 2857 3613 0	2857 3611 0	Climb;Rocks;3748	15 Agility
 2856 3613 0	2856 3611 0	Climb;Rocks;3748	15 Agility
 2858 3627 0	2861 3627 0	Climb;Rocks;3790	15 Agility			Troll Stronghold
