@@ -335,10 +335,14 @@ public class ConfigManager
 
 			profile.setBankPin(bankPin);
 			lock.dirty();
-			if (this.profile.getId() == profile.getId())
+			// Same monitor as switchProfile, so a switch cannot land between the check and the refresh.
+			synchronized (this)
 			{
-				// The copy scripts read; it is otherwise only refreshed by the next sendConfig, up to 5 minutes later.
-				this.profile = profile;
+				if (this.profile.getId() == profile.getId())
+				{
+					// The copy scripts read; it is otherwise only refreshed by the next sendConfig, up to 5 minutes later.
+					this.profile = profile;
+				}
 			}
 		}
 	}
