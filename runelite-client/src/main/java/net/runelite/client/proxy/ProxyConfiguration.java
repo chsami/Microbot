@@ -53,7 +53,7 @@ public class ProxyConfiguration {
         username = user;
 
         if (user != null) {
-            setupAuthenticator(user, pass);
+            setupAuthenticator(host, port, user, pass);
         }
     }
 
@@ -116,15 +116,32 @@ public class ProxyConfiguration {
 
     /**
      * Sets up the default authenticator for proxy authentication.
+     * @param host
+     * @param port
      * @param user
      * @param pass
      */
-    private static void setupAuthenticator(String user, String pass) {
-        Authenticator.setDefault(new Authenticator() {
+    static void setupAuthenticator(String host, int port, String user, String pass) {
+        Authenticator.setDefault(proxyAuthenticator(host, port, user, pass));
+    }
+
+    static Authenticator proxyAuthenticator(String host, int port, String user, String pass) {
+        return new Authenticator() {
             @Override
             protected PasswordAuthentication getPasswordAuthentication() {
+                if (!isProxyRequest(getRequestingProtocol(), getRequestingHost(), getRequestingPort(), host, port)) {
+                    return null;
+                }
                 return new PasswordAuthentication(user, pass != null ? pass.toCharArray() : new char[0]);
             }
-        });
+        };
+    }
+
+    static boolean isProxyRequest(String protocol, String requestingHost, int requestingPort, String proxyHost, int proxyPort) {
+        return protocol != null
+                && protocol.toUpperCase(Locale.ROOT).startsWith("SOCKS")
+                && requestingHost != null
+                && requestingHost.equalsIgnoreCase(proxyHost)
+                && requestingPort == proxyPort;
     }
 }
