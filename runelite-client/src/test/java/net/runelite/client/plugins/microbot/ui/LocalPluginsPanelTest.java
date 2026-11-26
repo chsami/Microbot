@@ -112,6 +112,23 @@ public class LocalPluginsPanelTest {
         assertNull(LocalPluginsPanel.selectedPath(chooser));
     }
 
+    @Test
+    public void invalidJarMessageNamesTheFileAndTheFix() {
+        File file = new File(new File("plugins").getAbsoluteFile(), "my*plugin.jar");
+        assertEquals("Could not use \"my*plugin.jar\": the name contains a character Windows does not allow"
+                        + " (\\ / : * ? \" < > |). Pick the file from the list, or paste its full path without quotes.",
+                LocalPluginsPanel.invalidSelectionMessage("file", file));
+    }
+
+    @Test
+    public void invalidFolderMessageSaysFolder() {
+        File file = new File(new File("plugins").getAbsoluteFile(), "plugins<new>");
+        String message = LocalPluginsPanel.invalidSelectionMessage("folder", file);
+        assertTrue(message.startsWith("Could not use \"plugins<new>\":"));
+        assertTrue(message.contains("Pick the folder from the list"));
+        assertFalse(message.contains(file.getParent()));
+    }
+
     private static final class InvalidFile extends File {
         InvalidFile(String path) {
             super(path);

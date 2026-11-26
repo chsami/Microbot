@@ -193,7 +193,7 @@ public class LocalPluginsPanel extends JPanel {
         if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
             Path source = selectedPath(chooser);
             if (source == null) {
-                reportInvalidSelection(chooser);
+                reportInvalidSelection(chooser, "file");
                 return;
             }
             runOperation("Loading " + source.getFileName() + "...", () -> entry == null
@@ -212,7 +212,7 @@ public class LocalPluginsPanel extends JPanel {
 
         Path selected = selectedPath(chooser);
         if (selected == null) {
-            reportInvalidSelection(chooser);
+            reportInvalidSelection(chooser, "folder");
             return;
         }
         if (selected.toAbsolutePath().normalize().equals(livePluginManager.getPluginDirectory())) {
@@ -258,11 +258,16 @@ public class LocalPluginsPanel extends JPanel {
         }
     }
 
-    private void reportInvalidSelection(JFileChooser chooser) {
+    private void reportInvalidSelection(JFileChooser chooser, String kind) {
         File file = chooser.getSelectedFile();
         if (file != null) {
-            setStatus("That file name is not valid: " + file.getPath());
+            setStatus(invalidSelectionMessage(kind, file));
         }
+    }
+
+    static String invalidSelectionMessage(String kind, File file) {
+        return "Could not use \"" + file.getName() + "\": the name contains a character Windows does not allow"
+                + " (\\ / : * ? \" < > |). Pick the " + kind + " from the list, or paste its full path without quotes.";
     }
 
     static String folderChangeWarning(int plugins, int hubPlugins, Path current) {
