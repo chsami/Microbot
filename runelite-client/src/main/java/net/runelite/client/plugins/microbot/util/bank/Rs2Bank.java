@@ -2716,7 +2716,7 @@ public class Rs2Bank {
                 if (advanced && index == BANK_PIN_DIGIT_INSTRUCTIONS.length - 1) return true;
             }
             if (!isBankPinWidgetVisible()) return true;
-            Microbot.log("Could not finish entering your bank PIN after several tries. Enter the PIN by hand, then check the PIN saved in your Microbot settings.");
+            Microbot.log("Microbot could not finish entering your bank PIN and will try again. If this keeps happening, stop the script, enter the PIN by hand, and check the Bank PIN field in the Profiles tab.");
             return false;
         }
     }

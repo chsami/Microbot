@@ -103,7 +103,7 @@ public class Rs2BankPinEntryTest {
         assertFalse(Rs2Bank.handleBankPin("1234"));
         assertEquals(INSTRUCTIONS.length * 3, clicks.size());
         assertEquals("", entered.toString());
-        microbot.verify(() -> Microbot.log(contains("Could not finish entering your bank PIN")), times(1));
+        microbot.verify(() -> Microbot.log(contains("could not finish entering your bank PIN and will try again")), times(1));
     }
 
     @Test
