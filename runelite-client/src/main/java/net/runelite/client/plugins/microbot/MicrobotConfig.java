@@ -252,9 +252,10 @@ public interface MicrobotConfig extends Config
 	@ConfigItem(
 		keyName = keyBanReports,
 		name = "Ban reports and script runtime",
-		description = "Ask me and Always send share hourly script runtime totals (script names and minutes, no account info) " +
-				"so ban rates per script can be worked out. While you play through a proxy, the totals also carry the " +
-				"account's scrambled ID, so bans can be linked to the proxy IP they happened on. When a botted account shows the \"account disabled\" screen: " +
+		description = "Ask me and Always send share hourly script runtime totals (script names and minutes) " +
+				"so ban rates per script can be worked out. Without a proxy these totals carry no account info. While you play " +
+				"through a SOCKS proxy (the -proxy launch option), they also carry the account's scrambled ID, so bans can be " +
+				"linked to the proxy IP they happened on. When a botted account shows the \"account disabled\" screen: " +
 				"Ask me shows a prompt, Always send sends a report without asking (the ban type is sent as unknown, so locked " +
 				"accounts may be counted), Never send sends neither. Reports don't include your account name, email or location, " +
 				"only a scrambled ID. Ignored while Disable telemetry is on.",
