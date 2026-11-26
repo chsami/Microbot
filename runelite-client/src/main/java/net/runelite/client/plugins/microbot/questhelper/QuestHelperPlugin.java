@@ -82,7 +82,7 @@ import java.util.stream.Collectors;
 	name = "Quest Helper",
 	description = "Helps you with questing",
 	tags = { "quest", "helper", "overlay" },
-	version = "1.0.1"
+	version = "1.0.2"
 )
 @Slf4j
 public class QuestHelperPlugin extends Plugin
