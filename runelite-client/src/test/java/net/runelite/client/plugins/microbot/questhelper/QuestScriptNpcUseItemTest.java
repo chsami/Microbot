@@ -14,6 +14,7 @@ import static org.mockito.Mockito.mock;
 
 public class QuestScriptNpcUseItemTest
 {
+	private static final int DRUID_POUCH = 2958;
 	private static final String GHAST_STEP = "Use the filled druid pouch on a ghast to make it attackable and kill it. You'll need to kill 3.";
 
 	@Test
@@ -47,6 +48,32 @@ public class QuestScriptNpcUseItemTest
 		assertFalse(QuestScript.usesItemOn(Collections.singletonList(GHAST_STEP), "null"));
 		assertFalse(QuestScript.usesItemOn(Collections.singletonList(GHAST_STEP), " "));
 		assertFalse(QuestScript.usesItemOn(null, "Ghast"));
+	}
+
+	@Test
+	public void useIconItemOnNpcInKillStepDoesNotAttack()
+	{
+		assertFalse(QuestScript.attacksNpc(Collections.singletonList(GHAST_STEP), DRUID_POUCH, "Ghast"));
+	}
+
+	@Test
+	public void killStepWithoutIconItemAttacks()
+	{
+		assertTrue(QuestScript.attacksNpc(Collections.singletonList(GHAST_STEP), -1, "Ghast"));
+		assertTrue(QuestScript.attacksNpc(Collections.singletonList("Kill the ghast."), -1, "Ghast"));
+	}
+
+	@Test
+	public void killStepWithIconItemForAnotherTargetAttacks()
+	{
+		assertTrue(QuestScript.attacksNpc(Collections.singletonList("Kill the ghast."), DRUID_POUCH, "Ghast"));
+	}
+
+	@Test
+	public void stepWithoutKillWordDoesNotAttack()
+	{
+		assertFalse(QuestScript.attacksNpc(Collections.singletonList("Talk to Filliman Tarlock."), -1, "Filliman Tarlock"));
+		assertFalse(QuestScript.attacksNpc(null, -1, "Ghast"));
 	}
 
 	@Test

@@ -154,7 +154,9 @@ public class QuestScript extends Script {
     private static final String OPTION_CHOICE_NEEDED_STATUS = "Quest helper: paused, I don't know which dialogue option to pick here. Choose it yourself (see the step text in the Quest Helper panel) and I will continue.";
     private static final String OPTION_RETRY_STATUS_PREFIX = "Quest helper: no matching dialogue option, retrying (";
     private static final String OPTION_CONTINUING_STATUS = "Quest helper: continuing";
-    private static final String MANUAL_STEP_STATUS = "Quest helper: this step is not automated. Do it yourself (see the step text in the Quest Helper panel) and I will continue.";
+    static final String MANUAL_STEP_STATUS = "Quest helper: paused, this step is not automated. Do it yourself (see the step text in the Quest Helper panel) and I will continue.";
+    static final String NPC_WAIT_STATUS = "Quest helper: waiting for the NPC for this step to appear. Move to where it spawns (see the step text in the Quest Helper panel) and I will continue.";
+    private volatile Object manualStep;
     private static final int UNHANDLED_OPTION_CLOSE_WAIT_MS = 1_800;
     private volatile Object unhandledOptionStep;
     private volatile int unhandledOptionDismissals = 0;
@@ -180,6 +182,7 @@ public class QuestScript extends Script {
                     Rs2Player.waitForAnimation();
 
                 QuestStep questStep = getQuestHelperPlugin().getSelectedQuest().getCurrentStep().getActiveStep();
+                clearManualStepStatus(questStep);
 
                 if (Rs2Dialogue.isInDialogue() && dialogueStartedStep == null)
                     dialogueStartedStep = questStep;
@@ -486,6 +489,32 @@ public class QuestScript extends Script {
         }
     }
 
+    boolean holdForPlayer(QuestStep step, String status) {
+        Microbot.status = status;
+        if (step == manualStep) {
+            return false;
+        }
+        manualStep = step;
+        return true;
+    }
+
+    void clearManualStepStatus(QuestStep activeStep) {
+        if (activeStep != null && activeStep == manualStep) {
+            return;
+        }
+        manualStep = null;
+        String status = Microbot.status;
+        if (MANUAL_STEP_STATUS.equals(status) || NPC_WAIT_STATUS.equals(status)) {
+            Microbot.status = OPTION_CONTINUING_STATUS;
+        }
+    }
+
+    static String manualStepNotice(QuestStep step) {
+        List<String> text = step == null ? null : step.getText();
+        String name = text == null || text.isEmpty() ? "the current step" : text.get(0);
+        return "Quest helper: paused, this step is not automated. Do it yourself and it will continue: " + name;
+    }
+
     static WorldPoint stepWorldPoint(QuestStep step) {
         if (!(step instanceof DetailedQuestStep)) {
             return null;
@@ -526,6 +555,7 @@ public class QuestScript extends Script {
         multiNpcTarget.release();
         dialogueRelocation.reset();
         clearRelocationWaitStatus();
+        clearManualStepStatus(null);
         unhandledOptionStep = null;
         resetUnhandledOptionDismissals();
         clearBankUnreachable();
@@ -1987,6 +2017,10 @@ public class QuestScript extends Script {
                     System.currentTimeMillis());
         }
 
+        if (npc != null) {
+            clearManualStepStatus(null);
+        }
+
         // canReach() pathfinds through closed doors (the walker opens them en route), so canReach==true
         // doesn't mean a direct click will succeed. Require line-of-sight too, or we walk instead.
         if (npc != null && npc.getLocalLocation() != null && Rs2Camera.isTileOnScreen(npc.getLocalLocation())
@@ -1997,8 +2031,7 @@ public class QuestScript extends Script {
             Rs2Walker.clearWalkingRoute("quest-helper:npc-step-visible-interact");
 
             // Whole word only: "killer's knife" (Misthalin Mystery) is not a kill step, "killing" is.
-            boolean usesIconItemOnNpc = step.getIconItemID() != -1 && usesItemOn(step.getText(), npc.getName());
-            if (!usesIconItemOnNpc && step.getText().stream().anyMatch(x -> KILL_WORD.matcher(x).find())) {
+            if (attacksNpc(step.getText(), step.getIconItemID(), npc.getName())) {
                 if (!Rs2Combat.inCombat() && !npc.click("Attack")) {
                     npc.click("Fight");
                 }
@@ -2049,12 +2082,24 @@ public class QuestScript extends Script {
         } else if (npc != null && (!npc.hasLineOfSight() || !Rs2Walker.canReach(npc.getWorldLocation()))) {
             Rs2Walker.walkTo(npc.getWorldLocation(), 2);
         } else {
-            if (step.getDefinedPoint().getWorldPoint().distanceTo(Rs2Player.getWorldLocation()) > 3) {
-                Rs2Walker.walkTo(step.getDefinedPoint().getWorldPoint(), 2);
+            WorldPoint stepPoint = stepWorldPoint(step);
+            if (stepPoint == null) {
+                holdForPlayer(step, NPC_WAIT_STATUS);
+                return false;
+            }
+            if (stepPoint.distanceTo(Rs2Player.getWorldLocation()) > 3) {
+                Rs2Walker.walkTo(stepPoint, 2);
                 return false;
             }
         }
         return true;
+    }
+
+    static boolean attacksNpc(List<String> stepText, int iconItemId, String npcName) {
+        if (stepText == null || stepText.stream().noneMatch(x -> x != null && KILL_WORD.matcher(x).find())) {
+            return false;
+        }
+        return iconItemId == -1 || !usesItemOn(stepText, npcName);
     }
 
 
@@ -2396,8 +2441,10 @@ public class QuestScript extends Script {
 			}
 		}
 
-		if (isUnautomatedStep(conditionalStep, definedPoint, usingItems)) {
-			Microbot.status = MANUAL_STEP_STATUS;
+		if (!isUnautomatedStep(conditionalStep, definedPoint, usingItems)) {
+			clearManualStepStatus(null);
+		} else if (holdForPlayer(conditionalStep, MANUAL_STEP_STATUS)) {
+			Microbot.log(manualStepNotice(conditionalStep), Level.WARN);
 		}
 
 		return usingItems;
