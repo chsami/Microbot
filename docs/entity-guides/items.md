@@ -360,6 +360,14 @@ Some walker rows have a middle category (`Max cape: Other Teleports: Hunter Guil
 
 **Where this applies:** `Rs2Inventory.wear` / `wield` and any new helper that equips by a fixed verb.
 
+## 26. Read the bank PIN pad before every digit, and limit how often a PIN is sent
+
+The pad collects three digits on the client and sends only the fourth. It reshuffles its buttons after every digit, writes their text about 100 ms late, leaves the button under the cursor with no text component (live 11-26: its label is absent, not hidden), and stays up showing "Submitting..." until the server answers. `Rs2Bank.handleBankPin` types the digit the pad asks for, presses again when a press missed, finds the button by component rather than by visible text (the unlabelled button when the other nine show every other digit), and reports success once the pad is gone and the game confirmed the PIN. A send counts until the game confirms it (the "correctly entered" message or the bank opening); an account gets at most 3 unconfirmed sends, whichever PIN was saved, 20 s apart, and a relog does not reset the count (`BankPinEntry`).
+
+**Why this matters:** looking a digit up by visible text missed it, and a wrong saved PIN was sent on every bank open, which locks the account's bank.
+
+**Defensive check:** Call `Rs2Bank.handleBankPin()`, never type into the pad directly. Run `Rs2BankPinTest`.
+
 ## Terminal supply stops need observed logout
 
 An owning script can set `withMissingSupplyHandler` on its Inventory Setup loader to keep its scheduled loop alive while `TerminalLogoutPrompt` closes the bank and requests logout. Do not show a blocking shortage notification or cancel that loop until `LOGGED_OUT` is observed. The default loader policy stays unchanged when no handler is supplied; ordinary breaks and world hops do not arm terminal Auto Login suppression.

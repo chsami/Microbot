@@ -498,6 +498,10 @@ public class MicrobotPlugin extends Plugin
 		   Microbot.setLastKnownRegions(null);
 		   Rs2LeaguesTransport.onLogout();
 	   }
+	   if (gameStateChanged.getGameState() == GameState.LOGIN_SCREEN)
+	   {
+		   Rs2Bank.onLoginScreen();
+	   }
 	   // update last known game state to track login/logout transitions
 	   LoginManager.setLastKnownGameState(gameStateChanged.getGameState());
 	}
@@ -647,6 +651,7 @@ public class MicrobotPlugin extends Plugin
 			if (msg != null)
 			{
 				Rs2LeaguesTransport.onLockedRegionGameMessage(msg);
+				Rs2Bank.onGameMessage(msg);
 			}
 		}
 		Microbot.getPouchScript().onChatMessage(event);

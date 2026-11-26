@@ -328,13 +328,18 @@ public class ConfigManager
 		try (ProfileManager.Lock lock = profileManager.lock())
 		{
 			profile = lock.findProfile(profile.getId());
-			if (profile == null || profile.getBankPin() == bankPin)
+			if (profile == null || Objects.equals(profile.getBankPin(), bankPin))
 			{
 				return;
 			}
 
 			profile.setBankPin(bankPin);
 			lock.dirty();
+			if (this.profile.getId() == profile.getId())
+			{
+				// The copy scripts read; it is otherwise only refreshed by the next sendConfig, up to 5 minutes later.
+				this.profile = profile;
+			}
 		}
 	}
 

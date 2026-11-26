@@ -15,6 +15,7 @@ import net.runelite.client.events.ProfileChanged;
 import net.runelite.client.events.RuneScapeProfileChanged;
 import net.runelite.client.events.SessionClose;
 import net.runelite.client.events.SessionOpen;
+import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.security.Encryption;
 import net.runelite.client.plugins.microbot.util.security.JagexCredentials;
 import net.runelite.client.plugins.microbot.util.security.LoginManager;
@@ -64,6 +65,7 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
     private static final Color LOAD_TEXT_COLOR = ClientTheme.classicOr(new Color(30, 30, 30), ColorScheme.DARK_GRAY_COLOR);
     private static final Border VIEW_FIELD_BORDER = new EmptyBorder(3, 0, 3, 0);
     private static final Border EDIT_FIELD_BORDER = new CompoundBorder(new LineBorder(ClientTheme.classicOr(new Color(90, 90, 90), ColorScheme.MEDIUM_GRAY_COLOR), 1), new EmptyBorder(2, 6, 2, 6));
+    private static final Border BAD_FIELD_BORDER = new CompoundBorder(new LineBorder(ColorScheme.PROGRESS_ERROR_COLOR, 1), new EmptyBorder(2, 6, 2, 6));
 
     private static final ImageIcon ADD_ICON = new ImageIcon(ImageUtil.loadImageResource(ScreenMarkerPlugin.class, "add_icon.png"));
     private static final ImageIcon DELETE_ICON = new ImageIcon(ImageUtil.loadImageResource(MicrobotProfilePanel.class, "mdi_delete.png"));
@@ -521,6 +523,7 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
         private final JLabel activeTag;
         private final JPasswordField password;
         private final JPasswordField bankPin;
+        private final JCheckBox removeBankPin;
         private final JTextField discordWebhookUrl;
         private final JButton load;
         private final JButton delete;
@@ -628,7 +631,16 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
                 detailsPanel.add(createLabeledField("Password", password), gbc);
             }
             gbc.gridy++;
-            detailsPanel.add(createLabeledField("Bank PIN", bankPin), gbc);
+            removeBankPin = new JCheckBox("Remove");
+            removeBankPin.setOpaque(false);
+            removeBankPin.setFont(new Font("Roboto", Font.PLAIN, 11));
+            removeBankPin.setForeground(TEXT_COLOR);
+            removeBankPin.setToolTipText("Remove the saved bank PIN from this profile");
+            removeBankPin.setVisible(false);
+            removeBankPin.addActionListener(ev -> bankPin.setEnabled(!removeBankPin.isSelected()));
+            JPanel bankPinRow = createLabeledField("Bank PIN", bankPin);
+            bankPinRow.add(removeBankPin, BorderLayout.EAST);
+            detailsPanel.add(bankPinRow, gbc);
             gbc.gridy++;
             detailsPanel.add(createLabeledField("Webhook", discordWebhookUrl), gbc);
             showValues();
@@ -997,6 +1009,8 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
             password.setEchoChar(ECHO_CHAR);
             bankPin.setText("");
             bankPin.setEchoChar(ECHO_CHAR);
+            removeBankPin.setSelected(false);
+            removeBankPin.setVisible(!Strings.nullToEmpty(profile.getBankPin()).isBlank());
             discordWebhookUrl.setText(Strings.nullToEmpty(profile.getDiscordWebhookUrl()));
             name.requestFocusInWindow();
             name.selectAll();
@@ -1006,7 +1020,16 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
             if (!editing) {
                 return;
             }
+            if (save && !removeBankPin.isSelected() && !canSaveBankPin(enteredBankPin())) {
+                edit.setSelected(true);
+                bankPin.setBorder(BAD_FIELD_BORDER);
+                bankPin.setToolTipText("The bank PIN must be 4 digits");
+                bankPin.requestFocusInWindow();
+                return;
+            }
             editing = false;
+            removeBankPin.setVisible(false);
+            bankPin.setToolTipText(null);
             edit.setSelected(false);
             for (JTextField field : editableFields()) {
                 field.setEditable(false);
@@ -1024,6 +1047,10 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
             }
         }
 
+        private String enteredBankPin() {
+            return new String(bankPin.getPassword()).trim();
+        }
+
         private JTextField[] editableFields() {
             return new JTextField[]{name, password, bankPin, discordWebhookUrl};
         }
@@ -1034,8 +1061,10 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
                 if (!newPassword.isEmpty()) {
                     configManager.setPassword(profile, Encryption.encrypt(newPassword));
                 }
-                String newBankPin = new String(bankPin.getPassword()).trim();
-                if (!newBankPin.isEmpty()) {
+                String newBankPin = enteredBankPin();
+                if (removeBankPin.isSelected()) {
+                    configManager.setBankPin(profile, null);
+                } else if (!newBankPin.isEmpty()) {
                     configManager.setBankPin(profile, Encryption.encrypt(newBankPin));
                 }
             } catch (Exception e) {
@@ -1049,6 +1078,10 @@ public class MicrobotProfilePanel extends MicrobotPluginPanel {
             // Renaming reloads the cards, which also shows the saved values
             renameProfile(profile.getId(), newName.isEmpty() ? profile.getName() : newName);
         }
+    }
+
+    static boolean canSaveBankPin(String entered) {
+        return entered.isEmpty() || Rs2Bank.isValidBankPin(entered);
     }
 
     static boolean isReadableFile(File file) {
