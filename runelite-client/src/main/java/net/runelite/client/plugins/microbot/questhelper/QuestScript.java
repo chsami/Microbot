@@ -19,6 +19,8 @@ import net.runelite.client.plugins.microbot.questhelper.managers.QuestContainerM
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
+import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirements;
+import net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicType;
 import net.runelite.client.plugins.microbot.questhelper.steps.*;
 import net.runelite.client.plugins.microbot.questhelper.steps.widget.WidgetHighlight;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
@@ -44,7 +46,6 @@ import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import net.runelite.client.plugins.microbot.api.npc.models.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.api.tileobject.Rs2TileObjectQueryable;
 import net.runelite.client.plugins.microbot.api.tileobject.models.Rs2TileObjectModel;
-import net.runelite.client.plugins.microbot.api.tileitem.Rs2TileItemQueryable;
 import net.runelite.client.plugins.microbot.api.tileitem.models.Rs2TileItemModel;
 
 import java.awt.*;
@@ -76,6 +77,7 @@ public class QuestScript extends Script {
     public static double version = 0.6;
 
     private static final long MISSING_REQUIREMENT_NOTIFY_INTERVAL_MS = 10_000L;
+    private static final Pattern KILL_WORD = Pattern.compile("\\bkill(?:s|ing|ed)?\\b", Pattern.CASE_INSENSITIVE);
     private static final Map<Integer, Long> lastMissingRequirementNotice = new HashMap<>();
 
     public static List<ItemRequirement> itemRequirements = new ArrayList<>();
@@ -537,8 +539,38 @@ public class QuestScript extends Script {
 			if (requirement instanceof ItemRequirement) {
 				var itemRequirement = (ItemRequirement) requirement;
 
+				// Hidden requirements (e.g. a disguise superseded by an alternative outfit) must not be auto-equipped,
+				// or two mutually exclusive outfits keep swapping and the step never runs.
+				if (!isRequirementShown(itemRequirement)) {
+					continue;
+				}
+
+				if (itemRequirement.mustBeEquipped() && itemRequirement instanceof ItemRequirements
+						&& ((ItemRequirements) itemRequirement).getLogicType() == LogicType.AND) {
+					// An outfit: getAllIds() flattens its pieces, so equip one missing piece at a time, and only when
+					// every piece is at hand, or a valid alternative outfit gets broken up for nothing.
+					List<ItemRequirement> pieces = ((ItemRequirements) itemRequirement).getItemRequirements();
+					boolean allAtHand = pieces.stream().allMatch(piece -> piece.getAllIds().stream()
+							.anyMatch(id -> Rs2Equipment.isWearing(id) || Rs2Inventory.contains(id)));
+					if (!allAtHand) {
+						notifyMissingRequirement(itemRequirement);
+						continue;
+					}
+					ItemRequirement nextPiece = pieces.stream()
+							.filter(piece -> piece.getAllIds().stream().noneMatch(Rs2Equipment::isWearing))
+							.findFirst().orElse(null);
+					if (nextPiece != null) {
+						Rs2Inventory.wear(nextPiece.getAllIds().stream().filter(Rs2Inventory::contains).findFirst().orElse(-1));
+						return true;
+					}
+					continue;
+				}
+
 				if (itemRequirement.mustBeEquipped()) {
-					if (!hasItemRequirementOnPlayer(itemRequirement)) {
+					// hasItemRequirementOnPlayer only checks equipment for must-be-equipped items,
+					// so an unworn copy in the inventory must be checked separately or it is never worn.
+					boolean inInventory = itemRequirement.getAllIds().stream().anyMatch(Rs2Inventory::contains);
+					if (!inInventory && !hasItemRequirementOnPlayer(itemRequirement)) {
 						notifyMissingRequirement(itemRequirement);
 						continue;
 					}
@@ -631,12 +663,55 @@ public class QuestScript extends Script {
 		return null;
 	}
 
+	/** Id of a lootable (not another player's) required drop near the player, checking every accepted id; -1 if none. */
+	private int requiredDropIdNearby(DetailedQuestStep step) {
+		for (Requirement requirement : step.getRequirements()) {
+			if (!(requirement instanceof ItemRequirement) || hasItemRequirementOnPlayer((ItemRequirement) requirement)) {
+				continue;
+			}
+			int id = lootableGroundId((ItemRequirement) requirement, GROUND_PICKUP_RADIUS);
+			if (id != -1) {
+				return id;
+			}
+		}
+		return -1;
+	}
+
+	/**
+	 * First accepted id of the requirement lying lootable within radius of the player; -1 if none.
+	 * Uses the player-relative within() so instance coordinates match, and evaluates the ownership
+	 * filter on the client thread.
+	 */
+	private int lootableGroundId(ItemRequirement itemRequirement, int radius) {
+		boolean ownDropsOnly = ownDropsOnly();
+		for (Integer id : itemRequirement.getAllIds()) {
+			if (id != null && id > 0 && Microbot.getRs2TileItemCache().query()
+					.withId(id)
+					.within(radius)
+					.where(item -> !ownDropsOnly || item.isLootAble())
+					.firstOnClientThread() != null) {
+				return id;
+			}
+		}
+		return -1;
+	}
+
+	/** Ironmen (incl. group) cannot take other players' drops; normal accounts can take public ones. */
+	private static boolean ownDropsOnly() {
+		return Rs2Player.isIronman() || Rs2Player.isGroupIronman();
+	}
+
+	private boolean isRequirementShown(ItemRequirement itemRequirement) {
+		return Microbot.getClientThread().runOnClientThreadOptional(
+				() -> itemRequirement.shouldDisplayText(Microbot.getClient())).orElse(true);
+	}
+
 	private boolean isOnGroundNear(ItemRequirement itemRequirement, WorldPoint point) {
-		int itemId = itemRequirement.getAllIds().stream().findFirst().orElse(itemRequirement.getId());
-		return itemId > 0 && Microbot.getRs2TileItemCache().query()
+		return itemRequirement.getAllIds().stream().anyMatch(itemId -> itemId != null && itemId > 0
+				&& Microbot.getRs2TileItemCache().query()
 				.withId(itemId)
 				.within(point, GROUND_PICKUP_RADIUS)
-				.first() != null;
+				.firstOnClientThread() != null);
 	}
 
 	boolean noteBankUnreachable(long now, long minSpanMs) {
@@ -1797,18 +1872,22 @@ public class QuestScript extends Script {
 
 	private boolean lootRequirementItem(DetailedQuestStep questStep, ItemRequirement itemRequirement) {
 		WorldPoint worldPoint = questStep.getDefinedPoint() != null ? questStep.getDefinedPoint().getWorldPoint() : null;
-		int targetItemId = itemRequirement.getAllIds().stream().findFirst().orElse(itemRequirement.getId());
+		// Pick the id with the same radius the pickup uses, so an alternate id further out is not chosen.
+		int radius = worldPoint != null ? 10 : 20;
+		int groundId = lootableGroundId(itemRequirement, radius);
+		int targetItemId = groundId != -1 ? groundId
+				: itemRequirement.getAllIds().stream().findFirst().orElse(itemRequirement.getId());
 
 		if (worldPoint != null) {
 			if ((Rs2Walker.canReach(worldPoint) && worldPoint.distanceTo(Rs2Player.getWorldLocation()) < 2)
 					|| worldPoint.toWorldArea().hasLineOfSightTo(Microbot.getClient().getTopLevelWorldView(), Rs2Player.getWorldLocation().toWorldArea())
 					&& Rs2Camera.isTileOnScreen(LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), worldPoint))) {
-				lootGroundItem(targetItemId, 10);
+				lootGroundItem(targetItemId, radius);
 			} else {
 				Rs2Walker.walkTo(worldPoint, 2);
 			}
 		} else {
-			lootGroundItem(targetItemId, 20);
+			lootGroundItem(targetItemId, radius);
 		}
 
 		return true;
@@ -1833,10 +1912,12 @@ public class QuestScript extends Script {
 	}
 
 	private boolean lootGroundItem(int itemId, int radius) {
-		Rs2TileItemModel item = new Rs2TileItemQueryable()
+		boolean ownDropsOnly = ownDropsOnly();
+		Rs2TileItemModel item = Microbot.getRs2TileItemCache().query()
 				.withId(itemId)
 				.within(radius)
-				.nearest();
+				.where(groundItem -> !ownDropsOnly || groundItem.isLootAble())
+				.nearestOnClientThread();
 
 		if (item == null) {
 			return false;
@@ -1888,6 +1969,17 @@ public class QuestScript extends Script {
                 .collect(Collectors.toList());
         Rs2NpcModel npc = npcs.stream().findFirst().orElse(null);
 
+        // Loot a required drop (e.g. Witch's Potion rat's tail) before attacking again, even when no target NPC
+        // is visible any more. The general missing-item handler is disabled for ironmen, but picking up your
+        // own drop is always fine.
+        if (step.getText().stream().anyMatch(x -> KILL_WORD.matcher(x).find())) {
+            int dropId = requiredDropIdNearby(step);
+            if (dropId != -1) {
+                lootGroundItem(dropId, GROUND_PICKUP_RADIUS);
+                return true;
+            }
+        }
+
         if (step.isAllowMultipleHighlights()) {
             npc = multiNpcTarget.select(step, npcs, Rs2NpcModel::getIndex, npcsHandled,
                     Comparator.comparing(x -> Rs2Player.getWorldLocation().distanceTo(x.getWorldLocation())),
@@ -1903,9 +1995,10 @@ public class QuestScript extends Script {
             }
             Rs2Walker.clearWalkingRoute("quest-helper:npc-step-visible-interact");
 
-            if (step.getText().stream().anyMatch(x -> x.toLowerCase().contains("kill"))) {
-                if (!Rs2Combat.inCombat()) {
-                    npc.click("Attack");
+            // Whole word only: "killer's knife" (Misthalin Mystery) is not a kill step, "killing" is.
+            if (step.getText().stream().anyMatch(x -> KILL_WORD.matcher(x).find())) {
+                if (!Rs2Combat.inCombat() && !npc.click("Attack")) {
+                    npc.click("Fight");
                 }
                 return true;
             }
