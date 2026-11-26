@@ -324,6 +324,7 @@ public class Rs2Camera {
         long pauseGeneration = ScriptPauseController.getGeneration();
         Microbot.getClientThread().invokeLater(() -> {
             if (ScriptPauseController.isPaused() || pauseGeneration != ScriptPauseController.getGeneration()) return;
+            if (Microbot.getClient().getGameState() != GameState.LOGGED_IN) return;
             Microbot.getClient().runScript(ScriptID.CAMERA_DO_ZOOM, zoom, zoom);
         });
     }
