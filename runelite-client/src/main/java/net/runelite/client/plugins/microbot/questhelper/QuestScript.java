@@ -64,6 +64,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiPredicate;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.swing.JOptionPane;
@@ -100,6 +101,7 @@ public class QuestScript extends Script {
     private final Set<Integer> everHeldItemRequirementIds = new HashSet<>();
 
     private static final int GROUND_PICKUP_RADIUS = 8;
+    private static final Pattern USE_ON = Pattern.compile("\\buse\\b.*?\\bon\\b", Pattern.CASE_INSENSITIVE);
     private static final int BANK_UNREACHABLE_LIMIT = 3;
     static final long BANK_UNREACHABLE_MIN_SPAN_MS = 15_000;
     static final long PICKUP_RESPAWN_WAIT_MS = 180_000;
@@ -1967,6 +1969,14 @@ public class QuestScript extends Script {
                 .map(Rs2TileObjectModel::new)
                 .findFirst().orElse(null);
         var itemId = step.getIconItemID();
+        if (itemId == -1 && usesItemOnObject(step, object)) {
+            // Many helpers mark the item to use with a highlighted requirement instead of addIcon
+            // (e.g. Ernest the Chicken: poisoned fish food on the fountain); a plain click would
+            // pick the object's default option instead. Only for "use ... on <this object>" steps:
+            // elsewhere a highlight can be a mere reminder (e.g. Mountain Daughter's rope when climbing
+            // the rocks), and some steps reuse another step's "use ... on" text (The Dig Site ladder).
+            itemId = highlightedCarriedItemId(step);
+        }
 
         List<Rs2TileObjectModel> stepObjects = step.getObjects().stream()
                 .filter(Objects::nonNull)
@@ -2076,6 +2086,31 @@ public class QuestScript extends Script {
         WorldPoint location = object.getWorldLocation();
         return step.getObjects().contains(object.getTileObject()) ? location : null;
     }
+
+	/** True when the step text says to use something on this object, by the object's name. */
+	private static boolean usesItemOnObject(DetailedQuestStep step, Rs2TileObjectModel object) {
+		String name = object == null ? null : object.getName();
+		if (name == null || name.isBlank() || "null".equalsIgnoreCase(name)) {
+			return false;
+		}
+		String objectName = name.toLowerCase();
+		return step.getText().stream().filter(Objects::nonNull).anyMatch(text -> {
+			Matcher matcher = USE_ON.matcher(text);
+			return matcher.find() && text.substring(matcher.end()).toLowerCase().contains(objectName);
+		});
+	}
+
+	private static int highlightedCarriedItemId(DetailedQuestStep step) {
+		for (Requirement requirement : step.getRequirements()) {
+			if (requirement instanceof ItemRequirement && ((ItemRequirement) requirement).isHighlightInInventory()) {
+				int id = ((ItemRequirement) requirement).getAllIds().stream().filter(Rs2Inventory::contains).findFirst().orElse(-1);
+				if (id != -1) {
+					return id;
+				}
+			}
+		}
+		return -1;
+	}
 
     private static boolean isInteractableFromReachableTile(ObjectStep step, Rs2TileObjectModel object) {
         if (object.getTileObjectType() != TileObjectType.GAME) {
