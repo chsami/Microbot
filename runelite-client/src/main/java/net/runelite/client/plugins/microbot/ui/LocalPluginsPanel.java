@@ -36,7 +36,9 @@ import java.awt.FlowLayout;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -191,6 +193,7 @@ public class LocalPluginsPanel extends JPanel {
         if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
             Path source = selectedPath(chooser);
             if (source == null) {
+                reportInvalidSelection(chooser, "file");
                 return;
             }
             runOperation("Loading " + source.getFileName() + "...", () -> entry == null
@@ -208,7 +211,11 @@ public class LocalPluginsPanel extends JPanel {
         }
 
         Path selected = selectedPath(chooser);
-        if (selected == null || selected.toAbsolutePath().normalize().equals(livePluginManager.getPluginDirectory())) {
+        if (selected == null) {
+            reportInvalidSelection(chooser, "folder");
+            return;
+        }
+        if (selected.toAbsolutePath().normalize().equals(livePluginManager.getPluginDirectory())) {
             return;
         }
         if (!tableModel.entries.isEmpty()) {
@@ -227,7 +234,40 @@ public class LocalPluginsPanel extends JPanel {
 
     static Path selectedPath(JFileChooser chooser) {
         File file = chooser.getSelectedFile();
-        return file == null ? null : file.toPath();
+        if (file == null) {
+            return null;
+        }
+        try {
+            return file.toPath();
+        } catch (InvalidPathException e) {
+            return unquotedPath(file.getPath());
+        }
+    }
+
+    private static Path unquotedPath(String path) {
+        int open = path.indexOf('"');
+        int close = path.lastIndexOf('"');
+        if (open < 0 || close <= open) {
+            return null;
+        }
+        try {
+            Path inner = Paths.get(path.substring(open + 1, close));
+            return inner.isAbsolute() ? inner : null;
+        } catch (InvalidPathException e) {
+            return null;
+        }
+    }
+
+    private void reportInvalidSelection(JFileChooser chooser, String kind) {
+        File file = chooser.getSelectedFile();
+        if (file != null) {
+            setStatus(invalidSelectionMessage(kind, file));
+        }
+    }
+
+    static String invalidSelectionMessage(String kind, File file) {
+        return "Could not use \"" + file.getName() + "\": the name contains a character Windows does not allow"
+                + " (\\ / : * ? \" < > |). Pick the " + kind + " from the list, or paste its full path without quotes.";
     }
 
     static String folderChangeWarning(int plugins, int hubPlugins, Path current) {
