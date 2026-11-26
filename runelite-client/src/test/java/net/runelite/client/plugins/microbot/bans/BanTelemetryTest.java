@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
 import net.runelite.api.Client;
@@ -52,6 +53,7 @@ public class BanTelemetryTest
 	private BanTelemetry telemetry;
 	private final AtomicReference<BanReportMode> mode = new AtomicReference<>(BanReportMode.ASK);
 	private final AtomicReference<String> selection = new AtomicReference<>("111");
+	private final AtomicBoolean proxied = new AtomicBoolean(false);
 
 	@Before
 	public void setUp()
@@ -77,7 +79,7 @@ public class BanTelemetryTest
 			}
 		};
 		telemetry = new BanTelemetry(client, clientThread, mock(PluginManager.class), mock(MicrobotPluginManager.class), api, sessions,
-			executor, config, mock(ConfigManager.class), mock(Notifier.class), new Gson(), false, folder.getRoot().toPath(), selection::get);
+			executor, config, mock(ConfigManager.class), mock(Notifier.class), new Gson(), false, folder.getRoot().toPath(), selection::get, proxied::get);
 	}
 
 	private BooleanSupplier startWatcher()
@@ -135,6 +137,39 @@ public class BanTelemetryTest
 		assertEquals(BanLedger.accountKey(7), payload.getValue().get("accountKey").getAsString());
 		assertEquals("unknown", payload.getValue().get("banKind").getAsString());
 		assertEquals(SESSION.toString(), payload.getValue().get("sessionId").getAsString());
+	}
+
+	@Test
+	public void aBanReportBehindAProxySaysSo()
+	{
+		mode.set(BanReportMode.ALWAYS);
+		proxied.set(true);
+		when(api.submitBanReport(any())).thenReturn(CompletableFuture.completedFuture(true));
+		botted(7, "jagex|111");
+		BooleanSupplier watcher = startWatcher();
+		loggedInAs(7);
+
+		showBanScreen(watcher);
+
+		ArgumentCaptor<JsonObject> payload = ArgumentCaptor.forClass(JsonObject.class);
+		verify(api).submitBanReport(payload.capture());
+		assertTrue(payload.getValue().get("proxied").getAsBoolean());
+	}
+
+	@Test
+	public void aBanReportWithoutAProxyLeavesTheFlagOut()
+	{
+		mode.set(BanReportMode.ALWAYS);
+		when(api.submitBanReport(any())).thenReturn(CompletableFuture.completedFuture(true));
+		botted(7, "jagex|111");
+		BooleanSupplier watcher = startWatcher();
+		loggedInAs(7);
+
+		showBanScreen(watcher);
+
+		ArgumentCaptor<JsonObject> payload = ArgumentCaptor.forClass(JsonObject.class);
+		verify(api).submitBanReport(payload.capture());
+		assertFalse(payload.getValue().has("proxied"));
 	}
 
 	@Test
@@ -236,6 +271,51 @@ public class BanTelemetryTest
 		JsonObject retry = payload.getAllValues().get(1);
 		assertEquals(SESSION.toString(), retry.get("sessionId").getAsString());
 		assertEquals(600, retry.getAsJsonArray("plugins").get(0).getAsJsonObject().get("seconds").getAsLong());
+	}
+
+	@Test
+	public void runtimeBehindAProxyCarriesTheAccountKey()
+	{
+		when(api.submitPluginRuntime(any())).thenReturn(CompletableFuture.completedFuture(true));
+		proxied.set(true);
+		loggedInAs(7);
+		telemetry.addPendingRuntime(Map.of("PluginX", 600L));
+
+		telemetry.flushRuntime();
+
+		ArgumentCaptor<JsonObject> payload = ArgumentCaptor.forClass(JsonObject.class);
+		verify(api).submitPluginRuntime(payload.capture());
+		assertTrue(payload.getValue().get("proxied").getAsBoolean());
+		assertEquals(BanLedger.accountKey(7), payload.getValue().get("accountKey").getAsString());
+	}
+
+	@Test
+	public void runtimeWithoutAProxyCarriesNoAccountKey()
+	{
+		when(api.submitPluginRuntime(any())).thenReturn(CompletableFuture.completedFuture(true));
+		loggedInAs(7);
+		telemetry.addPendingRuntime(Map.of("PluginX", 600L));
+
+		telemetry.flushRuntime();
+
+		ArgumentCaptor<JsonObject> payload = ArgumentCaptor.forClass(JsonObject.class);
+		verify(api).submitPluginRuntime(payload.capture());
+		assertFalse(payload.getValue().has("proxied"));
+		assertFalse(payload.getValue().has("accountKey"));
+	}
+
+	@Test
+	public void runtimeBehindAProxyBeforeAnyLoginCarriesNoAccountKey()
+	{
+		when(api.submitPluginRuntime(any())).thenReturn(CompletableFuture.completedFuture(true));
+		proxied.set(true);
+		telemetry.addPendingRuntime(Map.of("PluginX", 600L));
+
+		telemetry.flushRuntime();
+
+		ArgumentCaptor<JsonObject> payload = ArgumentCaptor.forClass(JsonObject.class);
+		verify(api).submitPluginRuntime(payload.capture());
+		assertFalse(payload.getValue().has("accountKey"));
 	}
 
 	@Test
