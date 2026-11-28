@@ -208,6 +208,12 @@ public class Rs2InventorySetup {
 		return Rs2Equipment.isWearing(worn -> itemFillsSetupRow(worn, setupItem));
 	}
 
+	private static Rs2ItemModel heldCopyOfSetupRow(InventorySetupsItem setupItem) {
+		return Rs2Inventory.items()
+			.filter(held -> held.getId() == setupItem.getId() || (!held.isNoted() && itemFillsSetupRow(held, setupItem)))
+			.findFirst().orElse(null);
+	}
+
 	private static List<Rs2ItemModel> bankItemsOrEmpty() {
 		List<Rs2ItemModel> bankItems = Rs2Bank.bankItems();
 		return bankItems == null ? Collections.emptyList() : bankItems;
@@ -946,13 +952,16 @@ public class Rs2InventorySetup {
 			if (!inBank && !isFuzzy) {
 				inBank = Rs2Bank.hasBankItem(lowerCaseName, item.getQuantity(), false);
 			}
-			Rs2ItemModel barrowsInInventory = null;
+			Rs2ItemModel heldInInventory = null;
 			Rs2ItemModel barrowsInBank = null;
 			if (InventorySetupsItem.isBarrowsItem(lowerCaseName)) {
-				barrowsInInventory = Rs2Inventory.items().filter(held -> itemFillsSetupRow(held, item)).findFirst().orElse(null);
+				heldInInventory = Rs2Inventory.items().filter(held -> itemFillsSetupRow(held, item)).findFirst().orElse(null);
 				barrowsInBank = bankItemsOrEmpty().stream().filter(held -> itemFillsSetupRow(held, item)).findFirst().orElse(null);
-				inInventory = inInventory && barrowsInInventory != null;
+				inInventory = inInventory && heldInInventory != null;
 				inBank = inBank && barrowsInBank != null;
+			} else if (!isFuzzy) {
+				heldInInventory = heldCopyOfSetupRow(item);
+				inInventory = inInventory || heldInInventory != null;
 			}
 
 			if (!inInventory && !inBank) {
@@ -976,8 +985,8 @@ public class Rs2InventorySetup {
 			}
 
 			if (inInventory) {
-				if (barrowsInInventory != null) {
-					Rs2Bank.wearItem(barrowsInInventory.getId());
+				if (heldInInventory != null) {
+					Rs2Bank.wearItem(heldInInventory.getId());
 				} else if (isFuzzy) {
 					Rs2Bank.wearItem((String) identifier);
 				} else {
@@ -1034,7 +1043,10 @@ public class Rs2InventorySetup {
      */
     public boolean wearEquipment() {
         for (InventorySetupsItem inventorySetupsItem : inventorySetup.getEquipment()) {
-            Rs2Inventory.wield(inventorySetupsItem.getId());
+            Rs2ItemModel heldCopy = inventorySetupsItem.isFuzzy() || InventorySetupsItem.isEmptySlot(inventorySetupsItem)
+                    ? null
+                    : heldCopyOfSetupRow(inventorySetupsItem);
+            Rs2Inventory.wield(heldCopy == null ? inventorySetupsItem.getId() : heldCopy.getId());
         }
         return doesEquipmentMatch();
     }
