@@ -328,13 +328,22 @@ public class ConfigManager
 		try (ProfileManager.Lock lock = profileManager.lock())
 		{
 			profile = lock.findProfile(profile.getId());
-			if (profile == null || profile.getBankPin() == bankPin)
+			if (profile == null || Objects.equals(profile.getBankPin(), bankPin))
 			{
 				return;
 			}
 
 			profile.setBankPin(bankPin);
 			lock.dirty();
+			// Same monitor as switchProfile, so a switch cannot land between the check and the refresh.
+			synchronized (this)
+			{
+				if (this.profile.getId() == profile.getId())
+				{
+					// The copy scripts read; it is otherwise only refreshed by the next sendConfig, up to 5 minutes later.
+					this.profile = profile;
+				}
+			}
 		}
 	}
 

@@ -424,6 +424,7 @@ public class Rs2Bank {
 		if (event.getContainerId() != InventoryID.BANK || event.getItemContainer() == null) {
 			return;
 		}
+		BankPinEntry.onBankOpened();
 		restoreBankMirrorCache();
 
 
@@ -2677,55 +2678,93 @@ public class Rs2Bank {
     private static final String[] BANK_PIN_DIGIT_INSTRUCTIONS = {"FIRST digit", "SECOND digit", "THIRD digit", "FOURTH digit"};
 
     /**
-     * Handle bank pin boolean.
+     * Enters a bank PIN if the PIN pad is up: types the digit the pad asks for and presses again when a press missed.
+     * A PIN the game does not confirm is sent at most 3 times per account, 20 seconds apart, so a wrong saved PIN
+     * cannot walk into the game's 10-minute lockout.
      *
-     * @param pin the pin
+     * @param pin the 4-digit PIN
      *
-     * @return the boolean
+     * @return true once the pad is gone, false while it is still up or when the PIN it sent was not confirmed
      */
     public static boolean handleBankPin(String pin) {
         if (!isBankPinWidgetVisible()) return true;
 
-        if (pin == null || pin.length() != BANK_PIN_DIGIT_INSTRUCTIONS.length || !pin.matches("\\d+")) {
-            Microbot.log("Unable to enter bankpin: configured pin is not a 4-digit number");
+        if (!isValidBankPin(pin)) {
+            BankPinEntry.note("The Bank PIN saved in this profile is not 4 digits (0-9), so Microbot cannot enter it. Correct it in the Profiles tab, or enter the PIN by hand.");
             return false;
         }
+        // Waiting here on the client thread would stop the widgets the typing waits for.
+        if (BankPinEntry.onClientThread()) return false;
+
+        final int login = BankPinEntry.login();
+        final long account = BankPinEntry.account();
+        if (account == -1) return false; // its sends could not be counted
 
         synchronized(Rs2Bank.class) {
             for (int attempt = 0; attempt < BANK_PIN_DIGIT_INSTRUCTIONS.length * 3; attempt++) {
+                // A pad closed by a logout or disconnect is not a handled PIN.
+                if (login != BankPinEntry.login()) return false;
                 if (!isBankPinWidgetVisible()) return true;
 
                 boolean instructionVisible = sleepUntil(() -> !isBankPinWidgetVisible() || currentBankPinDigitIndex() >= 0, 2000);
+                if (login != BankPinEntry.login()) return false; // perhaps another account by now
                 if (!isBankPinWidgetVisible()) return true;
                 final int index = currentBankPinDigitIndex();
                 if (!instructionVisible || index < 0) {
-                    Microbot.log("Bank PIN keypad did not respond in time. If it stays stuck, enter your PIN by hand.");
+                    if (BankPinEntry.personHasInput()) {
+                        BankPinEntry.note("Bank PIN paused while you use the mouse or keyboard. It carries on from the digit the pad asks for once you stop.");
+                        return false;
+                    }
+                    BankPinEntry.note("Bank PIN keypad did not respond in time. If it stays stuck, enter your PIN by hand.");
                     return false;
                 }
 
+                final boolean last = index == BANK_PIN_DIGIT_INSTRUCTIONS.length - 1;
+                if ((index == 0 || last) && !BankPinEntry.maySend(account)) return false;
+
                 final String digit = String.valueOf(pin.charAt(index));
+                // Only the fourth digit goes to the server; count it before the press so the answer cannot come first.
+                final BankPinEntry.Send send = last ? BankPinEntry.sending(account) : null;
                 boolean pressed;
                 if (isBankPluginEnabled() && hasKeyboardBankPinEnabled()) {
                     Rs2Keyboard.typeString(digit);
                     pressed = true;
                 } else {
-                    pressed = Rs2Widget.clickWidget(digit, Optional.of(213), 0, true);
+                    pressed = BankPinEntry.click(index, digit);
                 }
 
                 boolean advanced = sleepUntil(() -> !isBankPinWidgetVisible() || currentBankPinDigitIndex() != index, pressed ? 2000 : 600);
-                if (advanced && index == BANK_PIN_DIGIT_INSTRUCTIONS.length - 1) return true;
+                if (last) {
+                    if (advanced) return BankPinEntry.submitted(send);
+                    // A wait cut short by a person taking over says nothing: uncount only a press the pad still asks for.
+                    if (!isBankPinWidgetVisible() || currentBankPinDigitIndex() != index) return false;
+                    BankPinEntry.notSent(send);
+                }
             }
             if (!isBankPinWidgetVisible()) return true;
-            Microbot.log("Microbot could not finish entering your bank PIN and will try again. If this keeps happening, stop the script, enter the PIN by hand, and check the Bank PIN field in the Profiles tab.");
+            BankPinEntry.note("Microbot could not finish entering your bank PIN and will try again. If this keeps happening, stop the script, enter the PIN by hand, and check the Bank PIN field in the Profiles tab.");
             return false;
         }
     }
 
-    private static int currentBankPinDigitIndex() {
+    /** The digit the pad asks for (0 to 3), or -1 while it shows none ("Submitting...", not drawn yet, closed). */
+    static int currentBankPinDigitIndex() {
         for (int i = 0; i < BANK_PIN_DIGIT_INSTRUCTIONS.length; i++) {
             if (Rs2Widget.hasWidgetText(BANK_PIN_DIGIT_INSTRUCTIONS[i], 213, 10, false)) return i;
         }
         return -1;
+    }
+
+    public static void onLoginScreen() {
+        BankPinEntry.onLoginScreen();
+    }
+
+    public static void onGameMessage(String message) {
+        BankPinEntry.onGameMessage(message);
+    }
+
+    public static boolean isValidBankPin(String pin) {
+        return BankPinEntry.isValid(pin);
     }
 
     public static boolean handleBankPin() {
@@ -2735,8 +2774,11 @@ public class Rs2Bank {
             return !isBankPinWidgetVisible();
         }
         final String encryptedBankPin = activeProfile.getBankPin();
-        if (encryptedBankPin == null || encryptedBankPin.isBlank() || encryptedBankPin.equalsIgnoreCase("**bankpin**"))
-            return !isBankPinWidgetVisible();
+        if (encryptedBankPin == null || encryptedBankPin.isBlank() || encryptedBankPin.equalsIgnoreCase("**bankpin**")) {
+            if (!isBankPinWidgetVisible()) return true;
+            BankPinEntry.tellOnce("Bank PIN needed, but this profile has no bank PIN saved: enter it by hand, or save it in the Bank PIN field in the Profiles tab");
+            return false;
+        }
         try {
             return handleBankPin(Encryption.decrypt(encryptedBankPin));
         } catch (Exception ex) {
@@ -3500,8 +3542,7 @@ public class Rs2Bank {
     }
 
     private static boolean hasKeyboardBankPinEnabled() {
-        return Microbot.getConfigManager().getConfiguration("bank","bankPinKeyboard").equalsIgnoreCase("true");
-
+        return "true".equalsIgnoreCase(Microbot.getConfigManager().getConfiguration("bank","bankPinKeyboard"));
     }
 
     /**

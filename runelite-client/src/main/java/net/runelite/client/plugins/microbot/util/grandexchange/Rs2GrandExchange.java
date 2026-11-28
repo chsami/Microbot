@@ -24,9 +24,6 @@ import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
-import net.runelite.client.plugins.microbot.util.security.Encryption;
-import net.runelite.client.plugins.microbot.util.security.LoginManager;
-import net.runelite.client.config.ConfigProfile;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import org.apache.commons.lang3.tuple.Pair;
@@ -104,6 +101,10 @@ public class Rs2GrandExchange {
         return Rs2Widget.isWidgetVisible(InterfaceID.GE_OFFERS, 1);
     }
 
+    private static boolean isOpenOrAsksForPin() {
+        return isOpen() || Rs2Bank.isBankPinWidgetVisible();
+    }
+
     /**
      * Check if the offer screen is open (buy/sell offer screen)
      *
@@ -136,19 +137,9 @@ public class Rs2GrandExchange {
                 return false;
             }
             Rs2Npc.interact(npc, "exchange");
-            if (Rs2Bank.isBankPinWidgetVisible()) {
-                ConfigProfile activeProfile = LoginManager.getActiveProfile();
-                if (activeProfile == null) {
-                    log.warn("No active profile configured for bank pin entry");
-                    return false;
-                }
-
-                String encryptedPin = activeProfile.getBankPin();
-                if ((encryptedPin == null || encryptedPin.isEmpty()) || encryptedPin.equalsIgnoreCase("**bankpin**")) {
-                    return false;
-                }
-
-                Rs2Bank.handleBankPin(Encryption.decrypt(encryptedPin));
+            // The PIN pad shows a moment after the click, in place of the exchange.
+            if (!sleepUntil(Rs2GrandExchange::isOpenOrAsksForPin, 5000) || !Rs2Bank.handleBankPin()) {
+                return false;
             }
             return sleepUntil(Rs2GrandExchange::isOpen, 5000);
         } catch (Exception ex) {
