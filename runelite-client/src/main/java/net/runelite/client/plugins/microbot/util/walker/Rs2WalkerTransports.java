@@ -473,7 +473,7 @@ final class Rs2WalkerTransports {
                                 return finishHandledTransport(transport);
                             }
                             WebWalkLog.spWarn(
-                                    "Barrows dig post-travel wait timed out ({}ms) dest={} at={}",
+                                    "Spade dig post-travel wait timed out ({}ms) dest={} at={}",
                                     TRANSPORT_LANDING_WAIT_TIMEOUT_MS,
                                     compactWorldPoint(transport.getDestination()),
                                     compactWorldPoint(Rs2Player.getWorldLocation()));

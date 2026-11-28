@@ -6015,3 +6015,7 @@
 3546 9686 3	3567 3274 0	Climb-up;Staircase;20670							Y	1	Karil's Barrow exit
 3566 9683 3	3553 3281 0	Climb-up;Staircase;20671							Y	1	Torag's Barrow exit
 3578 9704 3	3556 3297 0	Climb-up;Staircase;20672							Y	1	Verac's Barrow exit
+
+# Olaf's Quest - Brine Rat Cavern
+2748 3732 0	2696 10120 0	Dig;Mud;0		952=1			3534>59		Y	3	Brine Rat Cavern
+2690 10124 0	2729 3734 0	Exit;Cave;23158							Y	3	Brine Rat Cavern exit

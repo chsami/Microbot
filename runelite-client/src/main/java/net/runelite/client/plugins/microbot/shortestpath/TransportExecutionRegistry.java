@@ -103,8 +103,8 @@ public final class TransportExecutionRegistry
 		TransportType.MAGIC_MUSHTREE);
 
 	/**
-	 * Barrows mound digs are inventory-item interactions, not scene-object interactions. Keep the
-	 * six deterministic surface-to-crypt mappings exact so an arbitrary object-less transport row
+	 * Spade digs are inventory-item interactions, not scene-object interactions. Keep the
+	 * deterministic surface-to-underground mappings exact so an arbitrary object-less transport row
 	 * cannot acquire the spade executor by naming itself "Dig".
 	 */
 	private static final Map<WorldPoint, WorldPoint>
@@ -115,6 +115,9 @@ public final class TransportExecutionRegistry
 			new WorldPoint(3567, 3274, 0), new WorldPoint(3546, 9686, 3),
 			new WorldPoint(3553, 3281, 0), new WorldPoint(3566, 9683, 3),
 			new WorldPoint(3556, 3297, 0), new WorldPoint(3578, 9704, 3));
+
+	private static final WorldPoint BRINE_RAT_CAVERN_DIG_ORIGIN = new WorldPoint(2748, 3732, 0);
+	private static final WorldPoint BRINE_RAT_CAVERN_DIG_DESTINATION = new WorldPoint(2696, 10120, 0);
 
 	private TransportExecutionRegistry()
 	{
@@ -134,7 +137,7 @@ public final class TransportExecutionRegistry
 		}
 
 		TransportType type = transport.getType();
-		if (isBarrowsDig(transport))
+		if (isSpadeDig(transport))
 		{
 			return Optional.of(Executor.BARROWS_DIG);
 		}
@@ -174,13 +177,12 @@ public final class TransportExecutionRegistry
 		return Optional.ofNullable(specializedExecutor(type));
 	}
 
-	private static boolean isBarrowsDig(Transport transport)
+	private static boolean isSpadeDig(Transport transport)
 	{
 		if (transport.getType() != TransportType.TRANSPORT
 			|| transport.getObjectId() != 0
 			|| !"Dig".equalsIgnoreCase(transport.getAction())
-			|| !"Barrow".equalsIgnoreCase(transport.getName())
-			|| !transport.getDestination().equals(BARROWS_DIG_DESTINATIONS.get(transport.getOrigin()))
+			|| !(isBarrowsDigSite(transport) || isBrineRatCavernDigSite(transport))
 			|| transport.getItemRequirements().size() != 1)
 		{
 			return false;
@@ -188,6 +190,19 @@ public final class TransportExecutionRegistry
 		TransportItemRequirement spade = transport.getItemRequirements().get(0);
 		return spade.getAllItemIds().equals(Set.of(ItemID.SPADE))
 			&& spade.getRequiredQuantity(ItemID.SPADE) == 1;
+	}
+
+	private static boolean isBarrowsDigSite(Transport transport)
+	{
+		return "Barrow".equalsIgnoreCase(transport.getName())
+			&& transport.getDestination().equals(BARROWS_DIG_DESTINATIONS.get(transport.getOrigin()));
+	}
+
+	private static boolean isBrineRatCavernDigSite(Transport transport)
+	{
+		return "Mud".equalsIgnoreCase(transport.getName())
+			&& BRINE_RAT_CAVERN_DIG_ORIGIN.equals(transport.getOrigin())
+			&& BRINE_RAT_CAVERN_DIG_DESTINATION.equals(transport.getDestination());
 	}
 
 	private static Executor specializedExecutor(TransportType type)
