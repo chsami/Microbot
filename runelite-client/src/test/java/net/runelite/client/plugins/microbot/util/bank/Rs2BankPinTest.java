@@ -196,7 +196,7 @@ public class Rs2BankPinTest
 			input.when(InputArbiter::isHuman).thenAnswer(i -> pad.step == 4);
 			Microbot.status = "";
 			assertFalse(Rs2Bank.handleBankPin("1234"));
-			assertFalse("a person took over: nothing says the PIN was wrong", Microbot.status.contains("not confirmed"));
+			assertFalse("a person took over: nothing says the PIN was wrong", Microbot.status.contains("not accepted"));
 		}
 		for (int i = 0; i < 4; i++)
 		{
@@ -322,7 +322,7 @@ public class Rs2BankPinTest
 				}
 				Rs2Bank.onGameMessage("You have correctly entered your PIN."); // entered by hand
 			}
-			microbot.verify(() -> Microbot.log(contains("not sending a PIN again"), eq(Level.WARN)), Mockito.times(2));
+			microbot.verify(() -> Microbot.log(contains("will not enter it again"), eq(Level.WARN)), Mockito.times(2));
 		}
 	}
 
@@ -460,6 +460,19 @@ public class Rs2BankPinTest
 		}
 	}
 
+	@Test
+	public void anAcceptedPinClearsOnlyItsOwnStatus()
+	{
+		BankPinEntry.note("stuck");
+		Rs2Bank.onGameMessage("You have correctly entered your PIN.");
+		assertEquals("IDLE", Microbot.status);
+
+		BankPinEntry.note("stuck again");
+		Microbot.status = "Walking";
+		Rs2Bank.onGameMessage("You have correctly entered your PIN.");
+		assertEquals("a script's own status stays", "Walking", Microbot.status);
+	}
+
 	@Test(timeout = 60_000)
 	public void givingUpIsLoggedOnce()
 	{
@@ -472,7 +485,7 @@ public class Rs2BankPinTest
 				Rs2Bank.handleBankPin("1234");
 			}
 			microbot.verify(() -> Microbot.log(contains("3 of 3"), eq(Level.WARN)), Mockito.times(1));
-			microbot.verify(() -> Microbot.log(contains("not sending a PIN again"), eq(Level.WARN)), Mockito.times(1));
+			microbot.verify(() -> Microbot.log(contains("will not enter it again"), eq(Level.WARN)), Mockito.times(1));
 		}
 	}
 

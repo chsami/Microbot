@@ -42,6 +42,8 @@ final class BankPinEntry
 	private static final Set<String> TOLD = new HashSet<>();
 	/** Messages {@link #note} already showed: each problem once, until the PIN is accepted or the next login. */
 	private static final Set<String> NOTED = ConcurrentHashMap.newKeySet();
+	/** The last status this class showed, cleared once the PIN is accepted. */
+	private static volatile String shownStatus;
 
 	private static final class Sends
 	{
@@ -111,8 +113,14 @@ final class BankPinEntry
 		if (NOTED.add(message))
 		{
 			Microbot.log(message);
-			Microbot.status = message;
+			showStatus(message);
 		}
+	}
+
+	private static void showStatus(String message)
+	{
+		Microbot.status = message;
+		shownStatus = message; // after the status: this volatile write publishes it to the client thread
 	}
 
 	static boolean onClientThread()
@@ -141,6 +149,12 @@ final class BankPinEntry
 			TOLD.clear();
 		}
 		UNCONFIRMED.remove(Microbot.getClient().getAccountHash());
+		String shown = shownStatus;
+		if (shown != null && shown.equals(Microbot.status))
+		{
+			Microbot.status = "IDLE";
+		}
+		shownStatus = null;
 	}
 
 	static boolean isValid(String pin)
@@ -158,7 +172,7 @@ final class BankPinEntry
 		}
 		if (earlier.count >= MAX_SENDS)
 		{
-			tellOnce("Bank PIN not confirmed " + MAX_SENDS + " times, not sending a PIN again on this account: enter it by hand and check the Bank PIN field in the Profiles tab");
+			tellOnce("Bank PIN was not accepted " + MAX_SENDS + " times. Microbot will not enter it again on this account (this protects your bank from the game's 10-minute lock). Enter the PIN by hand once to continue, and correct the Bank PIN in the Profiles tab.");
 			return false;
 		}
 		return System.nanoTime() - earlier.at >= TimeUnit.MILLISECONDS.toNanos(retryGapMs);
@@ -204,7 +218,10 @@ final class BankPinEntry
 			// A wait a person cut short says nothing about the answer; the send stays counted until confirmed.
 			if (UNCONFIRMED.get(send.account) == send.sent && !personHasInput())
 			{
-				tell("Bank PIN sent (" + send.sent.count + " of " + MAX_SENDS + ") but not confirmed: it is wrong, or the answer was lost");
+				String next = send.sent.count < MAX_SENDS
+					? "Microbot tries again in " + retryGapMs / 1000 + " seconds and stops after " + MAX_SENDS + " attempts."
+					: "Microbot stops entering it now.";
+				tell("Bank PIN was not accepted by the game (attempt " + send.sent.count + " of " + MAX_SENDS + "). The saved PIN may be wrong: check the Bank PIN in the Profiles tab. " + next);
 			}
 		}
 	}
@@ -225,7 +242,7 @@ final class BankPinEntry
 	private static void tell(String message)
 	{
 		Microbot.log(message, Level.WARN);
-		Microbot.status = message;
+		showStatus(message);
 	}
 
 	/** Clicks the button showing the digit while the pad asks for digit {@code index}. */

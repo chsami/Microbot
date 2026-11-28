@@ -2690,7 +2690,7 @@ public class Rs2Bank {
         if (!isBankPinWidgetVisible()) return true;
 
         if (!isValidBankPin(pin)) {
-            Microbot.log("Unable to enter bankpin: configured pin is not a 4-digit number");
+            BankPinEntry.note("The Bank PIN saved in this profile is not 4 digits (0-9), so Microbot cannot enter it. Correct it in the Profiles tab, or enter the PIN by hand.");
             return false;
         }
         // Waiting here on the client thread would stop the widgets the typing waits for.
