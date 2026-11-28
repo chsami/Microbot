@@ -13,6 +13,8 @@ import javax.swing.SwingUtilities;
 import java.awt.Component;
 import java.awt.Container;
 import java.io.File;
+import java.nio.file.InvalidPathException;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.concurrent.Callable;
@@ -84,6 +86,58 @@ public class LocalPluginsPanelTest {
         File jar = new File("plugins", "example.jar");
         when(chooser.getSelectedFile()).thenReturn(jar);
         assertEquals(jar.toPath(), LocalPluginsPanel.selectedPath(chooser));
+    }
+
+    @Test
+    public void selectedPathIsNullWhenTypedNameIsInvalid() {
+        JFileChooser chooser = mock(JFileChooser.class);
+        when(chooser.getSelectedFile()).thenReturn(new InvalidFile(new File("plugins", "example?.jar").getPath()));
+        assertNull(LocalPluginsPanel.selectedPath(chooser));
+    }
+
+    @Test
+    public void selectedPathUsesQuotedAbsolutePathPastedIntoChooser() {
+        JFileChooser chooser = mock(JFileChooser.class);
+        File folder = new File("plugins").getAbsoluteFile();
+        File jar = new File(new File("downloads").getAbsoluteFile(), "example.jar");
+        when(chooser.getSelectedFile()).thenReturn(new InvalidFile(folder.getPath() + File.separator + "\"" + jar.getPath() + "\""));
+        assertEquals(jar.toPath(), LocalPluginsPanel.selectedPath(chooser));
+    }
+
+    @Test
+    public void selectedPathIsNullWhenQuotedPathIsRelative() {
+        JFileChooser chooser = mock(JFileChooser.class);
+        File folder = new File("plugins").getAbsoluteFile();
+        when(chooser.getSelectedFile()).thenReturn(new InvalidFile(folder.getPath() + File.separator + "\"example.jar\""));
+        assertNull(LocalPluginsPanel.selectedPath(chooser));
+    }
+
+    @Test
+    public void invalidJarMessageNamesTheFileAndTheFix() {
+        File file = new File(new File("plugins").getAbsoluteFile(), "my*plugin.jar");
+        assertEquals("Could not use \"my*plugin.jar\": the name contains a character Windows does not allow"
+                        + " (\\ / : * ? \" < > |). Pick the file from the list, or paste its full path without quotes.",
+                LocalPluginsPanel.invalidSelectionMessage("file", file));
+    }
+
+    @Test
+    public void invalidFolderMessageSaysFolder() {
+        File file = new File(new File("plugins").getAbsoluteFile(), "plugins<new>");
+        String message = LocalPluginsPanel.invalidSelectionMessage("folder", file);
+        assertTrue(message.startsWith("Could not use \"plugins<new>\":"));
+        assertTrue(message.contains("Pick the folder from the list"));
+        assertFalse(message.contains(file.getParent()));
+    }
+
+    private static final class InvalidFile extends File {
+        InvalidFile(String path) {
+            super(path);
+        }
+
+        @Override
+        public Path toPath() {
+            throw new InvalidPathException(getPath(), "Illegal char");
+        }
     }
 
     private static Component find(Component component, Predicate<Component> match) {

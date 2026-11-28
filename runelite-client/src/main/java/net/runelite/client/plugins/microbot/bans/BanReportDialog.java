@@ -52,7 +52,8 @@ final class BanReportDialog
 			+ "The report contains the scripts this account ran in the last 30 days and for how long, membership, total level "
 			+ "(rounded), active days, the longest session, whether breaks were on, time since it last botted and your "
 			+ "Microbot version. It doesn't include your account name, email or location, only a scrambled ID so the same "
-			+ "ban isn't counted twice."
+			+ "ban isn't counted twice. If you play through a proxy, the report also says so, and the ban is linked to that "
+			+ "proxy's IP address."
 			+ "</body></html>";
 	}
 

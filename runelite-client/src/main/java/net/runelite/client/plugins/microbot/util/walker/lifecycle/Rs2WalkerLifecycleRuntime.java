@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.util.walker.lifecycle;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.Player;
@@ -16,11 +17,40 @@ import net.runelite.client.ui.overlay.worldmap.WorldMapPointManager;
 
 import java.util.Set;
 import java.util.Objects;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 @Slf4j
 public final class Rs2WalkerLifecycleRuntime {
 
+    private static final ExecutorService ROUTE_REQUEST_EXECUTOR = Executors.newSingleThreadExecutor(
+            new ThreadFactoryBuilder().setDaemon(true).setNameFormat("microbot-walker-route-request-%d").build());
+    private static final Object ROUTE_REQUEST_LOCK = new Object();
+    private static Future<?> pendingRouteRequest;
+
     private Rs2WalkerLifecycleRuntime() {
+    }
+
+    public static Future<?> submitRouteRequest(Callable<?> request) {
+        Objects.requireNonNull(request, "request");
+        synchronized (ROUTE_REQUEST_LOCK) {
+            if (pendingRouteRequest != null) {
+                pendingRouteRequest.cancel(false);
+            }
+            pendingRouteRequest = ROUTE_REQUEST_EXECUTOR.submit(request);
+            return pendingRouteRequest;
+        }
+    }
+
+    public static void cancelPendingRouteRequest() {
+        synchronized (ROUTE_REQUEST_LOCK) {
+            if (pendingRouteRequest != null) {
+                pendingRouteRequest.cancel(false);
+                pendingRouteRequest = null;
+            }
+        }
     }
 
     public static void applyWalkerDestination(WorldPoint target) {
@@ -93,8 +123,7 @@ public final class Rs2WalkerLifecycleRuntime {
                 ? Rs2PathApi.getActiveRouteStart().orElse(start)
                 : start;
         Rs2PathApi.setLastLocation(effectiveStart);
-        Microbot.getClientThread().runOnSeperateThread(
-                () -> restartPathfinding(effectiveStart, Set.of(target), invocation));
+        submitRouteRequest(() -> restartPathfinding(effectiveStart, Set.of(target), invocation));
     }
 
     public static boolean restartPathfinding(WorldPoint start, WorldPoint end) {

@@ -267,7 +267,8 @@ public class NatureSpirit extends BasicQuestHelper
 			"Right-click 'bloom' the blessed sickle next to rotten logs for mort myre fungi. Use these to fill the druid pouch.", blessedSickle, prayerPoints
 				, druidPouch);
 		killGhasts = new NpcStep(this, NpcID.GHAST_INVIS, "Use the filled druid pouch on a ghast to make it attackable and kill it. You'll need to kill 3.", druidPouchFull);
-		killGhast = new NpcStep(this, NpcID.GHAST_VIS, "Kill the ghast.", druidPouchFull);
+		killGhasts.addIcon(ItemID.DRUID_POUCH);
+		killGhast = new NpcStep(this, NpcID.GHAST_VIS, "Kill the ghast.");
 		killGhasts.addSubSteps(killGhast);
 		enterGrottoAgain = new ObjectStep(this, ObjectID.GROTTO_DOOR_DRUIDICSPIRIT, new WorldPoint(3440, 3337, 0), "Enter the Grotto in the south of Mort Myre.", ghostspeak);
 		touchAltarAgain = new ObjectStep(this, ObjectID.DRUIDIC_SPIRIT_GROTTO, new WorldPoint(3442, 9741, 0), "Search the grotto inside.", ghostspeak);
