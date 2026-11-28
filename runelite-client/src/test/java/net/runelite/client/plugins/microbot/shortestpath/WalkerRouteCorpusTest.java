@@ -948,9 +948,9 @@ public class WalkerRouteCorpusTest {
                     new WorldPoint(3572, 9706, 3), 20672, 20772}
     };
 
-    private static boolean isBarrowsDig(Transport transport) {
+    private static boolean isSpadeDig(Transport transport) {
         return TransportExecutionRegistry.executorFor(transport).orElse(null)
-                == TransportExecutionRegistry.Executor.BARROWS_DIG;
+                == TransportExecutionRegistry.Executor.SPADE_DIG;
     }
 
     private static boolean usesExactTransport(List<WorldPoint> path, WorldPoint origin,
@@ -974,7 +974,7 @@ public class WalkerRouteCorpusTest {
 
     @Test
     public void barrowsMoundsAndIndividualCryptExitsAreStaticallyRoutable() {
-        PathfinderConfig withSpade = configWith(transport -> unrestricted(transport) || isBarrowsDig(transport));
+        PathfinderConfig withSpade = configWith(transport -> unrestricted(transport) || isSpadeDig(transport));
         PathfinderConfig withoutSpecialRequirements = configWith(WalkerRouteCorpusTest::unrestricted);
 
         for (Object[] crypt : BARROWS_CRYPTS) {
@@ -988,7 +988,7 @@ public class WalkerRouteCorpusTest {
                     arrives(entering, sarcophagusApproach, 0));
             assertTrue("mound route must retain the exact spade executor edge: " + surface,
                     usesExactTransport(entering, surface, stair,
-                            TransportExecutionRegistry.Executor.BARROWS_DIG));
+                            TransportExecutionRegistry.Executor.SPADE_DIG));
 
             List<WorldPoint> leaving = route(withoutSpecialRequirements, sarcophagusApproach, surface);
             assertTrue("individual crypt must route to its own surface-mound anchor: " + stair,
@@ -1015,10 +1015,35 @@ public class WalkerRouteCorpusTest {
         WorldPoint surface = (WorldPoint) BARROWS_CRYPTS[0][0];
         WorldPoint tunnelChest = new WorldPoint(3551, 9695, 0);
         List<WorldPoint> attempted = route(
-                configWith(transport -> unrestricted(transport) || isBarrowsDig(transport)),
+                configWith(transport -> unrestricted(transport) || isSpadeDig(transport)),
                 surface, tunnelChest);
         assertFalse("a mound dig alone must not claim deterministic access to the randomized tunnel",
                 arrives(attempted, tunnelChest, 2));
+    }
+
+    private static final WorldPoint BRINE_RAT_CAVERN_DIG = new WorldPoint(2748, 3733, 0);
+    private static final WorldPoint BRINE_RAT_CAVERN_LANDING = new WorldPoint(2696, 10120, 0);
+    private static final WorldPoint BRINE_RATS = new WorldPoint(2705, 10133, 0);
+    private static final WorldPoint OLAF = new WorldPoint(2722, 3727, 0);
+
+    @Test
+    public void brineRatCavernIsEnteredByTheSpadeDigAndLeftByTheCaveExit() {
+        List<WorldPoint> blocked = route(configWith(WalkerRouteCorpusTest::unrestricted), OLAF, BRINE_RATS);
+        assertFalse("the cavern has no entry without the spade dig",
+                arrives(blocked, BRINE_RATS, 2));
+
+        List<WorldPoint> entering = route(
+                configWith(transport -> unrestricted(transport) || isSpadeDig(transport)),
+                OLAF, BRINE_RATS);
+        assertTrue("the spade dig must reach the brine rats", arrives(entering, BRINE_RATS, 2));
+        assertTrue("the cavern route must retain the exact spade executor edge",
+                usesExactTransport(entering, BRINE_RAT_CAVERN_DIG, BRINE_RAT_CAVERN_LANDING,
+                        TransportExecutionRegistry.Executor.SPADE_DIG));
+
+        List<WorldPoint> leaving = route(configWith(WalkerRouteCorpusTest::unrestricted), BRINE_RATS, OLAF);
+        assertTrue("the cave exit must lead back to the surface", arrives(leaving, OLAF, 2));
+        assertTrue("the cavern must be left through the cave exit object",
+                usesTransportObject(leaving, 23158));
     }
 
     private static final WorldPoint GRAND_EXCHANGE = new WorldPoint(3166, 3487, 0);
