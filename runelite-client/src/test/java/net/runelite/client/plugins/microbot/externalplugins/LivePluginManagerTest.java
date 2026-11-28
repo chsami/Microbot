@@ -70,19 +70,28 @@ public class LivePluginManagerTest {
 
     @Before
     public void setUp() throws Exception {
-        plugins = mock(PluginManager.class);
         config = mock(ConfigManager.class);
         events = mock(EventBus.class);
         directory = temporary.newFolder("plugins").toPath();
-        when(plugins.getPlugins()).thenReturn(registered);
-        when(plugins.getActivePlugins()).thenReturn(active);
-        when(plugins.getShutdownFailure(any(Plugin.class))).thenAnswer(call -> shutdownFailures.get(call.getArgument(0)));
-        when(plugins.isPluginActive(any(Plugin.class))).thenAnswer(call -> active.contains(call.getArgument(0)));
-        when(plugins.isPluginEnabled(any(Plugin.class))).thenAnswer(call -> {
+        plugins = mockPluginManager(registered, active);
+        doAnswer(call -> {
+            enabled.put(call.getArgument(1), call.getArgument(2));
+            return null;
+        }).when(config).setConfiguration(anyString(), anyString(), any(Boolean.class));
+        manager = newManager(false);
+    }
+
+    private PluginManager mockPluginManager(List<Plugin> reg, List<Plugin> act) throws Exception {
+        PluginManager pm = mock(PluginManager.class);
+        when(pm.getPlugins()).thenReturn(reg);
+        when(pm.getActivePlugins()).thenReturn(act);
+        when(pm.getShutdownFailure(any(Plugin.class))).thenAnswer(call -> shutdownFailures.get(call.getArgument(0)));
+        when(pm.isPluginActive(any(Plugin.class))).thenAnswer(call -> act.contains(call.getArgument(0)));
+        when(pm.isPluginEnabled(any(Plugin.class))).thenAnswer(call -> {
             Plugin plugin = call.getArgument(0);
             return enabled.getOrDefault(configKey(plugin), plugin.getClass().getAnnotation(PluginDescriptor.class).enabledByDefault());
         });
-        when(plugins.preparePlugin(any(), anyCollection())).thenAnswer(call -> {
+        when(pm.preparePlugin(any(), anyCollection())).thenAnswer(call -> {
             assertFalse("Plugin construction must not block the EDT", SwingUtilities.isEventDispatchThread());
             Class<? extends Plugin> type = call.getArgument(0);
             assertNotSame("Core workers must not inherit a plugin context loader",
@@ -93,35 +102,31 @@ public class LivePluginManagerTest {
         });
         doAnswer(call -> {
             assertTrue(SwingUtilities.isEventDispatchThread());
-            registered.add(call.getArgument(0));
+            reg.add(call.getArgument(0));
             return null;
-        }).when(plugins).add(any(Plugin.class));
+        }).when(pm).add(any(Plugin.class));
         doAnswer(call -> {
             assertTrue(SwingUtilities.isEventDispatchThread());
             Plugin plugin = call.getArgument(0);
-            assertFalse("A running plugin must be stopped before removal", active.contains(plugin));
-            registered.remove(plugin);
+            assertFalse("A running plugin must be stopped before removal", act.contains(plugin));
+            reg.remove(plugin);
             return null;
-        }).when(plugins).remove(any(Plugin.class));
-        doAnswer(call -> {
-            enabled.put(call.getArgument(1), call.getArgument(2));
-            return null;
-        }).when(config).setConfiguration(anyString(), anyString(), any(Boolean.class));
+        }).when(pm).remove(any(Plugin.class));
         // Install, update and reload restarts are not the player using a plugin.
-        when(plugins.startPlugin(any(Plugin.class), eq(false))).thenAnswer(call -> {
+        when(pm.startPlugin(any(Plugin.class), eq(false))).thenAnswer(call -> {
             assertTrue("Plugin startup must run on EDT", SwingUtilities.isEventDispatchThread());
             Plugin plugin = call.getArgument(0);
             assertNotSame("EDT callbacks must retain the shared client context loader",
                     plugin.getClass().getClassLoader(), Thread.currentThread().getContextClassLoader());
-            if (active.contains(plugin) || !plugins.isPluginEnabled(plugin)) {
+            if (act.contains(plugin) || !pm.isPluginEnabled(plugin)) {
                 return false;
             }
-            active.add(plugin);
+            act.add(plugin);
             try {
                 invokeLifecycle(plugin, "startUp");
             } catch (PluginInstantiationException failure) {
                 // Match PluginManager's failed-start cleanup contract.
-                active.remove(plugin);
+                act.remove(plugin);
                 try {
                     invokeLifecycle(plugin, "shutDown");
                 } catch (Exception shutdownFailure) {
@@ -131,12 +136,12 @@ public class LivePluginManagerTest {
             }
             return true;
         });
-        when(plugins.stopPlugin(any(Plugin.class))).thenAnswer(call -> {
+        when(pm.stopPlugin(any(Plugin.class))).thenAnswer(call -> {
             assertTrue("Plugin shutdown must run on EDT", SwingUtilities.isEventDispatchThread());
             Plugin plugin = call.getArgument(0);
             assertNotSame("EDT callbacks must retain the shared client context loader",
                     plugin.getClass().getClassLoader(), Thread.currentThread().getContextClassLoader());
-            if (!active.remove(plugin)) {
+            if (!act.remove(plugin)) {
                 return false;
             }
             try {
@@ -147,7 +152,7 @@ public class LivePluginManagerTest {
             }
             return true;
         });
-        manager = newManager(false);
+        return pm;
     }
 
     @After
@@ -657,6 +662,8 @@ public class LivePluginManagerTest {
 
         OperationResult failure = await(manager.rescan());
         assertFalse(failure.isSuccess());
+        assertTrue(failure.getMessage(), failure.getMessage().contains("To update, delete"));
+        assertTrue(failure.getMessage(), failure.getMessage().contains("ZDuplicate.jar"));
         assertSame(original, onlyPlugin());
         assertEquals("1.0", resource(original));
         assertArrayEquals(Files.readAllBytes(v1), Files.readAllBytes(source));
@@ -818,8 +825,14 @@ public class LivePluginManagerTest {
     }
 
     private long runtimeJarCount() throws Exception {
-        try (java.util.stream.Stream<Path> files = Files.list(directory.resolve(".runtime"))) {
-            return files.filter(path -> path.toString().endsWith(".jar")).count();
+        Path runtimeDir = directory.resolve(".runtime");
+        if (!Files.isDirectory(runtimeDir)) {
+            return 0;
+        }
+        try (java.util.stream.Stream<Path> files = Files.walk(runtimeDir)) {
+            return files.filter(Files::isRegularFile)
+                    .filter(path -> path.toString().endsWith(".jar"))
+                    .count();
         }
     }
 
@@ -1093,14 +1106,101 @@ public class LivePluginManagerTest {
     }
 
     @Test
-    public void startupSweepsOrphanedRuntimeCacheJars() throws Exception {
+    public void startupSweepsOrphanedDeadProcessCacheSubdirAndPreservesLiveAndLegacyCaches() throws Exception {
+        long livePid = ProcessHandle.current().pid();
+        long deadPid = 999_999_999L;
         Path runtimeDir = directory.resolve(".runtime");
-        Files.createDirectories(runtimeDir);
-        Path orphan = runtimeDir.resolve("orphan-123.jar");
-        Files.write(orphan, new byte[]{1, 2, 3});
+        Path legacyFlat = runtimeDir.resolve("legacy-client.jar");
+        Path otherLiveSubdir = runtimeDir.resolve("pid-" + livePid + "-999999");
+        Path otherLiveJar = otherLiveSubdir.resolve("active.jar");
+        Path deadSubdir = runtimeDir.resolve("pid-" + deadPid + "-1");
+        Path deadOrphan = deadSubdir.resolve("orphan-123.jar");
+        Files.createDirectories(otherLiveSubdir);
+        Files.createDirectories(deadSubdir);
+        Files.write(legacyFlat, new byte[]{1, 2, 3});
+        Files.write(otherLiveJar, new byte[]{4, 5, 6});
+        Files.write(deadOrphan, new byte[]{7, 8, 9});
 
+        manager = new LivePluginManager(plugins, config, events, false, directory, pid -> pid == livePid);
         manager.loadAtStartup();
 
-        assertFalse("Orphaned cache JARs should be swept at startup", Files.exists(orphan));
+        assertFalse("Orphaned cache JARs from dead processes should be swept", Files.exists(deadOrphan));
+        assertFalse("Empty dead-process cache directory should be removed", Files.exists(deadSubdir));
+        assertTrue("Active cache JARs from another live process must stay intact", Files.exists(otherLiveJar));
+        assertTrue("Legacy top-level .runtime JARs must not be deleted", Files.exists(legacyFlat));
+    }
+
+    @Test
+    public void twoClientsSharingPluginDirectoryPreserveEachOthersRuntimeCachesAcrossStartup() throws Exception {
+        Path jar = directory.resolve("FixturePlugin.jar");
+        Files.copy(fixture("v1.jar", "1.0", false), jar);
+
+        LivePluginManager clientA = newManager(false);
+        clientA.loadAtStartup();
+        SwingUtilities.invokeAndWait(() -> {
+            try {
+                plugins.startPlugin(onlyPlugin(), false);
+            } catch (PluginInstantiationException failure) {
+                throw new AssertionError(failure);
+            }
+        });
+        assertEquals(1, runtimeJarCount());
+
+        PluginManager pluginsB = mockPluginManager(new CopyOnWriteArrayList<>(), new CopyOnWriteArrayList<>());
+        LivePluginManager clientB = new LivePluginManager(pluginsB, config, events, false, directory);
+        clientB.loadAtStartup();
+        try {
+            assertEquals("Client B startup must keep both clients' cache JARs intact", 2, runtimeJarCount());
+            OperationResult rollback = await(clientA.install(fixture("v2-bad.jar", "2.0", true), PLUGIN_ID));
+            assertFalse(rollback.isSuccess());
+            assertTrue(rollback.getMessage(), rollback.getMessage().contains("previous version restored"));
+            assertEquals("1.0", resource(onlyPlugin()));
+        } finally {
+            await(clientA.shutdown());
+            await(clientB.shutdown());
+        }
+        assertEquals(0, runtimeJarCount());
+    }
+
+    @Test
+    public void rescanPreservesFirstPassRollbackFailureWhenAnotherJarIsRemoved() throws Exception {
+        Path aJar = directory.resolve("FixtureA.jar");
+        Path bJar = directory.resolve("FixtureB.jar");
+        Files.copy(fixture("a-v1.jar", PLUGIN_ID, ENTRY_CLASS, CONFIG_KEY, "1.0", false), aJar);
+        Files.copy(fixture("b-v1.jar", "second-plugin", "livefixture.SecondPlugin", "secondplugin", "1.0", false), bJar);
+        success(manager.rescan());
+        assertEquals(2, registered.size());
+
+        // Overwrite A with a build whose startUp fails (restoring v1 bytes) and delete B in the same scan.
+        Files.copy(fixture("a-v2-bad.jar", PLUGIN_ID, ENTRY_CLASS, CONFIG_KEY, "2.0", true),
+                aJar, StandardCopyOption.REPLACE_EXISTING);
+        Files.delete(bJar);
+
+        OperationResult result = await(manager.rescan());
+        assertFalse("Failed update must not be masked by retry pass after B deletion", result.isSuccess());
+        assertTrue(result.getMessage(), result.getMessage().contains("FixtureA.jar"));
+        assertTrue(result.getMessage(), result.getMessage().contains("previous version restored"));
+        assertEquals("1.0", resource(onlyPlugin()));
+    }
+
+    @Test
+    public void failedRenamedReplacementWhenOldJarDeletedUnloadsPluginRemovesOriginAndReportsIt() throws Exception {
+        Path v1 = directory.resolve("FixturePlugin-1.0.jar");
+        Files.copy(fixture("v1.jar", "1.0", false), v1);
+        Path v1Origin = directory.resolve("FixturePlugin-1.0.jar.origin");
+        Files.writeString(v1Origin, "hubId=FixturePlugin\nsha256=" + LivePluginManager.hash(v1) + "\n");
+        success(manager.rescan());
+
+        Files.delete(v1);
+        Path v2Bad = directory.resolve("FixturePlugin-2.0.jar");
+        Files.copy(fixture("v2-bad.jar", "2.0", true), v2Bad);
+
+        OperationResult failure = await(manager.install(v2Bad, PLUGIN_ID));
+        assertFalse(failure.isSuccess());
+        assertTrue(failure.getMessage(), failure.getMessage().contains("was unloaded"));
+        assertTrue(failure.getMessage(), failure.getMessage().contains("FixturePlugin-1.0.jar"));
+        assertFalse("Orphaned .origin file for deleted v1 should be removed", Files.exists(v1Origin));
+        assertTrue(manager.getInstalledPlugins().isEmpty());
+        assertTrue(registered.isEmpty());
     }
 }

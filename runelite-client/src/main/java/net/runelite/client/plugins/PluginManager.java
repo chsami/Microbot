@@ -498,9 +498,13 @@ public class PluginManager {
     }
 
     private void removePluginOverlays(Plugin plugin) {
-        OverlayManager manager = overlayManager == null ? null : overlayManager.get();
-        if (manager != null) {
-            manager.removeIf(overlay -> overlay.getPlugin() == plugin);
+        try {
+            OverlayManager manager = overlayManager == null ? null : overlayManager.get();
+            if (manager != null) {
+                manager.removeIf(overlay -> overlay.getPlugin() == plugin);
+            }
+        } catch (Exception | LinkageError ex) {
+            log.warn("Failed to remove overlays for stopped plugin {}", plugin.getClass().getSimpleName(), ex);
         }
     }
 
