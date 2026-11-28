@@ -1925,9 +1925,11 @@ public class Rs2Bank {
      */
     public static boolean withdrawXAndEquip(int id, int amount) {
         if (Rs2Equipment.isWearing(id)) return true;
-        withdrawX(id, amount);
-        if (!sleepUntil(() -> Rs2Inventory.hasItem(id))) return false;
-        return wearItem(id);
+        Rs2ItemModel row = findBankStackRowForSavedId(id);
+        withdrawXItem(row, amount);
+        int withdrawnId = row == null ? id : row.getId();
+        if (!sleepUntil(() -> Rs2Inventory.hasItem(withdrawnId))) return false;
+        return wearItem(withdrawnId);
     }
 
     /**
@@ -1985,9 +1987,11 @@ public class Rs2Bank {
      */
     public static boolean withdrawAndEquip(int id) {
         if (Rs2Equipment.isWearing(id)) return true;
-        if (!withdrawOne(id)) return false;
-        if (!sleepUntil(() -> Rs2Inventory.hasItem(id))) return false;
-        return wearItem(id);
+        Rs2ItemModel row = findBankStackRowForSavedId(id);
+        if (!withdrawOne(row)) return false;
+        int withdrawnId = row.getId();
+        if (!sleepUntil(() -> Rs2Inventory.hasItem(withdrawnId))) return false;
+        return wearItem(withdrawnId);
     }
 
     /**

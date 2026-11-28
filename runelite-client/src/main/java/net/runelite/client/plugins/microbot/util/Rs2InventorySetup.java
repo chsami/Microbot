@@ -946,13 +946,18 @@ public class Rs2InventorySetup {
 			if (!inBank && !isFuzzy) {
 				inBank = Rs2Bank.hasBankItem(lowerCaseName, item.getQuantity(), false);
 			}
-			Rs2ItemModel barrowsInInventory = null;
+			Rs2ItemModel heldInInventory = null;
 			Rs2ItemModel barrowsInBank = null;
 			if (InventorySetupsItem.isBarrowsItem(lowerCaseName)) {
-				barrowsInInventory = Rs2Inventory.items().filter(held -> itemFillsSetupRow(held, item)).findFirst().orElse(null);
+				heldInInventory = Rs2Inventory.items().filter(held -> itemFillsSetupRow(held, item)).findFirst().orElse(null);
 				barrowsInBank = bankItemsOrEmpty().stream().filter(held -> itemFillsSetupRow(held, item)).findFirst().orElse(null);
-				inInventory = inInventory && barrowsInInventory != null;
+				inInventory = inInventory && heldInInventory != null;
 				inBank = inBank && barrowsInBank != null;
+			} else if (!isFuzzy) {
+				heldInInventory = Rs2Inventory.items()
+					.filter(held -> held.getId() == item.getId() || (!held.isNoted() && itemFillsSetupRow(held, item)))
+					.findFirst().orElse(null);
+				inInventory = inInventory || heldInInventory != null;
 			}
 
 			if (!inInventory && !inBank) {
@@ -976,8 +981,8 @@ public class Rs2InventorySetup {
 			}
 
 			if (inInventory) {
-				if (barrowsInInventory != null) {
-					Rs2Bank.wearItem(barrowsInInventory.getId());
+				if (heldInInventory != null) {
+					Rs2Bank.wearItem(heldInInventory.getId());
 				} else if (isFuzzy) {
 					Rs2Bank.wearItem((String) identifier);
 				} else {

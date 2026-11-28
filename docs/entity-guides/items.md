@@ -368,6 +368,14 @@ The pad collects three digits on the client and sends only the fourth. It reshuf
 
 **Defensive check:** Call `Rs2Bank.handleBankPin()`, never type into the pad directly. Run `Rs2BankPinTest`.
 
+## 27. Some gear has a different item id while worn
+
+Weight-reducing gear uses one id in the bank and inventory and another while worn: Graceful hood is 11850 / 11851 and Boots of lightness 88 / 89. A setup saved from worn gear stores the worn id. The id lookups in the bank find the bank row by name (section 4), so `withdrawOne(11851)` withdraws 11850, but `Rs2Inventory.hasItem(id)` and `get(id)` match the exact id and never see it. `Rs2Bank.withdrawAndEquip(int)` and `withdrawXAndEquip(int, int)` now wait for and wear the id of the bank row they withdrew, and `Rs2InventorySetup.loadEquipment` wears the held inventory copy that fills a non-fuzzy row (same id, or same name and not noted).
+
+**Why this matters:** the loader withdrew the hood and the boots, waited for the worn id, gave up, and left them in the inventory. On the next pass it found none in the bank and paused with "missing gear".
+
+**Defensive check:** Run `Rs2BankWithdrawAndEquipTest` and `InventorySetupMatchingTest`.
+
 ## Terminal supply stops need observed logout
 
 An owning script can set `withMissingSupplyHandler` on its Inventory Setup loader to keep its scheduled loop alive while `TerminalLogoutPrompt` closes the bank and requests logout. Do not show a blocking shortage notification or cancel that loop until `LOGGED_OUT` is observed. The default loader policy stays unchanged when no handler is supplied; ordinary breaks and world hops do not arm terminal Auto Login suppression.
