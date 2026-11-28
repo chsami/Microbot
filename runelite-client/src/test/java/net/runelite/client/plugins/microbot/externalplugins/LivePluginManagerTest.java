@@ -998,4 +998,109 @@ public class LivePluginManagerTest {
 
         assertFalse(blocked.containsKey("MyScript-1.0"));
     }
+
+    @Test
+    public void rescanReplacesDeletedVersionedJarWithRenamedNewVersionJar() throws Exception {
+        Path v1 = directory.resolve("FixturePlugin-1.0.jar");
+        Files.copy(fixture("v1.jar", "1.0", false), v1);
+        success(manager.rescan());
+        Plugin first = onlyPlugin();
+        assertEquals("1.0", resource(first));
+
+        Path v2 = directory.resolve("FixturePlugin-2.0.jar");
+        Files.delete(v1);
+        Files.copy(fixture("v2.jar", "2.0", false), v2);
+        success(manager.rescan());
+
+        Plugin second = onlyPlugin();
+        assertNotSame(first, second);
+        assertNotSame(first.getClass().getClassLoader(), second.getClass().getClassLoader());
+        assertEquals("2.0", resource(second));
+        assertEquals(1, counter(first, "stops"));
+        assertTrue(active.contains(second));
+        assertEquals(1, manager.getInstalledPlugins().size());
+        assertEquals("2.0", manager.getInstalledPlugins().get(0).getVersion());
+        assertEquals(v2, manager.getInstalledPlugins().get(0).getSourcePath());
+        assertEquals(1, runtimeJarCount());
+        verify(config).invalidateConfigCache(first.getClass().getClassLoader());
+    }
+
+    @Test
+    public void updateAcceptsRenamedJarInFolderAfterOldSourceIsDeleted() throws Exception {
+        Path v1 = directory.resolve("FixturePlugin-1.0.jar");
+        Files.copy(fixture("v1.jar", "1.0", false), v1);
+        success(manager.rescan());
+        Plugin first = onlyPlugin();
+
+        Path v2 = directory.resolve("FixturePlugin-2.0.jar");
+        Files.delete(v1);
+        Files.copy(fixture("v2.jar", "2.0", false), v2);
+        success(manager.install(v2, PLUGIN_ID));
+
+        Plugin second = onlyPlugin();
+        assertNotSame(first, second);
+        assertEquals("2.0", resource(second));
+        assertEquals("2.0", manager.getInstalledPlugins().get(0).getVersion());
+        assertEquals(v2, manager.getInstalledPlugins().get(0).getSourcePath());
+        assertFalse(Files.exists(v1));
+    }
+
+    @Test
+    public void folderWatcherHandlesDeleteAndCopyOfVersionedJarAndRecoversAfterDuplicateRemoval() throws Exception {
+        Path v1 = directory.resolve("FixturePlugin-1.0.jar");
+        Files.copy(fixture("v1.jar", "1.0", false), v1);
+        CountDownLatch v1Loaded = new CountDownLatch(1);
+        CountDownLatch v2Loaded = new CountDownLatch(1);
+        CountDownLatch v3Loaded = new CountDownLatch(1);
+        CountDownLatch watchStopped = new CountDownLatch(1);
+        doAnswer(call -> {
+            List<LivePluginManager.PluginEntry> entries = manager.getInstalledPlugins();
+            if (!entries.isEmpty()) {
+                String ver = entries.get(0).getVersion();
+                if ("1.0".equals(ver)) {
+                    v1Loaded.countDown();
+                } else if ("2.0".equals(ver)) {
+                    v2Loaded.countDown();
+                } else if ("3.0".equals(ver)) {
+                    v3Loaded.countDown();
+                }
+            }
+            if (!manager.isWatching() && manager.getWatchStatus().contains("Duplicate plugin JAR")) {
+                watchStopped.countDown();
+            }
+            return null;
+        }).when(events).post(any(ExternalPluginsChanged.class));
+
+        manager.setWatching(true);
+        assertTrue(v1Loaded.await(15, TimeUnit.SECONDS));
+
+        Files.delete(v1);
+        Path v2 = directory.resolve("FixturePlugin-2.0.jar");
+        Files.copy(fixture("v2.jar", "2.0", false), v2);
+        assertTrue("Watcher should upgrade deleted v1 -> v2 seamlessly", v2Loaded.await(15, TimeUnit.SECONDS));
+        assertTrue(manager.isWatching());
+
+        Path v3 = directory.resolve("FixturePlugin-3.0.jar");
+        Files.copy(fixture("v3.jar", "3.0", false), v3);
+        assertTrue("Leaving v2 alongside v3 should stop watching", watchStopped.await(15, TimeUnit.SECONDS));
+        assertFalse(manager.isWatching());
+
+        Files.delete(v2);
+        manager.setWatching(true);
+        assertTrue("Re-enabling watch after deleting duplicate v2 should retry skipped v3",
+                v3Loaded.await(15, TimeUnit.SECONDS));
+        assertEquals("3.0", manager.getInstalledPlugins().get(0).getVersion());
+    }
+
+    @Test
+    public void startupSweepsOrphanedRuntimeCacheJars() throws Exception {
+        Path runtimeDir = directory.resolve(".runtime");
+        Files.createDirectories(runtimeDir);
+        Path orphan = runtimeDir.resolve("orphan-123.jar");
+        Files.write(orphan, new byte[]{1, 2, 3});
+
+        manager.loadAtStartup();
+
+        assertFalse("Orphaned cache JARs should be swept at startup", Files.exists(orphan));
+    }
 }

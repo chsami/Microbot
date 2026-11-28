@@ -52,6 +52,7 @@ import net.runelite.client.plugins.microbot.ui.MicrobotPluginFailures;
 import net.runelite.client.plugins.microbot.ui.MicrobotPluginUsage;
 import net.runelite.client.task.Scheduler;
 import net.runelite.client.ui.SplashScreen;
+import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.GameEventManager;
 import net.runelite.client.util.ReflectUtil;
 
@@ -84,6 +85,8 @@ public class PluginManager {
     private final ConfigManager configManager;
     private final Provider<GameEventManager> sceneTileManager;
     private final PluginModuleFactory pluginModuleFactory;
+    @com.google.inject.Inject(optional = true)
+    private Provider<OverlayManager> overlayManager;
     private final List<Plugin> plugins = new CopyOnWriteArrayList<>();
     private final Set<Plugin> unloadingPlugins = java.util.concurrent.ConcurrentHashMap.newKeySet();
     // Plugin equality is final and identity-based; keep failures even after activePlugins removes it.
@@ -93,6 +96,11 @@ public class PluginManager {
 
     public void addPlugin(Plugin plugin) {
         plugins.add(plugin);
+    }
+
+    @VisibleForTesting
+    void setOverlayManager(Provider<OverlayManager> overlayManager) {
+        this.overlayManager = overlayManager;
     }
 
     @Inject
@@ -474,18 +482,26 @@ public class PluginManager {
         try {
             plugin.shutDown();
             shutdownFailures.remove(plugin);
-
-            log.debug("Plugin {} is now stopped", plugin.getClass().getSimpleName());
-            eventBus.post(new PluginChanged(plugin, false));
         } catch (Exception ex) {
             shutdownFailures.put(plugin, ex);
             throw new PluginInstantiationException(ex);
         } catch (Error ex) {
             shutdownFailures.put(plugin, ex);
             throw ex;
+        } finally {
+            removePluginOverlays(plugin);
         }
 
+        log.debug("Plugin {} is now stopped", plugin.getClass().getSimpleName());
+        eventBus.post(new PluginChanged(plugin, false));
         return true;
+    }
+
+    private void removePluginOverlays(Plugin plugin) {
+        OverlayManager manager = overlayManager == null ? null : overlayManager.get();
+        if (manager != null) {
+            manager.removeIf(overlay -> overlay.getPlugin() == plugin);
+        }
     }
 
     /** A failed shutdown remains visible even though the plugin is no longer marked active. */

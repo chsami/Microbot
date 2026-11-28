@@ -906,6 +906,12 @@ public class ConfigManager
 		return t;
 	}
 
+	/** Evicts cached config method lookups owned by an unloaded plugin classloader. */
+	public void invalidateConfigCache(ClassLoader loader)
+	{
+		handler.invalidate(loader);
+	}
+
 	public List<String> getConfigurationKeys(String prefix)
 	{
 		return configProfile.keySet().stream()

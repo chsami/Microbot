@@ -299,4 +299,17 @@ public class MicrobotPluginManagerTest {
         assertFalse(manager.getInstalledPluginVersion("FixturePlugin").isPresent());
         verify(config, never()).getConfiguration("microbotPluginVersions", "plugin.FixturePlugin");
     }
+
+    @Test
+    public void hubPluginVersionFallsBackToLiveEntryWhenConfigIsMissing() throws Exception {
+        Constructor<LivePluginManager.PluginEntry> constructor = LivePluginManager.PluginEntry.class.getDeclaredConstructor(
+                String.class, String.class, String.class, Path.class, boolean.class, String.class, List.class, String.class);
+        constructor.setAccessible(true);
+        LivePluginManager.PluginEntry hub = constructor.newInstance("hub.AutoMinerPlugin", "Auto Miner", "2.0.1",
+                Paths.get("AutoMinerPlugin.jar"), true, "Ready", Collections.singletonList("hub.AutoMinerPlugin"), "AutoMinerPlugin");
+        when(lifecycle.getInstalledPlugins()).thenReturn(Collections.singletonList(hub));
+        when(config.getConfiguration("microbotPluginVersions", "plugin.AutoMinerPlugin")).thenReturn(null);
+
+        assertEquals("2.0.1", manager.getInstalledPluginVersion("AutoMinerPlugin").get());
+    }
 }

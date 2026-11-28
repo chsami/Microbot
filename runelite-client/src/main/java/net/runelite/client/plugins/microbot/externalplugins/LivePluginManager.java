@@ -324,12 +324,34 @@ public class LivePluginManager {
             throw new IllegalStateException("Startup plugin scanning must run off the UI and client threads.");
         }
         applyConfiguredDirectory();
-        OperationResult result = submit(() -> scan(true)).join();
+        OperationResult result = submit(() -> {
+            sweepCacheDirectory();
+            return scan(true);
+        }).join();
         if (!result.success) {
             log.warn("Some local plugins could not be loaded: {}", result.message);
         }
         if ("true".equals(config.getConfiguration(CONFIG_GROUP, WATCH_FOLDER_KEY))) {
             applyWatching(true);
+        }
+    }
+
+    private void sweepCacheDirectory() {
+        if (!installed.isEmpty() || !quarantine.isEmpty() || !Files.isDirectory(cacheDirectory)) {
+            return;
+        }
+        try (java.util.stream.Stream<Path> cached = Files.list(cacheDirectory)) {
+            cached.filter(Files::isRegularFile)
+                    .filter(path -> path.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".jar"))
+                    .forEach(path -> {
+                        try {
+                            Files.deleteIfExists(path);
+                        } catch (IOException ex) {
+                            log.debug("Could not delete stale plugin cache file {}", path.getFileName(), ex);
+                        }
+                    });
+        } catch (IOException ex) {
+            log.debug("Could not list plugin cache directory {}", cacheDirectory, ex);
         }
     }
 
@@ -339,6 +361,10 @@ public class LivePluginManager {
 
     /** The user's choice: remembered in the profile and restored at the next start. */
     public synchronized void setWatching(boolean enabled) {
+        if (enabled && !watchStatus.isEmpty()) {
+            skipped.clear();
+            observed = Collections.emptyMap();
+        }
         applyWatching(enabled);
         if (!closed && !safeMode) {
             config.setConfiguration(CONFIG_GROUP, WATCH_FOLDER_KEY, enabled);
@@ -401,6 +427,7 @@ public class LivePluginManager {
                 if (failure instanceof InterruptedException) {
                     Thread.currentThread().interrupt();
                 }
+                log.warn("Local plugin operation failed: {}", failure.toString());
                 return OperationResult.failure(message(failure));
             } finally {
                 publish();
@@ -452,7 +479,9 @@ public class LivePluginManager {
                 throw new IllegalStateException("Restart Microbot to finish removing " + displayName(old.artifact)
                         + " before installing it again.");
             }
-            if (old != null && incoming.getParent().equals(pluginDirectory) && !incoming.equals(old.source)) {
+            boolean existingSourcePresent = old != null && Files.exists(old.source, LinkOption.NOFOLLOW_LINKS);
+            if (old != null && incoming.getParent().equals(pluginDirectory) && !incoming.equals(old.source)
+                    && existingSourcePresent) {
                 throw new IllegalArgumentException("Duplicate plugin JAR in the folder. Keep only " + old.source.getFileName() + ".");
             }
             if (quarantine.containsKey(candidate.id)) {
@@ -462,12 +491,12 @@ public class LivePluginManager {
                 throw new IllegalStateException("Previous cleanup failed. Remove the plugin successfully before installing a replacement.");
             }
             validate(candidate, old);
-            if (old != null && old.digest.equals(digest) && !force) {
+            Path target = incoming.getParent().equals(pluginDirectory) ? incoming
+                    : old != null ? old.source : pluginDirectory.resolve(candidate.types.get(0).getSimpleName() + ".jar");
+            checkManagedPath(target);
+            if (old != null && old.source.equals(target) && old.digest.equals(digest) && !force) {
                 return OperationResult.success("This plugin version is already loaded.");
             }
-            Path target = old != null ? old.source : incoming.getParent().equals(pluginDirectory)
-                    ? incoming : pluginDirectory.resolve(candidate.types.get(0).getSimpleName() + ".jar");
-            checkManagedPath(target);
             for (Installation other : installed.values()) {
                 if (other != old && other.source.toString().equalsIgnoreCase(target.toString())) {
                     throw new IllegalArgumentException("Another plugin already owns this installed JAR filename.");
@@ -503,6 +532,9 @@ public class LivePluginManager {
                 activate(replacement, enabled, running, old != null, startup);
                 replaceFile(staged, target);
                 writeOrigin(replacement);
+                if (old != null && !old.source.equals(target) && !Files.exists(old.source, LinkOption.NOFOLLOW_LINKS)) {
+                    Files.deleteIfExists(originPath(old.source));
+                }
                 installed.put(replacement.artifact.id, replacement);
                 retained = true;
                 if (old != null) {
@@ -520,18 +552,20 @@ public class LivePluginManager {
                                 + (version(replacement.artifact).isEmpty() ? "" : " to " + version(replacement.artifact))
                                 + ". Settings were kept.");
             } catch (Exception | LinkageError | AssertionError failure) {
+                boolean canRestoreOldDisk = old != null
+                        && (old.source.equals(target) || Files.exists(old.source, LinkOption.NOFOLLOW_LINKS));
                 try {
                     retire(replacement);
                 } catch (Exception | LinkageError | AssertionError cleanupFailure) {
                     quarantine(replacement, cleanupFailure);
                     retained = true;
-                    // Keep the previous bytes installed on disk, but never restart another generation.
-                    if (old != null) {
+                    // Keep the previous bytes installed on disk when present, but never restart another generation.
+                    if (canRestoreOldDisk) {
                         restoreDisk(old);
                     }
                     return OperationResult.failure(replacement.status);
                 }
-                if (old != null) {
+                if (canRestoreOldDisk) {
                     restoreDisk(old);
                     // A disposed Script cannot be restarted. Re-create the previous artifact.
                     Path rollbackFile = Files.createTempFile(cacheDirectory, "rollback-", ".jar");
@@ -556,6 +590,10 @@ public class LivePluginManager {
                         release(old.artifact);
                         return OperationResult.failure(rollback.status);
                     }
+                }
+                if (old != null) {
+                    release(old.artifact);
+                    installed.remove(old.artifact.id);
                 }
                 throw failure;
             }
@@ -826,6 +864,7 @@ public class LivePluginManager {
             return null;
         });
         PluginResources.dispose(current.artifact.loader, 5000);
+        config.invalidateConfigCache(current.artifact.loader);
         onEdt(() -> {
             current.instances.forEach(plugins::remove);
             return null;
@@ -848,72 +887,85 @@ public class LivePluginManager {
     private OperationResult scan(boolean startup) throws Exception {
         List<String> failures = new ArrayList<>();
         List<String> notices = new ArrayList<>();
-        List<Path> sources;
-        try (java.util.stream.Stream<Path> files = Files.list(pluginDirectory)) {
-            sources = files.filter(path -> path.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".jar"))
-                    .sorted().collect(java.util.stream.Collectors.toList());
-        }
-        skipped.keySet().retainAll(new HashSet<>(sources));
-        for (Path source : sources) {
-            String digest = null;
-            try {
-                Properties origin = readOrigin(source);
-                Installation existing = installed.values().stream().filter(i -> i.source.equals(source)).findFirst().orElse(null);
-                digest = hash(source);
-                if (existing != null && existing.digest.equals(digest)) {
-                    skipped.remove(source);
-                    continue;
-                }
-                if (digest.equals(skipped.get(source))) {
-                    continue;
-                }
-                String hubId = origin.getProperty("hubId");
-                String expectedHash = origin.getProperty("sha256");
-                if (hubId == null) {
-                    String recordedHub = recordedHubInstall(source, digest);
-                    if (recordedHub != null) {
-                        hubId = recordedHub;
-                        expectedHash = digest;
-                    }
-                }
-                OperationResult result = installNow(source, existing == null || hubId != null ? null : existing.artifact.id,
-                        hubId, expectedHash, false, startup);
-                if (result.success) {
-                    skipped.remove(source);
-                } else {
-                    skipped.put(source, digest);
-                    failures.add(source.getFileName() + ": " + result.message);
-                    if (startup) {
-                        reportLoadFailure(source, result.message);
-                    }
-                }
-            } catch (LivePluginArtifact.BlockedPluginException blocked) {
-                if (digest != null) {
-                    skipped.put(source, digest);
-                }
-                notices.add(blockedNotice(blocked, source));
-                if (startup) {
-                    reportBlocked(blocked.internalName, blocked.version, "compatibility check", blocked.reason);
-                }
-            } catch (Exception | LinkageError | AssertionError failure) {
-                if (digest != null) {
-                    skipped.put(source, digest);
-                }
-                failures.add(source.getFileName() + ": " + message(failure));
-                log.warn("Could not load local plugin {}: {}", source.getFileName(), failure.toString());
-                if (startup) {
-                    reportLoadFailure(source, message(failure));
-                }
+        boolean retriedAfterRemoval = false;
+        while (true) {
+            failures.clear();
+            notices.clear();
+            List<Path> sources;
+            try (java.util.stream.Stream<Path> files = Files.list(pluginDirectory)) {
+                sources = files.filter(path -> path.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".jar"))
+                        .sorted().collect(java.util.stream.Collectors.toList());
             }
-        }
-        for (Installation current : new ArrayList<>(installed.values())) {
-            if (!current.pendingRestart && !Files.exists(current.source)) {
+            skipped.keySet().retainAll(new HashSet<>(sources));
+            for (Path source : sources) {
+                String digest = null;
                 try {
-                    removeNow(current, true);
+                    Properties origin = readOrigin(source);
+                    Installation existing = installed.values().stream().filter(i -> i.source.equals(source)).findFirst().orElse(null);
+                    digest = hash(source);
+                    if (existing != null && existing.digest.equals(digest)) {
+                        skipped.remove(source);
+                        continue;
+                    }
+                    if (digest.equals(skipped.get(source))) {
+                        continue;
+                    }
+                    String hubId = origin.getProperty("hubId");
+                    String expectedHash = origin.getProperty("sha256");
+                    if (hubId == null) {
+                        String recordedHub = recordedHubInstall(source, digest);
+                        if (recordedHub != null) {
+                            hubId = recordedHub;
+                            expectedHash = digest;
+                        }
+                    }
+                    OperationResult result = installNow(source, existing == null || hubId != null ? null : existing.artifact.id,
+                            hubId, expectedHash, false, startup);
+                    if (result.success) {
+                        skipped.remove(source);
+                    } else {
+                        skipped.put(source, digest);
+                        failures.add(source.getFileName() + ": " + result.message);
+                        if (startup) {
+                            reportLoadFailure(source, result.message);
+                        }
+                    }
+                } catch (LivePluginArtifact.BlockedPluginException blocked) {
+                    if (digest != null) {
+                        skipped.put(source, digest);
+                    }
+                    notices.add(blockedNotice(blocked, source));
+                    if (startup) {
+                        reportBlocked(blocked.internalName, blocked.version, "compatibility check", blocked.reason);
+                    }
                 } catch (Exception | LinkageError | AssertionError failure) {
-                    failures.add(message(failure));
+                    if (digest != null) {
+                        skipped.put(source, digest);
+                    }
+                    failures.add(source.getFileName() + ": " + message(failure));
+                    log.warn("Could not load local plugin {}: {}", source.getFileName(), failure.toString());
+                    if (startup) {
+                        reportLoadFailure(source, message(failure));
+                    }
                 }
             }
+            boolean removedMissing = false;
+            for (Installation current : new ArrayList<>(installed.values())) {
+                if (!current.pendingRestart && !Files.exists(current.source)) {
+                    try {
+                        removeNow(current, true);
+                        removedMissing = true;
+                    } catch (Exception | LinkageError | AssertionError failure) {
+                        failures.add(message(failure));
+                    }
+                }
+            }
+            if (!removedMissing || retriedAfterRemoval || skipped.isEmpty()) {
+                break;
+            }
+            // Deleting a duplicate/replaced JAR can unblock a skipped sibling in the same pass.
+            skipped.clear();
+            retriedAfterRemoval = true;
         }
         if (!failures.isEmpty()) {
             failures.addAll(notices);
