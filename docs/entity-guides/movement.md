@@ -596,6 +596,10 @@ return Rs2Tile.fullPathTo(sourceTile, targetTile);
 
 `client.getViewportXOffset/YOffset/Width/Height` covers the whole canvas in the resizable layouts, so a tile that projects inside the viewport can still be drawn under the inventory/side panel, the chatbox or the minimap. A `WALK` menu entry clicks `param0/param1` exactly, so a scene click point under one of those interfaces lands on the interface. Reject scene click points whose click box intersects a visible top-level overlay container and let the caller use the minimap instead.
 
+Read only the containers of the active toplevel (`client.getTopLevelInterfaceId()`, as RuneLite's `OverlayOrigin` does), and do not treat a container's bounds as opaque when they cover most of the viewport. Layout plugins such as Interface Layout can stretch the side, chat or minimap container to the whole canvas so its interfaces can be moved, and that one rectangle then covers every scene target. `Rs2UiHelper.visibleSceneOverlayBounds` uses the visible children of such a container instead.
+
+**Why this matters:** In 2.6.66 on the resizable classic layout with Interface Layout installed, AutoFishing never clicked a fishing spot or the deposit box in plain view and only logged "it is behind the chatbox, side panel or minimap".
+
 **Why this matters:** A Discord report on a clean main build showed the walker clicking the inventory while walking. `Rs2WalkerMovement.sceneCanvasPoint` and `Rs2Camera.isTileOnScreen` only tested the viewport rectangle, so `dispatchSceneWalk` clicked a tile point behind the side panel.
 
 **Pattern to follow:**
@@ -611,7 +615,7 @@ if (!isCanvasPointInsideViewport(canvasPoint, viewport)
 
 **Where this applies:** `Rs2WalkerMovement.sceneCanvasPoint`, `Rs2WalkerMovement.isSceneCanvasClickable`, `Rs2WalkerMovement.dispatchSceneWalk`, and any helper that clicks a projected canvas point with a `WALK` entry.
 
-**Defensive check:** Assert points inside, touching and outside overlay rectangles against `isCanvasPointCoveredByInterface`, as in `Rs2WalkerUnitTest.sceneClickRejectsPointsCoveredByVisibleInterfaces`.
+**Defensive check:** Assert points inside, touching and outside overlay rectangles against `isCanvasPointCoveredByInterface`, as in `Rs2WalkerUnitTest.sceneClickRejectsPointsCoveredByVisibleInterfaces`, and full-canvas containers against `Rs2UiHelper.visibleSceneOverlayBounds`, as in `Rs2UiHelperSceneOverlayBoundsTest`.
 
 ## 31. The player location can be `null` right after a transport
 

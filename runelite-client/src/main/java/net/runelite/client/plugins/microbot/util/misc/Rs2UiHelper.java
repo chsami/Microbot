@@ -17,6 +17,7 @@ import net.runelite.client.plugins.microbot.util.text.Rs2TextSanitizer;
 
 import java.awt.*;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
@@ -57,29 +58,69 @@ public class Rs2UiHelper {
         return visible.isEmpty() ? null : visible;
     }
 
-    private static final int[] SCENE_OVERLAY_COMPONENTS = {
+    private static final int[] STRETCH_OVERLAY_COMPONENTS = {
             InterfaceID.ToplevelOsrsStretch.SIDE_MENU,
             InterfaceID.ToplevelOsrsStretch.CHAT_CONTAINER,
-            InterfaceID.ToplevelOsrsStretch.MAP_CONTAINER,
+            InterfaceID.ToplevelOsrsStretch.MAP_CONTAINER
+    };
+
+    private static final int[] PRE_EOC_OVERLAY_COMPONENTS = {
             InterfaceID.ToplevelPreEoc.SIDE_CONTAINER,
             InterfaceID.ToplevelPreEoc.CHAT_CONTAINER,
             InterfaceID.ToplevelPreEoc.MAP_CONTAINER
     };
 
     static final int INTERFACE_CLEARANCE_PX = 4;
+    static final int OVERLAY_CHILD_DEPTH = 4;
 
     public static List<Rectangle> visibleSceneOverlayBounds() {
         return Microbot.getClientThread().runOnClientThreadOptional(() -> {
             Client client = Microbot.getClient();
+            Rectangle viewport = sceneViewportBounds();
+            int[] components = client.getTopLevelInterfaceId() == InterfaceID.TOPLEVEL_PRE_EOC
+                    ? PRE_EOC_OVERLAY_COMPONENTS
+                    : STRETCH_OVERLAY_COMPONENTS;
+            List<Widget> level = new ArrayList<>();
+            for (int componentId : components) {
+                level.add(client.getWidget(componentId));
+            }
             List<Rectangle> bounds = new ArrayList<>();
-            for (int componentId : SCENE_OVERLAY_COMPONENTS) {
-                Widget widget = client.getWidget(componentId);
-                if (widget != null && !widget.isHidden()) {
-                    bounds.add(widget.getBounds());
+            for (int depth = 0; depth <= OVERLAY_CHILD_DEPTH && !level.isEmpty(); depth++) {
+                List<Widget> next = new ArrayList<>();
+                for (Widget widget : level) {
+                    if (widget == null || widget.isHidden()) {
+                        continue;
+                    }
+                    Rectangle widgetBounds = widget.getBounds();
+                    if (widgetBounds == null || widgetBounds.isEmpty()) {
+                        continue;
+                    }
+                    if (!coversMostOf(widgetBounds, viewport)) {
+                        bounds.add(widgetBounds);
+                        continue;
+                    }
+                    addChildren(next, widget.getStaticChildren());
+                    addChildren(next, widget.getDynamicChildren());
+                    addChildren(next, widget.getNestedChildren());
                 }
+                level = next;
             }
             return bounds;
         }).orElseGet(ArrayList::new);
+    }
+
+    private static void addChildren(List<Widget> widgets, Widget[] children) {
+        if (children != null) {
+            Collections.addAll(widgets, children);
+        }
+    }
+
+    private static boolean coversMostOf(Rectangle bounds, Rectangle viewport) {
+        if (viewport == null || viewport.isEmpty()) {
+            return false;
+        }
+        Rectangle covered = bounds.intersection(viewport);
+        return !covered.isEmpty() && (long) covered.width * covered.height * 2 > (long) viewport.width * viewport.height;
     }
 
     public static Rectangle sceneViewportBounds() {
