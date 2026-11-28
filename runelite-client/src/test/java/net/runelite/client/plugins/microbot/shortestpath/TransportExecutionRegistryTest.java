@@ -42,7 +42,7 @@ public class TransportExecutionRegistryTest
 			"Dig", "Barrow", 0, 3);
 		valid.setItemIdRequirements(Set.of(Set.of(ItemID.SPADE)));
 
-		assertEquals(TransportExecutionRegistry.Executor.SPADE_DIG,
+		assertEquals(TransportExecutionRegistry.Executor.BARROWS_DIG,
 			TransportExecutionRegistry.executorFor(valid).orElse(null));
 
 		Transport wrongDestination = new Transport(
@@ -60,18 +60,18 @@ public class TransportExecutionRegistryTest
 	@Test
 	public void brineRatCavernDigUsesTheSpadeExecutorOnlyAtTheMudPatch()
 	{
-		WorldPoint origin = new WorldPoint(2748, 3733, 0);
+		WorldPoint origin = new WorldPoint(2748, 3732, 0);
 		WorldPoint destination = new WorldPoint(2696, 10120, 0);
 		Transport valid = new Transport(
 			origin, destination, "Brine Rat Cavern", TransportType.TRANSPORT, true,
 			"Dig", "Mud", 0, 3);
 		valid.setItemIdRequirements(Set.of(Set.of(ItemID.SPADE)));
 
-		assertEquals(TransportExecutionRegistry.Executor.SPADE_DIG,
+		assertEquals(TransportExecutionRegistry.Executor.BARROWS_DIG,
 			TransportExecutionRegistry.executorFor(valid).orElse(null));
 
 		Transport wrongOrigin = new Transport(
-			new WorldPoint(2749, 3733, 0), destination, "Brine Rat Cavern", TransportType.TRANSPORT, true,
+			new WorldPoint(2749, 3732, 0), destination, "Brine Rat Cavern", TransportType.TRANSPORT, true,
 			"Dig", "Mud", 0, 3);
 		wrongOrigin.setItemIdRequirements(Set.of(Set.of(ItemID.SPADE)));
 		Transport barrowName = new Transport(

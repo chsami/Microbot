@@ -3,7 +3,7 @@ package net.runelite.client.plugins.microbot.util.walker;
 /** Planner-independent Microbot runtime capability selected for a transport edge. */
 public enum Rs2TransportExecutor
 {
-	SPADE_DIG,
+	BARROWS_DIG,
 	CANOE,
 	CHARTER_SHIP,
 	FAIRY_RING,

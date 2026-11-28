@@ -18,7 +18,7 @@ public final class TransportDispatchTrace {
         ALREADY_AT_DESTINATION,
         SPIRIT_TREE_TRAVEL_DISABLED,
         PLANE_MISMATCH,
-        DIG_APPROACH,
+        BARROWS_APPROACH,
         TERMINAL_ALREADY_ATTEMPTED,
         TERMINAL_APPROACH
     }

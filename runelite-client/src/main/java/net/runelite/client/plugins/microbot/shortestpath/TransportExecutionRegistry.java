@@ -23,7 +23,7 @@ public final class TransportExecutionRegistry
 {
 	public enum Executor
 	{
-		SPADE_DIG,
+		BARROWS_DIG,
 		CANOE,
 		CHARTER_SHIP,
 		FAIRY_RING,
@@ -116,7 +116,7 @@ public final class TransportExecutionRegistry
 			new WorldPoint(3553, 3281, 0), new WorldPoint(3566, 9683, 3),
 			new WorldPoint(3556, 3297, 0), new WorldPoint(3578, 9704, 3));
 
-	private static final WorldPoint BRINE_RAT_CAVERN_DIG_ORIGIN = new WorldPoint(2748, 3733, 0);
+	private static final WorldPoint BRINE_RAT_CAVERN_DIG_ORIGIN = new WorldPoint(2748, 3732, 0);
 	private static final WorldPoint BRINE_RAT_CAVERN_DIG_DESTINATION = new WorldPoint(2696, 10120, 0);
 
 	private TransportExecutionRegistry()
@@ -139,7 +139,7 @@ public final class TransportExecutionRegistry
 		TransportType type = transport.getType();
 		if (isSpadeDig(transport))
 		{
-			return Optional.of(Executor.SPADE_DIG);
+			return Optional.of(Executor.BARROWS_DIG);
 		}
 		if (type == TransportType.TELEPORTATION_SPELL)
 		{

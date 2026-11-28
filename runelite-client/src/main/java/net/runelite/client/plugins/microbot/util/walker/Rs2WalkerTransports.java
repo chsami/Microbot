@@ -450,13 +450,13 @@ final class Rs2WalkerTransports {
                     }
 
                     if (path.get(i).equals(origin)) {
-                        if (selection.getExecutor() == Rs2TransportExecutor.SPADE_DIG) {
+                        if (selection.getExecutor() == Rs2TransportExecutor.BARROWS_DIG) {
                             WorldPoint digOrigin = transport.getOrigin();
                             WorldPoint playerAtMound = Rs2Player.getWorldLocation();
                             if (digOrigin == null || playerAtMound == null || !playerAtMound.equals(digOrigin)) {
                                 // Digging is tile-sensitive. Let the ordinary path click finish the
                                 // approach instead of firing the spade from an adjacent mound tile.
-                                noteDeliberateSkip(TransportDispatchTrace.DeliberateSkip.DIG_APPROACH);
+                                noteDeliberateSkip(TransportDispatchTrace.DeliberateSkip.BARROWS_APPROACH);
                                 return false;
                             }
                             boolean dug = attemptObserved(transport,

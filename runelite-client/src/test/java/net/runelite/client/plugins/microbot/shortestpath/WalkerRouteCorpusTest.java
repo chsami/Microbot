@@ -950,7 +950,7 @@ public class WalkerRouteCorpusTest {
 
     private static boolean isSpadeDig(Transport transport) {
         return TransportExecutionRegistry.executorFor(transport).orElse(null)
-                == TransportExecutionRegistry.Executor.SPADE_DIG;
+                == TransportExecutionRegistry.Executor.BARROWS_DIG;
     }
 
     private static boolean usesExactTransport(List<WorldPoint> path, WorldPoint origin,
@@ -988,7 +988,7 @@ public class WalkerRouteCorpusTest {
                     arrives(entering, sarcophagusApproach, 0));
             assertTrue("mound route must retain the exact spade executor edge: " + surface,
                     usesExactTransport(entering, surface, stair,
-                            TransportExecutionRegistry.Executor.SPADE_DIG));
+                            TransportExecutionRegistry.Executor.BARROWS_DIG));
 
             List<WorldPoint> leaving = route(withoutSpecialRequirements, sarcophagusApproach, surface);
             assertTrue("individual crypt must route to its own surface-mound anchor: " + stair,
@@ -1021,7 +1021,7 @@ public class WalkerRouteCorpusTest {
                 arrives(attempted, tunnelChest, 2));
     }
 
-    private static final WorldPoint BRINE_RAT_CAVERN_DIG = new WorldPoint(2748, 3733, 0);
+    private static final WorldPoint BRINE_RAT_CAVERN_DIG = new WorldPoint(2748, 3732, 0);
     private static final WorldPoint BRINE_RAT_CAVERN_LANDING = new WorldPoint(2696, 10120, 0);
     private static final WorldPoint BRINE_RATS = new WorldPoint(2705, 10133, 0);
     private static final WorldPoint OLAF = new WorldPoint(2722, 3727, 0);
@@ -1038,7 +1038,7 @@ public class WalkerRouteCorpusTest {
         assertTrue("the spade dig must reach the brine rats", arrives(entering, BRINE_RATS, 2));
         assertTrue("the cavern route must retain the exact spade executor edge",
                 usesExactTransport(entering, BRINE_RAT_CAVERN_DIG, BRINE_RAT_CAVERN_LANDING,
-                        TransportExecutionRegistry.Executor.SPADE_DIG));
+                        TransportExecutionRegistry.Executor.BARROWS_DIG));
 
         List<WorldPoint> leaving = route(configWith(WalkerRouteCorpusTest::unrestricted), BRINE_RATS, OLAF);
         assertTrue("the cave exit must lead back to the surface", arrives(leaving, OLAF, 2));
