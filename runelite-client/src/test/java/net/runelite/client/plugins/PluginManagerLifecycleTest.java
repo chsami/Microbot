@@ -6,9 +6,12 @@ import com.google.inject.Injector;
 import net.runelite.client.RuneLite;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.EventBus;
+import net.runelite.client.events.PluginChanged;
 import net.runelite.client.plugins.microbot.ui.MicrobotPluginFailures;
 import net.runelite.client.plugins.microbot.ui.MicrobotPluginUsage;
 import net.runelite.client.task.Scheduler;
+import net.runelite.client.ui.overlay.Overlay;
+import net.runelite.client.ui.overlay.OverlayManager;
 import org.junit.Test;
 
 import javax.swing.SwingUtilities;
@@ -16,6 +19,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.FutureTask;
+import java.util.function.Predicate;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -24,8 +28,12 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
+import org.mockito.ArgumentCaptor;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 public class PluginManagerLifecycleTest {
     @Test
@@ -243,6 +251,75 @@ public class PluginManagerLifecycleTest {
             assertSame(first.stopFailure, manager.getShutdownFailure(first));
             first.stopFailure = null;
             assertTrue(manager.stopPlugin(first));
+            return null;
+        });
+    }
+
+    @Test
+    public void stopPluginRemovesOwnedOverlaysEvenWhenShutdownThrows() throws Exception {
+        OverlayManager overlayManager = mock(OverlayManager.class);
+        PluginManager manager = manager();
+        manager.setOverlayManager(() -> overlayManager);
+        LifecyclePlugin plugin = new LifecyclePlugin();
+        LifecyclePlugin other = new LifecyclePlugin();
+        plugin.stopFailure = new IllegalStateException("stop failed");
+        manager.add(plugin);
+
+        onEdt(() -> {
+            assertTrue(manager.startPlugin(plugin));
+            try {
+                manager.stopPlugin(plugin);
+                fail("Shutdown should fail");
+            } catch (PluginInstantiationException expected) {
+                assertSame(plugin.stopFailure, expected.getCause());
+            }
+            return null;
+        });
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Predicate<Overlay>> filter = ArgumentCaptor.forClass(Predicate.class);
+        verify(overlayManager).removeIf(filter.capture());
+        Overlay owned = mock(Overlay.class);
+        Overlay unrelated = mock(Overlay.class);
+        when(owned.getPlugin()).thenReturn(plugin);
+        when(unrelated.getPlugin()).thenReturn(other);
+        assertTrue(filter.getValue().test(owned));
+        assertFalse(filter.getValue().test(unrelated));
+    }
+
+    @Test
+    public void throwingOverlayRemovalStillPostsPluginChangedAndDoesNotMaskShutdownFailure() throws Exception {
+        EventBus eventBus = mock(EventBus.class);
+        OverlayManager overlayManager = mock(OverlayManager.class);
+        doThrow(new RuntimeException("overlay failure")).when(overlayManager).removeIf(any());
+        PluginManager manager = new PluginManager(false, eventBus, mock(Scheduler.class), mock(ConfigManager.class),
+                null, new PluginModuleFactory());
+        manager.setOverlayManager(() -> overlayManager);
+
+        LifecyclePlugin cleanStop = new LifecyclePlugin();
+        manager.add(cleanStop);
+        onEdt(() -> {
+            assertTrue(manager.startPlugin(cleanStop));
+            reset(eventBus);
+            assertTrue(manager.stopPlugin(cleanStop));
+            return null;
+        });
+        ArgumentCaptor<PluginChanged> stopped = ArgumentCaptor.forClass(PluginChanged.class);
+        verify(eventBus).post(stopped.capture());
+        assertSame(cleanStop, stopped.getValue().getPlugin());
+        assertFalse(stopped.getValue().isLoaded());
+
+        LifecyclePlugin failingStop = new LifecyclePlugin();
+        failingStop.stopFailure = new IllegalStateException("stop failed");
+        manager.add(failingStop);
+        onEdt(() -> {
+            assertTrue(manager.startPlugin(failingStop));
+            try {
+                manager.stopPlugin(failingStop);
+                fail("Shutdown should fail");
+            } catch (PluginInstantiationException expected) {
+                assertSame(failingStop.stopFailure, expected.getCause());
+            }
             return null;
         });
     }

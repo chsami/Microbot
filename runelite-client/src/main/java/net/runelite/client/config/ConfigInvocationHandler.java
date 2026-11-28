@@ -189,4 +189,19 @@ class ConfigInvocationHandler implements InvocationHandler
 		log.trace("cache invalidate");
 		cache.invalidateAll();
 	}
+
+	void invalidate(ClassLoader loader)
+	{
+		if (loader == null)
+		{
+			return;
+		}
+		for (Method method : cache.asMap().keySet())
+		{
+			if (method.getDeclaringClass().getClassLoader() == loader)
+			{
+				cache.invalidate(method);
+			}
+		}
+	}
 }

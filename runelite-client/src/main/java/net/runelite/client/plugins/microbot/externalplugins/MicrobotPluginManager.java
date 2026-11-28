@@ -673,12 +673,12 @@ public class MicrobotPluginManager {
         String key = INSTALLED_VERSION_KEY_PREFIX + internalName;
         String value = configManager.getConfiguration(INSTALLED_VERSION_GROUP, key);
         if (Strings.isNullOrEmpty(value)) {
-            return Optional.empty();
+            return live.map(LivePluginManager.PluginEntry::getVersion).filter(version -> !version.isEmpty());
         }
 
         String[] parts = value.split(":", 2);
         if (parts.length < 2 || Strings.isNullOrEmpty(parts[0]) || Strings.isNullOrEmpty(parts[1])) {
-            return Optional.empty();
+            return live.map(LivePluginManager.PluginEntry::getVersion).filter(version -> !version.isEmpty());
         }
 
         return Optional.of(parts[0]);
