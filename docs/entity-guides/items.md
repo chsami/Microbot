@@ -370,7 +370,7 @@ The pad collects three digits on the client and sends only the fourth. It reshuf
 
 ## 27. Some gear has a different item id while worn
 
-Weight-reducing gear uses one id in the bank and inventory and another while worn: Graceful hood is 11850 / 11851 and Boots of lightness 88 / 89. A setup saved from worn gear stores the worn id. The id lookups in the bank find the bank row by name (section 4), so `withdrawOne(11851)` withdraws 11850, but `Rs2Inventory.hasItem(id)` and `get(id)` match the exact id and never see it. `Rs2Bank.withdrawAndEquip(int)` and `withdrawXAndEquip(int, int)` now wait for and wear the id of the bank row they withdrew, and `Rs2InventorySetup.loadEquipment` wears the held inventory copy that fills a non-fuzzy row (same id, or same name and not noted).
+Weight-reducing gear uses one id in the bank and inventory and another while worn: Graceful hood is 11850 / 11851 and Boots of lightness 88 / 89. A setup saved from worn gear stores the worn id. The id lookups in the bank find the bank row by name (section 4), so `withdrawOne(11851)` withdraws 11850, but `Rs2Inventory.hasItem(id)` and `get(id)` match the exact id and never see it. `Rs2Bank.withdrawAndEquip(int)`, `withdrawXAndEquip(int, int)` and `withdrawAllAndEquip(int)` now wait for and wear the id of the bank row they withdrew, and `Rs2InventorySetup.loadEquipment` and `wearEquipment` wear the held inventory copy that fills a non-fuzzy row (same id, or same name and not noted).
 
 **Why this matters:** the loader withdrew the hood and the boots, waited for the worn id, gave up, and left them in the inventory. On the next pass it found none in the bank and paused with "missing gear".
 

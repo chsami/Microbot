@@ -756,4 +756,29 @@ public class InventorySetupMatchingTest
 		rs2Bank.verify(() -> Rs2Bank.withdrawAndEquip(org.mockito.ArgumentMatchers.anyInt()), never());
 		assertTrue(inventory.isEmpty());
 	}
+
+	@Test
+	public void wearEquipmentWieldsTheInventoryCopyOfARowSavedFromWornGear()
+	{
+		inventory.add(held(ItemID.GRACEFUL_HOOD, "Graceful hood", 1, 0));
+		inventory.add(held(ItemID.IKOV_BOOTSOFLIGHTNESS, "Boots of lightness", 1, 1));
+		rs2Inventory.when(() -> Rs2Inventory.wield(org.mockito.ArgumentMatchers.anyInt())).thenAnswer(call -> {
+			int id = call.getArgument(0);
+			Rs2ItemModel piece = inventory.stream().filter(held -> held.getId() == id).findFirst().orElse(null);
+			if (piece == null)
+			{
+				return false;
+			}
+			inventory.remove(piece);
+			return worn.add(held(id + 1, piece.getName(), 1, 0));
+		});
+		InventorySetup setup = gearSetup(item(ItemID.GRACEFUL_HOOD_WORN, "Graceful hood", 1, 0),
+			item(ItemID.IKOV_BOOTSOFLIGHTNESSWORN, "Boots of lightness", 1, 10));
+
+		assertTrue(loader(setup).wearEquipment());
+
+		rs2Inventory.verify(() -> Rs2Inventory.wield(ItemID.GRACEFUL_HOOD));
+		rs2Inventory.verify(() -> Rs2Inventory.wield(ItemID.IKOV_BOOTSOFLIGHTNESS));
+		assertTrue(inventory.isEmpty());
+	}
 }

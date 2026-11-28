@@ -1963,9 +1963,11 @@ public class Rs2Bank {
      */
     public static boolean withdrawAllAndEquip(int id) {
         if (Rs2Equipment.isWearing(id)) return true;
-        if (!withdrawAll(id)) return false;
-        if (!sleepUntil(() -> Rs2Inventory.hasItem(id))) return false;
-        return wearItem(id);
+        Rs2ItemModel row = findBankStackRowForSavedId(id);
+        if (!withdrawAll(row)) return false;
+        int withdrawnId = row.getId();
+        if (!sleepUntil(() -> Rs2Inventory.hasItem(withdrawnId))) return false;
+        return wearItem(withdrawnId);
     }
 
     /**

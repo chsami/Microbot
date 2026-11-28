@@ -208,6 +208,12 @@ public class Rs2InventorySetup {
 		return Rs2Equipment.isWearing(worn -> itemFillsSetupRow(worn, setupItem));
 	}
 
+	private static Rs2ItemModel heldCopyOfSetupRow(InventorySetupsItem setupItem) {
+		return Rs2Inventory.items()
+			.filter(held -> held.getId() == setupItem.getId() || (!held.isNoted() && itemFillsSetupRow(held, setupItem)))
+			.findFirst().orElse(null);
+	}
+
 	private static List<Rs2ItemModel> bankItemsOrEmpty() {
 		List<Rs2ItemModel> bankItems = Rs2Bank.bankItems();
 		return bankItems == null ? Collections.emptyList() : bankItems;
@@ -954,9 +960,7 @@ public class Rs2InventorySetup {
 				inInventory = inInventory && heldInInventory != null;
 				inBank = inBank && barrowsInBank != null;
 			} else if (!isFuzzy) {
-				heldInInventory = Rs2Inventory.items()
-					.filter(held -> held.getId() == item.getId() || (!held.isNoted() && itemFillsSetupRow(held, item)))
-					.findFirst().orElse(null);
+				heldInInventory = heldCopyOfSetupRow(item);
 				inInventory = inInventory || heldInInventory != null;
 			}
 
@@ -1039,7 +1043,10 @@ public class Rs2InventorySetup {
      */
     public boolean wearEquipment() {
         for (InventorySetupsItem inventorySetupsItem : inventorySetup.getEquipment()) {
-            Rs2Inventory.wield(inventorySetupsItem.getId());
+            Rs2ItemModel heldCopy = inventorySetupsItem.isFuzzy() || InventorySetupsItem.isEmptySlot(inventorySetupsItem)
+                    ? null
+                    : heldCopyOfSetupRow(inventorySetupsItem);
+            Rs2Inventory.wield(heldCopy == null ? inventorySetupsItem.getId() : heldCopy.getId());
         }
         return doesEquipmentMatch();
     }

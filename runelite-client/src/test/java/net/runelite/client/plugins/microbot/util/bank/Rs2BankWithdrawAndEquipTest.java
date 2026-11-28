@@ -112,4 +112,14 @@ public class Rs2BankWithdrawAndEquipTest
 		assertTrue(inventory.isEmpty());
 		assertEquals(1, worn.size());
 	}
+
+	@Test
+	public void withdrawAllAndEquipWearsTheBankRowWithdrawnForAWornId()
+	{
+		assertTrue(Rs2Bank.withdrawAllAndEquip(ItemID.GRACEFUL_HOOD_WORN));
+
+		rs2Bank.verify(() -> Rs2Bank.invokeMenu(eq(WEAR), any()));
+		assertTrue(inventory.isEmpty());
+		assertEquals(1, worn.size());
+	}
 }
